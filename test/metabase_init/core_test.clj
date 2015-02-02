@@ -5,5 +5,4 @@
 ;; Basic sanity check
 (expect 2 (+ 1 1))
 
-;; SHOULD FAIL!
 (expect false)
