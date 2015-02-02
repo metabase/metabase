@@ -10,3 +10,4 @@ pom.xml.asc
 .hgignore
 .hg/
 .idea/
+/docs

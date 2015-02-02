@@ -12,6 +12,18 @@ FIXME: explanation
 
     $ java -jar metabase-init-0.1.0-standalone.jar [args]
 
+## Documentation
+
+Generate documentation with
+
+    lein marg
+
+## Unit Tests
+
+Run unit tests with
+
+    lein expectations
+
 ## Options
 
 FIXME: listing of options this app accepts.
