@@ -13,6 +13,7 @@
                                                     javax.jms/jms
                                                     com.sun.jdmk/jmxtools
                                                     com.sun.jmx/jmxri]]
+                 [com.h2database/h2 "1.3.170"]                  ; embedded SQL database
                  [korma "0.4.0"]                                ; SQL lib
                  ]
   :plugins [[cider/cider-nrepl "0.8.2"]      ; Interactive development w/ cider NREPL in Emacs
