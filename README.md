@@ -8,9 +8,9 @@ Download from http://example.com/FIXME.
 
 ## Usage
 
-FIXME: explanation
+Run the HTTP server with
 
-    $ java -jar metabase-init-0.1.0-standalone.jar [args]
+    lein ring server
 
 ## Documentation
 
