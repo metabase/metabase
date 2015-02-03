@@ -5,6 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [expectations "2.0.12"]     ; unit tests
+                 [marginalia "0.7.1"]        ; for documentation
                  [environ "0.5.0"]                              ; easy environment management
                  [org.clojure/tools.logging "0.3.1"]            ; logging framework
                  [log4j/log4j "1.2.17" :exclusions [javax.mail/mail
@@ -13,9 +15,11 @@
                                                     com.sun.jmx/jmxri]]
                  [korma "0.4.0"]                                ; SQL lib
                  ]
-  :plugins [[lein-environ "0.5.0"]
-            [lein-midje "3.1.3"]
-            [cider/cider-nrepl "0.8.2"]                         ; for development w/ Emacs
+  :plugins [[cider/cider-nrepl "0.8.2"]      ; Interactive development w/ cider NREPL in Emacs
+            [lein-environ "0.5.0"]           ; easy access to environment variables
+            [lein-expectations "0.0.7"]      ; run unit tests with 'lein expectations'
+            [lein-midje "3.1.3"]             ; another unit testing option
+            [lein-marginalia "0.7.0"]        ; generate documentation with 'lein marg'
             ]
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
