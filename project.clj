@@ -6,6 +6,11 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [environ "0.5.0"]                              ; easy environment management
+                 [org.clojure/tools.logging "0.3.1"]            ; logging framework
+                 [log4j/log4j "1.2.17" :exclusions [javax.mail/mail
+                                                    javax.jms/jms
+                                                    com.sun.jdmk/jmxtools
+                                                    com.sun.jmx/jmxri]]
                  [korma "0.4.0"]                                ; SQL lib
                  ]
   :plugins [[lein-environ "0.5.0"]
@@ -14,5 +19,6 @@
             ]
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
-  :profiles {:dev {:dependencies [[midje "1.6.3"]]}
+  :profiles {:dev {:dependencies [[midje "1.6.3"]]
+                   :jvm-opts ["-Dlogfile.path=target/log"]}
              :uberjar {:aot :all}})

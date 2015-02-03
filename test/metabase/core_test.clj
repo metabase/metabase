@@ -1,8 +1,10 @@
 (ns metabase.core-test
   (:use midje.sweet)
-  (:use [metabase.core]))
+  (:use [metabase.core])
+  (:require [clojure.tools.logging :as log]))
 
 (println "You should expect to see three failures below.")
+(log/info "testing out this logging")
 
 (facts "about `first-element`"
   (fact "it normally returns the first element"
