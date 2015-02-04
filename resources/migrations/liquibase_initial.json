@@ -40,7 +40,7 @@
                 {
                   "column": {
                     "name": "description",
-                    "type": "varchar(254)"
+                    "type": "text"
                   }
                 },
                 {
@@ -53,7 +53,6 @@
                   "column": {
                     "name": "inherits",
                     "type": "boolean",
-                    "defaultValue": false,
                     "constraints": {"nullable": false}
                   }
                 }
@@ -95,7 +94,8 @@
                 {
                   "column": {
                     "name": "last_name",
-                    "type": "varchar(254)"
+                    "type": "varchar(254)",
+                    "constraints": {"nullable": false}
                   }
                 },
                 {
@@ -108,21 +108,21 @@
                 {
                   "column": {
                     "name": "date_joined",
-                    "type": "DATETIME",
+                    "type": "TIMESTAMP",
                     "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
                     "name": "last_login",
-                    "type": "DATETIME"
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
                     "name": "is_staff",
                     "type": "boolean",
-                    "defaultValue": false,
                     "constraints": {"nullable": false}
                   }
                 },
@@ -130,7 +130,6 @@
                   "column": {
                     "name": "is_superuser",
                     "type": "boolean",
-                    "defaultValue": false,
                     "constraints": {"nullable": false}
                   }
                 },
@@ -138,11 +137,87 @@
                   "column": {
                     "name": "is_active",
                     "type": "boolean",
-                    "defaultValue": true,
                     "constraints": {"nullable": false}
                   }
                 }
               ]
+            }
+          },
+          {
+            "createTable": {
+              "tableName": "core_userorgperm",
+              "columns": [
+                {
+                  "column": {
+                    "name": "id",
+                    "type": "int",
+                    "autoIncrement": true,
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "admin",
+                    "type": "boolean",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "user_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_user_id"
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "organization_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_organization(id)",
+                      "foreignKeyName": "fk_organization_id"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "core_userorgperm",
+              "indexName": "idx_unique_user_organization",
+              "unique": true,
+              "columns": [
+                {
+                  "column": {
+                    "name": "user_id",
+                    "type": "int"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "organization_id",
+                    "type": "int"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "modifySql": {
+              "dbms": "postgresql",
+              "replace": {
+                "replace": "WITHOUT",
+                "with": "WITH"
+              }
             }
           }
         ]
