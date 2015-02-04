@@ -7,11 +7,11 @@
         "changes": [
           {
             "createTable": {
-              "tableName": "CORE_ORGANIZATION",
+              "tableName": "core_organization",
               "columns": [
                 {
                   "column": {
-                    "name": "ID",
+                    "name": "id",
                     "type": "int",
                     "autoIncrement": true,
                     "constraints": {
@@ -22,7 +22,7 @@
                 },
                 {
                   "column": {
-                    "name": "SLUG",
+                    "name": "slug",
                     "type": "varchar(254)",
                     "constraints": {
                       "unique": true,
@@ -32,26 +32,26 @@
                 },
                 {
                   "column": {
-                    "name": "NAME",
+                    "name": "name",
                     "type": "varchar(254)",
                     "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
-                    "name": "DESCRIPTION",
+                    "name": "description",
                     "type": "varchar(254)"
                   }
                 },
                 {
                   "column": {
-                    "name": "LOGO_URL",
+                    "name": "logo_url",
                     "type": "varchar(254)"
                   }
                 },
                 {
                   "column": {
-                    "name": "INHERITS",
+                    "name": "inherits",
                     "type": "boolean",
                     "defaultValue": false,
                     "constraints": {"nullable": false}
@@ -62,11 +62,11 @@
           },
           {
             "createTable": {
-              "tableName": "CORE_USER",
+              "tableName": "core_user",
               "columns": [
                 {
                   "column": {
-                    "name": "ID",
+                    "name": "id",
                     "type": "int",
                     "autoIncrement": true,
                     "constraints": {
@@ -77,7 +77,7 @@
                 },
                 {
                   "column": {
-                    "name": "EMAIL",
+                    "name": "email",
                     "type": "varchar(254)",
                     "constraints": {
                       "unique": true,
@@ -87,40 +87,40 @@
                 },
                 {
                   "column": {
-                    "name": "FIRST_NAME",
+                    "name": "first_name",
                     "type": "varchar(254)",
                     "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
-                    "name": "LAST_NAME",
+                    "name": "last_name",
                     "type": "varchar(254)"
                   }
                 },
                 {
                   "column": {
-                    "name": "PASSWORD",
+                    "name": "password",
                     "type": "varchar(254)",
                     "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
-                    "name": "DATE_JOINED",
+                    "name": "date_joined",
                     "type": "DATETIME",
                     "constraints": {"nullable": false}
                   }
                 },
                 {
                   "column": {
-                    "name": "LAST_LOGIN",
+                    "name": "last_login",
                     "type": "DATETIME"
                   }
                 },
                 {
                   "column": {
-                    "name": "IS_STAFF",
+                    "name": "is_staff",
                     "type": "boolean",
                     "defaultValue": false,
                     "constraints": {"nullable": false}
@@ -128,7 +128,7 @@
                 },
                 {
                   "column": {
-                    "name": "IS_SUPERUSER",
+                    "name": "is_superuser",
                     "type": "boolean",
                     "defaultValue": false,
                     "constraints": {"nullable": false}
@@ -136,7 +136,7 @@
                 },
                 {
                   "column": {
-                    "name": "IS_ACTIVE",
+                    "name": "is_active",
                     "type": "boolean",
                     "defaultValue": true,
                     "constraints": {"nullable": false}
