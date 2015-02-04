@@ -7,7 +7,7 @@
                     [credentials :as creds])
    [ring.util.response :as resp]))
 
-(defn make-user [username password roles]
+(defn- make-user [username password roles]
   {username {:username username
              :password (creds/hash-bcrypt password)
              :roles roles}})
