@@ -1,9 +1,13 @@
 (ns metabase.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [context defroutes GET]]
-            [compojure.route :as route]
-            [ring.middleware.json :refer [wrap-json-response]]))
+            (ring.middleware [json :refer [wrap-json-response]]
+                             [keyword-params :refer [wrap-keyword-params]]
+                             [nested-params :refer [wrap-nested-params]]
+                             [params :refer [wrap-params]]
+                             [session :refer [wrap-session]])
+            [metabase.auth :as auth]
+            [metabase.routes :as routes]))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -11,17 +15,13 @@
   (println "Hello, World!")
   (log/info "testing logging"))
 
-(defn first-element [sequence default]
-  (or (first sequence) default))
-
-(defroutes routes
-  (GET "/" [] "Success!")
-  (GET "/test.json" [] {:status 200
-                        :body {:message "We can serialize JSON <3"}})
-  (route/not-found "404 :/"))
-
 (def app
   "The primary entry point to the HTTP server"
-  (-> routes
+  (-> routes/routes
+      auth/auth-middleware
+      wrap-keyword-params
+      wrap-nested-params
+      wrap-params
+      wrap-session
       wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       ))
