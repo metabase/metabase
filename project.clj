@@ -12,6 +12,7 @@
                  [org.clojure/data.json "0.2.5"]            ; JSON parsing / generation
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
                  [org.clojure/tools.macro "0.1.2"]          ; tools for writing macros
+                 [clj-time "0.5.1"]                         ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]              ; auth library
                  [com.h2database/h2 "1.3.170"]              ; embedded SQL database
                  [compojure "1.3.1"]                        ; HTTP Routing library built on Ring

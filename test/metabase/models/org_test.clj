@@ -1,6 +1,6 @@
 (ns metabase.models.org-test
   (:require [clojure.tools.logging :as log]
-            [clojure.java.jdbc :as jdbc]
+            [metabase.test-util :as util]
             [metabase.db :refer :all]
             [metabase.config :refer [app-defaults]]
             [metabase.models.org :refer [Org]]
@@ -8,31 +8,21 @@
             [midje.sweet :refer :all]))
 
 
-(defn liquibase-up []
-  (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname (get-db-file)})]
-    (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)))
-
-(defn liquibase-down []
-  (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname (get-db-file)})]
-    (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)))
-
-
 (defn count-orgs []
   (get-in (first (select Org (aggregate (count :*) :cnt))) [:cnt]))
 
 
-(facts "about Core model"
-  (with-state-changes [(before :facts (liquibase-up))
-                       (after :facts (liquibase-down))]
+(facts "about Org model"
+  (with-state-changes [(before :facts (util/liquibase-up))
+                       (after :facts (util/liquibase-down))]
     (fact "starts with 0 entries"
       (count-orgs) => 0)
     (fact "can insert new entries"
       (let [result (insert Org (values {:name "test"
-                            :slug "test"
-                            :inherits false}))]
+                                        :slug "test"
+                                        :inherits false}))]
         (nil? result) => false
-        (> 0 (or (get-in result [:generated_key]) (get-in result [:scope_identity()]) -1)))
+        (println "orgId" (or (:generated_key result) ((keyword "scope_identity()") result) -1))
+        (> (or (:generated_key result) ((keyword "scope_identity()") result) -1) 0) => true)
       (count-orgs) => 1)
     ))

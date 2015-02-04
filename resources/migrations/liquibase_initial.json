@@ -108,7 +108,7 @@
                 {
                   "column": {
                     "name": "date_joined",
-                    "type": "TIMESTAMP",
+                    "type": "DATETIME",
                     "constraints": {"nullable": false}
                   }
                 },
@@ -116,7 +116,7 @@
                   "column": {
                     "name": "last_login",
                     "type": "DATETIME",
-                    "constraints": {"nullable": false}
+                    "constraints": {"nullable": true}
                   }
                 },
                 {
