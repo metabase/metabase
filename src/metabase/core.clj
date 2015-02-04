@@ -24,14 +24,12 @@
   ;; call /api/test to see this
   (GET "/test" [] {:status 200 :body {:message "We can serialize JSON <3"}}))
 
-(defn serve-index "Serve index.html" [request]
-  (resp/file-response "frontend_client/index.html"))
-
-(defroutes routes
-  (GET "/" [] serve-index)                            ; ^/$    -> index.html
-  (context "/api" [] api-routes)                      ; ^/api/ -> API routes
-  (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/ -> static files under frontend_client/app
-  (route/not-found serve-index))                      ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+(letfn [(serve-index [_] (resp/file-response "frontend_client/index.html"))]
+  (defroutes routes
+    (GET "/" [] serve-index)                            ; ^/$    -> index.html
+    (context "/api" [] api-routes)                      ; ^/api/ -> API routes
+    (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/ -> static files under frontend_client/app
+    (route/not-found serve-index)))                     ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
 
 (def app
   "The primary entry point to the HTTP server"
