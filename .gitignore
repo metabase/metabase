@@ -12,3 +12,4 @@ pom.xml.asc
 .idea/
 /docs
 profiles.clj
+/metabase.db.*.db
