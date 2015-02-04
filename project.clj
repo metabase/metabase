@@ -27,7 +27,7 @@
                  [ring/ring-json "0.3.1"]                   ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]                     ; 'Magic wand' macro -<>, etc.
                  ]
-  :plugins [[cider/cider-nrepl "LATEST"]                    ; Interactive development w/ cider NREPL in Emacs
+  :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]            ; Interactive development w/ cider NREPL in Emacs
             [lein-environ "0.5.0"]                          ; easy access to environment variables
             [lein-expectations "0.0.7"]                     ; run unit tests with 'lein expectations'
             [lein-midje "3.1.3"]                            ; another unit testing option
