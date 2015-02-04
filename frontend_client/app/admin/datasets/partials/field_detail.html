@@ -1,0 +1,93 @@
+<!--
+<ol class="px2">
+	<li><a href="/explore/org/{{field.table.db.organization.id}}">{{field.table.db.organization.name}}</a></li>
+	<li><a href="/explore/db/{{field.table.db.id}}">{{field.table.db.name}}</a></li>
+	<li><a href="/explore/table/{{field.table.id}}">{{field.table.name}}</a></li>
+	<li class="active">{{field.name}}</li>
+</ol>
+-->
+
+<div class="EntityGroup bordered clearfix">
+	<div class="px1 py1">
+		<div>
+			<h3>Information</h3>
+			<b>Database:</b> <a cv-org-href="/explore/db/{{field.table.db.id}}">{{field.table.db.name}}</a><br/>
+			<b>Table:</b> <a cv-org-href="/explore/table/{{field.table.id}}">{{field.table.name}}</a><br/>
+			<b>Data Type:</b> {{field.base_type}} <br/>
+			<b>User Assigned Type:</b> <a href="#" editable-select="field.special_type" onaftersave="inlineSave()" e-ng-options="spec_type.id as spec_type.name for spec_type in utils.field_special_types">{{utils.fieldSpecialType(field.special_type)}}</a> <br/>
+			<b>Display in preview:</b> <a href="#" editable-select="field.preview_display" onaftersave="inlineSave()" e-ng-options="spec_type.id as spec_type.name for spec_type in utils.boolean_types">{{field.preview_display && "Yes" || "No"}}</a> <br/>
+
+			<b>Description:</b> <a href="#" editable-textarea="field.description" e-rows="4" e-cols="50" onaftersave="inlineSave()">{{field.description}}<span ng-if="!field.description">Description</span></a> <br/>
+			<div ng-if="fks">
+				<b>Relationships:</b><br>
+				<table class="Table">
+				<thead>
+					
+					<tr>
+						<th>Destination Table</th>
+						<th>Destination Field</th>
+						<th>Relationship Type</th>
+						<th>Delete</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="fk in fks">
+						<td>{{fk.destination.table.name}}</td>
+						<td>{{fk.destination.name}}</td>
+						<td>{{fk.relationship}}</td>
+						<td> <a class="Button Button--remove" href="#" ng-click="deleteRelationship(fk.id)" delete-confirm>x</a></td>
+					</tr>
+				</tbody>
+				</table>
+			</div>
+            <br />
+			<input type="button" value="Add Relationship" class="Button" role="button" field="field" callback="relationshipAdded" cv-field-relationship-modal />
+			<hr />
+			<cv-comments type="field" id="field.id" title="Notes"></cv-comments>
+		</div>
+		<div>
+
+			<h3>Summary</h3>
+
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th>Characteristic</th>
+						<th>Value</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="item in field_summary">
+						<td>{{item[0]}}</td>
+						<td>{{item[1]}}</td>
+					</tr>
+				</tbody>
+			</table>
+			<div class="border-top py2">
+				<div class="border-bottom py2">
+
+					<input type="button" value="Update Mapped Values" class="Button Button--primary float-right" role="button" ng-click="updateMappedValues()" />
+					<h3>Valid Values</h3>
+				</div>
+
+				<table class="Table">
+
+					<thead>
+						<tr>
+							<th>Value</th>
+							<th>Remapped Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr ng-repeat="value in field_values.values">
+							<td>{{value || "Empty Field"}}</td>
+							<td> <input class="input" ng-model="field_values.human_readable_values[value]"> </td>
+						</tr>
+
+					</tbody>
+				</table>
+			</div>
+	</div>
+</div>
+
+<cv-field-relationship-modal title="sendCardTitle" field="field" show="modalShown" callback="relationshipAdded" />

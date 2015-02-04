@@ -1,0 +1,32 @@
+<div class="wrapper">
+  <div class="border-bottom py2">
+    <h3>Event Ingestions</h3>
+  </div>
+
+  <table class="Table">
+    <thead>
+      <tr>
+        <th>Ingestion Started</th>
+        <th>Last Change</th>
+        <th>Status</th>
+        <th>File</th>
+      </tr>
+    </thead>
+    <tfoot>
+      <tr>
+        <td colspan="25" style="text-align:right;">
+          <input type="button" value="Prev" class="Button" ng-if="page > 1" ng-click="setPage(page-1)">&nbsp;
+          <input type="button" value="Next" class="Button" ng-if="ingestions.length == 25" ng-click="setPage(page+1)">
+        </td>
+      </tr>
+    </tfoot>
+    <tbody>
+      <tr ng-repeat="ingestion in ingestions">
+        <td>{{ingestion.created_at | date : 'MMM d, y, hh:mm a'}}</td>
+        <td>{{ingestion.updated_at | date : 'MMM d, y, hh:mm a'}}</td>
+        <td>{{ingestion.status}}</td>
+        <td>{{ingestion.file_name}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

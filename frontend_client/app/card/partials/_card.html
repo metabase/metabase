@@ -1,0 +1,108 @@
+<div class="Card" ng-class="{ 'Card--errored': cardDataEmpty || cardData.error || sqlError }">
+    <div id="{{chartId}}_heading" ng-include="'/app/card/partials/_card_heading.html'" onload="headerLoaded = true"></div>
+
+    <div ng-if="cardDataEmpty && !sqlError">
+        <div class="layout-centered text-centered full">
+            <div ng-if="card.dataset_query.type != 'result' && !sourceTableEmpty">
+                <div class="py2">
+                    <h3>This card contains no data.</h3>
+                    <span class="text-grey-3">Your filters may be too narrow.</span>
+                </div>
+                <a class="link" cv-org-href="/card/{{card.id}}/modify">Try removing some filters</a>
+            </div>
+            <div ng-if="sourceTableEmpty">
+                The source dataset <a cv-org-href="/explore/table/{{sourceTable.id}}">{{sourceTable.name}}</a> is empty
+            </div>
+            <div class="py1" ng-if="card.dataset_query.type == 'result'">
+                The SQL query backing this card returned no records.<br/>
+                <a cv-org-href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Review your query</a> to ensure that your datasets are not empty and that your WHERE clause is not too narrow.
+            </div>
+        </div>
+    </div>
+
+    <div ng-if="cardData.error || sqlError">
+        <div class="text-centered full">
+            <h3 class="text-normal">Data Error</h3>
+            <div class="py1 text-grey-3" ng-if="sqlError && !missingDataset">
+                The SQL query backing this card returned the following error:
+                <span class="block text-italic text-grey-4 my1">"{{sqlError}}"</span>
+                <div ng-if="card.dataset_query.type == 'result'">
+                    <a class="link block my4" cv-org-href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Fix Query</a>
+                </div>
+            </div>
+            <div class="py1" ng-if="missingDataset">
+                The dataset "{{missingDataset}}" backing this card is no longer available
+                <div ng-if="card.dataset_query.database">
+                    <a cv-org-href="/explore/db/{{card.dataset_query.database}}">Explore</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div ng-if="cardRenderingError">
+        <div class="text-centered" >
+            <h3 class="text-normal">Error rendering card. <span ng-bind-html="cardRenderingErrorDetails"></span></h3>
+        </div>
+    </div>
+
+    <div class="my4 py4 text-brand text-centered" ng-if="(!cardData) && !cardDataEmpty && !cardRenderingError && !sqlError && !queryNotSet">
+        <cv-loading-spinner></cv-loading-spinner>
+        <h1 class="text-normal text-grey-2">Loading...</h1>
+    </div>
+
+    <div class="text-centered" ng-if="queryNotSet">
+        <h3 class="text-normal">Please create a query for this card.</h3>
+    </div>
+
+    <div ng-if="!cardDataEmpty && !cardRenderingError && !cardData.error" ng-switch="card.display">
+
+        <div ng-switch-when="scalar" class="Card--scalar">
+            <h1 class="Card-scalarValue text-normal px1">{{cardData.rows[0][0]}}</h1>
+        </div>
+
+        <div ng-switch-when="table" class="Card--table scroll-x scroll-y" id="{{chartId}}">
+            <div>
+                <table class="Table border-top">
+                    <thead>
+                        <tr>
+                            <th ng-repeat="column in cardData.columns track by $index">{{getDatasetColumnTitleByIndex($index)}}</th>
+                        </tr>
+                    </thead>
+                    <tr ng-repeat="row in cardData.rows | limitTo: 100">
+                        <td ng-repeat="cell in row track by $index">{{cell}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div ng-switch-when="pivot">
+            <div class="truncate_me">
+                <table class="Table border-top">
+                    <thead>
+                        <tr>
+                            <th ng-repeat="column in columns">{{column}}</th>
+                        </tr>
+                    </thead>
+                    <tr ng-repeat="row in cardData.rows">
+                        <td ng-repeat="cell in row">{{cell}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="Card--{{card.display}} Card-outer px1" id="{{chartId}}" ng-switch-default>
+            <div id="{{'card-title--' + chartId}}" class="text-centered"></div>
+            <div id="{{'card-inner--' + chartId}}" class="card-inner"></div>
+        </div>
+
+        <div class="Card-footing py1 px2 clearfix" id="{{chartId + '_footing'}}">
+            <a class="Card-dataSource float-right" ng-if="dataset_info.title" cv-org-href="{{dataset_info.link}}">{{dataset_info.title}}</a>
+            <div class="py1" ng-if="card.creator && ((card.creator.last_name && card.creator.first_name) || card.creator.email)">
+                By:
+                <span ng-if="card.creator.first_name && card.creator.last_name">{{card.creator.first_name}} {{card.creator.last_name}}</span>
+                <span ng-if="(!(card.creator.first_name && card.creator.last_name)) && card.creator.email">{{card.creator.email}}</span>
+            </div>
+        </div>
+    </div>
+
+</div>

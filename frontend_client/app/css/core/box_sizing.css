@@ -1,0 +1,17 @@
+/* set main elements to box-sizing border-box for more reliable box model calc */
+div,
+nav,
+article,
+section,
+main,
+header,
+footer,
+input,
+form,
+table,
+fieldset,
+textarea,
+ul,
+li {
+  box-sizing: border-box;
+}

@@ -1,0 +1,116 @@
+  <div class=" clearfix">
+    <div class="float-right">
+      <div class="mx2 inline-block">
+        <a class="Button mx1" href="#" ng-click="ingest()">Ingest Now</a>
+        <a class="Button mx1" href="#" ng-if="datasource.source_type=='log'" ng-click="reingest()">Re-Ingest All</a>
+        <a class="Button" cv-org-href="/admin/datasources/{{datasource.id}}/modify">Edit</a>
+      </div>
+
+    </div>
+
+    <h2>Data Source: {{datasource.name}}</h2>
+  </div>
+
+<div class="page-header row">
+    <div class="TableWrapper py4">
+        <table class="Table">
+            <thead>
+                <tr>
+                </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>ID</td>
+                <td>{{datasource.id}}</td>
+            </tr>
+
+            <tr>
+                <td>Name</td>
+                <td>{{datasource.name}}</td>
+            </tr>
+
+            <tr>
+                <td>Type</td>
+                <td>{{datasource.source_type}}</td>
+            </tr>
+            <tr>
+                <td>Database</td>
+                <td>{{datasource.database.name}}</td>
+            </tr
+>
+            <tr>
+                <td>Refresh Interval</td>
+                <td>{{datasource.refresh_interval}}</td>
+            </tr>
+
+            <tr>
+                <td>Data Policy</td>
+                <td>{{datasource.data_policy}}</td>
+            </tr>
+
+            <tr ng-repeat="(k, v) in datasource.parameters">
+                <td>{{k}}</td>
+                <td>{{v}}</td>
+            </tr>
+
+            </tbody>
+        </table>
+    </div>
+
+  <div class="page-info">
+    <h2 class="page-title">Ingestions</h2>
+  </div>
+</div>
+
+
+<div class="page-content row">
+  <div class="TableWrapper py4">
+    <table class="Table">
+      <thead>
+            <tr>
+                <th>ID</th>
+                <th>Source</th>
+                <th># Tables</th>
+                <th># Rows</th>
+                <th>Status</th>
+                <th>Database</th>
+                <th ng-if="isTimestampedDataSource">File Timestamp</th>
+                <th>downloading_start</th>
+                <th>downloading_end</th>
+                <th>transformation_start</th>
+                <th>transformation_end</th>
+                <th>insertion_start</th>
+                <th>insertion_end</th>
+                <th>sync_start</th>
+                <th>sync_end</th>
+            </tr>
+      </thead>
+
+      <tr ng-if="!ingestions">
+        <td colspan="7" style="text-align:center;"><h3>Loading ...</h3></td>
+      </tr>
+
+      <tr ng-repeat="ingestion in ingestions">
+                <td><a cv-org-href="/admin/datasource_ingestion/{{ingestion.id}}">{{ingestion.id}}</a></td>
+                <td><a cv-org-href="/admin/datasources/{{ingestion.source}}">{{ingestion.source}}</a></td>
+                <td>{{ingestion.num_tables}}</td>
+                <td>{{ingestion.num_rows}}</td>
+                <td>{{ingestion.status}}</td>
+                <td>{{ingestion.database_name}}</td>
+                <td ng-if="isTimestampedDataSource">{{ingestion.write_time}}</td>
+                <td>{{ingestion.downloading_start}}</td>
+                <td>{{ingestion.downloading_end}}</td>
+                <td>{{ingestion.transformation_start}}</td>
+                <td>{{ingestion.transformation_end}}</td>
+                <td>{{ingestion.insertion_start}}</td>
+                <td>{{ingestion.insertion_end}}</td>
+                <td>{{ingestion.sync_start}}</td>
+                <td>{{ingestion.sync_end}}</td>
+      </tr>
+    </table>
+  </div>
+</div>
+        <div class="float-right">
+            <a href="#" class="Button Button--primary" ng-if="page > 1" ng-click="setPage(page-1)">Prev</a>
+            <a href="#" class="Button Button--primary" ng-click="setPage(page+1)">Next</a>
+        </div>

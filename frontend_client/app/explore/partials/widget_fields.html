@@ -1,0 +1,21 @@
+<div class="px2 py1 border-bottom">
+    <h5>Only show columns</h5>
+    <div>
+        <ul>
+            <li class="py1 clearfix" ng-repeat="field in query.fields track by $index">
+                <a class="text-grey-2 float-right" ng-if="!readonly" href="#" ng-click="removeField($index)">
+                    <cv-close-icon width="16px" height="16px"></cv-close-icon>
+                </a>
+                <label class="Select" for="id_sort_by_field">
+                    <select id="id_sort_by_field" ng-model="field" ng-options="field.id as field.name for field in table.fields"
+                            ng-disabled="readonly" ng-change="fieldChanged(field, $index)">
+                        <option value="">Pick a Column</option>
+                    </select>
+                </label>
+            </li>
+	    </ul>
+        <div class="py1">
+            <a class="link" href="#" ng-if="!readonly" ng-click="addField()">Add a column</a>
+        </div>
+    </div>
+</div>

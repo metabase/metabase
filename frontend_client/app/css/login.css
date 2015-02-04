@@ -1,0 +1,19 @@
+.Login-page {
+  height: 420px;
+}
+
+.Login-greeting {
+  margin-top: 2em;
+  font-size: 3em;
+}
+
+@media screen and (--breakpoint-min-md) {
+  .Login-form {
+    border-left: 1px solid #d9d9d9;
+  }
+}
+
+.Login-form .Form {
+  width: 100%;
+}
+

@@ -1,0 +1,129 @@
+<div class="col col-md-9">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <div class="float-right">
+    <input class="input" type="text" ng-model="searchFilter" placeholder="Search users ...">
+      </div>
+      <h3 class="text-brand">Users</h2>
+    </div>
+
+    <div ng-if="!users">
+      <h3>Loading ...</h3>
+    </div>
+
+
+    <div class="EntityTableWrapper">
+        <table class="EntityTable Table">
+          <thead>
+            <tr>
+              <th ng-click="orderByField='firstName'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'firstName'}">Name
+                <span ng-if="orderByField == 'firstName'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='avg_num_bookings_per_week'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'avg_num_bookings_per_week'}">Avg. Num Bookings / wk
+                <span ng-if="orderByField == 'avg_num_bookings_per_week'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='total_bookings'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'total_bookings'}">Total Bookings
+                <span ng-if="orderByField == 'total_bookings'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='percent_cancelled'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'percent_cancelled'}">Percent Cancelled
+                <span ng-if="orderByField == 'percent_cancelled'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='avg_time_to_booking_min'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'avg_time_to_booking_min'}">Avg. Time to Booking (min)
+                <span ng-if="orderByField == 'avg_time_to_booking_min'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='avg_num_days_advanced_booking'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'avg_num_days_advanced_booking'}">Avg. Days to Booking
+                <span ng-if="orderByField == 'avg_num_days_advanced_booking'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='pct_containers_accepted'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'pct_containers_accepted'}">% Containers Accepted
+                <span ng-if="orderByField == 'pct_containers_accepted'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='rating'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'rating'}">Rating
+                <span ng-if="orderByField == 'rating'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='createdAt'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'createdAt'}">Created
+                <span ng-if="orderByField == 'createdAt'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+            </tr>
+          </thead>
+          <tfoot></tfoot>
+          <tbody>
+
+            <tr ng-repeat="user in users | orderBy:orderByField:reverseSort | filter:searchFilter">
+              <td class="clearfix">
+                <img class="EntityImage EntityImage--small float-left hide show-lg" src="{{user.profileImage.secureBaseUrl}}">
+                <a class="EntityName float-left ml1 link" href="/reserve/user/{{user.user_id}}">{{user.firstName}} {{user.lastName}}</a>
+              </td>
+              <td>{{user.avg_num_bookings_per_week}}</td>
+              <td>{{user.total_bookings}}</td>
+              <td>{{user.percent_cancelled}}</td>
+              <td>{{user.avg_time_to_booking_min}}</td>
+              <td>{{user.avg_num_days_advanced_booking}}</td>
+              <td>{{user.pct_containers_accepted}}</td>
+              <td>{{user.rating}}</td>
+              <td>{{user.createdAt |  date : 'MMMM d, y '}}</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<div class="col col-md-3">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <h3>User metrics</h3>
+    </div>
+
+    <ol class="px2 py2">
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">25</div>
+          <div class="Metric-title mb2">Average bookings per week</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">3.75</div>
+          <div class="Metric-title mb2">Average rating</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+

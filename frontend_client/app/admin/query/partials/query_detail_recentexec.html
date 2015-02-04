@@ -1,0 +1,23 @@
+<div class="my2 py2">
+	<h2>Recent Executions</h2>
+
+	<table class="Table">
+	    <tr>
+	        <th>ID</th>
+	        <th>Date</th>
+	        <th>Version</th>
+	        <th>Status</th>
+	        <th>Rows</th>
+	        <th>Query Token</th>
+	    </tr>
+
+	    <tr ng-repeat="res in queryRecentExecutions">
+	        <td><a cv-org-href="/admin/query/{{query.id}}/{{res.id}}">{{ res.id }}</a></td>
+	        <td>{{ res.finished_at | date : 'MMMM d, y, hh:mm a'}}</td>
+	        <td>{{ res.version }}</td>
+	        <td>{{ res.status }}</td>
+	        <td>{{ res.row_count }}</td>
+	        <td>{{ res.uuid }}</td>
+	    </tr>
+	</table>
+</div>

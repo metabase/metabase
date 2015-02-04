@@ -1,0 +1,47 @@
+/*
+  TODO(@kyle) - naming convention for modifiers
+  we don't have full control over the classes for alerts yet so we're not
+  following out naming convention
+*/
+
+:root {
+  --alert-success-color: #2ECC40;
+  --alert-error-color: #FF4136;
+
+  --alert-border-radius: 4px;
+}
+
+.Alert {
+  padding: 1em;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--alert-border-radius);
+  box-shadow: 0 0 1px rgba(0, 0, 0, .12);
+}
+
+/* alert component template isn't accessbile and uses a .close button */
+.Alert .close {
+  float: right;
+  border: none;
+  background: none;
+}
+
+.alert-success {
+  background-color: color(var(--alert-success-color) tint(60%));
+  border-color: var(--alert-success-color);
+  color: color(var(--alert-success-color) shade(20%));
+}
+
+.alert-success .close {
+  color: color(var(--alert-success-color) shade(20%));
+}
+
+.alert-error {
+  background-color: color(var(--alert-error-color) tint(60%));
+  border-color: var(--alert-error-color);
+  color: color(var(--alert-error-color) shade(20%));
+}
+
+.alert-error .close {
+  color: color(var(--alert-error-color) shade(20%));
+}

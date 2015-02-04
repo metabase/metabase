@@ -1,0 +1,25 @@
+.Pill {
+  border: 1px solid #ddd;
+  border-radius: 45px;
+  font-size: 0.8rem;
+  line-height: 0.8rem;
+  padding: 0.5em 1em;
+}
+
+.Pill--filled {
+  border-color: var(--brand-color);
+  background-color: var(--brand-color);
+  color: #fff;
+}
+
+.Pill-action {
+  border-left: 1px slid rgba(0, 0, 0, .12);
+}
+
+.Pill--filled .Pill-action,
+.Pill--filled .Pill-action:hover {
+  color: #fff;
+  margin-top: 1px;
+  margin-left: 6px;
+  float: right;
+}

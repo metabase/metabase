@@ -1,3 +1,5 @@
+\#*\#
+.\#*
 /target
 /classes
 /checkouts
@@ -13,3 +15,5 @@ pom.xml.asc
 /docs
 profiles.clj
 /metabase.db.*.db
+/frontend_client/app/bower_components
+/node_modules/

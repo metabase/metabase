@@ -1,0 +1,94 @@
+<div class="page-content row" ng-if="isTableCohortsCompatible">
+  <form novalidate>
+    <p>
+      <label>Date field:</label>
+      <label class="Select">
+      <select ng-model="cohortsInput.field" ng-options="df.id as df.name for df in dateFields" ng-disabled="dateFields.length < 2">
+          <option value="">---------</option>
+      </select>
+    </p>
+    <p>
+      <label>User id field:</label>
+      <label class="Select">
+      <select ng-model="cohortsInput.field2" ng-options="f.id as f.name for f in userIdFields" ng-disabled="userIdFields.length < 2">
+          <option value="">---------</option>
+      </select>
+    </p>
+    <p>
+      <label>Activity type field:</label>
+      <label class="Select">
+          <select ng-model="cohortsInput.field3" ng-options="af.id as af.name for af in activityFields" ng-disabled="activityFields.length < 2">
+              <option value="">---------</option>
+          </select>
+      </label>
+    </p>
+    <p>
+      <label>Start activity value:</label>
+      <label class="Select">
+          <select ng-model="cohortsInput.field4" ng-options="f as f for f in validActivityValues" ng-disabled="readonly">
+          </select>
+      </label>
+    </p>
+    <p>
+      <label>End activity value:</label>
+      <label class="Select">
+          <select ng-model="cohortsInput.field5" ng-options="f as f for f in validActivityValues" ng-disabled="readonly">
+          </select>
+      </label>
+    </p>
+    <a href="#" ng-click="showAdvancedOptions = ! showAdvancedOptions">{{showAdvancedOptions ? 'hide advanced options' : 'show advanced options'}}</a>
+    <div class="advanced-options" ng-show="showAdvancedOptions">
+      <p>
+        <label>Survival or Abandonment</label>
+        <label class="Select">
+            <select ng-model="cohortsInput.field7">
+              <option value="survival">Survival</option>
+              <option value="abandonment">Abandonment</option>
+            </select>
+        </label>
+      </p>
+      <p>
+        <label>Time window:</label>
+        <label class="Select">
+            <select ng-model="cohortsInput.field6">
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+        </label>
+      </p>
+    </div>
+    <p>
+      <input type="button" value="Search" class="btn btn-primary" ng-click="executeCohorts(cohortsInput)" />
+    </p>
+  </form>
+
+
+  <p ng-if="running">Running Analysis ...</p>
+
+
+  <div ng-if="cohortsData">
+    <h3>Results</h3>
+
+    <div ng-if="cohortsData.error">
+      <pre>{{cohortsData.error}}</pre>
+    </div>
+
+    <div>
+      <table class="table table-striped table-condensed">
+          <tr>
+              <th ng-repeat="column_name in cohortsData.data.columns">{{column_name}}</th>
+          </tr>
+
+          <tr ng-repeat="row in cohortsData.data.rows">
+              <td ng-repeat="cell in row track by $index">{{cell}}</td>
+          </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page-content row card-data-empty" ng-if="!isTableCohortsCompatible">
+Sorry, cohort analysis cannot be performed on this table.
+</div>

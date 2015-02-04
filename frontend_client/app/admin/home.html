@@ -1,0 +1,34 @@
+
+<div class="wrapper">
+    <form id="settings_form" novalidate>
+        <div class="py1">
+            <h2>Settings</h2>
+
+            <div class="py1">
+                <label>Slug:</label>
+                <input class="input block full" type="text" ng-model="currentOrg.slug" ng-disabled="true"/>
+            </div>
+
+            <div class="py1">
+                <label for="id_name">Name:</label>
+                <input class="input block full" id="id_name" type="text" ng-model="currentOrg.name"/>
+            </div>
+
+            <div class="py1">
+                <label for="id_desc">Description:</label>
+                <textarea class="input block full" id="id_desc" rows="5" ng-model="currentOrg.description"></textarea>
+            </div>
+
+            <div class="py1">
+                <label for="id_logo">Logo Url:</label>
+                <input class="input block full" id="id_logo" type="text" ng-model="currentOrg.logo_url"/>
+            </div>
+        </div>
+
+        <div class="py2 border-top">
+          <div class="inline-block">
+            <input class="Button Button--primary" type="button" value="Save" ng-click="updateOrg(currentOrg)"/>
+          </div>
+        </div>
+    </form>
+</div>

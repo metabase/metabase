@@ -1,0 +1,98 @@
+<div class="col col-md-9">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <div class="float-right">
+	<input class="input" type="text" ng-model="searchFilter" placeholder="Search specialists ...">
+      </div>
+      <h3 class="text-brand">Specialists</h2>
+    </div>
+
+    <div ng-if="!specialists">
+      <h3>Loading ...</h3>
+    </div>
+
+
+    <div class="EntityTableWrapper">
+        <table class="EntityTable Table">
+          <thead>
+            <tr>
+              <th ng-click="orderByField='nick'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'nick'}">Name
+                <span ng-if="orderByField == 'nick'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='business_name'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'business_name'}">Business
+                <span ng-if="orderByField == 'business_name'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='avg_response_time_secs'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'avg_response_time_secs'}">Avg response time (s)
+                <span ng-if="orderByField == 'avg_response_time_secs'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='avg_rating'; reverseSort = !reverseSort"  ng-class="{'EntityTable--columnSelected': orderByField == 'avg_rating'}">Avg rating
+                <span ng-if="orderByField == 'avg_rating'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='ts_created'; reverseSort = !reverseSort" >Specialist since:
+                <span ng-if="orderByField == 'ts_created'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='most_recent_activity'; reverseSort = !reverseSort">Most recent activitity:
+                <span ng-if="orderByField == 'most_recent_activity'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tfoot></tfoot>
+          <tbody>
+            <tr ng-repeat="specialist in specialists | orderBy:orderByField:reverseSort | filter:searchFilter">
+              <td class="clearfix">
+                <img class="EntityImage EntityImage--small float-left hide show-lg" src="{{specialist.avatar}}">
+                <a class="EntityName float-left ml1 link" href="/operator/specialist/{{specialist.specialist_id}}">{{specialist.nick}}</a>
+              </td>
+              <td>{{specialist.business_name}}</td>
+              <td>{{specialist.avg_response_time_secs}}</td>
+              <td>{{specialist.avg_rating}}</td>
+              <td>{{specialist.ts_created |  date : 'MMMM d, y '}}</td>
+              <td>{{specialist.most_recent_activity}}</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<div class="col col-md-3">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <h3>Specialist metrics</h3>
+    </div>
+
+    <ol class="px2 py2">
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{overviewAvgResponseTimeSecs | readableTime}}</div>
+          <div class="Metric-title mb2">Average response time</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{overviewAvgRating}}</div>
+          <div class="Metric-title mb2">Average rating</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+

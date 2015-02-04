@@ -1,0 +1,103 @@
+<div class="col col-md-9">
+  <div class="row">
+    <div class="clearfix full-width">
+      <div class="p4 float-left">
+        <img class="EntityImage EntityImage--large" ng-src="{{specialist.avatar}}" ng-if="specialist.avatar">
+        <img src="" ng-if="!specialist.avatar" />
+      </div>
+      <div class="mt3 float-left">
+        <h2>
+          <a class="link" href="/operator/specialist/{{specialist.specialist_id}}">{{specialist.nick}}</a> <span ng-if="specialist.is_test_account">[test account]</span>
+        </h2>
+        <div class="inline-block">{{specialist.business_name}}</div>
+        <div class="inline-block ml2">Specialist since: {{specialist.ts_created | date : 'MMMM d, y'}}</div>
+
+    </div>
+      <div class="float-right m4">
+        <a class="Button mt1" href="mailto:team@operator.com?subject=Specialist%20{{specialist.nick}}">Share</a>
+        </div>
+      </div>
+  </div>
+  <div class="row">
+    <div class="mt3 px3">
+        <h4>Conversations</h4>
+    </div>
+    <div class="EntityTableWrapper">
+        <table class="EntityTable Table">
+          <thead>
+            <tr>
+              <th ng-click="orderByField='sender_nick'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'sender_nick'">With:
+                <span ng-if="orderByField == 'sender_nick'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='ts_start'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'ts_start'">Started:
+                <span ng-if="orderByField == 'ts_start'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='time_newmessage_server'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'time_newmessage_server'">Last message:
+                <span ng-if="orderByField == 'time_newmessage_server'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='num_messages'; reverseSort = !reverseSort" >Total messages:
+                <span ng-if="orderByField == 'num_messages'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='avg_response_time_secs'; reverseSort = !reverseSort">Avg Response Time (s)
+                <span ng-if="orderByField == 'average_response_time_secs'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tfoot>
+          </tfoot>
+          <tbody>
+            <tr ng-repeat="convo in conversations | orderBy:orderByField:reverseSort">
+              <td>
+                <span class="EntityName">{{convo.sender_nick}}</span>
+              </td>
+              <td>{{convo.ts_start | date : 'MMM d, y, hh:mm a'}}</td>
+              <td>{{convo.ts_newmsg | date : 'MMM d, y, hh:mm a'}}</td>
+              <td>{{convo.total_channel_msgs}}</td>
+              <td>{{convo.avg_response_time_secs}}</td>
+              <td><a class="link" href="/operator/conversation/{{convo.channel_id}}">View conversation</a></td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<div class="col col-md-3">
+  <div class="row">
+    <div class="p3">
+      <h3 class="mt2">{{specialist.nick}}'s Metrics</h3>
+    </div>
+
+    <ol class="px2 py2">
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{specialist.avg_response_time_secs | readableTime}}</div>
+          <div class="Metric-title mb2">Average response time</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{specialist.avg_rating}}</div>
+          <div class="Metric-title mb2">Average rating</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+

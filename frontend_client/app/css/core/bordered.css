@@ -1,0 +1,42 @@
+:root {
+  --border-size: 1px;
+  --border-style: solid;
+  --border-color: #d9d9d9;
+}
+
+.bordered {
+  border: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.border-bottom {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+/* ensure that a border-top item inside of a bordred element won't double up */
+.bordered .border-bottom:last-child {
+  border-bottom: none;
+}
+
+.border-top {
+  border-top: var(--border-size) var(--border-style) var(--border-color);
+}
+
+/* ensure that a border-top item inside of a bordred element won't double up */
+.bordered .border-top:first-child {
+  border-top: none;
+}
+
+.border-right {
+  border-right: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.border-left {
+  border-left: var(--border-size) var(--border-style) var(--border-color);
+}
+
+/* BORDERLESS IS THE DEFAULT */
+/* ONLY USE IF needing to override an existing border! */
+/* ensure there is no border via important */
+.borderless {
+  border: none !important;
+}

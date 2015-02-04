@@ -1,0 +1,108 @@
+<div class="col col-md-9">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <div class="float-right">
+    <input class="input" type="text" ng-model="searchFilter" placeholder="Search venues ...">
+      </div>
+      <h3 class="text-brand">Venues</h2>
+    </div>
+
+    <div ng-if="!venues">
+      <h3>Loading ...</h3>
+    </div>
+
+
+    <div class="EntityTableWrapper">
+        <table class="EntityTable Table">
+          <thead>
+            <tr>
+              <th ng-click="orderByField='name'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'name'}">Name
+                <span ng-if="orderByField == 'name'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='locality'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'locality'}">City
+                <span ng-if="orderByField == 'locality'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='avg_num_bookings_per_week'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'avg_num_bookings_per_week'}">Avg. Bookings Per Week
+                <span ng-if="orderByField == 'avg_num_bookings_per_week'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='total_bookings'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'total_bookings'}">Total Bookings
+                <span ng-if="orderByField == 'total_bookings'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='percent_cancelled'; reverseSort = !reverseSort" ng-class="{'EntityTable--columnSelected': orderByField == 'percent_cancelled'}">Percent Cancelled
+                <span ng-if="orderByField == 'percent_cancelled'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='rating'; reverseSort = !reverseSort"  ng-class="{'EntityTable--columnSelected': orderByField == 'rating'}">Rating
+                <span ng-if="orderByField == 'rating'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+              <th ng-click="orderByField='createdAt'; reverseSort = !reverseSort" >Created:
+                <span ng-if="orderByField == 'createdAt'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tfoot></tfoot>
+          <tbody>
+            <tr ng-repeat="venue in venues | orderBy:orderByField:reverseSort | filter:searchFilter">
+              <td class="clearfix">
+                <img class="EntityImage EntityImage--small float-left hide show-lg" src="">
+                <a class="EntityName float-left ml1 link" href="/reserve/venue/{{venue.id}}">{{venue.name}}</a>
+              </td>
+              <td>{{venue.locality}}</td>
+              <td>{{venue.avg_num_bookings_per_week}}</td>
+              <td>{{venue.total_bookings}}</td>
+              <td>{{venue.percent_cancelled}}</td>
+              <td>{{venue.rating}}</td>
+              <td>{{venue.createdAt |  date : 'MMMM d, y '}}</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<div class="col col-md-3">
+  <div class="row">
+    <div class="p3 border-bottom">
+      <h3>Venue metrics</h3>
+    </div>
+
+    <ol class="px2 py2">
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">25</div>
+          <div class="Metric-title mb2">Average bookings per week</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">3.75</div>
+          <div class="Metric-title mb2">Average rating</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+

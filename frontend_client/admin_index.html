@@ -1,0 +1,92 @@
+{% load compress %}
+<!DOCTYPE html>
+<html ng-app="corvusadmin" class="no-js">
+    <head>
+        {% include "meta.html" %}
+        <title>Corvus - Admin</title>
+        {% compress css %}
+        <link href="/static/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet">
+        <link rel="stylesheet" href="/static/app/bower_components/ng-sortable/dist/ng-sortable.css">
+        <link rel="stylesheet" href="/static/app/dist/corvus.css">
+        {% endcompress %}
+    </head>
+    <body ng-controller="Corvus">
+        <div>
+            <div class="border-bottom bg-white py1">
+                <div class="wrapper">
+                    <label class="Select" ng-if="user.is_multi_org">
+                        <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms"></select>
+                    </label>
+                    <a cv-org-href="/admin/">
+                        <h3 class="AdminPageTitle my2 inline-block">
+                            <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
+                        </h3>
+                    </a>
+                    <div class="mx1 my2 float-right">
+                        <a class="inline-block" cv-org-href="/" target="_self">Exit Admin</a>
+                    </div>
+                </div>
+            </div>
+            <div class="clearfix">
+                <div class="wrapper">
+                    <nav class="my4 col col-sm-3">
+                    {# use verbatim to ignore django templating in favor of angular #}
+                    {% verbatim %}
+                        <ul class="CoreNav">
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/">Organization</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/people/">People</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/datasources">DataSources</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
+                                <ul class="ContextNav">
+                                    <li>
+                                        <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
+                                    </li>
+                                    <li>
+                                        <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/etl/jobexec/">ETL</a>
+                                <ul class="ContextNav">
+                                    <li>
+                                        <a class="NavItem" cv-org-href="/admin/etl/jobexec/">Status</a>
+                                    </li>
+                                    <li>
+                                        <a class="NavItem" cv-org-href="/admin/etl/job/">Jobs</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                <a class="NavItem" cv-org-href="/admin/search">Search</a>
+                            </li>
+                        </ul>
+                        {% endverbatim %}
+                    </nav>
+                    <div class="my4 col col-sm-9">
+                        <div ng-view></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    {% include "js.html" %}
+    
+    {% include "ga.html" %}
+</html>

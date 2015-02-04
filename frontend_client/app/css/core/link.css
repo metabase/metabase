@@ -1,0 +1,26 @@
+:root {
+  --default-link-color: #4A90E2;
+}
+
+a       { color: var(--default-link-color); }
+a:hover { color: color(var(--default-link-color) shade(5%)); }
+
+.link {
+  text-decoration: none;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+.psdisabled {
+  color: #A4A4A4;
+}
+
+.psdisabled:hover {
+  text-decoration: none;
+  color: #A4A4A4;
+}
+
+.psunderline {
+  text-decoration: underline;
+}

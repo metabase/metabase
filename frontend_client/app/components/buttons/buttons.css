@@ -1,0 +1,81 @@
+:root {
+  --default-button-border-radius: 4px;
+  --default-button-border-color: #b9b9b9;
+  --default-button-background-color: #fff;
+
+  --primary-button-border-color: #4A90E2;
+  --primary-button-bg-color: #4A90E2;
+
+  --selected-button-bg-color: #F4F6F8;
+}
+
+.Button {
+  padding: 0.6rem 0.8rem;
+  text-decoration: none;
+  font-size: 0.8rem;
+
+  color: #777;
+
+  display: inline-block;
+  box-sizing: border-box;
+
+  border: 1px solid var(--default-button-border-color);
+  background-color: var(--default-button-background-color);
+  border-radius: var(--default-button-border-radius);
+}
+
+.Button:hover {
+  cursor: pointer;
+  color: #777;
+  border-color: color(var(--default-button-border-color) shade(30%));
+  transition: border .3s linear;
+  background-color: color(var(--default-button-background-color) shade(2%));
+}
+
+.Button--primary {
+  color: #fff;
+  border-color: var(--primary-button-border-color);
+  background-color: var(--primary-button-bg-color);
+}
+
+.Button--primary:hover {
+  color: #fff;
+  border-color: color(var(--primary-button-border-color) shade(10%));
+  background-color: color(var(--primary-button-bg-color) shade(10%));
+}
+
+.Button--cancel {
+  border-radius: 99px;
+}
+
+.Button-group {
+  display: inline-block;
+  border-radius: var(--default-button-border-radius);
+  border: 1px solid var(--default-button-border-color);
+  overflow: hidden;
+  clear: both;
+}
+
+.Button-group .Button {
+  margin: 0;
+  float: left;
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.Button-group .Button:first-child {
+  border-left: none;
+}
+
+.Button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.Button--selected,
+.Button--selected:hover {
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+  background-color: var(--selected-button-bg-color);
+}

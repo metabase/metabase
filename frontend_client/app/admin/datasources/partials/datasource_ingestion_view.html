@@ -1,0 +1,98 @@
+  <div class=" clearfix">
+
+    <h2>Data Source Ingestion: {{datasource_ingestion.id}}</h2>
+  </div>
+
+<div class="page-header row">
+    <div class="TableWrapper py4">
+        <table class="Table">
+            <thead>
+                <tr>
+                </tr>
+            </thead>
+            <tbody>
+           <tr>
+                <td>ID</td>
+                <td>{{datasource_ingestion.id}}</td>
+            </tr>
+            <tr>
+
+                <td>Source</td>
+                <td><a cv-org-href="/admin/datasources/{{datasource_ingestion.source}}">{{datasource_ingestion.source}}</a></td>
+            </tr>
+            <tr>
+
+                <td># Tables</td>
+                <td>{{datasource_ingestion.num_tables}}</td>
+            </tr>
+            <tr>
+
+                <td># Rows</td>
+                <td>{{datasource_ingestion.num_rows}}</td>
+            </tr>
+            <tr>
+
+                <td>Status</td>
+                <td>{{datasource_ingestion.status}}</td>
+            </tr>
+            <tr>
+
+                <td>Database</td>
+                <td>{{datasource_ingestion.database_name}}</td>
+            </tr>
+            <tr ng-if="isTimestampedDataSource">
+
+                <td>File Timestamp</td>
+                <td>{{datasource_ingestion.write_time}}</td>
+            </tr>
+            <tr>
+
+                <td>downloading_start</td>
+                <td>{{datasource_ingestion.downloading_start}}</td>
+            </tr>
+            <tr>
+
+                <td>downloading_end</td>
+                <td>{{datasource_ingestion.downloading_end}}</td>
+            </tr>
+            <tr>
+
+                <td>transformation_start</td>
+                <td>{{datasource_ingestion.transformation_start}}</td>
+            </tr>
+            <tr>
+
+                <td>transformation_end</td>
+                <td>{{datasource_ingestion.transformation_end}}</td>
+            </tr>
+            <tr>
+
+                <td>insertion_start</td>
+                <td>{{datasource_ingestion.insertion_start}}</td>
+            </tr>
+            <tr>
+
+                <td>insertion_end</td>
+                <td>{{datasource_ingestion.insertion_end}}</td>
+            </tr>
+            <tr>
+
+                <td>sync_start</td>
+                <td>{{datasource_ingestion.sync_start}}</td>
+            </tr>
+            <tr>
+
+                <td>sync_end</td>
+                <td>{{datasource_ingestion.sync_end}}</td>
+          </tr>
+
+            </tbody>
+        </table>
+    </div>
+
+<div>
+    <h2>Captured Output</h2>
+    <pre>{{logs.captured_output}}</pre>
+
+
+</div>

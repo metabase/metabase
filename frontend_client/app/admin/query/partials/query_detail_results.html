@@ -1,0 +1,35 @@
+
+<div class="my2 py1 px2 bordered rounded bg-grey-1" ng-if="queryResultData">
+	<h2>Results</h2>
+
+	<div ng-if="queryResultData.error">
+		<pre ng-if="queryResultData.sql_error">{{queryResultData.sql_error}}</pre>
+		<pre ng-if="!queryResultData.sql_error && queryResultData.error">{{queryResultData.error}}</pre>
+	</div>
+
+	<div ng-if="!queryResultData.error">
+		<div ng-if="queryResultData.status != 'completed'">
+			Executing ....
+		</div>
+
+		<div ng-if="queryResultData.status == 'completed' && queryResultData.row_count == 0">
+			<pre>No Data: query completed but returned 0 rows.</pre>
+		</div>
+
+		<div ng-if="queryResultData.row_count > 5000">
+			<p>Too many rows to display: {{queryResultData.row_count}}</p>
+		</div>
+
+		<div class="TableWrapper" ng-if="queryResultData.status == 'completed' && queryResultData.row_count > 0">
+			<table class="Table table table-striped table-condensed" ng-if="queryResultData.row_count < 5000">
+			    <tr>
+			        <th ng-repeat="column_name in queryResultData.columns">{{column_name}}</th>
+			    </tr>
+
+			    <tr ng-repeat="row in queryResultData.data">
+			        <td ng-repeat="cell in row track by $index">{{cell}}</td>
+			    </tr>
+			</table>
+		</div>
+	</div>
+</div>

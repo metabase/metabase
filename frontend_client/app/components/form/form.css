@@ -1,0 +1,25 @@
+:root {
+  --form-padding: 1em;
+}
+
+.Form {
+  margin: 0 auto;
+  max-width: 640px;
+}
+
+.Form-label {
+  display: block;
+  color: #777;
+  font-size: 1.2rem;
+}
+
+.Form-group {
+  padding: var(--form-padding);
+  transition: opacity .3s linear;
+}
+
+.Form-groupDisabled {
+  opacity: 0.2;
+  pointer-events: none;
+  transition: opacity .3s linear;
+}

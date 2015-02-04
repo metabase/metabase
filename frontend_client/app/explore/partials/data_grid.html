@@ -1,0 +1,152 @@
+<div class="row p2">
+    <!-- grid controls -->
+    <div class="clearfix">
+        <div class="float-left mr2">
+            <!-- visible columns dropdown -->
+            <div class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
+                <a class="Pill link mr1" href="#" dropdown-toggle>
+                    Columns
+                </a>
+                <div class="Dropdown-content DragBoundary" ng-click="handleDropdownInput($event)">
+                    <form novalidate>
+                        <ul as-sortable="dragControlListeners" ng-model="table_metadata.fields">
+                            <li class="relative clearfix" ng-repeat="field in table_metadata.fields" as-sortable-item>
+                                <div class="inline-block" title="Reorder" as-sortable-item-handle>
+                                    <svg width="6" height="9">
+                                        <rect class="Dragger" fill="url(#dragger)" width="6" height="42">
+                                    </svg>
+                                </div>
+                                <div class="inline-block">
+                                    <input type="checkbox" ng-model="field.preview_display" />
+                                    {{field.name}}
+                                </div>
+                            </li>
+                        </ul>
+                    </form>
+                </div>
+            </div>
+            <!-- end visible columns dropdown -->
+
+            <h4 class="inline-block"><span class="text-brand">{{row_count}}</span> rows</h4>
+            <ul class="TableFilterList inline-block">
+                    <li class="Pill Pill--filled mr1 inline-block clearfix" ng-repeat="filter in queryFilters() track by $index">
+                        <span>{{getFilterColumnName(filter)}}: {{filter[2]}}</span>
+                        <a class="Pill-action" href="#" ng-click="removeFilter($index)">
+                            <cv-close-icon width="12px" height="12px"></cv-close-icon>
+                        </a>
+                    </li>
+            </ul>
+
+            <!-- add filter button/dropdown -->
+            <div class="Dropdown inline-block" dropdown is-open="filtersOpen">
+                <a class="Pill link mr1" href="#" dropdown-toggle ng-click="toggleNewFilters()">
+                    <cv-add-icon width="12px" height="12px"></cv-add-icon>
+                    Filter
+                </a>
+                <div class="Dropdown-content" ng-click="handleDropdownInput($event)">
+                    <form novalidate>
+                        <div ng-if="new_filters.length > 0">
+                            <ul class="FilterClauseList">
+                                <li class="FilterClause py1 clearfix inline" ng-init="table_filter = new_filters[0]">
+                                    <div ng-if="table_filter != 'AND'">
+                                        <label class="Select" for="id_filtered_field">
+                                            <select id="id_filtered_field" ng-model="table_filter[1]" ng-options="field.id as field.name for field in table_metadata.fields" ng-disabled="readonly">
+                                                <option value="">Pick a Field</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="Select py1">
+                                            <select id="id_filtered_field" ng-model="table_filter[0]" ng-options="operator.name as operator.verbose_name  for operator in table_metadata.fields_lookup[table_filter[1]].valid_operators" ng-change="operator_selected(table_filter)" ng-disabled="readonly">
+                                                <option value="">---------</option>
+                                            </select>
+                                        </label>
+
+                                        <span ng-repeat="filter_value in table_filter|slice:2:1000 track by $index">
+                                            <span ng-if="field_type_for(table_filter, $index)=='select'">
+                                                <label class="Select">
+                                                    <select ng-model="table_filter[$index+2]" ng-options="f.key as f.name for f in field_for(table_filter, $index).values" ng-disabled="readonly">
+                                                    </select>
+                                                </label>
+                                            </span>
+                                            <span ng-if="field_type_for(table_filter, $index)!='select'">
+                                                <input class="input" size="30" type="{{field_type_for(table_filter, $index)}}" ng-model="table_filter[$index+2]" ng-readonly="readonly"/ >
+                                            </span>
+                                        </span>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="Button" ng-class="{'Button--primary': filtersAreValid(new_filters)}" ng-click="applyNewFilters(new_filters)">Apply</button>
+                            <button class="Button" ng-click="toggleNewFilters()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- end add filter button/dropdown -->
+
+            <!-- add segment button/dropdown -->
+            <!--
+            <div class="Dropdown inline-block" ng-if="allowSegments" dropdown is-open="segmentsOpen">
+                <a class="Pill link mr1" href="#" ng-click="toggleSegment()" dropdown-toggle>
+                    Segments
+                </a>
+                <div class="Dropdown-content" ng-click="handleDropdownInput($event)">
+                    <form novalidate>
+                        <div>
+                            Existing Segments
+                            <label class="Select py1 full">
+                                <select ng-model="selected_segment" ng-options="segment as segment.name  for segment in segments">
+                                    <option value="">---------</option>
+                                </select>
+                            </label>
+
+                            <button class="Button Button--primary" ng-click="applySegment(selected_segment)">Apply</button>
+                            <button class="Button" ng-click="deleteSegment(selected_segment)">Delete</button>
+                        </div>
+
+                        <div class="mt1 pt1 border-top" ng-if="isFiltering()">
+                            Create New Segment
+                            <input class="input my1 full" type="text" placeholder="name your segment" ng-model="segment_name" />
+                            <button class="Button" ng-click="createSegment(segment_name)" >Create</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            -->
+            <!-- end add segment button/dropdown -->
+        </div>
+
+        <div class="float-right">
+            <a href="#" class="Button Button--primary" ng-if="query.query.page.page > 1" ng-click="setPage(query.query.page.page-1)">Prev</a>
+            <a href="#" class="Button Button--primary" ng-click="setPage(query.query.page.page+1)">Next</a>
+        </div>
+    </div>
+    <!-- end grid controls -->
+
+    <!-- grid data -->
+    <div class="TableWrapper my2">
+        <table class="Table">
+            <thead>
+                <tr>
+                    <th ng-repeat="coldef in table_metadata.fields track by $index" ng-if="coldef.preview_display">
+                        <a href="#" ng-click="sortBy(coldef)" ng-if="!isSortColumn(coldef)">{{coldef.name}}</a>
+                        <span ng-if="isSortColumn(coldef)">{{coldef.name}}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tfoot></tfoot>
+
+            <tbody>
+                <tr ng-repeat="row in data.rows track by $index">
+                    <td ng-repeat="coldef in table_metadata.fields track by $index" ng-if="coldef.preview_display">
+                        <a ng-if="isLinkable(coldef)" cv-org-href="{{buildEntityLink(coldef, row[coldef.colindex])}}">{{row[coldef.colindex]}}</a>
+                        <span ng-if="!isLinkable(coldef)">
+                            <span ng-if="isNumber(coldef)">{{row[coldef.colindex] | number : 2}}</span>
+                            <span ng-if="!isNumber(coldef)">{{row[coldef.colindex] | limitTo : 24}}</span>
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <!-- end grid data -->
+</div>

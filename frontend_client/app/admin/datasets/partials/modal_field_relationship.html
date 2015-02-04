@@ -1,0 +1,31 @@
+<div>
+    <div class="Form-group border-bottom">
+        <div class="Button borderless float-right" ng-click="close()">
+            <cv-close-icon width="18px" height="18px"></cv-close-icon>
+        </div>
+        <h3 class="text-normal">Add Relationship</h3>
+    </div>
+    <form name="setFieldRelationship" novalidate ng-submit="submit()">
+        <div class="Form-group">
+            <label class="Form-label">Target field:</label>
+            <label class="Select">
+                <select ng-model="fk.target_field" ng-options="idf.id as idf.displayName for idf in formData.idfields">
+                    <option value="">----------</option>
+                </select>
+            </label>
+        </div>
+        <div class="Form-group">
+            <label class="Form-label">Relationship:</label>
+            <label class="Select">
+                <select ng-model="fk.relationship">
+                    <option value="1t1">One to One</option>
+                    <option value="Mt1">Many to One</option>
+                    <option value="MtM">Many to Many</option>
+                </select>
+            </label>
+        </div>
+        <div class="Form-group border-top clearfix">
+            <button class="Button Button--primary float-right" type="submit">Add</button>
+        </div>
+    </form>
+</div>

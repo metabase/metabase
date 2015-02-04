@@ -4,7 +4,8 @@
             [clojure.java.jdbc :as jdbc]
             [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
-            [ring.middleware.json :refer [wrap-json-response]]))
+            [ring.middleware.json :refer [wrap-json-response]]
+            [ring.util.response :as resp]))
 
 (defn liquibase-sql []
   (let [conn (jdbc/get-connection {:subprotocol "postgresql"
@@ -18,14 +19,19 @@
   [& args]
   (liquibase-sql))
 
-(defn first-element [sequence default]
-  (or (first sequence) default))
+;; placeholder until we actually define real API routes
+(defroutes api-routes
+  ;; call /api/test to see this
+  (GET "/test" [] {:status 200 :body {:message "We can serialize JSON <3"}}))
+
+(defn serve-index "Serve index.html" [request]
+  (resp/file-response "frontend_client/index.html"))
 
 (defroutes routes
-  (GET "/" [] "Success!")
-  (GET "/test.json" [] {:status 200
-                        :body {:message "We can serialize JSON <3"}})
-  (route/not-found "404 :/"))
+  (GET "/" [] serve-index)                            ; ^/$    -> index.html
+  (context "/api" [] api-routes)                      ; ^/api/ -> API routes
+  (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/ -> static files under frontend_client/app
+  (route/not-found serve-index))                      ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
 
 (def app
   "The primary entry point to the HTTP server"

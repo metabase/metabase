@@ -1,0 +1,65 @@
+:root {
+  --select-arrow-bg-color: #CACACA;
+  --select-border-color: #d9d9d9;
+  --select-bg-color: #fff;
+  --select-text-color: #777;
+
+  --select-border-radius: 4px;
+}
+.Select {
+  position: relative;
+  display: inline-block;
+  color: var(--select-text-color);
+}
+
+/* custom arrows */
+.Select:before,
+.Select:after {
+  content: '';
+  position: absolute;
+
+  top: 50%;
+  right: 1rem;
+
+  width: 0;
+  height: 0;
+  pointer-events: none; /* no clicks since arrow is just for appearance */
+}
+
+/* arrow pointing up */
+.Select:before {
+  margin-top: -.25rem;
+  border-left: .3rem solid transparent;
+  border-right: .3rem solid transparent;
+  border-bottom: .3rem solid var(--select-arrow-bg-color);
+}
+
+/* arrow pointing down */
+.Select:after {
+  margin-top:  .2rem;
+  border-left: .3rem solid transparent;
+  border-right: .3rem solid transparent;
+  border-top: .3rem solid var(--select-arrow-bg-color);
+}
+
+.Select select {
+  display: inline-block;
+  width: 100%;
+  padding: .5rem 3rem .5rem 1rem;
+  font-size: 0.8em;
+  line-height: 1;
+  color: var(--select-text-color);
+
+  border: 1px solid var(--select-border-color);
+  background: var(--select-bg-color);
+
+  border-radius: var(--select-border-radius);
+  -webkit-appearance: none;
+     -moz-appearance: none;
+
+   box-shadow: 0 0 1px rgba(0, 0, 0, .12);
+}
+
+.Select select:focus {
+  outline: none;
+}
