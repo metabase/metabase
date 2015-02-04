@@ -1,0 +1,152 @@
+{
+  "databaseChangeLog": [
+    {
+      "changeSet": {
+        "id": "1",
+        "author": "agilliland",
+        "changes": [
+          {
+            "createTable": {
+              "tableName": "CORE_ORGANIZATION",
+              "columns": [
+                {
+                  "column": {
+                    "name": "ID",
+                    "type": "int",
+                    "autoIncrement": true,
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "SLUG",
+                    "type": "varchar(254)",
+                    "constraints": {
+                      "unique": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "NAME",
+                    "type": "varchar(254)",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "DESCRIPTION",
+                    "type": "varchar(254)"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "LOGO_URL",
+                    "type": "varchar(254)"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "INHERITS",
+                    "type": "boolean",
+                    "defaultValue": false,
+                    "constraints": {"nullable": false}
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createTable": {
+              "tableName": "CORE_USER",
+              "columns": [
+                {
+                  "column": {
+                    "name": "ID",
+                    "type": "int",
+                    "autoIncrement": true,
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "EMAIL",
+                    "type": "varchar(254)",
+                    "constraints": {
+                      "unique": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "FIRST_NAME",
+                    "type": "varchar(254)",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "LAST_NAME",
+                    "type": "varchar(254)"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "PASSWORD",
+                    "type": "varchar(254)",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "DATE_JOINED",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "LAST_LOGIN",
+                    "type": "DATETIME"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "IS_STAFF",
+                    "type": "boolean",
+                    "defaultValue": false,
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "IS_SUPERUSER",
+                    "type": "boolean",
+                    "defaultValue": false,
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "IS_ACTIVE",
+                    "type": "boolean",
+                    "defaultValue": true,
+                    "constraints": {"nullable": false}
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

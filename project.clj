@@ -18,6 +18,9 @@
                  [environ "0.5.0"]                          ; easy environment management
                  [expectations "2.0.12"]                    ; unit tests
                  [korma "0.4.0"]                            ; SQL lib
+                 [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
+                 [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
+                 [org.yaml/snakeyaml "1.14"]                ; YAML parser (required by liquibase)
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -34,6 +37,7 @@
             [lein-marginalia "LATEST"]                      ; generate documentation with 'lein marg'
             [lein-ring "0.8.10"]                            ; start the HTTP server with 'lein ring server'
             ]
+  :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
   :ring {:handler metabase.core/app}

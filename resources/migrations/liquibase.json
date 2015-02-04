@@ -1,0 +1,5 @@
+{
+  "databaseChangeLog": [
+    {"include": {"file": "migrations/liquibase_initial.json"}}
+  ]
+}
