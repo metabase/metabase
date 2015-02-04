@@ -17,6 +17,7 @@
                  [compojure "1.3.1"]                        ; HTTP Routing library built on Ring
                  [environ "0.5.0"]                          ; easy environment management
                  [expectations "2.0.12"]                    ; unit tests
+                 [hiccup "1.0.5"]                           ; HTML templating
                  [korma "0.4.0"]                            ; SQL lib
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail

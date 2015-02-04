@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <div align="center">
+      <h3>Login</h3>
+      <div style="max-width: 600px; text-align: left;">
+	Try logging in with either "crowberto", "sameer", or "allen". (Their passwords are all "password".)
+	Sameer and Allen have admin permissions and can access <a href="/admin">the admin page</a>, but Roberto does not
+	(click the link and try it).
+      </div>
+      <br />
+      <br />
+      <form method="POST" action="login">
+	<div>
+	  <span>Username</span>
+	  <input type="text" name="username" />
+	</div>
+	<br />
+	<div>
+	  <span>Password</span>
+	  <input type="password" name="password" />
+	</div>
+	<br />
+	<input type="submit" value="Login" />
+      </form>
+      <br />
+      <br />
+      <div style="max-width: 600px; text-align: left">
+	Also check out a <a href="/test.json">sample API response</a> (this one doesn't require auth).
+      </div>
+    </div>
+  </body>
+</html>
