@@ -3,12 +3,4 @@
         ))
 
 (defentity Org
-  (table :core_organization)
-;  (entity-fields
-;    :id
-;    :name
-;    :description
-;    :logo_url
-;    :inherits
-;    :slug)
-  )
+  (table :core_organization))
