@@ -17,3 +17,4 @@ profiles.clj
 /metabase.db.*.db
 /frontend_client/app/bower_components
 /node_modules/
+/frontend_client/app/dist/
