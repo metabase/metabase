@@ -17,7 +17,6 @@
                  [com.h2database/h2 "1.3.170"]              ; embedded SQL database
                  [compojure "1.3.1"]                        ; HTTP Routing library built on Ring
                  [environ "0.5.0"]                          ; easy environment management
-                 [expectations "2.0.12"]                    ; unit tests
                  [korma "0.4.0"]                            ; SQL lib
                  [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
                  [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
@@ -34,7 +33,6 @@
   :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]            ; Interactive development w/ cider NREPL in Emacs
             [lein-environ "0.5.0"]                          ; easy access to environment variables
             [lein-expectations "0.0.7"]                     ; run unit tests with 'lein expectations'
-            [lein-midje "3.1.3"]                            ; another unit testing option
             [lein-marginalia "LATEST"]                      ; generate documentation with 'lein marg'
             [lein-ring "0.8.10"]                            ; start the HTTP server with 'lein ring server'
             ]
@@ -42,6 +40,7 @@
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
   :ring {:handler metabase.core/app}
-  :profiles {:dev {:dependencies [[midje "1.6.3"]]
+  :profiles {:dev {:dependencies [[expectations "2.0.12"]   ; unit tests
+                                  ]
                    :jvm-opts ["-Dlogfile.path=target/log"]}
              :uberjar {:aot :all}})
