@@ -1,6 +1,5 @@
 (ns metabase.models.user-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-util :as util]
             [metabase.db :refer :all]
             [metabase.config :refer [app-defaults]]
             [metabase.models.user :refer [User]]
@@ -15,15 +14,15 @@
 
 
 (facts "about User model"
-  (with-state-changes [(before :facts (util/liquibase-up))
-                       (after :facts (util/liquibase-down))]
+  (with-state-changes [(before :facts (migrate :up))
+                       (after :facts (migrate :down))]
     (fact "starts with 0 entries"
       (count-users) => 0)
     (fact "can insert new entries"
-      (let [result (insert User (values {:email "test"
-                                         :first_name "test"
-                                         :last_name "test"
-                                         :password "test"
+      (let [result (insert User (values {:email "user_test"
+                                         :first_name "user_test"
+                                         :last_name "user_test"
+                                         :password "user_test"
                                          :date_joined (java.sql.Timestamp. (tc/to-long (time/now)))
                                          :is_active true
                                          :is_staff true

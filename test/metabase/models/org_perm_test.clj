@@ -1,6 +1,5 @@
 (ns metabase.models.org-perm-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-util :as util]
             [metabase.db :refer :all]
             [metabase.config :refer [app-defaults]]
             [metabase.models.org-perm :refer [OrgPerm]]
@@ -13,16 +12,17 @@
 
 
 (defn insert-org []
-  (let [result (insert Org (values {:name "testtest"
-                                    :slug "test"
+  (println "getting called")
+  (let [result (insert Org (values {:name "org_perm_test"
+                                    :slug "org_perm_test"
                                     :inherits false}))]
     (or (:generated_key result) ((keyword "scope_identity()") result) -1)))
 
 (defn insert-user []
-  (let [result (insert User (values {:email "testtest"
-                                     :first_name "test"
-                                     :last_name "test"
-                                     :password "test"
+  (let [result (insert User (values {:email "org_perm_test"
+                                     :first_name "org_perm_test"
+                                     :last_name "org_perm_test"
+                                     :password "org_perm_test"
                                      :date_joined (java.sql.Timestamp. (tc/to-long (time/now)))
                                      :is_active true
                                      :is_staff true
@@ -34,8 +34,8 @@
 
 
 (facts "about OrgPerm model"
-  (with-state-changes [(before :facts (util/liquibase-up))
-                       (after :facts (util/liquibase-down))]
+  (with-state-changes [(before :facts (migrate :up))
+                       (after :facts (migrate :down))]
     (fact "starts with 0 entries"
       (count-perms) => 0)
     (fact "can insert new entries"
