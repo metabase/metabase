@@ -37,4 +37,4 @@
    and automatically passes &rest KWARGS to `korma.core/values`."
   [entity & kwargs]
   (-> (insert entity (values (apply assoc {} kwargs)))
-      (clojure.set/rename-keys ({keyword "scope_identity()"} :id))))
+      (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
