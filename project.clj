@@ -22,6 +22,8 @@
                  [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
                  [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
                  [org.yaml/snakeyaml "1.14"]                ; YAML parser (required by liquibase)
+                 [org.slf4j/slf4j-log4j12 "1.7.1"]
+                 [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
                                javax.jms/jms
