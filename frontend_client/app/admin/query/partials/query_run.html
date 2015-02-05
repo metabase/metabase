@@ -1,0 +1,45 @@
+<div class="wrapper">
+    <form id="query_form" novalidate>
+        <input type="hidden" name="q" value="{{queryResultData.uuid}}" ng-if="queryResultData"/>
+
+        <div class="py2">
+            <h2>Run Query</h2>
+
+            <div class="py1">
+                <label for="id_sql">SQL:</label>
+                <cv-ace-sql-editor sql="query.sql" database="query.database" onload="onEditorLoaded"></cv-ace-sql-editor>
+            </div>
+
+            <div class="">
+                <label>Database:</label>
+                <select class="input" ng-model="query.database" ng-options="db.id as db.name for db in form_input['databases']">
+                </select>
+
+                <label class="mx2">
+                    Connection Timezone:
+                    <select class="input" ng-model="query.timezone" ng-options="tz for tz in form_input['timezones']">
+                        <option value="">----- (database tz)</option>
+                    </select>
+                </label>
+
+            </div>
+        </div>
+
+        <div class="my1 py2 border-top">
+            <div class="float-right">
+                <a class="Button" href="/api/qs/{{queryResultData.uuid}}/csv" target="_self" ng-if="queryResultData">Download Results</a>
+            </div>
+
+            <div class="inline-block">
+                <input class="Button Button--primary" type="button" value="Run" ng-click="runAdhocQuery(query)"/>
+            </div>
+
+            <div class="inline-block">
+                <input class="Button" type="button" value="Save" ng-click="saveAdhocQuery(query)"/>
+            </div>
+        </div>
+    </form>
+
+    <div ng-include="'/app/admin/query/partials/query_detail_results.html?cb=3'"></div>
+
+</div>

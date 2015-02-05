@@ -1,0 +1,122 @@
+<div class="CardSettings mt3 pb3" ng-if="cardData">
+
+    <div class="clearfix py2 px4">
+        <label class="float-left text-bold py2">Show data as:</label>
+        <ul class="float-right">
+            <li class="inline-block" ng-repeat="chart in utils.charts">
+                <a class="block py2 px2 link" href="#" ng-class="{psdisabled: !displayTypes[chart.id].available, psunderline: chart.id == card.display && cardData.data}" title="{{getNotAvailableReasonsAsString(chart.id)}}">
+                    <span ng-click="card.display = chart.id" ng-if="displayTypes[chart.id].available">{{chart.name}}</span>
+                    <span ng-if="!displayTypes[chart.id].available" >{{chart.name}}</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="bordered rounded mx4">
+        <div class="CardSettings-group">
+            <div class="CardSettings-groupTitle">
+                <input type="checkbox" name="axis_settings" id="axis_settings" ng-model="axis_settings">
+                <label for="axis_settings">
+                    <h4 class="mx1 inline-block">I need to change the scale of the axis</h4>
+                </label>
+            </div>
+
+            <div class="CardSettings-content" ng-if="axis_settings">
+                <div>
+                    <h4 class="inline-block">X-Axis</h4>
+                    <input class="input inline-block mx2" placeholder="Minimum" ng-model="card.visualization_settings.xAxis.min" type="number" name="xAxis_min"/>
+                    <input class="input inline-block mx2" placeholder="Maximum" ng-model="card.visualization_settings.xAxis.max" type="number" name="xAxis_max"/>
+                </div>
+
+                <div class="mt4">
+                    <h4 class="inline-block">Y-Axis</h4>
+                    <input class="input inline-block mx2" placeholder="Minimum" ng-model="card.visualization_settings.yAxis.min" type="number" name="yAxis_min"/>
+                    <input class="input inline-block mx2" placeholder="Maximum" ng-model="card.visualization_settings.yAxis.max" type="number" name="yAxis_max"/>
+                </div>
+
+                <div class="mt4">
+                    <input type="checkbox" ng-model="card.visualization_settings.chart.panning" name="chart_panning" id="chart_panning">
+                    <label class="CardSettings-label" for="chart_panning">Enable panning</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="CardSettings-group">
+
+            <div class="CardSettings-groupTitle">
+                <input type="checkbox" name="color_settings" id="color_settings" ng-model="color_settings">
+                <label>
+                    <h4 class="mx1 inline-block">I need to adjust the colors</h4>
+                </label>
+            </div>
+
+            <div class="CardSettings-content" ng-if="color_settings">
+                <ol class="mb3">
+                    <li class="CardSettings-colorBlock" style="background-color: {{color}}" ng-repeat="color in vizColors" ng-click="setPrimaryChartColor(color)"></li>
+                </ol>
+                <input type="checkbox" name="gridline_enabled" id="gridline_enabled" ng-model="card.visualization_settings.xAxis.gridLine_enabled">
+                <label class="CardSettings-label" for="gridline_enabled">Show gridline</label>
+            </div>
+        </div>
+
+        <div class="CardSettings-group">
+
+            <div class="CardSettings-groupTitle">
+                <input type="checkbox" name="label_settings" id="label_settings" ng-model="label_settings">
+                <label for="label_settings">
+                    <h4 class="mx1 inline-block">I need to change the labels on my chart.</h4>
+                </label>
+            </div>
+
+            <div class="CardSettings-content" ng-if="label_settings">
+
+                <div class="py1">
+                    <input type="checkbox" name="xAxis_labels_enabled" id="xAxis_labels_enabled" ng-model="card.visualization_settings.xAxis.labels_enabled">
+                    <label class="CardSettings-label" for="xAxis_labels_enabled">Show X axis labels</label>
+                    <a class="link ml2" ng-click="customXAxisShowing=true">Add a custom title</a>
+
+                    <div class="pl3" ng-if="customXAxisShowing">
+                        <input type="checkbox" ng-model="card.visualization_settings.xAxis.title_enabled">
+                        <input class="input block" ng-model="card.visualization_settings.xAxis.title_text" type="text" name="xAxis_title_text" placeholder="Custom X axis title">
+                    </div>
+                </div>
+
+
+                <div class="py1">
+                    <input type="checkbox" name="yAxis_labels_enabled" id="yAxis_labels_enabled" ng-model="card.visualization_settings.yAxis.labels_enabled">
+                    <label class="CardSettings-label" for="yAxis_labels_enabled">Show Y axis labels</label>
+
+                    <a class="link ml2" ng-click="customYAxisShowing = true">Add a custom title</a>
+                    <div class="pl3" ng-if="customYAxisShowing">
+                        <input type="checkbox" ng-model="card.visualization_settings.yAxis.title_enabled">
+                        <input class="input block" ng-model="card.visualization_settings.yAxis.title_text" type="text" name="yAxis_title_text" placeholder="Custom Y axis title"/>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="CardSettings-group" ng-if="card.display == 'pin_map'">
+
+            <div class="CardSettings-groupTitle">
+                <input type="checkbox" name="column_settings" id="column_settings" ng-model="column_settings">
+                <label>
+                    <h4 class="mx1 inline-block">I need to change the columns</h4>
+                </label>
+            </div>
+
+            <div class="CardSettings-content" ng-if="column_settings">
+
+                <div class="py1" ng-if="card.display == 'pin_map'">
+                    <select class="block" ng-model="card.visualization_settings.map.latitude_dataset_col_index" name="map_latitude_dataset_col_index" ng-options="column.index as column.name for column in getColumnsBySpecialTypes(['latitude'])"></select>
+                    <label for="map_latitude_dataset_col_index">Latitude</label>
+                </div>
+
+                <div class="py1" ng-if="card.display == 'pin_map'">
+                    <select class="block" ng-model="card.visualization_settings.map.longitude_dataset_col_index" name="map_longitude_dataset_col_index" ng-options="column.index as column.name for column in getColumnsBySpecialTypes(['longitude'])"></select>
+                    <label for="map_longitude_dataset_col_index">Longitude</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

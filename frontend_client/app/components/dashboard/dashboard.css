@@ -1,0 +1,100 @@
+.Dash-card {
+  position: relative;
+  background: #fff;
+  z-index: 1;
+}
+
+.DashCard-inner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  overflow: hidden; /* make sure dash cards content doesn't overflow its bounds */
+}
+
+.DashCard-remove {
+  display: none; /* hidden until the user starts editing */
+  position: absolute;
+  z-index: 4;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 99px;
+  background: #222;
+  color: #fff;
+  cursor: pointer;
+}
+
+.DashCard-removeIcon {
+  position: absolute;
+  left: 6px;
+  top: 2px;
+}
+
+.Dash--editing .Dash-card:hover .DashCard-remove {
+  display: block;
+}
+
+.Dash--editing .Card {
+  border-color: #acacac;
+  border-style: dashed;
+}
+
+.Dash--editing .Card:hover {
+  border-color: #777;
+  transition: border .3s linear;
+}
+
+/* hide card actions when editing the dash */
+.Dash--editing .Card:hover .Card-actions,
+.Dash--editing .Card:hover .Card-footing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.Dash-card .Card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+.Dash-card .Card-outer {
+    overflow: hidden;
+}
+
+.Dash-card .card-inner {
+  display: block;
+  overflow: hidden;
+}
+
+.Dash-card .Card-footing {
+  opacity: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  transition: opacity .3s linear;
+}
+
+.Dash-card:hover .Card-footing {
+  opacity: 1;
+  transition: opacity .3s linear;
+}
+
+.gridster-mobile .Dash-card {
+  position: relative;
+}
+
+/* this class is applied when .sortable is applied */
+.sortable-placeholder {
+  float: left; /* can't use util float because element is added dynamically */
+  padding-left: 14px;
+  padding-right: 14px;
+  border: 2px solid #999;
+  min-width: 33.3333333%;
+}

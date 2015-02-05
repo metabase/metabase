@@ -1,0 +1,55 @@
+.Modal,
+.modal {
+  z-index:10000;
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  margin: auto;
+
+  width: 640px;
+
+  transform: translate3d(-50%, -50%, 0);
+
+  -webkit-font-smoothing: antialiased;
+
+  background-color: #fff;
+
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, .12);
+
+  outline: none;
+}
+
+/* from angular-ui-bootstrap */
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, .32);
+}
+
+
+/* A dark translucent div that covers the whole screen */
+.Modal-overlay {
+  position:absolute;
+  z-index:9999;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background-color:#000;
+  opacity: 0.8;
+}
+
+.Modal-close {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  padding: 5px;
+  cursor: pointer;
+}

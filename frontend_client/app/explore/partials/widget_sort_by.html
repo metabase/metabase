@@ -1,0 +1,27 @@
+<div class="px2 py1 border-bottom">
+    <h5>Sorted by</h5>
+    <div>
+        <ul>
+            <li class="py1 clearfix" ng-repeat="sortByColumn in order_by">
+                <a class="text-grey-2 float-right" ng-if="!readonly" href="#" ng-click="removeSortBy($index)">
+                    <cv-close-icon width="16px" height="16px"></cv-close-icon>
+                </a>
+                <label class="Select" for="id_sort_by_field">
+                    <select id="id_sort_by_field" ng-model="sortByColumn[0]" ng-options="field.id as field.name for field in table.fields"
+                            ng-disabled="readonly" ng-change="updateQueryOrderBy()">
+                        <option value="">Pick a Field</option>
+                    </select>
+                </label>
+                <label class="Select">
+                    <select id="id_sort_by_field_direction" ng-model="sortByColumn[1]" ng-disabled="readonly" ng-change="updateQueryOrderBy()">
+                        <option value="ascending">Ascending</option>
+                        <option value="descending">Descending</option>
+                    </select>
+                </label>
+            </li>
+	    </ul>
+        <div class="py1">
+            <a class="link" href="#" ng-if="!readonly" ng-click="addSortBy()">Add sort by column</a>
+        </div>
+    </div>
+</div>

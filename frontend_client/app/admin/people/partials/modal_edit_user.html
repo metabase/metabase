@@ -1,0 +1,31 @@
+<div id="editUserModal">
+    <div class="Form-group border-bottom clearfix">
+        <button class="Button borderless float-right" type="button" ng-click="close()">
+            <cv-close-icon width="18px" height="18px"></cv-close-icon>
+        </button>
+        <h3 class="text-normal">Edit teammate</h3>
+    </div>
+    <div ng-cloak>
+        <alert class="alert" ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" ng-animate=" 'animate' " cv-delayed-call="closeAlert($index)">{{alert.msg}}</alert>
+    </div>
+
+    <form name="editUserAdmin" novalidate ng-submit="submit()" cv-form="userToEdit">
+        <div class="clearfix">
+            <div class="Form-group" cv-error-flag="first_name">
+                <input class="input block full" ng-model="userToEdit.first_name" type="text" name="first_name" placeholder="First Name" autofocus>
+                <fielderrors for="first_name"></fielderrors>
+            </div>
+            <div class="Form-group" cv-error-flag="last_name">
+                <input class="input block full" ng-model="userToEdit.last_name" type="text" name="last_name" placeholder="Last Name">
+                <fielderrors for="last_name"></fielderrors>
+            </div>
+            <div class="Form-group" cv-error-flag="email">
+                <input class="input block full" ng-model="userToEdit.email" type="email" name="email" placeholder="Email address" required>
+                <fielderrors for="email"></fielderrors>
+            </div>
+        </div>
+        <div class="Form-group border-top clearfix">
+            <button class="Button Button--primary float-right" type="submit" ng-disabled="!form.$dirty || form.$invalid">Save changes</button>
+        </div>
+    </form>
+</div>

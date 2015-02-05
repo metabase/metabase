@@ -1,0 +1,45 @@
+:root {
+  --list-border-color: #d9d9d9;
+}
+
+.List {
+  margin: 2em 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.List-section {
+  border-bottom: 1px solid var(--list-border-color);
+}
+
+.List-item,
+.List-heading {
+  padding: 1em;
+}
+
+.List-item:last-child {
+  border-bottom: none;
+}
+
+.List-timeStamp {
+  font-size: 0.8em;
+  color: #777;
+}
+
+.List-filters {
+  padding: 0.6em;
+  background-color: #fafafa;
+}
+
+.List-filterLabel {
+  padding: 0.8em 0.5em 0.8em 0;
+  display: inline-block;
+  color: #999;
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.List-filterCategories {
+  display: inline-block;
+}

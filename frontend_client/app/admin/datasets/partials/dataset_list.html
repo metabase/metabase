@@ -1,0 +1,16 @@
+<div class="wrapper">
+    <div ng-repeat="db in databases">
+        <h2>{{db.name}}</h2>
+        <ul>
+            <li class="py1" ng-repeat="table in db.tables">
+                <a class="EntityListItem" ng-class="{ EditedEntity: table.entity_name, EditedEntityMarker: table.entity_name }" cv-org-href="/admin/datasets/{{table.id}}">
+                    <span class="ModifiedEntity">{{table.entity_name}}</span>
+                    <span ng-if="!table.entity_name">{{table.name}}</span>
+                </a>
+            </li>
+            <li>
+                <a class="Button" ng-click="syncDatabase(db.id)">Re-Sync Database</a>
+            </li>
+        </ul>
+    </div>
+</div>

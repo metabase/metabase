@@ -1,0 +1,34 @@
+:root {
+  --canvas-bg-color: #fff;
+  --canvas-offset: 61px;
+}
+
+.Canvas {
+  position: absolute;
+  top: var(--canvas-offset);
+  margin-bottom: calc(var(--canvas-offset) * -1);
+  padding-bottom: var(--canvas-offset);
+  right: 0;
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  background-color: var(--canvas-bg-color);
+}
+
+.Canvas--new .card-inner {
+  height: 200px;
+}
+
+.Canvas--new .Card {
+  padding-top: 1em;
+}
+
+.Canvas--new .Card-heading {
+  display: none;
+}
+
+@media screen and (--breakpoint-min-lg) {
+  .Canvas--new .card-inner {
+    height: auto;
+  }
+}

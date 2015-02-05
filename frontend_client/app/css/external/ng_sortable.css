@@ -1,0 +1,12 @@
+.as-sortable-item {
+    background-color: #ffffff;
+}
+
+.as-sortable-placeholder {
+    border: 1px dashed darkgrey;
+    background-color: #dbdbdb;
+}
+
+.as-sortable-drag {
+    opacity: .8;
+}

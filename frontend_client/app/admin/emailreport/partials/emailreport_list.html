@@ -1,0 +1,53 @@
+
+<div class="wrapper">
+    <div class="py2 border-bottom">
+        <div class="float-right">
+            <a class="Button Button--primary" cv-org-href="/admin/emailreport/create">Create Email Report</a>
+        </div>
+        <h2>Email Report List</h2>
+    </div>
+
+    <div>
+        <div class="List-filters List-section clearfix">
+          <div class="List-filterCategories float-left">
+            <span class="List-filterLabel float-left">filter:</span>
+            <div class="Button-group">
+                <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">all</a>
+                <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">mine</a>
+            </div>
+          </div>
+
+          <div class="float-left">
+            <input class="mx3 input" type="text" ng-model="searchFilter" placeholder="Search executions ...">
+          </div>
+
+          <div class="float-right">
+            <span>Sort by:</span>
+            <select ng-init="sortMode = 'name'" ng-model="sortMode" ng-change="sort()">
+              <option value="name">Name (default)</option>
+              <option value="owner">Owner</option>
+              <option value="date">Last Updated</option>
+            </select>
+          </div>
+        </div>
+
+        <div ng-if="!reports">
+            <h3>Loading ...</h3>
+        </div>
+
+        <ul>
+            <li class="py2 border-bottom" ng-repeat="report in reports | filter:searchFilter">
+                <div class="my1 float-right">
+                    <a class="Button mx1" ng-click="executeReport(report.id)">Send Now</a>
+                    <a class="Button mx1" ng-click="deleteReport($index)" delete-confirm>Delete</a>
+                </div>
+
+                <h3>
+                    <a class="text-normal link" cv-org-href="/admin/emailreport/{{report.id}}">{{report.name}}</a>
+                </h3>
+                <span>{{report.description}}</span>
+                <span>[{{recipientList(report)}}]</span>
+            </li>
+        </ul>
+    </div>
+</div>

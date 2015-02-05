@@ -1,0 +1,12 @@
+
+<div class="login-form">
+    <form>
+        username: <input type="text" name="username" ng-model="loginForm.username" id="test_login_form_username">
+        password: <input type="password" name="password" ng-model="loginForm.password" id="test_login_form_password"><br/>
+        <input type="submit" value="Login" ng-click="doLogin(loginForm)" class="login-submit" id="test_login_form_submit">
+
+    </form>
+</div>
+<input type="submit" value="Logout" ng-click="doLogout()" id="test_login_form_logout">
+
+<div id="testFormStatus">{{formStatus}}</div>

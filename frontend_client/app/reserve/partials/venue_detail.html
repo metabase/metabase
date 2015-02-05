@@ -1,0 +1,121 @@
+<div class="col col-md-9">
+  <div class="row">
+    <div class="clearfix full-width">
+      <div class="p4 float-left">
+        <img class="EntityImage EntityImage--large" ng-src="{{venue.avatar}}" ng-if="venue.avatar">
+        <img src="" ng-if="!venue.avatar" />
+      </div>
+      <div class="mt3 float-left">
+        <h2>
+          <a class="link" href="/reserve/venue/{{venue.id}}">{{venue.name}}</a> <span ng-if="venue.is_test_account">[test account]</span>
+        </h2>
+        <div class="inline-block">{{venue.locality}}</div>
+        <div class="inline-block ml2">Member since: {{venue.createdAt | date : 'MMMM d, y'}}</div>
+
+    </div>
+      <div class="float-right m4">
+        <a class="Button mt1" href="mailto:data@expa.com?subject=Venue%20{{venue.name}}">Share</a>
+        </div>
+      </div>
+  </div>
+  <div class="row">
+    <div class="mt3 px3">
+        <h4>Bookings</h4>
+    </div>
+    <div class="EntityTableWrapper">
+        <table class="EntityTable Table">
+          <thead>
+            <tr>
+              <th ng-click="orderByField='name'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'name'}">By:
+                <span ng-if="orderByField == 'name'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='guests'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'guests'}">Guests:
+                <span ng-if="orderByField == 'guests'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='overage'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'overage'}">Overage:
+                <span ng-if="orderByField == 'overage'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='rating'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'rating'}">Rating:
+                <span ng-if="orderByField == 'rating'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='createdAt'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'createdAt'}">Created:
+                <span ng-if="orderByField == 'createdAt'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th ng-click="orderByField='updatedAt'; reverseSort = !reverseSort" ng-class="{'ColumnSelected' : orderByField == 'updatedAt'}">Updated:
+                <span ng-if="orderByField == 'updatedAt'">
+                    <span ng-show="!reverseSort">^</span>
+                    <span ng-show="reverseSort">v</span>
+                </span>
+              </th>
+
+              <th></th>
+            </tr>
+          </thead>
+          <tfoot>
+          </tfoot>
+          <tbody>
+            <tr ng-repeat="booking in bookings | orderBy:orderByField:reverseSort">
+              <td>
+                <span class="EntityName"><a href="/reserve/user/{{booking.user_id}}">{{booking.firstName}} {{booking.lastName}}</a></span>
+              </td>
+              <td>{{booking.guests}}</td>
+              <td>{{booking.overage}}</td>
+              <td>{{booking.rating}}</td>
+              <td>{{booking.createdAt | date : 'MMM d, y, hh:mm a'}}</td>
+              <td>{{booking.updatedAt | date : 'MMM d, y, hh:mm a'}}</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<div class="col col-md-3">
+  <div class="row">
+    <div class="p3">
+      <h3 class="mt2">{{venue.name}}'s Metrics</h3>
+    </div>
+
+    <ol class="px2 py2">
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{venue.rating}}</div>
+          <div class="Metric-title mb2">Rating</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{venue.avg_num_bookings_per_week}}</div>
+          <div class="Metric-title mb2">Average bookings per week</div>
+        </div>
+      </li>
+      <li class="Metric mb2 shadowed">
+        <div class="px3 py1">
+          <div class="Metric-value">{{venue.total_bookings}}</div>
+          <div class="Metric-title mb2">Total Bookings</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+

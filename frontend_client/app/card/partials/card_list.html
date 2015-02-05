@@ -1,0 +1,43 @@
+<div class="wrapper">
+    <div class="col col-sm-12">
+        <div class="py2 clearfix">
+            <div class="float-right">
+                <a class="Button Button--primary" cv-org-href="/card/create">Create Card</a>
+            </div>
+            <h2>Cards</h2>
+        </div>
+        <div class="List">
+            <div class="List-filters List-section clearfix">
+                <div class="List-filterCategories float-left">
+                    <span class="List-filterLabel float-left">Filter:</span>
+                    <div class="Button-group">
+                        <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">all</a>
+                        <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">mine</a>
+                        <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'fav' }" ng-click="filter('fav')">fav</a>
+                    </div>
+                </div>
+                <div class="float-right">
+                    <input class="input" type="text" ng-model="searchFilter" placeholder="Search for a card...">
+                </div>
+            </div>
+
+            <div ng-if="!cards">
+                <h1 clas="text-normal text-centered">Loading ...</h1>
+            </div>
+
+            <ul>
+                <li class="List-item List-section" ng-repeat="card in cards | filter:searchFilter ">
+                    <div class="float-right my2">
+                        <span class="List-timeStamp">{{card.updated_at | date : 'MMM d, y, hh:mm a'}}</span>
+                        <a class="Button mx2" cv-org-href="{{'/card/create?clone=' + card.id}}">Clone</a>
+                        <a class="Button Button--remove" href="#" ng-click="deleteCard(card.id)" delete-confirm>Delete</a>
+                    </div>
+                    <h3>
+                        <a class="text-normal link" cv-org-href="/card/{{card.id}}">{{card.name}}</a>
+                    </h3>
+                    <h5>Created by: {{card.creator.common_name}}</h5>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

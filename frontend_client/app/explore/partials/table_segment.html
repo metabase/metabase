@@ -1,0 +1,19 @@
+
+<ol class="breadcrumb">
+    <li><a cv-org-href="/explore/org/{{table.db.organization.id}}">{{table.db.organization.name}}</a></li>
+    <li><a cv-org-href="/explore/db/{{table.db.id}}">{{table.db.name}}</a></li>
+    <li><a cv-org-href="/explore/table/{{table.id}}">{{table.name}}</a></li>
+    <li class="active">Create Segment</li>
+</ol>
+
+<form id="query_form" novalidate>
+    <p>
+    	<label for="id_sql">SELECT * from {{table.name}} WHERE:</label>
+    	<textarea cols="40" id="id_sql" name="sql" rows="10" style="width: 100%; white-space:pre;" ng-model="segment.query"></textarea>
+    </p>
+	<p>
+		<label for="id_database">Name:</label>
+		<input type="text" ng-model="segment.name">
+	</p>
+	<input class="btn btn-default btn-primary" type="button" value="Create Segment" ng-click="createSegment(segment)"/>
+</form>

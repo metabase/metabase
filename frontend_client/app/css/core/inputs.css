@@ -1,0 +1,23 @@
+:root {
+  --input-border-color: #d9d9d9;
+  --input-border-active-color: #4E82C0;
+  --input-border-radius: 4px;
+}
+
+.input {
+  border: 1px solid var(--input-border-color);
+  padding: 0.8rem 1rem;
+  transition: border .3s linear;
+  border-radius: var(--input-border-radius);
+}
+
+.input:focus {
+  outline: none;
+  border: 1px solid var(--input-border-active-color);
+  transition: border .3s linear;
+}
+
+.input:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,34 @@
+<div class="page-header row">
+  <div class="page-info">
+    <h1 class="page-title">Database Ingestions</h1>
+  </div>
+</div>
+
+<div class="page-content row">
+  <table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Ingestion Started</th>
+      <th>Last Change</th>
+      <th>Database File Written At</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="ingestion in ingestions">
+      <td>{{ingestion.created_at | date : 'MMM d, y, hh:mm a'}}</td>
+      <td>{{ingestion.updated_at | date : 'MMM d, y, hh:mm a'}}</td>
+      <td>{{ingestion.write_time | date : 'MMM d, y, hh:mm a'}}</td>
+      <td>{{ingestion.status}}</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="25" style="text-align:right;">
+        <input type="button" value="Prev" class="btn btn-primary btn active" ng-if="page > 1" ng-click="setPage(page-1)">&nbsp;
+        <input type="button" value="Next" class="btn btn-primary btn active" ng-if="ingestions.length == 25" ng-click="setPage(page+1)">
+      </td>
+    </tr>
+  </tfoot>
+  </table>
+</div>

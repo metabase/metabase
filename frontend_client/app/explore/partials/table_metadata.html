@@ -1,0 +1,54 @@
+<div class="px2">
+    <div class="px2 py3 clearfix">
+        <div class="float-right">
+            <a class="Button" cv-org-href="/explore/table/{{table.id}}/">Details</a>
+        </div>
+        <h3>Metadata</h3>
+    </div>
+    <div class="EntityGroup bordered clearfix">
+        <div class="border-bottom">
+            <div class="EntityInfo py2 clearfix">
+                <label class="Select EntityCustomType float-right">
+                    <select ng-class="{CustomTypeApplied: table.entity_type }" ng-model="table.entity_type" ng-change="inlineSave()" ng-options="ent_type.id as ent_type.name for ent_type in utils.table_entity_types" disabled="disabled">
+                    </select>
+                    
+                </label>
+                <h2>
+                    <div class="EntityFieldName">
+                        <span ng-if="table.entity_name">{{table.entity_name}}</span>
+                        <span ng-if="!table.entity_name">{{table.name}}</span>
+                    </div>
+                </h2>
+                <div class="text-grey-3" ng-if="table.entity_name">Underlying Table Name: {{table.name}}</div>
+                <div>
+                    <div class="EntityDescription" ng-if="table.description">
+                        {{table.description}}            
+                    </div>
+                </div>
+            </div>
+        </div>
+        <ul>
+            <li class="EntityField" ng-repeat="field in fields" ng-class="{EntityFieldHidden: field.preview_display == false }">
+                <div class="EntityInfo">
+                    <div class="float-right">
+                        <label class="Select EntityCustomType">
+                            <select ng-class="{CustomTypeApplied: field.field_type }" ng-model="field.field_type" ng-change="inlineSaveField($index)" ng-options="spec_type.id as spec_type.name for spec_type in utils.field_field_types" disabled="disabled">
+                            </select>
+                        </label>
+                        <label class="Select EntityCustomType">
+                            <select ng-class="{CustomTypeApplied: field.special_type }" ng-model="field.special_type" ng-change="inlineSaveField($index)" ng-options="spec_type.id as spec_type.name for spec_type in utils.field_special_types" disabled="disabled">
+                            </select>
+                        </label>
+                    </div>
+                    <div class="clearfix">
+                        <h3 class="EntityFieldName float-left">{{field.name}}</h3>
+                        <span class="EntityOriginalType float-left">{{field.base_type}}</span>
+                    </div>
+                    <div class="EntityDescription">
+                        {{field.description}}                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>

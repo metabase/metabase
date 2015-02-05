@@ -8,7 +8,11 @@ Download from http://example.com/FIXME.
 
 ## Usage
 
-Run the HTTP server with
+Install bower requirements with
+
+    node install
+
+Then run the HTTP server with
 
     lein ring server
 

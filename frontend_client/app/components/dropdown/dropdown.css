@@ -1,0 +1,44 @@
+:root {
+  --dropdown-border-color: #d9d9d9;
+}
+
+.Dropdown {
+  position: relative;
+}
+
+.Dropdown-content {
+  opacity: 0; /* start invisible */ 
+  pointer-events: none; /* and without any clicks */
+  z-index: 20;
+  position: absolute;
+  top: 40px;
+  padding: 1em;
+  min-width: 200px;
+  margin-top: 18px;
+  border: 1px solid var(--dropdown-border-color);
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, .12);
+  background-clip: padding-box;
+}
+
+.Dropdown-content:before {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-right: 5px solid red;
+  content: '';
+  display: block;
+}
+
+/* switching from home rolled to BS logic for dropdowns so we still have both classes */ 
+.Dropdown.open .Dropdown-content,
+.Dropdown--showing.Dropdown-content{
+  opacity: 1;
+  pointer-events: all;
+  transition: opacity .3s linear, margin .2s linear;
+  margin-top: 0;
+}
+

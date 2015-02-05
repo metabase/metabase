@@ -1,0 +1,25 @@
+<div class="col col-md-12">
+    <div class="row">
+        <div class="p4 border-bottom">
+            <h3>Conversation with
+                <a class="link" href="/operator/specialist/{{conversation.specialist_id}}">{{conversation.specialist_nick}}</a>
+                and {{conversation.sender_nick}}
+            </h3>
+        </div>
+    </div>
+    
+    <div class="row">
+        <ul>
+            <li class="Message clearfix" ng-repeat="message in messages" ng-class="{'Message--alt' : message.sender_id == conversation.specialist_id}">
+                <div class="Message-sender inline-block text-bold">
+                    <div ng-if="message.sender_id == conversation.specialist_id">{{conversation.specialist_nick}}</div>
+                    <div ng-if="message.sender_id == conversation.sender_id">{{conversation.sender_nick}}</div>
+                </div>
+                <div class="Timestamp ml1 inline-block">{{message.time_updated_server | date : 'MMM d, y - hh:mm a'}}</div>
+
+                <p class="Message-text" ng-if="message.content_type == 'mixed'">{{toObject(message.content).text}}</p>
+                <p class="Message-text" ng-if="message.content_type != 'mixed'">{{message.content_type}}: {{message.content}}</p>
+            </li>
+        </ul>
+    </div>
+</div>

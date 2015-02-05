@@ -1,0 +1,39 @@
+<div class="px2 py1 border-bottom">
+    <h5>Filtered by</h5>
+    <div>
+        <ul class="FilterClauseList">
+            <li class="FilterClause py1 clearfix" ng-repeat="table_filter in wrapped_filters()">
+                <div ng-if="table_filter != 'AND'">
+                    <a class="text-grey-2 float-right" ng-if="!readonly" href="#" ng-click="removeFilter($index)">
+                        <cv-close-icon width="16px" height="16px"></cv-close-icon>
+                    </a>
+                    <label class="Select" for="id_filtered_field">
+                        <select id="id_filtered_field" ng-model="table_filter[1]" ng-options="field.id as field.name for field in table.fields" ng-disabled="readonly">
+                            <option value="">Pick a Field</option>
+                        </select>
+                    </label>
+
+                    <label class="Select">
+                        <select id="id_filtered_field" ng-model="table_filter[0]" ng-options="operator.name as operator.verbose_name  for operator in table.fields_lookup[table_filter[1]].valid_operators" ng-change="operator_selected(table_filter)" ng-disabled="readonly">
+                            <option value="">---------</option>
+                        </select>
+                    </label>
+                    <span ng-repeat="filter_value in table_filter|slice:2:1000 track by $index">
+                        <span ng-if="field_type_for(table_filter, $index)=='select'">
+                            <label class="Select">
+                                <select ng-model="table_filter[$index+2]" ng-options="f.key as f.name for f in field_for(table_filter, $index).values" ng-disabled="readonly">
+                                </select>
+                            </label>
+                        </span>
+                        <span ng-if="field_type_for(table_filter, $index)!='select'">
+                            <input class="input" size="30" type="{{field_type_for(table_filter, $index)}}" ng-model="table_filter[$index+2]" ng-readonly="readonly"/ >
+                        </span>
+                    </span>
+                </div>
+            </li>
+	    </ul>
+        <div class="AddFilterButton py1">
+            <a class="link" href="#" ng-if="!readonly" ng-click="addFilter()">Add filter</a>
+        </div>
+    </div>
+</div>
