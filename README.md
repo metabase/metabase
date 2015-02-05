@@ -1,26 +1,28 @@
-# metabase-init
+## Install Prerequisites
 
-FIXME: description
+1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+2. Node.js for npm (http://nodejs.org/)
+3. Leiningen (http://leiningen.org/)
 
-## Installation
 
-Download from http://example.com/FIXME.
+## Build
+
+Install clojure + npm/bower requirements with
+
+    lein deps
+    npm install
+
+Compile application css file with
+
+    ./node_modules/gulp/bin/gulp.js build
+
 
 ## Usage
-
-Install bower requirements with
-
-    node install
 
 Then run the HTTP server with
 
     lein ring server
 
-## Documentation
-
-Generate documentation with
-
-    lein marg
 
 ## Unit Tests
 
@@ -28,9 +30,17 @@ Run unit tests with
 
     lein expectations
 
+
+## Documentation
+
+Generate documentation with
+
+    lein marg
+
+
 ## Options
 
-FIXME: listing of options this app accepts.
+...
 
 ## Examples
 
@@ -40,9 +50,6 @@ FIXME: listing of options this app accepts.
 
 ...
 
-### Any Other Sections
-### That You Think
-### Might be Useful
 
 ## License
 
