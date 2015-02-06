@@ -8,7 +8,7 @@
   "Middleware that adds to keys to request:
 
    :current-user-id int ID or nil of user associated with request
-   :current-user    memoized fn that fetches current user from DB"
+   :current-user    memoized fn that fetches current user (or nil) from DB"
   [handler]
   (fn [request]
     (let [current-user-id 1] ; TODO - Placeholder value
