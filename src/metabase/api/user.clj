@@ -1,6 +1,6 @@
 (ns metabase.api.user)
 
-(defapi placeholder
+(defn placeholder
   "A placeholder API fn."
   [request]
   {:status 200
