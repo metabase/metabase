@@ -9,6 +9,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "LATEST"]          ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
                  [org.clojure/core.match "0.3.0-alpha4"]    ; optimized pattern matching library for Clojure
+                 [org.clojure/core.memoize "0.5.6"]         ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.json "0.2.5"]            ; JSON parsing / generation
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
                  [org.clojure/tools.macro "0.1.2"]          ; tools for writing macros
@@ -29,6 +30,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [marginalia "0.7.1"]                       ; for documentation
+                 [medley "0.5.5"]                           ; lightweight lib of useful functions
                  [ring/ring-json "0.3.1"]                   ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]                     ; 'Magic wand' macro -<>, etc.
                  ]
