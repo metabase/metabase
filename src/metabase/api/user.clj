@@ -1,7 +1,7 @@
-(ns metabase.api.user)
+(ns metabase.api.user
+  (:require [metabase.api.common :refer :all]))
 
-(defn placeholder
-  "A placeholder API fn."
-  [request]
-  {:status 200
-   :body {:status :ok}})
+(defn current [_]
+  (with-or-404 (*current-user*)
+    {:status 200
+     :body (*current-user*)}))
