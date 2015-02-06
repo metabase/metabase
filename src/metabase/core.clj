@@ -6,6 +6,14 @@
             [compojure.route :as route]
             [ring.middleware.json :refer [wrap-json-response]]
             [ring.util.response :as resp]))
+            [compojure.core :refer [wrap-routes]]
+            (ring.middleware [cookies :refer [wrap-cookies]]
+                             [json :refer [wrap-json-response]]
+                             [keyword-params :refer [wrap-keyword-params]]
+                             [params :refer [wrap-params]]
+                             [session :refer [wrap-session]])
+            [metabase.middleware.log-api-call :refer :all]
+            [metabase.routes :as routes]))
 
 (defn liquibase-sql []
   (let [conn (jdbc/get-connection {:subprotocol "postgresql"
@@ -36,6 +44,11 @@
 
 (def app
   "The primary entry point to the HTTP server"
-  (-> routes
+  (-> routes/routes
+      (log-api-call :request)
       wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params     ; converts string keys in :params to keyword keys
+      wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
+      wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
+      wrap-session            ; reads in current HTTP session and sets :session/key
       ))
