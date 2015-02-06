@@ -6,10 +6,10 @@
             [metabase.models.user :refer [User]]))
 
 (defn wrap-current-user
-  "Middleware that binds `metabase.api.context`
+  "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
 
-   :current-user-id int ID or nil of user associated with request
-   :current-user    memoized fn that fetches current user (or nil) from DB"
+   *current-user-id* int ID or nil of user associated with request
+   *current-user*    memoized fn that returns current user (or nil) from DB"
   [handler]
   (fn [request]
     (let [current-user-id 1] ; TODO - Placeholder value
