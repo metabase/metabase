@@ -1,7 +1,7 @@
 (ns metabase.api.user)
 
-(defn placeholder
-  "A placeholder API fn."
-  [request]
+(defn current
+  "Fetch the current user."
+  [{:keys [current-user]}]
   {:status 200
-   :body {:status :ok}})
+   :body (current-user)})
