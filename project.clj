@@ -11,19 +11,16 @@
                  [org.clojure/core.match "0.3.0-alpha4"]    ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.6"]         ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.json "0.2.5"]            ; JSON parsing / generation
+                 [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
                  [org.clojure/tools.macro "0.1.2"]          ; tools for writing macros
                  [clj-time "0.5.1"]                         ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]              ; auth library
                  [com.h2database/h2 "1.3.170"]              ; embedded SQL database
+                 [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [compojure "1.3.1"]                        ; HTTP Routing library built on Ring
                  [environ "0.5.0"]                          ; easy environment management
                  [korma "0.4.0"]                            ; SQL lib
-                 [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
-                 [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
-                 [org.yaml/snakeyaml "1.14"]                ; YAML parser (required by liquibase)
-                 [org.slf4j/slf4j-log4j12 "1.7.1"]
-                 [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -31,6 +28,10 @@
                                com.sun.jmx/jmxri]]
                  [marginalia "0.7.1"]                       ; for documentation
                  [medley "0.5.5"]                           ; lightweight lib of useful functions
+                 [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
+                 [org.slf4j/slf4j-log4j12 "1.7.1"]
+                 [org.yaml/snakeyaml "1.14"]                ; YAML parser (required by liquibase)
+                 [postgresql "9.1-901.jdbc4"]               ; Postgres driver
                  [ring/ring-json "0.3.1"]                   ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]                     ; 'Magic wand' macro -<>, etc.
                  ]
