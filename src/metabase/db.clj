@@ -8,24 +8,21 @@
             [korma.db :refer :all]
             [metabase.config :refer [app-defaults]]))
 
+(def db-file
+  "Path to our H2 DB file from env var or app config."
+  (str "file:" (or (:database-file env)
+                   (:database-file app-defaults))))
+(log/info (str "Using H2 database file: " db-file))
 
-(defn get-db-file
-  "Check config/environment to determine the path to the h2 db file we want to use"
-  []
-  (str "file:" (or (env :database-file) (get app-defaults :database-file))))
-
-
-(defdb db (do
-            (log/info (str "Using H2 database file: " (get-db-file)))
-            (h2 {:db (get-db-file)
-                 :naming {:keys str/lower-case
-                          :fields str/upper-case}})))
+(defdb db (h2 {:db db-file
+               :naming {:keys str/lower-case
+                        :fields str/upper-case}}))
 
 (defn migrate
   "Migrate the database :up or :down."
   [direction]
   (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname (get-db-file)})]
+                                   :subname db-file})]
     (case direction
       :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
       :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn))))
