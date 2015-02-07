@@ -35,3 +35,30 @@
   [entity & kwargs]
   (-> (insert entity (values (apply assoc {} kwargs)))
       (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
+
+(defmulti post-select
+  "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
+   you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields."
+  (fn [entity _] entity))
+
+;; Default implementation of post-select
+(defmethod post-select :default [_ result]
+  result)
+
+(defmacro sel
+  "Wrapper for korma `select` that calls `post-select` on results and returns either :one or :many objects."
+  [one-or-many entity & kwargs]
+  (let [quantity-fn (case one-or-many
+                      :one first
+                      :many identity)]
+    `(->> (select ~entity
+                  (where ~(apply assoc {} kwargs)))
+          (map (partial post-select ~entity))
+          ~quantity-fn)))
+
+(defmacro sel-fn
+  "Returns a memoized fn that calls `sel`"
+  [one-or-many entity & kwargs]
+  `(memoize
+    (fn []
+      (sel ~one-or-many ~entity ~@kwargs))))
