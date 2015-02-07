@@ -36,6 +36,11 @@
   (-> (insert entity (values (apply assoc {} kwargs)))
       (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
 
+(defn del
+  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value."
+  [entity & kwargs]
+  (delete entity (where (apply assoc {} kwargs))))
+
 (defmulti post-select
   "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
    you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields."
