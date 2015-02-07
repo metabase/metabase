@@ -1,5 +1,7 @@
 (ns metabase.models.org-perm
-  (:use korma.core))
+  (:require [korma.core :refer :all]
+            [metabase.db :refer :all]
+            [metabase.models.org :refer [Org]]))
 
 (defentity OrgPerm
   (table :core_userorgperm))
