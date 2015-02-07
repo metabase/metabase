@@ -14,15 +14,9 @@
                    (:database-file app-defaults))))
 (log/info (str "Using H2 database file: " db-file))
 
-;; (defdb db (h2 {:db db-file
-;;                :naming {:keys str/lower-case
-;;                         :fields str/upper-case}}))
-
-(defdb db (postgres {:db "corvus"
-                     :port 15432
-                     :user "corvus"
-                     :password ""
-                     :host "localhost"}))
+(defdb db (h2 {:db db-file
+               :naming {:keys str/lower-case
+                        :fields str/upper-case}}))
 
 (defn migrate
   "Migrate the database :up or :down."
