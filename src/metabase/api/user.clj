@@ -4,4 +4,4 @@
 
 (defapi current [_]
   (or-404-> (*current-user*)
-            (hydrate [:org_perms :organization])))
+    (hydrate [:org_perms :organization])))
