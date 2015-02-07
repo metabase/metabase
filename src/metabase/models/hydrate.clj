@@ -6,16 +6,7 @@
          hydrate-one-key)
 
 (defn hydrate
-  "Hydrate a single object or sequence of objects.
-
-  Hydration simply evaluates functions associated with the keys you specify, e.g.
-
-   `(hydrate {:a (fn [] 100)} :a) -> {:a 100}`
-
-   You can also specify nested keys to do recursive hydration:
-
-   `(hydrate {:a (fn [] {:b (fn [] 20)})}
-             [:a :b]) -> {:a {:b 20}}`"
+  "Hydrate a single object or sequence of objects."
   [object & ks]
   (apply (if (map? object) hydrate-one
              hydrate-many)
