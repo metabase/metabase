@@ -21,7 +21,7 @@
      (do ~@body)))
 
 (defmacro let-or-404
-  "If TEST is true, bind in to BINDING and evaluate BODY. Otherwise return a 404.
+  "If TEST is true, bind it to BINDING and evaluate BODY. Otherwise return a 404.
 
   `(let-or-404 [user (*current-user*)]
      (:id user))`"
@@ -41,7 +41,7 @@
          ~@body)))
 
 (defmacro or-404->>
-  "Like or-404->, but threads result using `->>`."
+  "Like `or-404->`, but threads result using `->>`."
   [test & body]
   `(let-or-404 [result# ~test]
      (->> result#
