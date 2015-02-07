@@ -35,3 +35,53 @@
   [entity & kwargs]
   (-> (insert entity (values (apply assoc {} kwargs)))
       (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
+
+(defmulti post-select
+  "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
+   you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields."
+  (fn [entity _] entity))
+
+;; Default implementation of post-select
+(defmethod post-select :default [_ result]
+  result)
+
+(defmulti default-fields
+  "The default fields that should be used for ENTITY by calls to `sel` if none are specified."
+  identity)
+
+(defmethod default-fields :default [_]
+  nil) ; by default return nil, which we'll take to mean "everything"
+
+(defmacro sel
+  "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
+
+  `sel` returns either :one or :many objects.
+
+   `(sel :one User :id 1)          -> returns the User (or nil) whose id is 1`
+   `(sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1`
+
+   By default, `sel` will return `default-fields` for `entity` (or all fields if `default-fields` isn't specified),
+   but you can override this behavior by passing `entity` as a vector like `[entity & field-keys]`.
+
+   `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1"
+  [one-or-many entity & kwargs]
+  (let [quantity-fn (case one-or-many
+                      :one first
+                      :many identity)
+        [entity & field-keys] (if (vector? entity) entity
+                                  [entity])
+        field-keys (or field-keys
+                       (default-fields (eval entity)))]
+    `(->> (select ~entity
+                  (where ~(apply assoc {} kwargs))
+                  ~@(when field-keys
+                      `[(fields ~@field-keys)]))
+          (map (partial post-select ~entity))
+          ~quantity-fn)))
+
+(defmacro sel-fn
+  "Returns a memoized fn that calls `sel`"
+  [one-or-many entity & kwargs]
+  `(memoize
+    (fn []
+      (sel ~one-or-many ~entity ~@kwargs))))
