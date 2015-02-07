@@ -11,7 +11,7 @@
 
 ; create a simple sample table
 (jdbc/execute! testdb-jdbc
-  ["drop table del_test"])
+  ["drop table if exists del_test"])
 (jdbc/execute! testdb-jdbc
   ["create table del_test(id int)"])
 
