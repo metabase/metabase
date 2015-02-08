@@ -6,7 +6,7 @@
 
 
 (def testdb-jdbc {:subprotocol "h2"
-                  :subname (str db-file ";DATABASE_TO_UPPER=FALSE")})
+                  :subname (str db-file)})
 
 
 ; create a simple sample table
