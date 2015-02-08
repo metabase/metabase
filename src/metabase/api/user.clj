@@ -1,6 +1,7 @@
 (ns metabase.api.user
   (:require [metabase.api.common :refer :all]
-            [compojure.core :refer [defroutes GET PUT]]))
+            [compojure.core :refer [defroutes GET PUT]]
+            [metabase.models.hydrate :refer [hydrate]]))
 
 
 (def user-list
@@ -19,7 +20,8 @@
   (GET "/current" request
        (with-or-404 (*current-user*)
                     {:status 200
-                     :body (*current-user*)})))
+                     :body (-> (*current-user*)
+                               (hydrate [:org_perms :organization]))})))
 
 (def user-update
   (PUT "/:user-id" [user-id :as {body :body}]
