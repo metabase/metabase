@@ -1,13 +1,18 @@
 (ns metabase.api.routes
-  (:require [compojure.core :refer [defroutes GET]]
+  (:require [compojure.core :refer [defroutes context GET]]
             [compojure.route :as route]
-            (metabase.api [card :as card]
-                          [user :as user])))
+            (metabase.api [user :as user]
+                          [org :as org]
+                          [session :as session]
+                          [card :as card])))
 
 ;; placeholder until we actually define real API routes
 (defroutes routes
   ;; call /api/test to see this
   (GET "/test" [] {:status 200 :body {:message "We can serialize JSON <3"}})
+  (context "/org" [] org/routes)
+  (context "/session" [] session/routes)
+  (context "/user" [] user/routes)
   (GET "/card/:id" [id] (card/by-id id))
   (GET "/user/current" [] user/current)
   (route/not-found (fn [{:keys [request-method uri]}]
