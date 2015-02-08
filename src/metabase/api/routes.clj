@@ -14,7 +14,6 @@
   (context "/session" [] session/routes)
   (context "/user" [] user/routes)
   (GET "/card/:id" [id] (card/by-id id))
-  (GET "/user/current" [] user/current)
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404
                          :body (str (.toUpperCase (name request-method)) " " uri " is not yet implemented.")})))
