@@ -17,6 +17,6 @@
    :last_login
    :last_name]) ; don't return :password!
 
-(defmethod post-select User [_ {:keys [id] :as result}]
-  (-> result
+(defmethod post-select User [_ {:keys [id] :as user}]
+  (-> user
       (assoc :org_perms (sel-fn :many OrgPerm :user_id id))))

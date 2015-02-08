@@ -3,7 +3,8 @@
             [compojure.route :as route]
             (metabase.api [user :as user]
                           [org :as org]
-                          [session :as session])))
+                          [session :as session]
+                          [card :as card])))
 
 ;; placeholder until we actually define real API routes
 (defroutes routes
@@ -12,6 +13,8 @@
   (context "/org" [] org/routes)
   (context "/session" [] session/routes)
   (context "/user" [] user/routes)
+  (GET "/card/:id" [id] (card/by-id id))
+  (GET "/user/current" [] user/current)
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404
                          :body (str (.toUpperCase (name request-method)) " " uri " is not yet implemented.")})))

@@ -3,7 +3,6 @@
             [compojure.core :refer [defroutes GET PUT]]
             [metabase.models.hydrate :refer [hydrate]]))
 
-
 (def user-list
   (GET "/" []
        ;; TODO - implementation
@@ -17,11 +16,9 @@
         :body {}}))
 
 (def user-current
-  (GET "/current" request
-       (with-or-404 (*current-user*)
-                    {:status 200
-                     :body (-> (*current-user*)
-                               (hydrate [:org_perms :organization]))})))
+  (GET "/current" []
+       (or-404-> (*current-user*)
+                 (hydrate [:org_perms :organization]))))
 
 (def user-update
   (PUT "/:user-id" [user-id :as {body :body}]

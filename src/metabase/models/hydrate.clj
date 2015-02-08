@@ -1,4 +1,6 @@
-(ns metabase.models.hydrate)
+(ns metabase.models.hydrate
+  (:require [clojure.data.json :as json]
+            [clojure.walk :as walk]))
 
 (declare hydrate
          hydrate-one
@@ -41,3 +43,17 @@
         hydrated-val (if sub-keys (apply hydrate hydrated-val sub-keys)
                          hydrated-val)]
     (assoc object k hydrated-val)))
+
+(defn realize-json
+  "Deserialize JSON strings keyed by JSON-KEYS in each dict in array DATA."
+  [result & [first-key & rest-keys]]
+  (println "RESULT -> " result)
+  (println "FIRST KEY -> " first-key)
+  (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result)
+      (let [result (assoc result first-key (->> result
+                                                first-key
+                                                json/read-str
+                                                walk/keywordize-keys))]
+        ;; if there are remaining keys recurse to realize those
+        (if (empty? rest-keys) result
+            (recur result rest-keys)))))
