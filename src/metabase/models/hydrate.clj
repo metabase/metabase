@@ -47,8 +47,6 @@
 (defn realize-json
   "Deserialize JSON strings keyed by JSON-KEYS in each dict in array DATA."
   [result & [first-key & rest-keys]]
-  (println "RESULT -> " result)
-  (println "FIRST KEY -> " first-key)
   (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result)
       (let [result (assoc result first-key (->> result
                                                 first-key
