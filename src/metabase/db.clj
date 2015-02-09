@@ -36,6 +36,17 @@
   (-> (insert entity (values (apply assoc {} kwargs)))
       (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
 
+(defn upd
+  "Wrapper around `korma.core/update` that updates a single row by its id value and
+   automatically passes &rest KWARGS to `korma.core/set-fields`.
+
+   `(upd User 123 :is_active false)` -> updates user with id=123, setting is_active=false
+
+   Returns true if update modified rows, false otherwise."
+  [entity entity-id & kwargs]
+  (-> (update entity (set-fields (apply assoc {} kwargs)) (where {:id entity-id}))
+      (> 0)))
+
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value."
   [entity & kwargs]

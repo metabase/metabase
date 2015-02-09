@@ -3,7 +3,8 @@
   (:require [clojure.tools.logging :as log]
             [clojure.java.jdbc :as jdbc]
             (ring.middleware [cookies :refer [wrap-cookies]]
-                             [json :refer [wrap-json-response]]
+                             [json :refer [wrap-json-response
+                                           wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])
@@ -30,6 +31,8 @@
       (log-api-call :request)
       strip-fns-from-response ; [METABASE] Pull out fns in response so JSON serializer doesn't barf
       wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
+      (wrap-json-body
+        {:keywords? true})         ; extracts json POST body and makes it avaliable on request
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
       bind-current-user       ; [METABASE] associate :current-user-id and :current-user with request
