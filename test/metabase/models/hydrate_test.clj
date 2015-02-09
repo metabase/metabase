@@ -40,3 +40,38 @@
              {:g 2}
              {:g 3}]}
         (hydrate obj4 [:f :g]))
+
+
+;;; tests for realize-json
+
+;; test a single result
+(def card
+  {:name "Guides with Locations"
+   :dataset_query "{\"query\": {\"filter\": [null, null], \"source_table\": 122, \"breakout\": [1055], \"limit\": null, \"aggregation\": [\"count\"]}, \"type\": \"query\", \"database\": 3}"
+   :id 1
+   :visualization_settings "{\"bar\": {\"color\": \"#f15c80\"}}"})
+
+(expect {:name "Guides with Locations",
+         :dataset_query {:query {:filter [nil nil]
+                                 :source_table 122
+                                 :breakout [1055]
+                                 :limit nil
+                                 :aggregation ["count"]}
+                         :type "query"
+                         :database 3}
+         :id 1,
+         :visualization_settings {:bar {:color "#f15c80"}}}
+  (realize-json card :dataset_query :visualization_settings))
+
+
+;; test a sequence of results
+
+(expect [{:name "Card 1"
+          :visualization_settings {:bar {:color "#f15c80"}}}
+         {:name "Card 2"
+          :visualization_settings {:bar {:color "#415263"}}}]
+  (realize-json [{:name "Card 1"
+                  :visualization_settings "{\"bar\": {\"color\": \"#f15c80\"}}"}
+                 {:name "Card 2"
+                  :visualization_settings "{\"bar\": {\"color\": \"#415263\"}}"}]
+                :visualization_settings))
