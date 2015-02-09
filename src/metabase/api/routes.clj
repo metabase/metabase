@@ -10,10 +10,10 @@
 (defroutes routes
   ;; call /api/test to see this
   (GET "/test" [] {:status 200 :body {:message "We can serialize JSON <3"}})
+  (context "/card" [] card/routes)
   (context "/org" [] org/routes)
   (context "/session" [] session/routes)
   (context "/user" [] user/routes)
-  (GET "/card/:id" [id] (card/by-id id))
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404
                          :body (str (.toUpperCase (name request-method)) " " uri " is not yet implemented.")})))

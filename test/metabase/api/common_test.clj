@@ -66,3 +66,54 @@
 (expect {:status 404
          :body {:status "Not found."}}
   (my-fn2))
+
+
+(defmacro expect-expansion
+  "Helper to test that a macro expands the way we expect;
+   Automatically calls `macroexpand-1` on MACRO."
+  [expected-expansion macro]
+  `(let [actual-expansion# (macroexpand-1 '~macro)]
+     (expect '~expected-expansion
+       actual-expansion#)))
+
+
+;;; TESTS FOR AUTO-PARSE
+(binding [*auto-parse-types* {'id 'Integer/parseInt
+                              'org_id 'Integer/parseInt}]
+
+  ;; when auto-parse gets an args form where arg is present in *autoparse-types*
+  ;; the appropriate let binding should be generated
+  (expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
+                    (auto-parse [id] 'body))
+
+  ;; params not in *autoparse-types* should be ignored
+  (expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
+                    (auto-parse [id some-other-param] 'body))
+
+  ;; make sure multiple autoparse params work correctly
+  (expect-expansion (clojure.core/let [id (Integer/parseInt id)
+                                       org_id (Integer/parseInt org_id)] 'body)
+                    (auto-parse [id org_id] 'body))
+
+  ;; make sure it still works if no autoparse params are passed
+  (expect-expansion (clojure.core/let [] 'body)
+                    (auto-parse [some-other-param] 'body))
+
+  ;; should work with no params at all
+  (expect-expansion (clojure.core/let [] 'body)
+                    (auto-parse [] 'body)))
+
+
+;;; TESTS FOR DEFENDPOINT
+
+;; test that a basic `defendpoint` usage expands as expected
+(expect-expansion
+ (do
+   (def GET_:id
+     (GET "/:id" [id]
+       (clojure.core/-> (metabase.api.common/auto-parse [id]
+                          (or-404-> (sel :one Card :id id)))
+                        metabase.api.common/wrap-response-if-needed)))
+     (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
+ (defendpoint GET "/:id" [id]
+   (or-404-> (sel :one Card :id id))))
