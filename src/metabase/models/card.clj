@@ -1,9 +1,9 @@
 (ns metabase.models.card
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.hydrate :refer [realize-json]]
-            [metabase.models.org :refer [Org]]
-            [metabase.models.user :refer [User]]))
+            (metabase.models [hydrate :refer [realize-json]]
+                             [org :refer [Org]]
+                             [user :refer [User]])))
 
 (defentity Card
   (table :report_card))
