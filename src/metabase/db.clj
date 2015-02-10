@@ -84,17 +84,18 @@
 
    If you run into issues with cyclic dependencies, you can optionally pass ENTITY as a fully-qualified string.
    `(sel :one \"metabase.models.user/User\" :id user_id)`
-   This should be avoided when possible since ENTITY is resolved at runtime, which adds overhead."
+   This should be avoided when possible since ENTITY is resolved at runtime, which adds overhead.
+   NOTE: currently, `default-fields` functionality doesn't work if you pass entity as a string :/"
   [one-or-many entity & kwargs]
   (let [quantity-fn (case one-or-many
                       :one first
                       :many identity)
         [entity & field-keys] (if (vector? entity) entity
                                   [entity])
-        entity (if (string? entity) `(fn [] (resolve-symbol-with-name ~entity))
-                   `(fn [] ~entity))
         field-keys (or field-keys
-                       (default-fields (eval entity)))]
+                       (default-fields (eval entity)))
+        entity (if (string? entity) `(fn [] (resolve-symbol-with-name ~entity))
+                   `(fn [] ~entity))]
     `(let [entity# (~entity)]
        (->> (select entity#
                     (where ~(apply assoc {} kwargs))
