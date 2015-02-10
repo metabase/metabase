@@ -1,6 +1,8 @@
 (ns metabase.api.org
-  (:require [metabase.api.common :refer :all]
-            [compojure.core :refer [defroutes GET PUT POST DELETE]]))
+  (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [metabase.api.common :refer :all]
+            [metabase.db :refer :all]
+            [metabase.models.org :refer [Org]]))
 
 (def org-list
   (GET "/" request
@@ -20,11 +22,8 @@
        {:status 200
         :body {}}))
 
-(def org-get-byslug
-  (GET "/slug/:org-slug" [org-slug]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
+(defendpoint GET "/slug/:org-slug" [org-slug]
+  (or-404-> (sel :one Org :slug org-slug)))
 
 (def org-update
   (PUT "/:org-id" [org-id :as {body :body}]
@@ -63,17 +62,16 @@
         :body {}}))
 
 
-(defroutes routes
-           ;; TODO - this feels bleh.  is it better to put the actual route data here
-           ;;        and just have the endpoints be plain functions?
-           ;;        best way to automate building this list?
-           org-list
-           org-post
-           org-get
-           org-get-byslug
-           org-update
-           org-members-list
-           org-members-create
-           org-members-adduser
-           org-members-updateuser
-           org-members-removeuser)
+(define-routes routes
+  ;; TODO - this feels bleh.  is it better to put the actual route data here
+  ;;        and just have the endpoints be plain functions?
+  ;;        best way to automate building this list?
+  org-list
+  org-post
+  org-get
+  org-update
+  org-members-list
+  org-members-create
+  org-members-adduser
+  org-members-updateuser
+  org-members-removeuser)

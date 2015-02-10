@@ -79,14 +79,15 @@
 (def ^:dynamic *auto-parse-types*
   "Map of symbol -> parse-fn.
    Symbols that should automatically be parsed by given functions when passed as parameters to the API."
-  {'id 'Integer/parseInt})
+  {'id 'Integer/parseInt
+   'org 'Integer/parseInt})
 
 (defmacro auto-parse
   "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `*auto-parse-types*`."
   [args & body]
   (let [let-forms (->> args
                        (mapcat (fn [arg]
-                                 (if (contains? *auto-parse-types* arg) [arg `(~(*auto-parse-types* arg) ~arg)])))
+                                 (if (contains? *auto-parse-types* arg) [arg (list (*auto-parse-types* arg) arg)])))
                        (filter identity))]
     `(let [~@let-forms]
        ~@body)))
