@@ -91,12 +91,7 @@
    By default, `sel` will return `default-fields` for `entity` (or all fields if `default-fields` isn't specified),
    but you can override this behavior by passing `entity` as a vector like `[entity & field-keys]`.
 
-   `(sel :many [OrgPerm :admin :id] :user_id 1)` -> return admin and id of OrgPerms whose user_id is 1
-
-   If you run into issues with cyclic dependencies, you can optionally pass ENTITY as a fully-qualified string.
-   `(sel :one \"metabase.models.user/User\" :id user_id)`
-   This should be avoided when possible since ENTITY is resolved at runtime, which adds overhead.
-   NOTE: currently, `default-fields` functionality doesn't work if you pass entity as a string :/"
+   `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1"
   [one-or-many entity & kwargs]
   (let [quantity-fn (case one-or-many
                       :one first
@@ -104,20 +99,25 @@
         [entity & field-keys] (if (vector? entity) entity
                                   [entity])
         field-keys (or field-keys
-                       (default-fields (eval entity)))
-        entity (if (string? entity) `(fn [] (resolve-symbol-with-name ~entity))
-                   `(fn [] ~entity))]
-    `(let [entity# (~entity)]
-       (->> (select entity#
-                    (where ~(apply assoc {} kwargs))
-                    ~@(when field-keys
-                        `[(fields ~@field-keys)]))
-            (map (partial post-select entity#))
-            ~quantity-fn))))
+                       (default-fields (eval entity)))]
+    `(->> (select ~entity
+                  (where ~(apply assoc {} kwargs))
+                  ~@(when field-keys
+                      `[(fields ~@field-keys)]))
+          (map (partial post-select ~entity))
+          ~quantity-fn)))
 
 (defmacro sel-fn
-  "Returns a memoized fn that calls `sel`"
+  "Returns a memoized fn that calls `sel`.
+
+   ENTITY may optionally be a fully-qualified string name of an entity; in this case, the symbol's namespace
+   will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
+   dependencies in the model files. This is slower, however, due to added runtime overhead."
   [one-or-many entity & kwargs]
   `(memoize
     (fn []
-      (sel ~one-or-many ~entity ~@kwargs))))
+      ~@(if (string? entity)
+          `((require '~(-> entity (^String .split "/") first symbol)) ; require the namespace
+            (let [entity# (symbol ~entity)]
+              (eval `(sel ~~one-or-many ~entity# ~~@kwargs))))
+          `((sel ~one-or-many ~entity ~@kwargs))))))
