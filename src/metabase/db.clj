@@ -57,6 +57,18 @@
 (defmethod default-fields :default [_]
   nil) ; by default return nil, which we'll take to mean "everything"
 
+(defn resolve-symbol-with-name
+  "Return the value of symbol with SYMBOL-NAME.
+   SYMBOL-NAME is a fully-qualified string name.
+   The relevant namespace will be loaded if needed.
+   `(resolve-symbol-with-name \"metabase.models.user/User\")`"
+  [symbol-name]
+  (let [symb (symbol symbol-name)]
+    @(or (resolve symb)
+         (let [ns-name (first (^String .split symbol-name "/"))]
+           (require (symbol ns-name))
+           (resolve symb)))))
+
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
 
@@ -68,21 +80,28 @@
    By default, `sel` will return `default-fields` for `entity` (or all fields if `default-fields` isn't specified),
    but you can override this behavior by passing `entity` as a vector like `[entity & field-keys]`.
 
-   `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1"
+   `(sel :many [OrgPerm :admin :id] :user_id 1)` -> return admin and id of OrgPerms whose user_id is 1
+
+   If you run into issues with cyclic dependencies, you can optionally pass ENTITY as a fully-qualified string.
+   `(sel :one \"metabase.models.user/User\" :id user_id)`
+   This should be avoided when possible since ENTITY is resolved at runtime, which adds overhead."
   [one-or-many entity & kwargs]
   (let [quantity-fn (case one-or-many
                       :one first
                       :many identity)
         [entity & field-keys] (if (vector? entity) entity
                                   [entity])
+        entity (if (string? entity) `(fn [] (resolve-symbol-with-name ~entity))
+                   `(fn [] ~entity))
         field-keys (or field-keys
                        (default-fields (eval entity)))]
-    `(->> (select ~entity
-                  (where ~(apply assoc {} kwargs))
-                  ~@(when field-keys
-                      `[(fields ~@field-keys)]))
-          (map (partial post-select ~entity))
-          ~quantity-fn)))
+    `(let [entity# (~entity)]
+       (->> (select entity#
+                    (where ~(apply assoc {} kwargs))
+                    ~@(when field-keys
+                        `[(fields ~@field-keys)]))
+            (map (partial post-select entity#))
+            ~quantity-fn))))
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`"

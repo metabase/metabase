@@ -7,6 +7,7 @@
 (defentity Table
   (table :metabase_table))
 
-(defmethod post-select Table [_ {:keys [db_id] :as table}]
+(defmethod post-select Table [_ {:keys [id db_id] :as table}]
   (-> table
-      (assoc :database (sel-fn :one Database :id db_id))))
+      (assoc :database (sel-fn :one Database :id db_id))
+      (assoc :fields (sel-fn :many "metabase.models.field/Field" :table_id id))))
