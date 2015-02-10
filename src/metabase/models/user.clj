@@ -9,6 +9,7 @@
 
 (defmethod default-fields User [_]
   [:id
+   :email
    :date_joined
    :first_name
    :is_active
