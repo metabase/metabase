@@ -15,10 +15,9 @@
        {:status 200
         :body {}}))
 
-(def user-current
-  (GET "/current" []
-       (or-404-> (*current-user*)
-                 (hydrate [:org_perms :organization]))))
+(defendpoint GET "/current" []
+  (or-404-> (*current-user*)
+    (hydrate [:org_perms :organization])))
 
 (def user-update
   (PUT "/:user-id" [user-id :as {body :body}]
@@ -33,12 +32,11 @@
         :body {}}))
 
 
-(defroutes routes
-           ;; TODO - this feels bleh.  is it better to put the actual route data here
-           ;;        and just have the endpoints be plain functions?
-           ;;        best way to automate building this list?
-           user-list
-           user-current
-           user-get
-           user-update
-           user-update-password)
+(define-routes
+  ;; TODO - this feels bleh.  is it better to put the actual route data here
+  ;;        and just have the endpoints be plain functions?
+  ;;        best way to automate building this list?
+  user-list
+  user-get
+  user-update
+  user-update-password)
