@@ -112,7 +112,10 @@
 
    ENTITY may optionally be a fully-qualified string name of an entity; in this case, the symbol's namespace
    will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
-   dependencies in the model files. This is slower, however, due to added runtime overhead."
+   dependencies in the model files. This is slower, however, due to added runtime overhead.
+
+   `(sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called`
+   `(sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1`"
   [one-or-many entity & kwargs]
   `(memoize
     (fn []
