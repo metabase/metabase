@@ -48,10 +48,12 @@
   "Deserialize JSON strings keyed by JSON-KEYS.
    RESULT may either be a single result or a sequence of results. "
   [result & [first-key & rest-keys]]
-  (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result) ; map ourself recursively if RESULT is a sequence
-      (let [result (assoc result first-key (->> result                              ; deserialize the first JSON key
-                                                first-key
-                                                json/read-str
-                                                walk/keywordize-keys))]
+  (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result) ;  map ourself recursively if RESULT is a sequence
+      (let [result (or (some->> result                                              ; deserialize the first JSON key
+                                first-key
+                                json/read-str
+                                walk/keywordize-keys
+                                (assoc result first-key))
+                       result)]
         (if (empty? rest-keys) result                                               ; if there are remaining keys recurse to realize those
             (recur result rest-keys)))))
