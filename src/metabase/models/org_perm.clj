@@ -6,7 +6,7 @@
 (defentity OrgPerm
   (table :core_userorgperm))
 
-(defmethod post-select OrgPerm [_ {:keys [organization_id user_id] :as result}]
-  (assoc result
+(defmethod post-select OrgPerm [_ {:keys [organization_id user_id] :as org-perm}]
+  (assoc org-perm
          :organization (sel-fn :one Org :id organization_id)
          :user (sel-fn :one "metabase.models.user/User" :id user_id)))

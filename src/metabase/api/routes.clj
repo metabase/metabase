@@ -2,6 +2,7 @@
   (:require [compojure.core :refer [defroutes context GET]]
             [compojure.route :as route]
             (metabase.api [card :as card]
+                          [dash :as dash]
                           [meta-db :as meta-db]
                           [meta-table :as meta-table]
                           [org :as org]
@@ -13,6 +14,7 @@
   ;; call /api/test to see this
   (GET "/test" [] {:status 200 :body {:message "We can serialize JSON <3"}})
   (context "/card" [] card/routes)
+  (context "/dash" [] dash/routes)
   (context "/meta/db" [] meta-db/routes)
   (context "/meta/table" [] meta-table/routes)
   (context "/org" [] org/routes)
