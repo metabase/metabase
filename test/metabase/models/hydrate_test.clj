@@ -42,7 +42,7 @@
         (hydrate obj4 [:f :g]))
 
 
-;;; tests for realize-json
+;;; TESTS FOR REALIZE-JSON
 
 ;; test a single result
 (def card
@@ -65,7 +65,6 @@
 
 
 ;; test a sequence of results
-
 (expect [{:name "Card 1"
           :visualization_settings {:bar {:color "#f15c80"}}}
          {:name "Card 2"
@@ -75,3 +74,7 @@
                  {:name "Card 2"
                   :visualization_settings "{\"bar\": {\"color\": \"#415263\"}}"}]
                 :visualization_settings))
+
+;; test that realize-json doesn't barf when passed a key that isn't present
+(expect {:a {:b 100}}
+  (realize-json {:a "{\"b\": 100}"} :a :c))
