@@ -39,7 +39,11 @@
 (expect {:f [{:g 1}
              {:g 2}
              {:g 3}]}
-        (hydrate obj4 [:f :g]))
+  (hydrate obj4 [:f :g]))
+
+;; check that hydration doesn't barf if we ask it to hydrate an object that's not there
+(expect {:f [:a 100]}
+  (hydrate {:f [:a 100]} :x))
 
 
 ;;; TESTS FOR REALIZE-JSON

@@ -39,10 +39,12 @@
   "Hydrate a single key for an object."
   [object k]
   (let [[k & sub-keys] (if (vector? k) k [k])
-        hydrated-val ((k object))
-        hydrated-val (if sub-keys (apply hydrate hydrated-val sub-keys)
-                         hydrated-val)]
-    (assoc object k hydrated-val)))
+        hydration-fn (k object)]
+    (if-not hydration-fn object
+            (let [hydrated-val (hydration-fn)
+                  hydrated-val (if sub-keys (apply hydrate hydrated-val sub-keys)
+                                   hydrated-val)]
+              (assoc object k hydrated-val)))))
 
 (defn realize-json
   "Deserialize JSON strings keyed by JSON-KEYS.
