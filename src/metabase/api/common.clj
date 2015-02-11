@@ -1,13 +1,19 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [compojure.core :refer [defroutes]]
-            [medley.core :refer :all]))
+            [medley.core :refer :all]
             metabase.api.exception
+            [metabase.api.common.internal :refer :all]))
+
+
+;;; DYNAMICALLY BOUND REQUEST VARIABLES
+;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic *current-user-id*
   "Int ID or nil of user associated with current API call."
   nil)
 
+;; TODO - This would probably be slightly nicer if we rewrote it as a delay
 (def ^:dynamic *current-user*
   "Memoized fn that returns user (or nil) associated with the current API call."
   (constantly nil)) ; default binding is fn that always returns nil
