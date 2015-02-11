@@ -13,6 +13,12 @@
 
 (defmacro with-or-404
   "Evaluate BODY if TEST is not-nil. Otherwise return a 404.
+(defmacro org-perms-case
+  "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID."
+  [org-id & body]
+  `(case ((:perms-for-org (*current-user*)) ~org-id)
+     ~@body))
+
 
    `(with-or-404 (*current-user*)
       ...)`"
