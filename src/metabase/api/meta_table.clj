@@ -6,7 +6,15 @@
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
                              [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table]])))
+
+(defendpoint GET "/:id" [id]
+  (or-404-> (sel :one Table :id id)
+    (hydrate :db)))
+
+(defendpoint GET "/:id/fields" [id]
+  (sel :many Field :table_id id))
 
 (defendpoint GET "/:id/query_metadata" [id]
   (or-404-> (sel :one Table :id id)
