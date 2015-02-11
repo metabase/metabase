@@ -2,6 +2,7 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [compojure.core :refer [defroutes]]
             [medley.core :refer :all]))
+            metabase.api.exception
 
 (def ^:dynamic *current-user-id*
   "Int ID or nil of user associated with current API call."
@@ -18,6 +19,12 @@
   [org-id & body]
   `(case ((:perms-for-org (*current-user*)) ~org-id)
      ~@body))
+
+(defn api-throw
+  "Throw an APIException, with STATUS code and MESSAGE.
+   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
+  [status ^String message]
+  (throw ^metabase.api.exception.APIException (metabase.api.exception.APIException. ^Integer (int status) message)))
 
 
    `(with-or-404 (*current-user*)
@@ -99,7 +106,11 @@
   (let [name (route-fn-name method route)]
     `(do (def ~name
            (~method ~route ~args
-                    (-> (auto-parse ~args ~@body)
+                    (-> (auto-parse ~args
+                          (do (try ~@body
+                                   (catch metabase.api.exception.APIException e#
+                                     {:status (.getStatusCode e#)
+                                      :body (.getMessage e#)}))))
                         wrap-response-if-needed)))
          (alter-meta! #'~name assoc :is-endpoint? true))))
 
