@@ -81,7 +81,7 @@
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
   Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
-  `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
+  `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1`
 
   FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
    clauses such as `order`, which are passed directly.
