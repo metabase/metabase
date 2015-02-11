@@ -3,7 +3,8 @@
   (:require [compojure.core :refer [defroutes]]
             [medley.core :refer :all]
             metabase.api.exception
-            [metabase.api.common.internal :refer :all]))
+            [metabase.api.common.internal :refer :all]
+            [metabase.db :refer [sel-fn]]))
 
 
 ;;; DYNAMICALLY BOUND REQUEST VARIABLES
@@ -18,10 +19,19 @@
   "Memoized fn that returns user (or nil) associated with the current API call."
   (constantly nil)) ; default binding is fn that always returns nil
 
+(defmacro with-current-user
+  "Primarily for debugging purposes. Evaulates BODY as if *current-user* was the User with USER-ID."
+  [user-id & body]
+  `(binding [*current-user-id* ~user-id
+             *current-user* (sel-fn :one "metabase.models.user/User" :id ~user-id)]
+     ~@body))
+
 (defmacro org-perms-case
-  "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID."
+  "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
+   Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
-  `(case ((:perms-for-org (*current-user*)) ~org-id)
+  `(case (when (*current-user*)
+           ((:perms-for-org (*current-user*)) ~org-id))
      ~@body))
 
 (defn api-throw
