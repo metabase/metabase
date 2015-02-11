@@ -137,10 +137,7 @@
     `(do (def ~name
            (~method ~route ~args
                     (-> (auto-parse ~args
-                          (do (try ~@body
-                                   (catch APIException e#
-                                     {:status (.getStatusCode e#)
-                                      :body (.getMessage e#)}))))
+                          (catch-api-exceptions ~@body))
                         wrap-response-if-needed)))
          (alter-meta! #'~name assoc :is-endpoint? true))))
 

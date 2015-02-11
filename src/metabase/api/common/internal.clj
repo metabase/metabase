@@ -1,5 +1,14 @@
 (ns metabase.api.common.internal
-  "Internal functions used by `metabase.api.common`.")
+  "Internal functions used by `metabase.api.common`."
+    (:import com.metabase.corvus.api.APIException))
+
+(defmacro catch-api-exceptions
+  "Execute BODY, and if an `APIException` is thrown, return the appropriate HTTP response."
+  [& body]
+  `(try ~@body
+        (catch APIException e#
+          {:status (.getStatusCode e#)
+           :body (.getMessage e#)})))
 
 (defn wrap-response-if-needed
   "If RESPONSE isn't already a map with keys :status and :body, wrap it in one (using status 200)."
