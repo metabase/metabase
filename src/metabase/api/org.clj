@@ -23,7 +23,7 @@
         :body {}}))
 
 (defendpoint GET "/slug/:org-slug" [org-slug]
-  (or-404-> (sel :one Org :slug org-slug)))
+  (->404 (sel :one Org :slug org-slug)))
 
 (def org-update
   (PUT "/:org-id" [org-id :as {body :body}]

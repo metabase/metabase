@@ -4,7 +4,8 @@
             [medley.core :refer :all]
             metabase.api.exception
             [metabase.api.common.internal :refer :all]
-            [metabase.db :refer [sel-fn]]))
+            [metabase.db :refer [sel-fn]])
+  (:import com.metabase.corvus.api.APIException))
 
 
 ;;; DYNAMICALLY BOUND REQUEST VARIABLES
@@ -34,28 +35,25 @@
            ((:perms-for-org (*current-user*)) ~org-id))
      ~@body))
 
-(defn api-throw
-  "Throw an APIException, with STATUS code and MESSAGE.
+
+;;; CONDITIONAL RESPONSE FUNCTIONS / MACROS
+
+(defn check
+  "Assertion mechanism for use inside API functions.
+   Checks that TEST is true, or throws an `APIException` with STATUS-CODE and MESSAGE.
+
    This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
-  [status ^String message]
-  (throw ^metabase.api.exception.APIException (metabase.api.exception.APIException. ^Integer (int status) message)))
+  ([test [status-code ^String message]]
+   (when-not test
+     (throw (APIException. (int status-code) message))))
+  ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
+   (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
 
-
-;;; CONDITIONAL RESPONSE MACROS
-
-;; These all work exactly like the corresponding Clojure versions but take an additional arg at the beginning called RESPONSE-PAIR.
+;; The following all work exactly like the corresponding Clojure versions
+;; but take an additional arg at the beginning called RESPONSE-PAIR.
 ;; RESPONSE-PAIR is of the form `[status-code message]`.
 ;; ex.
-;; `(when condition ...) -> (api-when [500 \"Not OK!\"] condition ...)`"
-
-(defmacro api-when
-  "Evaluate BODY if TEST is truthy. Otherwise return response with status CODE and MESSAGE.
-
-   `(api-when [501 \"Not allowed!\"] @(:can_write card)
-      ...)`"
-  [[code message] test & body]
-  `(do (when-not ~test (api-throw ~code ~message))
-       ~@body))
+;; `(let [binding x] ...) -> (api-let [500 \"Not OK!\"] [binding x] ...)`"
 
 (defmacro api-let
   "If TEST is true, bind it to BINDING and evaluate BODY.
@@ -63,8 +61,9 @@
   `(api-let [404 \"Not found.\"] [user (*current-user*)]
      (:id user))`"
   [response-pair [binding test] & body]
-  `(let [~binding ~test]
-     (api-when ~response-pair ~binding
+  `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
+     (check test# ~response-pair)
+     (let [~binding test#]
        ~@body)))
 
 (defmacro api->
@@ -74,26 +73,45 @@
      :id)`"
   [response-pair test & body]
   `(api-let ~response-pair [result# ~test]
-            (-> result#
-                ~@body)))
+     (-> result#
+         ~@body)))
 
 (defmacro api->>
   "Like `api->`, but threads result using `->>`."
   [response-pair test & body]
   `(api-let ~response-pair [result# ~test]
-                    (->> result#
-                         ~@body)))
-
-;; 404 versions are basically the same as versions above but with RESPONSE-PAIR already bound
-;; TODO - should rename these to be consistent with the `api-` versions.
-(def r404 [404 "Not found."])
-(defmacro with-or-404 [& args] `(api-when ~r404 ~@args))
-(defmacro let-or-404  [& args] `(api-let  ~r404 ~@args))
-(defmacro or-404->    [& args] `(api->    ~r404 ~@args))
-(defmacro or-404->>   [& args] `(api->>   ~r404 ~@args))
+     (->> result#
+          ~@body)))
 
 
-;;; DEFENDPOINT AND RELATED FUNCTIONS
+;;; GENERIC RESPONSE HELPERS
+;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
+
+;; GENERIC 404 RESPONSE HELPERS
+(def generic-404 [404 "Not found."])
+(defn     check-404 [test]    (check test generic-404))
+(defmacro let-404   [& args] `(api-let   ~generic-404 ~@args))
+(defmacro ->404     [& args] `(api->     ~generic-404 ~@args))
+(defmacro ->>404    [& args] `(api->>    ~generic-404 ~@args))
+
+;; GENERIC 403 RESPONSE HELPERS
+;; If you can't be bothered to write a custom error message
+(def generic-403 [403 "You don't have permissions to do that."])
+(defn     check-403 [test]    (check test generic-403))
+(defmacro let-403   [& args] `(api-let   ~generic-403 ~@args))
+(defmacro ->403     [& args] `(api->     ~generic-403 ~@args))
+(defmacro ->>403    [& args] `(api->>    ~generic-403 ~@args))
+
+;; GENERIC 500 RESPONSE HELPERS
+;; For when you don't feel like writing something useful
+(def generic-500 [500 "Internal server error."])
+(defn     check-500 [test]    (check test generic-500))
+(defmacro let-500   [& args] `(api-let   ~generic-500 ~@args))
+(defmacro ->500     [& args] `(api->     ~generic-500 ~@args))
+(defmacro ->>500    [& args] `(api->>    ~generic-500 ~@args))
+
+
+;; DEFENDPOINT AND RELATED FUNCTIONS
 
 (def ^:dynamic *auto-parse-types*
   "Map of symbol -> parse-fn.
@@ -121,7 +139,7 @@
            (~method ~route ~args
                     (-> (auto-parse ~args
                           (do (try ~@body
-                                   (catch metabase.api.exception.APIException e#
+                                   (catch APIException e#
                                      {:status (.getStatusCode e#)
                                       :body (.getMessage e#)}))))
                         wrap-response-if-needed)))

@@ -17,20 +17,20 @@
   (GET "/:user-id" [user-id]
        ;; TODO - permissions check
        ;; TODO - map to serializer.  strip fields (is_active, is_staff).  calculate fields (common_name)
-       (let-or-404 [user (sel :one User :id user-id)]
+       (let-404 [user (sel :one User :id user-id)]
                    {:status 200
                     ;; TODO - we need a reusable way to do something like this for serializing output for responses
                     :body (select-keys user [:id :email :first_name :last_name :last_login :is_superuser])})))
 
 (defendpoint GET "/current" []
-  (or-404-> (*current-user*)
+  (->404 (*current-user*)
     (hydrate [:org_perms :organization])))
 
 (def user-update
   (PUT "/:user-id" [user-id :as {body :body}]
        ;; TODO - permissions check
        ;; TODO - validations (email address must be unique)
-       (let-or-404 [user (sel :one User :id user-id)]
+       (let-404 [user (sel :one User :id user-id)]
                    ;; TODO - how can we pass a useful error message in the 500 response on error?
                    (do
                      ;; TODO - is there a more idiomatic way to do this?  update row, then select it for output

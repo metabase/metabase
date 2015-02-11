@@ -8,11 +8,11 @@
    :body "Not found."})
 
 (defn my-mock-api-fn [_]
-  (with-or-404 (*current-user*)
-    {:status 200
-     :body (*current-user*)}))
+  (check-404 (*current-user*))
+  {:status 200
+   :body (*current-user*)})
 
-; check that with-or-404 executes body if TEST is true
+; check that `check-404` doesn't throw an exception if TEST is true
 (expect {:status 200
          :body "Cam Saul"}
   (binding [*current-user* (constantly "Cam Saul")]
@@ -22,33 +22,33 @@
 (expect four-oh-four
   (my-mock-api-fn nil))
 
-;;let-or-404 should return nil if test fails
+;;let-404 should return nil if test fails
 (expect four-oh-four
-  (let-or-404 [user nil]
+  (let-404 [user nil]
     {:user user}))
 
-;; otherwise let-or-404 should bind as expected
+;; otherwise let-404 should bind as expected
 (expect {:user {:name "Cam"}}
-  (let-or-404 [user {:name "Cam"}]
+  (let-404 [user {:name "Cam"}]
     {:user user}))
 
 ;; test the 404 thread versions
 
 (expect four-oh-four
-  (or-404-> nil
-    (- 100)))
+  (->404 nil
+         (- 100)))
 
 (expect -99
-  (or-404-> 1
-    (- 100)))
+  (->404 1
+         (- 100)))
 
 (expect four-oh-four
-  (or-404->> nil
-    (- 100)))
+  (->>404 nil
+          (- 100)))
 
 (expect 99
-  (or-404->> 1
-    (- 100)))
+  (->>404 1
+          (- 100)))
 
 
 (defmacro expect-expansion
@@ -95,8 +95,8 @@
    (def GET_:id
      (GET "/:id" [id]
        (clojure.core/-> (metabase.api.common/auto-parse [id]
-                          (or-404-> (sel :one Card :id id)))
+                          (->404 (sel :one Card :id id)))
                         metabase.api.common/wrap-response-if-needed)))
      (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
  (defendpoint GET "/:id" [id]
-   (or-404-> (sel :one Card :id id))))
+   (->404 (sel :one Card :id id))))
