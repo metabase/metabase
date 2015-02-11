@@ -12,7 +12,8 @@
       (hydrate :creator)))
 
 (defendpoint GET "/:id" [id]
-  (or-404-> (sel :one Card :id id)))
+  (or-404-> (sel :one Card :id id)
+    (hydrate :can_read :can_write)))
 
 (defendpoint DELETE "/:id" [id]
   ;; TODO - permissions check (!)
