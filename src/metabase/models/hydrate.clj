@@ -1,6 +1,7 @@
 (ns metabase.models.hydrate
   (:require [clojure.data.json :as json]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.db :refer [sel]]))
 
 (declare hydrate
          hydrate-one
@@ -59,3 +60,21 @@
                        result)]
         (if (empty? rest-keys) result                                               ; if there are remaining keys recurse to realize those
             (recur result rest-keys)))))
+
+(defn simple-batched-hydrate
+  "Similiar in functionality to `hydrate`, but instead aggregates the values of SOURCE-KEY for all RESULTS,
+   does a single select, and maps the corresponding objects to DEST-KEY.
+
+   It is assumed that SOURCE-KEY is a foregin key to a field named `:id` in ENTITY."
+  [results entity source-key dest-key]
+  (let [ids (->> (map source-key results)
+                 set)
+        objs (->> (eval `(sel :many ~entity :id ~(vector 'in ids)))
+                  (map (fn [obj]
+                         {(:id obj) obj}))
+                  (reduce merge {}))]
+    (->> results
+         (map (fn [result]
+                (let [source-id (result source-key)
+                      obj (objs source-id)]
+                  (assoc result dest-key obj)))))))

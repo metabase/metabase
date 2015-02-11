@@ -8,11 +8,5 @@
   (->> (select-keys m keys)
        (filter-vals identity)))
 
-(defn apply-kwargs
-  "Like `apply`, but takes a map as the last argument, and applies its key-value pairs as keyword args.
-
-  `(apply-kwargs assoc {} {:c 3 :d 4}) -> (apply assoc {} :c 3 :d 4)`"
-  [fn & args]
-  (apply fn (concat (butlast args) (->> (last args)
-                                        (apply vector)
-                                        (reduce concat)))))
+;; looking for `apply-kwargs`?
+;; turns out `medley.core/mapply` does the same thingx

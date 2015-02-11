@@ -4,7 +4,8 @@
             [korma.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer [hydrate]]
+            (metabase.models [hydrate :refer :all]
+                             [database :refer [Database]]
                              [table :refer [Table]])))
 
 (defendpoint GET "/:id/query_metadata" [id]
@@ -12,12 +13,10 @@
     (hydrate :db :fields)))
 
 (defendpoint GET "/" [org]
-  (let [dbs (->> (sel :many Database :organization_id org)    ; create dict of db_id -> db
-                 (mapcat (fn [db] [(:id db) db]))
-                 (apply assoc {}))
-        db-ids (keys dbs)]
-    (->> (sel :many Table :db_id [in db-ids] (order :name :ASC))
-         (map (fn [table]                                      ; reduce the number of DB calls by setting `:database` for each Table by pulling from `dbs` above
-                (assoc table :db (dbs (:db_id table))))))))
+  (let [db-ids (->> (sel :many [Database :id] :organization_id org)
+                    (map :id))]
+    (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
+        (simple-batched-hydrate Database :db_id :db))))
+
 
 (define-routes)
