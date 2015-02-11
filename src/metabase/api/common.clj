@@ -87,6 +87,14 @@
 ;;; GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
+;; GENERIC 400 RESPONSE HELPERS
+;; If you can't be bothered to write a custom error message
+(def generic-400 [400 "Invalid Request."])
+(defn     check-400 [test]    (check test generic-400))
+(defmacro let-400   [& args] `(api-let   ~generic-400 ~@args))
+(defmacro ->400     [& args] `(api->     ~generic-400 ~@args))
+(defmacro ->>400    [& args] `(api->>    ~generic-400 ~@args))
+
 ;; GENERIC 404 RESPONSE HELPERS
 (def generic-404 [404 "Not found."])
 (defn     check-404 [test]    (check test generic-404))
