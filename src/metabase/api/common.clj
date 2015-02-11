@@ -59,13 +59,6 @@
         {:status 200
          :body response})))
 
-(defmacro defapi
-  "Define an API function that implicitly calls wrap-response-if-needed."
-  [& forms]
-  (let [[forms last-form] [(butlast forms) (last forms)]]
-    `(defn ~@forms
-       (-> ~last-form
-           wrap-response-if-needed))))
 
 (defn route-fn-name
   "Generate a symbol suitable for use as the name of an API endpoint fn.

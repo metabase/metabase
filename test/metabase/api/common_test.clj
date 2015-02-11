@@ -50,23 +50,6 @@
   (or-404->> 1
     (- 100)))
 
-;; test that functions created with defapi automatically wrap responses if needed
-(defapi my-fn []
-  {:a 100})
-
-(expect {:status 200
-         :body {:a 100}}
-  (my-fn))
-
-;; test that they don't wrap responses if you wrap them yourself
-(defapi my-fn2 []
-  {:status 404
-   :body {:status "Not found."}})
-
-(expect {:status 404
-         :body {:status "Not found."}}
-  (my-fn2))
-
 
 (defmacro expect-expansion
   "Helper to test that a macro expands the way we expect;
