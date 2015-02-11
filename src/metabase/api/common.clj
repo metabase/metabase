@@ -12,8 +12,6 @@
   "Memoized fn that returns user (or nil) associated with the current API call."
   (constantly nil)) ; default binding is fn that always returns nil
 
-(defmacro with-or-404
-  "Evaluate BODY if TEST is not-nil. Otherwise return a 404.
 (defmacro org-perms-case
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID."
   [org-id & body]
@@ -27,60 +25,59 @@
   (throw ^metabase.api.exception.APIException (metabase.api.exception.APIException. ^Integer (int status) message)))
 
 
-   `(with-or-404 (*current-user*)
+;;; CONDITIONAL RESPONSE MACROS
+
+;; These all work exactly like the corresponding Clojure versions but take an additional arg at the beginning called RESPONSE-PAIR.
+;; RESPONSE-PAIR is of the form `[status-code message]`.
+;; ex.
+;; `(when condition ...) -> (api-when [500 \"Not OK!\"] condition ...)`"
+
+(defmacro api-when
+  "Evaluate BODY if TEST is truthy. Otherwise return response with status CODE and MESSAGE.
+
+   `(api-when [501 \"Not allowed!\"] @(:can_write card)
       ...)`"
-  [test & body]
-  `(if-not ~test
-     {:status 404
-      :body "Not found."} ; TODO - let this message be customizable ?
-     (do ~@body)))
+  [[code message] test & body]
+  `(do (when-not ~test (api-throw ~code ~message))
+       ~@body))
 
-(defmacro let-or-404
-  "If TEST is true, bind it to BINDING and evaluate BODY. Otherwise return a 404.
+(defmacro api-let
+  "If TEST is true, bind it to BINDING and evaluate BODY.
 
-  `(let-or-404 [user (*current-user*)]
+  `(api-let [404 \"Not found.\"] [user (*current-user*)]
      (:id user))`"
-  [[binding test] & body]
+  [response-pair [binding test] & body]
   `(let [~binding ~test]
-     (with-or-404 ~binding
+     (api-when ~response-pair ~binding
        ~@body)))
 
-(defmacro or-404->
+(defmacro api->
   "If TEST is true, thread the result using `->` through BODY.
 
-  `(or-404-> (*current-user*)
+  `(api-> [404 \"Not found\"] (*current-user*)
      :id)`"
-  [test & body]
-  `(let-or-404 [result# ~test]
-     (-> result#
-         ~@body)))
+  [response-pair test & body]
+  `(api-let ~response-pair [result# ~test]
+            (-> result#
+                ~@body)))
 
-(defmacro or-404->>
-  "Like `or-404->`, but threads result using `->>`."
-  [test & body]
-  `(let-or-404 [result# ~test]
-     (->> result#
-          ~@body)))
+(defmacro api->>
+  "Like `api->`, but threads result using `->>`."
+  [response-pair test & body]
+  `(api-let ~response-pair [result# ~test]
+                    (->> result#
+                         ~@body)))
 
-(defn wrap-response-if-needed
-  "If RESPONSE isn't already a map with keys :status and :body, wrap it in one (using status 200)."
-  [response]
-  (letfn [(is-wrapped? [resp] (and (map? resp)
-                                   (:status resp)
-                                   (:body resp)))]
-    (if (is-wrapped? response) response
-        {:status 200
-         :body response})))
+;; 404 versions are basically the same as versions above but with RESPONSE-PAIR already bound
+;; TODO - should rename these to be consistent with the `api-` versions.
+(def r404 [404 "Not found."])
+(defmacro with-or-404 [& args] `(api-when ~r404 ~@args))
+(defmacro let-or-404  [& args] `(api-let  ~r404 ~@args))
+(defmacro or-404->    [& args] `(api->    ~r404 ~@args))
+(defmacro or-404->>   [& args] `(api->>   ~r404 ~@args))
 
 
-(defn route-fn-name
-  "Generate a symbol suitable for use as the name of an API endpoint fn.
-   Name is just METHOD + ROUTE with slashes replaced by underscores.
-   `(route-fn-name GET \"/:id\") -> GET_:id`"
-  [method route]
-  (-> (str (name method) route)
-      (^String .replace "/" "_")
-      symbol))
+;;; DEFENDPOINT AND RELATED FUNCTIONS
 
 (def ^:dynamic *auto-parse-types*
   "Map of symbol -> parse-fn.

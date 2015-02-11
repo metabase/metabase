@@ -16,8 +16,9 @@
     (hydrate :can_read :can_write)))
 
 (defendpoint DELETE "/:id" [id]
-  ;; TODO - permissions check (!)
-  (del Card :id id))
+  (let-or-404 [card (sel :one Card :id id)]
+    (api-when [400 "You don't have permissions to delete this Card."] @(:can_write card)
+              (del Card :id id))))
 
 (defendpoint GET "/:id/favorite" [id]
   {:favorite (boolean (some->> *current-user-id*
