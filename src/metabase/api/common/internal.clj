@@ -1,12 +1,12 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
-    (:import com.metabase.corvus.api.APIException))
+    (:import com.metabase.corvus.api.ApiException))
 
 (defmacro catch-api-exceptions
-  "Execute BODY, and if an `APIException` is thrown, return the appropriate HTTP response."
+  "Execute BODY, and if an `ApiException` is thrown, return the appropriate HTTP response."
   [& body]
   `(try ~@body
-        (catch APIException e#
+        (catch ApiException e#
           {:status (.getStatusCode e#)
            :body (.getMessage e#)})))
 

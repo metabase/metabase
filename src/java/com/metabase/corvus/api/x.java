@@ -1,10 +1,10 @@
 package com.metabase.corvus.api;
 
-public class APIException extends Exception {
+public class ApiException extends Exception {
 
     private final Integer statusCode;
 
-    public APIException(Integer statusCode, String message) {
+    public ApiException(Integer statusCode, String message) {
 	super(message);
 	this.statusCode = statusCode;
     }

@@ -4,7 +4,7 @@
             [medley.core :refer :all]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer [sel-fn]])
-  (:import com.metabase.corvus.api.APIException))
+  (:import com.metabase.corvus.api.ApiException))
 
 
 ;;; DYNAMICALLY BOUND REQUEST VARIABLES
@@ -39,12 +39,12 @@
 
 (defn check
   "Assertion mechanism for use inside API functions.
-   Checks that TEST is true, or throws an `APIException` with STATUS-CODE and MESSAGE.
+   Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
 
    This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
   ([test [status-code ^String message]]
    (when-not test
-     (throw (APIException. (int status-code) message))))
+     (throw (ApiException. (int status-code) message))))
   ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
    (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
 
