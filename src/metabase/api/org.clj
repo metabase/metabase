@@ -2,76 +2,116 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.org :refer [Org]]))
-
-(def org-list
-  (GET "/" request
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-post
-  (POST "/" [:as {body :body}]
-        ;; TODO - implementation
-        {:status 200
-         :body {}}))
-
-(def org-get
-  (GET "/:org-id" [org-id]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(defendpoint GET "/slug/:org-slug" [org-slug]
-  (or-404-> (sel :one Org :slug org-slug)))
-
-(def org-update
-  (PUT "/:org-id" [org-id :as {body :body}]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-members-list
-  (GET "/:org-id/members" [org-id]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-members-create
-  (POST "/:org-id/members" [org-id :as {body :body}]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-members-adduser
-  (GET "/:org-id/members/:user-id" [org-id user-id]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-members-updateuser
-  (PUT "/:org-id/members/:user-id" [org-id user-id :as {body :body}]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
-
-(def org-members-removeuser
-  (DELETE "/:org-id/members/:user-id" [org-id user-id]
-       ;; TODO - implementation
-       {:status 200
-        :body {}}))
+            [metabase.models.hydrate :refer :all]
+            (metabase.models [org :refer [Org]]
+                             [user :refer [User]]
+                             [org-perm :refer [OrgPerm]])))
 
 
-(define-routes routes
-  ;; TODO - this feels bleh.  is it better to put the actual route data here
-  ;;        and just have the endpoints be plain functions?
-  ;;        best way to automate building this list?
-  org-list
-  org-post
-  org-get
-  org-update
-  org-members-list
-  org-members-create
-  org-members-adduser
-  org-members-updateuser
-  org-members-removeuser)
+(defendpoint GET "/" []
+  ;; TODO - permissions check
+  (sel :many Org))
+
+
+(defendpoint POST "/" [:as {body :body}]
+  ;; TODO - implementation
+  {:status 200
+   :body {}})
+
+
+(defendpoint GET "/:id" [id]
+  ;; TODO - permissions check
+  (or-404-> (sel :one Org :id id)))
+
+
+(defendpoint GET "/slug/:slug" [slug]
+  ;; TODO: permissions check
+  (or-404-> (sel :one Org :slug slug)))
+
+
+(defendpoint PUT "/:id" [id :as {body :body}]
+  ;; TODO - permissions check
+  ;; TODO - validations (email address must be unique)
+  (let-or-404 [org (sel :one Org :id id)]
+    ;; TODO - how can we pass a useful error message in the 500 response on error?
+    (upd Org id
+      ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
+      :name (get body :name (:name org))
+      :description (get body :description (:description org))
+      :logo_url (get body :logo_url (:logo_url org)))
+    (sel :one Org :id id)))
+
+
+(defn grant-org-perm
+  "Grants permission for given User on Org.  Creates record if needed, otherwise updates existing record."
+  [user-id org-id is-admin]
+  (let [perm (sel :one OrgPerm :user_id user-id :organization_id org-id)]
+    (if-not perm
+      (ins OrgPerm
+        :user_id user-id
+        :organization_id org-id
+        :admin is-admin)
+      (upd OrgPerm (:id perm)
+        :admin is-admin))))
+
+
+(defendpoint GET "/:id/members" [id]
+  ;; TODO - permissions check
+  (with-or-404 (sel :one Org :id id)
+    (-> (sel :many OrgPerm :organization_id id)
+      ;; TODO - we need a way to remove :organization_id and user_id from this output
+      (hydrate :user :organization))))
+
+
+(defendpoint POST "/:id/members" [id :as {body :body}]
+  ;; TODO - permissions check
+  ; find user with existing email - if exists then grant perm
+  (let-or-404 [org (sel :one Org :id id)]
+    (let [user (sel :one User :email (:email body))]
+      (if-not user
+        (let [new-user-id (ins User
+                            :email (:email body)
+                            :first_name (:first_name body)
+                            :last_name (:last_name body)
+                            :password (str (java.util.UUID/randomUUID))
+                            :date_joined (new java.util.Date)
+                            :is_staff true
+                            :is_active true
+                            :is_superuser false)]
+          (grant-org-perm (:id new-user-id) (:id org) (:admin body))
+          ;; TODO - send signup email
+          (-> (sel :one OrgPerm :user_id (:id new-user-id) :organization_id (:id org))
+            (hydrate :user :organization)))
+        (do
+          (grant-org-perm (:id user) (:id org) (:admin body))
+          (-> (sel :one OrgPerm :user_id (:id user) :organization_id (:id org))
+              (hydrate :user :organization)))))))
+
+
+(defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
+  ;; TODO - permissions check
+  (let-or-404 [org (sel :one Org :id id)]
+    (let-or-404 [user (sel :one User :id user-id)]
+      (grant-org-perm user-id id (or (:admin body) false))
+      {:success true})))
+
+
+(defendpoint PUT "/:id/members/:user-id" [id user-id :as {body :body}]
+  ;; TODO - permissions check
+  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
+  (let-or-404 [org (sel :one Org :id id)]
+    (let-or-404 [user (sel :one User :id user-id)]
+      (grant-org-perm user-id id (or (:admin body) false))
+      {:success true})))
+
+
+(defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
+  ;; TODO - permissions check
+  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
+  (let-or-404 [org (sel :one Org :id id)]
+    (let-or-404 [user (sel :one User :id user-id)]
+      (del OrgPerm :user_id user-id :organization_id id)
+      {:success true})))
+
+
+(define-routes)
