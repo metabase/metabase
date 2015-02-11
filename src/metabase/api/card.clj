@@ -12,11 +12,13 @@
       (hydrate :creator)))
 
 (defendpoint GET "/:id" [id]
-  (or-404-> (sel :one Card :id id)))
+  (->404 (sel :one Card :id id)
+         (hydrate :can_read :can_write)))
 
 (defendpoint DELETE "/:id" [id]
-  ;; TODO - permissions check (!)
-  (del Card :id id))
+  (let-404 [card (sel :one Card :id id)]
+    (check-403 @(:can_write card))
+    (del Card :id id)))
 
 (defendpoint GET "/:id/favorite" [id]
   {:favorite (boolean (some->> *current-user-id*

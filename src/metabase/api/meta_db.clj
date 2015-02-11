@@ -11,8 +11,8 @@
   (sel :many Database :organization_id org))
 
 (defendpoint GET "/:id" [id]
-  (or-404-> (sel :one Database :id id)
-    (hydrate :organization)))
+  (->404 (sel :one Database :id id)
+         (hydrate :organization)))
 
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id))
