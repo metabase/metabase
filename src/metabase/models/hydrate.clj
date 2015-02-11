@@ -1,6 +1,7 @@
 (ns metabase.models.hydrate
   (:require [clojure.data.json :as json]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.db :refer [sel]]))
 
 (declare hydrate
          hydrate-one
