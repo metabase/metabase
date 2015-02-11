@@ -10,14 +10,14 @@
 
 (defn my-mock-api-fn [_]
   (catch-api-exceptions
-   (check-404 (*current-user*))
+   (check-404 @*current-user*)
    {:status 200
-    :body (*current-user*)}))
+    :body @*current-user*}))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
 (expect {:status 200
          :body "Cam Saul"}
-  (binding [*current-user* (constantly "Cam Saul")]
+  (binding [*current-user* (atom "Cam Saul")]
     (my-mock-api-fn nil)))
 
 ; check that 404 is returned otherwise

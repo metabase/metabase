@@ -23,7 +23,7 @@
                     :body (select-keys user [:id :email :first_name :last_name :last_login :is_superuser])})))
 
 (defendpoint GET "/current" []
-  (->404 (*current-user*)
+  (->404 @*current-user*
          (hydrate [:org_perms :organization])))
 
 (def user-update
