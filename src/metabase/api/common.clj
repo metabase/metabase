@@ -14,24 +14,25 @@
   "Int ID or nil of user associated with current API call."
   nil)
 
-;; TODO - This would probably be slightly nicer if we rewrote it as a delay
 (def ^:dynamic *current-user*
-  "Memoized fn that returns user (or nil) associated with the current API call."
-  (constantly nil)) ; default binding is fn that always returns nil
+  "Delay that returns the `User` (or nil) associated with the current API call.
+   ex. `@*current-user*`"
+  (atom nil)) ; default binding is just something that will return nil when dereferenced
 
+;; TODO - move this to something like `metabase.util.debug`
 (defmacro with-current-user
   "Primarily for debugging purposes. Evaulates BODY as if *current-user* was the User with USER-ID."
   [user-id & body]
   `(binding [*current-user-id* ~user-id
-             *current-user* (sel-fn :one "metabase.models.user/User" :id ~user-id)]
+             *current-user* (delay ((sel-fn :one "metabase.models.user/User" :id ~user-id))) ]
      ~@body))
 
 (defmacro org-perms-case
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
    Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
-  `(case (when (*current-user*)
-           ((:perms-for-org (*current-user*)) ~org-id))
+  `(case (when @*current-user*
+           ((:perms-for-org @*current-user*) ~org-id))
      ~@body))
 
 
@@ -57,7 +58,7 @@
 (defmacro api-let
   "If TEST is true, bind it to BINDING and evaluate BODY.
 
-  `(api-let [404 \"Not found.\"] [user (*current-user*)]
+  `(api-let [404 \"Not found.\"] [user @*current-user*]
      (:id user))`"
   [response-pair [binding test] & body]
   `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
@@ -68,7 +69,7 @@
 (defmacro api->
   "If TEST is true, thread the result using `->` through BODY.
 
-  `(api-> [404 \"Not found\"] (*current-user*)
+  `(api-> [404 \"Not found\"] @*current-user*
      :id)`"
   [response-pair test & body]
   `(api-let ~response-pair [result# ~test]
