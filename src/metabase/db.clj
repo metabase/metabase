@@ -6,7 +6,8 @@
             [environ.core :refer [env]]
             [korma.core :refer :all]
             [korma.db :refer :all]
-            [metabase.config :refer [app-defaults]]))
+            [metabase.config :refer [app-defaults]]
+            [metabase.db.internal :refer :all]))
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
@@ -68,44 +69,41 @@
 (defmethod default-fields :default [_]
   nil) ; by default return nil, which we'll take to mean "everything"
 
-(defn resolve-symbol-with-name
-  "Return the value of symbol with SYMBOL-NAME.
-   SYMBOL-NAME is a fully-qualified string name.
-   The relevant namespace will be loaded if needed.
-   `(resolve-symbol-with-name \"metabase.models.user/User\")`"
-  [symbol-name]
-  (let [symb (symbol symbol-name)]
-    @(or (resolve symb)
-         (let [ns-name (first (^String .split symbol-name "/"))]
-           (require (symbol ns-name))
-           (resolve symb)))))
-
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
 
-  `sel` returns either :one or :many objects.
+  ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
 
-   `(sel :one User :id 1)          -> returns the User (or nil) whose id is 1`
-   `(sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1`
+  `(sel :one User :id 1)          -> returns the User (or nil) whose id is 1`
+  `(sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1`
 
-   By default, `sel` will return `default-fields` for `entity` (or all fields if `default-fields` isn't specified),
-   but you can override this behavior by passing `entity` as a vector like `[entity & field-keys]`.
+  ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
+  If just an entity is passed, `sel` will return `default-fields` for ENTITY.
+  Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
-   `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1"
-  [one-or-many entity & kwargs]
-  (let [quantity-fn (case one-or-many
-                      :one first
-                      :many identity)
-        [entity & field-keys] (if (vector? entity) entity
-                                  [entity])
-        field-keys (or field-keys
-                       (default-fields (eval entity)))]
-    `(->> (select ~entity
-                  (where ~(apply assoc {} kwargs))
-                  ~@(when field-keys
-                      `[(fields ~@field-keys)]))
-          (map (partial post-select ~entity))
-          ~quantity-fn)))
+  `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
+
+  FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
+   clauses such as `order`, which are passed directly.
+
+  `(sel :many Table :db_id 1)                    -> (select User (where {:id 1}))`
+  `(sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))`"
+  [one-or-many entity & forms]
+  `(->> (-sel-select ~entity ~@forms)
+        (map (partial post-select ~entity))
+        ~(case one-or-many
+           :one 'first
+           :many 'identity)))
+
+(defmacro -sel-select
+  "Internal macro used by `sel` (don't call this directly).
+   Generates the korma `select` form."
+  [entity & forms]
+  (let [[entity field-keys] (entity-field-keys default-fields entity)
+        forms (->> forms
+                   sel-apply-kwargs
+                   (sel-apply-fields field-keys))]
+    `(select ~entity ~@forms)))
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`.
@@ -116,11 +114,11 @@
 
    `(sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called`
    `(sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1`"
-  [one-or-many entity & kwargs]
+  [one-or-many entity & forms]
   `(memoize
     (fn []
       ~@(if (string? entity)
           `((require '~(-> entity (^String .split "/") first symbol)) ; require the namespace
             (let [entity# (symbol ~entity)]
-              (eval `(sel ~~one-or-many ~entity# ~~@kwargs))))
-          `((sel ~one-or-many ~entity ~@kwargs))))))
+              (eval `(sel ~~one-or-many ~entity# ~~@forms))))
+          `((sel ~one-or-many ~entity ~@forms))))))
