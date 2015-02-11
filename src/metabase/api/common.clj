@@ -2,7 +2,6 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [compojure.core :refer [defroutes]]
             [medley.core :refer :all]
-            metabase.api.exception
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer [sel-fn]])
   (:import com.metabase.corvus.api.APIException))
