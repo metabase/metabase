@@ -24,7 +24,7 @@
 
 (defendpoint GET "/current" []
   (->404 (*current-user*)
-    (hydrate [:org_perms :organization])))
+         (hydrate [:org_perms :organization])))
 
 (def user-update
   (PUT "/:user-id" [user-id :as {body :body}]
