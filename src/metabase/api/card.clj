@@ -1,11 +1,5 @@
-(ns metabase.api.card
-  (:require [compojure.core :refer [GET DELETE]]
-            [korma.core :refer :all]
-            [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer :all]
-                             [card-favorite :refer :all])))
+(ns metabase.api.card)
+(metabase.require/api)
 
 (defendpoint GET "/" [org f] ; TODO - need to do something with the `f` param
   (-> (sel :many Card :organization_id org (order :name :ASC))

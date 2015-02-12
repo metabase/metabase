@@ -1,7 +1,5 @@
-(ns metabase.api.session
-  (:require [metabase.api.common :refer :all]
-            [compojure.core :refer [defroutes GET POST]]))
-
+(ns metabase.api.session)
+(metabase.require/api)
 
 (def session-login
   (POST "/login" [:as {body :body}]

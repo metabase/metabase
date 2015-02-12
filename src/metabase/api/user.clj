@@ -1,10 +1,5 @@
-(ns metabase.api.user
-  (:require [metabase.api.common :refer :all]
-            [compojure.core :refer [defroutes GET PUT]]
-            [metabase.db :refer [sel upd]]
-            [metabase.models.hydrate :refer [hydrate]]
-            [metabase.models.user :refer [User]]))
-
+(ns metabase.api.user)
+(metabase.require/api)
 
 (def user-list
   (GET "/" []
