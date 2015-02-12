@@ -20,7 +20,6 @@
   (sel :many User :is_active true))
 
 (defendpoint GET "/current" []
-  (println "CURRENT USER: " @*current-user*)
   (->404 @*current-user*
          (hydrate [:org_perms :organization])))
 
