@@ -44,7 +44,7 @@
 
 (defn grant-org-perm
   "Grants permission for given User on Org.  Creates record if needed, otherwise updates existing record."
-  [user-id org-id is-admin]
+  [org-id user-id is-admin]
   (let [perm (sel :one OrgPerm :user_id user-id :organization_id org-id)]
     (if-not perm
       (ins OrgPerm
@@ -57,7 +57,7 @@
 
 (defendpoint GET "/:id/members" [id]
   ;; TODO - permissions check
-  (with-or-404 (sel :one Org :id id)
+  (let-404 [org (sel :one Org :id id)]
     (-> (sel :many OrgPerm :organization_id id)
       ;; TODO - we need a way to remove :organization_id and user_id from this output
       (hydrate :user :organization))))
@@ -78,12 +78,12 @@
                             :is_staff true
                             :is_active true
                             :is_superuser false)]
-          (grant-org-perm (:id new-user-id) (:id org) (:admin body))
+          (grant-org-perm (:id org) (:id new-user-id) (:admin body))
           ;; TODO - send signup email
           (-> (sel :one OrgPerm :user_id (:id new-user-id) :organization_id (:id org))
             (hydrate :user :organization)))
         (do
-          (grant-org-perm (:id user) (:id org) (:admin body))
+          (grant-org-perm (:id org) (:id user) (:admin body))
           (-> (sel :one OrgPerm :user_id (:id user) :organization_id (:id org))
               (hydrate :user :organization)))))))
 
@@ -92,7 +92,7 @@
   ;; TODO - permissions check
   (let-404 [org (sel :one Org :id id)]
     (let-404 [user (sel :one User :id user-id)]
-      (grant-org-perm user-id id (or (:admin body) false))
+      (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
@@ -101,7 +101,7 @@
   ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
   (let-404 [org (sel :one Org :id id)]
     (let-404 [user (sel :one User :id user-id)]
-      (grant-org-perm user-id id (or (:admin body) false))
+      (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
