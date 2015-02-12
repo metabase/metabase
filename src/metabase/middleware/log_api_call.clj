@@ -12,11 +12,14 @@
         log-request? request
         log-response? response]
     (fn [request]
-      (let [response (handler request)]
-        (when (api-call? request)
-          (when log-request? (log-request request)) ;(log-request request)
-          (when log-response? (pprint response)))
-        response))))
+      (if-not (api-call? request) (handler request)
+              (do
+                (when log-request?
+                  (log-request request))
+                (let [response (handler request)]
+                  (when log-response?
+                    (pprint response))
+                  response))))))
 
 (defn- api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -25,5 +28,7 @@
        (= (.substring uri 0 4) "/api")))
 
 (defn- log-request [{:keys [uri request-method params]}]
-  (println "\n" (.toUpperCase (name request-method)) uri)
-  (pprint params))
+  (println "\n----------------------------------------")
+  (println (.toUpperCase (name request-method)) uri)
+  (when-not (empty? params)
+    (pprint params)))

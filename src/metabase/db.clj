@@ -74,20 +74,20 @@
 
   ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
 
-  `(sel :one User :id 1)          -> returns the User (or nil) whose id is 1`
-  `(sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1`
+    (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
+    (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
   Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
-  `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1`
+    (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
   FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
    clauses such as `order`, which are passed directly.
 
-  `(sel :many Table :db_id 1)                    -> (select User (where {:id 1}))`
-  `(sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))`"
+    (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
+    (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
   `(->> (-sel-select ~entity ~@forms)
         (map (partial post-select ~entity))
@@ -112,13 +112,13 @@
    will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
    dependencies in the model files. This is slower, however, due to added runtime overhead.
 
-   `(sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called`
-   `(sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1`"
+     (sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called
+     (sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1"
   [one-or-many entity & forms]
   `(memoize
     (fn []
       ~@(if (string? entity)
-          `((require '~(-> entity (^String .split "/") first symbol)) ; require the namespace
+          `((require '~(-> ^String entity (.split "/") first symbol)) ; require the namespace
             (let [entity# (symbol ~entity)]
               (eval `(sel ~~one-or-many ~entity# ~~@forms))))
           `((sel ~one-or-many ~entity ~@forms))))))
