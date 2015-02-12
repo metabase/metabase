@@ -2,8 +2,12 @@
   "Middleware to make accessing user associated with a request easier."
   (:require [korma.core :refer :all]
             [metabase.db :refer [sel]]
-            [metabase.api.common :refer [*current-user-id* *current-user*]]
-            [metabase.models.user :refer [User]]))
+            [metabase.api.common :refer [*current-user* *current-user-id*]]
+            [metabase.models.user :refer [User current-user-fields]]))
+
+(defmacro sel-current-user [current-user-id]
+  `(sel :one [User ~@current-user-fields]
+        :id ~current-user-id))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
@@ -15,5 +19,5 @@
     (let [current-user-id 1] ; TODO - Placeholder value
          (binding [*current-user-id* current-user-id
                    *current-user* (if-not current-user-id (atom nil)
-                                          (delay (sel :one User :id current-user-id)))]
+                                          (delay (sel-current-user current-user-id)))]
            (handler request)))))

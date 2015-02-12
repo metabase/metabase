@@ -103,7 +103,8 @@
         forms (->> forms
                    sel-apply-kwargs
                    (sel-apply-fields field-keys))]
-    `(select ~entity ~@forms)))
+    `(do (println "DB CALL: " ~(str entity) " " ~(str forms))
+         (select ~entity ~@forms))))
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`.
@@ -122,3 +123,13 @@
             (let [entity# (symbol ~entity)]
               (eval `(sel ~~one-or-many ~entity# ~~@forms))))
           `((sel ~one-or-many ~entity ~@forms))))))
+
+;;
+(defmacro exists?
+  "Easy way to see if something exists in the db.
+   TODO: How can we disable the `post-select` functionality for this call.
+   TODO: Doesn't korma have an `exists` method?
+
+    (exists? User :id 100)"
+  [entity & forms]
+  `(boolean (sel :one [~entity :id] ~@forms)))

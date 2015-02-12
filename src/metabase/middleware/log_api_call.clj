@@ -16,7 +16,7 @@
               (do
                 (when log-request?
                   (log-request request))
-                (let [response (handler request)]
+                (let [response (time (handler request))]
                   (when log-response?
                     (pprint response))
                   response))))))

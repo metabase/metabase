@@ -6,8 +6,7 @@
             [metabase.db :refer [sel-fn]])
   (:import com.metabase.corvus.api.ApiException))
 
-
-;;; ## DYNAMICALLY BOUND REQUEST VARIABLES
+;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic *current-user-id*
@@ -18,6 +17,9 @@
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
+
+
+;;; ## GENERAL HELPER FNS / MACROS
 
 ;; TODO - move this to something like `metabase.util.debug`
 (defmacro with-current-user
@@ -48,6 +50,14 @@
      (throw (ApiException. (int status-code) message))))
   ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
    (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
+
+(defmacro require-params
+  "Checks that a list of params are non-nil or throws a 400."
+  [& params]
+  `(do
+     ~@(map (fn [param]
+              `(check ~param [400 ~(str "'" (name param) "' is a required param.")]))
+            params)))
 
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
@@ -121,38 +131,25 @@
 
 ;;; ## DEFENDPOINT AND RELATED FUNCTIONS
 
-(def ^:dynamic *auto-parse-types*
-  "Map of `symbol` -> `parse-fn`.
-   Symbols that should automatically be parsed by given functions when passed as parameters to the API."
-  {'id 'Integer/parseInt
-   'org 'Integer/parseInt})
-
-(defmacro auto-parse
-  "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `*auto-parse-types*`."
-  [args & body]
-  (let [let-forms (->> args
-                       (mapcat (fn [arg]
-                                 (if (contains? *auto-parse-types* arg) [arg (list (*auto-parse-types* arg) arg)])))
-                       (filter identity))]
-    `(let [~@let-forms]
-       ~@body)))
-
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
+   -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
    -  executes BODY inside a `try-catch` block that handles `ApiExceptions`
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form."
   [method route args & body]
-  (let [name (route-fn-name method route)]
+  (let [name (route-fn-name method route)
+        route (typify-route route)]
     `(do (def ~name
            (~method ~route ~args
-                    (-> (auto-parse ~args
-                          (catch-api-exceptions ~@body))
-                        wrap-response-if-needed)))
+                    (auto-parse ~args
+                      (catch-api-exceptions
+                        (-> (do ~@body)
+                            wrap-response-if-needed)))))
          (alter-meta! #'~name assoc :is-endpoint? true))))
 
 (defmacro define-routes
