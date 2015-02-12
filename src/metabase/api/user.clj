@@ -29,26 +29,24 @@
   ;; TODO - permissions check
   ;; TODO - validations (email address must be unique)
   (let-404 [user (sel :one User :id user-id)]
-    ;; TODO - how can we pass a useful error message in the 500 response on error?
-    (do
-     ;; TODO - is there a more idiomatic way to do this?  update row, then select it for output
-     (upd User user-id
-          ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
-          :email (get body :email (:email user))
-          :first_name (get body :first_name (:first_name user))
-          :last_name (get body :last_name (:last_name user)))
-     (let [updated-user (sel :one User :id user-id)]
-       (select-keys updated-user [:id :email :first_name :last_name :last_login :is_superuser])))))
+    (upd User user-id
+      :email (get body :email (:email user))
+      :first_name (get body :first_name (:first_name user))
+      :last_name (get body :last_name (:last_name user)))
+    (let [updated-user (sel :one User :id user-id)]
+      (select-keys updated-user [:id :email :first_name :last_name :last_login :is_superuser]))))
 
 
 (defendpoint PUT "/:user-id/password" [user-id :as {body :body}]
-  ;; TODO - password validation
-  ;; TODO - match old password against current one
-  (let-404 [user (sel :one User :id user-id)]
-    (upd User user-id
-         :password (get body :password))
-    (let [updated-user (sel :one User :id user-id)]
-      (select-keys updated-user [:id :email :first_name :last_name :last_login :is_superuser]))))
+  (if-not (and (:old_password body) (:password body))
+    {:status 400 :body "You must specifby both old_password and password"}
+    (let-404 [user (sel :one User :id user-id)]
+      ;; TODO - match old password against current one
+      ;; TODO - password encryption
+      (upd User user-id
+        :password (get body :password))
+      (let [updated-user (sel :one User :id user-id)]
+        (select-keys updated-user [:id :email :first_name :last_name :last_login :is_superuser])))))
 
 
 (define-routes)
