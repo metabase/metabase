@@ -21,18 +21,18 @@
 
 (defendpoint GET "/:id" [id]
   ;; TODO - permissions check
-  (or-404-> (sel :one Org :id id)))
+  (->404 (sel :one Org :id id)))
 
 
 (defendpoint GET "/slug/:slug" [slug]
   ;; TODO: permissions check
-  (or-404-> (sel :one Org :slug slug)))
+  (->404 (sel :one Org :slug slug)))
 
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   ;; TODO - permissions check
   ;; TODO - validations (email address must be unique)
-  (let-or-404 [org (sel :one Org :id id)]
+  (let-404 [org (sel :one Org :id id)]
     ;; TODO - how can we pass a useful error message in the 500 response on error?
     (upd Org id
       ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
@@ -66,7 +66,7 @@
 (defendpoint POST "/:id/members" [id :as {body :body}]
   ;; TODO - permissions check
   ; find user with existing email - if exists then grant perm
-  (let-or-404 [org (sel :one Org :id id)]
+  (let-404 [org (sel :one Org :id id)]
     (let [user (sel :one User :email (:email body))]
       (if-not user
         (let [new-user-id (ins User
@@ -90,8 +90,8 @@
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
   ;; TODO - permissions check
-  (let-or-404 [org (sel :one Org :id id)]
-    (let-or-404 [user (sel :one User :id user-id)]
+  (let-404 [org (sel :one Org :id id)]
+    (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm user-id id (or (:admin body) false))
       {:success true})))
 
@@ -99,8 +99,8 @@
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {body :body}]
   ;; TODO - permissions check
   ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-or-404 [org (sel :one Org :id id)]
-    (let-or-404 [user (sel :one User :id user-id)]
+  (let-404 [org (sel :one Org :id id)]
+    (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm user-id id (or (:admin body) false))
       {:success true})))
 
@@ -108,8 +108,8 @@
 (defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
   ;; TODO - permissions check
   ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-or-404 [org (sel :one Org :id id)]
-    (let-or-404 [user (sel :one User :id user-id)]
+  (let-404 [org (sel :one Org :id id)]
+    (let-404 [user (sel :one User :id user-id)]
       (del OrgPerm :user_id user-id :organization_id id)
       {:success true})))
 
