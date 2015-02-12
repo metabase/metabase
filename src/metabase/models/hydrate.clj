@@ -42,7 +42,9 @@
   (let [[k & sub-keys] (if (vector? k) k [k])
         hydration-fn (k object)]
     (if-not hydration-fn object
-            (let [hydrated-val (hydration-fn)
+            (let [hydrated-val (if (fn? hydration-fn) (hydration-fn)
+                                   (if (delay? hydration-fn) @hydration-fn
+                                       (throw (Exception. (str "Error: hydration-fn for '" k "' is not a function or delay")))))
                   hydrated-val (if sub-keys (apply hydrate hydrated-val sub-keys)
                                    hydrated-val)]
               (assoc object k hydrated-val)))))

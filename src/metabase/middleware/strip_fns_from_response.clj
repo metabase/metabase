@@ -15,5 +15,6 @@
   (if-not (coll? obj) obj
           (if-not (map? obj) (map strip-fns obj)
                   (->> obj
-                       (filter-vals #(and (not (fn? %))))
+                       (filter-vals #(and (not (fn? %))
+                                          (not (delay? %))))
                        (map-vals strip-fns)))))
