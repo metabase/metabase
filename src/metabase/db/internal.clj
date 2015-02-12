@@ -4,7 +4,8 @@
 
 (defn- pull-kwargs
   "Where FORMS is a sequence like `[:id 1 (limit 3)]`, return a map of kwarg pairs and sequence of remaining forms.
-   `(pull-kwargs [:id 1 (limit 3) (order :id :ASC]) -> [{:id 1} [(limit 3) (order :id ASC)]`"
+
+     (pull-kwargs [:id 1 (limit 3) (order :id :ASC]) -> [{:id 1} [(limit 3) (order :id ASC)]"
   ([forms]
    (pull-kwargs {} [] forms))
   ([kwargs-acc forms-acc [arg1 & rest-args]]

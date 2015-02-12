@@ -13,12 +13,12 @@
 
   Hydration simply evaluates functions associated with the keys you specify, e.g.
 
-   `(hydrate {:a (fn [] 100)} :a) -> {:a 100}`
+     (hydrate {:a (fn [] 100)} :a) -> {:a 100}
 
    You can also specify nested keys to do recursive hydration:
 
-   `(hydrate {:a (fn [] {:b (fn [] 20)})}
-             [:a :b]) -> {:a {:b 20}}`"
+     (hydrate {:a (fn [] {:b (fn [] 20)})}
+               [:a :b]) -> {:a {:b 20}}"
   [object & ks]
   (apply (if (map? object) hydrate-one
              hydrate-many)
