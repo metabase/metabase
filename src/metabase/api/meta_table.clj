@@ -1,13 +1,6 @@
 (ns metabase.api.meta-table
-  "/api/meta/table endpoints."
-  (:require [compojure.core :refer [GET]]
-            [korma.core :refer :all]
-            [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
-            (metabase.models [hydrate :refer :all]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])))
+  "/api/meta/table endpoints.")
+(metabase.require/api)
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Table :id id)

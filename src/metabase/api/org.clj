@@ -1,8 +1,5 @@
-(ns metabase.api.org
-  (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
-            [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
-            [metabase.models.org :refer [Org]]))
+(ns metabase.api.org)
+(metabase.require/api)
 
 (def org-list
   (GET "/" request

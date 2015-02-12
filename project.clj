@@ -43,6 +43,7 @@
             ]
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
+  :aot [metabase.require]
   :target-path "target/%s"
   :ring {:handler metabase.core/app}
   :profiles {:dev {:dependencies [[expectations "2.0.12"]   ; unit tests
