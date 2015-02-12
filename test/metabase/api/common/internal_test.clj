@@ -113,10 +113,10 @@
 
 ;; TESTS FOR LET-FORM-FOR-ARG
 
-(expect '[id (when id (Integer/parseInt id))]
+(expect '[id (clojure.core/when id (Integer/parseInt id))]
   (let-form-for-arg 'id))
 
-(expect '[org_id (when org_id (Integer/parseInt org_id))]
+(expect '[org_id (clojure.core/when org_id (Integer/parseInt org_id))]
   (let-form-for-arg 'org_id))
 
 (expect nil
