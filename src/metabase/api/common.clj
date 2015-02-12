@@ -51,6 +51,14 @@
   ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
    (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
 
+(defmacro require-params
+  "Checks that a list of params are non-nil or throws a 400."
+  [& params]
+  `(do
+     ~@(map (fn [param]
+              `(check ~param [400 ~(str "'" (name param) "' is a required param.")]))
+            params)))
+
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
 ;; RESPONSE-PAIR is of the form `[status-code message]`.

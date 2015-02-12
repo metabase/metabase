@@ -1,7 +1,6 @@
 (ns metabase.api.common.internal-test
   (:require [expectations :refer :all]
-            (metabase.api.common [dynamic :refer :all]
-                                 [internal :refer :all])))
+            (metabase.api.common [internal :refer :all])))
 
 ;;; TESTS FOR ROUTE-FN-NAME
 
@@ -108,16 +107,16 @@
   (no-regex (typify-route "/:id/tables/:card-id")))
 
 ;; don't try to typify route that's already typified
-(expect ["/:id/:crazy-id" :crazy-id #"[0-9]+"]
-  (no-regex (typify-route ["/:id/:crazy-id" :crazy-id #"[0-9]+"])))
+(expect ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
+  (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#[0-9]+"])))
 
 
 ;; TESTS FOR LET-FORM-FOR-ARG
 
-(expect '[id (Integer/parseInt id)]
+(expect '[id (when id (Integer/parseInt id))]
   (let-form-for-arg 'id))
 
-(expect '[org_id (Integer/parseInt org_id)]
+(expect '[org_id (when org_id (Integer/parseInt org_id))]
   (let-form-for-arg 'org_id))
 
 (expect nil
@@ -129,3 +128,5 @@
 
 (expect nil
   (let-form-for-arg '{body :body}))
+
+;; Tests for AUTO-PARSE presently live in `metabase.api.common-test`

@@ -96,11 +96,11 @@
   that can be used in a `let` form."
   [arg-symbol]
   (when (symbol? arg-symbol)
-    (some-> (arg-type arg-symbol)            ; :int
-            *auto-parse-types*               ; {:parser ... }
-            :parser                          ; Integer/parseInt
-            (list arg-symbol)                ; (Integer/parseInt id)
-            ((partial vector arg-symbol))))) ; [id (Integer/parseInt id)]
+    (some-> (arg-type arg-symbol)                                    ; :int
+            *auto-parse-types*                                       ; {:parser ... }
+            :parser                                                  ; Integer/parseInt
+            ((fn [parser] `(when ~arg-symbol (~parser ~arg-symbol)))) ; (when id (Integer/parseInt id))
+            ((partial vector arg-symbol)))))                         ; [id (Integer/parseInt id)]
 
 (defmacro auto-parse
   "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `auto-*parse-types*`."
