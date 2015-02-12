@@ -1,7 +1,8 @@
 (ns metabase.api.common-test
   (:require [expectations :refer :all]
             [metabase.api.common :refer :all]
-            [metabase.api.common.internal :refer [catch-api-exceptions]]))
+            [metabase.api.common.internal :refer :all]
+            [metabase.util :refer [regex= regex?]]))
 
 (def four-oh-four
   "The expected format of a 404 response."
@@ -69,43 +70,45 @@
 
 
 ;;; TESTS FOR AUTO-PARSE
-(binding [*auto-parse-types* {'id 'Integer/parseInt
-                              'org_id 'Integer/parseInt}]
 
-  ;; when auto-parse gets an args form where arg is present in *autoparse-types*
-  ;; the appropriate let binding should be generated
-  (expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
-                    (auto-parse [id] 'body))
+;; when auto-parse gets an args form where arg is present in *autoparse-types*
+;; the appropriate let binding should be generated
+(expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
+                  (auto-parse [id] 'body))
 
-  ;; params not in *autoparse-types* should be ignored
-  (expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
-                    (auto-parse [id some-other-param] 'body))
+;; params not in *autoparse-types* should be ignored
+(expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
+                  (auto-parse [id some-other-param] 'body))
 
-  ;; make sure multiple autoparse params work correctly
-  (expect-expansion (clojure.core/let [id (Integer/parseInt id)
-                                       org_id (Integer/parseInt org_id)] 'body)
-                    (auto-parse [id org_id] 'body))
+;; make sure multiple autoparse params work correctly
+(expect-expansion (clojure.core/let [id (Integer/parseInt id)
+                                     org_id (Integer/parseInt org_id)] 'body)
+                  (auto-parse [id org_id] 'body))
 
-  ;; make sure it still works if no autoparse params are passed
-  (expect-expansion (clojure.core/let [] 'body)
-                    (auto-parse [some-other-param] 'body))
+;; make sure it still works if no autoparse params are passed
+(expect-expansion (clojure.core/let [] 'body)
+                  (auto-parse [some-other-param] 'body))
 
-  ;; should work with no params at all
-  (expect-expansion (clojure.core/let [] 'body)
-                    (auto-parse [] 'body)))
+;; should work with no params at all
+(expect-expansion (clojure.core/let [] 'body)
+                  (auto-parse [] 'body))
 
+;; should work with some wacky binding form
+(expect-expansion (clojure.core/let [id (Integer/parseInt id)] 'body)
+                  (auto-parse [id :as {body :body}] 'body))
 
 ;;; TESTS FOR DEFENDPOINT
 
-;; test that a basic `defendpoint` usage expands as expected
-(expect-expansion
- (do
-   (def GET_:id
-     (GET "/:id" [id]
-       (clojure.core/-> (metabase.api.common/auto-parse [id]
-                          (metabase.api.common.internal/catch-api-exceptions
-                           (->404 (sel :one Card :id id))))
-                        metabase.api.common.internal/wrap-response-if-needed)))
+;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
+(binding [*auto-parse-types* (update-in *auto-parse-types* [:int :route-param-regex] (partial str "#"))]
+  (expect-expansion
+   (do
+     (def GET_:id
+       (GET ["/:id" :id "#[0-9]+"] [id]
+         (metabase.api.common.internal/auto-parse [id]
+           (metabase.api.common.internal/catch-api-exceptions
+             (clojure.core/-> (do (->404 (sel :one Card :id id)))
+                              metabase.api.common.internal/wrap-response-if-needed)))))
      (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
- (defendpoint GET "/:id" [id]
-   (->404 (sel :one Card :id id))))
+   (defendpoint GET "/:id" [id]
+     (->404 (sel :one Card :id id)))))
