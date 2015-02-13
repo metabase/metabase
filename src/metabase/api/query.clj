@@ -32,7 +32,7 @@
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
-  (let-404 [query (sel :one Query :id query-id)]
+  (let-400 [query (sel :one Query :id query-id)]
     ;; TODO - validate that user has read perms on query
     (let [new-query-id (ins Query
                          :created_at (new java.util.Date)
@@ -50,18 +50,19 @@
 (defn query-create
   "Create a new query from user posted data."
   [body]
-  (let-400 [db (sel :one Database :id (:database body))]
-    (let [new-query-id (ins Query
-                         :created_at (new java.util.Date)
-                         :updated_at (new java.util.Date)
-                         :type "rawsql"
-                         :name (or (:name body) (str "New Query: " (new java.util.Date)))
-                         :details (json/write-str {:sql (:sql body) :timezone (:timezone body)})
-                         :version 1
-                         :public_perms (or (:public_perms body) common/perms-none)
-                         :creator_id 1 ;; TODO - current user id
-                         :database_id (:id db))]
-      (sel :one Query :id (:id new-query-id)))))
+  (check (exists? Database :id (:database body)) [400 "Specified database does not exist."])
+  ;; TODO - validate that user has perms to create against this database
+  (let [new-query-id (ins Query
+                       :created_at (new java.util.Date)
+                       :updated_at (new java.util.Date)
+                       :type "rawsql"
+                       :name (or (:name body) (str "New Query: " (new java.util.Date)))
+                       :details (json/write-str {:sql (:sql body) :timezone (:timezone body)})
+                       :version 1
+                       :public_perms (or (:public_perms body) common/perms-none)
+                       :creator_id 1 ;; TODO - current user id
+                       :database_id (:database body))]
+    (sel :one Query :id (:id new-query-id))))
 
 
 (defendpoint POST "/" [:as {body :body}]
