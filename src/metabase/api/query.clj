@@ -2,13 +2,15 @@
   (:require [korma.core :refer [where subselect fields]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [clojure.data.json :as json]
+            [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [query :refer [Query]]
                              [database :refer [Database databases-for-org]]
                              [org :refer [Org]]
-                             [common :as common])))
+                             [common :as common])
+            [metabase.util :as util]))
 
 
 (defendpoint GET "/form_input" [org]
@@ -78,28 +80,28 @@
          (hydrate :creator :database)))
 
 
-;(defendpoint PUT "/:id" [id :as {body :body}]
-;  ;; TODO - permissions check
-;  ;; TODO - validations (email address must be unique)
-;  (let-404 [org (sel :one Org :id id)]
-;    ;; TODO - how can we pass a useful error message in the 500 response on error?
-;    (upd Org id
-;      ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
-;      :name (get body :name (:name org))
-;      :description (get body :description (:description org))
-;      :logo_url (get body :logo_url (:logo_url org)))
-;    (sel :one Org :id id)))
-;
-;
-;(defendpoint DELETE "/:id" [id]
-;  ;; TODO - permissions check
-;  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-;  (let-404 [org (sel :one Org :id id)]
-;    (let-404 [user (sel :one User :id user-id)]
-;      (del OrgPerm :user_id user-id :organization_id id)
-;      {:success true})))
-;
-;
+(defendpoint PUT "/:id" [id :as {body :body}]
+  ;; TODO - permissions check
+  ;; TODO - check that database exists and user has permission (if specified)
+  (let-404 [query (sel :one Query :id id)]
+    (let [details (if (:sql body) {:details (json/write-str {:sql (:sql body) :timezone (:timezone body)})
+                                   :version (+ (:version query) 1)}
+                                  {})]
+      (check-500 (-> details
+                     (merge body {:updated_at (new java.util.Date)})
+                     (util/select-non-nil-keys :name :database_id :public_perms :details :version :updated_at)
+                     (->> (mapply upd Query id))))
+      (-> (sel :one Query :id id)
+          (hydrate :creator :database)))))
+
+
+(defendpoint DELETE "/:id" [id]
+  ;; TODO - permissions check
+  (check-404 (exists? Query :id id))
+  (del Query :id id)
+  {:success true})
+
+
 ;(defendpoint POST "/:id" [id]
 ;  ;; TODO - permissions check
 ;  (->404 (sel :one Org :id id)))
