@@ -9,7 +9,9 @@
   "setup database schema"
   {:expectations-options :before-run}
   []
-  (io/delete-file db-file)
+  ;; db-file is prefixed with "file:", so we strip that off
+  (io/delete-file (str (subs db-file 5) ".h2.db"))
+  (io/delete-file (str (subs db-file 5) ".trace.db"))
   ; TODO - lets just completely delete the db before each test to ensure we start fresh
   (log/info "tearing down database and resetting to empty schema")
   (migrate :down)
