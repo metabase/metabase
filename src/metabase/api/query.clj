@@ -71,11 +71,13 @@
     (query-create body)))
 
 
-;(defendpoint GET "/:id" [id]
-;  ;; TODO - permissions check
-;  (->404 (sel :one Org :id id)))
-;
-;
+(defendpoint GET "/:id" [id]
+  ;; TODO - permissions check
+  (->404 (sel :one Query :id id)
+         ;; TODO - hydrate :can_read and :can_write
+         (hydrate :creator :database)))
+
+
 ;(defendpoint PUT "/:id" [id :as {body :body}]
 ;  ;; TODO - permissions check
 ;  ;; TODO - validations (email address must be unique)
