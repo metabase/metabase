@@ -819,6 +819,13 @@
                 },
                 {
                   "column": {
+                    "name": "type",
+                    "type": "varchar(254)",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
                     "name": "details",
                     "type": "text",
                     "constraints": {"nullable": false}
