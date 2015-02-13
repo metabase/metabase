@@ -11,3 +11,14 @@
   (-> db
       (realize-json :details)
       (assoc :organization (sel-fn :one Org :id organization_id))))
+
+(defn databases-for-org
+  "Selects the ID and NAME for all databases available to the given org-id."
+  [org-id]
+  (let [org (sel :one Org :id org-id)]
+    (when org
+      (if (:inherits org)
+        ;; inheriting orgs see ALL databases
+        (sel :many [Database :id :name] (order :name :ASC))
+        ;; otherwise filter by org-id
+        (sel :many [Database :id :name] :organization_id org-id (order :name :ASC))))))

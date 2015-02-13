@@ -6,6 +6,7 @@
                           [meta-db :as meta-db]
                           [meta-table :as meta-table]
                           [org :as org]
+                          [query :as query]
                           [session :as session]
                           [user :as user])))
 
@@ -18,6 +19,7 @@
   (context "/meta/db" [] meta-db/routes)
   (context "/meta/table" [] meta-table/routes)
   (context "/org" [] org/routes)
+  (context "/query" [] query/routes)
   (context "/session" [] session/routes)
   (context "/user" [] user/routes)
   (route/not-found (fn [{:keys [request-method uri]}]
