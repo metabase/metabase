@@ -21,14 +21,14 @@
      :databases dbs}))
 
 
-;(defendpoint GET "/" [org f]
-;  ;; TODO - permissions check
-;  (let [filter-org (where {:database_id [in (subselect Database
-;                                     (fields :id)
-;                                     (where {:organization_id org}))]})
-;        filter-perms (where {:public_perms (> 0)}))]
-;    )
-;  (sel :many Query ))
+(defendpoint GET "/" [org f]
+  ;; TODO - permissions check
+  ;; TODO - filter by f == "mine"
+  ;; TODO - filter by creator == self OR public_perms > 0
+  (-> (sel :many Query
+        (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
+        (where {:public_perms [> common/perms-none]}))
+      (hydrate :creator :database)))
 
 
 (defn query-clone
