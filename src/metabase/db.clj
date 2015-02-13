@@ -90,7 +90,8 @@
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
   `(->> (-sel-select ~entity ~@forms)
-        (map (partial post-select ~entity))
+        (map (partial post-select ~(if (vector? entity) (first entity)
+                                       entity)))
         ~(case one-or-many
            :one 'first
            :many 'identity)))
