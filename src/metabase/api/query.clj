@@ -102,9 +102,9 @@
   {:success true})
 
 
-;(defendpoint POST "/:id" [id]
-;  ;; TODO - permissions check
-;  (->404 (sel :one Org :id id)))
+(defendpoint POST "/:id" [id]
+  ;; TODO - implementation (execute a query)
+  {:TODO "TODO"})
 
 
 (define-routes)
