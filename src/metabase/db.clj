@@ -4,8 +4,9 @@
             [clojure.tools.logging :as log]
             [clojure.string :as str]
             [environ.core :refer [env]]
-            [korma.core :refer :all]
+            [korma.core :refer :all ]
             [korma.db :refer :all]
+            [medley.core :refer [filter-vals]]
             [metabase.config :refer [app-defaults]]
             [metabase.db.internal :refer :all]))
 
@@ -30,12 +31,28 @@
 
 ;;; UTILITY FUNCTIONS
 
+(defmulti default-ins-fields
+  "A map of default values for fields that will be passed to all calls to `ins` for a given model."
+  identity)
+
+(defmethod default-ins-fields :default [_]
+  {})   ; by default return empty map - nothing extra to add
+
+(defmulti pre-insert2
+  (fn [entity _] entity))
+
+(defmethod pre-insert2 :default [_ obj]
+  obj)
+
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`."
   [entity & kwargs]
-  (-> (insert entity (values (apply assoc {} kwargs)))
-      (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
+  (let [vals (->> kwargs
+                  (apply assoc (default-ins-fields entity))
+                  (pre-insert2 entity))]
+    (-> (insert entity (values vals))
+        (clojure.set/rename-keys {(keyword "scope_identity()") :id}))))
 
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and

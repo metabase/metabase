@@ -33,9 +33,10 @@
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
    Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
-  `(case (when @*current-user*
-           ((:perms-for-org @*current-user*) ~org-id))
-     ~@body))
+  `(let [org-id# ~org-id]                                ; make sure org-id gets evaluated before get to `case`
+     (case (when @*current-user*
+             ((:perms-for-org @*current-user*) org-id#))
+       ~@body)))
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS

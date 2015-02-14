@@ -2,11 +2,11 @@
   (:require [korma.core :refer [where subselect fields]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [clojure.data.json :as json]
-            [medley.core :refer [mapply]]
+            [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.hydrate :refer :all]
-            (metabase.models [query :refer [Query]]
+            (metabase.models [hydrate :refer :all]
+                             [query :refer [Query]]
                              [database :refer [Database databases-for-org]]
                              [org :refer [Org]]
                              [common :as common])
@@ -22,73 +22,64 @@
 
 
 (defendpoint GET "/" [org f]
-  ;; TODO - permissions check
   ;; TODO - filter by f == "mine"
   ;; TODO - filter by creator == self OR public_perms > 0
+  (check-403 ((:perms-for-org @*current-user*) org))
   (-> (sel :many Query
         (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
         (where {:public_perms [> common/perms-none]}))
       (hydrate :creator :database)))
 
-
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
-  (let-400 [query (sel :one Query :id query-id)]
-    ;; TODO - validate that user has read perms on query
-    (let [new-query-id (ins Query
-                         :created_at (new java.util.Date)
-                         :updated_at (new java.util.Date)
-                         :type (:type query)
-                         :name (str (:name query) " CLONED")
-                         :details (:details query)
-                         :version 1
-                         :public_perms common/perms-none
-                         :creator_id 1 ;; TODO - current user id
-                         :database_id (:database_id query))]
-      (sel :one Query :id (:id new-query-id)))))
-
+  (let-400 [{:keys [can_read name] :as query} (sel :one Query :id query-id)]
+    (check-403 @can_read)
+    (->> (-> query
+             (select-keys [:type :details :database_id])
+             (assoc :name (str name " CLONED")
+                    :public_perms common/perms-none
+                    :creator_id *current-user-id*))
+         (mapply ins Query))))
 
 (defn query-create
   "Create a new query from user posted data."
-  [body]
-  (check (exists? Database :id (:database body)) [400 "Specified database does not exist."])
+  [{:keys [name sql timezone public_perms database]}]
+  (require-params database)             ; sql, timezone?
+  (check (exists? Database :id database) [400 "Specified database does not exist."])
   ;; TODO - validate that user has perms to create against this database
-  (let [new-query-id (ins Query
-                       :created_at (new java.util.Date)
-                       :updated_at (new java.util.Date)
-                       :type "rawsql"
-                       :name (or (:name body) (str "New Query: " (new java.util.Date)))
-                       :details (json/write-str {:sql (:sql body) :timezone (:timezone body)})
-                       :version 1
-                       :public_perms (or (:public_perms body) common/perms-none)
-                       :creator_id 1 ;; TODO - current user id
-                       :database_id (:database body))]
-    (sel :one Query :id (:id new-query-id))))
+  (ins Query
+    :type "rawsql"
+    :name (or name (str "New Query: " (java.util.Date.)))
+    :details (json/write-str {:sql sql
+                              :timezone timezone})
+    :public_perms (or public_perms common/perms-none)
+    :creator_id *current-user-id*
+    :database_id database))
 
-
-(defendpoint POST "/" [:as {body :body}]
-  (if (:clone body)
-    (query-clone (:clone body))
+(defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
+  (if clone
+    (query-clone clone)
     (query-create body)))
 
 
 (defendpoint GET "/:id" [id]
   ;; TODO - permissions check
-  (->404 (sel :one Query :id id)
-         ;; TODO - hydrate :can_read and :can_write
-         (hydrate :creator :database)))
+  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
+    (check-403 @can_read)
+    (hydrate query :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {body :body}]
-  ;; TODO - permissions check
+(defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
   ;; TODO - check that database exists and user has permission (if specified)
-  (let-404 [query (sel :one Query :id id)]
-    (let [details (if (:sql body) {:details (json/write-str {:sql (:sql body) :timezone (:timezone body)})
-                                   :version (+ (:version query) 1)}
-                                  {})]
+  (let-404 [{:keys [can_write] :as query} (sel :one Query :id id)]
+    (check-403 @can_write)
+    (let [details (if-not sql {}
+                    {:details (json/write-str {:sql sql
+                                               :timezone timezone})
+                     :version (+ version 1)})]
       (check-500 (-> details
-                     (merge body {:updated_at (new java.util.Date)})
+                     (merge body {:updated_at (java.util.Date.)})
                      (util/select-non-nil-keys :name :database_id :public_perms :details :version :updated_at)
                      (->> (mapply upd Query id))))
       (-> (sel :one Query :id id)
@@ -97,9 +88,10 @@
 
 (defendpoint DELETE "/:id" [id]
   ;; TODO - permissions check
-  (check-404 (exists? Query :id id))
-  (del Query :id id)
-  {:success true})
+  (let-404 [{:keys [can_write] :as query} (sel :one [Query :id :creator_id :public_perms] :id id)]
+    (check-403 @can_write)
+    (del Query :id id)
+    {:success true}))
 
 
 (defendpoint POST "/:id" [id]

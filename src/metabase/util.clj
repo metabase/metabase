@@ -53,3 +53,27 @@
 
 ;; looking for `apply-kwargs`?
 ;; turns out `medley.core/mapply` does the same thingx
+
+
+(declare -assoc*)
+(defmacro assoc*
+  "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
+   upon the result of the previous one using `<>`.
+
+    (assoc* {}
+            :a 100
+            :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+  [object & kvs]
+  `((fn [~'<>]
+      (-assoc* ~@kvs))
+    ~object))
+
+(defmacro -assoc* [k v & rest]
+  `(let [~'<> (assoc ~'<> ~k ~v)]
+        ~(if (empty? rest) `~'<>
+             `(-assoc* ~@rest))))
+
+(assoc* {}
+        :a 100
+        :b (+ 100 (:a <>))
+        :c (+ 100 (:b <>)))
