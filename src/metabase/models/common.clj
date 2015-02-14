@@ -22,9 +22,9 @@
 (defn user-permissions
   "Return the set of current user's permissions for some object with keys `:creator_id`, `:organization_id`, and `:public_perms`."
   [{:keys [creator_id organization_id public_perms] :as obj}]
-  (check creator_id      500 "Can't check user permissions: object doesn't have :creator_id.")
-  (check organization_id 500 "Can't check user permissions: object doesn't have :organization_id.")
-  (check public_perms    500 "Can't check user permissions: object doesn't have :public_perms.")
+  (check creator_id      500 "Can't check user permissions: object doesn't have :creator_id."
+         organization_id 500 "Can't check user permissions: object doesn't have :organization_id."
+         public_perms    500 "Can't check user permissions: object doesn't have :public_perms.")
   (if (= creator_id *current-user-id*) #{:read :write}              ; if user created OBJ they have all permissions
       (org-perms-case (if (delay? organization_id) @organization_id
                           organization_id)

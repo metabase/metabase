@@ -45,12 +45,15 @@
   "Assertion mechanism for use inside API functions.
    Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
 
-   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
-  ([test [status-code ^String message]]
-   (when-not test
-     (throw (ApiException. (int status-code) message))))
-  ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
-   (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
+  ([test code-or-code-message-pair & rest-args]
+   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
+                                      [code-or-code-message-pair rest-args]
+                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
+     (when-not test
+       (throw (ApiException. (int code) message)))
+     (when-not (empty? rest-args)
+       (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
 (defmacro require-params
   "Checks that a list of params are non-nil or throws a 400."
