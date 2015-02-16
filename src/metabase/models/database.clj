@@ -43,10 +43,10 @@
   "Perform a native (i.e. SQL) query against DATABASE.
    ex. `(let [db (sel :one Database :name \"spotguides\")]
           ((:native-query db) \"SELECT COUNT(*) FROM main_guide;\"))`"
-  ([database native-query]
-   (native-query database native-query true))
-  ([database native-query return-results?]
-   (exec-raw @(:connection database) native-query (when return-results? :results))))
+  ([database sql]
+   (native-query database sql true))
+  ([database sql return-results?]
+   (exec-raw @(:connection database) sql (when return-results? :results))))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
