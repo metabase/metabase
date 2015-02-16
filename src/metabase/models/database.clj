@@ -5,7 +5,6 @@
             [swiss.arrows :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [realize-json]]
-                             [database :refer [Database]]
                              [org :refer [Org]])
             [metabase.util :refer :all]))
 
