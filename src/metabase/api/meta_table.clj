@@ -21,6 +21,7 @@
          (hydrate :db :fields)))
 
 (defendpoint GET "/" [org]
+  (require-params org)
   (let [db-ids (->> (sel :many [Database :id] :organization_id org)
                     (map :id))]
     (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))

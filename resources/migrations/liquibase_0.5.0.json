@@ -1,0 +1,61 @@
+{
+  "databaseChangeLog": [
+    {
+      "changeSet": {
+        "id": "2",
+        "author": "agilliland",
+        "changes": [
+          {
+            "createTable": {
+              "tableName": "core_session",
+              "columns": [
+                {
+                  "column": {
+                    "name": "id",
+                    "type": "varchar(254)",
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "user_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_session_ref_user_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "created_at",
+                    "type": "DATETIME",
+                    "constraints": {
+                      "nullable": false
+                    }
+                  }
+                }
+              ]
+            }
+          },
+
+          {
+            "modifySql": {
+              "dbms": "postgresql",
+              "replace": {
+                "replace": "WITHOUT",
+                "with": "WITH"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

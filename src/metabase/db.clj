@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             [korma.core :refer :all]
             [korma.db :refer :all]
+            [medley.core :refer [filter-vals]]
             [metabase.config :refer [app-defaults]]
             [metabase.db.internal :refer :all]))
 
@@ -30,12 +31,27 @@
 
 ;;; UTILITY FUNCTIONS
 
+(defmulti pre-insert
+  "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
+   This provides an opportunity to do things like encode JSON or provide default values for certain fields.
+
+    (pre-insert Query [_ query]
+      (let [defaults {:version 1}]
+        (merge defaults query))) ; set some default values"
+  (fn [entity _] entity))
+
+(defmethod pre-insert :default [_ obj]
+  obj)   ; default impl returns object as is
+
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`."
   [entity & kwargs]
-  (-> (insert entity (values (apply assoc {} kwargs)))
-      (clojure.set/rename-keys {(keyword "scope_identity()") :id})))
+  (let [vals (->> kwargs
+                  (apply assoc {})
+                  (pre-insert entity))]
+    (-> (insert entity (values vals))
+        (clojure.set/rename-keys {(keyword "scope_identity()") :id}))))
 
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
@@ -74,23 +90,24 @@
 
   ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
 
-  `(sel :one User :id 1)          -> returns the User (or nil) whose id is 1`
-  `(sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1`
+    (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
+    (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
   Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
-  `(sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1`
+    (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
   FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
    clauses such as `order`, which are passed directly.
 
-  `(sel :many Table :db_id 1)                    -> (select User (where {:id 1}))`
-  `(sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))`"
+    (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
+    (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
   `(->> (-sel-select ~entity ~@forms)
-        (map (partial post-select ~entity))
+        (map (partial post-select ~(if (vector? entity) (first entity)
+                                       entity)))
         ~(case one-or-many
            :one 'first
            :many 'identity)))
@@ -103,7 +120,8 @@
         forms (->> forms
                    sel-apply-kwargs
                    (sel-apply-fields field-keys))]
-    `(select ~entity ~@forms)))
+    `(do (println "DB CALL: " ~(str entity) " " ~(str forms))
+         (select ~entity ~@forms))))
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`.
@@ -112,13 +130,23 @@
    will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
    dependencies in the model files. This is slower, however, due to added runtime overhead.
 
-   `(sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called`
-   `(sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1`"
+     (sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called
+     (sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1"
   [one-or-many entity & forms]
   `(memoize
     (fn []
       ~@(if (string? entity)
-          `((require '~(-> entity (^String .split "/") first symbol)) ; require the namespace
+          `((require '~(-> ^String entity (.split "/") first symbol)) ; require the namespace
             (let [entity# (symbol ~entity)]
               (eval `(sel ~~one-or-many ~entity# ~~@forms))))
           `((sel ~one-or-many ~entity ~@forms))))))
+
+;;
+(defmacro exists?
+  "Easy way to see if something exists in the db.
+   TODO: How can we disable the `post-select` functionality for this call.
+   TODO: Doesn't korma have an `exists` method?
+
+    (exists? User :id 100)"
+  [entity & forms]
+  `(boolean (sel :one [~entity :id] ~@forms)))

@@ -4,7 +4,8 @@
             [ring.util.response :as resp]
             [metabase.api.routes :as api]))
 
-(letfn [(serve-index [_] (resp/file-response "frontend_client/index.html"))]
+(letfn [(serve-index [_] (-> (resp/file-response "frontend_client/index.html")
+                             (assoc :status 200)))]
   (defroutes routes
     (GET "/" [] serve-index)                            ; ^/$    -> index.html
     (context "/api" [] api/routes)                      ; ^/api/ -> API routes

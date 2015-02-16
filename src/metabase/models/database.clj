@@ -6,7 +6,8 @@
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [realize-json]]
                              [database :refer [Database]]
-                             [org :refer [Org]])))
+                             [org :refer [Org]])
+            [metabase.util :refer :all]))
 
 (defentity Database
   (table :metabase_database))
@@ -50,7 +51,17 @@
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
       (realize-json :details) ; TODO wouldn't we want to actually strip this info instead of returning it?
-      (#(assoc % :organization (sel-fn :one Org :id organization_id)
-                 :connection-details (delay (connection-details %))))
-      (#(assoc % :connection (delay (connection %))))
-      (#(assoc % :native-query (partial native-query %)))))
+      (assoc* :organization (sel-fn :one Org :id organization_id)
+              :connection-details (delay (connection-details <>))
+              :connection (delay (connection <>))
+              :native-query (partial native-query <>))))
+
+(defn databases-for-org
+  "Selects the ID and NAME for all databases available to the given org-id."
+  [org-id]
+  (when-let [org (sel :one Org :id org-id)]
+    (if (:inherits org)
+      ;; inheriting orgs see ALL databases
+      (sel :many [Database :id :name] (order :name :ASC))
+      ;; otherwise filter by org-id
+      (sel :many [Database :id :name] :organization_id org-id (order :name :ASC)))))
