@@ -45,7 +45,20 @@
   "Assertion mechanism for use inside API functions.
    Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
 
-  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+
+  `check` can be called with the form
+
+      (check test code message)
+
+  or with the form
+
+      (check test [code message])
+
+  You can also include multiple tests in a single call:
+
+    (check test1 code1 message1
+           test2 code2 message2)"
   ([test code-or-code-message-pair & rest-args]
    (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
                                       [code-or-code-message-pair rest-args]

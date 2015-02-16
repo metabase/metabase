@@ -34,14 +34,13 @@
       .getTime
       (java.sql.Date.)))
 
-(defmethod default-ins-fields Query [_]
-  {:created_at (new-sql-date)
-   :updated_at (new-sql-date)
-   :version 1})
-
-(defmethod pre-insert2 Query [_ {:keys [details] :as query}]
-  (assoc query :details (if (string? details) details
-                            (json/write-str details))))
+(defmethod pre-insert Query [_ {:keys [details] :as query}]
+  (let [defaults {:created_at (new-sql-date)
+                  :updated_at (new-sql-date)
+                  :version 1}]
+    (-> (merge defaults query)
+        (assoc :details (if (string? details) details
+                            (json/write-str details))))))
 
 (defmethod post-select Query [_ {:keys [creator_id database_id] :as query}]
   (-> query
