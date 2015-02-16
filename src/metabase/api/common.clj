@@ -33,9 +33,10 @@
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
    Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
-  `(case (when @*current-user*
-           ((:perms-for-org @*current-user*) ~org-id))
-     ~@body))
+  `(let [org-id# ~org-id]                                ; make sure org-id gets evaluated before get to `case`
+     (case (when @*current-user*
+             ((:perms-for-org @*current-user*) org-id#))
+       ~@body)))
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
@@ -44,12 +45,28 @@
   "Assertion mechanism for use inside API functions.
    Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
 
-   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated."
-  ([test [status-code ^String message]]
-   (when-not test
-     (throw (ApiException. (int status-code) message))))
-  ([test status-code message]                            ; (check TEST [CODE MESSAGE]) or (check TEST CODE MESSAGE)
-   (check test [status-code message])))                  ; are both acceptable for the sake of flexibility
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+
+  `check` can be called with the form
+
+      (check test code message)
+
+  or with the form
+
+      (check test [code message])
+
+  You can also include multiple tests in a single call:
+
+    (check test1 code1 message1
+           test2 code2 message2)"
+  ([test code-or-code-message-pair & rest-args]
+   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
+                                      [code-or-code-message-pair rest-args]
+                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
+     (when-not test
+       (throw (ApiException. (int code) message)))
+     (when-not (empty? rest-args)
+       (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
 (defmacro require-params
   "Checks that a list of params are non-nil or throws a 400."

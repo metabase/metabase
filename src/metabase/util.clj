@@ -53,3 +53,30 @@
 
 ;; looking for `apply-kwargs`?
 ;; turns out `medley.core/mapply` does the same thingx
+
+
+(declare -assoc*)
+(defmacro assoc*
+  "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
+   upon the result of the previous one using `<>`.
+
+    (assoc* {}
+            :a 100
+            :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+  [object & kvs]
+  `((fn [~'<>]          ; wrap in a `fn` so this can be used in `->`/`->>` forms
+      (-assoc* ~@kvs))
+    ~object))
+
+(defmacro -assoc* [k v & rest]
+  `(let [~'<> (assoc ~'<> ~k ~v)]
+        ~(if (empty? rest) `~'<>
+             `(-assoc* ~@rest))))
+
+(defn new-sql-date
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
+   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Date`)."
+  []
+  (-> (java.util.Date.)
+      .getTime
+      (java.sql.Date.)))
