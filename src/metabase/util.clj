@@ -64,7 +64,7 @@
             :a 100
             :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
   [object & kvs]
-  `((fn [~'<>]
+  `((fn [~'<>]          ; wrap in a `fn` so this can be used in `->`/`->>` forms
       (-assoc* ~@kvs))
     ~object))
 
