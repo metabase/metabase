@@ -27,13 +27,6 @@
    :creator_id
    :database_id])
 
-(defn new-sql-date
-  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date."
-  []
-  (-> (java.util.Date.)
-      .getTime
-      (java.sql.Date.)))
-
 (defmethod pre-insert Query [_ {:keys [details] :as query}]
   (let [defaults {:created_at (new-sql-date)
                   :updated_at (new-sql-date)

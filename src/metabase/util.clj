@@ -73,7 +73,10 @@
         ~(if (empty? rest) `~'<>
              `(-assoc* ~@rest))))
 
-(assoc* {}
-        :a 100
-        :b (+ 100 (:a <>))
-        :c (+ 100 (:b <>)))
+(defn new-sql-date
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
+   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Date`)."
+  []
+  (-> (java.util.Date.)
+      .getTime
+      (java.sql.Date.)))

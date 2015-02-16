@@ -2,6 +2,8 @@
   (:require [metabase.api.common :refer [*current-user-id* check org-perms-case]]
             [metabase.util :refer :all]))
 
+;;; ALLEN'S PERMISSIONS IMPLEMENTATION
+
 (def perms-none 0)
 (def perms-read 1)
 (def perms-readwrite 2)
@@ -10,6 +12,10 @@
   [{:id perms-none :name "None"},
    {:id perms-read :name "Read Only"},
    {:id perms-readwrite :name "Read & Write"}])
+
+
+;;; CAM'S PERMISSIONS IMPL
+;; (TODO - need to use one or the other)
 
 (defn public-permissions
   "Return the set of public permissions for some object with key `:public_perms`. Possible permissions are `:read` and `:write`."
@@ -38,7 +44,16 @@
   [permission obj]
   (contains? @(:user-permissions-set obj) permission))
 
-(defn assoc-permissions-sets [{:keys [creator_id organization_id public_perms] :as obj}]
+(defn assoc-permissions-sets
+  "Associates the following delays with OBJ:
+   *  `:public-permissions-set`
+   *  `:user-permissions-set`
+   *  `:can_read`
+   *  `:can_write`
+   Note that these delays depend upon the presence of `creator_id`, `organization_id`, and `public_perms`
+  fields in OBJ. `organization_id` may be a delay in case a DB call is neccesary to determine it (e.g.
+  determining the `organization_id` of a `Query` requires fetching the corresponding `Database`."
+  [{:keys [creator_id organization_id public_perms] :as obj}]
   (assoc* obj
           :public-permissions-set (delay (public-permissions <>))
           :user-permissions-set (delay (user-permissions <>))
