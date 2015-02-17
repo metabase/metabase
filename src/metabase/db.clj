@@ -53,6 +53,13 @@
     (-> (insert entity (values vals))
         (clojure.set/rename-keys {(keyword "scope_identity()") :id}))))
 
+(defmulti pre-update
+  "Like pre-insert but called by `upd` before DB operations happen."
+  (fn [entity _] entity))
+
+(defmethod pre-update :default [_ obj]
+  obj) ; default impl does no modifications to OBJ
+
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
@@ -61,8 +68,10 @@
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & kwargs]
-  (-> (update entity (set-fields (apply assoc {} kwargs)) (where {:id entity-id}))
-      (> 0)))
+  (let [kwargs (->> (apply assoc {} kwargs)
+                    (pre-update entity))]
+    (-> (update entity (set-fields kwargs) (where {:id entity-id}))
+        (> 0))))
 
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.

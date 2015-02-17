@@ -1,4 +1,4 @@
-(ns metabase.api.meta-table
+(ns metabase.api.meta.table
   "/api/meta/table endpoints."
   (:require [compojure.core :refer [GET]]
             [korma.core :refer :all]

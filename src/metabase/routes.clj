@@ -10,4 +10,4 @@
     (GET "/" [] serve-index)                            ; ^/$    -> index.html
     (context "/api" [] api/routes)                      ; ^/api/ -> API routes
     (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/ -> static files under frontend_client/app
-    (route/not-found serve-index)))                     ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+    (GET "*" [] serve-index)))                          ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest

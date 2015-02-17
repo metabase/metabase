@@ -5,12 +5,11 @@
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer :all]
+            (metabase.models [common :as common]
+                             [hydrate :refer :all]
+                             [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
                              [query :refer [Query]]
-                             [query-execution :refer [QueryExecution]]
-                             [database :refer [Database databases-for-org]]
-                             [org :refer [Org]]
-                             [common :as common])
+                             [query-execution :refer [QueryExecution]])
             [metabase.util :as util]))
 
 
