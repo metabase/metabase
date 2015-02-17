@@ -1,5 +1,5 @@
 (ns metabase.api.card
-  (:require [compojure.core :refer [GET DELETE]]
+  (:require [compojure.core :refer [GET POST DELETE]]
             [korma.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -23,5 +23,12 @@
 (defendpoint GET "/:id/favorite" [id]
   {:favorite (boolean (some->> *current-user-id*
                                (sel :one CardFavorite :card_id id :owner_id)))})
+
+(defendpoint POST "/:card-id/favorite" [card-id]
+  (ins CardFavorite :card_id card-id :owner_id *current-user-id*))
+
+(defendpoint DELETE "/:card-id/favorite" [card-id]
+  (let-404 [{:keys [id] :as card-favorite} (sel :one CardFavorite :card_id card-id :owner_id *current-user-id*)]
+    (del CardFavorite :id id)))
 
 (define-routes)

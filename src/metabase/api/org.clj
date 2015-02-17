@@ -110,8 +110,7 @@
   ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
   (let-404 [org (sel :one Org :id id)]
     (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id)
-      {:success true})))
+      (del OrgPerm :user_id user-id :organization_id id))))
 
 
 (define-routes)

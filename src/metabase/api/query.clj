@@ -90,8 +90,7 @@
   ;; TODO - permissions check
   (let-404 [{:keys [can_write] :as query} (sel :one [Query :id :creator_id :public_perms] :id id)]
     (check-403 @can_write)
-    (del Query :id id)
-    {:success true}))
+    (del Query :id id)))
 
 
 (defendpoint POST "/:id" [id]
