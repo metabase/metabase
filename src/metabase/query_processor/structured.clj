@@ -25,6 +25,7 @@
            :select select)))
 
 (defn annotate-special-column [column]
+  (println "COLUMN -> " column)
   (match column
     "count" {:name "Count"
              :keyword :count
@@ -39,10 +40,11 @@
 
 (defn get-columns [{:keys [table breakout aggregation] :as query}]
   (->> (concat breakout aggregation)
-       (mapv (fn [column]
-               (case (integer? column)
-                 true ( annotate-column table column)
-                 false ( annotate-special-column column))))))
+       (filter identity)
+       (map (fn [column]
+              (case (integer? column)
+                true (annotate-column table column)
+                false (annotate-special-column column))))))
 
 (declare build-query
          generate-sql)
@@ -103,8 +105,10 @@
                       (.toString value))))))
 
 (defn generate-sql [query]
+  (clojure.pprint/pprint query)
   (letfn [(sqlwhen [kw sql-str]
-            (when (kw query) (str sql-str " " (kw query))))]
+            (let [val (kw query)]
+              (when-not (empty? val) (str sql-str " " val))))]
     (->> [(sqlwhen :select "SELECT")
           (sqlwhen :from "FROM")
           (sqlwhen :group-by "GROUP BY")
