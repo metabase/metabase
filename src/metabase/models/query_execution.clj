@@ -14,7 +14,24 @@
 (defentity QueryExecution
   (table :query_queryexecution))
 
+(def all-fields [`QueryExecution
+                 :id
+                 :uuid
+                 :version
+                 :json_query
+                 :raw_query
+                 :status
+                 :started_at
+                 :finished_at
+                 :running_time
+                 :error
+                 :result_file
+                 :result_rows
+                 :result_data
+                 :query_id])
+
 ;; default fields to return for `sel QueryExecution
+;; specifically excludes stored data columns
 (defmethod default-fields QueryExecution [_]
   [:id
    :uuid
@@ -25,10 +42,7 @@
    :started_at
    :finished_at
    :running_time
-   :error
-   :result_file
    :result_rows
-   :result_data
    :query_id])
 
 (defmethod pre-insert QueryExecution [_ {:keys [json_details] :as query-execution}]
@@ -37,6 +51,7 @@
 
 (defmethod post-select QueryExecution [_ {:keys [query_id] :as query-execution}]
   (-> query-execution
+    (assoc :row_count (get query-execution :result_rows 0))  ;; sadly we have 2 ways to reference the row count :(
     (realize-json :json_query)
     (realize-json :result_data)
     (assoc* :query (delay

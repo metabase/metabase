@@ -6,9 +6,9 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
-            (metabase.models [query-execution :refer [QueryExecution]]
-                              [database :refer [Database databases-for-org]]
-                              [org :refer [Org]])))
+            (metabase.models [query-execution :refer [QueryExecution all-fields]]
+                             [database :refer [Database databases-for-org]]
+                             [org :refer [Org]])))
 
 
 (defendpoint GET "/:id" [id]
@@ -17,19 +17,18 @@
     (check-404 query_id)
     (let-404 [{{can_read :can_read} :query} (hydrate query-execution :query)]
       (check-403 @can_read)
-      (-> query-execution
-          (assoc :row_count (get query-execution :result_rows 0))))))
+      query-execution)))
 
 
 (defendpoint GET "/:id/response" [id]
-  (let-404 [{:keys [query_id] :as query-execution} (sel :one QueryExecution :id id)]
+  (let-404 [{:keys [query_id] :as query-execution} (eval `(sel :one ~all-fields :id ~id))]
     ;; NOTE - this endpoint requires there to be a saved query associated with this execution
     (check-404 query_id)
     (let-404 [{{can_read :can_read} :query data :result_data} (hydrate query-execution :query)]
       (check-403 @can_read)
       ;; NOTE - this builds the final response dictionary by piecing a few things together
       (-> (select-keys query-execution [:id :uuid :status])                                            ;; start with just the things we are sure to need
-          (assoc :row_count (get query-execution :result_rows 0) :columns [] :data [])                 ;; add row_count (or 0) + default columns/data
+          (assoc :columns [] :data [])                                                                 ;; default columns/data
           (cond->
             (= "failed" (:status query-execution)) (assoc :error (:error query-execution)
                                                           :sql_error (:error query-execution))         ;; TODO - sql error formatting FN
