@@ -3,10 +3,16 @@
             [metabase.db :refer :all]
             (metabase.models [dashboard-card :refer [DashboardCard]]
                              [org :refer [Org]]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.util :as util]))
 
 (defentity Dashboard
   (table :report_dashboard))
+
+(defmethod pre-insert Dashboard [_ dashboard]
+  (let [defaults {:created_at (util/new-sql-date)
+                  :updated_at (util/new-sql-date)}]
+    (merge defaults dashboard)))
 
 (defmethod post-select Dashboard [_ {:keys [id creator_id organization_id] :as dash}]
   (assoc dash
