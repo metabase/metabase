@@ -7,17 +7,23 @@
                              [hydrate :refer [realize-json]]
                              [org :refer [Org]]
                              [user :refer [User]])
-            [metabase.util :refer [new-sql-date]]))
+            [metabase.util :as util]))
 
 (defentity Card
   (table :report_card))
 
 (defmethod pre-insert Card [_ {:keys [dataset_query visualization_settings] :as card}]
-  (let [defaults {:created_at (new-sql-date)
-                  :updated_at (new-sql-date)}]
+  (let [defaults {:created_at (util/new-sql-date)
+                  :updated_at (util/new-sql-date)}]
     (-> (merge defaults card)
         (assoc :dataset_query (json/write-str dataset_query)
                :visualization_settings (json/write-str visualization_settings)))))
+
+(defmethod pre-update Card [_ {:keys [dataset_query visualization_settings] :as card}]
+  (assoc card
+         :updated_at (util/new-sql-date)
+         :dataset_query (json/write-str dataset_query)
+         :visualization_settings (json/write-str visualization_settings)))
 
 (defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
   (-> card
