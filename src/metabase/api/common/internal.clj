@@ -126,8 +126,8 @@
   "If RESPONSE isn't already a map with keys :status and :body, wrap it in one (using status 200)."
   [response]
   (letfn [(is-wrapped? [resp] (and (map? resp)
-                                   (:status resp)
-                                   (:body resp)))]
+                                   (contains? resp :status)
+                                   (contains? resp :body)))]
     (if (is-wrapped? response) response
         {:status 200
          :body response})))
