@@ -5,11 +5,10 @@
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer :all]
-                             [query :refer [Query]]
-                             [database :refer [Database databases-for-org]]
-                             [org :refer [Org]]
-                             [common :as common])
+            (metabase.models [common :as common]
+                             [hydrate :refer :all]
+                             [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
+                             [query :refer [Query]])
             [metabase.util :as util]))
 
 
