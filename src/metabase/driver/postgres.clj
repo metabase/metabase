@@ -7,6 +7,9 @@
                              [table :refer [Table]])
             [metabase.util :refer [assoc*]]))
 
+(declare build-query
+         generate-sql)
+
 (defn annotate-column [table column]
   (let [{:keys [name base_type]} column
         qualified-name (format "\"%s\".\"%s\"" (:name table) name)
