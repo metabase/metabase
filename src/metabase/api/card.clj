@@ -1,6 +1,7 @@
 (ns metabase.api.card
   (:require [compojure.core :refer [GET POST DELETE]]
             [korma.core :refer :all]
+            [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -10,6 +11,13 @@
 (defendpoint GET "/" [org f] ; TODO - need to do something with the `f` param
   (-> (sel :many Card :organization_id org (order :name :ASC))
       (hydrate :creator)))
+
+(defendpoint POST "/" [:as {:keys [body]}]
+  (->> (-> body
+           (select-keys [:dataset_query :description :display :name :organization :public_perms :visualization_settings])
+           (clojure.set/rename-keys {:organization :organization_id} )
+           (assoc :creator_id *current-user-id*))
+       (mapply ins Card)))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Card :id id)
