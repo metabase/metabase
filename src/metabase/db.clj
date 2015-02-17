@@ -66,12 +66,12 @@
 
    `(upd User 123 :is_active false)` -> updates user with id=123, setting is_active=false
 
-   Returns newly updated entity if update modified rows, false otherwise."
+   Returns true if update modified rows, false otherwise."
   [entity entity-id & kwargs]
   (let [kwargs (->> (apply assoc {} kwargs)
                     (pre-update entity))]
     (-> (update entity (set-fields kwargs) (where {:id entity-id}))
-             (> 0))))
+        (> 0))))
 
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
