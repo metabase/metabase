@@ -2,7 +2,7 @@
   "/api/meta/dataset endpoints."
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :refer :all]
-            [metabase.query-processor :refer :all]))
+            [metabase.driver :refer [process-and-run]]))
 
 (defendpoint POST "/" [:as {:keys [body]}]
   (try

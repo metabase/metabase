@@ -1,4 +1,4 @@
-(ns metabase.query-processor.structured
+(ns metabase.driver.postgres
   (:require [clojure.core.match :refer [match]]
             [metabase.db :refer [sel]]
             (metabase.models [hydrate :refer :all]
@@ -28,7 +28,6 @@
   (annotate-column table (sel :one Field :id column-id)))
 
 (defn annotate-special-column [column]
-  (println "COLUMN -> " column)
   (match column
     "count" {:name "Count"
              :keyword :count
