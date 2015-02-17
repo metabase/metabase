@@ -25,9 +25,8 @@
   (if-not (contains? body :session_id)
     {:status 400 :body "You must supply a session_id"}
     (api-let [400 "Invalid session"] [session (sel :one Session :id (:session_id body))]
-      (del Session :id (:session_id body))
-      ;; TODO - do we need to remove any cookies??
-      {:success true})))
+      (del Session :id (:session_id body)))))
+;; TODO - do we need to remove any cookies??
 
 
 (define-routes)

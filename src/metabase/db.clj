@@ -65,9 +65,12 @@
       (> 0)))
 
 (defn del
-  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value."
+  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
+   Returns a `204 (No Content)` response dictionary."
   [entity & kwargs]
-  (delete entity (where (apply assoc {} kwargs))))
+  (delete entity (where (apply assoc {} kwargs)))
+  {:status 204
+   :body nil})
 
 (defmulti post-select
   "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
