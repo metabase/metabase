@@ -7,8 +7,8 @@
                              [table :refer [Table]])
             [metabase.util :refer [assoc*]]))
 
-(defn annotate-column [table column-id]
-  (let [{:keys [name base_type] :as column} (sel :one Field :id column-id)
+(defn annotate-column [table column]
+  (let [{:keys [name base_type]} column
         qualified-name (format "\"%s\".\"%s\"" (:name table) name)
         alias (match base_type
                 "DateTimeField" (format "%s_date" name)
@@ -24,6 +24,9 @@
            :alias alias
            :select select)))
 
+(defn annotate-column-with-id [table column-id]
+  (annotate-column table (sel :one Field :id column-id)))
+
 (defn annotate-special-column [column]
   (println "COLUMN -> " column)
   (match column
@@ -38,23 +41,24 @@
              :id nil
              :description nil}))
 
-(defn get-columns [{:keys [table breakout aggregation] :as query}]
-  (->> (concat breakout aggregation)
-       (filter identity)
-       (map (fn [column]
-              (case (integer? column)
-                true (annotate-column table column)
-                false (annotate-special-column column))))))
-
-(declare build-query
-         generate-sql)
+(defn get-columns
+  "Return an array of column info dictionaries for query."
+  [{:keys [source_table table breakout aggregation] :as query}]
+  (if (= aggregation ["rows"]) (->> (sel :many Field :table_id source_table) ; aggregation: ["rows"] just means return all rows
+                                    (map (partial annotate-column table)))
+      (->> (concat breakout aggregation)
+           (filter identity)
+           (map (fn [column]
+                  (case (integer? column)
+                    true (annotate-column-with-id table column)
+                    false (annotate-special-column column)))))))
 
 (defn process [{:keys [source_table] :as query}]
   (assoc* query
           :table (sel :one Table :id source_table)
           :database (:db (-> (:source_table <>)
                              (hydrate :db)))
-          :columns ( get-columns <>)
+          :columns (get-columns <>)
           :columns-by-name (->> (:columns <>)
                                 (map (fn [{:keys [keyword] :as col}]
                                        {keyword col}))
@@ -82,7 +86,7 @@
 (defn apply-clause [query [clause-name clause-value]]
   (case clause-name
     :filter nil
-    :breakout ( apply-breakout query clause-value)
+    :breakout (apply-breakout query clause-value)
     :limit (when clause-value
              {:limit clause-value})
     :aggregation nil))
