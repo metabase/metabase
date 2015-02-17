@@ -1,4 +1,4 @@
-(ns metabase.query-processor.processor
+(ns metabase.query-processor.structured
   (:require [clojure.core.match :refer [match]]
             [metabase.db :refer [sel]]
             (metabase.models [hydrate :refer :all]
@@ -6,13 +6,6 @@
                              [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.util :refer [assoc*]]))
-
-(declare process-query)
-
-(defn process
-  [{:keys [type] :as query}]
-  (case (keyword type)
-    :query ( process-query (:query query))))
 
 (defn annotate-column [table column-id]
   (let [{:keys [name base_type] :as column} (sel :one Field :id column-id)
@@ -54,7 +47,7 @@
 (declare build-query
          generate-sql)
 
-(defn process-query [{:keys [source_table] :as query}]
+(defn process [{:keys [source_table] :as query}]
   (assoc* query
           :table (sel :one Table :id source_table)
           :database (:db (-> (:source_table <>)
@@ -122,10 +115,9 @@
          (apply str))))
 
 (defn process-and-run [{:keys [database] :as query}]
-  (let [{:keys [sql columns ordered-columns columns-by-name] :as query-dict} (process query)
+  (let [{:keys [sql columns ordered-columns columns-by-name] :as query-dict} (process (:query query))
         db (sel :one Database :id database)
         results ((:native-query db) sql)]
-    (println "\n\n********************FIRST ROW********************" (first results) "\n\n")
     {:status :completed
      :row_count (count results)
      :data {:rows (->> results
