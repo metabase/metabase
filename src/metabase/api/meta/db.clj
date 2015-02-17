@@ -1,4 +1,4 @@
-(ns metabase.api.meta-db
+(ns metabase.api.meta.db
   "/api/meta/db endpoints."
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
