@@ -9,10 +9,11 @@
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
-                             [org :refer [org-can-write]]
+                             [org :refer [org-can-read org-can-write]]
                              [table :refer [Table]])))
 
 (defendpoint GET "/" [org]
+  (check-403 (org-can-read org))
   (-> (sel :many Database :organization_id org (order :name))
       (hydrate :organization)))
 
