@@ -14,7 +14,7 @@
 (defentity QueryExecution
   (table :query_queryexecution))
 
-(def all-fields [`QueryExecution
+(def all-fields [QueryExecution
                  :id
                  :uuid
                  :version
