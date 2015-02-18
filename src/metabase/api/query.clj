@@ -50,8 +50,8 @@
   (ins Query
     :type "rawsql"
     :name (or name (str "New Query: " (java.util.Date.)))
-    :details (json/write-str {:sql sql
-                              :timezone timezone})
+    :details {:sql sql
+              :timezone timezone}
     :public_perms (or public_perms common/perms-none)
     :creator_id *current-user-id*
     :database_id database))
