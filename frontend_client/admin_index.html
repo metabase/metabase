@@ -21,7 +21,7 @@
           </label>
           <a cv-org-href="/admin/">
             <h3 class="AdminPageTitle my2 inline-block">
-              <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
+	      <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
             </h3>
           </a>
           <div class="mx1 my2 float-right">
@@ -33,25 +33,25 @@
         <div class="wrapper">
           <nav class="my4 col col-sm-3">
             <ul class="CoreNav">
-              <li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/">Organization</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/people/">People</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/datasources">DataSources</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
                 <ul class="ContextNav">
                   <li>
@@ -61,8 +61,8 @@
                     <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
                   </li>
                 </ul>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/etl/jobexec/">ETL</a>
                 <ul class="ContextNav">
                   <li>
@@ -72,10 +72,10 @@
                     <a class="NavItem" cv-org-href="/admin/etl/job/">Jobs</a>
                   </li>
                 </ul>
-              </li>
-              <li>
+	      </li>
+	      <li>
                 <a class="NavItem" cv-org-href="/admin/search">Search</a>
-              </li>
+	      </li>
             </ul>
           </nav>
           <div class="my4 col col-sm-9">
@@ -204,6 +204,15 @@
   <script src="/app/reserve/reserve.module.js"></script>
   <script src="/app/reserve/reserve.controllers.js"></script>
   <script src="/app/reserve/reserve.services.js"></script>
+
+  <script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+  <script>
+    WebFont.load({
+      google: {
+        families: ['Lato:n1,n4,n7']
+      }
+    });
+  </script>
 
   <!-- TODO - need to handle GA -->
 </html>
