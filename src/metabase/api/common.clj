@@ -38,6 +38,22 @@
              ((:perms-for-org @*current-user*) org-id#))
        ~@body)))
 
+(defn check-org-admin
+  "Check that `*current-user*` is an admin (i.e., `can_write`) of `Org` with ORG-ID, or return a 403."
+  [org-id]
+  (check-403 (org-perms-case org-id
+                             :admin true
+                             :default false
+                             nil false)))
+
+(defn check-org-member
+  "Check that `*current-user*` is a member (i.e., `can_read`) of `Org` with ORG-ID, or return a 403."
+  [org-id]
+  (check-403 (org-perms-case org-id
+                             :admin true
+                             :default true
+                             nil false)))
+
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
 

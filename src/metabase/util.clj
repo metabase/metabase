@@ -95,3 +95,8 @@
       (time/parse (time/formatters :date-time-no-ms))
       (coerce/to-long)
       (java.sql.Date.))))
+
+(defn jdbc-clob-to-str
+  "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
+  [^org.h2.jdbc.JdbcClob clob]
+  (.getSubString clob 1 (.length clob)))

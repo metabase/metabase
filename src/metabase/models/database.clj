@@ -1,5 +1,6 @@
 (ns metabase.models.database
-  (:require [clojure.set :refer [rename-keys]]
+  (:require [clojure.data.json :as json]
+            [clojure.set :refer [rename-keys]]
             [clojure.string :as s]
             [korma.core :refer :all]
             [swiss.arrows :refer :all]
@@ -54,6 +55,12 @@
               :connection-details (delay (connection-details <>))
               :connection (delay (connection <>))
               :native-query (partial native-query <>))))
+
+(defmethod pre-insert Database [_ {:keys [details] :as database}]
+  (assoc database
+         :created_at (new-sql-date)
+         :updated_at (new-sql-date)
+         :details (json/write-str details)))
 
 (defn databases-for-org
   "Selects the ID and NAME for all databases available to the given org-id."
