@@ -1898,6 +1898,173 @@
           },
 
           {
+            "createTable": {
+              "tableName": "annotation_annotation",
+              "columns": [
+                {
+                  "column": {
+                    "name": "id",
+                    "type": "int",
+                    "autoIncrement": true,
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "created_at",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "updated_at",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "start",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "end",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "title",
+                    "type": "TEXT",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "body",
+                    "type": "TEXT",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "annotation_type",
+                    "type": "int",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "edit_count",
+                    "type": "int",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "object_type_id",
+                    "type": "int",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "object_id",
+                    "type": "int",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "author_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_annotation_ref_user_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "organization_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_organization(id)",
+                      "foreignKeyName": "fk_annotation_ref_organization_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "annotation_annotation",
+              "indexName": "idx_annotation_author_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "author_id"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "annotation_annotation",
+              "indexName": "idx_annotation_organization_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "organization_id"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "annotation_annotation",
+              "indexName": "idx_annotation_object_type_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "object_type_id"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "annotation_annotation",
+              "indexName": "idx_annotation_object_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "object_id"
+                  }
+                }
+              ]
+            }
+          },
+
+          {
             "modifySql": {
               "dbms": "postgresql",
               "replace": {
