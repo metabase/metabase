@@ -4,6 +4,7 @@
             (metabase.api [card :as card]
                           [dash :as dash]
                           [org :as org]
+                          [qs :as qs]
                           [query :as query]
                           [result :as result]
                           [session :as session]
@@ -21,6 +22,7 @@
   (context "/meta/db" [] db/routes)
   (context "/meta/table" [] table/routes)
   (context "/org" [] org/routes)
+  (context "/qs"           [] qs/routes)
   (context "/query" [] query/routes)
   (context "/result" [] result/routes)
   (context "/session" [] session/routes)
