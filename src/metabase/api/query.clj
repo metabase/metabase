@@ -50,8 +50,8 @@
   (ins Query
     :type "rawsql"
     :name (or name (str "New Query: " (java.util.Date.)))
-    :details (json/write-str {:sql sql
-                              :timezone timezone})
+    :details {:sql sql
+              :timezone timezone}
     :public_perms (or public_perms common/perms-none)
     :creator_id *current-user-id*
     :database_id database))
@@ -73,16 +73,10 @@
   ;; TODO - check that database exists and user has permission (if specified)
   (let-404 [{:keys [can_write] :as query} (sel :one Query :id id)]
     (check-403 @can_write)
-    (let [details (if-not sql {}
-                    {:details (json/write-str {:sql sql
-                                               :timezone timezone})
-                     :version (+ version 1)})]
-      (check-500 (-> details
-                     (merge body {:updated_at (java.util.Date.)})
-                     (util/select-non-nil-keys :name :database_id :public_perms :details :version :updated_at)
-                     (->> (mapply upd Query id))))
-      (-> (sel :one Query :id id)
-          (hydrate :creator :database)))))
+    (check-500 (-> (merge query body)
+                   (#(mapply upd Query id %))))
+    (-> (sel :one Query :id id)
+        (hydrate :creator :database))))
 
 
 (defendpoint DELETE "/:id" [id]

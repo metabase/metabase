@@ -5,11 +5,6 @@
             [metabase.driver :refer [process-and-run]]))
 
 (defendpoint POST "/" [:as {:keys [body]}]
-  (try
-    (process-and-run body)
-    (catch Exception e
-      (clojure.stacktrace/print-stack-trace ^Exception e)
-      {:status 500
-       :body {:error (.getMessage ^Exception e)}})))
+  (process-and-run body))
 
 (define-routes)
