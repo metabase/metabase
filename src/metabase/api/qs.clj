@@ -1,8 +1,9 @@
 (ns metabase.api.qs
-  (:require [compojure.core :refer [defroutes GET POST]]
+  (:require [clojure.data.csv :as csv]
+            [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.util :refer [contains-many?]]
+            [metabase.util :refer [contains-many? now-iso8601]]
             (metabase.models
               [hydrate :refer :all]
               [query-execution :refer [all-fields]])))
@@ -34,12 +35,15 @@
         (assoc {:status 200} :body)))))
 
 
-(defendpoint GET "/:query-uuid/csv" [query-uuid]
-  ;; TODO - implementation (execute a query)
-  {:TODO "TODO"})
+(def query-result-csv
+  (GET "/:uuid/csv" [uuid]
+    (let-404 [{:keys [result_data] :as query-execution} (eval `(sel :one ~all-fields :uuid ~uuid))]
+      {:status 200
+       :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
+       :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}})))
 
 
-(define-routes query-result)
+(define-routes query-result query-result-csv)
 
 
 ;; ===============================================================================================================
