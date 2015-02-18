@@ -4,6 +4,10 @@
             [clj-time.format :as time]
             [clj-time.coerce :as coerce]))
 
+
+(defn contains-many? [m & ks]
+  (every? true? (map #(contains? m %) ks)))
+
 (defn select-non-nil-keys
   "Like `select-keys` but filters out key-value pairs whose value is nil."
   [m & keys]
