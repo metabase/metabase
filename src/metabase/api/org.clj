@@ -72,16 +72,15 @@
   (check (= org-id orgId) 400 (format "Org IDs don't match: %d != %d" org-id orgId)) ; why do we need to POST Org ID if it's already in the URL????
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id org-id)]
     (check-403 @can_write)
-    (let [user (sel :one User :email email)]                                         ; find user with existing email - if exists then grant perm
-      (let [user-id (:id (or user
-                             (ins User
-                               :email email
-                               :first_name first_name
-                               :last_name last_name
-                               :password (str (java.util.UUID/randomUUID)))))]       ; TODO - send the welcome email
-        (grant-org-perm org-id user-id admin)
-        (-> (sel :one OrgPerm :user_id user-id :organization_id org-id)
-            (hydrate :user))))))
+    (let [user-id (:id (or (sel :one [User :id] :email email)                        ; find user with existing email - if exists then grant perm
+                           (ins User
+                             :email email
+                             :first_name first_name
+                             :last_name last_name
+                             :password (str (java.util.UUID/randomUUID)))))]         ; TODO - send welcome email
+      (grant-org-perm org-id user-id admin)
+      (-> (sel :one OrgPerm :user_id user-id :organization_id org-id)
+          (hydrate :user)))))
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
