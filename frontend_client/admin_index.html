@@ -1,92 +1,209 @@
-{% load compress %}
 <!DOCTYPE html>
 <html ng-app="corvusadmin" class="no-js">
-    <head>
-        {% include "meta.html" %}
-        <title>Corvus - Admin</title>
-        {% compress css %}
-        <link href="/static/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app/bower_components/ng-sortable/dist/ng-sortable.css">
-        <link rel="stylesheet" href="/static/app/dist/corvus.css">
-        {% endcompress %}
-    </head>
-    <body ng-controller="Corvus">
-        <div>
-            <div class="border-bottom bg-white py1">
-                <div class="wrapper">
-                    <label class="Select" ng-if="user.is_multi_org">
-                        <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms"></select>
-                    </label>
-                    <a cv-org-href="/admin/">
-                        <h3 class="AdminPageTitle my2 inline-block">
-                            <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
-                        </h3>
-                    </a>
-                    <div class="mx1 my2 float-right">
-                        <a class="inline-block" cv-org-href="/" target="_self">Exit Admin</a>
-                    </div>
-                </div>
-            </div>
-            <div class="clearfix">
-                <div class="wrapper">
-                    <nav class="my4 col col-sm-3">
-                    {# use verbatim to ignore django templating in favor of angular #}
-                    {% verbatim %}
-                        <ul class="CoreNav">
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/">Organization</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/people/">People</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/datasources">DataSources</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
-                                <ul class="ContextNav">
-                                    <li>
-                                        <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
-                                    </li>
-                                    <li>
-                                        <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/etl/jobexec/">ETL</a>
-                                <ul class="ContextNav">
-                                    <li>
-                                        <a class="NavItem" cv-org-href="/admin/etl/jobexec/">Status</a>
-                                    </li>
-                                    <li>
-                                        <a class="NavItem" cv-org-href="/admin/etl/job/">Jobs</a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>
-                                <a class="NavItem" cv-org-href="/admin/search">Search</a>
-                            </li>
-                        </ul>
-                        {% endverbatim %}
-                    </nav>
-                    <div class="my4 col col-sm-9">
-                        <div ng-view></div>
-                    </div>
-                </div>
-            </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Corvus - Admin</title>
+    <link href="/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet" />
+    <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
+    <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/app/dist/corvus.css" />
+  </head>
+  <body ng-controller="Corvus">
+    <div>
+      <div class="border-bottom bg-white py1">
+        <div class="wrapper">
+          <label class="Select" ng-if="user.is_multi_org">
+            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms"></select>
+          </label>
+          <a cv-org-href="/admin/">
+            <h3 class="AdminPageTitle my2 inline-block">
+              <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
+            </h3>
+          </a>
+          <div class="mx1 my2 float-right">
+            <a class="inline-block" cv-org-href="/" target="_self">Exit Admin</a>
+          </div>
         </div>
-    </body>
-    {% include "js.html" %}
-    
-    {% include "ga.html" %}
+      </div>
+      <div class="clearfix">
+        <div class="wrapper">
+          <nav class="my4 col col-sm-3">
+            <ul class="CoreNav">
+              <li>
+                <a class="NavItem" cv-org-href="/admin/">Organization</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/people/">People</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/datasources">DataSources</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
+                <ul class="ContextNav">
+                  <li>
+                    <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
+                  </li>
+                  <li>
+                    <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/etl/jobexec/">ETL</a>
+                <ul class="ContextNav">
+                  <li>
+                    <a class="NavItem" cv-org-href="/admin/etl/jobexec/">Status</a>
+                  </li>
+                  <li>
+                    <a class="NavItem" cv-org-href="/admin/etl/job/">Jobs</a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a class="NavItem" cv-org-href="/admin/search">Search</a>
+              </li>
+            </ul>
+          </nav>
+          <div class="my4 col col-sm-9">
+            <div ng-view></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+
+  <!-- JS INCLUDES -->
+
+  <script src="/app/bower_components/jquery/dist/jquery.min.js"></script>
+  <script src="/app/bower_components/underscore/underscore.js"></script>
+  <script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
+
+  <script src="/app/bower_components/angular/angular.min.js"></script>
+  <script src="/app/bower_components/angular-route/angular-route.min.js"></script>
+  <script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
+  <script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
+  <script src="/app/bower_components/angular-animate/angular-animate.min.js"></script>
+  <script src="/app/bower_components/angular-sanitize/angular-sanitize.min.js"></script>
+  <script src="/app/bower_components/angular-xeditable/dist/js/xeditable.js"></script>
+  <script src="/app/bower_components/javascript-detect-element-resize/detect-element-resize.js"></script>
+  <script src="/app/bower_components/angular-gridster/src/angular-gridster.js"></script>
+  <script src="/app/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+  <script src="/app/bower_components/angular-http-auth/src/http-auth-interceptor.js"></script>
+  <script src="/app/bower_components/ace-builds/src-min-noconflict/ace.js"></script>
+  <script src="/app/bower_components/ace-builds/src-min-noconflict/mode-sql.js"></script>
+  <script src="/app/bower_components/ace-builds/src-min-noconflict/ext-language_tools.js"></script>
+  <script src="/app/bower_components/angular-ui-ace/ui-ace.js"></script>
+  <script src="/app/bower_components/angularytics/dist/angularytics.min.js"></script>
+  <script src="/app/bower_components/ng-sortable/dist/ng-sortable.min.js"></script>
+  <script src="/app/bower_components/angular-readable-time/angular-readable-time.min.js"></script>
+
+  <script src="/app/bower_components/d3/d3.min.js"></script>
+  <script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
+  <script src="/app/bower_components/dc.js/dc.min.js"></script>
+
+  <script src="/js/google_maps.js"></script>
+
+  <!-- global app -->
+  <script src="/app/app.js"></script>
+  <script src="/app/services.js"></script>
+  <script src="/app/controllers.js"></script>
+  <script src="/app/filters.js"></script>
+  <script src="/app/directives.js"></script>
+
+  <!-- components and shared bits -->
+
+  <script src="/app/annotation/annotation.services.js"></script>
+  <script src="/app/annotation/annotation.directives.js"></script>
+  <script src="/app/metabase/metabase.services.js"></script>
+
+  <script src="/app/components/components.module.js"></script>
+  <script src="/app/components/core_nav/core_nav.js"></script>
+  <script src="/app/components/workspace/workspace.js"></script>
+  <script src="/app/components/icons/icons.js"></script>
+
+  <!-- superadmin section -->
+  <script src="/app/superadmin/superadmin.app.js"></script>
+  <script src="/app/superadmin/superadmin.controllers.js"></script>
+  <script src="/app/superadmin/index/index.module.js"></script>
+  <script src="/app/superadmin/index/index.controllers.js"></script>
+  <script src="/app/superadmin/datamarts/datamarts.module.js"></script>
+  <script src="/app/superadmin/datamarts/datamarts.controllers.js"></script>
+  <script src="/app/superadmin/datamarts/datamarts.services.js"></script>
+
+  <!-- admin section -->
+  <script src="/app/admin/admin.app.js"></script>
+  <script src="/app/admin/admin.controllers.js"></script>
+  <script src="/app/admin/databases/databases.module.js"></script>
+  <script src="/app/admin/databases/databases.controllers.js"></script>
+  <script src="/app/admin/datasets/datasets.module.js"></script>
+  <script src="/app/admin/datasets/datasets.controllers.js"></script>
+  <script src="/app/admin/datasets/datasets.directives.js"></script>
+  <script src="/app/admin/emailreport/emailreport.module.js"></script>
+  <script src="/app/admin/emailreport/emailreport.controllers.js"></script>
+  <script src="/app/admin/emailreport/emailreport.services.js"></script>
+  <script src="/app/admin/people/people.module.js"></script>
+  <script src="/app/admin/people/people.controllers.js"></script>
+  <script src="/app/admin/people/people.directives.js"></script>
+  <script src="/app/admin/query/query.module.js"></script>
+  <script src="/app/admin/query/query.controllers.js"></script>
+  <script src="/app/admin/query/query.services.js"></script>
+  <script src="/app/admin/etl/etl.module.js"></script>
+  <script src="/app/admin/etl/etl.controllers.js"></script>
+  <script src="/app/admin/etl/etl.services.js"></script>
+  <script src="/app/admin/datasources/datasources.module.js"></script>
+  <script src="/app/admin/datasources/datasources.controllers.js"></script>
+  <script src="/app/admin/datasources/datasources.services.js"></script>
+  <script src="/app/admin/annotation/annotation.module.js"></script>
+  <script src="/app/admin/annotation/annotation.controllers.js"></script>
+  <script src="/app/admin/search/search.module.js"></script>
+  <script src="/app/admin/search/search.controllers.js"></script>
+
+  <!-- main app -->
+  <script src="/app/card/card.module.js"></script>
+  <script src="/app/card/card.controllers.js"></script>
+  <script src="/app/card/card.services.js"></script>
+  <script src="/app/card/card.directives.js"></script>
+  <script src="/app/card/card.charting.js"></script>
+  <script src="/app/dashboard/dashboard.module.js"></script>
+  <script src="/app/dashboard/dashboard.controllers.js"></script>
+  <script src="/app/dashboard/dashboard.services.js"></script>
+  <script src="/app/dashboard/dashboard.directives.js"></script>
+  <script src="/app/etl/etl.module.js"></script>
+  <script src="/app/etl/etl.controllers.js"></script>
+  <script src="/app/etl/etl.services.js"></script>
+  <script src="/app/explore/explore.module.js"></script>
+  <script src="/app/explore/explore.controllers.js"></script>
+  <script src="/app/explore/explore.directives.js"></script>
+  <script src="/app/explore/explore.services.js"></script>
+  <script src="/app/user/user.module.js"></script>
+  <script src="/app/user/user.controllers.js"></script>
+  <script src="/app/user/user.directives.js"></script>
+  <script src="/app/search/search.module.js"></script>
+  <script src="/app/search/search.controllers.js"></script>
+  <script src="/app/search/search.services.js"></script>
+
+  <!-- custom shtuff:  be wary -->
+  <script src="/app/operator/operator.module.js"></script>
+  <script src="/app/operator/operator.controllers.js"></script>
+  <script src="/app/operator/operator.services.js"></script>
+
+  <script src="/app/reserve/reserve.module.js"></script>
+  <script src="/app/reserve/reserve.controllers.js"></script>
+  <script src="/app/reserve/reserve.services.js"></script>
+
+  <!-- TODO - need to handle GA -->
 </html>
