@@ -93,7 +93,7 @@
              {:limit clause-value})
     :aggregation nil
     :page (when-let [{:keys [page items]} clause-value]
-            {:offset (* items (- 1 page))
+            {:offset (* items (- page 1))
              :limit items})))
 
 (defn build-query [{:keys [table columns] :as query}]
