@@ -1,11 +1,13 @@
 (ns metabase.api.org
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [org :refer [Org]]
                              [user :refer [User]]
-                             [org-perm :refer [OrgPerm]])))
+                             [org-perm :refer [OrgPerm]])
+            [metabase.util :as util]))
 
 
 (defendpoint GET "/" []
@@ -44,7 +46,8 @@
 (defn grant-org-perm
   "Grants permission for given User on Org.  Creates record if needed, otherwise updates existing record."
   [org-id user-id is-admin]
-  (let [perm (sel :one OrgPerm :user_id user-id :organization_id org-id)]
+  (let [perm (sel :one OrgPerm :user_id user-id :organization_id org-id)
+        is-admin (boolean is-admin)]
     (if-not perm
       (ins OrgPerm
         :user_id user-id
@@ -55,36 +58,29 @@
 
 
 (defendpoint GET "/:id/members" [id]
-  ;; TODO - permissions check
-  (let-404 [org (sel :one Org :id id)]
+  (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
+    (check-403 @can_read)
     (-> (sel :many OrgPerm :organization_id id)
-      ;; TODO - we need a way to remove :organization_id and user_id from this output
-      (hydrate :user :organization))))
+        (hydrate :user)
+        (->> (map (fn [org-perm]                                ; strip IDs for safety (?)
+                    (-> org-perm
+                        (dissoc :id :organization_id :user_id)
+                        (dissoc-in [:user :id] ))))))))
 
 
-(defendpoint POST "/:id/members" [id :as {body :body}]
-  ;; TODO - permissions check
-  ; find user with existing email - if exists then grant perm
-  (let-404 [org (sel :one Org :id id)]
-    (let [user (sel :one User :email (:email body))]
-      (if-not user
-        (let [new-user-id (ins User
-                            :email (:email body)
-                            :first_name (:first_name body)
-                            :last_name (:last_name body)
-                            :password (str (java.util.UUID/randomUUID))
-                            :date_joined (new java.util.Date)
-                            :is_staff true
-                            :is_active true
-                            :is_superuser false)]
-          (grant-org-perm (:id org) (:id new-user-id) (:admin body))
-          ;; TODO - send signup email
-          (-> (sel :one OrgPerm :user_id (:id new-user-id) :organization_id (:id org))
-            (hydrate :user :organization)))
-        (do
-          (grant-org-perm (:id org) (:id user) (:admin body))
-          (-> (sel :one OrgPerm :user_id (:id user) :organization_id (:id org))
-              (hydrate :user :organization)))))))
+(defendpoint POST "/:org-id/members" [org-id :as {{:keys [first_name last_name email orgId admin]} :body}]
+  (check (= org-id orgId) 400 (format "Org IDs don't match: %d != %d" org-id orgId)) ; why do we need to POST Org ID if it's already in the URL????
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id org-id)]
+    (check-403 @can_write)
+    (let [user-id (:id (or (sel :one [User :id] :email email)                        ; find user with existing email - if exists then grant perm
+                           (ins User
+                             :email email
+                             :first_name first_name
+                             :last_name last_name
+                             :password (str (java.util.UUID/randomUUID)))))]         ; TODO - send welcome email
+      (grant-org-perm org-id user-id admin)
+      (-> (sel :one OrgPerm :user_id user-id :organization_id org-id)
+          (hydrate :user)))))
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
