@@ -1,5 +1,5 @@
 (ns metabase.api.query
-  (:require [korma.core :refer [where subselect fields]]
+  (:require [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [clojure.data.json :as json]
             [medley.core :refer :all]
@@ -8,7 +8,8 @@
             (metabase.models [common :as common]
                              [hydrate :refer :all]
                              [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
-                             [query :refer [Query]])
+                             [query :refer [Query]]
+                             [query-execution :refer [QueryExecution]])
             [metabase.util :as util]))
 
 
@@ -63,7 +64,6 @@
 
 
 (defendpoint GET "/:id" [id]
-  ;; TODO - permissions check
   (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
     (check-403 @can_read)
     (hydrate query :creator :database :can_read :can_write)))
@@ -80,7 +80,6 @@
 
 
 (defendpoint DELETE "/:id" [id]
-  ;; TODO - permissions check
   (let-404 [{:keys [can_write] :as query} (sel :one [Query :id :creator_id :public_perms] :id id)]
     (check-403 @can_write)
     (del Query :id id)))
@@ -88,6 +87,18 @@
 
 (defendpoint POST "/:id" [id]
   ;; TODO - implementation (execute a query)
+  {:TODO "TODO"})
+
+
+(defendpoint GET "/:id/results" [id]
+  ;; TODO - implementation (list recent results of a query)
+  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
+    (check-403 @can_read)
+    (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10))))
+
+
+(defendpoint POST "/:id/csv" [id]
+  ;; TODO - this should return a CSV file instead of JSON
   {:TODO "TODO"})
 
 

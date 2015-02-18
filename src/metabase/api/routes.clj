@@ -6,7 +6,9 @@
                           [dash :as dash]
                           [datasource :as datasource]
                           [org :as org]
+                          [qs :as qs]
                           [query :as query]
+                          [result :as result]
                           [session :as session]
                           [user :as user])
             (metabase.api.meta [dataset :as dataset]
@@ -16,7 +18,7 @@
 ;; placeholder until we actually define real API routes
 (defroutes routes
   ;; call /api/test to see this
-  (context "/annotation" [] annotation/routes)
+  (context "/annotation"   [] annotation/routes)
   (context "/card"         [] card/routes)
   (context "/dash"         [] dash/routes)
   (context "/datasource"   [] datasource/routes)
@@ -24,7 +26,9 @@
   (context "/meta/db"      [] db/routes)
   (context "/meta/table"   [] table/routes)
   (context "/org"          [] org/routes)
+  (context "/qs"           [] qs/routes)
   (context "/query"        [] query/routes)
+  (context "/result"       [] result/routes)
   (context "/session"      [] session/routes)
   (context "/user"         [] user/routes)
   (route/not-found (fn [{:keys [request-method uri]}]
