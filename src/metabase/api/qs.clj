@@ -20,7 +20,9 @@
                 :sql (:sql body)
                 :timezone (get body :timezone)
                 }}
-    (execute-query)))
+    (execute-query)
+    ;; TODO - format the response of execute-query for the client
+    ))
 
 
 ;; TODO - not using defendpoint due to string params causing number format exceptions
