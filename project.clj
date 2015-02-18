@@ -10,6 +10,7 @@
                  [org.clojure/core.async "LATEST"]          ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
                  [org.clojure/core.match "0.3.0-alpha4"]    ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.6"]         ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+                 [org.clojure/data.csv "0.1.2"]             ; CSV parsing / generation
                  [org.clojure/data.json "0.2.5"]            ; JSON parsing / generation
                  [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
