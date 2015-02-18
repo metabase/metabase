@@ -4,9 +4,10 @@
             [clojure.string :as s]
             [korma.core :refer :all]
             [swiss.arrows :refer :all]
+            [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [realize-json]]
-                             [org :refer [Org]])
+                             [org :refer [Org org-can-read org-can-write]])
             [metabase.util :refer :all]))
 
 (defentity Database
@@ -52,6 +53,8 @@
   (-> db
       (realize-json :details) ; TODO wouldn't we want to actually strip this info instead of returning it?
       (assoc* :organization (sel-fn :one Org :id organization_id)
+              :can_read (delay (org-can-read organization_id))
+              :can_write (delay (org-can-write organization_id))
               :connection-details (delay (connection-details <>))
               :connection (delay (connection <>))
               :native-query (partial native-query <>))))

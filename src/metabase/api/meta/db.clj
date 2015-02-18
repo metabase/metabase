@@ -9,6 +9,7 @@
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
+                             [org :refer [org-can-write]]
                              [table :refer [Table]])))
 
 (defendpoint GET "/" [org]
@@ -16,7 +17,7 @@
       (hydrate :organization)))
 
 (defendpoint POST "/" [:as {{:keys [org] :as body} :body}]
-  (check-org-admin org)
+  (check-403 (org-can-write org))
   (->> (-> body
            (select-keys [:name :engine :details])
            (assoc :organization_id org))
@@ -31,11 +32,14 @@
          (hydrate :organization)))
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [organization_id]} (sel :one [Database :organization_id] :id id)]
-    (check-org-admin organization_id))
+  (let-404 [{:keys [can_write]} (sel :one Database :id id)]
+    (check-403 @can_write))
   (del Database :id id))
 
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id (order :name)))
+
+;; (defendpoint POST "/:id/sync" [id]
+;;   {:status "TODO"})
 
 (define-routes)
