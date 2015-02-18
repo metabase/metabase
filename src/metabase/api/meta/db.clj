@@ -4,12 +4,18 @@
             [korma.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer [hydrate]]
+            [metabase.driver :as driver]
+            (metabase.models common
+                             [hydrate :refer [hydrate]]
                              [database :refer [Database]]
                              [table :refer [Table]])))
 
 (defendpoint GET "/" [org]
   (sel :many Database :organization_id org (order :name)))
+
+(defendpoint GET "/form_input" []
+  {:timezones metabase.models.common/timezones
+   :engines driver/available-drivers})
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
