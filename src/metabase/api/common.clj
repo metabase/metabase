@@ -38,6 +38,8 @@
              ((:perms-for-org @*current-user*) org-id#))
        ~@body)))
 
+(declare check-403)
+
 (defn check-org-admin
   "Check that `*current-user*` is an admin (i.e., `can_write`) of `Org` with ORG-ID, or return a 403."
   [org-id]
