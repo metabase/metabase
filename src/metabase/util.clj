@@ -1,6 +1,12 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [medley.core :refer :all]))
+  (:require [medley.core :refer :all]
+            [clj-time.format :as time]
+            [clj-time.coerce :as coerce]))
+
+
+(defn contains-many? [m & ks]
+  (every? true? (map #(contains? m %) ks)))
 
 (defn select-non-nil-keys
   "Like `select-keys` but filters out key-value pairs whose value is nil."
@@ -80,3 +86,12 @@
   (-> (java.util.Date.)
       .getTime
       (java.sql.Date.)))
+
+(defn parse-iso8601
+  "parse a string value expected in the iso8601 format into a `java.sql.Date`."
+  [datetime]
+  (when datetime
+    (->> datetime
+      (time/parse (time/formatters :date-time-no-ms))
+      (coerce/to-long)
+      (java.sql.Date.))))

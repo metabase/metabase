@@ -33,8 +33,8 @@
     (sel :one Card :id id)))
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [card (sel :one Card :id id)]
-    (check-403 @(:can_write card))
+  (let-404 [{:keys [can_write]} (sel :one Card :id id)]
+    (check-403 @can_write)
     (del Card :id id)))
 
 (defendpoint GET "/:id/favorite" [id]

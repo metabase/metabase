@@ -1,7 +1,8 @@
 (ns metabase.models.user
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.org-perm :refer [OrgPerm]]))
+            [metabase.models.org-perm :refer [OrgPerm]]
+            [metabase.util :as util]))
 
 (defentity User
   (table :core_user)
@@ -38,3 +39,11 @@
       (assoc :org_perms (sel-fn :many OrgPerm :user_id id)
              :perms-for-org (memoize (partial user-perms-for-org id))
              :common_name (str (:first_name user) " " (:last_name user)))))
+
+(defmethod pre-insert User [_ user]
+  (let [defaults {:date_joined (util/new-sql-date)
+                  :last_login (util/new-sql-date)
+                  :is_staff true
+                  :is_active true
+                  :is_superuser false}]
+    (merge defaults user)))

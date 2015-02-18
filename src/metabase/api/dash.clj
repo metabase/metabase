@@ -1,6 +1,7 @@
 (ns metabase.api.dash
   "/api/meta/dash endpoints."
-  (:require [compojure.core :refer [GET]]
+  (:require [compojure.core :refer [GET POST DELETE]]
+            [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -10,9 +11,26 @@
   (-> (sel :many Dashboard :organization_id org)
       (hydrate :creator :organization)))
 
+(defendpoint POST "/" [:as {:keys [body]}]
+  (let [{:keys [organization]} body]
+    (check-403 (org-perms-case organization ; check that current-user can make a Dashboard for this org
+                 :admin true
+                 :default true
+                 nil false))
+    (->> (-> body
+             (select-keys [:organization :name :public_perms])
+             (clojure.set/rename-keys {:organization :organization_id})
+             (assoc :creator_id *current-user-id*))
+         (medley/mapply ins Dashboard))))
+
 (defendpoint GET "/:id" [id]
   (let-404 [db (-> (sel :one Dashboard :id id)
                    (hydrate :creator :organization [:ordered_cards [:card :creator]]))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
+
+(defendpoint DELETE "/:id" [id]
+  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
+    (check-403 @can_write)
+    (del Dashboard :id id)))
 
 (define-routes)

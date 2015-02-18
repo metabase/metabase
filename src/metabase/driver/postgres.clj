@@ -91,10 +91,13 @@
     :breakout (apply-breakout query clause-value)
     :limit (when clause-value
              {:limit clause-value})
-    :aggregation nil))
+    :aggregation nil
+    :page (when-let [{:keys [page items]} clause-value]
+            {:offset (* items (- page 1))
+             :limit items})))
 
 (defn build-query [{:keys [table columns] :as query}]
-  (let [q (->> (select-keys query [:filter :breakout :limit :aggregation])
+  (let [q (->> (select-keys query [:filter :breakout :limit :aggregation :page])
                (map (partial apply-clause query))
                (filter identity)
                (apply merge {}))]
@@ -111,14 +114,17 @@
                       (.toString value))))))
 
 (defn generate-sql [query]
+  (println "QUERY: ")
   (clojure.pprint/pprint query)
   (letfn [(sqlwhen [kw sql-str]
-            (let [val (kw query)]
-              (when-not (empty? val) (str sql-str " " val))))]
+            (let [val (-> (kw query)
+                          str)]
+              (when-not (empty? val) (str sql-str "\n" val))))]
     (->> [(sqlwhen :select "SELECT")
           (sqlwhen :from "FROM")
           (sqlwhen :group-by "GROUP BY")
           (sqlwhen :order-by "ORDER BY")
+          (sqlwhen :offset "OFFSET")
           (sqlwhen :limit "LIMIT")]
          (filter identity)
          (interpose "\n")
@@ -128,6 +134,10 @@
   (let [{:keys [sql columns ordered-columns columns-by-name] :as query-dict} (process (:query query))
         db (sel :one Database :id database)
         results ((:native-query db) sql)]
+    (println "----------------------------------------\n"
+             "DRIVER GENERATED SQL:\n"
+             sql
+             "\n----------------------------------------")
     {:status :completed
      :row_count (count results)
      :data {:rows (->> results
