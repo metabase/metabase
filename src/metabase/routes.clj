@@ -4,10 +4,17 @@
             [ring.util.response :as resp]
             [metabase.api.routes :as api]))
 
-(letfn [(serve-index [_] (-> (resp/file-response "frontend_client/index.html")
-                             (assoc :status 200)))]
+(defn- serve-file
+  "Returns a function that takes REQUEST and serves FILE."
+  [file]
+  (fn [_]
+    (resp/file-response file)))
+
+(let [index (serve-file "frontend_client/index.html")
+      admin (serve-file "frontend_client/admin_index.html")]
   (defroutes routes
-    (GET "/" [] serve-index)                            ; ^/$    -> index.html
-    (context "/api" [] api/routes)                      ; ^/api/ -> API routes
-    (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/ -> static files under frontend_client/app
-    (GET "*" [] serve-index)))                          ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+    (GET "/" [] index)                                  ; ^/$           -> index.html
+    (context "/api" [] api/routes)                      ; ^/api/        -> API routes
+    (route/files "/app/" {:root "frontend_client/app"}) ; ^/app/        -> static files under frontend_client/app
+    (GET "/:org-slug/admin/*" [] admin)                 ; ^/org/admin/* -> admin_index.html
+    (GET "*" [] index)))                                ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
