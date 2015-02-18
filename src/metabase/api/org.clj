@@ -18,21 +18,20 @@
   {:status 200
    :body {}})
 
-
 (defendpoint GET "/:id" [id]
-  ;; TODO - permissions check
-  (->404 (sel :one Org :id id)))
-
+  (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
+    (check-403 @can_read)
+    org))
 
 (defendpoint GET "/slug/:slug" [slug]
-  ;; TODO: permissions check
-  (->404 (sel :one Org :slug slug)))
-
+  (let-404 [{:keys [can_read] :as org} (sel :one Org :slug slug)]
+    (check-403 @can_read)
+    org))
 
 (defendpoint PUT "/:id" [id :as {body :body}]
-  ;; TODO - permissions check
   ;; TODO - validations (email address must be unique)
-  (let-404 [org (sel :one Org :id id)]
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     ;; TODO - how can we pass a useful error message in the 500 response on error?
     (upd Org id
       ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
