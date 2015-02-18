@@ -1,7 +1,8 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
-            (metabase.api [card :as card]
+            (metabase.api [annotation :as annotation]
+                          [card :as card]
                           [dash :as dash]
                           [org :as org]
                           [query :as query]
@@ -14,6 +15,7 @@
 ;; placeholder until we actually define real API routes
 (defroutes routes
   ;; call /api/test to see this
+  (context "/annotation" [] annotation/routes)
   (context "/card" [] card/routes)
   (context "/dash" [] dash/routes)
   (context "/meta/dataset" [] dataset/routes)
