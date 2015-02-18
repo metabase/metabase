@@ -73,8 +73,8 @@
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id org-id)]
     (check-403 @can_write)
     (let [user (sel :one User :email email)]                                         ; find user with existing email - if exists then grant perm
-      (let [user-id (if user (:id user)
-                        (:id (ins User
+      (let [user-id (:id (or user
+                             (ins User
                                :email email
                                :first_name first_name
                                :last_name last_name
