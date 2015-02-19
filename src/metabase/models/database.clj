@@ -42,7 +42,7 @@
         korma-driver)))
 
 
-(defn- with-jdbc-metadata
+(defn with-jdbc-metadata
   "Call fn F with the JDBC Metadata for DATABASE."
   [database f]
   (jdbc/with-db-metadata [md @(:connection database)]
@@ -53,10 +53,8 @@
   [database]
   (with-jdbc-metadata database
     (fn [md] (->> (-> md
-                     (.getTables nil nil "%" nil)
+                     (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
                      jdbc/result-set-seq)
-                 (filter (fn [{:keys [table_type]}]
-                           (= table_type "TABLE")))
                  (map :table_name)))))
 
 (defn- native-query
