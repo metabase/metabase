@@ -5,6 +5,7 @@
                           [card :as card]
                           [dash :as dash]
                           [datasource :as datasource]
+                          [emailreport :as emailreport]
                           [org :as org]
                           [qs :as qs]
                           [query :as query]
@@ -22,6 +23,7 @@
   (context "/card"         [] card/routes)
   (context "/dash"         [] dash/routes)
   (context "/datasource"   [] datasource/routes)
+  (context "/emailreport"  [] emailreport/routes)
   (context "/meta/dataset" [] dataset/routes)
   (context "/meta/db"      [] db/routes)
   (context "/meta/table"   [] table/routes)
