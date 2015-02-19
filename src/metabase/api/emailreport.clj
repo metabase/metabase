@@ -14,7 +14,9 @@
 
 
 (defendpoint GET "/form_input" [org]
-  ;; TODO - validate user has perms on org
+  (require-params org)
+  ; we require admin/default perms on the org to do this operation
+  (check-403 ((:perms-for-org @*current-user*) org))
   (let [dbs (databases-for-org org)
         users (users-for-org org)]
     {:permissions common/permissions
@@ -26,15 +28,18 @@
      :users users}))
 
 
-;(defendpoint GET "/" [org f]
-;  ;; TODO - filter by f == "mine"
-;  ;; TODO - filter by creator == self OR public_perms > 0
-;  (check-403 ((:perms-for-org @*current-user*) org))
-;  (-> (sel :many Query
-;        (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
-;        (where {:public_perms [> common/perms-none]}))
-;    (hydrate :creator :database)))
-;
+(defendpoint GET "/" [org f]
+  ;; TODO - filter by f == "mine"
+  ;; TODO - filter by creator == self OR public_perms > 0
+  (require-params org)
+  ; we require admin/default perms on the org to do this operation
+  (check-403 ((:perms-for-org @*current-user*) org))
+  (-> (sel :many EmailReport
+        (where {:organization_id org})
+        (where {:public_perms [> common/perms-none]})
+        (order :name :ASC))
+    (hydrate :creator :organization :can_read :can_write)))
+
 ;(defn query-clone
 ;  "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
 ;  [query-id]
@@ -66,14 +71,15 @@
 ;  (if clone
 ;    (query-clone clone)
 ;    (query-create body)))
-;
-;
-;(defendpoint GET "/:id" [id]
-;  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
-;    (check-403 @can_read)
-;    (hydrate query :creator :database :can_read :can_write)))
-;
-;
+
+
+(defendpoint GET "/:id" [id]
+  ; user must have read permissions on the report
+  (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
+    (check-403 @can_read)
+    (hydrate report :creator :organization :can_read :can_write)))
+
+
 ;(defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
 ;  ;; TODO - check that database exists and user has permission (if specified)
 ;  (let-404 [{:keys [can_write] :as query} (sel :one Query :id id)]

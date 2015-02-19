@@ -1,5 +1,13 @@
 (ns metabase.models.emailreport
-  (:use korma.core))
+  (:require [korma.core :refer :all]
+            [metabase.api.common :refer [check]]
+            [metabase.db :refer :all]
+            (metabase.models [common :refer [assoc-permissions-sets]]
+                             [hydrate :refer [realize-json]]
+                             [emailreport-recipients :refer [EmailReportRecipients]]
+                             [org :refer [Org org-can-read org-can-write]]
+                             [user :refer [User]])
+            [metabase.util :as util]))
 
 
 (def mode-active 0)
@@ -28,3 +36,20 @@
 
 (defentity EmailReport
   (table :report_emailreport))
+
+
+(defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as emailreport}]
+  (-> emailreport
+    (realize-json :dataset_query)
+    (realize-json :schedule)
+    (util/assoc*
+      :creator (delay
+                 (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
+                 (sel :one User :id creator_id))
+      :organization (delay
+                      (check organization_id 500 "Can't get database: Query doesn't have a :database_id.")
+                      (sel :one Org :id organization_id))
+      :recipients (delay
+                    (sel :many User
+                      (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
+    assoc-permissions-sets))
