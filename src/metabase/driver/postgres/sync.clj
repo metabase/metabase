@@ -20,6 +20,19 @@
 
 (declare sync-fields)
 
+(defn get-table-row-count
+  "Get the number of rows in TABLE."
+  [database table]
+  (-> ((:native-query database) (format "SELECT COUNT(*) FROM \"%s\"" (:name table)))
+      first
+      :count))
+
+(defn update-table-row-count
+  "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
+  [database table]
+  (let [new-count (get-table-row-count database table)]
+    (upd Table (:id table) :rows new-count)))
+
 (defn sync-tables
   "Fetch the table names for DATABASE and create corresponding `Tables` if they don't already exist.
    (This is executed in parallel.)"
@@ -31,6 +44,7 @@
                                         :db_id id
                                         :name table-name
                                         :active true))]
+                     (update-table-row-count database table)
                      (sync-fields table)))
                  @table-names))))
 
