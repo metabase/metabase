@@ -5,14 +5,21 @@
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer :all]
-                             [card-favorite :refer :all])
+            (metabase.models [hydrate :refer [hydrate simple-batched-hydrate]]
+                             [card :refer [Card]]
+                             [card-favorite :refer [CardFavorite]]
+                             [user :refer [User]])
             [metabase.util :as util]))
 
-(defendpoint GET "/" [org f] ; TODO - need to do something with the `f` param
-  (-> (sel :many Card :organization_id org (order :name :ASC))
-      (hydrate :creator)))
+(defendpoint GET "/" [org f]
+  (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
+                :all (sel :many Card :organization_id org (order :name :ASC))
+                :mine (sel :many Card :organization_id org :creator_id *current-user-id* (order :name :ASC))
+                :fav (->> (-> (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
+                              (hydrate :card))
+                          (map :card)
+                          (sort-by :name)))
+      (hydrate :creator))) ; TODO maybe do a batched hydrate here instead?
 
 (defendpoint POST "/" [:as {:keys [body]}]
   (->> (-> body

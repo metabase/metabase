@@ -45,7 +45,8 @@
                                         :name table-name
                                         :active true))]
                      (update-table-row-count database table)
-                     (sync-fields table)))
+                     (sync-fields table)
+                     (println table-name)))
                  @table-names))))
 
 (defn sync-fields
