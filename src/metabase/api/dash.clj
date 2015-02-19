@@ -29,7 +29,7 @@
 
 (defendpoint GET "/:id" [id]
   (let-404 [db (-> (sel :one Dashboard :id id)
-                   (hydrate :creator :organization [:ordered_cards [:card :creator]]))]
+                   (hydrate :creator :organization [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 
 (defendpoint DELETE "/:id" [id]
