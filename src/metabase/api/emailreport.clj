@@ -17,7 +17,6 @@
   ;; TODO - validate user has perms on org
   (let [dbs (databases-for-org org)
         users (users-for-org org)]
-    (println users)
     {:permissions common/permissions
      :modes modes
      :days_of_week days-of-week
