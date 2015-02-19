@@ -1,5 +1,6 @@
 (ns metabase.models.database
   (:require [clojure.data.json :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :refer [rename-keys]]
             [clojure.string :as s]
             [korma.core :refer :all]
@@ -40,14 +41,29 @@
         (dissoc :db-type)
         korma-driver)))
 
+
+(defn with-jdbc-metadata
+  "Call fn F with the JDBC Metadata for DATABASE."
+  [database f]
+  (jdbc/with-db-metadata [md @(:connection database)]
+    (f md)))
+
+(defn table-names
+  "Fetch a list of table names for DATABASE."
+  [database]
+  (with-jdbc-metadata database
+    (fn [md] (->> (-> md
+                     (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
+                     jdbc/result-set-seq)
+                 (map :table_name)))))
+
 (defn- native-query
   "Perform a native (i.e. SQL) query against DATABASE.
-   ex. `(let [db (sel :one Database :name \"spotguides\")]
-          ((:native-query db) \"SELECT COUNT(*) FROM main_guide;\"))`"
-  ([database sql]
-   (native-query database sql true))
-  ([database sql return-results?]
-   (exec-raw @(:connection database) sql (when return-results? :results))))
+
+    (let [db (sel :one Database :name \"spotguides\")]
+      ((:native-query db) \"SELECT COUNT(*) FROM main_guide;\"))"
+  [database sql]
+  (jdbc/query @(:connection database) sql))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
@@ -57,7 +73,8 @@
               :can_write (delay (org-can-write organization_id))
               :connection-details (delay (connection-details <>))
               :connection (delay (connection <>))
-              :native-query (partial native-query <>))))
+              :native-query (partial native-query <>)
+              :table-names (delay (table-names <>)))))
 
 (defmethod pre-insert Database [_ {:keys [details] :as database}]
   (assoc database
