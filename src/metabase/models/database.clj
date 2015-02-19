@@ -24,10 +24,10 @@
                       (reduce conj {}))                       ; combine into single dict
         {:keys [host dbname port host]} details]
     (-> details
-        (assoc :host (keyword host)                           ; convert host (e.g. 'postgres') to kw
+        (assoc :host host                                     ; e.g. "localhost"
+               :db-type :postgres                             ; HACK hardcoded to postgres for time being until API has a way to choose DB type !
                :port (Integer/parseInt port))                 ; convert :port to an Integer
-        (rename-keys {:host :db-type
-                      :dbname :db}))))
+        (rename-keys {:dbname :db}))))
 
 (defn- connection
   "Return a korma connection to DATABASE."
