@@ -1,6 +1,7 @@
 (ns metabase.middleware.format
   (:require [clojure.core.match :refer [match]]
-            [medley.core :refer [filter-vals map-vals]]))
+            [medley.core :refer [filter-vals map-vals]]
+            [metabase.util :as util]))
 
 (declare -format-response)
 
@@ -10,11 +11,6 @@
   [handler]
   (fn [request]
     (-format-response (handler request))))
-
-(defn- jdbc-clob-to-str
-  "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
-  [^org.h2.jdbc.JdbcClob clob]
-  (.getSubString clob 1 (.length clob)))
 
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."
@@ -36,4 +32,4 @@
     :map (->> (remove-fns-and-delays obj)
               (map-vals -format-response))       ; recurse over all vals in the map
     :coll (map -format-response obj)             ; recurse over all items in the collection
-    :jdbc-clob (jdbc-clob-to-str obj)))
+    :jdbc-clob (util/jdbc-clob-to-str obj)))
