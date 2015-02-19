@@ -244,15 +244,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     }, {
         'id': false,
         'name': 'No'
-    }, ];
-
-    this.etljob_modes = [{
-        'id': 1,
-        'name': 'Active'
-    }, {
-        'id': 2,
-        'name': 'Disabled'
-    }, ];
+    }];
 
     this.fieldSpecialType = function(typeId) {
         for (var i = 0; i < this.field_special_types.length; i++) {

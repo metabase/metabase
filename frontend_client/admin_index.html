@@ -17,7 +17,9 @@
       <div class="border-bottom bg-white py1">
         <div class="wrapper">
           <label class="Select" ng-if="user.is_multi_org">
-            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms"></select>
+            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug"
+		    ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms">
+	    </select>
           </label>
           <a cv-org-href="/admin/">
             <h3 class="AdminPageTitle my2 inline-block">
@@ -46,9 +48,6 @@
                 <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
 	      </li>
 	      <li>
-                <a class="NavItem" cv-org-href="/admin/datasources">DataSources</a>
-	      </li>
-	      <li>
                 <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
 	      </li>
 	      <li>
@@ -59,17 +58,6 @@
                   </li>
                   <li>
                     <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
-                  </li>
-                </ul>
-	      </li>
-	      <li>
-                <a class="NavItem" cv-org-href="/admin/etl/jobexec/">ETL</a>
-                <ul class="ContextNav">
-                  <li>
-                    <a class="NavItem" cv-org-href="/admin/etl/jobexec/">Status</a>
-                  </li>
-                  <li>
-                    <a class="NavItem" cv-org-href="/admin/etl/job/">Jobs</a>
                   </li>
                 </ul>
 	      </li>
@@ -161,12 +149,6 @@
   <script src="/app/admin/query/query.module.js"></script>
   <script src="/app/admin/query/query.controllers.js"></script>
   <script src="/app/admin/query/query.services.js"></script>
-  <script src="/app/admin/etl/etl.module.js"></script>
-  <script src="/app/admin/etl/etl.controllers.js"></script>
-  <script src="/app/admin/etl/etl.services.js"></script>
-  <script src="/app/admin/datasources/datasources.module.js"></script>
-  <script src="/app/admin/datasources/datasources.controllers.js"></script>
-  <script src="/app/admin/datasources/datasources.services.js"></script>
   <script src="/app/admin/annotation/annotation.module.js"></script>
   <script src="/app/admin/annotation/annotation.controllers.js"></script>
   <script src="/app/admin/search/search.module.js"></script>
@@ -182,9 +164,6 @@
   <script src="/app/dashboard/dashboard.controllers.js"></script>
   <script src="/app/dashboard/dashboard.services.js"></script>
   <script src="/app/dashboard/dashboard.directives.js"></script>
-  <script src="/app/etl/etl.module.js"></script>
-  <script src="/app/etl/etl.controllers.js"></script>
-  <script src="/app/etl/etl.services.js"></script>
   <script src="/app/explore/explore.module.js"></script>
   <script src="/app/explore/explore.controllers.js"></script>
   <script src="/app/explore/explore.directives.js"></script>

@@ -19,7 +19,6 @@ var Corvus = angular.module('corvus', [
     'corvus.components',
     'corvus.card',
     'corvus.dashboard',
-    'corvus.etl',
     'corvus.explore',
     'corvus.operator', // this is a short term hack
     'corvus.reserve',
