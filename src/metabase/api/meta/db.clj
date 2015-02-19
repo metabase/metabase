@@ -6,6 +6,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.postgres.sync :as pgsync]
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
@@ -40,7 +41,10 @@
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id (order :name)))
 
-;; (defendpoint POST "/:id/sync" [id]
-;;   {:status "TODO"})
+
+(defendpoint POST "/:id/sync" [id]
+  (let-404 [db (sel :one Database :id id)]   ; run sync-tables asynchronously.
+    (future (pgsync/sync-tables db)))        ; TODO - this only works for Postgres right now (since that's the only driver we have)
+  {:status :ok})
 
 (define-routes)
