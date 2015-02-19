@@ -4,7 +4,6 @@
             (metabase.api [annotation :as annotation]
                           [card :as card]
                           [dash :as dash]
-                          [datasource :as datasource]
                           [org :as org]
                           [qs :as qs]
                           [query :as query]
@@ -21,7 +20,6 @@
   (context "/annotation"   [] annotation/routes)
   (context "/card"         [] card/routes)
   (context "/dash"         [] dash/routes)
-  (context "/datasource"   [] datasource/routes)
   (context "/meta/dataset" [] dataset/routes)
   (context "/meta/db"      [] db/routes)
   (context "/meta/table"   [] table/routes)

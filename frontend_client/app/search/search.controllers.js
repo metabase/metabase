@@ -95,7 +95,7 @@ SearchControllers.controller('SearchController', ['$scope', '$routeParams', 'Sea
         };
 
         $scope.isAdminResult = function(display_type) {
-            return _.contains(['Query', 'ETL Job', 'DataSource'], display_type);
+            return display_type === 'Query';
         };
 
         // as soon as we know our org we want to take action
