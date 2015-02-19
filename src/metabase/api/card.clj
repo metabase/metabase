@@ -23,7 +23,7 @@
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Card :id id)
-         (hydrate :can_read :can_write)))
+         (hydrate :can_read :can_write :organization)))
 
 (defendpoint PUT "/:id" [id :as {:keys [body]}]
   (let-404 [{:keys [can_write] :as card} (sel :one Card :id id)]

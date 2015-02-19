@@ -5,7 +5,9 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
-                             [dashboard :refer [Dashboard]])))
+                             [card :refer [Card]]
+                             [dashboard :refer [Dashboard]]
+                             [dashboard-card :refer [DashboardCard]])))
 
 (defendpoint GET "/" [org f] ; TODO - what to do with f ?
   (-> (sel :many Dashboard :organization_id org)
@@ -32,5 +34,12 @@
   (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
     (check-403 @can_write)
     (del Dashboard :id id)))
+
+(defendpoint POST "/:id/cards" [id :as {{:keys [dashId cardId]} :body}]
+  (check (= id dashId) 400 (format "Dashboard IDs not equal: %d != %d" id dashId)) ; why do we pass it twice?
+  (let-404 [{:keys [can_write]} (sel :one Dashboard :id dashId)]
+           (check-403 @can_write))
+  (check (exists? Card :id cardId) 400 (format "Card %d doesn't exist." cardId))
+  (ins DashboardCard :card_id cardId :dashboard_id dashId))
 
 (define-routes)
