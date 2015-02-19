@@ -35,7 +35,7 @@
                  @table-names))))
 
 (defn sync-fields
-  "Sync `Fields` for TABLE. Returns number of `Fields` synced (i.e., number of columns in the Table)."
+  "Sync `Fields` for TABLE."
   [{:keys [id jdbc-columns] :as table}]
   (dorun (map (fn [{:keys [type_name column_name]}]
                 (or (exists? Field :table_id id :name column_name)
