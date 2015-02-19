@@ -70,7 +70,7 @@
     :dimension
     :info})
 
-(defn base-type-for-value
+(defn value->base-type
   "Attempt to match a value we get back from the DB with the corresponding  base-type`."
   [v]
   (if-not v :UnknownField
