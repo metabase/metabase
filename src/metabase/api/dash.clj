@@ -9,8 +9,10 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]])))
 
-(defendpoint GET "/" [org f] ; TODO - what to do with f ?
-  (-> (sel :many Dashboard :organization_id org)
+(defendpoint GET "/" [org f]
+  (-> (case (or (keyword f) :all) ; default value for f is `all`
+        :all (sel :many Dashboard :organization_id org)
+        :mine (sel :many Dashboard :organization_id org :creator_id *current-user-id*))
       (hydrate :creator :organization)))
 
 (defendpoint POST "/" [:as {:keys [body]}]
