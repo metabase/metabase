@@ -91,7 +91,8 @@
   ;; TODO - implementation (list recent results of a query)
   (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
     (check-403 @can_read)
-    (sel :many EmailReportExecutions :report_id id (order :finished_at :DESC) (limit 10))))
+    (-> (sel :many EmailReportExecutions :report_id id (order :created_at :DESC) (limit 25))
+      (hydrate :organization))))
 
 
 (define-routes)
