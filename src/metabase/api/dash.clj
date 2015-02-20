@@ -43,6 +43,11 @@
   (check (exists? Card :id cardId) 400 (format "Card %d doesn't exist." cardId))
   (ins DashboardCard :card_id cardId :dashboard_id id))
 
+(defendpoint DELETE "/:id/cards" [id dashcardId]
+  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
+    (check-403 @can_write))
+  (del DashboardCard :id dashcardId :dashboard_id id))
+
 (defendpoint POST "/:id/reposition" [id :as {{:keys [cards]} :body}]
   (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
     (check-403 @can_write))
