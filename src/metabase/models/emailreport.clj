@@ -1,14 +1,17 @@
 (ns metabase.models.emailreport
-  (:require [korma.core :refer :all]
+  (:require [clojure.data.json :as json]
+            [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
-            (metabase.models [common :refer [assoc-permissions-sets]]
+            (metabase.models [common :refer [assoc-permissions-sets perms-none]]
                              [hydrate :refer [realize-json]]
                              [emailreport-recipients :refer [EmailReportRecipients]]
                              [org :refer [Org org-can-read org-can-write]]
                              [user :refer [User]])
             [metabase.util :as util]))
 
+
+;; Static Definitions
 
 (def mode-active 0)
 (def mode-disabled 1)
@@ -38,8 +41,25 @@
   (table :report_emailreport))
 
 
-(defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as emailreport}]
-  (-> emailreport
+(defmethod pre-insert EmailReport [_ {:keys [dataset_query schedule] :as report}]
+  (let [defaults {:public_perms perms-none
+                  :mode mode-active
+                  :version 1
+                  :created_at (util/new-sql-date)
+                  :updated_at (util/new-sql-date)}]
+    (-> (merge defaults report)
+      (assoc :dataset_query (json/write-str dataset_query)
+             :schedule (json/write-str schedule)))))
+
+(defmethod pre-update EmailReport [_ {:keys [dataset_query schedule] :as report}]
+  (assoc report
+    :updated_at (util/new-sql-date)
+    :dataset_query (json/write-str dataset_query)
+    :schedule (json/write-str schedule)))
+
+
+(defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
+  (-> report
     (realize-json :dataset_query)
     (realize-json :schedule)
     (util/assoc*

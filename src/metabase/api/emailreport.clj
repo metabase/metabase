@@ -1,13 +1,12 @@
 (ns metabase.api.emailreport
   (:require [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
-            [clojure.data.json :as json]
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
               [hydrate :refer :all]
-              [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
+              [database :refer [databases-for-org]]
               [emailreport :refer [EmailReport modes days-of-week times-of-day]]
               [user :refer [users-for-org]])
             [metabase.util :as util]))
@@ -40,37 +39,18 @@
         (order :name :ASC))
     (hydrate :creator :organization :can_read :can_write)))
 
-;(defn query-clone
-;  "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
-;  [query-id]
-;  (let-400 [{:keys [can_read name] :as query} (sel :one Query :id query-id)]
-;    (check-403 @can_read)
-;    (->> (-> query
-;           (select-keys [:type :details :database_id])
-;           (assoc :name (str name " CLONED")
-;                  :public_perms common/perms-none
-;                  :creator_id *current-user-id*))
-;      (mapply ins Query))))
-;
-;(defn query-create
-;  "Create a new query from user posted data."
-;  [{:keys [name sql timezone public_perms database]}]
-;  (require-params database)             ; sql, timezone?
-;  (check (exists? Database :id database) [400 "Specified database does not exist."])
-;  ;; TODO - validate that user has perms to create against this database
-;  (ins Query
-;    :type "rawsql"
-;    :name (or name (str "New Query: " (java.util.Date.)))
-;    :details {:sql sql
-;              :timezone timezone}
-;    :public_perms (or public_perms common/perms-none)
-;    :creator_id *current-user-id*
-;    :database_id database))
-;
-;(defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
-;  (if clone
-;    (query-clone clone)
-;    (query-create body)))
+
+(defendpoint POST "/" [:as {{:keys [organization] :as body} :body}]
+  ; enforce a few required attributes
+  (check-400 (util/contains-many? body :organization :name :dataset_query :schedule))
+  ; we require admin/default perms on the org to do this operation
+  (check-403 ((:perms-for-org @*current-user*) organization))
+  ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
+  (->> (-> body
+         (select-keys [:organization :name :description :public_perms :mode :dataset_query :email_addresses :schedule])
+         (clojure.set/rename-keys {:organization :organization_id})
+         (assoc :creator_id *current-user-id*))
+    (mapply ins EmailReport)))
 
 
 (defendpoint GET "/:id" [id]
