@@ -1,5 +1,6 @@
 (ns metabase.api.query
-  (:require [korma.core :refer [where subselect fields order limit]]
+  (:require [clojure.data.csv :as csv]
+            [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [clojure.data.json :as json]
             [medley.core :refer :all]
@@ -9,7 +10,7 @@
                              [hydrate :refer :all]
                              [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
                              [query :refer [Query]]
-                             [query-execution :refer [QueryExecution]])
+                             [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :as util]))
 
 
@@ -97,9 +98,14 @@
     (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10))))
 
 
-(defendpoint POST "/:id/csv" [id]
-  ;; TODO - this should return a CSV file instead of JSON
-  {:TODO "TODO"})
+(def query-csv
+  (GET "/:id/csv" [id]
+    (let-404 [{:keys [result_data query_id] :as query-execution} (eval `(sel :one ~all-fields :query_id ~id (order :started_at :DESC) (limit 1)))]
+      (let-404 [{{can_read :can_read name :name} :query} (hydrate query-execution :query)]
+        (check-403 @can_read)
+        {:status 200
+         :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
+         :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"" name ".csv\"")}}))))
 
 
-(define-routes)
+(define-routes query-csv)
