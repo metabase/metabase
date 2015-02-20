@@ -20,26 +20,24 @@
   {:status 200
    :body {}})
 
+
 (defendpoint GET "/:id" [id]
   (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
     (check-403 @can_read)
     org))
+
 
 (defendpoint GET "/slug/:slug" [slug]
   (let-404 [{:keys [can_read] :as org} (sel :one Org :slug slug)]
     (check-403 @can_read)
     org))
 
+
 (defendpoint PUT "/:id" [id :as {body :body}]
-  ;; TODO - validations (email address must be unique)
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
-    ;; TODO - how can we pass a useful error message in the 500 response on error?
-    (upd Org id
-      ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
-      :name (get body :name (:name org))
-      :description (get body :description (:description org))
-      :logo_url (get body :logo_url (:logo_url org)))
+    (check-500 (->> (util/select-non-nil-keys body :name :description :logo_url)
+                 (mapply upd Org id)))
     (sel :one Org :id id)))
 
 
@@ -61,16 +59,14 @@
   (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
     (check-403 @can_read)
     (-> (sel :many OrgPerm :organization_id id)
-        (hydrate :user)
-        (->> (map (fn [org-perm]                                ; strip IDs for safety (?)
-                    (-> org-perm
-                        (dissoc :id :organization_id :user_id)
-                        (dissoc-in [:user :id] ))))))))
+        (hydrate :user :organization))))
 
 
-(defendpoint POST "/:org-id/members" [org-id :as {{:keys [first_name last_name email orgId admin]} :body}]
-  (check (= org-id orgId) 400 (format "Org IDs don't match: %d != %d" org-id orgId)) ; why do we need to POST Org ID if it's already in the URL????
-  (let-404 [{:keys [can_write] :as org} (sel :one Org :id org-id)]
+(defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
+  ; we require 4 attributes in the body
+  (check-400 (and first_name last_name email admin))
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
     (let [user-id (:id (or (sel :one [User :id] :email email)                        ; find user with existing email - if exists then grant perm
                            (ins User
@@ -78,34 +74,36 @@
                              :first_name first_name
                              :last_name last_name
                              :password (str (java.util.UUID/randomUUID)))))]         ; TODO - send welcome email
-      (grant-org-perm org-id user-id admin)
-      (-> (sel :one OrgPerm :user_id user-id :organization_id org-id)
-          (hydrate :user)))))
+      (grant-org-perm id user-id admin)
+      (-> (sel :one OrgPerm :user_id user-id :organization_id id)
+          (hydrate :user :organization)))))
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
 (defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id))))
+      (del OrgPerm :user_id user-id :organization_id id)
+      {:success true})))
 
 
 (define-routes)
