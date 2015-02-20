@@ -21,7 +21,9 @@
   (util/assoc* table
                :db (sel-fn :one Database :id db_id)
                :fields (sel-fn :many Field :table_id id)
-               :jdbc-columns (delay (jdbc-columns ((:db <>)) name))))
+               :jdbc-columns (delay (jdbc-columns ((:db <>)) name))
+               :can_read (delay @(:can_read ((:db <>))))
+               :can_write (delay @(:can_write ((:db <>))))))
 
 (defmethod pre-insert Table [_ table]
   (assoc table
