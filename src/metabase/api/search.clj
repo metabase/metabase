@@ -38,7 +38,7 @@
 (defn get-search-results
   "Get search results for a given MODEL choice.
 
-    (get-search-results \"main_\" :table)"
+    (get-search-results \"main_\" (search-choices :table))"
   [query {:keys [entity url-prefix] :as model}]
   (->> (sel :many [entity :name :description :id] :name [like (str "%" query "%")])
        (map (fn [{:keys [name description id]}]
@@ -48,9 +48,9 @@
                :url (str url-prefix id)}))))
 
 (defn results-for-models
-  "Given a set of search-choices MODELS, get matching search results for QUERY.
+  "Given a seq of search choices MODELS, get matching search results for QUERY.
 
-    (results-for-models #{:card :dashboard} \"guides\")"
+    (results-for-models [(search-choices :table) (search-choices :field)] \"guides\")"
   [models query]
   (mapcat (partial get-search-results query)
           models))
