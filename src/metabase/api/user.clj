@@ -19,8 +19,9 @@
          (hydrate [:org_perms :organization])))
 
 
-;; TODO - permissions check
 (defendpoint GET "/:id" [id]
+  ; user must be getting their own details OR they must be a superuser to proceed
+  (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (sel :one User :id id))
 
 
