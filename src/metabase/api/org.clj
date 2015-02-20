@@ -31,15 +31,10 @@
     org))
 
 (defendpoint PUT "/:id" [id :as {body :body}]
-  ;; TODO - validations (email address must be unique)
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
-    ;; TODO - how can we pass a useful error message in the 500 response on error?
-    (upd Org id
-      ;; TODO - find a way to make this cleaner.  we don't want to modify the value if it doesn't exist
-      :name (get body :name (:name org))
-      :description (get body :description (:description org))
-      :logo_url (get body :logo_url (:logo_url org)))
+    (check-500 (->> (util/select-non-nil-keys body :name :description :logo_url)
+                 (mapply upd Org id)))
     (sel :one Org :id id)))
 
 
@@ -61,11 +56,7 @@
   (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
     (check-403 @can_read)
     (-> (sel :many OrgPerm :organization_id id)
-        (hydrate :user)
-        (->> (map (fn [org-perm]                                ; strip IDs for safety (?)
-                    (-> org-perm
-                        (dissoc :id :organization_id :user_id)
-                        (dissoc-in [:user :id] ))))))))
+        (hydrate :user :organization))))
 
 
 (defendpoint POST "/:org-id/members" [org-id :as {{:keys [first_name last_name email orgId admin]} :body}]
