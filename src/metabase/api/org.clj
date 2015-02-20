@@ -59,9 +59,11 @@
         (hydrate :user :organization))))
 
 
-(defendpoint POST "/:org-id/members" [org-id :as {{:keys [first_name last_name email orgId admin]} :body}]
-  (check (= org-id orgId) 400 (format "Org IDs don't match: %d != %d" org-id orgId)) ; why do we need to POST Org ID if it's already in the URL????
-  (let-404 [{:keys [can_write] :as org} (sel :one Org :id org-id)]
+(defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
+  ; we require 4 attributes in the body
+  (check-400 (and first_name last_name email admin))
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
     (let [user-id (:id (or (sel :one [User :id] :email email)                        ; find user with existing email - if exists then grant perm
                            (ins User
@@ -69,9 +71,9 @@
                              :first_name first_name
                              :last_name last_name
                              :password (str (java.util.UUID/randomUUID)))))]         ; TODO - send welcome email
-      (grant-org-perm org-id user-id admin)
-      (-> (sel :one OrgPerm :user_id user-id :organization_id org-id)
-          (hydrate :user)))))
+      (grant-org-perm id user-id admin)
+      (-> (sel :one OrgPerm :user_id user-id :organization_id id)
+          (hydrate :user :organization)))))
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
