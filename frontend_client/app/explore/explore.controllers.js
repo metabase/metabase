@@ -84,16 +84,6 @@ ExploreControllers.controller('ExploreTableDetail', ['$scope', '$routeParams', '
         }
     };
 
-    $scope.getEncodedString = function(input) {
-        if (!input || !input.query) return;
-
-        // copy our underlying query so that we can strip out the 'page' attribute
-        var tmp = angular.copy(input);
-        delete tmp.query.page;
-
-        return encodeURIComponent(JSON.stringify(tmp));
-    };
-
 }]);
 
 

@@ -72,3 +72,8 @@ CorvusControllers.controller('SearchBox', ['$scope', '$location', function($scop
     };
 
 }]);
+
+
+CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($scope, $location) {
+
+}]);

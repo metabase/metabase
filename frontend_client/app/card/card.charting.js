@@ -52,6 +52,14 @@ $.ajaxSetup({
     }
 });
 
+var DEFAULT_CARD_WIDTH = 900,
+    DEFAULT_CARD_HEIGHT = 500;
+
+var MIN_PIXELS_PER_TICK = {
+    x: 100,
+    y: 50
+};
+
 /// return pair of [min, max] values from items in array DATA, using VALUEACCESSOR to retrieve values for each item
 /// VALUEACCESSOR may be an accessor function like fn(ITEM) or can be a string/integer key/index into ITEM which will
 /// use a function like fn(item) { return item(KEY); }
@@ -72,6 +80,23 @@ function getMinMax(data, valueAccessor) {
             max > val ? max : val
         ];
     }, [values[0], values[0]]);
+}
+
+// investigate the response from a dataset query and determine if the dimension is a timeseries
+function dimensionIsTimeseries(result) {
+    var hasDateField = (result.cols !== undefined &&
+                            result.cols.length > 0 &&
+                            (result.cols[0].base_type === "DateField")) ? true : false;
+
+    var isDateFirstVal = false;
+    if (result.rows !== undefined &&
+            result.rows.length > 0 &&
+            result.rows[0].length > 0 &&
+            !(!isNaN(parseFloat(result.rows[0][0])) && isFinite(result.rows[0][0]))) {
+        isDateFirstVal = ( (new Date(result.rows[0][0]) !== "Invalid Date" && !isNaN(new Date(result.rows[0][0])) ));
+    }
+
+    return (hasDateField || isDateFirstVal);
 }
 
 /// return the Element ID that should be used to find chart with a given chartId
@@ -99,24 +124,286 @@ function getComputedSizeProperty(prop, elementOrId) {
 var getComputedWidth = _.partial(getComputedSizeProperty, "width");
 var getComputedHeight = _.partial(getComputedSizeProperty, "height");
 
+function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
+    var numTicks = axis.ticks();
+    // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
+    // if it's an array then convert to a num
+    numTicks = typeof numTicks.length !== 'undefined' ? numTicks[0] : numTicks;
+
+    if ((axisSize / numTicks) < minPixelsPerTick) {
+        axis.ticks(Math.round(axisSize / minPixelsPerTick));
+    }
+}
+
+function getDcjsChartType(cardType) {
+    switch (cardType) {
+        case "pie": return "pieChart";
+        case "bar": return "barChart";
+        case "line":
+        case "area":
+        case "timeseries": return "lineChart";
+        default: return "barChart";
+    }
+}
+
+function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType) {
+    chartType = (chartType) ? chartType : getDcjsChartType(card.display);
+
+    // create the chart
+    var chart = dc[chartType]('#' + chartElementIdForId(elementId));
+
+    // set width and height
+    chart = applyChartBoundary(chart, card, elementId, defaultWidth, defaultHeight);
+
+    // specify legend
+    chart = applyChartLegend(chart, card);
+
+    // set card title
+    setCardTitle(card, elementId);
+
+    return chart;
+}
+
+function applyChartBoundary(dcjsChart, card, elementId, defaultWidth, defaultHeight) {
+    return dcjsChart
+            .width(CardRenderer.getAvailableCanvasWidth(elementId, card) || defaultWidth)
+            .height(CardRenderer.getAvailableCanvasHeight(elementId, card) || defaultHeight);
+}
+
+function applyChartLegend(dcjsChart, card) {
+    // ENABLE LEGEND IF SPECIFIED IN VISUALIZATION SETTINGS
+    // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
+    var settings = card.visualization_settings,
+        legendEnabled = (card.display === 'pie') ? settings.pie.legend_enabled : settings.chart.legend_enabled;
+
+    if (legendEnabled) {
+        return dcjsChart.legend(dc.legend());
+    } else {
+        return dcjsChart;
+    }
+}
+
+function setCardTitle(card, elementId) {
+    // SET THE CARD TITLE if applicable (probably not, since there's no UI to set this AFAIK)
+    var settings = card.visualization_settings,
+        chartTitle = settings.global.title;
+    if (chartTitle) {
+        var titleElement = document.getElementById('card-title--' + elementId);
+        if (titleElement) {
+            titleElement.innerText = chartTitle;
+        }
+    }
+}
+
+function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
+    // setup an x-axis where the dimension is a timeseries
+
+    var x = card.visualization_settings.xAxis,
+        xAxis = chart.xAxis();
+
+    // set the axis label
+    if (x.labels_enabled) {
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.renderVerticalGridLines(x.gridLine_enabled);
+        xAxis.tickFormat(d3.time.format.multi([
+                [".%L", function(d) {
+                    return d.getMilliseconds();
+                }],
+                [":%S", function(d) {
+                    return d.getSeconds();
+                }],
+                ["%I:%M", function(d) {
+                    return d.getMinutes();
+                }],
+                ["%I %p", function(d) {
+                    return d.getHours();
+                }],
+                ["%a %d", function(d) {
+                    return d.getDay() && d.getDate() != 1;
+                }],
+                ["%b %d", function(d) {
+                    return d.getDate() != 1;
+                }],
+                ["%B '%y", function(d) { // default "%B"
+                    return d.getMonth();
+                }],
+                ["%B '%y", function() { // default "%Y"
+                    return true;
+                }]
+            ]));
+    } else {
+        xAxis.ticks(0);
+    }
+
+    // calculate the x-axis domain
+    var xDomain = getMinMax(data, 0);
+    chart.x(d3.time.scale().domain(xDomain));
+
+    // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
+    // set some limits on the ticks per pixel and adjust if needed
+    adjustTicksIfNeeded(xAxis, chart.width(), MIN_PIXELS_PER_TICK.x);
+}
+
+function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
+    // setup an x-axis where the dimension is ordinal
+
+    var keys = _.map(data, function(d) {
+            return d[0];
+        });
+
+    var x = card.visualization_settings.xAxis,
+        xAxis = chart.xAxis();
+
+    if (x.labels_enabled) {
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.renderVerticalGridLines(x.gridLine_enabled);
+        xAxis.ticks(data.length);
+        adjustTicksIfNeeded(xAxis, chart.width(), minPixelsPerTick);
+
+        // unfortunately with ordinal axis you can't rely on xAxis.ticks(num) to control the display of labels
+        // so instead if we want to display fewer ticks than our full set we need to calculate visibleTicks()
+        var numTicks = typeof xAxis.ticks().length !== 'undefined' ? xAxis.ticks()[0] : xAxis.ticks();
+        if (numTicks < data.length) {
+            var keyInterval = Math.round(keys.length / numTicks),
+                visibleKeys = [];
+            for (var i = 0; i < keys.length; i++) {
+                if (i % keyInterval === 0) {
+                    visibleKeys.push(keys[i]);
+                }
+            }
+
+            xAxis.tickValues(visibleKeys);
+        }
+    } else {
+        xAxis.ticks(0);
+        xAxis.tickFormat(function(d) { return ""; });
+    }
+
+    chart.x(d3.scale.ordinal().domain(keys))
+        .xUnits(dc.units.ordinal);
+}
+
+function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
+    // apply some simple default settings for a y-axis
+    // NOTE: this code assumes that the data is an array of arrays and data[rowIdx][1] is our y-axis data
+
+    var settings = card.visualization_settings,
+        y = settings.yAxis,
+        yAxis = chart.yAxis();
+
+    if (y.labels_enabled) {
+        chart.yAxisLabel((y.title_text || null) || coldefs[1].name);
+        chart.renderHorizontalGridLines(true);
+
+        if (y.min || y.max) {
+            // if the user wants explicit settings on the y-axis then we need to do some calculations
+            var yDomain = getMinMax(data, 1);  // 1 is the array index in the data to use
+            if (yDomain[0] > 0) yDomain[0] = 0;
+            if (y.min) yDomain[0] = y.min;
+            if (y.max) yDomain[1] = y.max;
+
+            chart.y(d3.scale.linear().domain(yDomain));
+        } else {
+            // by default we let dc.js handle our y-axis
+            chart.elasticY(true);
+        }
+
+        // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
+        // set some limits on the ticks per pixel and adjust if needed
+        adjustTicksIfNeeded(yAxis, chart.height(), minPixelsPerTick);
+    } else {
+        yAxis.ticks(0);
+    }
+}
+
+function applyChartColors(dcjsChart, card) {
+    // Set the color for the bar/line
+    var settings = card.visualization_settings,
+        chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor,
+        colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
+    return dcjsChart.ordinalColors([chartColor].concat(colorList));
+}
+
+function applyChartTooltips(dcjsChart, card) {
+    // set the title (tooltip) function for points / bars on the chart
+    return dcjsChart.title(function(d) {
+        var commasFormatter = d3.format(",.0f");
+        return d.key + ": " + commasFormatter(d.value);
+    });
+}
+
+function lineAndBarOnRender(dcjsChart, card) {
+    // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
+    var svg = dcjsChart.svg(),
+        settings = card.visualization_settings,
+        x = settings.xAxis,
+        y = settings.yAxis;
+
+    /// return a function to set attrName to attrValue for element(s) if attrValue is not null
+    /// optional ATTRVALUETRANSFORMFN can be used to modify ATTRVALUE before it is set
+    var customizer = function(element) {
+        return function(attrName, attrValue, attrValueTransformFn) {
+            if (attrValue) {
+                if (typeof attrValueTransformFn !== 'undefined') {
+                    attrValue = attrValueTransformFn(attrValue);
+                }
+                if (typeof element.length !== 'undefined') {
+                    var len = element.length;
+                    for (var i = 0; i < len; i++) {
+                        element[i].setAttribute(attrName, attrValue);
+                    }
+                } else {
+                    element.setAttribute(attrName, attrValue);
+                }
+            }
+        };
+    };
+    // x-axis label customizations
+    try {
+        var customizeX = customizer(svg.select('.x-axis-label')[0][0]);
+        customizeX('fill', x.title_color);
+        customizeX('font-size', x.title_font_size);
+    } catch (e) {}
+
+    // y-axis label customizations
+    try {
+        var customizeY = customizer(svg.select('.y-axis-label')[0][0]);
+        customizeY('fill', y.title_color);
+        customizeY('font-size', y.title_font_size);
+    } catch (e) {}
+
+    // grid lines - .grid-line .horizontal, .vertical
+    try {
+        var customizeVertGL = customizer(svg.select('.grid-line.vertical')[0][0].children);
+        customizeVertGL('stroke-width', x.gridLineWidth);
+        customizeVertGL('style', x.gridLineColor, function(colorStr) {
+            return 'stroke:' + colorStr + ';';
+        });
+    } catch (e) {}
+    try {
+        var customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
+        customizeHorzGL('stroke-width', y.gridLineWidth);
+        customizeHorzGL('style', y.gridLineColor, function(colorStr) {
+            return 'stroke:' + colorStr + ';';
+        });
+
+    } catch (e) {}
+}
+
+
 /// ChartRenderer and its various subclasses take care of adjusting settings for different types of charts
 ///
 /// Class Hierarchy:
 /// + ChartRenderer
 /// +--- pie chart
-/// +--+ BarAndLineChartRenderer
-/// |  +--- bar chart
-/// |  +--- series chart
-/// |  \--+ line chart
-/// |     \--- area chart
 /// \--+ GeoHeatmapChartRenderer
 ///    +--- state heatmap
 ///    \--- country heatmap
 ///
 /// The general rendering looks something like this [for a bar chart]:
-/// 1) Call BarAndLineChartRenderer(...)
+/// 1) Call GeoHeatmapChartRenderer(...)
 ///     2) Code in ChartRenderer(...) runs and does setup common across all charts
-///     3) Code in BarAndLineChartRenderer(...) runs and does setup common across bar and line charts
+///     3) Code in GeoHeatmapChartRenderer(...) runs and does setup common across the charts
 /// 4) Further customizations specific to bar charts take place in .customize()
 function ChartRenderer(id, card, result, chartType) {
     // ------------------------------ CONSTANTS ------------------------------ //
@@ -215,178 +502,6 @@ function ChartRenderer(id, card, result, chartType) {
             titleElement.innerText = chartTitle;
         }
     }
-}
-
-function BarAndLineChartRenderer(id, card, result, chartType) {
-    // ------------------------------ SUPERCLASS INIT ------------------------------ //
-    ChartRenderer.call(this, id, card, result, chartType);
-
-    // ------------------------------ METHODS ------------------------------ //
-
-    /// Convenience for calculating + setting the range of the x and y axes.
-    /// XDOMAIN/YDOMAIN are [min, max] pairs or keys into a row of data.
-    /// If a key/index is passed, it will be replaced with a call to getMinMax(self.data, [X|Y]DOMAIN).
-    /// In order words, the domain will be the [min, max] values that can be fetched with that key/index.
-    ///
-    /// Unless overridden by visualization settings, if yMin > 0, 0 will be used as the y minimum.
-    /// If the Chart's visualization settings specify min(s)/max(es), those values will be used instead of the supplied values.
-    ///
-    /// Optionally pass options dict (default values shown): {
-    ///     xScaleType: d3.scale.linear,
-    ///     yScaleType: d3.scale.linear
-    /// }
-    this.setXAndYDomains = function(xDomain, yDomain, options) {
-        if (typeof xDomain === 'string' || typeof xDomain === 'number') xDomain = getMinMax(this.data, xDomain);
-        if (typeof yDomain === 'string' || typeof yDomain === 'number') yDomain = getMinMax(this.data, yDomain);
-
-        if (yDomain[0] > 0) yDomain[0] = 0;
-        if (this.settings.xAxis.min) xDomain[0] = this.settings.xAxis.min;
-        if (this.settings.xAxis.max) xDomain[1] = this.settings.xAxis.max;
-        if (this.settings.yAxis.min) yDomain[0] = this.settings.yAxis.min;
-        if (this.settings.yAxis.max) yDomain[1] = this.settings.yAxis.max;
-
-        if (!options) options = {};
-        var xScaleType = options.xScaleType || d3.scale.linear,
-            yScaleType = options.yScaleType || d3.scale.linear;
-
-        this.chart.x(xScaleType().domain(xDomain))
-            .y(yScaleType().domain(yDomain));
-        return this;
-    };
-
-    /// i.e. if chart is 500 pixels wide we don't want more than 5 ticks
-    var MIN_PIXELS_PER_TICK = {
-        x: 100,
-        y: 50
-    };
-
-    /// Determine if d3 AXIS has too many ticks for its height/width and adjust if needed
-    this.adjustTicksIfNeeded = function(axis, axisSize, minPixelsPerTick) {
-        var numTicks = axis.ticks();
-        // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
-        // if it's an array then convert to a num
-        numTicks = typeof numTicks.length !== 'undefined' ? numTicks[0] : numTicks;
-
-        if ((axisSize / numTicks) < minPixelsPerTick) {
-            axis.ticks(Math.round(axisSize / minPixelsPerTick));
-        }
-    };
-
-    /// Specify FORMATFN(tickStr) to provide a custom string for ticks on the x-axis. If x-axis labels are disabled, this call will essentially no-op.
-    /// Optionally, specify NUMTICKS for the x-axis.
-    /// Prefer this call to calling xAxis().tickFormat() directly since this method checks whether they're enabled in settings.
-    this.setXAxisTickFormat = function(formatFn, numTicks) {
-        var xAxis = this.chart.xAxis();
-        if (!this.settings.xAxis.labels_enabled) {
-            xAxis.ticks(0);
-            return this;
-        }
-        xAxis.tickFormat(formatFn);
-
-        if (numTicks) {
-            xAxis.ticks(numTicks);
-            // double check that we didn't specify too many ticks & fix if need be
-            this.adjustTicksIfNeeded(xAxis, this.chart.width(), MIN_PIXELS_PER_TICK.x);
-        }
-        return this;
-    };
-
-    // ------------------------------ INITIALIZATION ------------------------------ //
-    // Set the titles for the axes - look for ones specified in settings or fall back to value in result.columns
-    var x = this.settings.xAxis,
-        y = this.settings.yAxis,
-        axisTitle = function(axis) {
-            return axis.title_text || null;
-        };
-    if (x.title_enabled) this.chart.xAxisLabel(axisTitle(x) || result.columns[0]);
-    if (y.title_enabled) this.chart.yAxisLabel(axisTitle(y) || result.columns[1]);
-
-    var xAxis = this.chart.xAxis(),
-        yAxis = this.chart.yAxis();
-
-    // disable ticks on the x or y axes if !labels_enabled
-    // since this call can be overriden by setXAxisTickFormat() we still have to do a check up there too
-    if (!x.labels_enabled) xAxis.ticks(0);
-    if (!y.labels_enabled) yAxis.ticks(0);
-
-    // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
-    // set some limits on the ticks per pixel and adjust if needed
-    if (x.labels_enabled) this.adjustTicksIfNeeded(xAxis, this.chart.width(), MIN_PIXELS_PER_TICK.x);
-    if (y.labels_enabled) this.adjustTicksIfNeeded(yAxis, this.chart.height(), MIN_PIXELS_PER_TICK.y);
-
-    // Enable / disable grid lines. Apparently 'Show gridline' in the UI only affects the xAxis (!)
-    this.chart.renderVerticalGridLines(x.gridLine_enabled) // what kind of variableNaming_convention are we trying to follow here ?
-        .renderHorizontalGridLines(y.gridLine_enabled);
-
-    // Set the color for the bar/line
-    var chartColor = chartType === 'barChart' ? this.settings.bar.color : this.settings.line.lineColor;
-    this.chart.ordinalColors([chartColor]);
-
-    // set the title (tooltip) function for points / bars on the chart
-    this.chart.title(function(d) {
-        return d.key + ": " + d.value;
-    });
-
-    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-    if (this.chart.brushOn) this.chart.brushOn(false);
-
-    // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-    if (this.chart.interpolate && this.settings.line.step) this.chart.interpolate('step');
-
-    // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-    this.onRender(function() {
-        var svg = this.chart.svg();
-
-        /// return a function to set attrName to attrValue for element(s) if attrValue is not null
-        /// optional ATTRVALUETRANSFORMFN can be used to modify ATTRVALUE before it is set
-        var customizer = function(element) {
-            return function(attrName, attrValue, attrValueTransformFn) {
-                if (attrValue) {
-                    if (typeof attrValueTransformFn !== 'undefined') {
-                        attrValue = attrValueTransformFn(attrValue);
-                    }
-                    if (typeof element.length !== 'undefined') {
-                        var len = element.length;
-                        for (var i = 0; i < len; i++) {
-                            element[i].setAttribute(attrName, attrValue);
-                        }
-                    } else {
-                        element.setAttribute(attrName, attrValue);
-                    }
-                }
-            };
-        };
-        // x-axis label customizations
-        try {
-            var customizeX = customizer(svg.select('.x-axis-label')[0][0]);
-            customizeX('fill', x.title_color);
-            customizeX('font-size', x.title_font_size);
-        } catch (e) {}
-
-        // y-axis label customizations
-        try {
-            var customizeY = customizer(svg.select('.y-axis-label')[0][0]);
-            customizeY('fill', y.title_color);
-            customizeY('font-size', y.title_font_size);
-        } catch (e) {}
-
-        // grid lines - .grid-line .horizontal, .vertical
-        try {
-            var customizeVertGL = customizer(svg.select('.grid-line.vertical')[0][0].children);
-            customizeVertGL('stroke-width', x.gridLineWidth);
-            customizeVertGL('style', x.gridLineColor, function(colorStr) {
-                return 'stroke:' + colorStr + ';';
-            });
-        } catch (e) {}
-        try {
-            var customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
-            customizeHorzGL('stroke-width', y.gridLineWidth);
-            customizeHorzGL('style', y.gridLineColor, function(colorStr) {
-                return 'stroke:' + colorStr + ';';
-            });
-
-        } catch (e) {}
-    });
 }
 
 function GeoHeatmapChartRenderer(id, card, result) {
@@ -559,84 +674,199 @@ var CardRenderer = {
     },
 
     pie: function(id, card, result) {
-        var vs = card.visualization_settings,
-            numColors = vs.pie.colors.length,
-            chartData = _.map(result.rows, function(row) {
+        var settings = card.visualization_settings,
+            data = _.map(result.rows, function(row) {
                 return {
                     key: row[0],
                     value: row[1]
                 };
             }),
-            keys = _.map(chartData, function(d) {
+            keys = _.map(data, function(d) {
                 return d.key;
             }),
-            sumTotalValue = _.reduce(chartData, function(acc, d) {
+            sumTotalValue = _.reduce(data, function(acc, d) {
                 return acc + d.value;
             }, 0);
 
-        var chartRenderer = new ChartRenderer(id, card, result, 'pieChart')
-            .setData(chartData, 'key', 'value')
-            .customize(function(chart) {
-                chart.colors(vs.pie.colors)
-                    .colorCalculator(function(d) {
-                        var index = _.indexOf(keys, d.key);
-                        return vs.pie.colors[index % numColors];
-                    })
-                    .title(function(d) {
-                        // ghetto rounding to 1 decimal digit since Math.round() doesn't let you specify a precision and always rounds to int
-                        var percent = Math.round((d.value / sumTotalValue) * 1000) / 10.0;
-                        return d.key + ': ' + d.value + ' (' + percent + '%)';
-                    });
-            })
-            .render();
+        // TODO: by default we should set a max number of slices of the pie and group everything else together
+
+        // build crossfilter dataset + dimension + base group
+        var dataset = crossfilter(data),
+            dimension = dataset.dimension(function(d) {
+                            return d.key;
+                        }),
+            group = dimension.group().reduceSum(function(d) {
+                            return d.value;
+                        }),
+            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+                        .dimension(dimension)
+                        .group(group)
+                        .colors(settings.pie.colors)
+                        .colorCalculator(function(d) {
+                            var index = _.indexOf(keys, d.key);
+                            return settings.pie.colors[index % settings.pie.colors.length];
+                        })
+                        .title(function(d) {
+                            // ghetto rounding to 1 decimal digit since Math.round() doesn't let
+                            // you specify a precision and always rounds to int
+                            var percent = Math.round((d.value / sumTotalValue) * 1000) / 10.0;
+                            return d.key + ': ' + d.value + ' (' + percent + '%)';
+                        });
+
+        chart.render();
     },
 
     bar: function(id, card, result) {
-        // row looks like [false, 523]
-        // convert to {index: 0, title: false, value: 523}
-        var rowCount = result.rows.length,
-            data = [];
+        var isTimeseries = (dimensionIsTimeseries(result)) ? true : false;
+        var isMultiSeries = (result.cols !== undefined &&
+                                result.cols.length > 2) ? true : false;
 
-        for (var i = 0; i < rowCount; i++) {
-            var row = result.rows[i];
-            data.push({
-                index: i,
-                title: String(row[0]),
-                value: row[1]
-            });
-        }
+        // validation.  we require at least 2 rows for bar charting
+        if (result.cols.length < 2) return;
 
-        // we'll keep the labels on the xAxis but we'll actually use the integer index of each row
-        var chartRenderer = new BarAndLineChartRenderer(id, card, result, 'barChart')
-            .setData(data, 'index', 'value')
-            .setXAndYDomains([-0.5, rowCount - 0.5], 'value')
-            .customize(function(chart) {
-                chart.centerBar(true)
-                    .barPadding(1.0); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
-            })
-            .setXAxisTickFormat(function(index) {
-                return data[index].title;
-            }, rowCount)
-            .render();
-    },
-
-    line: function(id, card, result, isAreaChart) {
-        isAreaChart = typeof isAreaChart === undefined ? false : isAreaChart;
-
+        // pre-process data
         var data = _.map(result.rows, function(row) {
-            return {
-                key: row[0],
-                value: row[1]
-            };
+            // IMPORTANT: clone the data if you are going to modify it in any way
+            var tuple = row.slice(0);
+            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            return tuple;
         });
 
-        var chartRenderer = new BarAndLineChartRenderer(id, card, result, 'lineChart')
-            .setData(data, 'key', 'value')
-            .setXAndYDomains('key', 'value')
-            .customize(function(chart) {
-                if (isAreaChart) chart.renderArea(true);
-            })
-            .render();
+        // build crossfilter dataset + dimension + base group
+        var dataset = crossfilter(data),
+            dimension = dataset.dimension(function(d) {
+                            return d[0];
+                        }),
+            group = dimension.group().reduceSum(function(d) {
+                            return d[1];
+                        }),
+            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+                        .dimension(dimension)
+                        .group(group)
+                        .valueAccessor(function(d) {
+                            return d.value;
+                        });
+
+        // apply any stacked series if applicable
+        if (isMultiSeries) {
+            chart.stack(dimension.group().reduceSum(function(d) {
+                return d[2];
+            }));
+
+            // to keep things sane, draw the line at 2 stacked series
+            // putting more than 3 series total on the same chart is a lot
+            if (result.cols.length > 3) {
+                chart.stack(dimension.group().reduceSum(function(d) {
+                    return d[3];
+                }));
+            }
+        }
+
+        // x-axis settings
+        // TODO: we should support a linear (numeric) x-axis option
+        if (isTimeseries) {
+            applyChartTimeseriesXAxis(chart, card, result.cols, data);
+        } else {
+            applyChartOrdinalXAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.x);
+        }
+
+        // y-axis settings
+        // TODO: if we are multi-series this could be split axis
+        applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
+
+        applyChartTooltips(chart, card);
+        applyChartColors(chart, card);
+
+        // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
+        if (chart.brushOn) chart.brushOn(false);
+
+        // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
+        if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
+
+        chart.barPadding(0.5); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
+        chart.render();
+
+        // apply any on-rendering functions
+        lineAndBarOnRender(chart, card);
+    },
+
+    line: function(id, card, result, isAreaChart, isTimeseries) {
+        isAreaChart = typeof isAreaChart === undefined ? false : isAreaChart;
+        isTimeseries = ((typeof isAreaChart !== undefined && isTimeseries) ||
+                            dimensionIsTimeseries(result)) ? true : false;
+        var isMultiSeries = (result.cols !== undefined &&
+                                result.cols.length > 2) ? true : false;
+
+        // validation.  we require at least 2 rows for line charting
+        if (result.cols.length < 2) return;
+
+        // pre-process data
+        var data = _.map(result.rows, function(row) {
+            // IMPORTANT: clone the data if you are going to modify it in any way
+            var tuple = row.slice(0);
+            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            return tuple;
+        });
+
+        // build crossfilter dataset + dimension + base group
+        var dataset = crossfilter(data),
+            dimension = dataset.dimension(function(d) {
+                            return d[0];
+                        }),
+            group = dimension.group().reduceSum(function(d) {
+                            return d[1];
+                        }),
+            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+                        .dimension(dimension)
+                        .group(group)
+                        .valueAccessor(function(d) {
+                            return d.value;
+                        })
+                        .renderArea(isAreaChart);
+
+        // apply any stacked series if applicable
+        if (isMultiSeries) {
+            chart.stack(dimension.group().reduceSum(function(d) {
+                return d[2];
+            }));
+
+            // to keep things sane, draw the line at 2 stacked series
+            // putting more than 3 series total on the same chart is a lot
+            if (result.cols.length > 3) {
+                chart.stack(dimension.group().reduceSum(function(d) {
+                    return d[3];
+                }));
+            }
+        }
+
+        // x-axis settings
+        // TODO: we should support a linear (numeric) x-axis option
+        if (isTimeseries) {
+            applyChartTimeseriesXAxis(chart, card, result.cols, data);
+        } else {
+            applyChartOrdinalXAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.x);
+        }
+
+        // y-axis settings
+        // TODO: if we are multi-series this could be split axis
+        applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
+
+        applyChartTooltips(chart, card);
+        applyChartColors(chart, card);
+
+        // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
+        if (chart.brushOn) chart.brushOn(false);
+
+        // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
+        if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
+
+        // render
+        chart.render();
+
+        // apply any on-rendering functions
+        lineAndBarOnRender(chart, card);
     },
 
     /// Area Chart is just a Line Chart that we called renderArea(true) on
@@ -645,69 +875,10 @@ var CardRenderer = {
         return CardRenderer.line(id, card, result, true);
     },
 
+    /// TimeSeries is really just a Line Chart where the x-axis is time, so
+    /// Defer to CardRendered.line() and be explicit that we know timeseries = true
     timeseries: function(id, card, result) {
-        // rows are pair of dateString, value like ["2014-11-05", 12]
-        // convert to { date: Date [x-axis], value: value [y-axis] }
-        var data = _.map(result.rows, function(row) {
-            var dateStr = row[0],
-                value = row[1];
-            return {
-                date: new Date(dateStr),
-                value: value
-            };
-        });
-
-        var chartRenderer = new BarAndLineChartRenderer(id, card, result, 'seriesChart')
-            .setData(data, function(d) {
-                // pair of [seriesNum, date (x-axis)]
-                // note there's currently only one series so this is always zero
-                return [0, d.date];
-            }, 'value')
-            .setXAndYDomains('date', 'value', {
-                xScaleType: d3.time.scale
-            })
-            // override the d3 date formatter functions with ones that give a little more detail. E.g. "March '15" instead of just "March"
-            .setXAxisTickFormat(d3.time.format.multi([
-                [".%L", function(d) {
-                    return d.getMilliseconds();
-                }],
-                [":%S", function(d) {
-                    return d.getSeconds();
-                }],
-                ["%I:%M", function(d) {
-                    return d.getMinutes();
-                }],
-                ["%I %p", function(d) {
-                    return d.getHours();
-                }],
-                ["%a %d", function(d) {
-                    return d.getDay() && d.getDate() != 1;
-                }],
-                ["%b %d", function(d) {
-                    return d.getDate() != 1;
-                }],
-                ["%B '%y", function(d) { // default "%B"
-                    return d.getMonth();
-                }],
-                ["%B '%y", function() { // default "%Y"
-                    return true;
-                }]
-            ]))
-            .customize(function(chart) {
-                chart.seriesAccessor(function(d) { // this is what gets put in the legend, if applicable
-                        return d.key[0]; // series #
-                    })
-                    .keyAccessor(function(d) {
-                        return d.key[1]; // date - x-axis
-                    })
-                    .valueAccessor(function(d) {
-                        return d.value; // value - y-axis
-                    })
-                    .title(function(d) {
-                        return d.key[1] + ': ' + d.value;
-                    });
-            })
-            .render();
+        return CardRenderer.line(id, card, result, false, true);
     },
 
     state: function(id, card, result) {

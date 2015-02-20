@@ -31,6 +31,11 @@ CorvusAdmin.config(['$routeProvider', '$locationProvider', function($routeProvid
         requireBase: false
     });
 
+    $routeProvider.when('/unauthorized/', {
+        templateUrl: '/app/unauthorized.html',
+        controller: 'Unauthorized'
+    });
+
     // TODO: we need actual homepages for orgs!
     $routeProvider.when('/:orgSlug/', {
         redirectTo: function(routeParams, path, search) {

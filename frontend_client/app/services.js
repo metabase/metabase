@@ -5,8 +5,8 @@
 
 var CorvusServices = angular.module('corvus.services', ['corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', 'User', 'Organization',
-    function($rootScope, $routeParams, User, Organization) {
+CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', 'User', 'Organization',
+    function($rootScope, $routeParams, $q, $location, User, Organization) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -15,6 +15,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', 'User', 'Organ
         var service = {
 
             model: {
+                currentUserPromise: null,
                 currentUser: null,
                 currentOrgSlug: null,
                 currentOrg: null
@@ -22,29 +23,82 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', 'User', 'Organ
 
             init: function() {
                 // just make sure we grab the current user
-                service.refreshCurrentUser();
+                service.model.currentUserPromise = service.refreshCurrentUser();
             },
 
             refreshCurrentUser: function() {
+                var deferred = $q.defer();
+
                 // this is meant to be called once on app startup
                 User.current(function(result) {
                     service.model.currentUser = result;
 
                     $rootScope.$broadcast('appstate:user', result);
+
+                    deferred.resolve(result);
                 }, function(error) {
                     console.log('unable to get current user', error);
+                    $location.path('/unauthorized/');
+                    deferred.reject(error);
                 });
+
+                return deferred.promise;
             },
 
             routeChanged: function(event) {
+                // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
+                // code meant to establish app context based on the current route
+
+                if(service.model.currentUserPromise) {
+                    // we have an outstanding promise for getting current user, so wait for that first
+                    service.model.currentUserPromise.then(function (user) {
+                        service.routeChangedImpl(event);
+                        service.model.currentUserPromise = null;
+                    }, function (error) {
+                        // TODO: we should probably punt the user out of the app or something similar to 403
+                        service.model.currentUserPromise = null;
+                    });
+                } else {
+                    // we must already have the user, so carry on
+                    service.routeChangedImpl(event);
+                }
+            },
+
+            routeChangedImpl: function(event) {
                 // whenever we have a route change (including initial page load) we need to establish some context
 
                 // NOTE: if you try to do this outside this event you'll run into issues where $routeParams is not set.
                 //       so that's why we explicitly wait until we know when $routeParams will be available
                 if ($routeParams.orgSlug) {
                     // the url is telling us what Organization we are working in
+
+                    // PERMISSIONS CHECK!!  user must be member of this org to proceed
+                    var user_perm = null;
+                    var perms = service.model.currentUser.org_perms;
+                    for (var i = 0; i < perms.length; i++) {
+                        var org_perm = perms[i];
+                        if (org_perm.organization.slug === $routeParams.orgSlug) {
+                            user_perm = org_perm.admin;
+                        }
+                    }
+
+                    if (!service.model.currentUser.is_superuser && user_perm === null) {
+                        console.log("user is not authorized for this org!!!");
+                        service.model.currentOrgSlug = null;
+                        service.model.currentOrg = null;
+                        $location.path('/unauthorized/');
+                        return;
+                    } else if ($location.path().indexOf('/'+$routeParams.orgSlug+'/admin') === 0 &&
+                                    !service.model.currentUser.is_superuser && !user_perm) {
+                        console.log("user is not an admin for this org!!!");
+                        service.model.currentOrgSlug = null;
+                        service.model.currentOrg = null;
+                        $location.path('/unauthorized/');
+                        return;
+                    }
+
                     if (service.model.currentOrgSlug != $routeParams.orgSlug) {
-                        // if we just navigated to a different organization then fetch the full org now
+                        // we just navigated to a new organization
                         Organization.get_by_slug({
                             'slug': $routeParams.orgSlug
                         }, function(org) {
@@ -244,7 +298,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     }, {
         'id': false,
         'name': 'No'
-    }];
+    }, ];
 
     this.fieldSpecialType = function(typeId) {
         for (var i = 0; i < this.field_special_types.length; i++) {
