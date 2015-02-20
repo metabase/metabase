@@ -9,8 +9,9 @@
 
 
 (defendpoint GET "/" []
-  ;; TODO - permissions check
-  (sel :many User :is_active true))
+  ; user must be a superuser to proceed
+  (check-403 (:is_superuser @*current-user*))
+  (sel :many User))
 
 
 (defendpoint GET "/current" []
