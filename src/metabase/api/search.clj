@@ -63,10 +63,10 @@
                    (->> models                                   ; otherwise get the corresponding search choice maps
                         (map keyword)
                         (map search-choices)))
-        results (results-for-models models q)
-        offset (* results_per_page (- page 1))
-        num-results (count results)
-        num-pages (math/ceil (/ num-results results_per_page))
+        results      (results-for-models models q)
+        offset       (* results_per_page (- page 1))
+        num-results  (count results)
+        num-pages    (math/ceil (/ num-results results_per_page))
         page-results (->> results
                           (drop offset)
                           (take results_per_page))]
