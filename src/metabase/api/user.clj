@@ -7,13 +7,6 @@
                              [user :refer [User]])
             [metabase.util :refer [select-non-nil-keys]]))
 
-;; RE stripping fields and calculating fields:
-;; -  Instead of stripping fields it makes more sense to just not select them in the first place.
-;;    The default fields selected for any entity can be set by implementing `metabase.db/default-fields`.
-;;    In fact, `User` is already doing this inside `metabase.models.user`.
-;; -  Calculating fields can be done with `assoc` in `post-select`. You can give it an actual value, which
-;;    means it will always be returned, or set it to a function or delay, which means it will only be returned
-;;    if specified in a call to `hydrate`.
 
 (defendpoint GET "/" []
   ;; TODO - permissions check
