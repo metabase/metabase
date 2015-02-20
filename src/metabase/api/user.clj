@@ -12,19 +12,23 @@
   ;; TODO - permissions check
   (sel :many User :is_active true))
 
+
 (defendpoint GET "/current" []
   (->404 @*current-user*
          (hydrate [:org_perms :organization])))
 
+
 ;; TODO - permissions check
 (defendpoint GET "/:id" [id]
   (sel :one User :id id))
+
 
 (defendpoint PUT "/:id" [id :as {:keys [body]}]
   (check-403 (= id *current-user-id*))                                     ; you can only update yourself (or can admins update other users?)
   (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
                   (mapply upd User id)))                                   ; `upd` returns `false` if no updates occured. So in that case return a 500
   (sel :one User :id id))                                                  ; return the updated user
+
 
 ;; TODO: do we want a permissions check here?
 (defendpoint PUT "/:id/password" [id :as {:keys [body]}]
@@ -35,5 +39,6 @@
     ;; TODO - password encryption
     (upd User id :password password)
     (sel :one User :id id)))
+
 
 (define-routes)
