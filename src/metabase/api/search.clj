@@ -59,8 +59,8 @@
 (defendpoint POST "/" [:as {{:keys [org page results_per_page load_all q models]
                              :or {page 1
                                   results_per_page 10}} :body}]
-  (let [models (if (empty? models) (vals search-choices)         ; if search-choices is unspecified default to all choices
-                   (->> models                                   ; otherwise get corresponding model-choice maps
+  (let [models (if (empty? models) (vals search-choices)         ; if `models` is unspecified default to all search choices
+                   (->> models                                   ; otherwise get the corresponding search choice maps
                         (map keyword)
                         (map search-choices)))
         results (results-for-models models q)
