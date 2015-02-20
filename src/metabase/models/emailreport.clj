@@ -51,11 +51,12 @@
       (assoc :dataset_query (json/write-str dataset_query)
              :schedule (json/write-str schedule)))))
 
-(defmethod pre-update EmailReport [_ {:keys [dataset_query schedule] :as report}]
+(defmethod pre-update EmailReport [_ {:keys [version dataset_query schedule] :as report}]
   (assoc report
     :updated_at (util/new-sql-date)
     :dataset_query (json/write-str dataset_query)
-    :schedule (json/write-str schedule)))
+    :schedule (json/write-str schedule)
+    :version (+ 1 version)))
 
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]

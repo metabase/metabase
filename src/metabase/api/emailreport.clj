@@ -8,6 +8,7 @@
               [hydrate :refer :all]
               [database :refer [databases-for-org]]
               [emailreport :refer [EmailReport modes days-of-week times-of-day]]
+              [emailreport-executions :refer [EmailReportExecutions]]
               [user :refer [users-for-org]])
             [metabase.util :as util]))
 
@@ -67,7 +68,9 @@
     (check-403 @can_write)
     ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
     ;; TODO - deal with recipients
-    (check-500 (->> (util/select-non-nil-keys body :name :description :public_perms :mode :dataset_query :email_addresses :schedule)
+    (check-500 (->> (-> (merge report (util/select-non-nil-keys body :name :description :public_perms :mode :dataset_query :email_addresses :schedule))
+                      ;; filter keys again AFTER merging with the existing report data.  this is needed to add version into the mix
+                      (util/select-non-nil-keys :name :description :public_perms :mode :version :dataset_query :email_addresses :schedule))
                  (mapply upd EmailReport id)))
     (-> (sel :one EmailReport :id id)
       (hydrate :creator :database :can_read :can_write))))
@@ -79,21 +82,16 @@
     (del EmailReport :id id)))
 
 
-;(defendpoint POST "/:id" [id]
-;  ;; TODO - implementation (execute a query)
-;  {:TODO "TODO"})
-;
-;
-;(defendpoint GET "/:id/results" [id]
-;  ;; TODO - implementation (list recent results of a query)
-;  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
-;    (check-403 @can_read)
-;    (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10))))
-;
-;
-;(defendpoint POST "/:id/csv" [id]
-;  ;; TODO - this should return a CSV file instead of JSON
-;  {:TODO "TODO"})
+(defendpoint POST "/:id" [id]
+  ;; TODO - implementation (execute a report)
+  {:TODO "TODO"})
+
+
+(defendpoint GET "/:id/executions" [id]
+  ;; TODO - implementation (list recent results of a query)
+  (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
+    (check-403 @can_read)
+    (sel :many EmailReportExecutions :report_id id (order :finished_at :DESC) (limit 10))))
 
 
 (define-routes)
