@@ -3,14 +3,14 @@
   (:require [metabase.api.common :refer :all]
             [metabase.db :refer [sel]]
             (metabase.models [database :refer [Database]]
-                             [field :refer [base-type-for-value]])))
+                             [field :refer [value->base-type]])))
 
 
 (defn- get-cols [row]
   (->> row
        (map (fn [[k v]]
               {:name k
-               :base_type (base-type-for-value v)}))))
+               :base_type (value->base-type v)}))))
 
 (defn process-and-run [{:keys [native database] :as query}]
   (println "QUERY: " query)

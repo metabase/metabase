@@ -42,7 +42,7 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
                     var existingDashboardsById = {};
 
                     Dashboard.list({
-                        'orgId': $scope.card.organization.id,
+                        'orgId': $scope.card.organization_id,
                         'filterMode': 'all'
                     }, function(result) {
                         if (result && !result.error) {
