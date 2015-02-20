@@ -37,11 +37,19 @@
     (check-403 @can_write)
     (del Dashboard :id id)))
 
-(defendpoint POST "/:id/cards" [id :as {{:keys [dashId cardId]} :body}]
-  (check (= id dashId) 400 (format "Dashboard IDs not equal: %d != %d" id dashId)) ; why do we pass it twice?
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id dashId)]
-           (check-403 @can_write))
+(defendpoint POST "/:id/cards" [id :as {{:keys [cardId]} :body}]
+  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
+    (check-403 @can_write))
   (check (exists? Card :id cardId) 400 (format "Card %d doesn't exist." cardId))
-  (ins DashboardCard :card_id cardId :dashboard_id dashId))
+  (ins DashboardCard :card_id cardId :dashboard_id id))
+
+(defendpoint POST "/:id/reposition" [id :as {{:keys [cards]} :body}]
+  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
+    (check-403 @can_write))
+  (dorun (map (fn [{:keys [card_id sizeX sizeY row col]}]
+                (let [{dashcard-id :id} (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
+                  (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
+              cards))
+  {:status :ok})
 
 (define-routes)
