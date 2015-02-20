@@ -39,8 +39,8 @@
 
 (defendpoint DELETE "/:id" [id]
   (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write)
-    (del Dashboard :id id)))
+    (check-403 @can_write))
+  (del Dashboard :id id))
 
 (defendpoint POST "/:id/cards" [id :as {{:keys [cardId]} :body}]
   (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
