@@ -33,16 +33,6 @@
                         </li>
                     </ul>
                 </div>
-                <div>
-                    <a cv-org-href="/etl/ingestions/txndb/{{database.id}}" ng-if="txndb_status(database.name)">
-                        <span class="ingetsion-label">Last db ingestion:</span>
-                        {{txndb_status(database.name).status}} @ {{txndb_status(database.name).updated_at | date : 'MMM d, y, hh:mm a'}}
-                    </a>
-                    <a cv-org-href="/etl/ingestions/events/{{database.id}}" ng-if="events_status(database.name)">
-                        <span>Last event ingestion:</span>
-                        {{events_status(database.name).status}} @ {{events_status(database.name).updated_at | date : 'MMM d, y, hh:mm a'}}
-                    </a>
-                </div>
               </div>
           </div>
       </div>

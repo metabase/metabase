@@ -10,6 +10,8 @@
             [metabase.config :refer [app-defaults]]
             [metabase.db.internal :refer :all]))
 
+(declare post-select)
+
 (def db-file
   "Path to our H2 DB file from env var or app config."
   (str "file:" (or (:database-file env)
@@ -20,6 +22,14 @@
                :naming {:keys str/lower-case
                         :fields str/upper-case}}))
 
+;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
+;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
+(when (get-in db [:options :subprotocol])
+  (let [datasource (:datasource @(:pool db))
+        url (.getJdbcUrl datasource)]
+    (when-not (.contains ^String url ";AUTO_SERVER=TRUE")
+      (.setJdbcUrl datasource (str url ";AUTO_SERVER=TRUE")))))
+
 (defn migrate
   "Migrate the database :up or :down."
   [direction]
@@ -29,7 +39,12 @@
       :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
       :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn))))
 
-;;; UTILITY FUNCTIONS
+
+;;; # UTILITY FUNCTIONS
+
+(def ^:dynamic *log-db-calls*
+  "Should we enable DB call logging? (You might want to disable this if we're doing many in parallel)"
+  true)
 
 (defmulti pre-insert
   "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
@@ -45,13 +60,17 @@
 
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`."
+   and automatically passes &rest KWARGS to `korma.core/values`.
+
+   Returns newly created object after calling `post-select` on it.
+   THERE IS NO NEED TO CALL `SEL` TO FETCH IT AGAIN."
   [entity & kwargs]
   (let [vals (->> kwargs
                   (apply assoc {})
                   (pre-insert entity))]
-    (-> (insert entity (values vals))
-        (clojure.set/rename-keys {(keyword "scope_identity()") :id}))))
+    (->> (-> (insert entity (values vals))
+             (clojure.set/rename-keys {(keyword "scope_identity()") :id}))
+         (post-select entity))))
 
 (defmulti pre-update
   "Like pre-insert but called by `upd` before DB operations happen."
@@ -132,7 +151,8 @@
         forms (->> forms
                    sel-apply-kwargs
                    (sel-apply-fields field-keys))]
-    `(do (println "DB CALL: " ~(str entity) " " ~(str forms))
+    `(do (when *log-db-calls*
+           (println "DB CALL: " ~(str entity) " " ~(str forms)))
          (select ~entity ~@forms))))
 
 (defmacro sel-fn

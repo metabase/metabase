@@ -10,7 +10,7 @@
                              [session :refer [wrap-session]])
             (metabase.middleware [current-user :refer :all]
                                  [log-api-call :refer :all]
-                                 [strip-fns-from-response :refer :all])
+                                 [format :refer :all])
             [metabase.routes :as routes]))
 
 (defn liquibase-sql []
@@ -29,10 +29,10 @@
   "The primary entry point to the HTTP server"
   (-> routes/routes
       (log-api-call :request)
-      strip-fns-from-response ; [METABASE] Pull out fns in response so JSON serializer doesn't barf
+      format-response         ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
       wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
-      (wrap-json-body
-        {:keywords? true})         ; extracts json POST body and makes it avaliable on request
+      (wrap-json-body         ; extracts json POST body and makes it avaliable on request
+        {:keywords? true})
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
       bind-current-user       ; [METABASE] associate :current-user-id and :current-user with request

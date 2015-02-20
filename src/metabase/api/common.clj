@@ -159,6 +159,9 @@
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form."
   [method route args & body]
+  {:pre [(or (string? route)
+             (vector? route))
+         (vector? args)]}
   (let [name (route-fn-name method route)
         route (typify-route route)]
     `(do (def ~name

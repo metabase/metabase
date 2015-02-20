@@ -96,7 +96,14 @@
       (coerce/to-long)
       (java.sql.Date.))))
 
+
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
   []
   (time/unparse (time/formatters :date-time-no-ms) (coerce/from-long (System/currentTimeMillis))))
+
+
+(defn jdbc-clob-to-str
+  "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
+  [^org.h2.jdbc.JdbcClob clob]
+  (.getSubString clob 1 (.length clob)))

@@ -9,6 +9,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "LATEST"]          ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
                  [org.clojure/core.match "0.3.0-alpha4"]    ; optimized pattern matching library for Clojure
+                 [org.clojure/math.numeric-tower "0.0.4"]   ; math functions like `ceil`
                  [org.clojure/core.memoize "0.5.6"]         ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.2"]             ; CSV parsing / generation
                  [org.clojure/data.json "0.2.5"]            ; JSON parsing / generation

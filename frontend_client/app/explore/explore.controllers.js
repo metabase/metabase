@@ -5,9 +5,7 @@
 
 var ExploreControllers = angular.module('corvus.explore.controllers', ['corvus.metabase.services', 'corvus.annotation.directives']);
 
-ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', 'ETL', function($scope, Metabase, ETL) {
-    var etl_statuses = {};
-
+ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
     $scope.show_non_entities = {};
 
     $scope.$watch('currentOrg', function(org) {
@@ -35,7 +33,7 @@ ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', 'ETL
                 } else {
                     database.non_entities.push(table);
                 }
-                if (database.entities.length > 0){
+                if (database.entities.length > 0) {
                     $scope.show_non_entities[database.id] = false;
                 } else {
                     $scope.show_non_entities[database.id] = true;
@@ -48,26 +46,6 @@ ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', 'ETL
             console.log('error getting table list', error);
         });
     });
-
-    $scope.txndb_status = function(db_name) {
-        if (etl_statuses && etl_statuses.txndb) {
-            for (var i = 0; i < etl_statuses.txndb.length; i++) {
-                if (etl_statuses.txndb[i].database_name == db_name) {
-                    return etl_statuses.txndb[i];
-                }
-            }
-        }
-    };
-
-    $scope.events_status = function(db_name) {
-        if (etl_statuses && etl_statuses.events) {
-            for (var i = 0; i < etl_statuses.events.length; i++) {
-                if (etl_statuses.events[i].database_name == db_name) {
-                    return etl_statuses.events[i];
-                }
-            }
-        }
-    };
 }]);
 
 ExploreControllers.controller('ExploreTableDetail', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
@@ -237,7 +215,7 @@ ExploreControllers.controller('ExploreEntityDetail', ['$scope', '$routeParams', 
 }]);
 
 
-ExploreControllers.controller('ExploreTableCohorts', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusFormGenerator',function($scope, $routeParams, $location, Metabase, CorvusFormGenerator) {
+ExploreControllers.controller('ExploreTableCohorts', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusFormGenerator', function($scope, $routeParams, $location, Metabase, CorvusFormGenerator) {
 
     // $scope.table
     // $scope.cohortsData
