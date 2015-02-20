@@ -81,6 +81,10 @@
 (defentity Field
   (table :metabase_field))
 
+(defmethod post-select Field [_ {:keys [table_id] :as field}]
+  (assoc field
+         :table (sel-fn :one "metabase.models.table/Table" :id table_id)))
+
 (defmethod pre-insert Field [_ field]
   (let [defaults {:created_at (util/new-sql-date)
                   :updated_at (util/new-sql-date)
