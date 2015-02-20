@@ -15,6 +15,10 @@
                   :updated_at (util/new-sql-date)}]
     (merge defaults dashboard)))
 
+(defmethod pre-update Dashboard [_ dashboard]
+  (assoc dashboard
+         :updated_at (util/new-sql-date)))
+
 (defmethod post-select Dashboard [_ {:keys [id creator_id organization_id] :as dash}]
   (-> dash
       (assoc :creator (sel-fn :one User :id creator_id)
