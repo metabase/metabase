@@ -47,8 +47,8 @@
   (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
     (check-403 @can_write))
   (dorun (map (fn [{:keys [card_id sizeX sizeY row col]}]
-                (let [dashcard (sel :one DashboardCard :card_id card_id :dashboard_id id)]
-                  (upd DashboardCard (:id dashcard) :sizeX sizeX :sizeY sizeY :row row :col col)))
+                (let [{dashcard-id :id} dashcard (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
+                  (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
               cards))
   {:status :ok})
 
