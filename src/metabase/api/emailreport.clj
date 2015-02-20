@@ -46,36 +46,39 @@
   ; we require admin/default perms on the org to do this operation
   (check-403 ((:perms-for-org @*current-user*) organization))
   ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
-  (->> (-> body
-         (select-keys [:organization :name :description :public_perms :mode :dataset_query :email_addresses :schedule])
-         (clojure.set/rename-keys {:organization :organization_id})
-         (assoc :creator_id *current-user-id*))
-    (mapply ins EmailReport)))
+  ;; TODO - deal with recipients
+  (check-500 (->> (-> body
+                    (select-keys [:organization :name :description :public_perms :mode :dataset_query :email_addresses :schedule])
+                    (clojure.set/rename-keys {:organization :organization_id})
+                    (assoc :creator_id *current-user-id*))
+               (mapply ins EmailReport))))
 
 
 (defendpoint GET "/:id" [id]
-  ; user must have read permissions on the report
+  ; user must have READ permissions on the report
   (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
     (check-403 @can_read)
     (hydrate report :creator :organization :can_read :can_write)))
 
 
-;(defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
-;  ;; TODO - check that database exists and user has permission (if specified)
-;  (let-404 [{:keys [can_write] :as query} (sel :one Query :id id)]
-;    (check-403 @can_write)
-;    (check-500 (-> (merge query body)
-;                 (#(mapply upd Query id %))))
-;    (-> (sel :one Query :id id)
-;      (hydrate :creator :database))))
-;
-;
-;(defendpoint DELETE "/:id" [id]
-;  (let-404 [{:keys [can_write] :as query} (sel :one [Query :id :creator_id :public_perms] :id id)]
-;    (check-403 @can_write)
-;    (del Query :id id)))
-;
-;
+(defendpoint PUT "/:id" [id :as {body :body}]
+  ; user must have WRITE permissions on the report
+  (let-404 [{:keys [can_write] :as report} (sel :one EmailReport :id id)]
+    (check-403 @can_write)
+    ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
+    ;; TODO - deal with recipients
+    (check-500 (->> (util/select-non-nil-keys body :name :description :public_perms :mode :dataset_query :email_addresses :schedule)
+                 (mapply upd EmailReport id)))
+    (-> (sel :one EmailReport :id id)
+      (hydrate :creator :database :can_read :can_write))))
+
+
+(defendpoint DELETE "/:id" [id]
+  (let-404 [{:keys [can_write] :as report} (sel :one EmailReport :id id)]
+    (check-403 @can_write)
+    (del EmailReport :id id)))
+
+
 ;(defendpoint POST "/:id" [id]
 ;  ;; TODO - implementation (execute a query)
 ;  {:TODO "TODO"})
