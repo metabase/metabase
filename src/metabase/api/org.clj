@@ -20,15 +20,18 @@
   {:status 200
    :body {}})
 
+
 (defendpoint GET "/:id" [id]
   (let-404 [{:keys [can_read] :as org} (sel :one Org :id id)]
     (check-403 @can_read)
     org))
 
+
 (defendpoint GET "/slug/:slug" [slug]
   (let-404 [{:keys [can_read] :as org} (sel :one Org :slug slug)]
     (check-403 @can_read)
     org))
+
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
@@ -77,28 +80,30 @@
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
       (grant-org-perm id user-id (or (:admin body) false))
       {:success true})))
 
 
 (defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
-  ;; TODO - permissions check
-  ;; HMMM, same body as endpoint above in this case.  how can we unify the impl of 2 endpoints?
-  (let-404 [org (sel :one Org :id id)]
+  ; user must have admin perms on org to proceed
+  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
+    (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id))))
+      (del OrgPerm :user_id user-id :organization_id id)
+      {:success true})))
 
 
 (define-routes)
