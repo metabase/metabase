@@ -4,6 +4,7 @@
             (metabase.api [annotation :as annotation]
                           [card :as card]
                           [dash :as dash]
+                          [emailreport :as emailreport]
                           [org :as org]
                           [qs :as qs]
                           [query :as query]
@@ -22,6 +23,7 @@
   (context "/annotation"   [] annotation/routes)
   (context "/card"         [] card/routes)
   (context "/dash"         [] dash/routes)
+  (context "/emailreport"  [] emailreport/routes)
   (context "/meta/dataset" [] dataset/routes)
   (context "/meta/db"      [] db/routes)
   (context "/meta/field"   [] field/routes)

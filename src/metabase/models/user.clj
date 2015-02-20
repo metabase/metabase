@@ -1,7 +1,8 @@
 (ns metabase.models.user
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.org-perm :refer [OrgPerm]]
+            (metabase.models [hydrate :refer :all]
+                             [org-perm :refer [OrgPerm]])
             [metabase.util :as util]))
 
 (defentity User
@@ -47,3 +48,13 @@
                   :is_active true
                   :is_superuser false}]
     (merge defaults user)))
+
+
+(defn users-for-org
+  "Selects the ID and NAME for all users available to the given org-id."
+  [org-id]
+  (->>
+    (sel :many [User :id :first_name :last_name]
+      (where {:id [in (subselect OrgPerm (fields :user_id) (where {:organization_id org-id}))]}))
+    (map #(select-keys % [:id :common_name]))
+    (map #(clojure.set/rename-keys % {:common_name :name}))))
