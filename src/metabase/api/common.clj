@@ -181,3 +181,19 @@
                         (filter-vals #(:is-endpoint? (meta %)))
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
+
+(defn read-check
+  ([obj]
+   (let-404 [{:keys [can_read]} obj]
+     (check-403 @can_read)
+     obj))
+  ([entity id]
+   (read-check (eval `(sel :one ~entity :id ~id)))))
+
+(defn write-check
+  ([obj]
+   (let-404 [{:keys [can_write]} obj]
+     (check-403 @can_write)
+     obj))
+  ([entity id]
+   (write-check (eval `(sel :one ~entity :id ~id)))))

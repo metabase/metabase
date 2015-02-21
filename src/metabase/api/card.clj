@@ -30,19 +30,18 @@
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Card :id id)
+         read-check
          (hydrate :can_read :can_write :organization)))
 
 (defendpoint PUT "/:id" [id :as {:keys [body]}]
-  (let-404 [{:keys [can_write] :as card} (sel :one Card :id id)]
-    (check-403 @can_write)
-    (check-500 (->> (util/select-non-nil-keys body :dataset_query :description :display :name :public_perms :visualization_settings)
-                    (mapply upd Card id)))
-    (sel :one Card :id id)))
+  (write-check Card id)
+  (check-500 (->> (util/select-non-nil-keys body :dataset_query :description :display :name :public_perms :visualization_settings)
+                  (mapply upd Card id)))
+  (sel :one Card :id id))
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [can_write]} (sel :one Card :id id)]
-    (check-403 @can_write)
-    (del Card :id id)))
+  (write-check Card id)
+  (del Card :id id))
 
 (defendpoint GET "/:id/favorite" [id]
   {:favorite (boolean (some->> *current-user-id*

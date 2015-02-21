@@ -34,8 +34,8 @@
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
-  (let-400 [{:keys [can_read name] :as query} (sel :one Query :id query-id)]
-    (check-403 @can_read)
+  (let-400 [{:keys [name] :as query} (sel :one Query :id query-id)]
+    (read-check query)
     (->> (-> query
              (select-keys [:type :details :database_id])
              (assoc :name (str name " CLONED")
@@ -63,27 +63,25 @@
     (query-clone clone)
     (query-create body)))
 
-
 (defendpoint GET "/:id" [id]
-  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
-    (check-403 @can_read)
-    (hydrate query :creator :database :can_read :can_write)))
-
+  (->404 (sel :one Query :id id)
+         read-check
+         (hydrate :creator :database :can_read :can_write)))
 
 (defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
   ;; TODO - check that database exists and user has permission (if specified)
-  (let-404 [{:keys [can_write] :as query} (sel :one Query :id id)]
-    (check-403 @can_write)
-    (check-500 (-> (merge query body)
-                   (#(mapply upd Query id %))))
+  (let-404 [query ]
+    (check-500 (->404 (sel :one Query :id id)
+                      write-check
+                      (merge body)
+                      (#(mapply upd Query id %))))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
 
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [can_write] :as query} (sel :one [Query :id :creator_id :public_perms] :id id)]
-    (check-403 @can_write)
-    (del Query :id id)))
+  (write-check Query id)
+  (del Query :id id))
 
 
 (defendpoint POST "/:id" [id]
@@ -93,9 +91,8 @@
 
 (defendpoint GET "/:id/results" [id]
   ;; TODO - implementation (list recent results of a query)
-  (let-404 [{:keys [can_read] :as query} (sel :one Query :id id)]
-    (check-403 @can_read)
-    (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10))))
+  (read-check Query id)
+  (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10)))
 
 
 (def query-csv
