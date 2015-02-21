@@ -182,18 +182,18 @@
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 
-(defn read-check
+(defmacro read-check
   ([obj]
-   (let-404 [{:keys [can_read]} obj]
-     (check-403 @can_read)
-     obj))
+   `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
+      (check-403 @~'can_read)
+      obj#))
   ([entity id]
-   (read-check (eval `(sel :one ~entity :id ~id)))))
+   `(read-check (sel :one ~entity :id ~id))))
 
-(defn write-check
+(defmacro write-check
   ([obj]
-   (let-404 [{:keys [can_write]} obj]
-     (check-403 @can_write)
-     obj))
+   `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
+      (check-403 @~'can_write)
+      obj#))
   ([entity id]
-   (write-check (eval `(sel :one ~entity :id ~id)))))
+   `(write-check (sel :one ~entity :id ~id))))
