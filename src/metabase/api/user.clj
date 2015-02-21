@@ -42,8 +42,8 @@
   (check-404 (exists? User :id id))
     ;; TODO - match old password against current one
     ;; TODO - password encryption
-    (upd User id :password password)
-    (sel :one User :id id))
+  (upd User id :password password)
+  (sel :one User :id id))
 
 
 (define-routes)
