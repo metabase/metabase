@@ -3,7 +3,7 @@
   (:require [compojure.core :refer [defroutes]]
             [medley.core :refer :all]
             [metabase.api.common.internal :refer :all]
-            [metabase.db :refer [sel-fn]])
+            [metabase.db :refer :all])
   (:import com.metabase.corvus.api.ApiException))
 
 ;;; ## DYNAMIC VARIABLES
@@ -34,8 +34,9 @@
    Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
   `(let [org-id# ~org-id]                                ; make sure org-id gets evaluated before get to `case`
-     (case (when @*current-user*
-             ((:perms-for-org @*current-user*) org-id#))
+     (case (when *current-user-id*
+             (when-let [{:keys [~'admin]} (sel :one ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id#)]
+               (if ~'admin :admin :default)))
        ~@body)))
 
 
