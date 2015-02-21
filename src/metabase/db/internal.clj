@@ -36,3 +36,20 @@
   [field-keys forms]
   (if-not (empty? field-keys) (conj forms `(fields ~@field-keys))
           forms))
+
+(defn entity->korma
+  "Convert an ENTITY argument to `sel`/`sel-fn` into the form we should pass to korma `select` and to various multi-methods such as
+   `post-select`.
+
+    *  If entity is a vector like `[User :name]`, only keeps the first arg (`User`)
+    *  Converts fully-qualified entity name strings like `\"metabase.models.user/User\"` to the corresponding entity
+       and requires their namespace if needed."
+  [entity]
+  {:post [(= (type %) :korma.core/Entity)]}
+  (if (vector? entity) (entity->korma (first entity))
+      (if (string? entity) (let [ns (-> (.split ^String entity "/")
+                                        first
+                                        symbol)]
+                             (require ns)
+                             (eval (symbol entity)))
+          entity)))

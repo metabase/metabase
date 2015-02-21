@@ -130,15 +130,21 @@
 
     (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
+  ENTITY may optionally be a fully-qualified string name of an entity; in this case, the symbol's namespace
+  will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
+  dependencies. This is slower, however, due to added runtime overhead.
+
+    (sel :one \"metabase.models.table/Table\" :id 1) ; require/resolve metabase.models.table/Table. then sel Table 1
+
   FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
    clauses such as `order`, which are passed directly.
 
     (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
+  {:pre [(contains? #{:one :many} one-or-many)]}
   `(->> (-sel-select ~entity ~@forms)
-        (map (partial post-select ~(if (vector? entity) (first entity)
-                                       entity)))
+        (map (partial post-select (entity->korma ~entity)))
         ~(case one-or-many
            :one 'first
            :many 'identity)))
@@ -153,27 +159,15 @@
                    (sel-apply-fields field-keys))]
     `(do (when *log-db-calls*
            (println "DB CALL: " ~(str entity) " " ~(str forms)))
-         (select ~entity ~@forms))))
+         (select (entity->korma ~entity) ~@forms))))
 
 (defmacro sel-fn
-  "Returns a memoized fn that calls `sel`.
-
-   ENTITY may optionally be a fully-qualified string name of an entity; in this case, the symbol's namespace
-   will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
-   dependencies in the model files. This is slower, however, due to added runtime overhead.
-
-     (sel :one Table :id 1)                           ; returns fn that will sel Table 1 when called
-     (sel :one \"metabase.models.table/Table\" :id 1) ; returns fn that will require/resolve metabase.models.table/Table. then sel Table 1"
+  "Returns a memoized fn that calls `sel`."
   [one-or-many entity & forms]
   `(memoize
     (fn []
-      ~@(if (string? entity)
-          `((require '~(-> ^String entity (.split "/") first symbol)) ; require the namespace
-            (let [entity# (symbol ~entity)]
-              (eval `(sel ~~one-or-many ~entity# ~~@forms))))
-          `((sel ~one-or-many ~entity ~@forms))))))
+      (sel ~one-or-many ~entity ~@forms))))
 
-;;
 (defmacro exists?
   "Easy way to see if something exists in the db.
    TODO: How can we disable the `post-select` functionality for this call.

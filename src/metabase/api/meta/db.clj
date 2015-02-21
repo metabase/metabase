@@ -64,8 +64,8 @@
   (sel :many Table :db_id id (order :name)))
 
 (defendpoint POST "/:id/sync" [id]
-  (let-404 [db (sel :one Database :id id)]   ; run sync-tables asynchronously.
-    (future (pgsync/sync-tables db)))        ; TODO - this only works for Postgres right now (since that's the only driver we have)
+  (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
+           (pgsync/sync-tables db))          ; TODO - this only works for Postgres right now (since that's the only driver we have)
   {:status :ok})
 
 (define-routes)
