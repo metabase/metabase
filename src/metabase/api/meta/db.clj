@@ -10,6 +10,7 @@
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
+                             [field :refer [Field]]
                              [org :refer [org-can-read org-can-write]]
                              [table :refer [Table]])))
 
@@ -38,9 +39,29 @@
     (check-403 @can_write))
   (del Database :id id))
 
+(defendpoint GET "/:id/autocomplete_suggestions" [id prefix]
+  (let-404 [{:keys [can_read]} (sel :one Database :id id)]
+    (check-403 @can_read))
+  (let [prefix-len (count prefix)
+        table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
+                            (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name
+                                   {id name}))
+                            (apply merge {}))
+        matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
+                             (filter (fn [^String table-name]
+                                       (= prefix (.substring table-name 0 prefix-len))))
+                             (map (fn [table-name]                                                               ; return them in the format [table_name "Table"]
+                                    [table-name "Table"])))
+        fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
+                         :table_id [in (keys table-id->name)]                                                   ; whose Table is in this DB
+                         :name [like (str prefix "%")])
+                    (map (fn [{:keys [name base_type special_type table_id]}]                                    ; return them in the format
+                           [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
+                                                                                (str " " special_type)))])))]
+    (concat matching-tables fields)))                                                                           ; return combined seq of Fields + Tables
+
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id (order :name)))
-
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]   ; run sync-tables asynchronously.
