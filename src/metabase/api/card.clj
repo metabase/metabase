@@ -45,7 +45,7 @@
 
 (defendpoint GET "/:id/favorite" [id]
   {:favorite (boolean (some->> *current-user-id*
-                               (sel :one CardFavorite :card_id id :owner_id)))})
+                               (exists? CardFavorite :card_id id :owner_id)))})
 
 (defendpoint POST "/:card-id/favorite" [card-id]
   (ins CardFavorite :card_id card-id :owner_id *current-user-id*))
