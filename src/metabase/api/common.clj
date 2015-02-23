@@ -66,8 +66,8 @@
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not test
        (throw (ApiException. (int code) message)))
-     (when-not (empty? rest-args)
-       (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
+     (if (empty? rest-args) test
+         (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
 (defmacro require-params
   "Checks that a list of params are non-nil or throws a 400."
