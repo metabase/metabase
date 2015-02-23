@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" ng-app="corvus" class="no-js">
 <head>
+  <base href="/">
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
@@ -71,7 +72,7 @@
             <ul class="Dropdown-content right">
               <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
               <li class="" ><a class="link" cv-org-href="/admin/" target="_self">Admin</a></li>
-              <li class="" ><a class="link" href="/accounts/logout/" target="_self">Logout</a></li>
+              <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
             </ul>
           </li>
         </ul>
@@ -130,6 +131,8 @@
   <script src="/app/controllers.js"></script>
   <script src="/app/filters.js"></script>
   <script src="/app/directives.js"></script>
+  <script src="/app/auth/auth.module.js"></script>
+  <script src="/app/auth/auth.controllers.js"></script>
 
   <!-- components and shared bits -->
 

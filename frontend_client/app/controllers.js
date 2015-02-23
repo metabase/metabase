@@ -5,17 +5,19 @@
 /*global $*/
 
 // Global Controllers
-var CorvusControllers = angular.module('corvus.controllers', ['http-auth-interceptor', 'corvus.services']);
+var CorvusControllers = angular.module('corvus.controllers', ['corvus.services']);
 
-CorvusControllers.controller('Corvus', ['$scope', '$location', '$window', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, $window, CorvusCore, CorvusAlert, AppState) {
+CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, CorvusCore, CorvusAlert, AppState) {
 
     // make our utilities object available throughout the application
     $scope.utils = CorvusCore;
 
     // current User
+    // TODO: can we directly bind to Appstate.model?
     $scope.user = undefined;
 
     // current Organization
+    // TODO: can we directly bind to Appstate.model?
     $scope.currentOrgSlug = undefined;
     $scope.currentOrg = undefined;
 
@@ -26,10 +28,6 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', '$window', 'Corvu
     $scope.$on("$locationChangeSuccess", function() {
         $scope.hash = $location.hash();
         $scope.navShowing = false;
-    });
-
-    $scope.$on("event:auth-loginRequired", function() {
-        $window.location.href = "/accounts/login/";
     });
 
     $scope.$on("appstate:user", function (event, user) {

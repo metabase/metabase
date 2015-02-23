@@ -3,10 +3,10 @@
 /*global _*/
 /* Services */
 
-var CorvusServices = angular.module('corvus.services', ['corvus.core.services']);
+var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', 'User', 'Organization',
-    function($rootScope, $routeParams, $q, $location, User, Organization) {
+CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', 'Session', 'User', 'Organization',
+    function($rootScope, $routeParams, $q, $location, Session, User, Organization) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -38,7 +38,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     deferred.resolve(result);
                 }, function(error) {
                     console.log('unable to get current user', error);
-                    $location.path('/unauthorized/');
                     deferred.reject(error);
                 });
 
@@ -48,17 +47,20 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             routeChanged: function(event) {
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-
+console.log('routeChanged - '+ $location.path());
                 if(service.model.currentUserPromise) {
+console.log('routeChanged-withPromise');
                     // we have an outstanding promise for getting current user, so wait for that first
                     service.model.currentUserPromise.then(function (user) {
+                        service.model.currentUserPromise = null;
                         service.routeChangedImpl(event);
-                        service.model.currentUserPromise = null;
                     }, function (error) {
-                        // TODO: we should probably punt the user out of the app or something similar to 403
+console.log('routeChanged-withPromise-NOUSER', error);
                         service.model.currentUserPromise = null;
+                        service.routeChangedImpl(event);
                     });
                 } else {
+console.log('routeChanged-noPromise');
                     // we must already have the user, so carry on
                     service.routeChangedImpl(event);
                 }
@@ -67,11 +69,24 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             routeChangedImpl: function(event) {
                 // whenever we have a route change (including initial page load) we need to establish some context
 
+                // if we don't have a current user then the only sensible destination is the login page
+                if (!service.model.currentUser) {
+console.log('routeChangedImpl-noUser');
+                    // make sure we clear out any current state just to be safe
+                    service.model.currentOrgSlug = null;
+                    service.model.currentOrg = null;
+
+                    // NOTE: we are taking for granted that $location won't send us to /auth/login repeatedly
+                    $location.path('/auth/login');
+                    return;
+                }
+console.log('routeChangedImpl-withUser');
+
                 // NOTE: if you try to do this outside this event you'll run into issues where $routeParams is not set.
                 //       so that's why we explicitly wait until we know when $routeParams will be available
                 if ($routeParams.orgSlug) {
                     // the url is telling us what Organization we are working in
-
+console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
                     var user_perm = null;
                     var perms = service.model.currentUser.org_perms;
@@ -115,16 +130,14 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 } else if (!service.model.currentOrgSlug) {
                     // the url doesn't tell us what Organization this is, so lets try a different approach
-                    if (service.model.currentUser) {
-
-                        // TODO: a better approach might be to set a cookie indicating the last org the user was on
-                        if (service.model.currentUser.org_perms.length > 0) {
-                            service.model.currentOrg = service.model.currentUser.org_perms[0].organization;
-                            service.model.currentOrgSlug = service.model.currentOrg.slug;
-                            $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                        } else {
-                            // TODO: this is a real issue.  we have a user with no organizations.  where do we send them?
-                        }
+console.log('routeChangedImpl-withUser-noOrg');
+                    // TODO: a better approach might be to set a cookie indicating the last org the user was on
+                    if (service.model.currentUser.org_perms.length > 0) {
+                        service.model.currentOrg = service.model.currentUser.org_perms[0].organization;
+                        service.model.currentOrgSlug = service.model.currentOrg.slug;
+                        $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
+                    } else {
+                        // TODO: this is a real issue.  we have a user with no organizations.  where do we send them?
                     }
                 }
             }
@@ -132,6 +145,44 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
         // listen for all route changes so that we can update organization as appropriate
         $rootScope.$on('$routeChangeSuccess', service.routeChanged);
+
+        // login just took place, so lets force a refresh of the current user
+        $rootScope.$on("appstate:login", function(event, session_id) {
+            console.log('loginCompleted', session_id);
+            service.refreshCurrentUser();
+        });
+
+        // logout just took place, do some cleanup
+        $rootScope.$on("appstate:logout", function(event, session_id) {
+            console.log('logoutCompleted', session_id);
+
+            // clear out any current state
+            service.model.currentUserPromise = null;
+            service.model.currentUser = null;
+            service.model.currentOrgSlug = null;
+            service.model.currentOrg = null;
+
+            // NOTE that we don't really care about callbacks in this case
+            Session.delete({
+                'session_id': session_id
+            });
+        });
+
+        // NOTE: the below events are generated from the http-auth-interceptor which listens on our $http calls
+        //       and intercepts calls that result in a 401 or 403 so that we can handle them here.  You must be
+        //       careful to consider the implications of this because any endpoint that returns a 401/403 can
+        //       have its call stack interrupted now and handled here instead of its normal callback sequence.
+
+        // redirect auth needs over to login page
+        $rootScope.$on("event:auth-loginRequired", function() {
+            $location.path("/auth/login");
+        });
+
+        // $http interceptor received a 403 response
+        $rootScope.$on("event:auth-forbidden", function() {
+            console.log('someone got a 403');
+            $location.path("/unauthorized");
+        });
 
         return service;
     }
@@ -504,6 +555,19 @@ CorvusServices.service('CorvusFormService', function() {
 
 // User Services
 var CoreServices = angular.module('corvus.core.services', ['ngResource', 'ngCookies']);
+
+CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/session/', {}, {
+        create: {
+            method: 'POST',
+            ignoreAuthModule: true     // this ensures a 401 response doesn't trigger another auth-required event
+        },
+        delete: {
+            method: 'DELETE',
+        }
+    });
+}]);
+
 CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/user/:userId', {}, {
         list: {
@@ -514,6 +578,7 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
         current: {
             url: '/api/user/current/',
             method: 'GET',
+            ignoreAuthModule: true     // this ensures a 401 response doesn't trigger another auth-required event
         },
         get: {
             url: '/api/user/:userId',

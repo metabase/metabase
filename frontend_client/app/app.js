@@ -13,6 +13,7 @@ var Corvus = angular.module('corvus', [
     'gridster', // used for dashboard grids
     'ui.sortable',
     'readableTime',
+    'corvus.auth',
     'corvus.filters',
     'corvus.directives',
     'corvus.controllers',
