@@ -48,8 +48,8 @@
                   :created_at (util/new-sql-date)
                   :updated_at (util/new-sql-date)}]
     (-> (merge defaults report)
-      (assoc :dataset_query (json/write-str dataset_query)
-             :schedule (json/write-str schedule)))))
+        (assoc :dataset_query (json/write-str dataset_query)
+               :schedule (json/write-str schedule)))))
 
 (defmethod pre-update EmailReport [_ {:keys [version dataset_query schedule] :as report}]
   (assoc report
@@ -61,8 +61,7 @@
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
   (-> report
-    (realize-json :dataset_query)
-    (realize-json :schedule)
+    (realize-json :dataset_query :schedule)
     (util/assoc*
       :creator (delay
                  (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
