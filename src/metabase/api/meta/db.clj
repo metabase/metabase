@@ -35,13 +35,11 @@
          (hydrate :organization)))
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [can_write]} (sel :one Database :id id)]
-    (check-403 @can_write))
+  (write-check Database id)
   (del Database :id id))
 
 (defendpoint GET "/:id/autocomplete_suggestions" [id prefix]
-  (let-404 [{:keys [can_read]} (sel :one Database :id id)]
-    (check-403 @can_read))
+  (read-check Database id)
   (let [prefix-len (count prefix)
         table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
                             (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name

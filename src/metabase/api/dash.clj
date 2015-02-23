@@ -33,29 +33,24 @@
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 
 (defendpoint PUT "/:id" [id :as {{:keys [description name public_perms]} :body}]
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write))
+  (write-check Dashboard id)
   (upd Dashboard id :description description :name name :public_perms public_perms))
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write))
+  (write-check Dashboard id)
   (del Dashboard :id id))
 
 (defendpoint POST "/:id/cards" [id :as {{:keys [cardId]} :body}]
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write))
-  (check (exists? Card :id cardId) 400 (format "Card %d doesn't exist." cardId))
+  (write-check Dashboard id)
+  (check-400 (exists? Card :id cardId))
   (ins DashboardCard :card_id cardId :dashboard_id id))
 
 (defendpoint DELETE "/:id/cards" [id dashcardId]
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write))
+  (write-check Dashboard id)
   (del DashboardCard :id dashcardId :dashboard_id id))
 
 (defendpoint POST "/:id/reposition" [id :as {{:keys [cards]} :body}]
-  (let-404 [{:keys [can_write]} (sel :one Dashboard :id id)]
-    (check-403 @can_write))
+  (write-check Dashboard id)
   (dorun (map (fn [{:keys [card_id sizeX sizeY row col]}]
                 (let [{dashcard-id :id} (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
                   (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))

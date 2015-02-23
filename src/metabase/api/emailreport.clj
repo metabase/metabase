@@ -56,16 +56,15 @@
 
 
 (defendpoint GET "/:id" [id]
-  ; user must have READ permissions on the report
-  (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
-    (check-403 @can_read)
-    (hydrate report :creator :organization :can_read :can_write)))
+  (->404 (sel :one EmailReport :id id)
+         read-check
+         (hydrate :creator :organization :can_read :can_write)))
 
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   ; user must have WRITE permissions on the report
-  (let-404 [{:keys [can_write] :as report} (sel :one EmailReport :id id)]
-    (check-403 @can_write)
+  (let-404 [report (sel :one EmailReport :id id)]
+    (write-check report)
     ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
     ;; TODO - deal with recipients
     (check-500 (->> (-> (merge report (util/select-non-nil-keys body :name :description :public_perms :mode :dataset_query :email_addresses :schedule))
@@ -77,9 +76,8 @@
 
 
 (defendpoint DELETE "/:id" [id]
-  (let-404 [{:keys [can_write] :as report} (sel :one EmailReport :id id)]
-    (check-403 @can_write)
-    (del EmailReport :id id)))
+  (write-check EmailReport id)
+  (del EmailReport :id id))
 
 
 (defendpoint POST "/:id" [id]
@@ -89,10 +87,9 @@
 
 (defendpoint GET "/:id/executions" [id]
   ;; TODO - implementation (list recent results of a query)
-  (let-404 [{:keys [can_read] :as report} (sel :one EmailReport :id id)]
-    (check-403 @can_read)
-    (-> (sel :many EmailReportExecutions :report_id id (order :created_at :DESC) (limit 25))
-      (hydrate :organization))))
+  (read-check EmailReport id)
+  (-> (sel :many EmailReportExecutions :report_id id (order :created_at :DESC) (limit 25))
+      (hydrate :organization)))
 
 
 (define-routes)

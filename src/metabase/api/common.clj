@@ -181,3 +181,36 @@
                         (filter-vals #(:is-endpoint? (meta %)))
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
+
+
+;; ## NEW PERMISSIONS CHECKING MACROS
+;; Since checking `@can_read` `@can_write` is such a common pattern, these
+;; macros eliminate a bit of the redundancy around doing so.
+;; They support two forms:
+;;
+;;    (read-check my-table) ; checks @(:can_read my-table)
+;;    (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
+;;
+;; *  The first form is useful when you've already fetched an object (especially in threading forms such as `->404`).
+;; *  The second form takes care of fetching the object for you and is useful in cases where you won't need the object afterward
+;;    or want to combine the `sel` and permissions check statements into a single form.
+;;
+;; Both forms will throw a 404 if the object doesn't exist (saving you one more check!) and return the selected object.
+
+(defmacro read-check
+  "Checks that @can_read is true for this object."
+  ([obj]
+   `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
+      (check-403 @~'can_read)
+      obj#))
+  ([entity id]
+   `(read-check (sel :one ~entity :id ~id))))
+
+(defmacro write-check
+  "Checks that @can_write is true for this object."
+  ([obj]
+   `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
+      (check-403 @~'can_write)
+      obj#))
+  ([entity id]
+   `(write-check (sel :one ~entity :id ~id))))

@@ -6,18 +6,17 @@
                              [field :refer [Field]])))
 
 (defendpoint GET "/:id" [id]
-  (let-404 [{:keys [can_read] :as field} (sel :one Field :id id)]
-    (check-403 @can_read)
-    (hydrate field [:table :db])))
+  (->404 (sel :one Field :id id)
+         read-check
+         (hydrate [:table :db])))
 
 (defendpoint PUT "/:id" [id :as {{:keys [special_type preview_display description]} :body}]
-  (let-404 [{:keys [can_write]} (sel :one Field :id id)]
-    (check-403 @can_write))
+  (write-check Field id)
   (upd Field id :special_type special_type :preview_display preview_display :description description))
 
 (defendpoint GET "/:id/summary" [id]
-  (let-404 [{:keys [can_read count distinct-count]} (sel :one Field :id id)]
-    (check-403 @can_read)
+  (let-404 [{:keys [count distinct-count] :as field} (sel :one Field :id id)]
+    (read-check field)
     [[:count @count]
      [:distincts @distinct-count]]))
 
