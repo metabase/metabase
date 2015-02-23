@@ -103,7 +103,7 @@
             ((partial vector arg-symbol)))))                         ; [id (Integer/parseInt id)]
 
 (defmacro auto-parse
-  "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `auto-*parse-types*`."
+  "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `*auto-parse-types*`."
   [args & body]
   (let [let-forms (->> args
                        (mapcat let-form-for-arg)
