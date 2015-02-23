@@ -10,7 +10,13 @@
 (declare build-query
          generate-sql)
 
-(defn annotate-column [table column]
+(defn annotate-column
+  "Add the following keys to COLUMN (used internally):
+  *  `:keyword` Used for keying some internal maps (?)
+  *  `:qualified-name` Name to be used in the `SELECT` statement, e.g. `\"main_guide\".\"user_id\"`
+  *  `:alias` Alias for the field in `SELECT` statements (needed in some cases where we cast fields such as Dates)
+  *  `:select` Combined qualified name/alias form to use in `SELECT` statement, e.g. `\"main_guide\".\"user_id\" AS `\"main_guide\"`"
+  [table column]
   (let [{:keys [name base_type]} column
         qualified-name (format "\"%s\".\"%s\"" (:name table) name)
         alias (match base_type
@@ -27,7 +33,10 @@
            :alias alias
            :select select)))
 
-(defn annotate-column-with-id [table column-id]
+(defn annotate-column-with-id
+  "Fetch `Field` with COLUMN-ID and call `annotate-column`."
+  [table column-id]
+  {:pre [(integer? column-id)]}
   (annotate-column table (sel :one Field :id column-id)))
 
 (defn annotate-special-column [column]
@@ -43,11 +52,31 @@
              :id nil
              :description nil}))
 
+(defn is-special-aggregation?
+  "Is this aggregation clause a 'special' case such as `sum`?"
+  [aggregation]
+  (match (first aggregation)
+    "rows" true
+    "sum" true
+    :else false))
+
+(defn apply-special-aggregation [{:keys [source_table table aggregation] :as query}]
+  (case (first aggregation)
+    "rows" (->> (sel :many Field :table_id source_table) ; aggregation: ["rows"] just means return all rows
+                (map (partial annotate-column table)))
+    "sum" (let [{:keys [name] :as field} (annotate-column-with-id table (second aggregation))]
+            (->> (assoc field
+                       :name (format "Sum (%s)" name)
+                       :keyword :sum
+                       :alias :sum
+                       :select (format "SUM(\"%s\".\"%s\")" (:name table) name))
+                 vector))))
+
 (defn get-columns
-  "Return an array of column info dictionaries for query."
+  "Return an array of column info dictionaries for QUERY."
   [{:keys [source_table table breakout aggregation] :as query}]
-  (if (= aggregation ["rows"]) (->> (sel :many Field :table_id source_table) ; aggregation: ["rows"] just means return all rows
-                                    (map (partial annotate-column table)))
+  {:post [sequential?]}
+  (if (is-special-aggregation? aggregation) (apply-special-aggregation query)
       (->> (concat breakout aggregation)
            (filter identity)
            (map (fn [column]
@@ -61,15 +90,15 @@
           :database (:db (-> (:source_table <>)
                              (hydrate :db)))
           :columns (get-columns <>)
-          :columns-by-name (->> (:columns <>)
-                                (map (fn [{:keys [keyword] :as col}]
-                                       {keyword col}))
-                                (reduce merge {}))
-          :columns-by-id (->> (:columns <>)
-                              (filter :id)
-                              (map (fn [{:keys [id] :as col}]
-                                     {id col}))
-                              (reduce merge {}))
+          :column-name->column (->> (:columns <>)
+                                    (map (fn [{:keys [keyword] :as col}]
+                                           {keyword col}))
+                                    (reduce merge {}))
+          :column-id->column (->> (:columns <>)
+                                  (filter :id)
+                                  (map (fn [{:keys [id] :as col}]
+                                         {id col}))
+                                  (reduce merge {}))
           :ordered-columns (map :keyword (:columns <>))
           :ordered-aliases (map #(keyword (:alias %)) (:columns <>))
           :sql (->> <>
@@ -78,7 +107,7 @@
 
 (defn apply-breakout [query fields]
   (let [field-names (->> fields
-                  (map (:columns-by-id query))
+                  (map (:column-id->column query))
                   (map :alias)
                   (interpose ", ")
                   (apply str))]
@@ -131,7 +160,7 @@
          (apply str))))
 
 (defn process-and-run [{:keys [database] :as query}]
-  (let [{:keys [sql columns ordered-columns columns-by-name] :as query-dict} (process (:query query))
+  (let [{:keys [sql columns ordered-columns column-name->column] :as query-dict} (process (:query query))
         db (sel :one Database :id database)
         results ((:native-query db) sql)]
     (println "----------------------------------------\n"
@@ -141,8 +170,8 @@
     {:status :completed
      :row_count (count results)
      :data {:rows (->> results
-                       (map #(map % (:ordered-aliases query-dict)))
-                       (map format-result))
-            :columns (map :name columns)
-            :cols (map columns-by-name
-                       ordered-columns)}}))
+                       (mapv #(mapv % (:ordered-aliases query-dict)))
+                       (mapv format-result))
+            :columns (mapv :name columns)
+            :cols (mapv column-name->column
+                        ordered-columns)}}))
