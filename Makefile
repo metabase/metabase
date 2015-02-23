@@ -11,7 +11,7 @@ dox:
 	git pull
 	rm index.html
 	mv ~/Desktop/index.html.temp index.html
-	git add index.htmlg
+	git add index.html
 	git commit -m "Updated dox."
 	git push
 	git checkout master
