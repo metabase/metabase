@@ -206,9 +206,6 @@
   ([entity id]
    `(read-check (sel :one ~entity :id ~id))))
 
-(defmacro read✓ [& args]
-  `(read-check ~@args))
-
 (defmacro write-check
   "Checks that @can_write is true for this object."
   ([obj]
