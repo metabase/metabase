@@ -33,9 +33,18 @@ Run unit tests with
 
 ## Documentation
 
-Generate documentation with
+Available at http://metabase.github.io/metabase-init/.
+
+You can generate and view documentation with
 
     lein marg
+	open ./docs/uberdoc.html
+
+You can update the GitHub pages documentation using
+
+	make dox
+
+You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
 
 
 ## Options
