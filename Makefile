@@ -6,12 +6,10 @@ dox:
 	git checkout master
 	git pull
 	lein marg
-	cp ./docs/uberdoc.html ./uberdoc.html
+	cp ./docs/uberdoc.html ./index.html
 	git checkout gh-pages
 	git pull
-	rm index.html
-	mv uberdoc.html index.html
 	git add index.html
 	git commit -m "Updated dox."
-	git push
-	git checkout master
+	# git push
+	# git checkout master
