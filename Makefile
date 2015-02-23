@@ -13,5 +13,5 @@ dox:
 	mv uberdoc.html index.html
 	git add index.html
 	git commit -m "Updated dox."
-	git push --set-upstream origin gh-pages
+	git push
 	git checkout master
