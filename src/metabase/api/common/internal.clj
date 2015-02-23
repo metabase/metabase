@@ -80,7 +80,7 @@
   "Expand a ROUTE string like \"/:id\" into a Compojure route form that uses regexes to match
    parameters whose name matches a regex from `*auto-parse-arg-name-patterns*`.
 
-    (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\""
+    (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
   [route]
   (if (vector? route) route
       (let [arg-types (->> (route-arg-keywords route)
