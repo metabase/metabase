@@ -8,7 +8,7 @@
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])
-            (metabase.middleware [current-user :refer :all]
+            (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
             [metabase.routes :as routes]))
@@ -35,7 +35,7 @@
         {:keywords? true})
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
-      bind-current-user       ; [METABASE] associate :current-user-id and :current-user with request
+      auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
       wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key
       ))
