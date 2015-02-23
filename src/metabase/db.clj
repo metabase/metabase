@@ -143,7 +143,7 @@
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
   {:pre [(contains? #{:one :many} one-or-many)]}
-  `(->> (-sel-select ~entity ~@forms)
+  `(->> (-sel-select ~entity ~@forms ~@(when (= one-or-many :one) `((limit 1))))
         (map (partial post-select (entity->korma ~entity)))
         ~(case one-or-many
            :one 'first
