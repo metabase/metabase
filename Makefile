@@ -15,4 +15,3 @@ dox:
 	git commit -m "Updated dox."
 	git push --set-upstream origin gh-pages
 	git checkout master
-	rm uberdoc.html
