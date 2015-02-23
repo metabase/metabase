@@ -10,7 +10,7 @@
 ;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic *current-user-id*
-  "Int ID or nil of user associated with current API call."
+  "Int ID or `nil` of user associated with current API call."
   nil)
 
 (def ^:dynamic *current-user*
