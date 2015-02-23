@@ -188,8 +188,8 @@
 ;; macros eliminate a bit of the redundancy around doing so.
 ;; They support two forms:
 ;;
-;;    (read-check my-table) ; checks @(:can_read my-table)
-;;    (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
+;;     (read-check my-table) ; checks @(:can_read my-table)
+;;     (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
 ;;
 ;; *  The first form is useful when you've already fetched an object (especially in threading forms such as `->404`).
 ;; *  The second form takes care of fetching the object for you and is useful in cases where you won't need the object afterward
