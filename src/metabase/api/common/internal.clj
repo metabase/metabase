@@ -123,7 +123,7 @@
            :body (.getMessage e#)})))
 
 (defn wrap-response-if-needed
-  "If RESPONSE isn't already a map with keys :status and :body, wrap it in one (using status 200)."
+  "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
   [response]
   (letfn [(is-wrapped? [resp] (and (map? resp)
                                    (contains? resp :status)
