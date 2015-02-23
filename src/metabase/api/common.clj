@@ -184,7 +184,7 @@
 
 
 ;; ## NEW PERMISSIONS CHECKING MACROS
-;; Since checking `@can_read` `@can_write` is such a common pattern, these
+;; Since checking `@can_read`/`@can_write` is such a common pattern, these
 ;; macros eliminate a bit of the redundancy around doing so.
 ;; They support two forms:
 ;;
