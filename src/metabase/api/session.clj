@@ -15,15 +15,14 @@
       (ins Session
         :id session-id
         :user_id (:id user))
-      ;; TODO - figure out how to apply session to client.  cookies??
       {:id session-id})))
 
 
-(defendpoint DELETE "/" [:as {{:keys [session_id] :as body} :body}]
-  (check-400 session_id)
-  (let-400 [session (sel :one Session :id session_id)]
-    (del Session :id session_id)))
-;; TODO - do we need to remove any cookies??
+(defendpoint DELETE "/" [:as {params :params}]
+  (let [session_id (:session_id params)]
+    (check-400 session_id)
+    (let-400 [session (sel :one Session :id session_id)]
+      (del Session :id session_id))))
 
 
 (define-routes)
