@@ -1,6 +1,6 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
-  (:require [compojure.core :refer [GET POST DELETE]]
+  (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
             [medley.core :as medley]
             [metabase.api.common :refer :all]
@@ -33,6 +33,11 @@
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
+
+(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
+  (println name engine details)
+  (write-check Database id)
+  (check-500 (upd Database id :name name :engine engine :details details)))
 
 (defendpoint DELETE "/:id" [id]
   (write-check Database id)
