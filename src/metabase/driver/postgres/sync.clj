@@ -59,6 +59,6 @@
                          :table_id id
                          :name column_name
                          :base_type (or (column->base-type (keyword type_name))
-                                        (throw (Exception. (str "Column " column_name "has an unknown type: " type_name
-                                                                ". Please add the type mapping to metabase.driver.postgres.sync.")))))))
+                                        (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
+                                                                "'. Please add the type mapping to metabase.driver.postgres.sync.")))))))
               @jdbc-columns)))
