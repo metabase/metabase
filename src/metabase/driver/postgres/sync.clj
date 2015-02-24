@@ -38,16 +38,17 @@
    (This is executed in parallel.)"
   [{:keys [id table-names] :as database}]
   (binding [*log-db-calls* false]
-    (dorun (pmap (fn [table-name]
-                   (let [table (or (sel :one Table :db_id id :name table-name)
-                                   (ins Table
-                                        :db_id id
-                                        :name table-name
-                                        :active true))]
-                     (update-table-row-count database table)
-                     (sync-fields table)
-                     (println table-name)))
-                 @table-names))))
+    (->> (doall @table-names)                                                ; load the whole lazy seq of `table-names` before pmap generates futures
+         (pmap (fn [table-name]
+                 (let [table (or (sel :one Table :db_id id :name table-name)
+                                 (ins Table
+                                   :db_id id
+                                   :name table-name
+                                   :active true))]
+                   (update-table-row-count database table)
+                   (sync-fields table)
+                   (println table-name))))
+         dorun)))
 
 (defn sync-fields
   "Sync `Fields` for TABLE."
