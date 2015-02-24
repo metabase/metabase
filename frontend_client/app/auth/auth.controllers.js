@@ -41,14 +41,12 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
                 });
             }, 300);
         }, function (error) {
-            console.log('login fail', error);
             $scope.error = "Invalid username/password combination specified.";
         });
     };
 
     // do a quick check if the user is already logged in.  if so then send them somewhere better.
     if (AppState.model.currentUser && AppState.model.currentUser.org_perms && AppState.model.currentUser.org_perms.length > 0) {
-        console.log('user already authentic, sending them somewhere better', AppState.model.currentUser);
         $location.path('/'+AppState.model.currentUser.org_perms[0].organization.slug+'/');
     }
 }]);
