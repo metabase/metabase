@@ -1,7 +1,8 @@
 (ns metabase.models.database
   (:require [clojure.data.json :as json]
             [clojure.java.jdbc :as jdbc]
-            [korma.core :refer :all]
+            (korma [core :refer :all]
+                   [db :as kdb])
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.connection :as conn]
@@ -21,6 +22,11 @@
   [database f]
   (jdbc/with-db-metadata [md @(:connection database)]
     (f md)))
+
+(defn korma-db
+  "Return a Korma database definition for DATABASE."
+  [{:keys [connection]}]
+  (kdb/create-db @connection))
 
 (defn table-names
   "Fetch a list of table names for DATABASE."
@@ -48,6 +54,7 @@
               :connection-details (delay (conn/connection-details <>))
               :connection (delay (conn/connection <>))
               :native-query (partial native-query <>)
+              :korma-db (delay (korma-db <>))
               :table-names (delay (table-names <>)))))
 
 (defmethod pre-insert Database [_ {:keys [details] :as database}]
