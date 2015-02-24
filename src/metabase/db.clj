@@ -4,8 +4,8 @@
             [clojure.tools.logging :as log]
             [clojure.string :as str]
             [environ.core :refer [env]]
-            [korma.core :refer :all]
-            [korma.db :refer :all]
+            (korma [core :refer :all]
+                   [db :refer :all])
             [medley.core :refer [filter-vals]]
             [metabase.config :refer [app-defaults]]
             [metabase.db.internal :refer :all]))
