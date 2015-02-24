@@ -37,7 +37,7 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
                     $location.path('/');
                 }, function (error) {
                     // hmmm, somehow we still don't have a valid user :(
-                    console.log('still no valid user after login', error);
+                    $scope.error = "Login failure";
                 });
             }, 300);
         }, function (error) {
