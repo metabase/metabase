@@ -9,31 +9,39 @@
                              [table :refer [Table]])))
 
 (declare apply-form
+         log-query
          field-id->kw
          table-id->korma-entity)
 
 ;; ## Public Functions
 
+(def ^:dynamic *enable-debug-logging*
+  "Log the query dictionary, korma form, and SQL output when running the Query Processor?"
+  true)
+
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
-  (let [forms (->> (map apply-form query)       ; call `apply-form` for each clause and strip out nil results
+  (let [forms (->> (map apply-form query) ; call `apply-form` for each clause and strip out nil results
                    (filter identity)
+                   (mapcat (fn [form] (if (vector? form) form
+                                         [form])))
                    doall)]
-    `(-> (table-id->korma-entity ~source_table)
-         (select ~@forms))))
+    (when *enable-debug-logging*
+      (log-query query forms))
+    `(let [entity# (table-id->korma-entity ~source_table)]
+       (select entity# ~@forms))))
 
 (defn process-and-run
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [query]
-    {:pre [(integer? (:database query)) ; double check that the query being passed is valid
-           (map? (:query query))
-           (= (:type query) "query")]}
-  (println "QUERY -> ")
-  (clojure.pprint/pprint query)
-  (->> (process query)
-       eval
-       (annotate/annotate query)))
+  {:pre [(integer? (:database query)) ; double check that the query being passed is valid
+         (map? (:query query))
+         (= (name (:type query)) "query")]}
+  (binding [*log-db-calls* false]
+    (->> (process query)
+         eval
+         (annotate/annotate query))))
 
 
 ;; ## Query Clause Processors
@@ -48,11 +56,8 @@
     (aggregate (count :*) :count)"
   (fn [[clause-name clause-value]] clause-name))
 
-;; `:aggregation` clause looks like
-;;
-;;    ["count"]
-;;
-;; or
+;; ### `:aggregation`
+;; ex.
 ;;
 ;;    ["distinct" 1412]
 (defmethod apply-form :aggregation [[_ value]]
@@ -65,10 +70,17 @@
                   "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
                   "sum"      `(aggregate (~'sum ~field) :sum)))))
 
-(defmethod apply-form :breakout [[_ value]] ; TODO - not yet implemented
-  nil)
+;; `:breakout`
+;; ex.
+;;
+;; [1412 1413]
+(defmethod apply-form :breakout [[_ field-ids]] ; TODO - not yet implemented
+  (let [field-names (map field-id->kw field-ids)]
+    `[(group ~@field-names)
+      (fields ~@field-names)]))
 
-;; `:fields` clause looks like
+;; ### `:fields`
+;; ex.
 ;;
 ;;    [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
@@ -76,7 +88,8 @@
                          (map :name))]
     `(fields ~@field-names)))
 
-;; `:filter` clause looks like
+;; ### `:filter`
+;; ex.
 ;;
 ;;    ["AND"
 ;;      [">" 1413 1]
@@ -89,30 +102,34 @@
                                          {(field-id->kw field-id) [(symbol filter-type) value]})
                                   (apply merge {}))))))
 
-;; `:limit` clause is just a number like
+;; ### `:limit`
+;; ex.
 ;;
 ;;    10
 (defmethod apply-form :limit [[_ value]]
   (when value
     `(limit ~value)))
 
-;; `:order_by` clause looks like
+;; ### `:order_by`
+;; ex.
 ;;
 ;;    [[1416 "ascending"]
 ;;     [1412 "descending"]]
-(defmethod apply-form :order_by [[_ fields]]
-  (let [fields (->> fields
-                    (mapcat (fn [[field-id asc-desc]]
-                              [(field-id->kw field-id) (case asc-desc
-                                                         "ascending" :ASC
-                                                         "descending" :DESC)])))]
-    `(order ~@fields)))
+(defmethod apply-form :order_by [[_ field-ids]]
+  (when-not (empty? field-ids)
+    (let [fields (->> field-ids
+                      (mapcat (fn [[field-id asc-desc]]
+                                [(field-id->kw field-id) (case asc-desc
+                                                           "ascending" :ASC
+                                                           "descending" :DESC)])))]
+      `(order ~@fields))))
 
+;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
 
 
-;; ## Utility Methods (Internal)
+;; ## Utility Functions (Internal)
 
 (defn table-id->korma-entity
   "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
@@ -126,3 +143,17 @@
   (-> (sel :one [Field :name] :id field-id)
       :name
       keyword))
+
+
+;; ## Debugging Functions (Internal)
+
+(defn- log-query
+  "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
+  [{:keys [source_table] :as query} forms]
+  (println "\nQUERY ->")
+  (clojure.pprint/pprint query)
+  (println "\nKORMA FORM ->")
+  (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms))
+  (eval `(let [entity# (table-id->korma-entity ~source_table)]
+           (println "\nSQL ->")
+           (println (sql-only (select entity# ~@forms)) "\n"))))

@@ -19,8 +19,8 @@
 
 (defn with-jdbc-metadata
   "Call fn F with the JDBC Metadata for DATABASE."
-  [database f]
-  (jdbc/with-db-metadata [md @(:connection database)]
+  [{:keys [connection]} f]
+  (jdbc/with-db-metadata [md @connection]
     (f md)))
 
 (defn korma-db

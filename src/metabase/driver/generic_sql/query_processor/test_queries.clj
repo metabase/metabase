@@ -68,3 +68,12 @@
            :aggregation ["rows"]
            :breakout [nil]
            :limit nil}})
+
+(def q-breakout
+  {:type :query
+   :database 1
+   :query {:source_table 22
+           :filter [nil nil]
+           :aggregation ["count"]
+           :breakout [5 12]
+           :limit nil}})
