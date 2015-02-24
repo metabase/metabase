@@ -28,6 +28,15 @@
            :breakout [nil]
            :limit nil}})
 
+(def q-avg
+  {:type :query
+   :database 2
+   :query {:source_table 37
+           :filter [nil nil]
+           :aggregation ["avg" 257]
+           :breakout [nil]
+           :limit nil}})
+
 (def q-rows
   {:type :query
    :database 2

@@ -50,9 +50,11 @@
           :id nil
           :table_id nil
           :description nil}
-         (case column-name
-           "count" {:base_type "IntegerField"
-                    :special_type "number"}
-           "sum" (let [summed-field-id (-> query :query :aggregation second)
-                       summed-field (sel :one [Field :base_type :special_type] :id summed-field-id)]
-                   (select-keys summed-field [:base_type :special_type])))))
+         (letfn [(get-field-type-info [] ; for things like `sum` the type info of the returned field is that of the field we summed
+                   (-> (sel :one [Field :base_type :special_type] :id (-> query :query :aggregation second))
+                       (select-keys [:base_type :special_type])))]
+           (case column-name
+             "count" {:base_type "IntegerField"
+                      :special_type "number"}
+             "sum" (get-field-type-info)
+             "avg" (get-field-type-info)))))

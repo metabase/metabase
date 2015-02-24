@@ -68,16 +68,18 @@
                     field (field-id->kw field-id)]
                 (match ag-type
                   "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
-                  "sum"      `(aggregate (~'sum ~field) :sum)))))
+                  "sum"      `(aggregate (~'sum ~field) :sum)
+                  "avg"      `(aggregate (~'avg ~field) :avg)))))
 
 ;; `:breakout`
 ;; ex.
 ;;
 ;; [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]] ; TODO - not yet implemented
-  (let [field-names (map field-id->kw field-ids)]
-    `[(group ~@field-names)
-      (fields ~@field-names)]))
+  (when-not (= field-ids [nil])                      ; `:breakout [nil]` is considered a valid 'empty' form
+    (let [field-names (map field-id->kw field-ids)]
+      `[(group ~@field-names)
+        (fields ~@field-names)])))
 
 ;; ### `:fields`
 ;; ex.
@@ -134,12 +136,16 @@
 (defn table-id->korma-entity
   "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
   [table-id]
+  {:pre [(integer? table-id)]
+   :post [(map? %)]}
   (let [{:keys [korma-entity]} (sel :one Table :id table-id)]
     @korma-entity))
 
 (defn- field-id->kw
   "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
   [field-id]
+  {:pre [(integer? field-id)]
+   :post [(keyword? %)]}
   (-> (sel :one [Field :name] :id field-id)
       :name
       keyword))
