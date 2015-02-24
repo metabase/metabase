@@ -2,9 +2,9 @@
   "/api/meta/dataset endpoints."
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :refer :all]
-            [metabase.driver :refer [process-and-run]]))
+            [metabase.driver.query-processor :as qp]))
 
 (defendpoint POST "/" [:as {:keys [body]}]
-  (process-and-run body))
+  (qp/process-and-run body))
 
 (define-routes)

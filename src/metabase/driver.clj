@@ -1,6 +1,5 @@
 (ns metabase.driver
-  (:require [clojure.core.match :refer [match]]
-            (metabase.driver native
+  (:require (metabase.driver native
                              postgres)))
 
 (def available-drivers
