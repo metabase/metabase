@@ -1,5 +1,6 @@
 (ns metabase.api.user
-  (:require [compojure.core :refer [defroutes GET PUT]]
+  (:require [cemerick.friend.credentials :as creds]
+            [compojure.core :refer [defroutes GET PUT]]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd exists?]]
@@ -39,11 +40,10 @@
   (check (and password old_password) [400 "You must specify both old_password and password"])
   ; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  (check-404 (exists? User :id id))
-    ;; TODO - match old password against current one
-    ;; TODO - password encryption
-  (upd User id :password password)
-  (sel :one User :id id))
+  (let-404 [user (sel :one [User :password] :id id)]
+    (check (creds/bcrypt-verify old_password (:password user)) [400 "password mismatch"])
+    (upd User id :password (creds/hash-bcrypt password))
+    (sel :one User :id id)))
 
 
 (define-routes)

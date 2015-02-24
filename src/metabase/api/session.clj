@@ -1,5 +1,6 @@
 (ns metabase.api.session
-  (:require [metabase.api.common :refer :all]
+  (:require [cemerick.friend.credentials :as creds]
+            [metabase.api.common :refer :all]
             [compojure.core :refer [defroutes POST DELETE]]
             [metabase.db :refer :all]
             (metabase.models [user :refer [User]]
@@ -9,8 +10,7 @@
 (defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
   (check (and email password) [400 "You must supply email & password credentials to login"])
   (let-400 [user (sel :one [User :id :password] :email email)]
-    ;; TODO - password validation via encryption
-    (check (= password (:password user)) [400 "password mismatch"])
+    (check (creds/bcrypt-verify password (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session
         :id session-id
