@@ -31,6 +31,8 @@
                     <h3 class="text-normal">Sign in</h3>
                 </div>
 
+                <alert class="Form-group alert mx2" type="error" ng-if="error">{{error}}</alert>
+
                 <div class="Form-group">
                     <input class="input block full" autofocus="autofocus" name="login" placeholder="Email" type="text" ng-model="email">
                 </div>

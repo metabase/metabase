@@ -8,8 +8,21 @@ var AuthControllers = angular.module('corvus.auth.controllers', ['corvus.service
 
 AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeout', 'Session', 'AppState', function($scope, $cookies, $location, $timeout, Session, AppState) {
 
+    var validEmail = function (email) {
+        var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        return re.test(email);
+    }
+
     $scope.login = function(email, password, remember_me) {
         // TODO: input validation
+        if (!email || !password) {
+            $scope.error = "Email address and Password are required.";
+            return;
+        } else if (!validEmail(email)) {
+            $scope.error = "Please enter a valid formatted email address.";
+            return;
+        }
+
         Session.create({
             'email': email,
             'password': password
@@ -29,6 +42,7 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
             }, 300);
         }, function (error) {
             console.log('login fail', error);
+            $scope.error = "Invalid username/password combination specified.";
         });
     };
 
