@@ -1,52 +1,105 @@
 (ns metabase.driver.generic-sql.query-processor
+  "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.generic-sql.query-processor.test-queries :refer :all]
+            (metabase.driver.generic-sql.query-processor [annotate :as annotate]
+                                                         [test-queries :refer :all])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])))
 
+(declare apply-form
+         field-id->kw
+         table-id->korma-entity)
 
-(defn field-id->kw [field-id]
-  (-> (sel :one [Field :name] :id field-id)
-      :name
-      keyword))
+;; ## Public Functions
 
-(defmulti apply-form (fn [[k v]] k))
+(defn process
+  "Convert QUERY into a korma `select` form."
+  [{{:keys [source_table] :as query} :query}]
+  (let [forms (->> (map apply-form query)       ; call `apply-form` for each clause and strip out nil results
+                   (filter identity)
+                   doall)]
+    `(-> (table-id->korma-entity ~source_table)
+         (select ~@forms))))
 
-;; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
+(defn process-and-run
+  "Convert QUERY into a korma `select` form, execute it, and annotate the results."
+  [query]
+    {:pre [(integer? (:database query)) ; double check that the query being passed is valid
+           (map? (:query query))
+           (= (:type query) "query")]}
+  (println "QUERY -> ")
+  (clojure.pprint/pprint query)
+  (->> (process query)
+       eval
+       (annotate/annotate query)))
 
+
+;; ## Query Clause Processors
+
+(defmulti apply-form
+  "Given a Query clause like
+
+    {:aggregation [\"count\"]}
+
+  call the matching implementation which should either return `nil` or translate it into a korma clause like
+
+    (aggregate (count :*) :count)"
+  (fn [[clause-name clause-value]] clause-name))
+
+;; `:aggregation` clause looks like
+;;
+;;    ["count"]
+;;
+;; or
+;;
+;;    ["distinct" 1412]
 (defmethod apply-form :aggregation [[_ value]]
   (match value
-    ["rows"]  nil                                                  ; don't need to do anything special - `select` selects all rows by default
-    ["count"] `(aggregate (~'count :*) :count)
-    [_ _]     (let [[ag-type field-id] value
-                    _ (println "VALUE: " value)
+    ["rows"]  nil                                  ; don't need to do anything special for `rows` - `select` selects all rows by default
+    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation
+    [_ _]     (let [[ag-type field-id] value       ; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
                     field (field-id->kw field-id)]
                 (match ag-type
                   "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
                   "sum"      `(aggregate (~'sum ~field) :sum)))))
 
-(defmethod apply-form :breakout [[_ value]]
+(defmethod apply-form :breakout [[_ value]] ; TODO - not yet implemented
   nil)
 
+;; `:fields` clause looks like
+;;
+;;    [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
   (let [field-names (->> (sel :many [Field :name] :id [in (set field-ids)])
                          (map :name))]
     `(fields ~@field-names)))
 
+;; `:filter` clause looks like
+;;
+;;    ["AND"
+;;      [">" 1413 1]
+;;      [">=" 1412 4]]
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
     [nil nil]       nil ; empty clause
-    ["AND" & forms] `(where ~(->> (rest filter-clause)
-                                  (map (fn [[filter-type field-id value]]
-                                         {(field-id->kw field-id) [(symbol filter-type) value]}))
-                                  (apply merge {})))))
+    ["AND" & forms] `(where ~(->> (rest filter-clause)                                           ; so far only `AND` filtering is available in the UI
+                                  (map (fn [[filter-type field-id value]]                         ; just convert filter-types like `"<="` directly to symbols
+                                         {(field-id->kw field-id) [(symbol filter-type) value]})
+                                  (apply merge {}))))))
 
+;; `:limit` clause is just a number like
+;;
+;;    10
 (defmethod apply-form :limit [[_ value]]
   (when value
     `(limit ~value)))
 
+;; `:order_by` clause looks like
+;;
+;;    [[1416 "ascending"]
+;;     [1412 "descending"]]
 (defmethod apply-form :order_by [[_ fields]]
   (let [fields (->> fields
                     (mapcat (fn [[field-id asc-desc]]
@@ -55,16 +108,21 @@
                                                          "descending" :DESC)])))]
     `(order ~@fields)))
 
-(defn table-id->korma-entity [table-id]
+(defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
+  nil)
+
+
+;; ## Utility Methods (Internal)
+
+(defn table-id->korma-entity
+  "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
+  [table-id]
   (let [{:keys [korma-entity]} (sel :one Table :id table-id)]
     @korma-entity))
 
-(defn process [{{:keys [source_table] :as query} :query}]
-  (let [forms (->> (map apply-form query)
-                   (filter identity)
-                   (mapcat (fn [form]
-                             (if (vector? form) form
-                                 [form])))
-                   doall)]
-    `(-> (table-id->korma-entity ~source_table)
-         (select ~@forms))))
+(defn- field-id->kw
+  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
+  [field-id]
+  (-> (sel :one [Field :name] :id field-id)
+      :name
+      keyword))

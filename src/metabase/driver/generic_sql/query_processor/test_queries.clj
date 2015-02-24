@@ -1,4 +1,5 @@
-(ns metabase.driver.generic-sql.query-processor.test-queries)
+(ns metabase.driver.generic-sql.query-processor.test-queries
+  "Sample queries to use for testing/debugging the Query Processor.")
 
 (def q-count
   {:type :query
