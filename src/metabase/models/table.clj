@@ -10,12 +10,13 @@
   (table :metabase_table))
 
 (defn jdbc-columns
+  "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
   [database table-name]
   (with-jdbc-metadata database
     (fn [md] (->> (-> md
                      (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
                      jdbc/result-set-seq)
-                 (map #(select-keys % [:column_name :type_name]))))))
+                 (mapv #(select-keys % [:column_name :type_name]))))))
 
 (defmethod post-select Table [_ {:keys [id db_id name] :as table}]
   (util/assoc* table
