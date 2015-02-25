@@ -16,6 +16,7 @@
                  [org.clojure/java.jdbc "0.3.6"]            ; basic jdbc access from clojure
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
                  [org.clojure/tools.macro "0.1.2"]          ; tools for writing macros
+                 [org.clojure/tools.trace "0.7.8"]          ; "tracing macros/fns to help you see what your code is doing"
                  [clj-http "1.0.1"]                         ; HTTP Client
                  [clj-time "0.5.1"]                         ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]              ; auth library
