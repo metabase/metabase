@@ -34,6 +34,7 @@
 (defn korma-db
   "Return a Korma database definition for DATABASE."
   [{:keys [connection]}]
+  (println "CREATING A NEW DB CONNECTION...")
   (kdb/create-db @connection))
 
 (defn table-names
@@ -51,6 +52,7 @@
     (let [db (sel :one Database :name \"spotguides\")]
       ((:native-query db) \"SELECT COUNT(*) FROM main_guide;\"))"
   [{:keys [korma-db]} sql]
+  {:pre [korma-db]}
   (exec-raw @korma-db sql :results))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
@@ -61,8 +63,8 @@
               :can_write (delay (org-can-write organization_id))
               :connection-details (delay (conn/connection-details <>))
               :connection (delay (conn/connection <>))
-              :native-query (partial native-query <>)
               :korma-db (delay (korma-db <>))
+              :native-query (partial native-query <>)
               :table-names (delay (table-names <>)))))
 
 (defmethod pre-insert Database [_ {:keys [details engine] :as database}]
