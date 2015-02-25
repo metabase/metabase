@@ -14,7 +14,9 @@ pom.xml.asc
 .idea/
 /docs
 profiles.clj
-/metabase.db.*.db
+/*.h2.db
+/*.lock.db
+/*.trace.db
 /frontend_client/app/bower_components
 /node_modules/
 /frontend_client/app/dist/
