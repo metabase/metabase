@@ -17,11 +17,19 @@
 ;; TODO - these implementations should be moved to `metabase.driver`. Since they can be reused by several drivers,
 ;; should we make a generic `metabase.driver.jdbc` driver?
 
+(def ^:dynamic *jdbc-metadata*
+  "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
+  nil)
+
 (defn with-jdbc-metadata
-  "Call fn F with the JDBC Metadata for DATABASE."
+  "Call fn F with the JDBC Metadata for DATABASE.
+   This will reuse `*jdbc-metadata*` if it's already set (to avoid opening extra connections).
+   Otherwise it will open a new metadata connection and bind `*jdbc-metadata*` so it's available in subsequent calls to `with-jdbc-metadata` within F."
   [{:keys [connection]} f]
-  (jdbc/with-db-metadata [md @connection]
-    (f md)))
+  (if *jdbc-metadata* (f *jdbc-metadata*)
+      (jdbc/with-db-metadata [md @connection]
+        (binding [*jdbc-metadata* md]
+          (f *jdbc-metadata*)))))
 
 (defn korma-db
   "Return a Korma database definition for DATABASE."
@@ -42,8 +50,8 @@
 
     (let [db (sel :one Database :name \"spotguides\")]
       ((:native-query db) \"SELECT COUNT(*) FROM main_guide;\"))"
-  [database sql]
-  (jdbc/query @(:connection database) sql))
+  [{:keys [korma-db]} sql]
+  (exec-raw @korma-db sql :results))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
@@ -57,11 +65,12 @@
               :korma-db (delay (korma-db <>))
               :table-names (delay (table-names <>)))))
 
-(defmethod pre-insert Database [_ {:keys [details] :as database}]
+(defmethod pre-insert Database [_ {:keys [details engine] :as database}]
   (assoc database
          :created_at (new-sql-date)
          :updated_at (new-sql-date)
-         :details (json/write-str details)))
+         :details (json/write-str details)
+         :engine (name engine)))
 
 (defmethod pre-update Database [_ {:keys [details] :as database}]
   (assoc database

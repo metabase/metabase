@@ -7,8 +7,10 @@
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   {:bool :BooleanField
+   :bytea :UnknownField
    :date :DateField
    :float8 :FloatField
+   :geometry :UnknownField
    :inet :TextField             ; This was `GenericIPAddressField` in some places in the Django code but not others ...
    :int2 :IntegerField
    :int4 :IntegerField

@@ -35,10 +35,10 @@
                      jdbc/result-set-seq)
                  (mapv #(select-keys % [:column_name :type_name]))))))
 
-(defmethod post-select Table [_ {:keys [id db_id name] :as table}]
+(defmethod post-select Table [_ {:keys [id db db_id name] :as table}]
   (util/assoc* table
-               :db (sel-fn :one db/Database :id db_id)
-               :fields (sel-fn :many Field :table_id id)
+               :db (or db (sel-fn :one db/Database :id db_id))       ; Check to see if `:db` is already set. In some cases we add a korma transform fn to `Table`
+               :fields (sel-fn :many Field :table_id id)             ; and assoc :db if the DB has already been fetched, so we can re-use its DB connections.
                :jdbc-columns (delay (jdbc-columns ((:db <>)) name))
                :can_read (delay @(:can_read ((:db <>))))
                :can_write (delay @(:can_write ((:db <>))))
