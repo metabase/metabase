@@ -12,5 +12,6 @@
    Would load `metabase.driver.postgres.metadata` for a `Database` whose `:engine` was `:postgres`."
   [impl-namespace]
   (fn [{:keys [engine]}]
+    {:pre [engine]}
     (require (symbol (str "metabase.driver." engine "." impl-namespace)))
     (keyword engine)))

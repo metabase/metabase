@@ -142,7 +142,7 @@
   [table-id]
   {:pre [(integer? table-id)]
    :post [(map? %)]}
-  (let [{:keys [korma-entity]} (sel :one Table :id table-id)]
+  (when-let [{:keys [korma-entity]} (sel :one Table :id table-id)]
     @korma-entity))
 
 (defn- field-id->kw
