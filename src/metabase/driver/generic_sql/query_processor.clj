@@ -66,11 +66,12 @@
     ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation
     [_ _]     (let [[ag-type field-id] value       ; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
                     field (field-id->kw field-id)]
-                (match ag-type
-                  "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
-                  "sum"      `(aggregate (~'sum ~field) :sum)
-                  "avg"      `(aggregate (~'avg ~field) :avg)
-                  "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])))))
+                (match (keyword ag-type)
+                       :avg      `(aggregate (~'avg ~field) :avg)
+                       :distinct `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
+                       :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
+                       :sum      `(aggregate (~'sum ~field) :sum)))))
+                 ;; TODO - `:cum_sum` is not yet implemented (!)
 
 ;; `:breakout`
 ;; ex.
