@@ -26,13 +26,16 @@
   (sel :one User :id id))
 
 
-(defendpoint PUT "/:id" [id :as {:keys [body]}]
+(defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
   ; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  ;; TODO - validate that email address isn't taken
+  ; can't change email if it's already taken by another account
+  ;; TODO - we should probably do some kind of email validation here?
+  ;; TODO - validate that email address is valid format
+  ;; TODO - make sure email address isn't already taken
   (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
-                  (mapply upd User id)))                                   ; `upd` returns `false` if no updates occured. So in that case return a 500
-  (sel :one User :id id))                                                  ; return the updated user
+                  (mapply upd User id)))
+  (sel :one User :id id))
 
 
 (defendpoint PUT "/:id/password" [id :as {{:keys [password old_password] :as body} :body}]

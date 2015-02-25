@@ -18,7 +18,7 @@
       {:id session-id})))
 
 
-(defendpoint DELETE "/" [:as {params :params}]
+(defendpoint DELETE "/" [:as {{:keys [session_id]} :params}]
   (check-400 session_id)
   (check-400 (exists? Session :id session_id))
   (del Session :id session_id))
