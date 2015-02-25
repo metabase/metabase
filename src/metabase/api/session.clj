@@ -8,7 +8,7 @@
 
 
 (defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
-  (check (and email password) [400 "You must supply email & password credentials to login"])
+  (require-params email password)
   (let-400 [user (sel :one [User :id :password] :email email)]
     (check (creds/bcrypt-verify password (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
@@ -19,10 +19,9 @@
 
 
 (defendpoint DELETE "/" [:as {params :params}]
-  (let [session_id (:session_id params)]
-    (check-400 session_id)
-    (let-400 [session (sel :one Session :id session_id)]
-      (del Session :id session_id))))
+  (check-400 session_id)
+  (check-400 (exists? Session :id session_id))
+  (del Session :id session_id))
 
 
 (define-routes)

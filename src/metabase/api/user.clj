@@ -41,9 +41,9 @@
   ; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password] :id id)]
-    (check (creds/bcrypt-verify old_password (:password user)) [400 "password mismatch"])
-    (upd User id :password (creds/hash-bcrypt password))
-    (sel :one User :id id)))
+    (check (creds/bcrypt-verify old_password (:password user)) [400 "password mismatch"]))
+  (upd User id :password (creds/hash-bcrypt password))
+  (sel :one User :id id))
 
 
 (define-routes)
