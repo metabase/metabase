@@ -1,12 +1,12 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
-  (:require [compojure.core :refer [GET POST DELETE]]
+  (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
             [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.postgres.sync :as pgsync]
+            [metabase.driver.sync :as sync]
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
@@ -33,6 +33,11 @@
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
+
+(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
+  (println name engine details)
+  (write-check Database id)
+  (check-500 (upd Database id :name name :engine engine :details details)))
 
 (defendpoint DELETE "/:id" [id]
   (write-check Database id)
@@ -63,7 +68,7 @@
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
-           (pgsync/sync-tables db))          ; TODO - this only works for Postgres right now (since that's the only driver we have)
+           (sync/sync-tables db))
   {:status :ok})
 
 (define-routes)

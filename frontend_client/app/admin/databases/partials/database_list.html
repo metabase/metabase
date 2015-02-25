@@ -1,4 +1,3 @@
-
 <div class="wrapper">
     <div class="py2 border-bottom">
         <div class="float-right">
@@ -8,21 +7,21 @@
     </div>
 
     <div>
-        <div ng-if="!datamarts">
+	<div ng-if="!databases">
             <h3 class="text-normal text-centered">Loading ...</h3>
-        </div>
+	</div>
 
-        <ul>
-            <li class="py2 border-bottom" ng-repeat="datamart in datamarts">
-                <div class="my1 float-right">
-                    <a class="Button" ng-click="delete(datamart.id)" delete-confirm>Delete</a>
-                </div>
+	<ul>
+            <li class="py2 border-bottom" ng-repeat="database in databases">
+		<div class="my1 float-right">
+		    <a class="Button" ng-click="delete(database.id)" delete-confirm>Delete</a>
+		</div>
 
-                <div>
-                    <h4><a class="link" cv-org-href="/admin/databases/{{datamart.id}}">{{datamart.name}}</a></h4>
-                    <span>{{datamart.engine}}</span>
-                </div>
+		<div>
+		    <h4><a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a></h4>
+		    <span>{{database.engine}}</span>
+		</div>
             </li>
-        </ul>
+	</ul>
     </div>
 </div>
