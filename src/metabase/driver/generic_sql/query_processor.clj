@@ -61,7 +61,7 @@
 ;; ### `:aggregation`
 ;; ex.
 ;;
-;;    ["distinct" 1412]
+;;     ["distinct" 1412]
 (defmethod apply-form :aggregation [[_ value]]
   (match value
     ["rows"]  nil                                  ; don't need to do anything special for `rows` - `select` selects all rows by default
@@ -75,10 +75,10 @@
                        :sum      `(aggregate (~'sum ~field) :sum)))))
                  ;; TODO - `:cum_sum` is not yet implemented (!)
 
-;; `:breakout`
+;; ### `:breakout`
 ;; ex.
 ;;
-;; [1412 1413]
+;;     [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]] ; TODO - not yet implemented
   (when-not (= field-ids [nil])                      ; `:breakout [nil]` is considered a valid 'empty' form
     (let [field-names (map field-id->kw field-ids)]
@@ -88,7 +88,7 @@
 ;; ### `:fields`
 ;; ex.
 ;;
-;;    [1412 1413]
+;;     [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
   (let [field-names (->> (sel :many [Field :name] :id [in (set field-ids)])
                          (map :name))]
@@ -97,9 +97,9 @@
 ;; ### `:filter`
 ;; ex.
 ;;
-;;    ["AND"
-;;      [">" 1413 1]
-;;      [">=" 1412 4]]
+;;     ["AND"
+;;       [">" 1413 1]
+;;       [">=" 1412 4]]
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
     [nil nil]       nil ; empty clause
@@ -111,7 +111,7 @@
 ;; ### `:limit`
 ;; ex.
 ;;
-;;    10
+;;     10
 (defmethod apply-form :limit [[_ value]]
   (when value
     `(limit ~value)))
@@ -119,8 +119,8 @@
 ;; ### `:order_by`
 ;; ex.
 ;;
-;;    [[1416 "ascending"]
-;;     [1412 "descending"]]
+;;     [[1416 "ascending"]
+;;      [1412 "descending"]]
 (defmethod apply-form :order_by [[_ field-ids]]
   (when-not (empty? field-ids)
     (let [fields (->> field-ids
