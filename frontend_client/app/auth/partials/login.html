@@ -1,0 +1,44 @@
+
+<div class="wrapper">
+
+    <div class="layout-centered col col-sm-12 col-md-6 col-lg-8 clearfix">
+        <div class="col col-sm-12 col-md-6 relative px3">
+            <div class="Login-greeting-wrapper">
+                <h1 class="Login-greeting text-brand" title="wutang">Corvus</h1>
+            </div>
+        </div>
+
+        <div class="Login-form col col-sm-12 col-md-6">
+            <form class="Form" novalidate>
+                <div class="Form-group">
+                    <h3 class="text-normal">Sign in</h3>
+                </div>
+
+                <alert class="Form-group alert mx2" type="error" ng-if="error">{{error}}</alert>
+
+                <div class="Form-group">
+                    <input class="input block full" autofocus="autofocus" name="login" placeholder="Email" type="text" ng-model="email">
+                </div>
+                <div class="Form-group">
+                    <input class="input block full" name="password" placeholder="Password" type="password" ng-model="password">
+                </div>
+
+                <div class="Form-group">
+                    <input id="id_remember" name="remember" type="checkbox" ng-init="remember_me = true" ng-model="remember_me" checked>
+                    <label class="text-grey-4">Remember Me:</label>
+                </div>
+
+
+                <div class="Form-group py4">
+                    <button class="Button Button--primary" ng-click="login(email, password, remember_me)">
+                        Sign in
+                    </button>
+                    <a class="Button" href="/auth/password_reset">
+                        Forgot Password
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>

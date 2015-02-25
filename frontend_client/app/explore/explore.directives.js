@@ -299,7 +299,10 @@ ExploreDirectives.directive('cvDataGrid', ['Metabase', 'TableSegment', 'CorvusCo
         };
 
         $scope.getEncodedQuery = function() {
-            return encodeURIComponent(JSON.stringify($scope.query));
+            // make a copy and remove our page element
+            var tmp = angular.copy($scope.query);
+            delete tmp.query.page;
+            return encodeURIComponent(JSON.stringify(tmp));
         };
 
         $scope.toggleSegment = function() {

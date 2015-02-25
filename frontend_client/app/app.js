@@ -13,6 +13,7 @@ var Corvus = angular.module('corvus', [
     'gridster', // used for dashboard grids
     'ui.sortable',
     'readableTime',
+    'corvus.auth',
     'corvus.filters',
     'corvus.directives',
     'corvus.controllers',
@@ -29,6 +30,11 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
+    });
+
+    $routeProvider.when('/unauthorized/', {
+        templateUrl: '/app/unauthorized.html',
+        controller: 'Unauthorized'
     });
 
     // TODO: we need actual homepages for orgs!
