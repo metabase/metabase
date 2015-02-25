@@ -64,5 +64,5 @@ You should be on the `master` branch without any uncommited local changes before
 
 Copyright © 2015 FIXME
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.
+
