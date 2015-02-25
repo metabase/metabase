@@ -24,8 +24,8 @@
   [{{:keys [source_table] :as query} :query}]
   (let [forms (->> (map apply-form query) ; call `apply-form` for each clause and strip out nil results
                    (filter identity)
-                   (mapcat (fn [form] (if (vector? form) form
-                                         [form])))
+                   (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
+                                         [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
                    doall)]
     (when *enable-debug-logging*
       (log-query query forms))
@@ -53,7 +53,9 @@
 
   call the matching implementation which should either return `nil` or translate it into a korma clause like
 
-    (aggregate (count :*) :count)"
+    (aggregate (count :*) :count)
+
+  An implementation of `apply-form` may optionally return a vector of several forms to insert into the generated korma `select` form."
   (fn [[clause-name clause-value]] clause-name))
 
 ;; ### `:aggregation`
