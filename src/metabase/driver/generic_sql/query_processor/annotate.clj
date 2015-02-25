@@ -50,11 +50,11 @@
           :id nil
           :table_id nil
           :description nil}
-         (letfn [(get-field-type-info [] ; for things like `sum` the type info of the returned field is that of the field we summed
-                   (-> (sel :one [Field :base_type :special_type] :id (-> query :query :aggregation second))
-                       (select-keys [:base_type :special_type])))]
-           (case column-name
-             "count" {:base_type "IntegerField"
-                      :special_type "number"}
-             "sum" (get-field-type-info)
-             "avg" (get-field-type-info)))))
+         (let [aggregation-type (keyword column-name)                                 ; For aggregations of a specific Field (e.g. `sum`)
+               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)]  ; lookup the field we're aggregating and return its
+           (if field-aggregation? (-> (sel :one [Field :base_type :special_type]      ; type info. (The type info of the aggregate result
+                                           :id (-> query :query :aggregation second)) ; will be the same.)
+                                      (select-keys [:base_type :special_type]))
+               (case aggregation-type                                                 ; Otherwise for general aggregations such as `count`
+                 :count {:base_type "IntegerField"                                    ; just return hardcoded type info
+                         :special_type "number"})))))

@@ -69,7 +69,8 @@
                 (match ag-type
                   "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
                   "sum"      `(aggregate (~'sum ~field) :sum)
-                  "avg"      `(aggregate (~'avg ~field) :avg)))))
+                  "avg"      `(aggregate (~'avg ~field) :avg)
+                  "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])))))
 
 ;; `:breakout`
 ;; ex.

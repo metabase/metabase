@@ -37,6 +37,15 @@
            :breakout [nil]
            :limit nil}})
 
+(def q-std-dev
+  {:type :query
+   :database 2
+   :query {:source_table 37
+           :filter [nil nil]
+           :aggregation ["stddev" 257]
+           :breakout [nil]
+           :limit nil}})
+
 (def q-rows
   {:type :query
    :database 2
