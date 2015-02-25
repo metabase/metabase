@@ -15,6 +15,7 @@
                              [table :refer [Table]])))
 
 (defendpoint GET "/" [org]
+  (require-params org)
   (check-403 (org-can-read org))
   (-> (sel :many Database :organization_id org (order :name))
       (hydrate :organization)))
