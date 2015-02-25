@@ -1,12 +1,6 @@
-(ns metabase.driver
-  (:require [clojure.core.match :refer [match]]
-            (metabase.driver native
-                             postgres)))
+(ns metabase.driver)
 
 (def available-drivers
-  [["postgres" "PostgreSQL"]])
-
-(defn process-and-run [{:keys [type] :as query}]
-  (case (keyword type)
-    :native (metabase.driver.native/process-and-run query)
-    :query (metabase.driver.postgres/process-and-run query)))
+  "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
+  [["h2" "H2"]                 ; TODO it would be very nice if we could just look for files in this namespace at runtime and load them
+   ["postgres" "PostgreSQL"]]) ; then the driver dispatch functions wouldn't have to call `require`

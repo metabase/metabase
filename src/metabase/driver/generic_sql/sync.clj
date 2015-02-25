@@ -1,20 +1,22 @@
 (ns metabase.driver.generic-sql.sync
-  "Generic implementations of `metabase.driver.sync` functions that should work across different SQL databases."
-  (:require [metabase.db :refer :all]
+  "Generic implementations of `metabase.driver.sync` functions that should work across any SQL database supported by Korma."
+  (:require [korma.core :refer :all]
+            [metabase.db :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])))
 
 (defn get-table-row-count
   "Get the number of rows in TABLE."
-  [database table]
-  (-> ((:native-query database) (format "SELECT COUNT(*) FROM \"%s\"" (:name table)))
+  [{:keys [korma-entity]}]
+  (-> @korma-entity
+      (select (aggregate (count :*) :count))
       first
-      :count))
+      count))
 
 (defn update-table-row-count
   "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
-  [database table]
-  (let [new-count (get-table-row-count database table)]
+  [table]
+  (let [new-count (get-table-row-count table)]
     (upd Table (:id table) :rows new-count)))
 
 (def ^:dynamic *column->base-type*
@@ -44,7 +46,7 @@
                                    :db_id id
                                    :name table-name
                                    :active true))]
-                   (update-table-row-count database table)
+                   (update-table-row-count table)
                    (sync-fields table)
                    (println table-name))))
          dorun)))
