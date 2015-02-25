@@ -5,7 +5,7 @@
 (defn field-count
   [{:keys [db table name] :as field}]
   (-> ((:native-query @db)
-       (format "SELECT COUNT(\"%s\".\"%s\") FROM \"%s\""
+       (format "SELECT COUNT(\"%s\".\"%s\") AS count FROM \"%s\""
                (:name (table))
                name
                (:name (table))))
@@ -15,7 +15,7 @@
 (defn field-distinct-count
   [{:keys [db table name] :as field}]
   (-> ((:native-query @db)
-       (format "SELECT COUNT(DISTINCT \"%s\".\"%s\") FROM \"%s\""
+       (format "SELECT COUNT(DISTINCT \"%s\".\"%s\") AS count FROM \"%s\""
                (:name (table))
                name
                (:name (table))))
