@@ -2,7 +2,8 @@
   "Generic implementations of `metabase.driver.sync` functions that should work across any SQL database supported by Korma."
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [database :refer [with-jdbc-metadata]]
+                             [field :refer [Field]]
                              [table :refer [Table]])))
 
 (defn get-table-row-count
@@ -39,14 +40,17 @@
 (defn sync-tables
   [{:keys [id table-names] :as database}]
   (binding [*log-db-calls* false]
-    (->> (doall @table-names)
-         (pmap (fn [table-name]
-                 (let [table (or (sel :one Table :db_id id :name table-name)
-                                 (ins Table
-                                   :db_id id
-                                   :name table-name
-                                   :active true))]
-                   (update-table-row-count table)
-                   (sync-fields table)
-                   (println table-name))))
-         dorun)))
+    (with-jdbc-metadata database ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
+      (fn [_]                     ; by wrapping the entire sync operation in this we can reuse the same connection throughout
+        (->> @table-names
+             (pmap (fn [table-name]
+                     (binding [*entity-overrides* {:transforms [#(assoc % :db (constantly database))]}] ; add a korma transform to Table that will assoc :db on results.
+                       (let [table (or (sel :one Table :db_id id :name table-name)                      ; Table's post-select only sets :db if it's not already set.
+                                       (ins Table                                                       ; This way, we can reuse a single `database` instead of creating
+                                            :db_id id                                                   ; a few dozen duplicate instances of it.
+                                            :name table-name                                            ; We can re-use one korma connection pool instead of
+                                            :active true))]                                             ; creating dozens of them, which was causing issues with too
+                         (update-table-row-count table)                                                 ; many open connections.
+                         (sync-fields table)
+                         (println table-name)))))
+             dorun)))))

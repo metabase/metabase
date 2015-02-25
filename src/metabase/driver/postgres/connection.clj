@@ -21,7 +21,5 @@
 
 (defmethod connection :postgres [{:keys [connection-details]}]
   (-> @connection-details
-      (assoc :host "localhost" ; while we are still ghetto and connecting thru the docker DB fake our settings
-             :port 15432)
       (dissoc :db-type)
       korma.db/postgres))

@@ -62,15 +62,14 @@
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
 
-   Returns newly created object after calling `post-select` on it.
-   THERE IS NO NEED TO CALL `SEL` TO FETCH IT AGAIN."
+   Returns newly created object by calling `sel`."
   [entity & kwargs]
   (let [vals (->> kwargs
                   (apply assoc {})
                   (pre-insert entity))]
-    (->> (-> (insert entity (values vals))
-             (clojure.set/rename-keys {(keyword "scope_identity()") :id}))
-         (post-select entity))))
+    (let [{:keys [id]} (-> (insert entity (values vals))
+                           (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
+      (eval `(sel :one ~entity :id ~id)))))
 
 (defmulti pre-update
   "Like pre-insert but called by `upd` before DB operations happen."
@@ -149,6 +148,11 @@
            :one 'first
            :many 'identity)))
 
+(def ^:dynamic *entity-overrides*
+  "The entity passed to `-sel-select` gets merged with this dictionary right before `select` gets called. This lets you override some of the korma
+   entity fields like `:transforms` or `:table`, if need be."
+  {})
+
 (defmacro -sel-select
   "Internal macro used by `sel` (don't call this directly).
    Generates the korma `select` form."
@@ -159,7 +163,7 @@
                    (sel-apply-fields field-keys))]
     `(do (when *log-db-calls*
            (println "DB CALL: " ~(str entity) " " ~(str forms)))
-         (select (entity->korma ~entity) ~@forms))))
+         (select (merge (entity->korma ~entity) *entity-overrides*) ~@forms))))
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`."
