@@ -12,7 +12,7 @@
   (-> @korma-entity
       (select (aggregate (count :*) :count))
       first
-      count))
+      :count))
 
 (defn update-table-row-count
   "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
