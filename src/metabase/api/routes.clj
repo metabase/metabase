@@ -18,9 +18,7 @@
                                [table :as table])
             [metabase.middleware.auth :as auth]))
 
-;; placeholder until we actually define real API routes
 (defroutes routes
-  ;; call /api/test to see this
   (context "/annotation"   [] (-> annotation/routes auth/bind-current-user auth/enforce-authentication))
   (context "/card"         [] (-> card/routes auth/bind-current-user auth/enforce-authentication))
   (context "/dash"         [] (-> dash/routes auth/bind-current-user auth/enforce-authentication))

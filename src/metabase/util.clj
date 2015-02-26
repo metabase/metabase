@@ -107,3 +107,25 @@
   "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
   [^org.h2.jdbc.JdbcClob clob]
   (.getSubString clob 1 (.length clob)))
+
+
+(defn
+  ^{:arglists ([pred? args]
+               [pred? args default])}
+  optional
+  "Helper function for defining functions that accept optional arguments.
+   If PRED? is true of the first item in ARGS, a pair like `[first-arg other-args]`
+   is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
+
+   If DEFAULT is not specified, `nil` will be returned when PRED? is false.
+
+   (defn
+     ^{:arglists ([key? numbers])}
+     wrap-nums [& args]
+     (let [[k nums] (optional keyword? args :nums)]
+       {k nums}))
+    (wrap-nums 1 2 3)          -> {:nums [1 2 3]}
+  (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
+  [pred? args & [default]]
+  (if (pred? (first args)) [(first args) (next args)]
+      [default args]))
