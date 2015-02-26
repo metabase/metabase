@@ -12,7 +12,8 @@
                              [org :refer [Org]]
                              [org-perm :refer [OrgPerm]])))
 
-(declare create-table)
+(declare create-table
+         with-test-db)
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
