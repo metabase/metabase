@@ -8,7 +8,7 @@
 
 
 (def SESSION_COOKIE "metabase.SESSION_ID")
-(def SESSION_HEADER "X-METABASE-SESSION")
+(def SESSION_HEADER "x-metabase-session")
 
 
 (defn wrap-sessionid
@@ -18,7 +18,7 @@
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
   (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [SESSION_COOKIE :value]) (get-in headers [SESSION_HEADER :value]))]
+    (if-let [session-id (or (get-in cookies [SESSION_COOKIE :value]) (headers SESSION_HEADER))]
       ;; alternatively we could always associate the keyword and just let it be nil if there is no value
       (handler (assoc request :metabase-sessionid session-id))
       (handler request))))
