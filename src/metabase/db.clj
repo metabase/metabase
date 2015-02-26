@@ -138,8 +138,8 @@
   `(->> (-sel-select ~entity ~@forms ~@(when (= one-or-many :one) `((limit 1))))
         (map (partial post-select (entity->korma ~entity)))
         ~(case one-or-many
-           :one 'first
-           :many 'identity)))
+           :one `first
+           :many `identity)))
 
 (def ^:dynamic *entity-overrides*
   "The entity passed to `-sel-select` gets merged with this dictionary right before `select` gets called. This lets you override some of the korma
