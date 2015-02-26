@@ -4,9 +4,9 @@
 /*global _*/
 /*global $*/
 
-var AuthControllers = angular.module('corvus.auth.controllers', ['corvus.services']);
+var AuthControllers = angular.module('corvus.auth.controllers', ['ipCookie', 'corvus.services']);
 
-AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeout', 'Session', 'AppState', function($scope, $cookies, $location, $timeout, Session, AppState) {
+AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState', function($scope, $location, $timeout, ipCookie, Session, AppState) {
 
     var validEmail = function (email) {
         var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -14,7 +14,6 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
     }
 
     $scope.login = function(email, password, remember_me) {
-        // TODO: input validation
         if (!email || !password) {
             $scope.error = "Email address and Password are required.";
             return;
@@ -27,7 +26,9 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
             'email': email,
             'password': password
         }, function (new_session) {
-            $cookies['metabase.SESSION_ID'] = new_session.id;
+            // set a session cookie
+            var isSecure = ($location.protocol() === "https") ? true : false;
+            ipCookie('metabase.SESSION_ID', new_session.id, {path: '/', expires: 14, secure: isSecure});
 
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
             $timeout(function() {
@@ -52,12 +53,14 @@ AuthControllers.controller('Login', ['$scope', '$cookies', '$location', '$timeou
 }]);
 
 
-AuthControllers.controller('Logout', ['$scope', '$cookies', '$location', '$timeout', 'Session', function($scope, $cookies, $location, $timeout, Session) {
+AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', function($scope, $location, $timeout, ipCookie, Session) {
 
     // any time we hit this controller just clear out anything session related and move on
-    if ( $cookies['metabase.SESSION_ID'] ) {
-        var sessionId = $cookies['metabase.SESSION_ID'];
-        delete $cookies['metabase.SESSION_ID'];
+    if ( ipCookie('metabase.SESSION_ID') ) {
+        var sessionId = ipCookie('metabase.SESSION_ID');
+
+        // delete the current session cookie
+        ipCookie.remove('metabase.SESSION_ID');
 
         // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
         $timeout(function() {
