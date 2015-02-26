@@ -14,19 +14,33 @@
    *  `:columns` ordered sequence of column names
    *  `:cols` ordered sequence of information about each column, such as `:base_type` and `:special_type`"
   [query results]
-  (let [column-names (get-column-names results)]
+  (let [column-names (get-column-names query results)]
     {:status :completed
      :row_count (count results)
-     :data {:rows (map vals results)
+     :data {:rows (->> results
+                       (map #(map %                             ; pull out the values in each result in the same order we got from get-column-names
+                                  (map keyword column-names))))
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
 (defn- get-column-names
-  "Get an ordered seqences of column names for the results."
-  [results]
-  (let [first-row (first results)]  ; just grab the keys from the first row
-    (->> (keys first-row)
-         (map name))))              ; convert to str because otherwise korma will try to qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
+  "Get an ordered seqences of column names for the results.
+   If a `fields` clause was specified in the Query Dict, we want to return results in the same order."
+  [query results]
+  (let [field-ids (-> query :query :fields)
+        fields-clause-fields (when-not (or (empty? field-ids)
+                                           (= field-ids [nil]))
+                               (let [field-id->name (->> (sel :many [Field :id :name]
+                                                              :id [in field-ids])     ; Fetch names of fields from `fields` clause
+                                                         (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
+                                                                {id (keyword name)}))
+                                                         (reduce merge {}))]
+                                 (map field-id->name field-ids)))                     ; now get names in same order as the IDs
+        other-fields (->> (first results)
+                          keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
+                          (filter #(not (contains? (set fields-clause-fields) %))))]
+    (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
+         (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
 (defn- get-column-info
   "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
