@@ -11,7 +11,7 @@
         day (rand-in-range 1 31)]
     `(~'sql-date ~year ~month ~day)))
 
-(defn rando-checkin []
+(defn rando-checkin [users venues]
   (let [user-id (rand-in-range 1 (count users))
         venue-id (rand-in-range 1 (count venues))
         date (rando-date)]

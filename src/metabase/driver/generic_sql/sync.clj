@@ -52,5 +52,5 @@
                                             :active true))]                                             ; creating dozens of them, which was causing issues with too
                          (update-table-row-count table)                                                 ; many open connections.
                          (sync-fields table)
-                         (println table-name)))))
+                         (println "Synced" table-name)))))
              dorun)))))

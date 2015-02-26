@@ -35,14 +35,17 @@
   []
   (binding [*log-db-calls* false]
     (or (sel :one Database :name db-name)
-        (do (dorun (map create-table
-                        data/test-data))
-            (-> (ins Database
-                     :organization_id (:id (test-org))
-                     :name db-name
-                     :engine :h2
-                     :details {:conn_str test-db-filename})
-                sync/sync-tables)))))
+        (with-test-db
+          (dorun (map create-table
+                      data/test-data))
+          (println "Creating new metabase Database object...")
+          (let [db (ins Database
+                        :organization_id (:id (test-org))
+                        :name db-name
+                        :engine :h2
+                        :details {:conn_str test-db-filename})]
+            (println "Syncing Tables...")
+            (sync/sync-tables db))))))
 
 
 ;; ## Debugging/Interactive Development Functions
@@ -80,6 +83,7 @@
        (binding [*test-db* (create-db (h2 {:db test-db-filename
                                            :naming {:keys s/lower-case
                                                     :fields s/upper-case}}))]
+         (println "CREATING H2 TEST DATABASE...")
          ~@body)))
 
 (defn- exec-sql
@@ -88,7 +92,6 @@
   (with-test-db
     (mapv (fn [sql]
             {:pre [(string? sql)]}
-            (println sql)
             (exec-raw *test-db* sql))
           statements)))
 
@@ -110,9 +113,10 @@
   {:pre [(keyword? table-name)
          (sequential? fields)
          (sequential? rows)]}
-  (let [table-name (-> table-name name s/upper-case)
-        fields-for-insert (->> fields (map first))]               ; get ordered field names of data e.g. (:name :last_login)
-    (with-test-db
+  (with-test-db
+    (let [table-name (-> table-name name s/upper-case)
+          fields-for-insert (->> fields (map first))]               ; get ordered field names of data e.g. (:name :last_login)
+      (println (format "CREATING TABLE \"%s\"..." table-name))
       (exec-sql (format "DROP TABLE IF EXISTS \"%s\";" table-name)
                 (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" table-name (format-fields fields)))
       (-> (create-entity table-name)
