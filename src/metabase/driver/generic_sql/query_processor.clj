@@ -145,19 +145,20 @@
   [table-id]
   {:pre [(integer? table-id)]
    :post [(map? %)]}
-  (when-let [{:keys [korma-entity]} (sel :one Table :id table-id)]
+  (let [{:keys [korma-entity] :as table} (sel :one Table :id table-id)]
+    (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
     @korma-entity))
 
-(def ^{:doc "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
-       :private true}
-  field-id->kw
-  (memoize ; memoize this since it will probably never change and should be a decent performance improvement
-   (fn [field-id]
-     {:pre [(integer? field-id)]
-      :post [(keyword? %)]}
-     (-> (sel :one [Field :name] :id field-id)
-         :name
-         keyword))))
+;; TODO - should we memoize this?
+(defn- field-id->kw
+  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
+  [field-id]
+  {:pre [(integer? field-id)]
+   :post [(keyword? %)]}
+  (or (-> (sel :one [Field :name] :id field-id)
+          :name
+          keyword)
+      (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 
 ;; ## Debugging Functions (Internal)

@@ -164,9 +164,9 @@
          :row_count 10,
          :data {:rows [[1 12 375] [1 9 139] [1 1 72] [2 15 129] [2 12 471] [2 11 325] [2 9 590] [2 9 833] [2 8 380] [2 5 719]],
                 :columns ["VENUE_ID" "USER_ID" "ID"],
-                :cols [{:special_type nil, :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id 5, :id 23}
-                       {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id 5, :id 18}
-                       {:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id 5, :id 30}]}}
+                :cols [{:special_type nil, :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :checkins), :id (field->id :checkins :id)}]}}
         (process-and-run {:type :query
                           :database db-id
                           :query {:source_table (table->id :checkins)
@@ -225,8 +225,8 @@
          :row_count 10,
          :data {:rows [[2 15 1] [3 15 1] [7 15 1] [14 15 1] [16 15 1] [18 15 1] [22 15 1] [23 15 2] [24 15 1] [27 15 1]],
                 :columns ["VENUE_ID" "USER_ID" "count"],
-                :cols [{:special_type nil, :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id 5, :id 23}
-                       {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id 5, :id 18}
+                :cols [{:special_type nil, :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database db-id
@@ -249,5 +249,3 @@
                                   :aggregation ["rows"]
                                   :breakout [nil]
                                   :limit nil}}))
-
-(use 'korma.core)

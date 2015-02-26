@@ -46,7 +46,8 @@
                         :engine :h2
                         :details {:conn_str test-db-filename})]
             (println "Syncing Tables...")
-            (sync/sync-tables db))))))
+            (sync/sync-tables db)
+            (println "Finished. Enjoy your test data <3"))))))
 
 
 ;; ## Debugging/Interactive Development Functions
