@@ -12,8 +12,7 @@
                              [org :refer [Org]]
                              [org-perm :refer [OrgPerm]])))
 
-(declare create-table
-         with-test-db)
+(declare create-and-populate-tables)
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
@@ -39,9 +38,7 @@
   (binding [*log-db-calls* false]
     (or (sel :one Database :name db-name)
         (do (when-not (.exists (clojure.java.io/file (str test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
-              (with-test-db
-                (dorun (map create-table
-                            data/test-data))))
+              (create-and-populate-tables))
             (println "Creating new metabase Database object...")
             (let [db (ins Database
                           :organization_id (:id (test-org))
@@ -113,7 +110,7 @@
        (interpose ", ")
        (apply str)))
 
-(defn- create-table
+(defn- create-and-populate-table
   "Create a Table named TABLE-NAME and load its data."
   [[table-name {:keys [fields rows]}]]
   {:pre [(keyword? table-name)
@@ -130,3 +127,8 @@
           (insert (values (map (partial zipmap fields-for-insert) ; data rows look like [name last-login]
                                rows))))                           ; need to convert to {:name name :last_login last-login} for insert
       (println (format "Inserted %d rows." (count rows))))))
+
+(defn- create-and-populate-tables []
+  (with-test-db
+    (dorun (map create-and-populate-table
+                data/test-data))))
