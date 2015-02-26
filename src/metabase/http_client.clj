@@ -6,7 +6,6 @@
 
 (declare authenticate
          build-url
-         client
          -client)
 
 ;; ## API CLIENT
