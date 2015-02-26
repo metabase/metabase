@@ -17,7 +17,8 @@
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
-(def ^:private test-db-filename "file:t.db;AUTO_SERVER=TRUE")
+(def ^:private test-db-filename "t.db")
+(def ^:private test-db-connection-string (format "file:%s;AUTO_SERVER=TRUE" test-db-filename))
 
 ;; # PUBLIC INTERFACE
 
@@ -34,20 +35,23 @@
   "Returns the test `Database`.
    If it does not exist, it creates it, loads relevant data, and calls `sync-tables`."
   []
+  {:post [(map? %)]}
   (binding [*log-db-calls* false]
     (or (sel :one Database :name db-name)
-        (with-test-db
-          (dorun (map create-table
-                      data/test-data))
-          (println "Creating new metabase Database object...")
-          (let [db (ins Database
-                        :organization_id (:id (test-org))
-                        :name db-name
-                        :engine :h2
-                        :details {:conn_str test-db-filename})]
-            (println "Syncing Tables...")
-            (sync/sync-tables db)
-            (println "Finished. Enjoy your test data <3"))))))
+        (do (when-not (.exists (clojure.java.io/file (str test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
+              (with-test-db
+                (dorun (map create-table
+                            data/test-data))))
+            (println "Creating new metabase Database object...")
+            (let [db (ins Database
+                          :organization_id (:id (test-org))
+                          :name db-name
+                          :engine :h2
+                          :details {:conn_str test-db-connection-string})]
+              (println "Syncing Tables...")
+              (sync/sync-tables db)
+              (println "Finished. Enjoy your test data <3")
+              db)))))
 
 
 ;; ## Debugging/Interactive Development Functions
@@ -82,7 +86,7 @@
   "Binds `*test-db*` if not already bound to a Korma DB entity and executes BODY."
   [& body]
   `(if *test-db* (do ~@body)
-       (binding [*test-db* (create-db (h2 {:db test-db-filename
+       (binding [*test-db* (create-db (h2 {:db test-db-connection-string
                                            :naming {:keys s/lower-case
                                                     :fields s/upper-case}}))]
          (println "CREATING H2 TEST DATABASE...")

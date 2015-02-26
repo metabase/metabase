@@ -15,7 +15,7 @@
                         :table_id nil
                         :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["count"]
@@ -34,7 +34,7 @@
                         :table_id nil
                         :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["sum" (field->id :venues :price)]
@@ -53,7 +53,7 @@
                         :table_id nil
                         :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :checkins)
                                   :filter [nil nil]
                                   :aggregation ["distinct" (field->id :checkins :user_id)]
@@ -73,7 +73,7 @@
                         :table_id nil
                         :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["avg" (field->id :venues :latitude)]
@@ -92,7 +92,7 @@
                         :table_id nil
                         :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["stddev" (field->id :venues :latitude)]
@@ -122,7 +122,7 @@
                  {:special_type nil, :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
                  {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["rows"]
@@ -148,7 +148,7 @@
                 :cols [{:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}
                        {:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter [nil nil]
                                   :aggregation ["rows"]
@@ -168,7 +168,7 @@
                        {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
                        {:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :checkins), :id (field->id :checkins :id)}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :checkins)
                                   :aggregation ["rows"]
                                   :limit 10
@@ -195,7 +195,7 @@
                  {:special_type nil, :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
                  {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :venues)
                                   :filter ["AND"
                                            [">" (field->id :venues :id) 50]
@@ -212,7 +212,7 @@
                 :cols [{:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins) :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :checkins)
                                   :filter [nil nil]
                                   :aggregation ["count"]
@@ -229,7 +229,7 @@
                        {:special_type nil, :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :query {:source_table (table->id :checkins)
                                   :limit 10
                                   :aggregation ["count"]
@@ -242,7 +242,7 @@
 ;; Just don't barf
 (expect {:status :completed, :row_count 0, :data {:rows [], :columns [], :cols []}}
         (process-and-run {:type :query
-                          :database db-id
+                          :database @db-id
                           :native {}
                           :query {:source_table 0
                                   :filter [nil nil]

@@ -9,12 +9,14 @@
   "setup database schema"
   {:expectations-options :before-run}
   []
-  (println "Uh oh! We're here :'(")
-  (let [filename (-> (re-find #"file:(\w+\.db).*" db-file) second) ; db-file is prefixed with "file:", so we strip that off
-        h2-file (str filename ".h2.db")
-        trace-file (str filename ".trace.db")]
-    (when (.exists (io/file h2-file)) (io/delete-file h2-file))
-    (when (.exists (io/file trace-file)) (io/delete-file trace-file)))
+  (let [filename (-> (re-find #"file:(\w+\.db).*" db-file) second)] ; db-file is prefixed with "file:", so we strip that off
+    (map (fn [file-extension]                                        ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
+           (let [file (str filename file-extension)]
+             (when (.exists (io/file file))
+               (io/delete-file file))))
+         [".h2.db"
+          ".trace.db"
+          ".lock.db"]))
   ; TODO - lets just completely delete the db before each test to ensure we start fresh
   (log/info "tearing down database and resetting to empty schema")
   (migrate :down)

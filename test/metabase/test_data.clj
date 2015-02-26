@@ -14,20 +14,21 @@
          (keyword? field-name)]
    :post [(integer? %)
           (not (zero? %))]}
-  (-> table-fields table-name field-name))
+  (-> @table-fields table-name field-name))
 
 (defn table->id [table-name]
   {:pre [(keyword? table-name)]
    :post [(integer? %)
           (not (zero? %))]}
-  (tables table-name))
+  (@tables table-name))
 
-(defonce ^{:doc "The test `Database` object."} test-db
-  (do (migrate :up)
-      (load/test-db)))
+(def ^{:doc "The test `Database` object."} test-db
+  (delay (migrate :up)
+         (load/test-db)))
 
-(defonce ^{:doc "The ID of the test `Database`."} db-id
-  (test-db :id))
+(def ^{:doc "The ID of the test `Database`."} db-id
+  (delay (assert @test-db)
+         (:id @test-db)))
 
 
 ;; # INTERNAL
@@ -44,7 +45,7 @@
               {table-kw (f table-kw)}))
        (reduce merge {})))
 
-(defonce
+(def
   ^{:doc "A map of Table name keywords -> Table IDs.
 
               {:users 100
@@ -52,14 +53,15 @@
                ...}"
     :private true}
   tables
-  (binding [*log-db-calls* false]
-    (letfn [(table-kw->table-id [table-kw]
-              (->> (-> table-kw name .toUpperCase)
-                   (sel :one [Table :id] :db_id db-id :name)
-                   :id))]
-      (map-table-kws table-kw->table-id))))
+  (delay
+   (binding [*log-db-calls* false]
+     (letfn [(table-kw->table-id [table-kw]
+               (->> (-> table-kw name .toUpperCase)
+                    (sel :one [Table :id] :db_id @db-id :name)
+                    :id))]
+       (map-table-kws table-kw->table-id)))))
 
-(defonce
+(def
   ^{:doc "A map of Table name keywords -> map of Field name keywords -> Field IDs.
 
               {:users {:id 14
@@ -67,13 +69,14 @@
                :venues ...}"
     :private true}
   table-fields
-  (binding [*log-db-calls* false]
-    (letfn [(table-kw->fields [table-kw]
-              (->> (sel :many [Field :name :id] :table_id (tables table-kw))
-                   (map (fn [{:keys [^String name id]}]
-                          {:pre [(string? name)
-                                 (integer? id)
-                                 (not (zero? id))]}
-                          {(keyword (.toLowerCase name)) id}))
-                   (reduce merge {})))]
-      (map-table-kws table-kw->fields))))
+  (delay
+   (binding [*log-db-calls* false]
+     (letfn [(table-kw->fields [table-kw]
+               (->> (sel :many [Field :name :id] :table_id (@tables table-kw))
+                    (map (fn [{:keys [^String name id]}]
+                           {:pre [(string? name)
+                                  (integer? id)
+                                  (not (zero? id))]}
+                           {(keyword (.toLowerCase name)) id}))
+                    (reduce merge {})))]
+       (map-table-kws table-kw->fields)))))
