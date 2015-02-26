@@ -15,20 +15,13 @@
 (def db-file
   "Path to our H2 DB file from env var or app config."
   (str "file:" (or (:database-file env)
-                   (:database-file app-defaults))))
+                   (:database-file app-defaults))   ; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
+       ";AUTO_SERVER=TRUE"))                        ; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 (log/info (str "Using H2 database file: " db-file))
 
 (defdb db (h2 {:db db-file
                :naming {:keys str/lower-case
                         :fields str/upper-case}}))
-
-;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
-;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
-(when (get-in db [:options :subprotocol])
-  (let [datasource (:datasource @(:pool db))
-        url (.getJdbcUrl datasource)]
-    (when-not (.contains ^String url ";AUTO_SERVER=TRUE")
-      (.setJdbcUrl datasource (str url ";AUTO_SERVER=TRUE")))))
 
 (defn migrate
   "Migrate the database :up or :down."
