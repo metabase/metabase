@@ -22,15 +22,16 @@
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
-  (let [forms (->> (map apply-form query) ; call `apply-form` for each clause and strip out nil results
-                   (filter identity)
-                   (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                         [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
-                   doall)]
-    (when *enable-debug-logging*
-      (log-query query forms))
-    `(let [entity# (table-id->korma-entity ~source_table)]
-       (select entity# ~@forms))))
+  (when-not (zero? source_table)
+    (let [forms (->> (map apply-form query) ; call `apply-form` for each clause and strip out nil results
+                     (filter identity)
+                     (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
+                                           [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
+                     doall)]
+      (when *enable-debug-logging*
+        (log-query query forms))
+      `(let [entity# (table-id->korma-entity ~source_table)]
+         (select entity# ~@forms)))))
 
 (defn process-and-run
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
