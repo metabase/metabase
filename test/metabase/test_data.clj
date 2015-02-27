@@ -51,7 +51,9 @@
 (def db-id
   "The ID of the test `Database`."
   (delay (assert @test-db)
-         (:id @test-db)))
+         (let [{id :id} @test-db]
+           (assert (integer? id))
+           id)))
 
 (defn field->id
   "Return the ID of a Field with FIELD-NAME belonging to Table with TABLE-NAME.
@@ -60,7 +62,9 @@
   [table-name field-name]
   {:pre [(keyword? table-name)
          (keyword? field-name)]
-   :post [(integer? %)
+   :post [(or (println % "<->" (type %))
+              true)
+          (integer? %)
           (not (zero? %))]}
   (-> @table-fields table-name field-name))
 
@@ -85,7 +89,9 @@
 (def org-id
   "The ID of the test Organization."
   (delay (assert @test-org)
-         (:id @test-org)))
+         (let [{id :id} @test-org]
+           (assert (integer? id))
+           id)))
 
 
 ;; ## Test Users
