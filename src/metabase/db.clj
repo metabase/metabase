@@ -43,7 +43,8 @@
 ;; ## UPD
 
 (defmulti pre-update
-  "Like pre-insert but called by `upd` before DB operations happen."
+  "Multimethod that is called by `upd` before DB operations happen.
+   A good place to set updated values for fields like `updated_at`, or serialize maps into JSON."
   (fn [entity _] entity))
 
 (defmethod pre-update :default [_ obj]
@@ -53,7 +54,7 @@
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
 
-   `(upd User 123 :is_active false)` -> updates user with id=123, setting is_active=false
+     (upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]

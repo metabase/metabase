@@ -37,7 +37,7 @@
 (defn arg-type
   "Return a key into `*auto-parse-types*` if ARG has a matching pattern in `*auto-parse-arg-name-patterns*`.
 
-  (arg-type :id) -> :int"
+    (arg-type :id) -> :int"
   [arg]
   (-> *auto-parse-arg-name-patterns*
       ((fn [[[pattern type] & rest-patterns]]

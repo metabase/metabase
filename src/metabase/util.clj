@@ -119,13 +119,13 @@
 
    If DEFAULT is not specified, `nil` will be returned when PRED? is false.
 
-   (defn
-     ^{:arglists ([key? numbers])}
-     wrap-nums [& args]
-     (let [[k nums] (optional keyword? args :nums)]
-       {k nums}))
+    (defn
+      ^{:arglists ([key? numbers])}
+      wrap-nums [& args]
+      (let [[k nums] (optional keyword? args :nums)]
+        {k nums}))
     (wrap-nums 1 2 3)          -> {:nums [1 2 3]}
-  (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
+    (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
   [pred? args & [default]]
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))

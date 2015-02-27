@@ -6,7 +6,7 @@
          log-request)
 
 (defn log-api-call
-  "Middleware to log :request and/or :response by passing corresponding OPTIONS."
+  "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
   (let [{:keys [request response]} (set options)
         log-request? request

@@ -198,7 +198,7 @@
 ;; Both forms will throw a 404 if the object doesn't exist (saving you one more check!) and return the selected object.
 
 (defmacro read-check
-  "Checks that @can_read is true for this object."
+  "Checks that `@can_read` is true for this object."
   ([obj]
    `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
       (check-403 @~'can_read)
@@ -207,7 +207,7 @@
    `(read-check (sel :one ~entity :id ~id))))
 
 (defmacro write-check
-  "Checks that @can_write is true for this object."
+  "Checks that `@can_write` is true for this object."
   ([obj]
    `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
       (check-403 @~'can_write)

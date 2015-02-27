@@ -10,6 +10,7 @@
 (defn annotate
   "Take raw RESULTS from running QUERY and convert them to the format expected by the front-end.
    Add the following columns (under `:data`):
+
    *  `:rows` a sequence of result rows
    *  `:columns` ordered sequence of column names
    *  `:cols` ordered sequence of information about each column, such as `:base_type` and `:special_type`"

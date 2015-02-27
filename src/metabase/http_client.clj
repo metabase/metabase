@@ -21,19 +21,20 @@
    The first arg after URL will be passed as a JSON-encoded body if it is a map.
    Other &rest kwargs will be passed as `GET` parameters.
 
-   Args:
+  Examples:
+
+    (client :get 200 \"card/1\")                ; GET  http://localhost:3000/api/card/1, throw exception is status code != 200
+    (client :get \"card\" :org 1)               ; GET  http://localhost:3000/api/card?org=1
+    (client :post \"card\" {:name \"My Card\"}) ; POST http://localhost:3000/api/card with JSON-encoded body {:name \"My Card\"}
+
+  Args:
+
    *  CREDENTIALS-MAP       Optional map of `:email` and `:password` of a User whose credentials we should perform the request with.
    *  METHOD                `:get`, `:post`, `:delete`, or `:put`
    *  EXPECTED-STATUS-CODE  When passed, throw an exception if the response has a different status code.
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
    *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
-   *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params
-
-  examples:
-
-    (client :get 200 \"card/1\")                ; GET  http://localhost:3000/api/card/1, throw exception is status code != 200
-    (client :get \"card\" :org 1)               ; GET  http://localhost:3000/api/card?org=1
-    (client :post \"card\" {:name \"My Card\"}) ; POST http://localhost:3000/api/card with JSON-encoded body {:name \"My Card\"}"
+   *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
   [& args]
   (let [[credentials [method & args]] (u/optional map? args)
         [expected-status [url & args]] (u/optional integer? args)
