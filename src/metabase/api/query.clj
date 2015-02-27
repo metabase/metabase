@@ -6,9 +6,11 @@
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [common :as common]
                              [hydrate :refer :all]
-                             [database :refer [Database databases-for-org]]                                                                      [org :refer [Org]]
+                             [database :refer [Database databases-for-org]]
+                             [org :refer [Org]]
                              [query :refer [Query]]
                              [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :as util]))
@@ -85,9 +87,17 @@
 
 
 (defendpoint POST "/:id" [id]
-  ;; TODO - implementation (execute a query)
-  {:TODO "TODO"})
-
+  (let-404 [query (sel :one Query :id id)]
+           (read-check query)
+           (let [json-query {:type "native"
+                             :database (:database_id query)
+                             :native {:query (get-in query [:details :sql])
+                             :timezone (get-in query [:details :timezone])}}
+                 options {:executed_by *current-user-id*
+                          :saved_query query
+                          ;; TODO - make asynchronous
+                          :cache_result true}]
+             (driver/dataset-query json-query options)))) 
 
 (defendpoint GET "/:id/results" [id]
   ;; TODO - implementation (list recent results of a query)
