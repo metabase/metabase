@@ -3,10 +3,12 @@
             [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.util :refer [contains-many? now-iso8601]]
+            [metabase.driver :refer [dataset-query]]
+            [metabase.driver.query-processor :as qp]
             (metabase.models
               [hydrate :refer :all]
-              [query-execution :refer [all-fields]])))
+              [query-execution :refer [QueryExecution all-fields]])
+            [metabase.util :refer [contains-many? now-iso8601]]))
 
 
 (declare execute-query build-response)
@@ -15,15 +17,12 @@
 (defendpoint POST "/" [:as {body :body}]
   (check-400 (contains-many? body :database :sql))
   ;; TODO - validate that database id is valid and user has perms on database
-  (-> {:type "rawsql"
-       :database (:database body)
-       :rawsql {
-                :sql (:sql body)
-                :timezone (get body :timezone)
-                }}
-    (execute-query)
-    ;; TODO - format the response of execute-query for the client
-    ))
+  ;; TODO - this needs to support async execution & cached results
+  ;; TODO - currently the response format here is a little different than the normal dataset_query response
+  (dataset-query {:type "native"
+                  :database (:database body)
+                  :native {:query (:sql body)
+                           :timezone (get body :timezone)}} {:cache_result true}))
 
 
 ;; TODO - not using defendpoint due to string params causing number format exceptions
@@ -47,16 +46,6 @@
 
 
 ;; ===============================================================================================================
-
-
-;; TODO - allow for asynchronous execution option
-(defn execute-query
-  "Run a single `native` type query against a database, optionally run asynchronously."
-  [query]
-  query
-  ;; TODO - run the query on the database
-  ;; TODO - build-response
-  )
 
 
 (defn build-response
