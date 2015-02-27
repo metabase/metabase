@@ -40,6 +40,8 @@
   true)
 
 
+;; ## UPD
+
 (defmulti pre-update
   "Like pre-insert but called by `upd` before DB operations happen."
   (fn [entity _] entity))
@@ -60,6 +62,9 @@
     (-> (update entity (set-fields kwargs) (where {:id entity-id}))
         (> 0))))
 
+
+;; ## DEL
+
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
    Returns a `204 (No Content)` response dictionary."
@@ -67,6 +72,9 @@
   (delete entity (where (apply assoc {} kwargs)))
   {:status 204
    :body nil})
+
+
+;; ## SEL
 
 (defmulti post-select
   "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
@@ -124,6 +132,28 @@
    entity fields like `:transforms` or `:table`, if need be."
   {})
 
+(defmacro -sel-select
+  "Internal macro used by `sel` (don't call this directly).
+   Generates the korma `select` form."
+  [entity & forms]
+  (let [[entity field-keys] (entity-field-keys default-fields entity)
+        forms (->> forms
+                   sel-apply-kwargs
+                   (sel-apply-fields field-keys))]
+    `(do (when *log-db-calls*
+           (println "DB CALL: " ~(str entity) " " ~(str forms)))
+         (select (merge (entity->korma ~entity) *entity-overrides*) ~@forms))))
+
+(defmacro sel-fn
+  "Returns a memoized fn that calls `sel`."
+  [one-or-many entity & forms]
+  `(memoize
+    (fn []
+      (sel ~one-or-many ~entity ~@forms))))
+
+
+;; ## INS
+
 (defmulti pre-insert
   "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
    This provides an opportunity to do things like encode JSON or provide default values for certain fields.
@@ -149,24 +179,8 @@
                            (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
       (sel :one entity :id id))))
 
-(defmacro -sel-select
-  "Internal macro used by `sel` (don't call this directly).
-   Generates the korma `select` form."
-  [entity & forms]
-  (let [[entity field-keys] (entity-field-keys default-fields entity)
-        forms (->> forms
-                   sel-apply-kwargs
-                   (sel-apply-fields field-keys))]
-    `(do (when *log-db-calls*
-           (println "DB CALL: " ~(str entity) " " ~(str forms)))
-         (select (merge (entity->korma ~entity) *entity-overrides*) ~@forms))))
 
-(defmacro sel-fn
-  "Returns a memoized fn that calls `sel`."
-  [one-or-many entity & forms]
-  `(memoize
-    (fn []
-      (sel ~one-or-many ~entity ~@forms))))
+;; ## EXISTS?
 
 (defmacro exists?
   "Easy way to see if something exists in the db.
