@@ -19,8 +19,8 @@
   "Process and run a json based dataset query and return results.
 
    Takes 2 arguments:
-   1. the json query as a dictionary
-   2. query execution options specified in a dictionary
+   1.  the json query as a dictionary
+   2.  query execution options specified in a dictionary
 
    Depending on the database specified in the query this function will delegate to a driver specific implementation.
    For the purposes of tracking we record each call to this function as a QueryExecution in the database.
