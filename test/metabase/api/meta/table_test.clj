@@ -5,6 +5,7 @@
             [metabase.test-data :refer [table->id db-id org-id user->client]]))
 
 ;; Test GET /api/meta/table?org
+;; These should come back in alphabetical order and include relevant metadata
 (expect [{:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :entity_name nil, :active true, :id (table->id :categories), :db_id @db-id}
          {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :entity_name nil, :active true, :id (table->id :checkins), :db_id @db-id}
          {:description nil, :entity_type nil, :name "USERS", :rows 15, :entity_name nil, :active true, :id (table->id :users), :db_id @db-id}
