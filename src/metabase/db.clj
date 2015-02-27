@@ -24,7 +24,7 @@
                         :fields str/upper-case}}))
 
 (defn migrate
-  "Migrate the database :up or :down."
+  "Migrate the database `:up` or `:down.`"
   [direction]
   (let [conn (jdbc/get-connection {:subprotocol "h2"
                                    :subname db-file})]
@@ -56,8 +56,8 @@
    `(upd User 123 :is_active false)` -> updates user with id=123, setting is_active=false
 
    Returns true if update modified rows, false otherwise."
-  [entity entity-id & kwargs]
-  (let [kwargs (->> (apply assoc {} kwargs)
+  [entity entity-id & {:as kwargs}]
+  (let [kwargs (->> kwargs
                     (pre-update entity))]
     (-> (update entity (set-fields kwargs) (where {:id entity-id}))
         (> 0))))
@@ -68,8 +68,8 @@
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
    Returns a `204 (No Content)` response dictionary."
-  [entity & kwargs]
-  (delete entity (where (apply assoc {} kwargs)))
+  [entity & {:as kwargs}]
+  (delete entity (where kwargs))
   {:status 204
    :body nil})
 
@@ -118,9 +118,7 @@
     (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
   [one-or-many entity & forms]
-  {:pre [(or (println "one-or-many:" one-or-many)
-             true)
-         (contains? #{:one :many} one-or-many)]}
+  {:pre [(contains? #{:one :many} one-or-many)]}
   `(->> (-sel-select ~entity ~@forms ~@(when (= one-or-many :one) `((limit 1))))
         (map (partial post-select (entity->korma ~entity)))
         ~(case one-or-many
@@ -171,9 +169,8 @@
    and automatically passes &rest KWARGS to `korma.core/values`.
 
    Returns newly created object by calling `sel`."
-  [entity & kwargs]
+  [entity & {:as kwargs}]
   (let [vals (->> kwargs
-                  (apply assoc {})
                   (pre-insert entity))]
     (let [{:keys [id]} (-> (insert entity (values vals))
                            (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
@@ -186,8 +183,8 @@
   "Easy way to see if something exists in the db.
 
     (exists? User :id 100)"
-  [entity & {:as forms}]
+  [entity & {:as kwargs}]
   `(empty? (select ~entity
                    (fields [:id])
-                   (where ~forms)
+                   (where ~kwargs)
                    (limit 1))))
