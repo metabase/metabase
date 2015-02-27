@@ -2,7 +2,6 @@
   "Functions relating to using the test data, Database, Organization, and Users."
   (:require [cemerick.friend.credentials :as creds]
             [medley.core :as medley]
-            [metabase.core :refer [start-jetty-server-if-needed]]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             (metabase.models [field :refer [Field]]
@@ -124,13 +123,11 @@
 
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
-   In addition, it forces lazy creation of the User if needed and starts a Jetty web server if one is
-   not already running.
+   In addition, it forces lazy creation of the User if needed.
 
     ((user->client) :get 200 \"meta/table\")"
   [username]
   {:pre [(contains? usernames username)]}
-  (start-jetty-server-if-needed)
   (user->id username)                                 ; call a function that will force User to created if need be
   (partial http/client (user->credentials username)))
 
