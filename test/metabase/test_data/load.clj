@@ -53,13 +53,6 @@
 
 ;; ## Debugging/Interactive Development Functions
 
-(defn add-perms-for-test-org
-  "Create admin `OrgPerms` for USER for the test `Organization` if they don't yet exist."
-  [{:keys [id] :as user}]
-  (let [org-id (:id (test-org))]
-    (or (exists? OrgPerm :organization_id org-id :user_id id)
-        (ins OrgPerm :organization_id org-id :user_id id :admin true))))
-
 (defn drop-test-db
   "Drop the test `Database` and `Fields`/`Tables` associated with it."
   []

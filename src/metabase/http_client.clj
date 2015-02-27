@@ -79,6 +79,7 @@
     (println method-name url status) status
     (when expected-status
       (when-not (= status expected-status)
+        (println body)
         (throw (Exception. (format "%s %s expected a status code of %d, got %d" method-name url expected-status status)))))
 
     ;; Deserialize the JSON response or return as-is if that fails
