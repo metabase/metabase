@@ -41,7 +41,7 @@
                          :status :starting
                          :started_at (util/new-sql-date)
                          :start_time_millis (System/currentTimeMillis)}]
-    ; add :query_id and :version if we are executing from an existing saved query
+    ;; add :query_id and :version if we are executing from an existing saved query
     (when saved_query
       (assoc query-execution :query_id (:id saved_query) :version (:version saved_query)))
     (if synchronously
@@ -76,14 +76,14 @@
                  :result_data ""
                  :raw_query ""
                  :additional_info ""}]
-    ; record our query execution and format response
+    ;; record our query execution and format response
     (-> query-execution
       (dissoc :start_time_millis)
       (merge updates)
       (save-query-execution)
-      ; this is just for the response for clien
-      (assoc :row_count 0)
-      (assoc :data {:rows []
+      ;; this is just for the response for clien
+      (assoc :row_count 0
+             :data {:rows []
                     :cols []
                     :columns []}))))
 
@@ -99,7 +99,7 @@
                  :result_file ""
                  :raw_query ""
                  :additional_info ""}]
-    ; record our query execution and format response
+    ;; record our query execution and format response
     (-> query-execution
       (dissoc :start_time_millis)
       (merge updates)
@@ -107,7 +107,7 @@
                             (json/write-str (:data query-result))
                             ""))
       (save-query-execution)
-      ; at this point we've saved and we just need to massage things into our final response format
+      ;; at this point we've saved and we just need to massage things into our final response format
       (select-keys [:id :uuid])
       (merge query-result))))
 
