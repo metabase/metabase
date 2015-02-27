@@ -184,7 +184,7 @@
 
     (exists? User :id 100)"
   [entity & {:as kwargs}]
-  `(empty? (select ~entity
-                   (fields [:id])
-                   (where ~kwargs)
-                   (limit 1))))
+  `(not (empty? (select ~entity
+                        (fields [:id])
+                        (where ~kwargs)
+                        (limit 1)))))
