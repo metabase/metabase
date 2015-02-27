@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [clojure.tools.logging :as log]
             [clojure.java.jdbc :as jdbc]
+            [ring.adapter.jetty :as ring]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [json :refer [wrap-json-response
                                            wrap-json-body]]
@@ -39,3 +40,17 @@
       wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key
       ))
+
+;; ## Jetty Adapter (for unit tests)
+
+(def ^:private jetty-server
+  "`org.eclipse.jetty.server.Server` instance."
+  (delay (try (ring/run-jetty app {:port 3000
+                                   :join? false})
+              (catch java.net.BindException e      ; assume server is already running if port's already bound
+                  :already-running))))
+
+(defn start-jetty-server-if-needed
+  "Manually start the Ring server, e.g. when running unit tests."
+  []
+  @jetty-server)

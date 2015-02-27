@@ -2,6 +2,7 @@
   "Functions relating to using the test data, Database, Organization, and Users."
   (:require [cemerick.friend.credentials :as creds]
             [medley.core :as medley]
+            [metabase.core :refer [start-jetty-server-if-needed]]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             (metabase.models [field :refer [Field]]
@@ -78,7 +79,8 @@
 
 (def test-org
   "The test Organization."
-  (delay (load/test-org)))
+  (delay (migrate :up)
+         (load/test-org)))
 
 (def org-id
   "The ID of the test Organization."
@@ -88,7 +90,8 @@
 
 ;; ## Test Users
 ;;
-;; These users have permissions for the Test Org. Three test users are defined:
+;; These users have permissions for the Test Org. They are lazily created as needed.
+;; Three test users are defined:
 ;; *  rasta - an admin
 ;; *  lucky
 ;; *  trashbird
@@ -121,10 +124,14 @@
 
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
+   In addition, it forces lazy creation of the User if needed and starts a Jetty web server if one is
+   not already running.
 
     ((user->client) :get 200 \"meta/table\")"
   [username]
   {:pre [(contains? usernames username)]}
+  (start-jetty-server-if-needed)
+  (user->id username)                                 ; call a function that will force User to created if need be
   (partial http/client (user->credentials username)))
 
 

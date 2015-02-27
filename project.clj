@@ -22,7 +22,7 @@
                  [com.cemerick/friend "0.2.1"]              ; auth library
                  [com.h2database/h2 "1.3.170"]              ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
-                 [compojure "1.3.1"]                        ; HTTP Routing library built on Ring
+                 [compojure "1.3.2"]                        ; HTTP Routing library built on Ring
                  [environ "0.5.0"]                          ; easy environment management
                  [korma "0.4.0"]                            ; SQL lib
                  [log4j/log4j "1.2.17"
@@ -36,6 +36,7 @@
                  [org.slf4j/slf4j-log4j12 "1.7.1"]
                  [org.yaml/snakeyaml "1.14"]                ; YAML parser (required by liquibase)
                  [postgresql "9.1-901.jdbc4"]               ; Postgres driver
+                 [ring/ring-jetty-adapter "1.3.2"]          ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.3.1"]                   ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]                     ; 'Magic wand' macro -<>, etc.
                  ]
