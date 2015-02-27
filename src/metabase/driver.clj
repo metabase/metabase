@@ -31,20 +31,20 @@
      :synchronously [true|false]      (default true)
      :cache_result [true|false]       (default false)
   "
-  [query caller-options]
-  (let [default-options {:synchronously true
-                         :cache_result false}
-        options (merge default-options caller-options)
+  [query {:keys [executed_by synchronously saved_query]
+          :or {synchronously true}
+          :as caller-options}]
+  (let [options (merge {:cache_result false} caller-options)
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
-                         ;:executor (:executed_by caller-options)
+                         ;:executor executed_by
                          :json_query query
                          :status :starting
                          :started_at (util/new-sql-date)
                          :start_time_millis (System/currentTimeMillis)}]
     ; add :query_id and :version if we are executing from an existing saved query
-    (when-let [saved_query (:saved_query options)]
-      (util/assoc* query-execution :query_id (:id saved_query) :version (:version saved_query)))
-    (if (:synchronously options)
+    (when saved_query
+      (assoc query-execution :query_id (:id saved_query) :version (:version saved_query)))
+    (if synchronously
       (-dataset-query query options query-execution)
       ;; TODO - this is untested/used.  determine proper way to place execution on background thread
       (future (-dataset-query query options query-execution)))))
