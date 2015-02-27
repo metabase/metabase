@@ -170,9 +170,10 @@
 
 (defmacro exists?
   "Easy way to see if something exists in the db.
-   TODO: How can we disable the `post-select` functionality for this call.
-   TODO: Doesn't korma have an `exists` method?
 
     (exists? User :id 100)"
-  [entity & forms]
-  `(boolean (sel :one [~entity :id] ~@forms)))
+  [entity & {:as forms}]
+  `(empty? (select ~entity
+                   (fields [:id])
+                   (where ~forms)
+                   (limit 1))))
