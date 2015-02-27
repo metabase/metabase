@@ -28,7 +28,7 @@
   (let [[entity & field-keys] (if (vector? entity) entity
                                   [entity])
         field-keys (or field-keys
-                       (default-fields-fn (eval entity)))]
+                       (default-fields-fn entity))]
     [entity field-keys]))
 
 (defn sel-apply-fields

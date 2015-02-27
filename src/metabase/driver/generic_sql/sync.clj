@@ -9,6 +9,7 @@
 (defn get-table-row-count
   "Get the number of rows in TABLE."
   [{:keys [korma-entity]}]
+  {:pre [(delay? korma-entity)]}
   (-> @korma-entity
       (select (aggregate (count :*) :count))
       first
@@ -16,9 +17,10 @@
 
 (defn update-table-row-count
   "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
-  [table]
+  [{:keys [id] :as table}]
+  {:pre [(integer? id)]}
   (let [new-count (get-table-row-count table)]
-    (upd Table (:id table) :rows new-count)))
+    (upd Table id :rows new-count)))
 
 (def ^:dynamic *column->base-type*
   "COLUMN->BASE-TYPE should be a map of column types returned by the DB to Field base types."

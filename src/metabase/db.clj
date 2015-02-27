@@ -24,7 +24,7 @@
                         :fields str/upper-case}}))
 
 (defn migrate
-  "Migrate the database :up or :down."
+  "Migrate the database `:up` or `:down.`"
   [direction]
   (let [conn (jdbc/get-connection {:subprotocol "h2"
                                    :subname db-file})]
@@ -39,30 +39,8 @@
   "Should we enable DB call logging? (You might want to disable this if we're doing many in parallel)"
   true)
 
-(defmulti pre-insert
-  "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
-   This provides an opportunity to do things like encode JSON or provide default values for certain fields.
 
-    (pre-insert Query [_ query]
-      (let [defaults {:version 1}]
-        (merge defaults query))) ; set some default values"
-  (fn [entity _] entity))
-
-(defmethod pre-insert :default [_ obj]
-  obj)   ; default impl returns object as is
-
-(defn ins
-  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`.
-
-   Returns newly created object by calling `sel`."
-  [entity & kwargs]
-  (let [vals (->> kwargs
-                  (apply assoc {})
-                  (pre-insert entity))]
-    (let [{:keys [id]} (-> (insert entity (values vals))
-                           (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
-      (eval `(sel :one ~entity :id ~id)))))
+;; ## UPD
 
 (defmulti pre-update
   "Like pre-insert but called by `upd` before DB operations happen."
@@ -78,19 +56,25 @@
    `(upd User 123 :is_active false)` -> updates user with id=123, setting is_active=false
 
    Returns true if update modified rows, false otherwise."
-  [entity entity-id & kwargs]
-  (let [kwargs (->> (apply assoc {} kwargs)
+  [entity entity-id & {:as kwargs}]
+  (let [kwargs (->> kwargs
                     (pre-update entity))]
     (-> (update entity (set-fields kwargs) (where {:id entity-id}))
         (> 0))))
 
+
+;; ## DEL
+
 (defn del
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
    Returns a `204 (No Content)` response dictionary."
-  [entity & kwargs]
-  (delete entity (where (apply assoc {} kwargs)))
+  [entity & {:as kwargs}]
+  (delete entity (where kwargs))
   {:status 204
    :body nil})
+
+
+;; ## SEL
 
 (defmulti post-select
   "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
@@ -165,11 +149,42 @@
     (fn []
       (sel ~one-or-many ~entity ~@forms))))
 
+
+;; ## INS
+
+(defmulti pre-insert
+  "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
+   This provides an opportunity to do things like encode JSON or provide default values for certain fields.
+
+    (pre-insert Query [_ query]
+      (let [defaults {:version 1}]
+        (merge defaults query))) ; set some default values"
+  (fn [entity _] entity))
+
+(defmethod pre-insert :default [_ obj]
+  obj)   ; default impl returns object as is
+
+(defn ins
+  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
+   and automatically passes &rest KWARGS to `korma.core/values`.
+
+   Returns newly created object by calling `sel`."
+  [entity & {:as kwargs}]
+  (let [vals (->> kwargs
+                  (pre-insert entity))]
+    (let [{:keys [id]} (-> (insert entity (values vals))
+                           (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
+      (sel :one entity :id id))))
+
+
+;; ## EXISTS?
+
 (defmacro exists?
   "Easy way to see if something exists in the db.
-   TODO: How can we disable the `post-select` functionality for this call.
-   TODO: Doesn't korma have an `exists` method?
 
     (exists? User :id 100)"
-  [entity & forms]
-  `(boolean (sel :one [~entity :id] ~@forms)))
+  [entity & {:as kwargs}]
+  `(not (empty? (select ~entity
+                        (fields [:id])
+                        (where ~kwargs)
+                        (limit 1)))))

@@ -79,6 +79,7 @@
     (println method-name url status) status
     (when expected-status
       (when-not (= status expected-status)
+        (println body)
         (throw (Exception. (format "%s %s expected a status code of %d, got %d" method-name url expected-status status)))))
 
     ;; Deserialize the JSON response or return as-is if that fails
@@ -91,8 +92,11 @@
 (defn- authenticate [{:keys [email password] :as credentials}]
   {:pre [(string? email)
          (string? password)]}
-  (-> (client :post 200 "session" credentials)
-      :id))
+  (try
+    (-> (client :post 200 "session" credentials)
+        :id)
+    (catch Exception e
+      (println "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
 
 (defn- build-url [url url-param-kwargs]
   {:pre [(string? url)
