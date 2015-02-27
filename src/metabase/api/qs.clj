@@ -53,7 +53,9 @@
   [{:keys [result_data] :as query-execution}]
   (->
     (select-keys query-execution [:id :uuid :status])                                            ;; start with just the things we are sure to need
-    (assoc :columns [] :data [])                                                                 ;; default columns/data
+    (assoc :data {:rows []
+                  :cols []
+                  :columns []})                                                                  ;; default columns/data
     (cond->
       (= "failed" (:status query-execution)) (assoc :error (:error query-execution)              ;; add errors if we failed
                                                     :sql_error (:error query-execution))         ;; TODO - sql error formatting FN

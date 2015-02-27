@@ -13,7 +13,7 @@
    ["postgres" "PostgreSQL"]]) ; then the driver dispatch functions wouldn't have to call `require`
 
 
-(declare -dataset-query query-check query-fail query-complete save-query-execution)
+(declare -dataset-query query-fail query-complete save-query-execution)
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -23,8 +23,14 @@
    2. query execution options specified in a dictionary
 
    Depending on the database specified in the query this function will delegate to a driver specific implementation.
+   For the purposes of tracking we record each call to this function as a QueryExecution in the database.
 
-   For the purposes of tracking we record each call to this function as a QueryExecution in the database."
+   Possible caller-options include:
+     :executed_by [int]               (user_id of caller)
+     :saved_query [{}]                (dictionary representing Query model)
+     :synchronously [true|false]      (default true)
+     :cache_result [true|false]       (default false)
+  "
   [query caller-options]
   (let [default-options {:synchronously true
                          :cache_result false}
@@ -45,19 +51,16 @@
 
 
 (defn -dataset-query
+  "Execute a query and record the outcome.  Entire execution is wrapped in a try-catch to prevent Exceptions
+   from leaking outside the function call."
   [query options query-execution]
-  (util/do-safely (fn [ex] (query-fail query-execution (.getMessage ex)))
+  (try
     (let [query-result (qp/process-and-run query)]
-      (query-check (contains? query-result :status) "invalid response from database driver. no :status provided")
-      (query-check (= :completed (:status query-result)) (get query-result :error "general error"))
-      (query-complete query-execution query-result (:cache_result options)))))
-
-
-(defn query-check
-  "Assertion mechanism that throws `Exception` with MESSAGE if the given TEST fails."
-  [test message]
-  (when-not test
-    (throw (Exception. message))))
+      (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
+      (when (= :failed (:status query-result)) (throw (Exception. (get query-result :error "general error"))))
+      (query-complete query-execution query-result (:cache_result options)))
+    (catch Exception ex
+      (query-fail query-execution (.getMessage ex)))))
 
 
 (defn query-fail

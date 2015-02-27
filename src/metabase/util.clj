@@ -107,17 +107,3 @@
   "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
   [^org.h2.jdbc.JdbcClob clob]
   (.getSubString clob 1 (.length clob)))
-
-
-(defmacro do-safely
-  "Macro which does a few things:
-   - executes BODY inside a `try-catch` block that catches any `Exception`
-   - executes BODY inside an implicit `do`
-   - when `Exception` is caught ERROR-FN is called with the Exception as the single argument.
-
-    (do-safely (fn [exception] (println exception)) (something-dangerous))"
-  [error-fn & body]
-  `(try
-     (do ~@body)
-     (catch Exception e#
-       (~error-fn e#))))
