@@ -90,6 +90,231 @@ CardServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
     });
 }]);
 
+CardServices.service('VisualizationUtils', [ function () {
+       this.visualizationTypes =  {
+            scalar: {
+                display: 'scalar',
+                label: 'Scalar',
+                available: false,
+                notAvailableReasons: []
+            },
+            table: {
+                display: 'table',
+                label: 'Table',
+                available: false,
+                notAvailableReasons: []
+            },
+            pie: {
+                display: 'pie',
+                label: 'Pie Chart',
+                available: false,
+                notAvailableReasons: []
+            },
+            bar: {
+                display: 'bar',
+                label: 'Bar Chart',
+                available: false,
+                notAvailableReasons: []
+            },
+            line: {
+                display: 'line',
+                label: 'Line Chart',
+                available: false,
+                notAvailableReasons: []
+            },
+            area: {
+                display: 'area',
+                label: 'Area Chart',
+                available: false,
+                notAvailableReasons: []
+            },
+            timeseries: {
+                display: 'timeseries',
+                label: 'Time Series',
+                available: false,
+                notAvailableReasons: []
+            },
+            pin_map: {
+                display: 'pin_map',
+                label: 'Pin Map',
+                available: false,
+                notAvailableReasons: []
+            },
+            state: {
+                display: 'state',
+                label: 'State Heatmap',
+                available: false,
+                notAvailableReasons: []
+            },
+            country: {
+                display: 'country',
+                label: 'World Heatmap',
+                available: false,
+                notAvailableReasons: []
+            }
+        };
+
+        this.zoomTypes = [
+            {
+                'label': 'Disabled',
+                'value': null
+            }, {
+                'label': 'X',
+                'value': 'x'
+            }, {
+                'label': 'Y',
+                'value': 'y'
+            }, {
+                'label': 'XY',
+                'value': 'xy'
+            }
+        ];
+}]);
+
+CardServices.service('QueryUtils', function () {
+    this.limitOptions = [
+        {
+            label: "1",
+            value: 1
+        }, {
+            label: "10",
+            value: 10
+        }, {
+            label: "25",
+            value: 25
+        }, {
+            label: "50",
+            value: 50
+        }, {
+            label: "100",
+            value: 100
+        }, {
+            label: "1000",
+            value: 1000
+        }
+    ];
+
+    this.emptyQuery = function () {
+        return {
+            filter: [
+                null,
+                null
+            ],
+            source_table: null,
+            breakout: [
+            ],
+            limit: null,
+            aggregation: [
+            ],
+            database: 1,
+            type: null,
+            native: {}
+        };
+    };
+
+    // default query card settings
+    this.queryCardSettings = {
+        "allowFavorite": true,
+        "allowAddToDash": true,
+        "allowRemoveFromDash": false,
+        "allowCardPermalink": false,
+        "allowLinkToComments": false,
+        "allowSend": false,
+        "allowTitleEdits": false
+    };
+
+    this.populateQueryOptions = function (table) {
+        // create empty objects to store our lookups
+        table.fields_lookup = {};
+        table.aggregation_lookup = {};
+        table.breakout_lookup = {};
+
+        _.each(table.fields, function(field) {
+            table.fields_lookup[field.id] = field;
+            field.operators_lookup = {};
+            _.each(field.valid_operators, function(operator) {
+                field.operators_lookup[operator.name] = operator;
+            });
+        });
+
+        _.each(table.aggregation_options, function(agg) {
+            table.aggregation_lookup[agg.short] = agg;
+        });
+
+        _.each(table.breakout_options, function(br) {
+            table.breakout_lookup[br.short] = br;
+        });
+
+        return table;
+    };
+
+    // @TODO - this really should not touch $scope in any way
+    this.getFirstColumnBySpecialType = function(special_type, data) {
+        if (!data) {
+            return null;
+        }
+        var result;
+        data.cols.forEach(function(col, index) {
+            if (typeof col.special_type !== "undefined" && col.special_type == special_type) {
+                col.index = index;
+                if (typeof result == "undefined") {
+                    result = col;
+                }
+            }
+        });
+        return result;
+    };
+    /* @check validity */
+
+    /// Check that QUERY is valid (i.e., can be ran or saved, to enable/disable corresponding buttons)
+    /// Try not to make this too expensive since it gets ran on basically every event loop in the Card Builder
+    ///
+    /// Currently the only thing we're doing here is checking the 'filter' clause of QUERY
+
+    this.queryIsValid = function(query) {
+
+        if (!query) return false;
+
+        // ******************** CHECK THAT QUERY.FILTER IS VALID ******************** //
+        // if query.filter is undefined or [null, null] then we'll consider it to be "unset" which means it's ok
+
+        if (!query.filter || (query.filter.length === 2 && query.filter[0] === null && query.filter[1] === null)) return true;
+
+
+        // a filter is valid if it and its children don't contain any nulls
+        var containsNulls = function(obj) {
+            if (obj === null) return true;
+
+            // if we're looking at an Array recurse over each child
+            if (obj.constructor === Array) {
+                var len = obj.length;
+                for (var i = 0; i < len; i++) {
+                    if (containsNulls(obj[i])) return true; // return immediately if we see a null
+                }
+            }
+            return false;
+        };
+
+        return !containsNulls(query.filter);
+    };
+
+    this.clearExtraQueryData = function(query) {
+        var typelist = ['native', 'query', 'result'];
+        for (var i = 0; i < typelist.length; i++) {
+            if (query.type != typelist[i]) {
+                delete query[typelist[i]];
+            }
+        }
+
+        return query;
+    };
+
+    this.getEncodedQuery = function(query) {
+        return encodeURIComponent(JSON.stringify(query));
+    };
+
+});
+
 CardServices.service('VisualizationSettings', [function() {
 
     var DEFAULT_COLOR_HARMONY = [

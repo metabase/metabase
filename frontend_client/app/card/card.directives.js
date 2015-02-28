@@ -2,6 +2,9 @@
 /*global setTimeout*/
 /*global $*/
 /*global CardRenderer*/
+/* global React */
+/* global document */
+/* global QueryBuilder */
 
 
 var CardDirectives = angular.module('corvus.card.directives', []);
@@ -214,7 +217,7 @@ CardDirectives.directive('cvCard', ['Card', 'Metabase', 'CorvusAlert', 'Query', 
                             //what the error was
                             dataTimeoutPromise = $timeout(function() {
                                 var query = scope.card.dataset_query;
-                                if (typeof query.database === "undefined" || (query.type === "query" && typeof query.query.source_table === "undefined")) {
+                                if (typeof query.database === "undefined" || (query.type === "query" && (typeof query.query.source_table === "undefined" || !query.query.source_table))) {
                                     scope.queryNotSet = true;
                                     return;
                                 }
@@ -548,3 +551,19 @@ CardDirectives.directive('cvCardFavoriteButton', ['Card', function(Card) {
         link: link
     };
 }]);
+
+CardDirectives.directive('queryBuilder', function() {
+    return {
+        link: function(scope, element) {
+            scope.$on('query:updated', function () {
+                renderReact();
+            });
+
+            function renderReact() {
+                React.render(new QueryBuilder({
+                    model: scope.model
+                }), document.getElementById('react'));
+            }
+        }
+    };
+});

@@ -26,8 +26,16 @@ Card.config(['$routeProvider', function($routeProvider) {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
+    $routeProvider.when('/:orgSlug/card/createnew/', {
+        templateUrl: '/app/card/partials/card_detail_new.html',
+        controller: 'CardDetailNew'
+    });
     $routeProvider.when('/:orgSlug/card/:cardId', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
+    });
+    $routeProvider.when('/:orgSlug/cool_new_card/:cardId', {
+        templateUrl: '/app/card/partials/card_detail_new.html',
+        controller: 'CardDetailNew'
     });
 }]);

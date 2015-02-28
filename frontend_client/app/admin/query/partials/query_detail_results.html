@@ -23,10 +23,10 @@
 		<div class="TableWrapper" ng-if="queryResultData.status == 'completed' && queryResultData.row_count > 0">
 			<table class="Table table table-striped table-condensed" ng-if="queryResultData.row_count < 5000">
 			    <tr>
-			        <th ng-repeat="column_name in queryResultData.columns">{{column_name}}</th>
+			        <th ng-repeat="column_name in queryResultData.data.columns">{{column_name}}</th>
 			    </tr>
 
-			    <tr ng-repeat="row in queryResultData.data">
+			    <tr ng-repeat="row in queryResultData.data.rows">
 			        <td ng-repeat="cell in row track by $index">{{cell}}</td>
 			    </tr>
 			</table>
