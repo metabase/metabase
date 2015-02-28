@@ -45,9 +45,9 @@
    :result_rows
    :query_id])
 
-(defmethod pre-insert QueryExecution [_ {:keys [json_details] :as query-execution}]
-  (assoc query-execution :json_query (if (string? json_details) json_details
-                                        (json/write-str json_details))))
+(defmethod pre-insert QueryExecution [_ {:keys [json_query] :as query-execution}]
+  (assoc query-execution :json_query (if (string? json_query) json_query
+                                        (json/write-str json_query))))
 
 (defmethod post-select QueryExecution [_ {:keys [query_id] :as query-execution}]
   (-> query-execution
