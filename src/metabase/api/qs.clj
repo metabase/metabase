@@ -17,8 +17,6 @@
 (defendpoint POST "/" [:as {body :body}]
   (check-400 (contains-many? body :database :sql))
   ;; TODO - validate that database id is valid and user has perms on database
-  ;; TODO - this needs to support async execution & cached results
-  ;; TODO - currently the response format here is a little different than the normal dataset_query response
   (let [dataset-query {:type "native"
                        :database (:database body)
                        :native {:query (:sql body)

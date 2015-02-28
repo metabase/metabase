@@ -100,7 +100,6 @@
              (driver/dataset-query dataset-query options)))) 
 
 (defendpoint GET "/:id/results" [id]
-  ;; TODO - implementation (list recent results of a query)
   (read-check Query id)
   (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10)))
 
