@@ -21,10 +21,10 @@
 
 (defn- type-key
   [obj]
-  (if (coll? obj) (if (map? obj) :map
-                      :coll)
-      (if (= (type obj) org.h2.jdbc.JdbcClob) :jdbc-clob
-          :obj)))
+  (cond (map? obj) :map
+        (coll? obj) :coll
+        (= (type obj) org.h2.jdbc.JdbcClob) :jdbc-clob
+        :else :obj))
 
 (defn- -format-response [obj]
   (case (type-key obj)
