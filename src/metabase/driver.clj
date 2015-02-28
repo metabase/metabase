@@ -38,29 +38,46 @@
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          ;:executor executed_by
                          :json_query query
-                         :status :starting
+                         :version 0
+                         :status "starting"
+                         :error ""
                          :started_at (util/new-sql-date)
-                         :start_time_millis (System/currentTimeMillis)}]
+                         :finished_at (util/new-sql-date)
+                         :running_time 0
+                         :result_rows 0
+                         :result_file ""
+                         :result_data ""
+                         :raw_query ""
+                         :additional_info ""}]
     ;; add :query_id and :version if we are executing from an existing saved query
     (when saved_query
       (assoc query-execution :query_id (:id saved_query) :version (:version saved_query)))
     (if synchronously
       (-dataset-query query options query-execution)
       ;; TODO - this is untested/used.  determine proper way to place execution on background thread
-      (future (-dataset-query query options query-execution)))))
+      (let [query-execution (-> (save-query-execution query-execution)
+                                ;; this is a bit lame, but to avoid having the delay fns in the dictionary we are
+                                ;; trimming them right here.  maybe there is a better way?
+                                (select-keys [:id :uuid :executor :query_id :version :status :started_at]))]
+        ;; run the query, but do it on another thread
+        (future (-dataset-query query options query-execution))
+        ;; this ensures the currently saved query-execution is what gets returned
+        query-execution))))
 
 
 (defn -dataset-query
   "Execute a query and record the outcome.  Entire execution is wrapped in a try-catch to prevent Exceptions
    from leaking outside the function call."
   [query options query-execution]
-  (try
-    (let [query-result (qp/process-and-run query)]
-      (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
-      (when (= :failed (:status query-result)) (throw (Exception. (get query-result :error "general error"))))
-      (query-complete query-execution query-result (:cache_result options)))
-    (catch Exception ex
-      (query-fail query-execution (.getMessage ex)))))
+  (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
+    (try
+      (let [query-result (qp/process-and-run query)]
+        (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
+        (when (= :failed (:status query-result)) (throw (Exception. (get query-result :error "general error"))))
+        (query-complete query-execution query-result (:cache_result options)))
+      (catch Exception ex
+        (.printStackTrace ex)
+        (query-fail query-execution (.getMessage ex))))))
 
 
 (defn query-fail
@@ -69,13 +86,7 @@
   (let [updates {:status "failed"
                  :error msg
                  :finished_at (util/new-sql-date)
-                 :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))
-                 :version (get :version query-execution 0)
-                 :result_rows 0
-                 :result_file ""
-                 :result_data ""
-                 :raw_query ""
-                 :additional_info ""}]
+                 :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
       (dissoc :start_time_millis)
@@ -90,33 +101,29 @@
 (defn query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result cache-result]
-  (let [updates {:status "completed"
-                 :error ""
-                 :finished_at (util/new-sql-date)
-                 :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))
-                 :version (get :version query-execution 0)
-                 :result_rows (get query-result :row_count 0)
-                 :result_file ""
-                 :raw_query ""
-                 :additional_info ""}]
-    ;; record our query execution and format response
-    (-> query-execution
+  ;; record our query execution and format response
+  (-> (util/assoc* query-execution
+                   :status "completed"
+                   :finished_at (util/new-sql-date)
+                   :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
+                   :result_rows (get query-result :row_count 0)
+                   :result_data (if cache-result
+                                  (json/write-str (:data query-result))
+                                  "{}"))
       (dissoc :start_time_millis)
-      (merge updates)
-      (assoc :result_data (if cache-result
-                            (json/write-str (:data query-result))
-                            ""))
       (save-query-execution)
       ;; at this point we've saved and we just need to massage things into our final response format
       (select-keys [:id :uuid])
-      (merge query-result))))
+      (merge query-result)))
 
 
 (defn save-query-execution
   [{:keys [id] :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
-    (mapply upd QueryExecution id query-execution)
+    (do
+      (mapply upd QueryExecution id query-execution)
+      query-execution)
     ;; first time saving execution, so insert it
     (mapply ins QueryExecution query-execution)))
 
