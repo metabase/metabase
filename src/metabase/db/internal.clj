@@ -27,8 +27,12 @@
   [default-fields-fn entity]
   (let [[entity & field-keys] (if (vector? entity) entity
                                   [entity])
+        _ (println "FIELD KEYS: " field-keys)
+        _ (println "ENTITY: " entity)
+        _ (println "ENTITY TYPE: " (type entity))
         field-keys (or field-keys
-                       (default-fields-fn entity))]
+                       (default-fields-fn (entity->korma entity)))
+        _ (println "FIELD KEYS: " field-keys)]
     [entity field-keys]))
 
 (defn sel-apply-fields
