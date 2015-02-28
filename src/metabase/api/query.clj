@@ -89,15 +89,15 @@
 (defendpoint POST "/:id" [id]
   (let-404 [query (sel :one Query :id id)]
            (read-check query)
-           (let [json-query {:type "native"
-                             :database (:database_id query)
-                             :native {:query (get-in query [:details :sql])
-                             :timezone (get-in query [:details :timezone])}}
+           (let [dataset-query {:type "native"
+                                :database (:database_id query)
+                                :native {:query (get-in query [:details :sql])
+                                         :timezone (get-in query [:details :timezone])}}
                  options {:executed_by *current-user-id*
                           :saved_query query
-                          ;; TODO - make asynchronous
+                          :synchronously false
                           :cache_result true}]
-             (driver/dataset-query json-query options)))) 
+             (driver/dataset-query dataset-query options)))) 
 
 (defendpoint GET "/:id/results" [id]
   ;; TODO - implementation (list recent results of a query)

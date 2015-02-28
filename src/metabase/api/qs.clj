@@ -3,7 +3,7 @@
             [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver :refer [dataset-query]]
+            [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             (metabase.models
               [hydrate :refer :all]
@@ -19,10 +19,13 @@
   ;; TODO - validate that database id is valid and user has perms on database
   ;; TODO - this needs to support async execution & cached results
   ;; TODO - currently the response format here is a little different than the normal dataset_query response
-  (dataset-query {:type "native"
-                  :database (:database body)
-                  :native {:query (:sql body)
-                           :timezone (get body :timezone)}} {:cache_result true}))
+  (let [dataset-query {:type "native"
+                       :database (:database body)
+                       :native {:query (:sql body)
+                                :timezone (get body :timezone)}}
+        options {:synchronously false
+                 :cache_result true}]
+    (driver/dataset-query dataset-query options)))
 
 
 ;; TODO - not using defendpoint due to string params causing number format exceptions
@@ -50,14 +53,15 @@
 
 (defn build-response
   "Build a query response from a QueryExecution record."
-  [{:keys [result_data] :as query-execution}]
+  [{{:keys [cols columns rows data]
+     :or {cols []
+          columns []}} :result_data :as query-execution}]
   (->
-    (select-keys query-execution [:id :uuid :status])                                            ;; start with just the things we are sure to need
-    (assoc :data {:rows []
-                  :cols []
-                  :columns []})                                                                  ;; default columns/data
+    (select-keys query-execution [:id :uuid :status])
+    (assoc :data {:rows (or rows data [])
+                  :cols cols
+                  :columns columns})
     (cond->
-      (= "failed" (:status query-execution)) (assoc :error (:error query-execution)              ;; add errors if we failed
-                                                    :sql_error (:error query-execution))         ;; TODO - sql error formatting FN
-      (= "completed" (:status query-execution)) (assoc :columns (get result_data :columns [])    ;; add real column & row data
-                                                       :data (get result_data :rows [])))))
+      (= "failed" (:status query-execution)) (assoc :error (:error query-execution)
+                                                    ;; TODO - sql error formatting FN
+                                                    :sql_error (:error query-execution)))))
