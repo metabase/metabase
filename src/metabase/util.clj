@@ -90,11 +90,10 @@
 (defn parse-iso8601
   "parse a string value expected in the iso8601 format into a `java.sql.Date`."
   [datetime]
-  (when datetime
-    (->> datetime
-      (time/parse (time/formatters :date-time-no-ms))
-      (coerce/to-long)
-      (java.sql.Date.))))
+  (some->> datetime
+           (time/parse (time/formatters :date-time-no-ms))
+           (coerce/to-long)
+           (java.sql.Date.)))
 
 
 (defn now-iso8601
