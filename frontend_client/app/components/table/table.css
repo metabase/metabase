@@ -33,7 +33,7 @@
 
 .Table th,
 .Table td {
-  padding: 6px;
+  padding: 1em;
   border: 1px solid var(--table-border-color);
 }
 
@@ -117,4 +117,3 @@
   color: #999;
   font-size: 0.8em;
 }
-

@@ -2,16 +2,19 @@
 
 var gulp = require('gulp'),
     concat = require('gulp-concat'),
+    react = require('gulp-react'),
     myth = require('gulp-myth');
 
 var basePath = 'frontend_client/app/';
 
 var SRC = {
-    css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css']
+    css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
+    jsx: [basePath + 'react/*.js']
 };
 
 var DEST = {
-    css: '' + basePath + '/dist'
+    css: '' + basePath + '/dist',
+    js: '' + basePath + '/dist',
 };
 
 
@@ -34,11 +37,19 @@ gulp.task('css', function(){
             .pipe(gulp.dest(DEST.css));
 });
 
+gulp.task('jsx', function () {
+    return gulp.src(SRC.jsx)
+        .pipe(react())
+        .pipe(gulp.dest(DEST.js))
+})
+
+
 gulp.task('watch', function(){
     gulp.watch(SRC.css, ['css']);
+    gulp.watch(SRC.jsx, ['jsx']);
 });
 
 
-gulp.task('build', ['css']);
+gulp.task('build', ['css', 'jsx']);
 
-gulp.task('default', ['build','watch']);
+gulp.task('default', ['build','watch', 'jsx']);

@@ -38,6 +38,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     deferred.resolve(result);
                 }, function(error) {
                     console.log('unable to get current user', error);
+                    $location.path('/unauthorized/');
                     deferred.reject(error);
                 });
 
@@ -101,6 +102,7 @@ console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                         console.log("user is not authorized for this org!!!");
                         service.model.currentOrgSlug = null;
                         service.model.currentOrg = null;
+                        PermissionViolation.create({'user': service.model.currentUser.id, 'url':$location.url()});
                         $location.path('/unauthorized/');
                         return;
                     } else if ($location.path().indexOf('/'+$routeParams.orgSlug+'/admin') === 0 &&
@@ -108,6 +110,7 @@ console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                         console.log("user is not an admin for this org!!!");
                         service.model.currentOrgSlug = null;
                         service.model.currentOrg = null;
+                        PermissionViolation.create({'user': service.model.currentUser.id, 'url':$location.url()});
                         $location.path('/unauthorized/');
                         return;
                     }
@@ -713,5 +716,20 @@ CoreServices.factory('Organization', ['$resource', '$cookies', function($resourc
                 }
             }
         }
+    });
+}]);
+
+CoreServices.factory('PermissionViolation', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/permissions_violation', {}, {
+        create: {
+            url: '/api/permissions_violation',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': function() {
+                    return $cookies.csrftoken;
+                }
+            }
+        },
+
     });
 }]);

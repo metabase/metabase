@@ -1,0 +1,471 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    background: #FBFCFD;
+}
+
+.SearchBar:focus {
+    outline: none;
+}
+
+.SaveModal {
+    background: #fff;
+    border-radius: 4px;
+    position: absolute;
+    bottom: 2em;
+    right: 2em;
+    width: 400px;
+}
+
+
+.SaveModal.Modal--showing {
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+.SaveModal .ModalContent {
+    display: none;
+    margin-bottom: 6em;
+    padding: 2em;
+}
+
+.SaveModal input {
+    border: none;
+    font-size: 1em;
+    border-bottom: 1px dotted #111;
+    display: block;
+    width: 100%;
+    padding: 1em;
+}
+
+.SaveModal input:focus {
+    outline: none;
+    border-bottom-color: #4A90E2;
+}
+
+.SaveModal.Modal--showing .ModalContent {
+    display: block;
+}
+
+.QueryName {
+    font-weight: 200;
+    margin-right: 1em;
+    font-size: 1.5em;
+    margin: 2em 0 1.25em;
+}
+
+.QueryBar .SelectionModule {
+    position: relative;
+    display: inline-block;
+}
+
+.SelectionModule .SelectionItems {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 2em;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+    border-radius: 4px;
+    background: #fff;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    max-height: 360px;
+}
+
+.SelectionList {
+    max-height: 420px;
+    overflow-y: scroll;
+}
+
+.SelectionItems.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.SelectionItem {
+    padding: 0.8em;
+    font-size: 1em;
+    position: relative;
+    background: #fff;
+    display: flex;
+    align-items: center;
+}
+
+.SelectionItems {
+    min-width: 320px;
+}
+
+.SelectionItem:hover {
+    background: #FBFCFD;
+    transition: background .3s linear;
+}
+
+.SelectionItem:before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ddd;
+    border-radius: 99px;
+    margin-right: 1em;
+}
+
+.SelectionItem.selected {
+    color: #4A90E2;
+    color: currentColor;
+}
+
+.SelectionItem.selected:before {
+    color: inherit;
+    background-color: currentColor;
+    border-color: currentColor;
+}
+
+.QueryBar .SelectionItem:hover:before {
+    border-color: currentColor;
+    transition: border .3s linear;
+}
+
+.SelectionTitle {
+    display: block;
+}
+
+.SelectionTitle:hover {
+    cursor: pointer;
+}
+
+.QueryBar .SelectionTitle {
+    text-align: left;
+    font-size: 0.85em;
+    border: 1px dotted #999;
+    border-radius: 2px;
+}
+
+.QueryBar .ActionButton {
+    padding: 0.75em 1.25em;
+    border: 1px dotted #ddd;
+    box-shadow: none;
+}
+
+.SearchBar {
+    border: none;
+    border-bottom: 1px solid #ddd;
+    padding: 0.75em;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, .12);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.QueryPicker-wrapper {
+    padding: 0 2em;
+    display: flex;
+    flex-direction: column;
+}
+
+.QueryBar .SelectionModule.open .SelectionItems {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.SelectionModule-display {
+    color: #444;
+}
+
+.SelectionModule.selected .SelectionTitle {
+    display: inline-block;
+    margin: 0 0.25em;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .08);
+}
+
+
+.RemoveTrigger {
+    display: inline-block;
+}
+
+.ActionBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1em;
+}
+
+.ActionButton {
+    text-decoration: none;
+    padding: 0.5em 0.75em;
+    background: #FBFCFD;
+    border: 1px solid #ddd;
+    color: #444;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}
+
+.ActionButton:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    transition: border .3s linear, box-shadow .3s linear;
+}
+
+.ActionButton--primary {
+    color: #fff;
+    background: #4A90E2;
+    border: 1px solid #3282DF;
+    transition: background .3s linear, border .3s linear, color .3s linear;
+}
+
+.ActionBar .SettingsButtons {
+    float: right;
+}
+
+.ActionButton-enter {
+    opacity: 0.01;
+    tansition: opacity .3s linear;
+}
+.ActionButton-enter-active {
+    opacity: 1;
+}
+
+.DimensionButton-enter {
+    opacity: 0.01
+    transition: opacity .3s linear;
+}
+
+.DimensionButton-enter-active {
+    opacity: 1;
+}
+
+.DimensionButton-leave {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.DimensionButton-leave-active {
+    opacity: 0.01
+}
+
+.ActionBar .SaveModal,
+.ActionBar .SettingsButtons .ActionButton {
+    display: inline-block;
+}
+
+.ActionButton-enter {
+    margin-top: 100px;
+}
+
+.ActionButton-enter-active {
+    margin-top: 0;
+    transition: margin .3s linear;
+}
+
+.VisualisationOptions-enter {
+    margin-top: 120px;
+}
+
+.VisualisationOptions-enter-active {
+    margin-top: 0;
+    transition: margin .3s linear .3s;
+}
+
+.FilterGroupWrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.FilterGroupWrapper .FilterGroup {
+    margin-top: 1em;
+}
+
+.QueryPicker-group {
+    padding: 2em 0;
+    border-bottom: 1px solid #ddd;
+    background: #fff;
+}
+
+
+/*
+.with-breakouts:after {
+    content: 'By';
+    display: block;
+    position: absolute;
+    top: 0;
+    right: -1.5em;
+    bottom: 0;
+    color: #999;
+    border: 1px solid #ddd;
+    border-radius: 99px;
+    background: #fff;
+    width: 3em;
+    line-height: 3em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+*/
+
+.SaveButton {
+    position: relative;
+    z-index: 5;
+}
+
+.QueryBar .ActionButton {
+    font-size: 0.85em;
+}
+
+.QueryFilter {
+    background: #fff;
+    position: relative;
+    display: inline-block;
+    font-size: 0.85em;
+    margin-right: 1em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 0px 3px rgba(0, 0, 0, .12);
+}
+
+.QueryFilter .input {
+    padding: 1em;
+    border-radius: 0;
+}
+
+.QueryFilter .SelectionModule.selected .SelectionTitle {
+    box-sizing: border-box;
+    margin: 0;
+    border: none;
+    border-right: 1px solid #ddd;
+}
+
+.QueryFilter .SelectionModule.selected .SelectionTitle:hover {
+    background: #FBFCFD;
+}
+
+.QueryFilter .RemoveTrigger {
+    margin: 0.75em 0.5em;
+}
+
+.FilterSection {
+    display: inline-block;
+}
+
+.FilterSection .SelectionItems {
+    position: absolute;
+    display: none;
+}
+
+.FilterSection .SelectionItems.open {
+    display: block;
+}
+
+.SelectionModule.removeable .SelectionTitle {
+    padding-right: 3em;
+}
+
+.QueryTable td,
+.QueryTable th {
+    padding: 1em;
+}
+
+.QueryTable {
+    margin-top: 1em;
+    box-shadow: 0 1px 3px rgba(0,0,0, .12);
+}
+
+.Metric-sourceTable:after {
+    content: '•';
+    display: inline-block;
+}
+
+.DimensionList .RemoveTrigger {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+}
+
+/* breakpoints */
+
+@media screen and (min-width: 60em) {
+    .SelectionTitle {
+        padding: 0.75em 1.25em;
+    }
+    .QueryPicker-group {
+        padding: 1.2em;
+    }
+}
+
+@media screen and (min-width: 120em) {
+    body {
+        font-size: 1em;
+    }
+    .ActionButton,
+    .QueryBar .ActionButton {
+        padding: 1em 2em;
+    }
+    .Table-wrapper {
+        margin-top: 3em;
+    }
+    .SelectionItems.open {
+        top: 3em;
+    }
+    .DimensionList .RemoveTrigger {
+        top: 15px;
+        right: 17px;
+    }
+
+    .QueryName {
+        margin-bottom: 1em;
+    }
+
+    .ActionBar {
+        padding: 1em 0;
+    }
+    .QueryBar .SelectionTitle {
+        padding: 1em 2em;
+    }
+}
+
+.FilterTrigger {
+    border-radius: 99px;
+    padding: 0.85em;
+    position: relative;
+    color: #fff;
+    background: #A8C28e;
+    border-color: #A8C28e;
+}
+
+.FilterTrigger:hover {
+    color: #fff;
+}
+
+
+.FilterSection .SelectionModule,
+.FilterSection .SelectionModule a {
+    color: #A8C28e;
+}
+
+.FilterSection .input {
+    color: #A8C28e;
+    border-color: transparent;
+}
+
+.FilterSection .input:focus {
+    border-color: transparent;
+    border-bottom: 1px solid #A8C28e;
+}
+
+.DimensionList .SelectionModule,
+.DimensionList .SelectionModule a {
+    color: #B9A2CD;
+}
+
+.FilterTrigger .icon {
+    display: flex;
+}
+
+.QueryHeader {
+    overflow: hidden;
+    background: #fff;
+}
