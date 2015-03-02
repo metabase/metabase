@@ -1078,6 +1078,26 @@
                       "initiallyDeferred": false
                     }
                   }
+                },
+                {
+                  "column": {
+                    "name": "additional_info",
+                    "type": "text",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "executor_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_queryexecution_ref_user_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
                 }
               ]
             }
@@ -1090,6 +1110,19 @@
                 {
                   "column": {
                     "name": "query_id"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "query_queryexecution",
+              "indexName": "idx_queryexecution_executor_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "executor_id"
                   }
                 }
               ]
