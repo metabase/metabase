@@ -137,11 +137,13 @@
     `(first (sel :many ~@args (limit 1)))
     (let [[option [entity & forms]] (u/optional keyword? args)]
       (case option
-        :field  `(map ~(second entity)
-                      (sel :many ~entity ~@forms))
-        :id      `(sel :many :field [~entity :id] ~@forms)
-        :fields `(map #(select-keys % [~@(rest entity)])
-                      (sel :many ~entity ~@forms))
+        :field  `(let [[entity# field#] ~entity]
+                   (map field#
+                        (sel :many [entity# field#] ~@forms)))
+        :id     `(sel :many :field [~entity :id] ~@forms)
+        :fields `(let [[~'_ & fields# :as entity#] ~entity]
+                   (map #(select-keys % fields#)
+                        (sel :many entity# ~@forms)))
         nil     `(-sel-select ~entity ~@forms)))))
 
 (def ^:dynamic *entity-overrides*
