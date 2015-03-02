@@ -66,10 +66,7 @@
 (defn deserialize-dates
   "Deserialize date strings with KEYS returned in RESPONSE."
   [response & [k & ks]]
-  {:pre [(or (println "RESPONSE: " response)
-             (println "TYPE: " (type response))
-             true)
-         (map? response)
+  {:pre [(map? response)
          (keyword? k)]}
   (let [response (medley/update response k #(some->> (u/parse-iso8601 %)
                                                      .getTime
