@@ -2038,8 +2038,7 @@
                 {
                   "column": {
                     "name": "title",
-                    "type": "TEXT",
-                    "constraints": {"nullable": false}
+                    "type": "TEXT"
                   }
                 },
                 {
