@@ -78,7 +78,7 @@
         (apply deserialize-dates response ks))))
 
 
-;; ## $$$ Macro
+;; ## match-$
 
 (defmacro match-$
   "Walk over map DEST-OBJECT and replace values of the form `$` or `$key` as follows:
