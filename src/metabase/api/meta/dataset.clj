@@ -5,6 +5,6 @@
             [metabase.driver :as driver]))
 
 (defendpoint POST "/" [:as {:keys [body]}]
-  (driver/dataset-query body {:executor *current-user-id*}))
+  (driver/dataset-query body {:executed_by *current-user-id*}))
 
 (define-routes)

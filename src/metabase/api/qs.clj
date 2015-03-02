@@ -21,7 +21,8 @@
                        :database (:database body)
                        :native {:query (:sql body)
                                 :timezone (get body :timezone)}}
-        options {:synchronously false
+        options {:executed_by *current-user-id*
+                 :synchronously false
                  :cache_result true}]
     (driver/dataset-query dataset-query options)))
 

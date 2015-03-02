@@ -36,7 +36,7 @@
           :as caller-options}]
   (let [options (merge {:cache_result false} caller-options)
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
-                         ;:executor executed_by
+                         :executor_id executed_by
                          :json_query query
                          :version 0
                          :status "starting"
