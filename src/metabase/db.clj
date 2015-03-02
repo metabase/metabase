@@ -165,10 +165,10 @@
                                    (merge *entity-overrides*))]                      ; then do a `default-fields` lookup at runtime
        (when *log-db-calls*
          (println "DB CALL: " (:name ~entity##)
-                  (apply vector (or (:fields entity-select-form#) "*")
-                         ~(mapv (fn [[form & args]]
-                                  `[~(name form) ~(apply str args)])
-                                forms))))
+                  (or (:fields entity-select-form#) "*")
+                  ~@(mapv (fn [[form & args]]
+                            `[~(name form) ~(apply str args)])
+                          forms)))
        (->> (select entity-select-form# ~@forms)
             (map (partial post-select ~entity##))))))                                ; map `post-select` over the results
 
