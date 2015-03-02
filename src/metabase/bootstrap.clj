@@ -16,14 +16,24 @@
 (defn bootstrap
   "Create a User for development purposes. This will load the test data and create permissions for the Test Org."
   []
-  @data/test-db ; migrate our DB + load the test data
+  (migrate :up)
   (bootstrap-user))
 
 
 ;; # (INTERNAL)
 
+(defn- bootstrap-org
+  "Create a new Organization."
+  []
+  (let [org-name (prompt-read-line "Org name" "Default")]
+    (or (sel :one Org :name org-name)
+        (ins Org
+          :name org-name
+          :slug (prompt-read-line "Org slug" "default")
+          :inherits true))))
+
 (defn- bootstrap-user
-  "Create a new User (creating a new Org too if needed)."
+  "Create a new User (creating a new Org too if needed). Org perms between User & Org will be created."
   []
   (let [email (prompt-read-line "User email" "cam@metabase.com")
         ;; create User if needed
@@ -33,12 +43,16 @@
                       :first_name (prompt-read-line "User first name" "Cam")
                       :last_name (prompt-read-line "User last name" "Saul")
                       :password (-> (prompt-read-line "User password" "password")
-                                    cemerick.friend.credentials/hash-bcrypt)))]
+                                    cemerick.friend.credentials/hash-bcrypt)))
+        use-test-org? (prompt-read-line-boolean "Should we use the test data? (User will be added to \"Test Organization\")" "true")
+        org (if use-test-org? (do @data/test-db   ; load the test data reaaallly quick
+                                  @data/test-org)
+                (bootstrap-org))]
     ;; create OrgPerm if needed
-    (or (sel :one OrgPerm :organization_id @data/org-id :user_id (:id user))
+    (or (sel :one OrgPerm :organization_id (:id org) :user_id (:id user))
         (let [admin? (prompt-read-line-boolean "Make user an admin?" "true")]
           (ins OrgPerm
-               :organization_id @data/org-id
+               :organization_id (:id org)
                :user_id (:id user)
                :admin admin?)))
     user))
