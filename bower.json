@@ -15,6 +15,7 @@
     "angular-sanitize": "1.2.26",
     "angular-xeditable": "0.1.8",
     "angular-bootstrap": "0.11.0",
+    "angular-cookie": "4.0.6",
     "jquery": "2.1.1",
     "angular-animate": "1.2.26",
     "underscore": "1.7.0",
