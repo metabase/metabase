@@ -9,7 +9,6 @@
 (def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
 
 
-
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect (match-$ (fetch-user :rasta)
