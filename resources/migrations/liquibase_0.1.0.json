@@ -234,6 +234,68 @@
 
           {
             "createTable": {
+              "tableName": "core_permissionsviolation",
+              "columns": [
+                {
+                  "column": {
+                    "name": "id",
+                    "type": "int",
+                    "autoIncrement": true,
+                    "constraints": {
+                      "primaryKey": true,
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "url",
+                    "type": "varchar(254)",
+                    "constraints": {
+                      "nullable": false
+                    }
+                  }
+                },
+                {
+                  "column": {
+                    "name": "timestamp",
+                    "type": "DATETIME",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "user_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_permissionviolation_ref_user_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "core_permissionsviolation",
+              "indexName": "idx_permissionsviolation_user_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "user_id",
+                    "type": "int"
+                  }
+                }
+              ]
+            }
+          },
+
+          {
+            "createTable": {
               "tableName": "metabase_database",
               "columns": [
                 {
@@ -1016,6 +1078,26 @@
                       "initiallyDeferred": false
                     }
                   }
+                },
+                {
+                  "column": {
+                    "name": "additional_info",
+                    "type": "text",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "executor_id",
+                    "type": "int",
+                    "constraints": {
+                      "nullable": false,
+                      "references": "core_user(id)",
+                      "foreignKeyName": "fk_queryexecution_ref_user_id",
+                      "deferrable": false,
+                      "initiallyDeferred": false
+                    }
+                  }
                 }
               ]
             }
@@ -1028,6 +1110,19 @@
                 {
                   "column": {
                     "name": "query_id"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "createIndex": {
+              "tableName": "query_queryexecution",
+              "indexName": "idx_queryexecution_executor_id",
+              "columns": [
+                {
+                  "column": {
+                    "name": "executor_id"
                   }
                 }
               ]
@@ -1943,8 +2038,7 @@
                 {
                   "column": {
                     "name": "title",
-                    "type": "TEXT",
-                    "constraints": {"nullable": false}
+                    "type": "TEXT"
                   }
                 },
                 {
