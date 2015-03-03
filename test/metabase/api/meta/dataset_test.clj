@@ -8,7 +8,7 @@
             [metabase.test-data :refer :all]))
 
 ;;; ## QUERY /api/meta/dataset
-;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.) (rexpect(match-$ (sel :latest QueryExecution)
+;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect-eval-actual-first (match-$ (sel :one :fields [QueryExecution :id :uuid] (order :id :desc))
                             {:data {:rows [[1000]]
                                     :columns ["count"]
