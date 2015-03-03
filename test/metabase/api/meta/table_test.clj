@@ -44,5 +44,4 @@
             :created_at $
             :base_type "BigIntegerField"})]
   (->> ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories)))
-       (map (fn [field]
-              (deserialize-dates field :created_at :updated_at)))))
+       (map #(deserialize-dates % :created_at :updated_at))))
