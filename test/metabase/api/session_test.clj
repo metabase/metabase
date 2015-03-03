@@ -3,6 +3,7 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :refer :all]
             [metabase.test-data :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.util :refer [expect-eval-actual-first]]))
@@ -10,8 +11,9 @@
 ;; ## POST /api/session
 ;; Test that we can login
 (expect-eval-actual-first
-    (sel :one :fields [Session :id] :user_id (user->id :rasta) (order :created_at :desc))
-  ((user->client :rasta) :post 200 "session" (user->credentials :rasta)))
+    (sel :one :fields [Session :id] :user_id (user->id :rasta))
+  (do (del Session :user_id (user->id :rasta))                  ; delete all other sessions for the bird first
+      (client :post 200 "session" (user->credentials :rasta))))
 
 ;; ## DELETE /api/session
 ;; Test that we can logout
