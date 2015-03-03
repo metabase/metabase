@@ -90,7 +90,13 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
             console.log('notification sent');
             $scope.sentNotification = true;
         }, function (error) {
-            $scope.error = true;
+            if (error.status === 400) {
+                $scope.error = "You must specify the email address of your account.";
+            } else if (error.status === 404) {
+                $scope.error = "Could not find a user for the given email address.";
+            } else {
+                $scope.error = "Error triggering password reset.  Please ask the system administrator for assistance.";
+            }
         });
     }
 
@@ -110,11 +116,15 @@ AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$locatio
             'token': $routeParams.token,
             'password': password
         }, function (result) {
-            console.log('reset happened!');
             $scope.resetSuccess = true;
         }, function (error) {
-            console.log(error);
-            $scope.error = true;
+            if (error.status === 400) {
+                $scope.error = "You must specify a valid password.";
+            } else if (error.status === 404) {
+                $scope.error = "Invalid reset token specified.";
+            } else {
+                $scope.error = "Error resetting password.  Please ask the system administrator for assistance.";
+            }
         });
     }
 

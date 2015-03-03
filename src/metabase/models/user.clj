@@ -54,13 +54,14 @@
 (defn set-user-password
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  {:pre [(nil? user-id)
-         (nil? password)
-         (string? password)]}
-  (println user-id password)
   (let [salt (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
-    (upd User user-id :password_salt salt :password password)))
+    ;; NOTE: any password change expires the password reset token
+    (upd User user-id
+      :password_salt salt
+      :password password
+      :reset_token nil
+      :reset_triggered nil)))
 
 
 (defn users-for-org
