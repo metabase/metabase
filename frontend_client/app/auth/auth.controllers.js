@@ -77,8 +77,55 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
 }]);
 
 
-AuthControllers.controller('PasswordReset', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
+AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
 
-    // TODO: fill this out
+    $scope.sentNotification = false;
+    $scope.error = false;
+
+
+    $scope.sendResetNotification = function (email) {
+        Session.forgot_password({
+            'email': email
+        }, function (result) {
+            console.log('notification sent');
+            $scope.sentNotification = true;
+        }, function (error) {
+            if (error.status === 400) {
+                $scope.error = "You must specify the email address of your account.";
+            } else if (error.status === 404) {
+                $scope.error = "Could not find a user for the given email address.";
+            } else {
+                $scope.error = "Error triggering password reset.  Please ask the system administrator for assistance.";
+            }
+        });
+    }
+
+}]);
+
+
+AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$location', 'Session', function($scope, $routeParams, $location, Session) {
+
+    $scope.resetSuccess = false;
+    $scope.error = false;
+
+    // TODO - check for password matching
+    // TODO - check for password strength
+
+    $scope.resetPassword = function (password) {
+        Session.reset_password({
+            'token': $routeParams.token,
+            'password': password
+        }, function (result) {
+            $scope.resetSuccess = true;
+        }, function (error) {
+            if (error.status === 400) {
+                $scope.error = "You must specify a valid password.";
+            } else if (error.status === 404) {
+                $scope.error = "Invalid reset token specified.";
+            } else {
+                $scope.error = "Error resetting password.  Please ask the system administrator for assistance.";
+            }
+        });
+    }
 
 }]);

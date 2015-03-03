@@ -11,14 +11,11 @@
             (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
-            [metabase.routes :as routes]))
+            [metabase.routes :as routes]
+            [metabase.db :as db]))
 
 (defn liquibase-sql []
-  (let [conn (jdbc/get-connection {:subprotocol "postgresql"
-                                   :subname "//localhost:15432/corvus_test"
-                                   :user "corvus"
-                                   :password "corvus"})]
-    (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn)))
+  (db/migrate :up))
 
 (defn -main
   "I don't do a whole lot ... yet."

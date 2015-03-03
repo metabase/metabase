@@ -5,7 +5,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd exists?]]
             (metabase.models [hydrate :refer [hydrate]]
-                             [user :refer [User]])
+                             [user :refer [User set-user-password]])
             [metabase.util :refer [select-non-nil-keys]]))
 
 
@@ -43,9 +43,9 @@
   (check (and password old_password) [400 "You must specify both old_password and password"])
   ; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  (let-404 [user (sel :one [User :password] :id id)]
-    (check (creds/bcrypt-verify old_password (:password user)) [400 "password mismatch"]))
-  (upd User id :password (creds/hash-bcrypt password))
+  (let-404 [user (sel :one [User :password_salt :password] :id id)]
+    (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) [400 "password mismatch"]))
+  (set-user-password id password)
   (sel :one User :id id))
 
 

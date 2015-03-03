@@ -13,7 +13,12 @@ Auth.config(['$routeProvider', function($routeProvider) {
         controller: 'Logout'
     });
 
-    $routeProvider.when('/auth/password_reset', {
+    $routeProvider.when('/auth/forgot_password', {
+        templateUrl: '/app/auth/partials/forgot_password.html',
+        controller: 'ForgotPassword'
+    });
+
+    $routeProvider.when('/auth/reset_password/:token', {
         templateUrl: '/app/auth/partials/password_reset.html',
         controller: 'PasswordReset'
     });

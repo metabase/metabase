@@ -215,12 +215,14 @@
          (or (= admin true)
              (= admin false))]}
   (or (sel :one User :email email)
-      (let [org (load/test-org)
+      (let [salt (.toString (java.util.UUID/randomUUID))
+            org (load/test-org)
             user (ins User
                    :email email
                    :first_name first
                    :last_name last
-                   :password (creds/hash-bcrypt password))]
+                   :password_salt salt
+                   :password (creds/hash-bcrypt (str salt password)))]
         (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
             (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
         user)))

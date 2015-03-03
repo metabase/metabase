@@ -38,7 +38,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     deferred.resolve(result);
                 }, function(error) {
                     console.log('unable to get current user', error);
-                    $location.path('/unauthorized/');
                     deferred.reject(error);
                 });
 
@@ -77,8 +76,12 @@ console.log('routeChangedImpl-noUser');
                     service.model.currentOrgSlug = null;
                     service.model.currentOrg = null;
 
-                    // NOTE: we are taking for granted that $location won't send us to /auth/login repeatedly
-                    $location.path('/auth/login');
+                    if ($location.path().indexOf('/auth/') !== 0) {
+                        // if the user is asking for a url outside of /auth/* then send them to login page
+                        // otherwise we will let the user continue on to their requested page
+                        $location.path('/auth/login');
+                    }
+
                     return;
                 }
 console.log('routeChangedImpl-withUser');
@@ -567,6 +570,24 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
         },
         delete: {
             method: 'DELETE',
+        },
+        forgot_password: {
+            url: '/api/session/forgot_password',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': function() {
+                    return $cookies.csrftoken;
+                }
+            }
+        },
+        reset_password: {
+            url: '/api/session/reset_password',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': function() {
+                    return $cookies.csrftoken;
+                }
+            }
         }
     });
 }]);
@@ -612,13 +633,6 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
                 'X-CSRFToken': function() {
                     return $cookies.csrftoken;
                 }
-            }
-        },
-        send_password_reset_email: {
-            url: '/api/user/send_password_reset_email/:userId',
-            method: 'GET',
-            params: {
-                'userId': '@id'
             }
         }
     });
