@@ -10,7 +10,7 @@
 
 
 (defendpoint GET "/" []
-  ; user must be a superuser to proceed
+  ;; user must be a superuser to proceed
   (check-403 (:is_superuser @*current-user*))
   (sel :many User))
 
@@ -21,15 +21,15 @@
 
 
 (defendpoint GET "/:id" [id]
-  ; user must be getting their own details OR they must be a superuser to proceed
+  ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (sel :one User :id id))
 
 
 (defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
-  ; user must be getting their own details OR they must be a superuser to proceed
+  ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  ; can't change email if it's already taken BY ANOTHER ACCOUNT
+  ;; can't change email if it's already taken BY ANOTHER ACCOUNT
   (when id
     (check-400 (is-email? email))
     (check-400 (not (exists? User :email email :id [not= id]))))
@@ -39,9 +39,9 @@
 
 
 (defendpoint PUT "/:id/password" [id :as {{:keys [password old_password] :as body} :body}]
-  ; caller must supply current and new password attributes
+  ;; caller must supply current and new password attributes
   (check (and password old_password) [400 "You must specify both old_password and password"])
-  ; user must be getting their own details OR they must be a superuser to proceed
+  ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password_salt :password] :id id)]
     (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) [400 "password mismatch"]))
