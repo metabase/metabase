@@ -16,7 +16,7 @@
     ;; superusers get all organizations
     (sel :many Org)
     ;; normal users simply see the orgs they are members of
-    (sel :many Org (where {:id [in (subselect OrgPerm (fields :organization_id) (where {:user_id *current-user-id*}))]})))
+    (sel :many Org (where {:id [in (subselect OrgPerm (fields :organization_id) (where {:user_id *current-user-id*}))]}))))
 
 
 (defendpoint POST "/" [:as {{:keys [name slug] :as body} :body}]
