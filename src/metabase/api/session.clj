@@ -1,8 +1,9 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [cemerick.friend.credentials :as creds]
-            [metabase.api.common :refer :all]
             [compojure.core :refer [defroutes POST DELETE]]
+            [korma.core :as korma]
+            [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [user :refer [User set-user-password]]
                              [session :refer [Session]])))
@@ -11,7 +12,7 @@
 ;; login
 (defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
   (require-params email password)
-  (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email)]
+  (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
     (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session
