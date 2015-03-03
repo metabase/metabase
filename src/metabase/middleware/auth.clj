@@ -41,14 +41,14 @@
     (let [session (first (korma/select Session
                            ;; NOTE: we join with the User table and ensure user.is_active = true
                            (korma/with User (korma/where {:is_active true}))
-                           (korma/fields :created_at)
+                           (korma/fields :created_at :user_id)
                            (korma/where {:id metabase-sessionid})))
-          session-age (- (System/currentTimeMillis) (.getTime (get session :created_at (java.util.Date. 0))))]
+          session-age-ms (- (System/currentTimeMillis) (.getTime (get session :created_at (java.util.Date. 0))))]
       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-      (when (and session (> (:max-session-age config/app-defaults) session-age))
-        (handler (assoc request :metabase-userid (:user_id session))))
-      ;; default response is 401
-      response-unauthentic)))
+      (if (and session (> (:max-session-age config/app-defaults) (quot session-age-ms 60000)))
+        (handler (assoc request :metabase-userid (:user_id session)))
+        ;; default response is 401
+        response-unauthentic))))
 
 
 (defmacro sel-current-user [current-user-id]
