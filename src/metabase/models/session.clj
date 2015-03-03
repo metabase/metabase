@@ -1,11 +1,13 @@
 (ns metabase.models.session
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.common :refer :all]
+            (metabase.models [common :refer :all]
+              [user :refer [User]])
             [metabase.util :as util]))
 
 (defentity Session
-  (table :core_session))
+  (table :core_session)
+  (belongs-to User {:fk :user_id}))
 
 
 (defmethod pre-insert Session [_ session]

@@ -8,7 +8,7 @@ var QueryControllers = angular.module('corvusadmin.query.controllers', [
     'corvusadmin.query.services'
 ]);
 
-QueryControllers.controller('QueryList', ['$scope', '$location', 'Query', function($scope, $location, Query) {
+QueryControllers.controller('QueryList', ['$scope', '$location', 'CorvusAlert', 'Query', function($scope, $location, CorvusAlert, Query) {
     var sort;
     $scope.filterMode = 'all';
     $scope.sortMode = 'name';
@@ -22,6 +22,9 @@ QueryControllers.controller('QueryList', ['$scope', '$location', 'Query', functi
                 return query.id != queryId;
             });
             $scope.searchFilter = undefined;
+        }, function(error){
+            console.log(error);
+            CorvusAlert.alertError("Error deleting query!");
         });
     };
 

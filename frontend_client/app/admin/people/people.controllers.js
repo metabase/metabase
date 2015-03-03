@@ -70,3 +70,56 @@ PeopleControllers.controller('PeopleList', ['$scope', '$routeParams', 'Organizat
     };
 
 }]);
+
+
+PeopleControllers.controller('PeopleView', ['$scope', '$routeParams', 'User', 'CorvusAlert', function($scope, $routeParams, User, CorvusAlert) {
+        if ($routeParams.userId) {
+            $scope.user = User.get({userId:$routeParams.userId});
+        }
+        $scope.password = null;
+        $scope.password_verify = null;
+        
+        $scope.submit = function() {
+            User.update($scope.user, function(result) {
+                CorvusAlert.alertInfo("Successfully updated!");
+            }, function(errorResponse) {
+                console.log(errorResponse);
+                CorvusAlert.alertError("Error updating");
+            });
+        };
+
+        $scope.sendEmail = function(user) {
+            User.send_password_reset_email({
+                userId: user.id
+            }, function(result) {
+                CorvusAlert.alertInfo("password reset E-mail sent to " + user.email);
+            }, function(errorResponse) {
+                console.log("error while sending password reset email:");
+                console.log(errorResponse.data);
+                CorvusAlert.alertError("Error in sending reset E-mail to " + user.email);
+            });
+        };
+
+        $scope.resetPassword = function(){
+            if($scope.password != $scope.password_verify){
+                CorvusAlert.alertError("Passwords must match!");
+                return;
+            }
+            User.update_password({'id': $scope.user.id, 'password': $scope.password}, function(result) {
+                CorvusAlert.alertInfo("Updated password!");
+                console.log(result);
+            }, function(errorResponse) {
+                // Check for a specific error
+                if(errorResponse.status==400 && errorResponse.data.password){
+                    var errorText = errorResponse.data.password.join('.');
+                    CorvusAlert.alertError(errorText);
+
+                }else{
+                    CorvusAlert.alertError("Error resetting password");
+                    console.log(errorResponse);
+                }
+            });
+        };
+
+
+}]);

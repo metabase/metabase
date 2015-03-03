@@ -3,10 +3,10 @@
 /*global _*/
 /* Services */
 
-var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'corvus.core.services']);
+var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', 'Session', 'User', 'Organization',
-    function($rootScope, $routeParams, $q, $location, Session, User, Organization) {
+CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Organization',
+    function($rootScope, $routeParams, $q, $location, $timeout, ipCookie, Session, User, Organization) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -26,6 +26,21 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 service.model.currentUserPromise = service.refreshCurrentUser();
             },
 
+            clearState: function() {
+                service.model.currentUserPromise = null;
+                service.model.currentUser = null;
+                service.model.currentOrgSlug = null;
+                service.model.currentOrg = null;
+
+                // clear any existing session cookies if they exist
+                ipCookie.remove('metabase.SESSION_ID');
+            },
+
+            setCurrentOrgCookie: function(slug) {
+                var isSecure = ($location.protocol() === "https") ? true : false;
+                ipCookie('metabase.CURRENT_ORG', slug, {path: '/', secure: isSecure});
+            },
+
             refreshCurrentUser: function() {
                 var deferred = $q.defer();
 
@@ -42,6 +57,45 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 });
 
                 return deferred.promise;
+            },
+
+            userIsAdmin: function(){
+                // Let's also figure out if this user is an admin each time the user or the organization changes
+                return service.model.currentUser.org_perms.some(function(org_perm){
+                    return org_perm.organization.slug === $routeParams.orgSlug && org_perm.admin;
+                });
+            },
+
+            userIsMember: function(){
+                return service.model.currentUser.org_perms.some(function(org_perm){
+                    return org_perm.organization.slug === $routeParams.orgSlug;
+                });
+            },
+
+            memberOf: function(){
+                return service.model.currentUser.org_perms.map(function(org_perm){
+                    return org_perm.organization;
+                });
+            },
+
+            adminOf: function(){
+                return service.model.currentUser.org_perms.filter(function(org_perm){
+                    return org_perm.admin;
+                }).map(function(org_perm){
+                    return org_perm.organization;
+                });
+            },
+
+            // This function performs whatever state cleanup and next steps are required when a user tries to access
+            // something they are not allowed to.
+            invalidAccess: function(user, url, message){
+                console.log(message);
+                service.model.currentOrgSlug = null;
+                service.model.currentOrg = null;
+
+                PermissionViolation.create({'user': user.id, 'url':url});
+                $location.path('/unauthorized/');
+
             },
 
             routeChanged: function(event) {
@@ -73,8 +127,7 @@ console.log('routeChanged-noPromise');
                 if (!service.model.currentUser) {
 console.log('routeChangedImpl-noUser');
                     // make sure we clear out any current state just to be safe
-                    service.model.currentOrgSlug = null;
-                    service.model.currentOrg = null;
+                    service.clearState();
 
                     if ($location.path().indexOf('/auth/') !== 0) {
                         // if the user is asking for a url outside of /auth/* then send them to login page
@@ -92,29 +145,17 @@ console.log('routeChangedImpl-withUser');
                     // the url is telling us what Organization we are working in
 console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
-                    var user_perm = null;
-                    var perms = service.model.currentUser.org_perms;
-                    for (var i = 0; i < perms.length; i++) {
-                        var org_perm = perms[i];
-                        if (org_perm.organization.slug === $routeParams.orgSlug) {
-                            user_perm = org_perm.admin;
-                        }
-                    }
+                    // Making convenience vars so it's easier to scan conditions for correctness
+                    var isSuperuser = service.model.currentUser.is_superuser;
+                    var isOrgMember = service.userIsMember();
+                    var isOrgAdmin = service.userIsAdmin();
+                    var onAdminPage = $location.path().indexOf('/'+$routeParams.orgSlug+'/admin') === 0;
 
-                    if (!service.model.currentUser.is_superuser && user_perm === null) {
-                        console.log("user is not authorized for this org!!!");
-                        service.model.currentOrgSlug = null;
-                        service.model.currentOrg = null;
-                        PermissionViolation.create({'user': service.model.currentUser.id, 'url':$location.url()});
-                        $location.path('/unauthorized/');
+                    if (!isSuperuser && !isOrgMember) {
+                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not authorized for this org!!!");
                         return;
-                    } else if ($location.path().indexOf('/'+$routeParams.orgSlug+'/admin') === 0 &&
-                                    !service.model.currentUser.is_superuser && !user_perm) {
-                        console.log("user is not an admin for this org!!!");
-                        service.model.currentOrgSlug = null;
-                        service.model.currentOrg = null;
-                        PermissionViolation.create({'user': service.model.currentUser.id, 'url':$location.url()});
-                        $location.path('/unauthorized/');
+                    } else if (onAdminPage && !isSuperuser && !isOrgAdmin) {
+                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not an admin for this org!!!");
                         return;
                     }
 
@@ -130,6 +171,7 @@ console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                         });
 
                         service.model.currentOrgSlug = $routeParams.orgSlug;
+                        service.setCurrentOrgCookie(service.model.currentOrgSlug);
                     }
 
                     // if we get here it just means we navigated somewhere within the existing org, so do nothing
@@ -137,10 +179,27 @@ console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                 } else if (!service.model.currentOrgSlug) {
                     // the url doesn't tell us what Organization this is, so lets try a different approach
 console.log('routeChangedImpl-withUser-noOrg');
-                    // TODO: a better approach might be to set a cookie indicating the last org the user was on
+                    // Check to see if the user has a current org cookie var set
+                    var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
+                    if (currentOrgFromCookie){
+                        // check to see if the org slug exists
+                        var orgsWithSlug = service.model.currentUser.org_perms.filter(function(org_perm){
+                            return org_perm.organization.slug == currentOrgFromCookie;
+                        });
+                        if(orgsWithSlug.length > 0){
+                            var currentOrgPerm = orgsWithSlug[0];
+                            service.model.currentOrg = currentOrgPerm.organization;
+                            service.model.currentOrgSlug = service.model.currentOrg.slug;
+                            service.setCurrentOrgCookie(service.model.currentOrgSlug);
+                            $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
+                            return;
+                        }
+                    }
+                    // Otherwise fall through and set the current org to the first org a user is a member of
                     if (service.model.currentUser.org_perms.length > 0) {
                         service.model.currentOrg = service.model.currentUser.org_perms[0].organization;
                         service.model.currentOrgSlug = service.model.currentOrg.slug;
+                        service.setCurrentOrgCookie(service.model.currentOrgSlug);
                         $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
                     } else {
                         // TODO: this is a real issue.  we have a user with no organizations.  where do we send them?
@@ -163,10 +222,7 @@ console.log('routeChangedImpl-withUser-noOrg');
             console.log('logoutCompleted', session_id);
 
             // clear out any current state
-            service.model.currentUserPromise = null;
-            service.model.currentUser = null;
-            service.model.currentOrgSlug = null;
-            service.model.currentOrg = null;
+            service.clearState();
 
             // NOTE that we don't really care about callbacks in this case
             Session.delete({
@@ -179,9 +235,15 @@ console.log('routeChangedImpl-withUser-noOrg');
         //       careful to consider the implications of this because any endpoint that returns a 401/403 can
         //       have its call stack interrupted now and handled here instead of its normal callback sequence.
 
-        // redirect auth needs over to login page
+        // $http interceptor received a 401 response
         $rootScope.$on("event:auth-loginRequired", function() {
-            $location.path("/auth/login");
+            // this is effectively just like a logout, we want to reset everything to a base state, then force login
+            service.clearState();
+
+            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+            $timeout(function() {
+                $location.path('/auth/login');
+            }, 300);
         });
 
         // $http interceptor received a 403 response
