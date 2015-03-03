@@ -155,22 +155,21 @@
   "Internal macro used by `sel` (don't call this directly).
    Generates the korma `select` form."
   [entity & forms]
-  (let [[entity field-keys] (destructure-entity entity)                              ; pull out field-keys if passed entity vector like `[entity & field-keys]`
-        forms (sel-apply-kwargs forms)                                               ; convert kwargs like `:id 1` to korma `where` clause
-        entity## (gensym)]
-    `(let [~entity## (entity->korma ~entity)                                         ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
-           entity-select-form# (-> ~entity##                                         ; entity-select-form# is the tweaked version we'll pass to korma `select`
-                                   (assoc :fields ~(or field-keys
-                                                       `(default-fields ~entity##))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
-                                   (merge *entity-overrides*))]                      ; then do a `default-fields` lookup at runtime
+  (let [forms (sel-apply-kwargs forms)]                                          ; convert kwargs like `:id 1` to korma `where` clause
+    `(let [[entity# field-keys#] (destructure-entity ~entity)                    ; pull out field-keys if passed entity vector like `[entity & field-keys]`
+           entity# (entity->korma entity#)                                       ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
+           entity-select-form# (-> entity#                                       ; entity-select-form# is the tweaked version we'll pass to korma `select`
+                                   (assoc :fields (or field-keys#
+                                                      (default-fields entity#))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
+                                   (merge *entity-overrides*))]                  ; then do a `default-fields` lookup at runtime
        (when *log-db-calls*
-         (println "DB CALL: " (:name ~entity##)
+         (println "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")
                   ~@(mapv (fn [[form & args]]
-                            `[~(name form) ~(apply str args)])
+                            `[~(name form) ~(apply str (interpose " " args))])
                           forms)))
        (->> (select entity-select-form# ~@forms)
-            (map (partial post-select ~entity##))))))                                ; map `post-select` over the results
+            (map (partial post-select entity#))))))                             ; map `post-select` over the results
 
 (defmacro sel-fn
   "Returns a memoized fn that calls `sel`."
