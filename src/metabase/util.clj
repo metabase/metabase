@@ -84,7 +84,10 @@
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
   (-> (java.util.Date.)
-      .getTime
+      .getTime ; time in milliseconds
+      (/ 1000) ; we don't care about the ms so strip them out
+      int
+      (* 1000)
       (java.sql.Timestamp.)))
 
 (defn parse-iso8601
