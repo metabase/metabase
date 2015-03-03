@@ -1,5 +1,6 @@
 (ns metabase.models.user
-  (:require [korma.core :refer :all]
+  (:require [cemerick.friend.credentials :as creds]
+            [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
                              [org-perm :refer [OrgPerm]])
@@ -48,6 +49,18 @@
                   :is_active true
                   :is_superuser false}]
     (merge defaults user)))
+
+
+(defn set-user-password
+  "Updates the stored password for a specified `User` by hashing the password with a random salt."
+  [user-id password]
+  {:pre [(nil? user-id)
+         (nil? password)
+         (string? password)]}
+  (println user-id password)
+  (let [salt (.toString (java.util.UUID/randomUUID))
+        password (creds/hash-bcrypt (str salt password))]
+    (upd User user-id :password_salt salt :password password)))
 
 
 (defn users-for-org

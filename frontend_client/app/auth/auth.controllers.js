@@ -77,8 +77,45 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
 }]);
 
 
-AuthControllers.controller('PasswordReset', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
+AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
 
-    // TODO: fill this out
+    $scope.sentNotification = false;
+    $scope.error = false;
+
+
+    $scope.sendResetNotification = function (email) {
+        Session.forgot_password({
+            'email': email
+        }, function (result) {
+            console.log('notification sent');
+            $scope.sentNotification = true;
+        }, function (error) {
+            $scope.error = true;
+        });
+    }
+
+}]);
+
+
+AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$location', 'Session', function($scope, $routeParams, $location, Session) {
+
+    $scope.resetSuccess = false;
+    $scope.error = false;
+
+    // TODO - check for password matching
+    // TODO - check for password strength
+
+    $scope.resetPassword = function (password) {
+        Session.reset_password({
+            'token': $routeParams.token,
+            'password': password
+        }, function (result) {
+            console.log('reset happened!');
+            $scope.resetSuccess = true;
+        }, function (error) {
+            console.log(error);
+            $scope.error = true;
+        });
+    }
 
 }]);
