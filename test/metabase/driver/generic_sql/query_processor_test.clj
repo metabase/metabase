@@ -168,7 +168,7 @@
                     :query {:source_table (table->id :categories)
                             :aggregation ["rows"]
                             :page {:items 5
-                                   :page 1}
+                                   :page 2}
                             :order_by [[(field->id :categories :name) "ascending"]]}}))
 
 ;; ## "FIELDS" CLAUSE
