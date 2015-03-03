@@ -27,12 +27,12 @@
              :dashboard (sel-fn :one "metabase.models.dashboard/Dashboard" :id dashboard_id))))
 
 (defmethod pre-insert DashboardCard [_ dashcard]
-  (let [defaults {:created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)
+  (let [defaults {:created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)
                   :sizeX 2
                   :sizeY 2}]
     (merge defaults dashcard)))
 
 (defmethod pre-update DashboardCard [_ dashcard]
   (assoc dashcard
-         :updated_at (util/new-sql-date))) ; is this useful in any way whatsoever???
+         :updated_at (util/new-sql-timestamp))) ; is this useful in any way whatsoever???

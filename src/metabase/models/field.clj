@@ -76,8 +76,8 @@
                :distinct-count (delay (field-distinct-count <>))))
 
 (defmethod pre-insert Field [_ field]
-  (let [defaults {:created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)
+  (let [defaults {:created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)
                   :active true
                   :preview_display true
                   :field_type :dimension

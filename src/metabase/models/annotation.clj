@@ -13,13 +13,13 @@
 
 
 (defmethod pre-insert Annotation [_ annotation]
-  (let [defaults {:created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)}]
+  (let [defaults {:created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)}]
     (merge defaults annotation)))
 
 
 (defmethod pre-update Annotation [_ annotation]
-  (assoc annotation :updated_at (util/new-sql-date)))
+  (assoc annotation :updated_at (util/new-sql-timestamp)))
 
 
 (defmethod post-select Annotation [_ {:keys [organization_id author_id] :as annotation}]

@@ -11,5 +11,5 @@
 
 
 (defmethod pre-insert Session [_ session]
-  (let [defaults {:created_at (util/new-sql-date)}]
+  (let [defaults {:created_at (util/new-sql-timestamp)}]
     (merge defaults session)))

@@ -79,13 +79,13 @@
         ~(if (empty? rest) `~'<>
              `(-assoc* ~@rest))))
 
-(defn new-sql-date
+(defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
-   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Date`)."
+   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
   (-> (java.util.Date.)
       .getTime
-      (java.sql.Date.)))
+      (java.sql.Timestamp.)))
 
 (defn parse-iso8601
   "parse a string value expected in the iso8601 format into a `java.sql.Date`."

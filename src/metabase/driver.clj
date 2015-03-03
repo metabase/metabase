@@ -41,8 +41,8 @@
                          :version 0
                          :status "starting"
                          :error ""
-                         :started_at (util/new-sql-date)
-                         :finished_at (util/new-sql-date)
+                         :started_at (util/new-sql-timestamp)
+                         :finished_at (util/new-sql-timestamp)
                          :running_time 0
                          :result_rows 0
                          :result_file ""
@@ -85,7 +85,7 @@
   [query-execution msg]
   (let [updates {:status "failed"
                  :error msg
-                 :finished_at (util/new-sql-date)
+                 :finished_at (util/new-sql-timestamp)
                  :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
@@ -104,7 +104,7 @@
   ;; record our query execution and format response
   (-> (util/assoc* query-execution
                    :status "completed"
-                   :finished_at (util/new-sql-date)
+                   :finished_at (util/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
                    :result_data (if cache-result
@@ -126,4 +126,3 @@
       query-execution)
     ;; first time saving execution, so insert it
     (mapply ins QueryExecution query-execution)))
-

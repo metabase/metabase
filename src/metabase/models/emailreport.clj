@@ -45,15 +45,15 @@
   (let [defaults {:public_perms perms-none
                   :mode mode-active
                   :version 1
-                  :created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)}]
+                  :created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)}]
     (-> (merge defaults report)
         (assoc :dataset_query (json/write-str dataset_query)
                :schedule (json/write-str schedule)))))
 
 (defmethod pre-update EmailReport [_ {:keys [version dataset_query schedule] :as report}]
   (assoc report
-    :updated_at (util/new-sql-date)
+    :updated_at (util/new-sql-timestamp)
     :dataset_query (json/write-str dataset_query)
     :schedule (json/write-str schedule)
     :version (+ 1 version)))

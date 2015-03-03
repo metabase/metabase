@@ -3,7 +3,7 @@
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
                              [user :refer [User]])
-            [metabase.util :refer [new-sql-date]]))
+            [metabase.util :refer [new-sql-timestamp]]))
 
 (defentity CardFavorite
   (table :report_cardfavorite))
@@ -14,6 +14,6 @@
          :card (sel-fn :one Card :id card_id)))
 
 (defmethod pre-insert CardFavorite [_ card-favorite]
-  (let [defaults {:created_at (new-sql-date)
-                  :updated_at (new-sql-date)}]
+  (let [defaults {:created_at (new-sql-timestamp)
+                  :updated_at (new-sql-timestamp)}]
     (merge defaults card-favorite)))

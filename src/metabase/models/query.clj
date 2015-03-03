@@ -28,8 +28,8 @@
    :database_id])
 
 (defmethod pre-insert Query [_ {:keys [details] :as query}]
-  (let [defaults {:created_at (new-sql-date)
-                  :updated_at (new-sql-date)
+  (let [defaults {:created_at (new-sql-timestamp)
+                  :updated_at (new-sql-timestamp)
                   :version 1}]
     (-> (merge defaults query)
         (assoc :details (json/write-str details)))))
@@ -40,7 +40,7 @@
       (assoc :details (json/write-str (if-not sql {}
                                         {:sql sql
                                          :timezone timezone}))
-             :updated_at (new-sql-date)
+             :updated_at (new-sql-timestamp)
              :version (+ 1 version))))
 
 (defmethod post-select Query [_ {:keys [creator_id database_id] :as query}]
