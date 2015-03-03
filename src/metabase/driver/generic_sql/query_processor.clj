@@ -141,9 +141,9 @@
 ;;      :items 20}
 (defmethod apply-form :page [[_ {:keys [items page]}]]
   {:pre [(integer? items)
-         (integer? page)]}
-  (println "ITEMS: " items)
-  (println "PAGE: " page)
+         (> items 0)
+         (integer? page)
+         (> page 0)]}
   `[(limit ~items)
     (offset ~(* items (- page 1)))])
 

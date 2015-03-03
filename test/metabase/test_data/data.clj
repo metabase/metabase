@@ -27,81 +27,81 @@
 
 ;; name
 (defonce ^:private categories
-  ["African"
-   "American"
-   "Artisan"
-   "Asian"
-   "BBQ"
-   "Bakery"
-   "Bar"
-   "Beer Garden"
-   "Breakfast / Brunch"
-   "Brewery"
-   "Burger"
-   "Café"
-   "Café Sweets"
-   "Caribbean"
-   "Chinese"
-   "Coffee Shop"
-   "Comedy Club"
-   "Deli"
-   "Dim Sum"
-   "Diner"
-   "Donut Shop"
-   "English"
-   "Entertainment"
-   "Fashion"
-   "Fast Food"
-   "Food Truck"
-   "French"
-   "Gay Bar"
-   "German"
-   "Gluten-free"
-   "Greek"
-   "Grocery"
-   "Health & Beauty"
-   "Home"
-   "Hostel"
-   "Hot Dog"
-   "Hotel"
-   "Indian"
-   "Italian"
-   "Japanese"
-   "Jewish"
-   "Juice Bar"
-   "Karaoke"
-   "Korean"
-   "Landmark"
-   "Late Dining"
-   "Latin American"
-   "Lounge"
-   "Mediterannian"
-   "Mexican"
-   "Middle Eastern"
-   "Molecular Gastronomy"
-   "Moroccan"
-   "Museum"
-   "Nightclub"
-   "Nightlife"
-   "Outdoors"
-   "Pizza"
-   "Ramen"
-   "Restaurant General"
-   "Scandinavian"
-   "Seafood"
-   "South Pacific"
-   "Southern"
-   "Spanish"
-   "Stadium"
-   "Steakhouse"
-   "Strip Club"
-   "Tapas"
-   "Tea Room"
-   "Thai"
-   "Unknown"
-   "Vegetarian / Vegan"
-   "Wine Bar"
-   "Winery"])
+  [["African"]
+   ["American"]
+   ["Artisan"]
+   ["Asian"]
+   ["BBQ"]
+   ["Bakery"]
+   ["Bar"]
+   ["Beer Garden"]
+   ["Breakfast / Brunch"]
+   ["Brewery"]
+   ["Burger"]
+   ["Café"]
+   ["Café Sweets"]
+   ["Caribbean"]
+   ["Chinese"]
+   ["Coffee Shop"]
+   ["Comedy Club"]
+   ["Deli"]
+   ["Dim Sum"]
+   ["Diner"]
+   ["Donut Shop"]
+   ["English"]
+   ["Entertainment"]
+   ["Fashion"]
+   ["Fast Food"]
+   ["Food Truck"]
+   ["French"]
+   ["Gay Bar"]
+   ["German"]
+   ["Gluten-free"]
+   ["Greek"]
+   ["Grocery"]
+   ["Health & Beauty"]
+   ["Home"]
+   ["Hostel"]
+   ["Hot Dog"]
+   ["Hotel"]
+   ["Indian"]
+   ["Italian"]
+   ["Japanese"]
+   ["Jewish"]
+   ["Juice Bar"]
+   ["Karaoke"]
+   ["Korean"]
+   ["Landmark"]
+   ["Late Dining"]
+   ["Latin American"]
+   ["Lounge"]
+   ["Mediterannian"]
+   ["Mexican"]
+   ["Middle Eastern"]
+   ["Molecular Gastronomy"]
+   ["Moroccan"]
+   ["Museum"]
+   ["Nightclub"]
+   ["Nightlife"]
+   ["Outdoors"]
+   ["Pizza"]
+   ["Ramen"]
+   ["Restaurant General"]
+   ["Scandinavian"]
+   ["Seafood"]
+   ["South Pacific"]
+   ["Southern"]
+   ["Spanish"]
+   ["Stadium"]
+   ["Steakhouse"]
+   ["Strip Club"]
+   ["Tapas"]
+   ["Tea Room"]
+   ["Thai"]
+   ["Unknown"]
+   ["Vegetarian / Vegan"]
+   ["Wine Bar"]
+   ["Winery"]])
 
 ;; [name lat lon price category_id]
 (defonce ^:private venues

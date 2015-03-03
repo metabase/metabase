@@ -124,11 +124,52 @@
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
-                                  :filter [nil nil]
+                                  :filter nil
                                   :aggregation ["rows"]
                                   :breakout [nil]
                                   :limit 10
                                   :order_by [[(field->id :venues :id) "ascending"]]}}))
+
+;; ## "PAGE" CLAUSE
+;; Test that we can get "pages" of results.
+
+;; Get the first page
+(expect {:status :completed
+         :row_count 5
+         :data {:rows [[1 "African"]
+                       [2 "American"]
+                       [3 "Artisan"]
+                       [4 "Asian"]
+                       [5 "BBQ"]]
+                :columns ["ID", "NAME"]
+                :cols [{:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
+                       {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :categories)
+                            :aggregation ["rows"]
+                            :page {:items 5
+                                   :page 1}
+                            :order_by [[(field->id :categories :name) "ascending"]]}}))
+
+;; Get the second page
+(expect {:status :completed
+         :row_count 5
+         :data {:rows [[6 "Bakery"]
+                       [7 "Bar"]
+                       [8 "Beer Garden"]
+                       [9 "Breakfast / Brunch"]
+                       [10 "Brewery"]]
+                :columns ["ID", "NAME"]
+                :cols [{:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
+                       {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :categories)
+                            :aggregation ["rows"]
+                            :page {:items 5
+                                   :page 1}
+                            :order_by [[(field->id :categories :name) "ascending"]]}}))
 
 ;; ## "FIELDS" CLAUSE
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause
