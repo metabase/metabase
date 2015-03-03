@@ -16,8 +16,10 @@
 (defn bootstrap
   "Create a User for development purposes. This will load the test data and create permissions for the Test Org."
   []
-  (migrate :up)
-  (bootstrap-user))
+  (binding [*log-db-calls* false]
+    (migrate :up)
+    (let [{:keys [email]} (bootstrap-user)]
+      (println (format "Successfully created User \"%s\"." email)))))
 
 
 ;; # (INTERNAL)
