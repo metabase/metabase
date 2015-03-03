@@ -6,8 +6,7 @@
 
 ## Build Status
 
-[![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg)](https://circleci.com/gh/metabase/metabase-init)
-
+[![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
 ## Build
 
