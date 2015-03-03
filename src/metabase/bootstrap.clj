@@ -14,7 +14,9 @@
 ;; # BOOTSTRAPPING
 
 (defn bootstrap
-  "Create a User for development purposes. This will load the test data and create permissions for the Test Org."
+  "Create a `User` (and, optionally, `Org`) for development purposes.
+   You may optionally load the test data and use the test `Org`.
+   Permissions will be created for `User` <-> `Org`."
   []
   (binding [*log-db-calls* false]
     (migrate :up)
