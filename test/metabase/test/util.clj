@@ -77,3 +77,10 @@
   (let [fn-name (gensym)]
     `(def ~(vary-meta fn-name assoc :expectation true)
        (fn [] (-doexpect ~expected ~actual)))))
+
+;; ## random-name
+(defn random-name
+  "Generate a random string of 20 uppercase letters."
+  []
+  (->> (repeatedly 20 #(-> (rand-int 26) (+ (int \A)) char))
+       (apply str)))
