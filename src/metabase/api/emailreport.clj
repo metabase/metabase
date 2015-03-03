@@ -86,7 +86,6 @@
 
 
 (defendpoint GET "/:id/executions" [id]
-  ;; TODO - implementation (list recent results of a query)
   (read-check EmailReport id)
   (-> (sel :many EmailReportExecutions :report_id id (order :created_at :DESC) (limit 25))
       (hydrate :organization)))
