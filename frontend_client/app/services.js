@@ -3,10 +3,10 @@
 /*global _*/
 /* Services */
 
-var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'corvus.core.services']);
+var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', 'Session', 'User', 'Organization',
-    function($rootScope, $routeParams, $q, $location, Session, User, Organization) {
+CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Organization',
+    function($rootScope, $routeParams, $q, $location, $timeout, ipCookie, Session, User, Organization) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -181,7 +181,17 @@ console.log('routeChangedImpl-withUser-noOrg');
 
         // redirect auth needs over to login page
         $rootScope.$on("event:auth-loginRequired", function() {
-            $location.path("/auth/login");
+console.log('401-intercepted');
+            // clear any existing session cookies now
+            ipCookie.remove('metabase.SESSION_ID');
+
+            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+            $timeout(function() {
+            console.log('redirecting after cookie is now set');
+                $location.path('/auth/login');
+            }, 300);
+
+            console.log('carrying on');
         });
 
         // $http interceptor received a 403 response
