@@ -47,17 +47,15 @@ You can update the GitHub pages documentation using
 You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
 
 
-## Options
+## Bootstrapping (for Development)
 
-...
+To quickly get your dev environment set up, use the `bootstrap` function to create a new User and Organization.
+Open a REPL in Emacs or with `lein repl` and enter the following:
 
-## Examples
+    (use 'metabase.bootstrap)
+	(bootstrap)
 
-...
-
-### Bugs
-
-...
+You'll be walked through the steps to get started.
 
 
 ## License
@@ -65,4 +63,3 @@ You should be on the `master` branch without any uncommited local changes before
 Copyright © 2015 FIXME
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.
-
