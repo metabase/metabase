@@ -3,8 +3,6 @@
 (defproject metabase "metabase-0.1.0-SNAPSHOT"
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "LATEST"]          ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
