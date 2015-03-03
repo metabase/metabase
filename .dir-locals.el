@@ -7,6 +7,8 @@
                               (catch-api-exceptions 0)
                               (context 2)
                               (expect 1)
+                              (expect-eval-actual-first 1)
+                              (expect-let 1)
                               (ins 1)
                               (let-400 1)
                               (let-404 1)
