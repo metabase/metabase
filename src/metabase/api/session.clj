@@ -11,7 +11,7 @@
 ;; login
 (defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
   (require-params email password)
-  (let-400 [user (sel :one [User :id :password_salt :password] :email email)]
+  (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email)]
     (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session

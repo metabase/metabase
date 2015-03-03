@@ -26,3 +26,7 @@
   (assoc org
          :can_read (delay (org-can-read id))
          :can_write (delay (org-can-write id))))
+
+(defmethod pre-insert Org [_ org]
+  (let [defaults {:inherits false}]
+    (merge defaults org)))

@@ -1,32 +1,41 @@
 (ns metabase.api.org
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [korma.core :refer [where subselect fields order limit]]
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [org :refer [Org]]
                              [user :refer [User]]
-                             [org-perm :refer [OrgPerm]])
+                             [org-perm :refer [OrgPerm grant-org-perm]])
             [metabase.util :as util]))
 
 
 (defendpoint GET "/" []
-  ;; TODO - permissions check
-  (sel :many Org))
+  (if (:is_superuser *current-user*)
+    ;; superusers get all organizations
+    (sel :many Org)
+    ;; normal users simply see the orgs they are members of
+    (sel :many Org (where {:id [in (subselect OrgPerm (fields :organization_id) (where {:user_id *current-user-id*}))]}))))
 
 
-(defendpoint POST "/" [:as {body :body}]
-  ;; TODO - implementation
-  {:status 200
-   :body {}})
+(defendpoint POST "/" [:as {{:keys [name slug] :as body} :body}]
+  (require-params name slug)
+  ;; user must be a superuser to proceed
+  (check-403 (:is_superuser *current-user*))
+  (->> (util/select-non-nil-keys body [:slug :name :description :logo_url])
+    (mapply ins Org)))
+
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)
          read-check))
 
+
 (defendpoint GET "/slug/:slug" [slug]
   (->404 (sel :one Org :slug slug)
          read-check))
+
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   (write-check Org id)
@@ -34,23 +43,12 @@
                   (mapply upd Org id)))
   (sel :one Org :id id))
 
-(defn grant-org-perm
-  "Grants permission for given User on Org.  Creates record if needed, otherwise updates existing record."
-  [org-id user-id is-admin]
-  (let [perm (sel :one OrgPerm :user_id user-id :organization_id org-id)
-        is-admin (boolean is-admin)]
-    (if-not perm
-      (ins OrgPerm
-        :user_id user-id
-        :organization_id org-id
-        :admin is-admin)
-      (upd OrgPerm (:id perm)
-        :admin is-admin))))
 
 (defendpoint GET "/:id/members" [id]
   (read-check Org id)
   (-> (sel :many OrgPerm :organization_id id)
       (hydrate :user :organization)))
+
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
   ; we require 4 attributes in the body
@@ -67,17 +65,20 @@
     (-> (sel :one OrgPerm :user_id user-id :organization_id id)
         (hydrate :user :organization))))
 
+
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
   (write-check Org id)
   (check-404 (exists? User :id user-id))
   (grant-org-perm id user-id (boolean admin))
   {:success true})
 
+
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
   (write-check Org id)
   (check-404 (exists? User :id user-id))
   (grant-org-perm id user-id (boolean admin))
   {:success true})
+
 
 (defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
   ; user must have admin perms on org to proceed
