@@ -1,6 +1,7 @@
 (ns metabase.middleware.auth
   "Middleware for dealing with authentication and session management."
-  (:require [korma.core :refer :all]
+  (:require [korma.core :as korma]
+            [metabase.config :as config]
             [metabase.db :refer [sel]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             (metabase.models [session :refer [Session]]
@@ -9,6 +10,8 @@
 
 (def SESSION_COOKIE "metabase.SESSION_ID")
 (def SESSION_HEADER "x-metabase-session")
+
+(def response-unauthentic {:status 401 :body "Unauthenticated"})
 
 
 (defn wrap-sessionid
@@ -34,11 +37,18 @@
    NOTE: we are purposely not associating the full current user object here so that we can be modular."
   [handler]
   (fn [{:keys [metabase-sessionid] :as request}]
-    (if-let [session (sel :one Session :id metabase-sessionid)]
-      ;; TODO - enforce session expiration
-      ;; TODO - validate user is_active?
-      (handler (assoc request :metabase-userid (:user_id session)))
-      {:status 401 :body "Unauthenticated"})))
+    ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
+    (let [session (first (korma/select Session
+                           ;; NOTE: we join with the User table and ensure user.is_active = true
+                           (korma/with User (korma/where {:is_active true}))
+                           (korma/fields :created_at)
+                           (korma/where {:id metabase-sessionid})))
+          session-age (- (System/currentTimeMillis) (.getTime (get session :created_at (java.util.Date. 0))))]
+      ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
+      (when (and session (> (:max-session-age config/app-defaults) session-age))
+        (handler (assoc request :metabase-userid (:user_id session))))
+      ;; default response is 401
+      response-unauthentic)))
 
 
 (defmacro sel-current-user [current-user-id]
