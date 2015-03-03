@@ -54,7 +54,7 @@
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
   ; we require 4 attributes in the body
-  (check-400 (and first_name last_name email admin))
+  (check-400 (and first_name last_name email admin (util/is-email? email)))
   ; user must have admin perms on org to proceed
   (write-check Org id)
   (let [user-id (:id (or (sel :one [User :id] :email email)                ; find user with existing email - if exists then grant perm
