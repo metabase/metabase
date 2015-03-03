@@ -128,3 +128,11 @@
   [pred? args & [default]]
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
+
+
+(defn is-email?
+  "Returns true if v is an email address"
+  [v]
+  (if (nil? v)
+    false
+    (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?" v))))
