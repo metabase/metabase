@@ -6,7 +6,7 @@
             [metabase.db :refer [sel upd exists?]]
             (metabase.models [hydrate :refer [hydrate]]
                              [user :refer [User set-user-password]])
-            [metabase.util :refer [select-non-nil-keys]]))
+            [metabase.util :refer [is-email? select-non-nil-keys]]))
 
 
 (defendpoint GET "/" []
@@ -29,10 +29,10 @@
 (defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
   ; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  ; can't change email if it's already taken by another account
-  ;; TODO - we should probably do some kind of email validation here?
-  ;; TODO - validate that email address is valid format
-  ;; TODO - make sure email address isn't already taken
+  ; can't change email if it's already taken BY ANOTHER ACCOUNT
+  (when id
+    (check-400 (is-email? email))
+    (check-400 (not (exists? User :email email :id [not= id]))))
   (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
                   (mapply upd User id)))
   (sel :one User :id id))
