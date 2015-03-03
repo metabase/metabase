@@ -3,8 +3,8 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             (metabase.models [org-perm :refer [OrgPerm]])
-            (metabase [test-data :refer :all]
-                      [test-utils :refer [deserialize-dates match-$]])))
+            [metabase.test.util :refer [deserialize-dates match-$]]
+            [metabase.test-data :refer :all]))
 
 (def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
 

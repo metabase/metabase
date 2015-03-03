@@ -2,18 +2,16 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
-            [medley.core :as medley]
             [ring.adapter.jetty :as ring]
             (metabase [core :as core]
-                      [db :refer :all]
-                      [util :as u])))
-
-(declare $->prop)
+                      [db :refer :all])))
 
 
 ;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
 
 ;; ## DB Setup
+;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
+;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
 
 (defn setup-db
   "setup database schema"
@@ -57,58 +55,3 @@
   []
   (when @jetty-instance
     (.stop ^org.eclipse.jetty.server.Server @jetty-instance)))
-
-
-;; # FUNCTIONS + MACROS FOR WRITING UNIT TESTS
-
-;; ## Response Deserialization
-
-(defn deserialize-dates
-  "Deserialize date strings with KEYS returned in RESPONSE."
-  [response & [k & ks]]
-  {:pre [(map? response)
-         (keyword? k)]}
-  (let [response (medley/update response k #(some->> (u/parse-iso8601 %)
-                                                     .getTime
-                                                     java.sql.Timestamp.))]
-    (if (empty? ks) response
-        (apply deserialize-dates response ks))))
-
-
-;; ## match-$
-
-(defmacro match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$` or `$key` as follows:
-
-    {k $} -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source## (gensym)
-        dest-object (->> dest-object
-                         (map (fn [[k v]]
-                                {k (if (= v '$) `(~k ~source##)
-                                       v)}))
-                         (reduce merge {}))]
-    `(let [~source## ~source-obj]
-       ~(clojure.walk/prewalk (partial $->prop source##)
-                              dest-object))))
-
-(defn- $->prop
-  "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
-
-    ($->prop my-obj 'fish)  -> 'fish
-    ($->prop my-obj '$fish) -> '(:fish my-obj)"
-  [source-obj form]
-  (or (when (symbol? form)
-        (let [[first-char & rest-chars] (name form)]
-          (when (= first-char \$)
-            (let [kw (->> rest-chars
-                          (apply str)
-                          keyword)]
-              `(~kw ~source-obj)))))
-      form))
