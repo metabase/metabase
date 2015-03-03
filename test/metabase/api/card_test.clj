@@ -57,10 +57,9 @@
 
 ;; ## GET /api/card/:id
 ;; Test that we can fetch a card
-(let [card-name (random-card-name)
-      {:keys [id]} (post-card card-name)]
+(let [card-name (random-card-name)]
   (expect-eval-actual-first
-      (match-$ (sel :one Card :id id)
+      (match-$ (sel :one Card :name card-name)
         {:description nil
          :can_read true
          :can_write true
@@ -86,15 +85,16 @@
          :visualization_settings {:global {:title nil}}
          :public_perms 0
          :created_at $})
-    (-> ((user->client :rasta) :get 200 (format "card/%d" id))
-        (deserialize-dates :updated_at :created_at))))
+    (let [{:keys [id]} (post-card card-name)]
+      (-> ((user->client :rasta) :get 200 (format "card/%d" id))
+          (deserialize-dates :updated_at :created_at)))))
 
 ;; ## DELETE /api/card/:id
 ;; Check that we can delete a card
-(let [{:keys [id]} (post-card (random-card-name))]
-  (expect-eval-actual-first nil
-    (do ((user->client :rasta) :delete 204 (format "card/%d" id))
-        (sel :one Card :id id))))
+(expect-eval-actual-first nil
+  (let [{:keys [id]} (post-card (random-card-name))]
+    ((user->client :rasta) :delete 204 (format "card/%d" id))
+    (sel :one Card :id id)))
 
 
 ;; # CARD FAVORITE STUFF
