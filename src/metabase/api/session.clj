@@ -15,6 +15,7 @@
   (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
     (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
+      (println "SESSION ID: " session-id)
       (ins Session
         :id session-id
         :user_id (:id user))

@@ -69,14 +69,14 @@
 
 (defmethod pre-insert Database [_ {:keys [details engine] :as database}]
   (assoc database
-         :created_at (new-sql-date)
-         :updated_at (new-sql-date)
+         :created_at (new-sql-timestamp)
+         :updated_at (new-sql-timestamp)
          :details (json/write-str details)
          :engine (name engine)))
 
 (defmethod pre-update Database [_ {:keys [details] :as database}]
   (assoc database
-         :updated_at (new-sql-date)
+         :updated_at (new-sql-timestamp)
          :details (json/write-str details)))
 
 (defn databases-for-org

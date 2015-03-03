@@ -84,6 +84,18 @@
       (-> ((user->client :rasta) :get 200 (format "card/%d" id))
           (deserialize-dates :updated_at :created_at)))))
 
+;; ## PUT /api/card/:id
+;; Test that we can edit a Card
+(let [card-name (random-name)
+      updated-name (random-name)]
+  (expect-eval-actual-first
+      [card-name
+       updated-name]
+    (let [{id :id} (post-card card-name)]
+      [(sel :one :field [Card :name] :id id)
+       (do ((user->client :rasta) :put 200 (format "card/%d" id) {:name updated-name})
+           (sel :one :field [Card :name] :id id))])))
+
 ;; ## DELETE /api/card/:id
 ;; Check that we can delete a card
 (expect-eval-actual-first nil

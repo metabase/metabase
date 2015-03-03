@@ -46,5 +46,5 @@
 
 (defmethod pre-insert Table [_ table]
   (assoc table
-         :created_at (util/new-sql-date)
-         :updated_at (util/new-sql-date)))
+         :created_at (util/new-sql-timestamp)
+         :updated_at (util/new-sql-timestamp)))

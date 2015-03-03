@@ -11,13 +11,13 @@
   (table :report_dashboard))
 
 (defmethod pre-insert Dashboard [_ dashboard]
-  (let [defaults {:created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)}]
+  (let [defaults {:created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)}]
     (merge defaults dashboard)))
 
 (defmethod pre-update Dashboard [_ dashboard]
   (assoc dashboard
-         :updated_at (util/new-sql-date)))
+         :updated_at (util/new-sql-timestamp)))
 
 (defmethod post-select Dashboard [_ {:keys [id creator_id organization_id] :as dash}]
   (-> dash

@@ -13,15 +13,15 @@
   (table :report_card))
 
 (defmethod pre-insert Card [_ {:keys [dataset_query visualization_settings] :as card}]
-  (let [defaults {:created_at (util/new-sql-date)
-                  :updated_at (util/new-sql-date)}]
+  (let [defaults {:created_at (util/new-sql-timestamp)
+                  :updated_at (util/new-sql-timestamp)}]
     (-> (merge defaults card)
         (assoc :dataset_query (json/write-str dataset_query)
                :visualization_settings (json/write-str visualization_settings)))))
 
 (defmethod pre-update Card [_ {:keys [dataset_query visualization_settings] :as card}]
   (assoc card
-         :updated_at (util/new-sql-date)
+         :updated_at (util/new-sql-timestamp)
          :dataset_query (json/write-str dataset_query)
          :visualization_settings (json/write-str visualization_settings)))
 

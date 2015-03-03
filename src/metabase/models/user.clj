@@ -43,8 +43,8 @@
              :common_name (str (:first_name user) " " (:last_name user)))))
 
 (defmethod pre-insert User [_ user]
-  (let [defaults {:date_joined (util/new-sql-date)
-                  :last_login (util/new-sql-date)
+  (let [defaults {:date_joined (util/new-sql-timestamp)
+                  :last_login (util/new-sql-timestamp)
                   :is_staff true
                   :is_active true
                   :is_superuser false}]
