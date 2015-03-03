@@ -4,6 +4,10 @@
 2. Node.js for npm (http://nodejs.org/)
 3. Leiningen (http://leiningen.org/)
 
+## Build Status
+
+[![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg)](https://circleci.com/gh/metabase/metabase-init)
+
 
 ## Build
 
