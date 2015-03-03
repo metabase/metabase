@@ -22,8 +22,8 @@
           <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
         </span>
         <ul class="Dropdown-content">
-          <li ng-repeat="perm in user.org_perms">
-            <a class="link block py1" href="#" ng-click="changeCurrOrg(perm.organization.slug)">{{perm.organization.name}}</a>
+          <li ng-repeat="organization in memberOf()">
+            <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
           </li>
         </ul>
       </div>
@@ -70,7 +70,7 @@
             </a>
             <ul class="Dropdown-content right">
               <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-              <li class="" ><a class="link" cv-org-href="/admin/" target="_self">Admin</a></li>
+              <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/" target="_self">Admin</a></li>
               <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
             </ul>
           </li>

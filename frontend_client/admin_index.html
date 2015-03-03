@@ -17,8 +17,7 @@
       <div class="border-bottom bg-white py1">
         <div class="wrapper">
           <label class="Select" ng-if="user.is_multi_org">
-            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug"
-		    ng-options="perm.organization.slug as perm.organization.name for perm in user.org_perms">
+            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in adminOf()"></select>
 	    </select>
           </label>
           <a cv-org-href="/admin/">
