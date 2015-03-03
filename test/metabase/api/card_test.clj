@@ -50,8 +50,6 @@
                                :created_at $})
     (post-card card-name)))
 
-
-
 ;; ## GET /api/card/:id
 ;; Test that we can fetch a card
 (let [card-name (random-name)]
