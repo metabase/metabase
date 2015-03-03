@@ -102,6 +102,7 @@
 ;;       [">=" 1412 4]]
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
+    nil                  nil ; empty clause
     [nil nil]            nil ; empty clause
     ["AND" & subclauses] (let [m (->> subclauses                                                      ; so far only `AND` filtering is available in the UI
                                       (map (fn [[filter-type field-id value]]                          ; just convert filter-types like `"<="` directly to symbols
@@ -132,6 +133,19 @@
                  `(order ~(field-id->kw field-id) ~(case asc-desc
                                                      "ascending" :ASC
                                                      "descending" :DESC)))))))
+
+;; ### `:page`
+;; ex.
+;;
+;;     {:page 1
+;;      :items 20}
+(defmethod apply-form :page [[_ {:keys [items page]}]]
+  {:pre [(integer? items)
+         (integer? page)]}
+  (println "ITEMS: " items)
+  (println "PAGE: " page)
+  `[(limit ~items)
+    (offset ~(* items (- page 1)))])
 
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
