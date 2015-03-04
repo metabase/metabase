@@ -22,7 +22,7 @@
 (defmethod post-select Dashboard [_ {:keys [id creator_id organization_id description] :as dash}]
   (-> dash
       (assoc :creator (sel-fn :one User :id creator_id)
-             :description (util/jdbc-clob-to-str description)
+             :description (util/jdbc-clob->str description)
              :organization (sel-fn :one Org :id organization_id)
              :ordered_cards (sel-fn :many DashboardCard :dashboard_id id))
       assoc-permissions-sets))
