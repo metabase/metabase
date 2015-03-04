@@ -41,7 +41,7 @@
        :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}})))
 
 
-(define-routes query-result query-result-csv)
+(define-routes query-result-csv)
 
 
 ;; ===============================================================================================================
