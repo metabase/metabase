@@ -38,7 +38,8 @@
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          :executor_id executed_by
                          :json_query query
-                         :version 0
+                         :query_id (:id saved_query)
+                         :version (get saved_query :version 0)
                          :status "starting"
                          :error ""
                          :started_at (util/new-sql-timestamp)
@@ -49,9 +50,6 @@
                          :result_data ""
                          :raw_query ""
                          :additional_info ""}]
-    ;; add :query_id and :version if we are executing from an existing saved query
-    (when saved_query
-      (assoc query-execution :query_id (:id saved_query) :version (:version saved_query)))
     (if synchronously
       (-dataset-query query options query-execution)
       ;; TODO - this is untested/used.  determine proper way to place execution on background thread

@@ -108,7 +108,8 @@
                           :saved_query query
                           :synchronously false
                           :cache_result true}]
-             (driver/dataset-query dataset-query options)))) 
+             (driver/dataset-query dataset-query options))))
+
 
 (defendpoint GET "/:id/results" [id]
   (read-check Query id)
