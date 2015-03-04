@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
@@ -180,10 +181,8 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (println "\nQUERY ->")
-  (clojure.pprint/pprint query)
-  (println "\nKORMA FORM ->")
-  (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms))
+  (log/debug
+    "\nQUERY ->" (with-out-str (clojure.pprint/pprint query))
+    "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms))))
   (eval `(let [entity# (table-id->korma-entity ~source_table)]
-           (println "\nSQL ->")
-           (println (sql-only (select entity# ~@forms)) "\n"))))
+           (log/debug "\nSQL ->" (sql-only (select entity# ~@forms)) "\n"))))

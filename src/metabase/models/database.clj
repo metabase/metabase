@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require [clojure.data.json :as json]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             (korma [core :refer :all]
                    [db :as kdb])
             [metabase.api.common :refer :all]
@@ -34,7 +35,7 @@
 (defn korma-db
   "Return a Korma database definition for DATABASE."
   [{:keys [connection]}]
-  (println "CREATING A NEW DB CONNECTION...")
+  (log/debug "CREATING A NEW DB CONNECTION...")
   (kdb/create-db @connection))
 
 (defn table-names

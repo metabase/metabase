@@ -1,7 +1,8 @@
 (ns metabase.driver.native
   "The `native` query processor."
   (:import com.metabase.corvus.api.ApiException)
-  (:require [metabase.api.common :refer :all]
+  (:require [clojure.tools.logging :as log]
+            [metabase.api.common :refer :all]
             [metabase.db :refer [sel]]
             (metabase.models [database :refer [Database]])))
 
@@ -29,7 +30,7 @@
                :base_type (value->base-type v)}))))
 
 (defn process-and-run [{:keys [native database] :as query}]
-  (println "QUERY: " query)
+  (log/debug "QUERY: " query)
   (let [db (sel :one Database :id database)
         sql (:query native)
         results ((:native-query db) sql)]
