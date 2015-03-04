@@ -7,7 +7,8 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])))
+                             [dashboard-card :refer [DashboardCard]])
+            [metabase.util :as u]))
 
 (defendpoint GET "/" [org f]
   (-> (case (or (keyword f) :all) ; default value for f is `all`
@@ -32,9 +33,11 @@
                    (hydrate :creator :organization [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 
-(defendpoint PUT "/:id" [id :as {{:keys [description name public_perms]} :body}]
+(defendpoint PUT "/:id" [id :as {body :body}]
   (write-check Dashboard id)
-  (upd Dashboard id :description description :name name :public_perms public_perms))
+  (check-500 (->> (u/select-non-nil-keys body :description :name :public_perms)
+                  (medley/mapply upd Dashboard id)))
+  (sel :one Dashboard :id id))
 
 (defendpoint DELETE "/:id" [id]
   (write-check Dashboard id)

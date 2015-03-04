@@ -104,11 +104,25 @@
   []
   (time/unparse (time/formatters :date-time-no-ms) (coerce/from-long (System/currentTimeMillis))))
 
+(defn buffered-reader->str
+  "JDBC Clobs return `BufferedReaders` when you call `.getCharacterStream`.
+   This Function will read all lines from the reader and return a single unified string."
+  ([^java.io.BufferedReader reader]
+   (->> (buffered-reader->str reader [])       ; get a vector of lines read by the reader
+        (interpose "\n")                       ; add newlines back between them
+        (apply str)))                          ; convert to a single str
+  ([^java.io.BufferedReader reader acc]
+   (if-not (.ready reader) (do (.close reader) ; Read each line from the reader and recurse
+                               acc)            ; until reader is no longer "ready" (i.e. done)
+           (recur reader (conj acc (.readLine reader))))))
 
 (defn jdbc-clob-to-str
   "Convert a `JdbcClob` to a `String` so it can be serialized to JSON."
-  [^org.h2.jdbc.JdbcClob clob]
-  (.getSubString clob 1 (.length clob)))
+  [clob]
+  (when clob
+    (if (string? clob) clob
+        (-> (.getCharacterStream ^org.h2.jdbc.JdbcClob clob)
+            buffered-reader->str))))
 
 
 (defn

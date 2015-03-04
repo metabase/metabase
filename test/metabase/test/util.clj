@@ -1,7 +1,6 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [expectations :refer :all]
-            [medley.core :as medley]
             [metabase.util :as u]))
 
 (declare $->prop)
@@ -9,13 +8,20 @@
 ;; ## Response Deserialization
 
 (defn deserialize-dates
-  "Deserialize date strings with KEYS returned in RESPONSE."
+  "Deserialize date strings with KEYS returned in RESPONSE.
+   Supports plain keywords or vector keysequences like `update-in`.
+
+    (deserialize-dates response :updated_at [:user :last_login])"
   [response & [k & ks]]
   {:pre [(map? response)
-         (keyword? k)]}
-  (let [response (medley/update response k #(some->> (u/parse-iso8601 %)
-                                                     .getTime
-                                                     java.sql.Timestamp.))]
+         (or (keyword? k)
+             (vector? k))]}
+  (let [deserialize-date #(some->> (u/parse-iso8601 %)
+                                   .getTime
+                                   java.sql.Timestamp.)
+        response (cond
+                   (vector? k) (update-in response k deserialize-date)
+                   (keyword? k) (update-in response [k] deserialize-date))]
     (if (empty? ks) response
         (apply deserialize-dates response ks))))
 
@@ -51,7 +57,8 @@
   [source-obj form]
   (or (when (symbol? form)
         (let [[first-char & rest-chars] (name form)]
-          (when (= first-char \$)
+          (when (and (= first-char \$)
+                     (not (empty? rest-chars))) ; don't match just `$`
             (let [kw (->> rest-chars
                           (apply str)
                           keyword)]

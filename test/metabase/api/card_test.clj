@@ -9,7 +9,7 @@
 
 ;; # CARD LIFECYCLE
 
-;; Helper fns
+;; ## Helper fns
 (defn post-card [card-name]
   (-> ((user->client :rasta) :post 200 "card" {:organization (:id @test-org)
                                                :name card-name
