@@ -1,7 +1,8 @@
 (ns metabase.api.org-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.org :refer [Org]]
+            (metabase.models [org :refer [Org]]
+                             [org-perm :refer [OrgPerm]])
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
@@ -48,3 +49,12 @@
          :logo_url nil
          :inherits false})
     (create-org org-name)))
+
+;; ## POST /api/org/:id/members/:user-id
+(expect [false
+         true]
+  (let [{org-id :id} (create-org (random-name))
+        org-perm-exists? (fn [] (exists? OrgPerm :organization_id org-id :user_id (user->id :rasta)))]
+    [(org-perm-exists?)
+     (do ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id (user->id :rasta)))
+         (org-perm-exists?))]))
