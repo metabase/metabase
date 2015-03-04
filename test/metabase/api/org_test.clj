@@ -133,7 +133,7 @@
   (exists? OrgPerm :organization_id org-id :user_id user-id))
 
 (defn create-org-perm [org-id user-id]
-  ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id)))
+  ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id) {:admin false}))
 
 ;; ## POST /api/org/:id/members/:user-id
 ;; Check that we can create an OrgPerm between existing User + Org
@@ -159,3 +159,18 @@
          (org-perm-exists?))
      (do ((user->client :crowberto) :delete 204 (format "org/%d/members/%d" org-id user-id))
          (org-perm-exists?))]))
+
+;; ## PUT /api/org/:id/members/:user-id
+;; Check that we can edit an exisiting OrgPerm (i.e., toggle 'admin' status)
+(expect
+    [nil
+     false
+     true]
+  (let [{org-id :id} (create-org (random-name))
+        {user-id :id} (create-user)
+        is-admin? (fn [] (sel :one :field [OrgPerm :admin] :user_id user-id :organization_id org-id))]
+    [(is-admin?)
+     (do (create-org-perm org-id user-id)
+         (is-admin?))
+     (do ((user->client :crowberto) :put 200 (format "org/%d/members/%d" org-id user-id) {:admin true})
+         (is-admin?))]))
