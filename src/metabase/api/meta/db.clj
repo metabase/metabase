@@ -12,7 +12,8 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [org :refer [org-can-read org-can-write]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util :as u]))
 
 (defendpoint GET "/" [org]
   (require-params org)
@@ -20,12 +21,10 @@
   (-> (sel :many Database :organization_id org (order :name))
       (hydrate :organization)))
 
-(defendpoint POST "/" [:as {{:keys [org] :as body} :body}]
+(defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
+  (require-params org name engine details)
   (check-403 (org-can-write org))
-  (->> (-> body
-           (select-keys [:name :engine :details])
-           (assoc :organization_id org))
-       (medley/mapply ins Database)))
+  (ins Database :organization_id org :name name :engine engine :details details))
 
 (defendpoint GET "/form_input" []
   {:timezones metabase.models.common/timezones
@@ -35,10 +34,11 @@
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
 
-(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
-  (println name engine details)
+(defendpoint PUT "/:id" [id :as {body :body}]
   (write-check Database id)
-  (check-500 (upd Database id :name name :engine engine :details details)))
+  (check-500 (->> (u/select-non-nil-keys body :name :engine :details)
+                  (medley/mapply upd Database id)))
+  (sel :one Database :id id))
 
 (defendpoint DELETE "/:id" [id]
   (write-check Database id)
