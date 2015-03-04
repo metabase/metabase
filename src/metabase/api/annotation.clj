@@ -6,9 +6,7 @@
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [annotation :refer [Annotation]]
-              [database :refer [Database databases-for-org]]
-              [org :refer [Org]]
-              [common :as common])
+                             [org :refer [Org]])
             [metabase.util :as util]))
 
 
@@ -30,7 +28,6 @@
   (read-check Org (:organization body))
   (check-500 (->> (-> body
                     (select-keys [:organization :title :body :annotation_type :object_type_id :object_id])
-                    ;; NOTE - we need to parse string -> date
                     (assoc :start (util/parse-iso8601 (:start body)))
                     (assoc :end (util/parse-iso8601 (:end body)))
                     (clojure.set/rename-keys {:organization :organization_id} )
@@ -40,17 +37,17 @@
 
 
 (defendpoint GET "/:id" [id]
-  ;; TODO - permissions check
-  (->404 (sel :one Annotation :id id)
-    (hydrate :author)))
+  (let-404 [annotation (sel :one Annotation :id id)]
+    (read-check Org (:organization_id annotation))
+    (hydrate annotation :author)))
 
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   (check-400 (util/contains-many? body :start :end :title :body))
   (let-404 [annotation (sel :one Annotation :id id)]
+    (read-check Org (:organization_id annotation))
     (check-500 (->> (-> body
                       (util/select-non-nil-keys :start :end :title :body)
-                      ;; NOTE - we need to parse string -> date
                       (assoc :start (util/parse-iso8601 (:start body)))
                       (assoc :end (util/parse-iso8601 (:end body)))
                       (assoc :edit_count (inc (get annotation :edit_count 0))))
@@ -59,10 +56,10 @@
 
 
 (defendpoint DELETE "/:id" [id]
-  ;; TODO - permissions check
-  (check-404 (exists? Annotation :id id))
-  (del Annotation :id id)
-  {:success true})
+  (let-404 [annotation (sel :one Annotation :id id)]
+    (read-check Org (:organization_id annotation))
+    (del Annotation :id id)
+    {:success true}))
 
 
 (define-routes)
