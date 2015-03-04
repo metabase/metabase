@@ -6,6 +6,25 @@
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
+;; # HELPER FNS
+
+(defn create-org [org-name]
+  {:pre [(string? org-name)]}
+  ((user->client :crowberto) :post 200 "org" {:name org-name
+                                              :slug org-name}))
+
+;; TODO - move this somewhere more general?
+(defn create-user []
+  (let [first-name (random-name)
+        last-name (random-name)
+        email (str first-name "@metabase.com")
+        password (random-name)]
+    (ins metabase.models.user/User
+      :first_name first-name
+      :last_name last-name
+      :email email
+      :password password)))
+
 ;; ## GET /api/org/:id
 (expect
     {:id (:id @test-org)
@@ -34,11 +53,6 @@
                                             :slug org-name})))
 
 ;; Check that superusers *can* create Orgs
-
-(defn create-org [org-name]
-  ((user->client :crowberto) :post 200 "org" {:name org-name
-                                              :slug org-name}))
-
 (let [org-name (random-name)]
   (expect-eval-actual-first
       (match-$ (sel :one Org :name org-name)
@@ -50,11 +64,13 @@
          :inherits false})
     (create-org org-name)))
 
+
 ;; ## POST /api/org/:id/members/:user-id
 (expect [false
          true]
   (let [{org-id :id} (create-org (random-name))
-        org-perm-exists? (fn [] (exists? OrgPerm :organization_id org-id :user_id (user->id :rasta)))]
+        {user-id :id} (create-user)
+        org-perm-exists? (fn [] (exists? OrgPerm :organization_id org-id :user_id user-id))]
     [(org-perm-exists?)
-     (do ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id (user->id :rasta)))
+     (do ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id))
          (org-perm-exists?))]))
