@@ -18,7 +18,6 @@
        (map #(dissoc % :db :created_at :updated_at)))) ; don't care about checking nested DB, and not sure how to compare `:created_at` / `:updated_at`
 
 ;; ## GET /api/meta/table/:id
-
 (expect
     (match-$ (sel :one Table :id (table->id :venues))
       {:description nil
