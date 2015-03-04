@@ -102,6 +102,14 @@
            (coerce/to-long)
            (java.sql.Date.)))
 
+(defn parse-iso8601-with-ms
+  "parse a string value expected in the iso8601 format WITH MILLISECONDS into a `java.sql.Date`."
+  [datetime]
+  (some->> datetime
+    (time/parse (time/formatters :date-time))
+    (coerce/to-long)
+    (java.sql.Date.)))
+
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
   []

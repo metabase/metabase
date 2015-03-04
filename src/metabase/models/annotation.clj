@@ -8,6 +8,10 @@
             [metabase.util :as util]))
 
 
+(def annotation-general 0)
+(def annotation-description 1)
+
+
 (defentity Annotation
   (table :annotation_annotation))
 
