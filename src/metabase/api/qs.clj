@@ -28,13 +28,9 @@
     (driver/dataset-query dataset-query options)))
 
 
-;; TODO - not using defendpoint due to string params causing number format exceptions
-(def query-result
-  (GET "/:uuid" [uuid]
-    (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
-      (->>
-        (build-response query-execution)
-        (assoc {:status 200} :body)))))
+(defendpoint GET "/:uuid" [uuid]
+  (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
+    (build-response query-execution)))
 
 
 (def query-result-csv
