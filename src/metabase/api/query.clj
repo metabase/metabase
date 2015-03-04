@@ -17,7 +17,7 @@
 
 
 (defendpoint GET "/form_input" [org]
-  ;; TODO - validate user has perms on org
+  (check-403 ((:perms-for-org @*current-user*) org))
   (let [dbs (databases-for-org org)]
     {:permissions common/permissions
      :timezones common/timezones
