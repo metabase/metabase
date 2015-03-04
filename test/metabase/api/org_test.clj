@@ -4,26 +4,15 @@
             (metabase.models [org :refer [Org]]
                              [org-perm :refer [OrgPerm]])
             [metabase.test-data :refer :all]
+            [metabase.test-data.create :refer [create-user]]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
-;; # HELPER FNS
+;; Helper Fns
 
 (defn create-org [org-name]
   {:pre [(string? org-name)]}
   ((user->client :crowberto) :post 200 "org" {:name org-name
                                               :slug org-name}))
-
-;; TODO - move this somewhere more general?
-(defn create-user []
-  (let [first-name (random-name)
-        last-name (random-name)
-        email (str first-name "@metabase.com")
-        password (random-name)]
-    (ins metabase.models.user/User
-      :first_name first-name
-      :last_name last-name
-      :email email
-      :password password)))
 
 ;; ## GET /api/org/:id
 (expect
