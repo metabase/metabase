@@ -38,7 +38,10 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
             setCurrentOrgCookie: function(slug) {
                 var isSecure = ($location.protocol() === "https") ? true : false;
-                ipCookie('metabase.CURRENT_ORG', slug, {path: '/', secure: isSecure});
+                ipCookie('metabase.CURRENT_ORG', slug, {
+                    path: '/',
+                    secure: isSecure
+                });
             },
 
             refreshCurrentUser: function() {
@@ -59,41 +62,44 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 return deferred.promise;
             },
 
-            userIsAdmin: function(){
+            userIsAdmin: function() {
                 // Let's also figure out if this user is an admin each time the user or the organization changes
-                return service.model.currentUser.org_perms.some(function(org_perm){
+                return service.model.currentUser.org_perms.some(function(org_perm) {
                     return org_perm.organization.slug === $routeParams.orgSlug && org_perm.admin;
                 });
             },
 
-            userIsMember: function(){
-                return service.model.currentUser.org_perms.some(function(org_perm){
+            userIsMember: function() {
+                return service.model.currentUser.org_perms.some(function(org_perm) {
                     return org_perm.organization.slug === $routeParams.orgSlug;
                 });
             },
 
-            memberOf: function(){
-                return service.model.currentUser.org_perms.map(function(org_perm){
+            memberOf: function() {
+                return service.model.currentUser.org_perms.map(function(org_perm) {
                     return org_perm.organization;
                 });
             },
 
-            adminOf: function(){
-                return service.model.currentUser.org_perms.filter(function(org_perm){
+            adminOf: function() {
+                return service.model.currentUser.org_perms.filter(function(org_perm) {
                     return org_perm.admin;
-                }).map(function(org_perm){
+                }).map(function(org_perm) {
                     return org_perm.organization;
                 });
             },
 
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
-            invalidAccess: function(user, url, message){
+            invalidAccess: function(user, url, message) {
                 console.log(message);
                 service.model.currentOrgSlug = null;
                 service.model.currentOrg = null;
 
-                PermissionViolation.create({'user': user.id, 'url':url});
+                PermissionViolation.create({
+                    'user': user.id,
+                    'url': url
+                });
                 $location.path('/unauthorized/');
 
             },
@@ -101,20 +107,20 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             routeChanged: function(event) {
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-console.log('routeChanged - '+ $location.path());
-                if(service.model.currentUserPromise) {
-console.log('routeChanged-withPromise');
+                console.log('routeChanged - ' + $location.path());
+                if (service.model.currentUserPromise) {
+                    console.log('routeChanged-withPromise');
                     // we have an outstanding promise for getting current user, so wait for that first
-                    service.model.currentUserPromise.then(function (user) {
+                    service.model.currentUserPromise.then(function(user) {
                         service.model.currentUserPromise = null;
                         service.routeChangedImpl(event);
-                    }, function (error) {
-console.log('routeChanged-withPromise-NOUSER', error);
+                    }, function(error) {
+                        console.log('routeChanged-withPromise-NOUSER', error);
                         service.model.currentUserPromise = null;
                         service.routeChangedImpl(event);
                     });
                 } else {
-console.log('routeChanged-noPromise');
+                    console.log('routeChanged-noPromise');
                     // we must already have the user, so carry on
                     service.routeChangedImpl(event);
                 }
@@ -125,7 +131,7 @@ console.log('routeChanged-noPromise');
 
                 // if we don't have a current user then the only sensible destination is the login page
                 if (!service.model.currentUser) {
-console.log('routeChangedImpl-noUser');
+                    console.log('routeChangedImpl-noUser');
                     // make sure we clear out any current state just to be safe
                     service.clearState();
 
@@ -137,19 +143,19 @@ console.log('routeChangedImpl-noUser');
 
                     return;
                 }
-console.log('routeChangedImpl-withUser');
+                console.log('routeChangedImpl-withUser');
 
                 // NOTE: if you try to do this outside this event you'll run into issues where $routeParams is not set.
                 //       so that's why we explicitly wait until we know when $routeParams will be available
                 if ($routeParams.orgSlug) {
                     // the url is telling us what Organization we are working in
-console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
+                    console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
                     // Making convenience vars so it's easier to scan conditions for correctness
                     var isSuperuser = service.model.currentUser.is_superuser;
                     var isOrgMember = service.userIsMember();
                     var isOrgAdmin = service.userIsAdmin();
-                    var onAdminPage = $location.path().indexOf('/'+$routeParams.orgSlug+'/admin') === 0;
+                    var onAdminPage = $location.path().indexOf('/' + $routeParams.orgSlug + '/admin') === 0;
 
                     if (!isSuperuser && !isOrgMember) {
                         service.invalidAccess(service.model.currentUser, $location.url(), "user is not authorized for this org!!!");
@@ -178,15 +184,15 @@ console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
 
                 } else if (!service.model.currentOrgSlug) {
                     // the url doesn't tell us what Organization this is, so lets try a different approach
-console.log('routeChangedImpl-withUser-noOrg');
+                    console.log('routeChangedImpl-withUser-noOrg');
                     // Check to see if the user has a current org cookie var set
                     var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
-                    if (currentOrgFromCookie){
+                    if (currentOrgFromCookie) {
                         // check to see if the org slug exists
-                        var orgsWithSlug = service.model.currentUser.org_perms.filter(function(org_perm){
+                        var orgsWithSlug = service.model.currentUser.org_perms.filter(function(org_perm) {
                             return org_perm.organization.slug == currentOrgFromCookie;
                         });
-                        if(orgsWithSlug.length > 0){
+                        if (orgsWithSlug.length > 0) {
                             var currentOrgPerm = orgsWithSlug[0];
                             service.model.currentOrg = currentOrgPerm.organization;
                             service.model.currentOrgSlug = service.model.currentOrg.slug;
@@ -628,7 +634,7 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
     return $resource('/api/session/', {}, {
         create: {
             method: 'POST',
-            ignoreAuthModule: true     // this ensures a 401 response doesn't trigger another auth-required event
+            ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
         delete: {
             method: 'DELETE',
@@ -664,7 +670,7 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
         current: {
             url: '/api/user/current/',
             method: 'GET',
-            ignoreAuthModule: true     // this ensures a 401 response doesn't trigger another auth-required event
+            ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
         get: {
             url: '/api/user/:userId',
