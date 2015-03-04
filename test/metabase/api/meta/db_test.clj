@@ -85,6 +85,50 @@
    (do ((user->client :rasta) :put 200 (format "meta/db/%d" db-id) {:name old-name})
        (sel-db))])
 
+;; # DATABASES FOR ORG
+
+;; ## GET /api/meta/db
+;; Test that we can get all the DBs for an Org, ordered by name
+(let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
+  (expect-eval-actual-first
+      [(match-$ (sel :one Database :name db-name)
+         {:created_at $
+          :engine "postgres"
+          :id $
+          :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
+          :updated_at $
+          :organization {:id (:id @test-org)
+                         :slug "test"
+                         :name "Test Organization"
+                         :description nil
+                         :logo_url nil
+                         :inherits true}
+          :name $
+          :organization_id (:id @test-org)
+          :description nil})
+       (match-$ @test-db
+         {:created_at $
+          :engine "h2"
+          :id $
+          :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+          :updated_at $
+          :organization {:id (:id @test-org)
+                         :slug "test"
+                         :name "Test Organization"
+                         :description nil
+                         :logo_url nil
+                         :inherits true}
+          :name "Test Database"
+          :organization_id (:id @test-org)
+          :description nil})]
+    (do
+      ;; Delete all the randomly created Databases we've made so far
+      (cascade-delete Database :organization_id (:id @test-org) :id [not= (:id @test-db)])
+      ;; Add an extra DB so we have something to fetch besides the Test DB
+      (create-db db-name)
+      ;; Now hit the endpoint
+      ((user->client :rasta) :get 200 "meta/db" :org (:id @test-org)))))
+
 
 ;; # DB TABLES ENDPOINTS
 
