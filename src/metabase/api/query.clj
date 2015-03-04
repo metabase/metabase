@@ -2,7 +2,6 @@
   (:require [clojure.data.csv :as csv]
             [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
-            [clojure.data.json :as json]
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -12,8 +11,7 @@
                              [database :refer [Database databases-for-org]]
                              [org :refer [Org]]
                              [query :refer [Query]]
-                             [query-execution :refer [QueryExecution all-fields]])
-            [metabase.util :as util]))
+                             [query-execution :refer [QueryExecution all-fields]])))
 
 
 (defendpoint GET "/form_input" [org]
@@ -25,13 +23,16 @@
 
 
 (defendpoint GET "/" [org f]
-  ;; TODO - filter by f == "mine"
-  ;; TODO - filter by creator == self OR public_perms > 0
   (check-403 ((:perms-for-org @*current-user*) org))
-  (-> (sel :many Query
-        (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
-        (where {:public_perms [> common/perms-none]}))
-      (hydrate :creator :database)))
+  (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
+        :all (sel :many Query
+               (where (or (= :creator_id *current-user-id*) (> :public_perms common/perms-none)))
+               (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
+               (order :name :ASC))
+        :mine (sel :many Query :creator_id *current-user-id*
+                (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
+                (order :name :ASC)))
+    (hydrate :creator :database)))
 
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
