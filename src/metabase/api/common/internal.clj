@@ -1,6 +1,7 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
-  (:require [metabase.util :refer [fn-> regex?]])
+  (:require [clojure.tools.logging :as log]
+            [metabase.util :refer [fn-> regex?]])
   (:import com.metabase.corvus.api.ApiException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
@@ -125,8 +126,7 @@
           (let [message# (.getMessage e#)
                 stacktrace# (->> (map str (.getStackTrace e#))
                                  (filter (partial re-find #"metabase")))]
-            (println message#)
-            (clojure.pprint/pprint stacktrace#)
+            (log/debug message# "\n" (with-out-str (clojure.pprint/pprint stacktrace#)))
             {:status 500
              :body {:message message#
                     :stacktrace stacktrace#}}))))

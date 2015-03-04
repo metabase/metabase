@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes POST DELETE]]
             [korma.core :as korma]
             [metabase.api.common :refer :all]
@@ -15,7 +16,6 @@
   (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
     (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user)) [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
-      (println "SESSION ID: " session-id)
       (ins Session
         :id session-id
         :user_id (:id user))
@@ -37,7 +37,7 @@
     (check-404 user-id)
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
     ;; TODO - send email
-    (println (str "/auth/reset_password/" reset-token))))
+    (log/info (str "/auth/reset_password/" reset-token))))
 
 
 ;; set password from reset token

@@ -1,5 +1,5 @@
 (ns metabase.api.routes
-  (:require [compojure.core :refer [context defroutes]]
+  (:require [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
             (metabase.api [annotation :as annotation]
                           [card :as card]
@@ -23,6 +23,7 @@
   (context "/card"         [] (-> card/routes auth/bind-current-user auth/enforce-authentication))
   (context "/dash"         [] (-> dash/routes auth/bind-current-user auth/enforce-authentication))
   (context "/emailreport"  [] (-> emailreport/routes auth/bind-current-user auth/enforce-authentication))
+  (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/meta/dataset" [] (-> dataset/routes auth/bind-current-user auth/enforce-authentication))
   (context "/meta/db"      [] (-> db/routes auth/bind-current-user auth/enforce-authentication))
   (context "/meta/field"   [] (-> field/routes auth/bind-current-user auth/enforce-authentication))

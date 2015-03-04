@@ -34,7 +34,7 @@
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
 
-(defendpoint PUT "/:id" [id :as {body :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
   (write-check Database id)
   (check-500 (->> (u/select-non-nil-keys body :name :engine :details)
                   (medley/mapply upd Database id)))

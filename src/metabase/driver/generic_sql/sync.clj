@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql.sync
   "Generic implementations of `metabase.driver.sync` functions that should work across any SQL database supported by Korma."
-  (:require [korma.core :refer :all]
+  (:require [clojure.tools.logging :as log]
+            [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [database :refer [with-jdbc-metadata]]
                              [field :refer [Field]]
@@ -54,5 +55,5 @@
                                             :active true))]                                             ; creating dozens of them, which was causing issues with too
                          (update-table-row-count table)                                                 ; many open connections.
                          (sync-fields table)
-                         (println "Synced" table-name)))))
+                         (log/debug "Synced" table-name)))))
              dorun)))))

@@ -163,7 +163,7 @@
                                                       (default-fields entity#))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
                                    (merge *entity-overrides*))]                  ; then do a `default-fields` lookup at runtime
        (when *log-db-calls*
-         (println "DB CALL: " (:name entity#)
+         (log/debug "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")
                   ~@(mapv (fn [[form & args]]
                             `[~(name form) ~(apply str (interpose " " args))])
