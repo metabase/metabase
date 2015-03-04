@@ -35,7 +35,7 @@
   (when *current-user-id*
     (when-let [{superuser? :is_superuser} (sel :one ["metabase.models.user/User" :is_superuser] :id *current-user-id*)]
       (if superuser? :admin
-          (when-let [admin? (sel :one :field ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id)]
+          (when-let [{admin? :admin} (sel :one ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id)]
             (if admin? :admin :default))))))
 
 (defmacro org-perms-case

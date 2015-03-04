@@ -32,9 +32,10 @@
    :default -> default permissions
    :admin   -> admin permissions"
   [user-id org-id]
-  (if (sel :one :field [User :is_superuser] :id user-id) :admin
-      (when-let [admin (sel :one :field [OrgPerm :admin] :user_id user-id :organization_id org-id)]
-        (if admin :admin :default))))
+  (when-let [{superuser? :is_superuser} (sel :one [User :is_superuser] :id user-id)]
+    (if superuser? :admin
+        (when-let [{admin? :admin} (sel :one [OrgPerm :admin] :user_id user-id :organization_id org-id)]
+          (if admin? :admin :default)))))
 
 (defmethod post-select User [_ {:keys [id] :as user}]
   (-> user
