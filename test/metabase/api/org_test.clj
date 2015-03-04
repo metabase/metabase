@@ -14,6 +14,43 @@
   ((user->client :crowberto) :post 200 "org" {:name org-name
                                               :slug org-name}))
 
+;; # GENERAL ORG ENDPOINTS
+
+;; ## GET /api/org
+;; Non-superusers should only be able to see Orgs they are members of
+(expect
+    [{:id (:id @test-org)
+      :slug "test"
+      :name "Test Organization"
+      :description nil
+      :logo_url nil
+      :inherits true}]
+  ((user->client :rasta) :get 200 "org"))
+
+;; Superusers should be able to see all Orgs
+(let [org-name (random-name)]
+  (expect-eval-actual-first
+      [{:id (:id @test-org)
+        :slug "test"
+        :name "Test Organization"
+        :description nil
+        :logo_url nil
+        :inherits true}
+       (match-$ (sel :one Org :name org-name)
+         {:id $
+          :slug $
+          :name $
+          :description nil
+          :logo_url nil
+          :inherits false})]
+    (do
+      ;; Delete all the random test Orgs we've created
+      (cascade-delete Org :id [not= (:id @test-org)])
+      ;; Create a random Org so we can check that we still get Orgs we're not members of
+      (create-org org-name)
+      ;; Now perform the API request
+      ((user->client :crowberto) :get 200 "org"))))
+
 ;; ## GET /api/org/:id
 (expect
     {:id (:id @test-org)
