@@ -64,6 +64,65 @@
          :inherits false})
     (create-org org-name)))
 
+;; ## GET /api/org/:id/members
+(expect
+    #{(match-$ (user->org-perm :crowberto)
+        {:id $
+         :admin true
+         :user_id (user->id :crowberto)
+         :organization_id (:id @test-org)
+         :user (match-$ (fetch-user :crowberto)
+                 {:common_name "Crowberto Corv"
+                  :date_joined $
+                  :last_name "Corv"
+                  :id $
+                  :is_superuser true
+                  :last_login $
+                  :first_name "Crowberto"
+                  :email "crowberto@metabase.com"})})
+      (match-$ (user->org-perm :trashbird)
+        {:id $
+         :admin false
+         :user_id (user->id :trashbird)
+         :organization_id (:id @test-org)
+         :user (match-$ (fetch-user :trashbird)
+                 {:common_name "Trash Bird"
+                  :date_joined $
+                  :last_name "Bird"
+                  :id $
+                  :is_superuser false
+                  :last_login $
+                  :first_name "Trash"
+                  :email "trashbird@metabase.com"})})
+      (match-$ (user->org-perm :lucky)
+        {:id $
+         :admin false
+         :user_id (user->id :lucky)
+         :organization_id (:id @test-org)
+         :user (match-$ (fetch-user :lucky)
+                 {:common_name "Lucky Pigeon"
+                  :date_joined $
+                  :last_name "Pigeon"
+                  :id $
+                  :is_superuser false
+                  :last_login $
+                  :first_name "Lucky"
+                  :email "lucky@metabase.com"})})
+      (match-$ (user->org-perm :rasta)
+        {:id $
+         :admin true
+         :user_id (user->id :rasta)
+         :organization_id (:id @test-org)
+         :user (match-$ (fetch-user :rasta)
+                 {:common_name "Rasta Toucan"
+                  :date_joined $
+                  :last_name "Toucan"
+                  :id $
+                  :is_superuser false
+                  :last_login $
+                  :first_name "Rasta"
+                  :email "rasta@metabase.com"})})}
+  (set ((user->client :rasta) :get 200 (format "org/%d/members" (:id @test-org)))))
 
 ;; ## POST /api/org/:id/members/:user-id
 (expect [false

@@ -46,7 +46,7 @@
 (defendpoint GET "/:id/members" [id]
   (read-check Org id)
   (-> (sel :many OrgPerm :organization_id id)
-      (hydrate :user :organization)))
+      (hydrate :user)))
 
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
