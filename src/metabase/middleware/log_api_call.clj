@@ -1,6 +1,7 @@
 (ns metabase.middleware.log-api-call
   "Middleware to log API calls. Primarily for debugging purposes."
-  (:require [clojure.pprint :refer [pprint]]))
+  (:require [clojure.pprint :refer [pprint]]
+            [clojure.tools.logging :as log]))
 
 (declare api-call?
          log-request)
@@ -18,7 +19,7 @@
                   (log-request request))
                 (let [response (time (handler request))]
                   (when log-response?
-                    (pprint response))
+                    (log/debug (with-out-str (pprint response))))
                   response))))))
 
 (defn- api-call?
@@ -28,7 +29,5 @@
        (= (.substring uri 0 4) "/api")))
 
 (defn- log-request [{:keys [uri request-method params]}]
-  (println "\n----------------------------------------")
-  (println (.toUpperCase (name request-method)) uri)
-  (when-not (empty? params)
-    (pprint params)))
+  (log/debug (.toUpperCase (name request-method)) uri) (when-not (empty? params)
+                                                         (with-out-str (pprint params))))

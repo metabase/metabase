@@ -1,5 +1,6 @@
 (ns metabase.driver
   (:require [clojure.data.json :as json]
+            [clojure.tools.logging :as log]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             [metabase.driver.query-processor :as qp]
@@ -74,7 +75,7 @@
         (when (= :failed (:status query-result)) (throw (Exception. (get query-result :error "general error"))))
         (query-complete query-execution query-result (:cache_result options)))
       (catch Exception ex
-        (.printStackTrace ex)
+        (log/warn ex)
         (query-fail query-execution (.getMessage ex))))))
 
 

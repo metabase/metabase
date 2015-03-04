@@ -36,7 +36,6 @@
          (hydrate :organization)))
 
 (defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
-  (println name engine details)
   (write-check Database id)
   (check-500 (upd Database id :name name :engine engine :details details)))
 
