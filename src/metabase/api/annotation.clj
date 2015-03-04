@@ -1,5 +1,5 @@
 (ns metabase.api.annotation
-  (:require [korma.core :refer [where subselect fields]]
+  (:require [korma.core :as korma]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
@@ -12,17 +12,22 @@
             [metabase.util :as util]))
 
 
-(defendpoint GET "/" [org]
-  ;; TODO - permissions check
-  ;; TODO - filter by object_model
-  ;; TODO - filter by object_id
-  (check-400 org)
-  (-> (sel :many Annotation :organization_id org)
-    (hydrate :author)))
+(defendpoint GET "/" [org object_model object_id]
+  (require-params org)
+  (read-check Org org)
+  (if (and object_model object_id)
+    ;; caller wants annotations about a specific entity
+    (-> (sel :many Annotation :organization_id org :object_type object_model :object_id object_id (korma/order :start :DESC))
+      (hydrate :author))
+    ;; default is to return all annotations
+    (-> (sel :many Annotation :organization_id org (korma/order :start :DESC))
+      (hydrate :author))))
 
 
 (defendpoint POST "/" [:as {body :body}]
   (check-400 (util/contains-many? body :organization :start :end :title :body :annotation_type :object_type_id :object_id))
+  ;; user only needs to be member of an organization (read perms) to be able to post annotations
+  (read-check Org (:organization body))
   (check-500 (->> (-> body
                     (select-keys [:organization :title :body :annotation_type :object_type_id :object_id])
                     ;; NOTE - we need to parse string -> date
