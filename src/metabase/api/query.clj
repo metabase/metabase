@@ -11,7 +11,8 @@
                              [database :refer [Database databases-for-org]]
                              [org :refer [Org]]
                              [query :refer [Query]]
-                             [query-execution :refer [QueryExecution all-fields]])))
+                             [query-execution :refer [QueryExecution all-fields]])
+            [metabase.util :as util]))
 
 
 (defendpoint GET "/form_input" [org]
@@ -54,7 +55,7 @@
     :or {name (str "New Query: " (java.util.Date.))
          public_perms common/perms-none}}]
   (require-params database sql)
-  (read-check Database (:id database))
+  (read-check Database database)
   (ins Query
     :type "rawsql"
     :name name
@@ -77,13 +78,16 @@
          (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
-  ;; TODO - check that database exists and user has permission (if specified)
-  (let-404 [query ]
-    (check-500 (->404 (sel :one Query :id id)
-                      write-check
-                      (merge body)
-                      (#(mapply upd Query id %))))
+(defendpoint PUT "/:id" [id :as {{:keys [timezone database details] :as body} :body}]
+  (require-params database details)
+  (read-check Database (:id database))
+  (let-404 [query (sel :one Query :id id)]
+    (write-check query)
+    (-> (util/select-non-nil-keys body :name :public_perms)
+      (assoc :version (:version query)                      ; don't increment this here.  that happens on pre-update
+             :database_id (:id database)
+             :details details)
+      (#(mapply upd Query id %)))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
 
