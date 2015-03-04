@@ -4,28 +4,27 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.models.card :refer [Card]]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first deserialize-dates random-name]]
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
             [metabase.test-data :refer :all]))
 
 ;; # CARD LIFECYCLE
 
-;; Helper fns
+;; ## Helper fns
 (defn post-card [card-name]
-  (-> ((user->client :rasta) :post 200 "card" {:organization (:id @test-org)
-                                               :name card-name
-                                               :public_perms 0
-                                               :can_read true
-                                               :can_write true
-                                               :display "scalar"
-                                               :dataset_query {:type "query"
-                                                               :query {:source_table (table->id :categories)
-                                                                       :filter [nil nil]
-                                                                       :aggregation ["count"]
-                                                                       :breakout [nil]
-                                                                       :limit nil}
-                                                               :database (:id @test-db)}
-                                               :visualization_settings {:global {:title nil}}})
-      (deserialize-dates :updated_at :created_at)))
+  ((user->client :rasta) :post 200 "card" {:organization (:id @test-org)
+                                           :name card-name
+                                           :public_perms 0
+                                           :can_read true
+                                           :can_write true
+                                           :display "scalar"
+                                           :dataset_query {:type "query"
+                                                           :query {:source_table (table->id :categories)
+                                                                   :filter [nil nil]
+                                                                   :aggregation ["count"]
+                                                                   :breakout [nil]
+                                                                   :limit nil}
+                                                           :database (:id @test-db)}
+                                           :visualization_settings {:global {:title nil}}}))
 
 ;; ## POST /api/card
 ;; Test that we can make a card
@@ -81,8 +80,7 @@
          :public_perms 0
          :created_at $})
     (let [{:keys [id]} (post-card card-name)]
-      (-> ((user->client :rasta) :get 200 (format "card/%d" id))
-          (deserialize-dates :updated_at :created_at)))))
+      ((user->client :rasta) :get 200 (format "card/%d" id)))))
 
 ;; ## PUT /api/card/:id
 ;; Test that we can edit a Card

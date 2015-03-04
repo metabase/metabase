@@ -32,4 +32,4 @@
     :map (->> (remove-fns-and-delays obj)
               (map-vals -format-response))       ; recurse over all vals in the map
     :coll (map -format-response obj)             ; recurse over all items in the collection
-    :jdbc-clob (util/jdbc-clob-to-str obj)))
+    :jdbc-clob (util/jdbc-clob->str obj)))

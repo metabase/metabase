@@ -125,6 +125,8 @@
 (defn wrap-response-if-needed
   "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
   [response]
+  (when (medley.core/boolean? response)                                                            ; Not sure why this is but the JSON serialization middleware
+    (throw (Exception. "Attempted to return a boolean as an API response. This is not allowed!"))) ; barfs if response is just a plain boolean
   (letfn [(is-wrapped? [resp] (and (map? resp)
                                    (contains? resp :status)
                                    (contains? resp :body)))]

@@ -5,7 +5,7 @@
             [metabase.http-client :as http]
             [metabase.models.field :refer [Field]]
             [metabase.test-data :refer :all]
-            [metabase.test.util :refer [deserialize-dates match-$]]))
+            [metabase.test.util :refer [match-$]]))
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
@@ -43,5 +43,4 @@
             :preview_display true
             :created_at $
             :base_type "BigIntegerField"})]
-  (->> ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories)))
-       (map #(deserialize-dates % :created_at :updated_at))))
+  ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories))))
