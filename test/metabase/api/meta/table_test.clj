@@ -69,3 +69,53 @@
             :created_at $
             :base_type "BigIntegerField"})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories))))
+
+;; ## GET /api/meta/table/:id/query_metadata
+(expect
+    (match-$ (sel :one Table :id (table->id :categories))
+      {:description nil
+       :entity_type nil
+       :db (match-$ @test-db
+             {:created_at $
+              :engine "h2"
+              :id $
+              :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+              :updated_at $
+              :name "Test Database"
+              :organization_id (:id @test-org)
+              :description nil})
+       :name "CATEGORIES"
+       :fields [(match-$ (sel :one Field :id (field->id :categories :name))
+                  {:description nil
+                   :table_id (table->id :categories)
+                   :special_type nil
+                   :name "NAME"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "dimension"
+                   :position 0
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})
+                (match-$ (sel :one Field :id (field->id :categories :id))
+                  {:description nil
+                   :table_id (table->id :categories)
+                   :special_type nil
+                   :name "ID"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "dimension"
+                   :position 0
+                   :preview_display true
+                   :created_at $
+                   :base_type "BigIntegerField"})]
+       :rows 75
+       :updated_at $
+       :entity_name nil
+       :active true
+       :id (table->id :categories)
+       :db_id (:id @test-db)
+       :created_at $})
+  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :categories))))
