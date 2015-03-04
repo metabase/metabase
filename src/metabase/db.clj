@@ -217,3 +217,19 @@
                         (fields [:id])
                         (where ~kwargs)
                         (limit 1)))))
+
+;; ## CASADE-DELETE
+
+(defmulti pre-cascade-delete (fn [entity _]
+                               entity))
+
+(defmethod pre-cascade-delete :default [_ instance]
+  instance)
+
+(defmacro cascade-delete [entity & kwargs]
+  `(let [entity# (entity->korma ~entity)
+         instances# (sel :many entity# ~@kwargs)]
+     (dorun (map (fn [instance#]
+                   (pre-cascade-delete entity# instance#)
+                   (del entity# :id (:id instance#)))
+                 instances#))))

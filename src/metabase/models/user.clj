@@ -50,6 +50,10 @@
                   :is_superuser false}]
     (merge defaults user)))
 
+(defmethod pre-cascade-delete User [_ {:keys [id] :as user}]
+  (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
+  (cascade-delete 'metabase.models.session/Session :user_id id))
+
 
 (defn set-user-password
   "Updates the stored password for a specified `User` by hashing the password with a random salt."

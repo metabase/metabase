@@ -91,7 +91,8 @@
 ;;
 ;; These users have permissions for the Test Org. They are lazily created as needed.
 ;; Three test users are defined:
-;; *  rasta - an admin
+;; *  rasta     - an admin
+;; *  crowberto - an admin + superuser
 ;; *  lucky
 ;; *  trashbird
 
@@ -192,6 +193,12 @@
            :last "Toucan"
            :password "blueberries"
            :admin true}
+   :crowberto {:email "crowberto@metabase.com"
+               :first "Crowberto"
+               :last "Corv"
+               :password "blackjet"
+               :admin true
+               :superuser true}
    :lucky {:email "lucky@metabase.com"
            :first "Lucky"
            :last "Pigeon"
@@ -206,14 +213,15 @@
 
 (defn- fetch-or-create-user
   "Create User + OrgPerms if they don't already exist and return User."
-  [& {:keys [email first last password admin]
-      :or {admin false}}]
+  [& {:keys [email first last password admin superuser]
+      :or {admin false
+           superuser false}}]
   {:pre [(string? email)
          (string? first)
          (string? last)
          (string? password)
-         (or (= admin true)
-             (= admin false))]}
+         (medley/boolean? admin)
+         (medley/boolean? superuser)]}
   (or (sel :one User :email email)
       (let [salt (.toString (java.util.UUID/randomUUID))
             org (load/test-org)
@@ -222,7 +230,8 @@
                    :first_name first
                    :last_name last
                    :password_salt salt
-                   :password (creds/hash-bcrypt (str salt password)))]
+                   :password (creds/hash-bcrypt (str salt password))
+                   :is_superuser superuser)]
         (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
             (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
         user)))

@@ -23,9 +23,8 @@
   (require-params name slug)
   ;; user must be a superuser to proceed
   (check-403 (:is_superuser @*current-user*))
-  (->> (util/select-non-nil-keys body [:slug :name :description :logo_url])
-    (mapply ins Org)))
-
+  (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
+       (mapply ins Org)))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)

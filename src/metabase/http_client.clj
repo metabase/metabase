@@ -81,8 +81,13 @@
     (println method-name url status) status
     (when expected-status
       (when-not (= status expected-status)
-        (println body)
-        (throw (Exception. (format "%s %s expected a status code of %d, got %d" method-name url expected-status status)))))
+        (println "\n****************************************\n")
+        (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
+              {stacktrace :stacktrace :as body} (try (-> (json/read-str body)
+                                                         clojure.walk/keywordize-keys)
+                                                     (catch Exception _ body))]
+          (clojure.pprint/pprint body)
+          (throw (Exception. message)))))
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body

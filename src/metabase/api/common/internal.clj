@@ -115,12 +115,21 @@
 ;;; ## ROUTE BODY WRAPPERS
 
 (defmacro catch-api-exceptions
-  "Execute BODY, and if an `ApiException` is thrown, return the appropriate HTTP response."
+  "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."
   [& body]
   `(try ~@body
         (catch ApiException e#
           {:status (.getStatusCode e#)
-           :body (.getMessage e#)})))
+           :body (.getMessage e#)})
+        (catch Throwable e#
+          (let [message# (.getMessage e#)
+                stacktrace# (->> (map str (.getStackTrace e#))
+                                 (filter (partial re-find #"metabase")))]
+            (println message#)
+            (clojure.pprint/pprint stacktrace#)
+            {:status 500
+             :body {:message message#
+                    :stacktrace stacktrace#}}))))
 
 (defn wrap-response-if-needed
   "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
