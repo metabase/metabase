@@ -1,10 +1,12 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
+            [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [org-perm :refer [OrgPerm]]
+                             [session :refer [Session]]
                              [user :refer [User]])
-            [metabase.test.util :refer [match-$ random-name]]
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
             [metabase.test-data :refer :all]
             [metabase.test-data.create :refer [create-user]]))
 
@@ -117,3 +119,24 @@
    (do ((user->client :crowberto) :put 200 (format "user/%d" id) {:first_name new-first
                                                                   :email new-email})
        (fetch-user))])
+
+;; ## PUT /api/user/:id/password
+;; Test that a User can change their password
+(expect-eval-actual-first (sel :one :fields [Session :id] (order :created_at :desc)) ; latest Session in the DB
+  (let [password {:old "password"
+                  :new "new_password"}
+        {:keys [email id] :as user} (create-user :password (:old password))
+        creds {:old {:password (:old password)
+                     :email email}
+               :new {:password (:new password)
+                     :email email}}]
+    ;; Check that creds work
+    (metabase.http-client/client :post 200 "session" (:old creds))
+    ;; Change the PW
+    (metabase.http-client/client (:old creds) :put 200 (format "user/%d/password" id) {:password (:new password)
+                                                                                       :old_password (:old password)})
+    ;; Old creds should no longer work
+    (assert (= (metabase.http-client/client :post 400 "session" (:old creds))
+               "password mismatch"))
+    ;; New creds *should* work
+    (metabase.http-client/client :post 200 "session" (:new creds))))
