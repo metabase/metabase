@@ -34,12 +34,10 @@
     (-> (merge defaults query)
         (assoc :details (json/write-str details)))))
 
-(defmethod pre-update Query [_ {:keys [sql timezone version] :as query}]
+(defmethod pre-update Query [_ {:keys [details version] :as query}]
   (-> query
       (select-non-nil-keys :name :database_id :public_perms)
-      (assoc :details (json/write-str (if-not sql {}
-                                        {:sql sql
-                                         :timezone timezone}))
+      (assoc :details (json/write-str details)
              :updated_at (new-sql-timestamp)
              :version (+ 1 version))))
 

@@ -6,6 +6,7 @@
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             (metabase.models
+              [database :refer [Database]]
               [hydrate :refer :all]
               [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :refer [contains-many? now-iso8601]]))
@@ -14,26 +15,22 @@
 (declare execute-query build-response)
 
 
-(defendpoint POST "/" [:as {body :body}]
-  (check-400 (contains-many? body :database :sql))
-  ;; TODO - validate that database id is valid and user has perms on database
+(defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
+  (require-params database sql)
+  (read-check Database database)
   (let [dataset-query {:type "native"
-                       :database (:database body)
-                       :native {:query (:sql body)
-                                :timezone (get body :timezone)}}
+                       :database database
+                       :native {:query sql
+                                :timezone timezone}}
         options {:executed_by *current-user-id*
                  :synchronously false
                  :cache_result true}]
     (driver/dataset-query dataset-query options)))
 
 
-;; TODO - not using defendpoint due to string params causing number format exceptions
-(def query-result
-  (GET "/:uuid" [uuid]
-    (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
-      (->>
-        (build-response query-execution)
-        (assoc {:status 200} :body)))))
+(defendpoint GET "/:uuid" [uuid]
+  (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
+    (build-response query-execution)))
 
 
 (def query-result-csv
@@ -44,7 +41,7 @@
        :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}})))
 
 
-(define-routes query-result query-result-csv)
+(define-routes query-result-csv)
 
 
 ;; ===============================================================================================================

@@ -2,7 +2,6 @@
   (:require [clojure.data.csv :as csv]
             [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
-            [clojure.data.json :as json]
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -17,7 +16,7 @@
 
 
 (defendpoint GET "/form_input" [org]
-  ;; TODO - validate user has perms on org
+  (check-403 ((:perms-for-org @*current-user*) org))
   (let [dbs (databases-for-org org)]
     {:permissions common/permissions
      :timezones common/timezones
@@ -25,13 +24,17 @@
 
 
 (defendpoint GET "/" [org f]
-  ;; TODO - filter by f == "mine"
-  ;; TODO - filter by creator == self OR public_perms > 0
   (check-403 ((:perms-for-org @*current-user*) org))
-  (-> (sel :many Query
-        (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
-        (where {:public_perms [> common/perms-none]}))
-      (hydrate :creator :database)))
+  (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
+        :all (sel :many Query
+               (where (or (= :creator_id *current-user-id*) (> :public_perms common/perms-none)))
+               (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
+               (order :name :ASC))
+        :mine (sel :many Query :creator_id *current-user-id*
+                (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
+                (order :name :ASC)))
+    (hydrate :creator :database)))
+
 
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
@@ -45,38 +48,46 @@
                     :creator_id *current-user-id*))
          (mapply ins Query))))
 
+
 (defn query-create
   "Create a new query from user posted data."
-  [{:keys [name sql timezone public_perms database]}]
-  (require-params database)             ; sql, timezone?
-  (check (exists? Database :id database) [400 "Specified database does not exist."])
-  ;; TODO - validate that user has perms to create against this database
+  [{:keys [name sql timezone public_perms database]
+    :or {name (str "New Query: " (java.util.Date.))
+         public_perms common/perms-none}}]
+  (require-params database sql)
+  (read-check Database database)
   (ins Query
     :type "rawsql"
-    :name (or name (str "New Query: " (java.util.Date.)))
+    :name name
     :details {:sql sql
               :timezone timezone}
-    :public_perms (or public_perms common/perms-none)
+    :public_perms public_perms
     :creator_id *current-user-id*
     :database_id database))
+
 
 (defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
   (if clone
     (query-clone clone)
     (query-create body)))
 
+
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Query :id id)
          read-check
          (hydrate :creator :database :can_read :can_write)))
 
-(defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
-  ;; TODO - check that database exists and user has permission (if specified)
-  (let-404 [query ]
-    (check-500 (->404 (sel :one Query :id id)
-                      write-check
-                      (merge body)
-                      (#(mapply upd Query id %))))
+
+(defendpoint PUT "/:id" [id :as {{:keys [timezone database details] :as body} :body}]
+  (require-params database details)
+  (read-check Database (:id database))
+  (let-404 [query (sel :one Query :id id)]
+    (write-check query)
+    (-> (util/select-non-nil-keys body :name :public_perms)
+      (assoc :version (:version query)                      ; don't increment this here.  that happens on pre-update
+             :database_id (:id database)
+             :details details)
+      (#(mapply upd Query id %)))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
 
@@ -97,7 +108,8 @@
                           :saved_query query
                           :synchronously false
                           :cache_result true}]
-             (driver/dataset-query dataset-query options)))) 
+             (driver/dataset-query dataset-query options))))
+
 
 (defendpoint GET "/:id/results" [id]
   (read-check Query id)
