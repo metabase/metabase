@@ -136,7 +136,7 @@
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
   [username]
   {:pre [(contains? usernames username)]}
-  (sel :one OrgPerm :organization_id (:is @test-org) :user_id (user->id username)))
+  (sel :one OrgPerm :organization_id (:id @test-org) :user_id (user->id username)))
 
 
 ;; # INTERNAL

@@ -64,6 +64,9 @@
          :inherits false})
     (create-org org-name)))
 
+
+;; # MEMBERS ENDPOINTS
+
 ;; ## GET /api/org/:id/members
 (expect
     #{(match-$ (user->org-perm :crowberto)
@@ -124,12 +127,35 @@
                   :email "rasta@metabase.com"})})}
   (set ((user->client :rasta) :get 200 (format "org/%d/members" (:id @test-org)))))
 
+;; ## Helper Fns
+
+(defn org-perm-exists? [org-id user-id]
+  (exists? OrgPerm :organization_id org-id :user_id user-id))
+
+(defn create-org-perm [org-id user-id]
+  ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id)))
+
 ;; ## POST /api/org/:id/members/:user-id
+;; Check that we can create an OrgPerm between existing User + Org
 (expect [false
          true]
   (let [{org-id :id} (create-org (random-name))
         {user-id :id} (create-user)
-        org-perm-exists? (fn [] (exists? OrgPerm :organization_id org-id :user_id user-id))]
+        org-perm-exists? (partial org-perm-exists? org-id user-id)]
     [(org-perm-exists?)
-     (do ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id))
+     (do (create-org-perm org-id user-id)
+         (org-perm-exists?))]))
+
+;; ## DELETE /api/org/:id/members/:user-id
+;; Check we can delete OrgPerms between a User + Org
+(expect [false
+         true
+         false]
+  (let [{org-id :id} (create-org (random-name))
+        {user-id :id} (create-user)
+        org-perm-exists? (partial org-perm-exists? org-id user-id)]
+    [(org-perm-exists?)
+     (do (create-org-perm org-id user-id)
+         (org-perm-exists?))
+     (do ((user->client :crowberto) :delete 204 (format "org/%d/members/%d" org-id user-id))
          (org-perm-exists?))]))

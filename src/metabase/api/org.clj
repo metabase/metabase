@@ -84,8 +84,7 @@
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id)
-      {:success true})))
+      (del OrgPerm :user_id user-id :organization_id id))))
 
 
 (define-routes)
