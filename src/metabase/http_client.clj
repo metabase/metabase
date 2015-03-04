@@ -5,6 +5,7 @@
             [metabase.util :as u]))
 
 (declare authenticate
+         auto-deserialize-dates
          build-url
          -client)
 
@@ -86,7 +87,8 @@
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body
              json/read-str
-             clojure.walk/keywordize-keys)
+             clojure.walk/keywordize-keys
+             auto-deserialize-dates)
          (catch Exception _
            body))))
 
@@ -112,3 +114,27 @@
                                         (map (partial apply str))
                                         (interpose "&")
                                         (apply str))))))
+
+
+;; ## AUTO-DESERIALIZATION
+
+(def auto-deserialize-dates-keys
+  #{:created_at :updated_at :last_login :date_joined})
+
+(defn- deserialize-date [date]
+  (some->> (u/parse-iso8601 date)
+           .getTime
+           java.sql.Timestamp.))
+
+(defn- auto-deserialize-dates
+  "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
+   Parse their values and convert to `java.sql.Timestamps`."
+  [response]
+  (cond (vector? response) (mapv auto-deserialize-dates response)
+        (map? response) (->> response
+                             (map (fn [[k v]]
+                                    {k (if (contains? auto-deserialize-dates-keys k)
+                                         (deserialize-date v)
+                                         (auto-deserialize-dates v))}))
+                             (reduce merge {}))
+        :else response))

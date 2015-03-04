@@ -5,47 +5,6 @@
 
 (declare $->prop)
 
-;; ## Response Deserialization
-
-(defn- deserialize-date [date]
-  (some->> (u/parse-iso8601 date)
-           .getTime
-           java.sql.Timestamp.))
-
-(defn deserialize-dates
-  "Deserialize date strings with KEYS returned in RESPONSE.
-   Supports plain keywords or vector keysequences like `update-in`.
-
-    (deserialize-dates response :updated_at [:user :last_login])
-
-  DEPRECATED: You should probably just use auto-deserialize-dates instead (!)"
-  [response & [k & ks]]
-  {:pre [(map? response)
-         (or (keyword? k)
-             (vector? k))]}
-  (let [response (cond
-                   (vector? k) (update-in response k deserialize-date)
-                   (keyword? k) (update-in response [k] deserialize-date))]
-    (if (empty? ks) response
-        (apply deserialize-dates response ks))))
-
-(def auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined})
-
-(defn auto-deserialize-dates
-  "Like deserialize-dates, but automatically recurses over RESPONSE and looks for keys that are known to correspond to dates,
-   and automatically deserializes them."
-  [response]
-  (cond (vector? response) (mapv auto-deserialize-dates response)
-        (map? response) (->> response
-                             (map (fn [[k v]]
-                                    {k (if (contains? auto-deserialize-dates-keys k)
-                                         (deserialize-date v)
-                                         (auto-deserialize-dates v))}))
-                             (reduce merge {}))
-        :else response))
-
-
 ;; ## match-$
 
 (defmacro match-$

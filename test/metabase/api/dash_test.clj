@@ -9,17 +9,16 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [user :refer [User]])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first deserialize-dates random-name auto-deserialize-dates]]
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
             [metabase.test-data :refer :all]))
 
 ;; # DASHBOARD LIFECYCLE
 
 ;; ## Helper Fns
 (defn create-dash [dash-name]
-  (-> ((user->client :rasta) :post 200 "dash" {:name dash-name
-                                               :organization (:id @test-org)
-                                               :public_perms 0})
-      (deserialize-dates :updated_at :created_at)))
+  ((user->client :rasta) :post 200 "dash" {:name dash-name
+                                           :organization (:id @test-org)
+                                           :public_perms 0}))
 
 ;; ## POST /api/dash
 ;; Test that we can create a new Dashboard
@@ -56,8 +55,7 @@
       :id $
       :public_perms 0
       :created_at $})}
-  (-> ((user->client :rasta) :get 200 (format "dash/%d" (:id dash)))
-      auto-deserialize-dates))
+  ((user->client :rasta) :get 200 (format "dash/%d" (:id dash))))
 
 ;; ## PUT /api/dash/:id
 ;; Test that we can change a Dashboard
@@ -134,8 +132,7 @@
       ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id) {:cardId card-id})
       (->> ((user->client :rasta) :get 200 (format "dash/%d" dash-id))
            :dashboard
-           :ordered_cards
-           auto-deserialize-dates))))
+           :ordered_cards))))
 
 ;; ## DELETE /api/dash/:id/cards
 (let [card-name (random-name)
@@ -149,5 +146,4 @@
       ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id) :dashcardId dashcard-id)
       (->> ((user->client :rasta) :get 200 (format "dash/%d" dash-id))
            :dashboard
-           :ordered_cards
-           auto-deserialize-dates))))
+           :ordered_cards))))
