@@ -30,9 +30,13 @@
   ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
+  (println "EMAIL:" email)
   (when id
+    (println "A")
     (check-400 (is-email? email))
-    (check-400 (not (exists? User :email email :id [not= id]))))
+    (println "B")
+    (check-400 (not (exists? User :email email :id [not= id])))
+    (println "C"))
   (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
                   (mapply upd User id)))
   (sel :one User :id id))

@@ -43,13 +43,19 @@
              :perms-for-org (memoize (partial user-perms-for-org id))
              :common_name (str (:first_name user) " " (:last_name user)))))
 
-(defmethod pre-insert User [_ user]
+(defmethod pre-insert User [_ {:keys [email] :as user}]
+  (assert (util/is-email? email))
   (let [defaults {:date_joined (util/new-sql-timestamp)
                   :last_login (util/new-sql-timestamp)
                   :is_staff true
                   :is_active true
                   :is_superuser false}]
     (merge defaults user)))
+
+(defmethod pre-update User [_ {:keys [email] :as user}]
+  (when email
+    (assert (util/is-email? email)))
+  user)
 
 (defmethod pre-cascade-delete User [_ {:keys [id] :as user}]
   (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
