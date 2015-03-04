@@ -30,3 +30,6 @@
 (defmethod pre-insert Org [_ org]
   (let [defaults {:inherits false}]
     (merge defaults org)))
+
+(defmethod pre-cascade-delete Org [_ {:keys [id] :as org}]
+  (cascade-delete 'metabase.models.org-perm/OrgPerm :organization_id id))

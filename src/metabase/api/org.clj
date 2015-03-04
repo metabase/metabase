@@ -12,7 +12,7 @@
 
 
 (defendpoint GET "/" []
-  (if (:is_superuser *current-user*)
+  (if (:is_superuser @*current-user*)
     ;; superusers get all organizations
     (sel :many Org)
     ;; normal users simply see the orgs they are members of
@@ -22,10 +22,9 @@
 (defendpoint POST "/" [:as {{:keys [name slug] :as body} :body}]
   (require-params name slug)
   ;; user must be a superuser to proceed
-  (check-403 (:is_superuser *current-user*))
-  (->> (util/select-non-nil-keys body [:slug :name :description :logo_url])
-    (mapply ins Org)))
-
+  (check-403 (:is_superuser @*current-user*))
+  (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
+       (mapply ins Org)))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)

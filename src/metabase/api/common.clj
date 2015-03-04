@@ -29,15 +29,21 @@
              *current-user* (delay ((sel-fn :one "metabase.models.user/User" :id ~user-id))) ]
      ~@body))
 
+(defn current-user-perms-for-org
+  "TODO - A very similar implementation exists in `metabase.models`. Find some way to combine them."
+  [org-id]
+  (when *current-user-id*
+    (when-let [{superuser? :is_superuser} (sel :one ["metabase.models.user/User" :is_superuser] :id *current-user-id*)]
+      (if superuser? :admin
+          (when-let [{admin? :admin} (sel :one ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id)]
+            (if admin? :admin :default))))))
+
 (defmacro org-perms-case
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
    Case will be `nil`, `:default`, or `:admin`."
   [org-id & body]
-  `(let [org-id# ~org-id]                                ; make sure org-id gets evaluated before get to `case`
-     (case (when *current-user-id*
-             (when-let [{:keys [~'admin]} (sel :one ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id#)]
-               (if ~'admin :admin :default)))
-       ~@body)))
+  `(case (current-user-perms-for-org ~org-id)
+     ~@body))
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS

@@ -9,8 +9,12 @@
   (every? true? (map #(contains? m %) ks)))
 
 (defn select-non-nil-keys
-  "Like `select-keys` but filters out key-value pairs whose value is nil."
+  "Like `select-keys` but filters out key-value pairs whose value is nil.
+   Unlike `select-keys`, KEYS are rest args (should not be wrapped in a vector).
+   TODO: Why?"
   [m & keys]
+  {:pre [(map? m)
+         (every? keyword? keys)]}
   (->> (select-keys m keys)
        (filter-vals identity)))
 

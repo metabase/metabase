@@ -2,7 +2,7 @@
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-              [user :refer [User]])
+                             [user :refer [User]])
             [metabase.util :as util]))
 
 (defentity Session
