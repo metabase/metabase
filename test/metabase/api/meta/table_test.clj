@@ -3,7 +3,8 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
-            [metabase.models.field :refer [Field]]
+            (metabase.models [field :refer [Field]]
+                             [table :refer [Table]])
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$]]))
 
@@ -15,6 +16,31 @@
          {:description nil, :entity_type nil, :name "VENUES", :rows 100, :entity_name nil, :active true, :id (table->id :venues), :db_id @db-id}]
   (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
        (map #(dissoc % :db :created_at :updated_at)))) ; don't care about checking nested DB, and not sure how to compare `:created_at` / `:updated_at`
+
+;; ## GET /api/meta/table/:id
+
+(expect
+    (match-$ (sel :one Table :id (table->id :venues))
+      {:description nil
+       :entity_type nil
+       :db (match-$ @test-db
+             {:created_at $
+              :engine "h2"
+              :id $
+              :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+              :updated_at $
+              :name "Test Database"
+              :organization_id (:id @test-org)
+              :description nil})
+       :name "VENUES"
+       :rows 100
+       :updated_at $
+       :entity_name nil
+       :active true
+       :id (table->id :venues)
+       :db_id (:id @test-db)
+       :created_at $})
+  ((user->client :rasta) :get 200 (format "meta/table/%d" (table->id :venues))))
 
 ;; ## GET /api/meta/table/:id/fields
 (expect [(match-$ (sel :one Field :id (field->id :categories :name))
