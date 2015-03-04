@@ -132,6 +132,12 @@
   (user->id username)                                 ; call a function that will force User to created if need be
   (partial http/client (user->credentials username)))
 
+(defn user->org-perm
+  "Return the `OrgPerm` for User with USERNAME for the Test Org."
+  [username]
+  {:pre [(contains? usernames username)]}
+  (sel :one OrgPerm :organization_id (:id @test-org) :user_id (user->id username)))
+
 
 ;; # INTERNAL
 

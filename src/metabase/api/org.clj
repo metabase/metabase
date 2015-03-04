@@ -46,7 +46,7 @@
 (defendpoint GET "/:id/members" [id]
   (read-check Org id)
   (-> (sel :many OrgPerm :organization_id id)
-      (hydrate :user :organization)))
+      (hydrate :user)))
 
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]} :body}]
@@ -84,8 +84,7 @@
   (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
     (check-403 @can_write)
     (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id)
-      {:success true})))
+      (del OrgPerm :user_id user-id :organization_id id))))
 
 
 (define-routes)
