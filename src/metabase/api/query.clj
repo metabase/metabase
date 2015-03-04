@@ -34,6 +34,7 @@
                 (order :name :ASC)))
     (hydrate :creator :database)))
 
+
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
@@ -46,30 +47,35 @@
                     :creator_id *current-user-id*))
          (mapply ins Query))))
 
+
 (defn query-create
   "Create a new query from user posted data."
-  [{:keys [name sql timezone public_perms database]}]
-  (require-params database)             ; sql, timezone?
-  (check (exists? Database :id database) [400 "Specified database does not exist."])
-  ;; TODO - validate that user has perms to create against this database
+  [{:keys [name sql timezone public_perms database]
+    :or {name (str "New Query: " (java.util.Date.))
+         public_perms common/perms-none}}]
+  (require-params database sql)
+  (read-check Database (:id database))
   (ins Query
     :type "rawsql"
-    :name (or name (str "New Query: " (java.util.Date.)))
+    :name name
     :details {:sql sql
               :timezone timezone}
-    :public_perms (or public_perms common/perms-none)
+    :public_perms public_perms
     :creator_id *current-user-id*
     :database_id database))
+
 
 (defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
   (if clone
     (query-clone clone)
     (query-create body)))
 
+
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Query :id id)
          read-check
          (hydrate :creator :database :can_read :can_write)))
+
 
 (defendpoint PUT "/:id" [id :as {{:keys [sql timezone version] :as body} :body}]
   ;; TODO - check that database exists and user has permission (if specified)
