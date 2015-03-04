@@ -76,9 +76,8 @@
          :engine (name engine)))
 
 (defmethod pre-update Database [_ {:keys [details] :as database}]
-  (assoc database
-         :updated_at (new-sql-timestamp)
-         :details (json/write-str details)))
+  (cond-> (assoc database :updated_at (new-sql-timestamp))
+    details (assoc :details (json/write-str details))))
 
 (defn databases-for-org
   "Selects the ID and NAME for all databases available to the given org-id."
