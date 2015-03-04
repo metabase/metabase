@@ -39,10 +39,14 @@
   [entity]
   {:post [(= (type %) :korma.core/Entity)]}
   (cond (vector? entity) (entity->korma (first entity))
-        (string? entity) (do (-> (.split ^String entity "/")
-                                 first
-                                 symbol
-                                 require)
-                             (eval (symbol entity)))
-        (symbol? entity) (eval entity)
+        (string? entity) (entity->korma (symbol entity))
+        (symbol? entity) (try (eval entity)
+                              (catch clojure.lang.Compiler$CompilerException _ ; a wrapped ClassNotFoundException
+                                (-> entity
+                                    str
+                                    (.split "/")
+                                    first
+                                    symbol
+                                    require)
+                                (eval entity)))
         :else entity))

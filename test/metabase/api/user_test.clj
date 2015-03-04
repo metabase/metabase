@@ -10,6 +10,55 @@
 
 (def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
 
+;; ## GET /api/user
+;; Check that superusers can get a list of all Users
+(expect
+    #{(match-$ (fetch-user :crowberto)
+        {:common_name "Crowberto Corv"
+         :date_joined $
+         :last_name "Corv"
+         :id $
+         :is_superuser true
+         :last_login $
+         :first_name "Crowberto"
+         :email "crowberto@metabase.com"})
+      (match-$ (fetch-user :trashbird)
+        {:common_name "Trash Bird"
+         :date_joined $
+         :last_name "Bird"
+         :id $
+         :is_superuser false
+         :last_login $
+         :first_name "Trash"
+         :email "trashbird@metabase.com"})
+      (match-$ (fetch-user :lucky)
+        {:common_name "Lucky Pigeon"
+         :date_joined $
+         :last_name "Pigeon"
+         :id $
+         :is_superuser false
+         :last_login $
+         :first_name "Lucky"
+         :email "lucky@metabase.com"})
+      (match-$ (fetch-user :rasta)
+        {:common_name "Rasta Toucan"
+         :date_joined $
+         :last_name "Toucan"
+         :id $
+         :is_superuser false
+         :last_login $
+         :first_name "Rasta"
+         :email "rasta@metabase.com"})}
+  (do
+    ;; Delete all the other random Users we've created so far
+    (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
+      (cascade-delete User :id [not-in user-ids]))
+    ;; Now do the request
+    (set ((user->client :crowberto) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
+
+;; Check that non-superusers are denied access
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 "user"))
 
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
