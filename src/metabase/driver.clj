@@ -47,7 +47,7 @@
                          :running_time 0
                          :result_rows 0
                          :result_file ""
-                         :result_data ""
+                         :result_data "{}"
                          :raw_query ""
                          :additional_info ""}]
     (if synchronously
