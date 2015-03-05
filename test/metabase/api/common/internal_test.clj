@@ -33,7 +33,7 @@
 ;;; TESTS FOR ROUTE-PARAM-REGEX
 
 ;; expectations (internally, `clojure.data/diff`) doesn't think two regexes with the same exact pattern are equal.
-;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"^[0-9]+$" -> "#^[0-9]+$"`
+;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"[0-9]+" -> "#[0-9]+"`
 (defmacro no-regex [& body]
   `(binding [*auto-parse-types* (medley/map-vals #(medley/update % :route-param-regex (partial str "#"))
                                                  *auto-parse-types*) ]
@@ -42,10 +42,10 @@
 (expect nil
   (no-regex (route-param-regex :fish)))
 
-(expect [:id "#^[0-9]+$"]
+(expect [:id "#[0-9]+"]
   (no-regex (route-param-regex :id)))
 
-(expect [:card-id "#^[0-9]+$"]
+(expect [:card-id "#[0-9]+"]
   (no-regex (route-param-regex :card-id)))
 
 
@@ -78,13 +78,13 @@
 (expect []
   (no-regex (typify-args [:fish :fry])))
 
-(expect [:id "#^[0-9]+$"]
+(expect [:id "#[0-9]+"]
   (no-regex (typify-args [:id])))
 
-(expect [:id "#^[0-9]+$"]
+(expect [:id "#[0-9]+"]
   (no-regex (typify-args [:id :fish])))
 
-(expect [:id "#^[0-9]+$" :card-id "#^[0-9]+$"]
+(expect [:id "#[0-9]+" :card-id "#[0-9]+"]
   (no-regex (typify-args [:id :card-id])))
 
 
@@ -93,27 +93,27 @@
 (expect "/"
   (no-regex (typify-route "/")))
 
-(expect ["/:id" :id "#^[0-9]+$"]
+(expect ["/:id" :id "#[0-9]+"]
   (no-regex (typify-route "/:id")))
 
-(expect ["/:id/card" :id "#^[0-9]+$"]
+(expect ["/:id/card" :id "#[0-9]+"]
   (no-regex (typify-route "/:id/card")))
 
-(expect ["/:card-id" :card-id "#^[0-9]+$"]
+(expect ["/:card-id" :card-id "#[0-9]+"]
   (no-regex (typify-route "/:card-id")))
 
 (expect "/:fish"
   (no-regex (typify-route "/:fish")))
 
-(expect ["/:id/tables/:card-id" :id "#^[0-9]+$" :card-id "#^[0-9]+$"]
+(expect ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
   (no-regex (typify-route "/:id/tables/:card-id")))
 
 ;; don't try to typify route that's already typified
-(expect ["/:id/:crazy-id" :crazy-id "#^[0-9]+$"]
-  (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#^[0-9]+$"])))
+(expect ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
+  (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#[0-9]+"])))
 
 ;; Check :uuid args
-(expect ["/:uuid/toucans" :uuid "#^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"]
+(expect ["/:uuid/toucans" :uuid "#[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"]
   (no-regex (typify-route "/:uuid/toucans")))
 
 

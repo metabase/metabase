@@ -136,7 +136,7 @@
   (expect-expansion
    (do
      (def GET_:id
-       (GET ["/:id" :id "#^[0-9]+$"] [id]
+       (GET ["/:id" :id "#[0-9]+"] [id]
          (metabase.api.common.internal/auto-parse [id]
            (metabase.api.common.internal/catch-api-exceptions
              (clojure.core/-> (do (->404 (sel :one Card :id id)))

@@ -26,9 +26,9 @@
 
      :route-param-regex Regex pattern that should be used for params in Compojure route forms
      :parser            Function that should be used to parse args"
-  {:int {:route-param-regex #"^[0-9]+$"
+  {:int {:route-param-regex #"[0-9]+"
          :parser 'Integer/parseInt}
-   :uuid {:route-param-regex #"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+   :uuid {:route-param-regex #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
           :parser nil}})
 
 (def ^:dynamic *auto-parse-arg-name-patterns*
