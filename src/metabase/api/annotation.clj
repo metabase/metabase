@@ -36,8 +36,8 @@
   (-> (ins Annotation
         :organization_id organization
         :author_id *current-user-id*
-        :start (util/parse-iso8601-with-ms start)
-        :end (util/parse-iso8601-with-ms end)
+        :start (util/parse-iso8601 start)
+        :end (util/parse-iso8601 end)
         :title title
         :body body
         :annotation_type annotation_type
