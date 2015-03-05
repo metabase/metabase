@@ -59,14 +59,14 @@
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
       (realize-json :details) ; TODO wouldn't we want to actually strip this info instead of returning it?
-      (assoc* :organization (sel-fn :one Org :id organization_id)
-              :can_read (delay (org-can-read organization_id))
-              :can_write (delay (org-can-write organization_id))
+      (assoc* :organization       (sel-fn :one Org :id organization_id)
+              :can_read           (delay (org-can-read organization_id))
+              :can_write          (delay (org-can-write organization_id))
               :connection-details (delay (conn/connection-details <>))
-              :connection (delay (conn/connection <>))
-              :korma-db (delay (korma-db <>))
-              :native-query (partial native-query <>)
-              :table-names (delay (table-names <>)))))
+              :connection         (delay (conn/connection <>))
+              :korma-db           (delay (korma-db <>))
+              :native-query       (partial native-query <>)
+              :table-names        (delay (table-names <>)))))
 
 (defmethod pre-insert Database [_ {:keys [details engine] :as database}]
   (assoc database
