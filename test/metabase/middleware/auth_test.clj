@@ -123,13 +123,11 @@
 
 
 ;; with valid user-id
-(let [{:keys [id email] :as user} (fetch-user :rasta)]
-  (assert user)
-  (expect
-    {:userid id
-     :user {:id id
-            :email email}}
-    (user-bound-handler (request-with-userid id))))
+(expect
+  {:userid (user->id :rasta)
+   :user {:id (user->id :rasta)
+          :email (:email (fetch-user :rasta))}}
+  (user-bound-handler (request-with-userid (user->id :rasta))))
 
 ;; with invalid user-id (not sure how this could ever happen, but lets test it anyways)
 (expect
