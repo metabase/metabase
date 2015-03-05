@@ -124,7 +124,7 @@
 ;; ## AUTO-DESERIALIZATION
 
 (def auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
 
 (defn- deserialize-date [date]
   (some->> (u/parse-iso8601 date)
