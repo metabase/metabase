@@ -5,10 +5,9 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
-            (metabase.models
-              [database :refer [Database]]
-              [hydrate :refer :all]
-              [query-execution :refer [QueryExecution all-fields]])
+            (metabase.models [database :refer [Database]]
+                             [hydrate :refer :all]
+                             [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
@@ -29,19 +28,19 @@
 
 
 (defendpoint GET "/:uuid" [uuid]
-  (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
+  (let-404 [query-execution (sel :one all-fields :uuid uuid)]
     (build-response query-execution)))
 
 
-(def query-result-csv
-  (GET "/:uuid/csv" [uuid]
-    (let-404 [{:keys [result_data] :as query-execution} (eval `(sel :one ~all-fields :uuid ~uuid))]
-      {:status 200
-       :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
-       :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}})))
+(defendpoint GET "/:uuid/csv" [uuid]
+  (let-404 [{{:keys [columns rows]} :result_data} (sel :one all-fields :uuid uuid)]
+    {:status 200
+     :body (with-out-str
+             (csv/write-csv *out* (into [columns] rows)))
+     :headers {"Content-Type" "text/csv"
+               "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}}))
 
-
-(define-routes query-result-csv)
+(define-routes)
 
 
 ;; ===============================================================================================================

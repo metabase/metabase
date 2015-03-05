@@ -1,5 +1,6 @@
 (ns metabase.api.common.internal-test
   (:require [expectations :refer :all]
+            [medley.core :as medley]
             (metabase.api.common [internal :refer :all])))
 
 ;;; TESTS FOR ROUTE-FN-NAME
@@ -32,9 +33,10 @@
 ;;; TESTS FOR ROUTE-PARAM-REGEX
 
 ;; expectations (internally, `clojure.data/diff`) doesn't think two regexes with the same exact pattern are equal.
-;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"[0-9]+ -> "#[0-9]+"`
+;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"[0-9]+" -> "#[0-9]+"`
 (defmacro no-regex [& body]
-  `(binding [*auto-parse-types* (update-in *auto-parse-types* [:int :route-param-regex] (partial str "#"))]
+  `(binding [*auto-parse-types* (medley/map-vals #(medley/update % :route-param-regex (partial str "#"))
+                                                 *auto-parse-types*) ]
      ~@body))
 
 (expect nil
@@ -109,6 +111,10 @@
 ;; don't try to typify route that's already typified
 (expect ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
   (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#[0-9]+"])))
+
+;; Check :uuid args
+(expect ["/:uuid/toucans" :uuid "#[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"]
+  (no-regex (typify-route "/:uuid/toucans")))
 
 
 ;; TESTS FOR LET-FORM-FOR-ARG
