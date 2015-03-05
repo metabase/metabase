@@ -5,6 +5,11 @@
 
 (declare -format-response)
 
+;; # SHADY HACK
+;; Tell the JSON middleware to use a date format that includes milliseconds
+(intern 'cheshire.factory 'default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+
+;; # FORMAT RESPONSE MIDDLEWARE
 (defn format-response
   "Middleware that recurses over Clojure object before it gets converted to JSON and makes adjustments neccessary so the formatter doesn't barf.
    e.g. functions and delays are stripped and H2 Clobs are converted to strings."
