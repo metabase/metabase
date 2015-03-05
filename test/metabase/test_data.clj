@@ -231,14 +231,12 @@
          (medley/boolean? admin)
          (medley/boolean? superuser)]}
   (or (sel :one User :email email)
-      (let [salt (.toString (java.util.UUID/randomUUID))
-            org (load/test-org)
+      (let [org (load/test-org)
             user (ins User
                    :email email
                    :first_name first
                    :last_name last
-                   :password_salt salt
-                   :password (creds/hash-bcrypt (str salt password))
+                   :password password
                    :is_superuser superuser
                    :is_active active)]
         (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))

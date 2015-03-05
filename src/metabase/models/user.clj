@@ -43,14 +43,21 @@
              :perms-for-org (memoize (partial user-perms-for-org id))
              :common_name (str (:first_name user) " " (:last_name user)))))
 
-(defmethod pre-insert User [_ {:keys [email] :as user}]
+(defmethod pre-insert User [_ {:keys [email password] :as user}]
   (assert (util/is-email? email))
-  (let [defaults {:date_joined (util/new-sql-timestamp)
+  (assert (and (string? password)
+               (not (clojure.string/blank? password))))
+  (assert (not (:password_salt user))
+          "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+  (let [salt (.toString (java.util.UUID/randomUUID))
+        defaults {:date_joined (util/new-sql-timestamp)
                   :last_login (util/new-sql-timestamp)
                   :is_staff true
                   :is_active true
                   :is_superuser false}]
-    (merge defaults user)))
+    ;; always salt + encrypt the password before put new User in the DB
+    (merge defaults user {:password_salt salt
+                          :password (creds/hash-bcrypt (str salt password))})))
 
 (defmethod pre-update User [_ {:keys [email] :as user}]
   (when email

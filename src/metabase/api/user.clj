@@ -39,10 +39,9 @@
 
 
 (defendpoint PUT "/:id/password" [id :as {{:keys [password old_password] :as body} :body}]
-  ;; caller must supply current and new password attributes
-  (check (and password old_password) [400 "You must specify both old_password and password"])
-  ;; user must be getting their own details OR they must be a superuser to proceed
-  (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
+  (require-params password old_password)
+  (check-403 (or (= id *current-user-id*)
+                 (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password_salt :password] :id id)]
     (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) [400 "password mismatch"]))
   (set-user-password id password)
