@@ -88,32 +88,21 @@
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
   (-> (java.util.Date.)
-      .getTime ; time in milliseconds
-      (/ 1000) ; we don't care about the ms so strip them out
-      int
-      (* 1000)
+      .getTime
       (java.sql.Timestamp.)))
 
 (defn parse-iso8601
   "parse a string value expected in the iso8601 format into a `java.sql.Date`."
   [datetime]
   (some->> datetime
-           (time/parse (time/formatters :date-time-no-ms))
+           (time/parse (time/formatters :date-time))
            (coerce/to-long)
            (java.sql.Date.)))
-
-(defn parse-iso8601-with-ms
-  "parse a string value expected in the iso8601 format WITH MILLISECONDS into a `java.sql.Date`."
-  [datetime]
-  (some->> datetime
-    (time/parse (time/formatters :date-time))
-    (coerce/to-long)
-    (java.sql.Date.)))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
   []
-  (time/unparse (time/formatters :date-time-no-ms) (coerce/from-long (System/currentTimeMillis))))
+  (time/unparse (time/formatters :date-time) (coerce/from-long (System/currentTimeMillis))))
 
 (defn jdbc-clob->str
   "Convert a `JdbcClob` to a `String`."
