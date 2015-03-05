@@ -29,7 +29,7 @@
 
 
 (defendpoint GET "/:uuid" [uuid]
-  (let-404 [query-execution (eval `(sel :one ~all-fields :uuid ~uuid))]
+  (let-404 [query-execution (sel :one all-fields :uuid uuid)]
     (build-response query-execution)))
 
 

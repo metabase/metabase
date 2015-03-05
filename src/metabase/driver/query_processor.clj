@@ -5,6 +5,7 @@
                              [util :as util])
             [metabase.models.database :refer [Database]]))
 
+;; TODO - This was accidentally named `process2` while debugging. Rename to `process`
 (declare process2)
 
 (defn process-and-run
