@@ -42,3 +42,9 @@
        :created_at $
        :base_type "TextField"})
   ((user->client :rasta) :get 200 (format "meta/field/%d" (field->id :users :name))))
+
+;; GET /api/meta/field/:id/summary
+
+(expect [["count" 75]      ; why doesn't this come back as a dictionary ?
+         ["distincts" 75]]
+  ((user->client :rasta) :get 200 (format "meta/field/%d/summary" (field->id :categories :name))))
