@@ -212,16 +212,18 @@
    :trashbird {:email "trashbird@metabase.com"
                :first "Trash"
                :last "Bird"
-               :password "birdseed"}})
+               :password "birdseed"
+               :active false}})
 
 (def ^:private usernames
   (set (keys user->info)))
 
 (defn- fetch-or-create-user
   "Create User + OrgPerms if they don't already exist and return User."
-  [& {:keys [email first last password admin superuser]
+  [& {:keys [email first last password admin superuser active]
       :or {admin false
-           superuser false}}]
+           superuser false
+           active true}}]
   {:pre [(string? email)
          (string? first)
          (string? last)
@@ -237,7 +239,8 @@
                    :last_name last
                    :password_salt salt
                    :password (creds/hash-bcrypt (str salt password))
-                   :is_superuser superuser)]
+                   :is_superuser superuser
+                   :is_active active)]
         (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
             (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
         user)))
