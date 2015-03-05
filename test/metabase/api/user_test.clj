@@ -122,7 +122,7 @@
 
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password
-(expect-eval-actual-first (sel :one :fields [Session :id] (order :created_at :desc)) ; latest Session in the DB
+(expect-eval-actual-first (sel :one :fields [Session :id] (order :created_at :desc)) ; get the latest Session from the DB
   (let [password {:old "password"
                   :new "new_password"}
         {:keys [email id] :as user} (create-user :password (:old password))
