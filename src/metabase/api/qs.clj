@@ -5,10 +5,9 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
-            (metabase.models
-              [database :refer [Database]]
-              [hydrate :refer :all]
-              [query-execution :refer [QueryExecution all-fields]])
+            (metabase.models [database :refer [Database]]
+                             [hydrate :refer :all]
+                             [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
