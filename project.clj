@@ -49,6 +49,7 @@
   :target-path "target/%s"
   :ring {:handler metabase.core/app}
   :profiles {:dev {:dependencies [[expectations "2.0.12"]   ; unit tests
+                                  [ring/ring-mock "0.2.0"]
                                   ]
                    :jvm-opts ["-Dlogfile.path=target/log"]}
              :uberjar {:aot :all}})
