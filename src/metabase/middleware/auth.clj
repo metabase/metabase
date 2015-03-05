@@ -8,8 +8,8 @@
                              [user :refer [User current-user-fields]])))
 
 
-(def SESSION_COOKIE "metabase.SESSION_ID")
-(def SESSION_HEADER "x-metabase-session")
+(def metabase-session-cookie "metabase.SESSION_ID")
+(def metabase-session-header "x-metabase-session")
 
 (def response-unauthentic {:status 401 :body "Unauthenticated"})
 
@@ -21,7 +21,7 @@
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
   (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [SESSION_COOKIE :value]) (headers SESSION_HEADER))]
+    (if-let [session-id (or (get-in cookies [metabase-session-cookie :value]) (headers metabase-session-header))]
       ;; alternatively we could always associate the keyword and just let it be nil if there is no value
       (handler (assoc request :metabase-sessionid session-id))
       (handler request))))
