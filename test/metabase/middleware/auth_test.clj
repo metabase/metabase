@@ -4,9 +4,13 @@
             [metabase.api.common :refer [*current-user-id* *current-user*]]
             [metabase.middleware.auth :refer :all]
             [metabase.models.session :refer [Session]]
-            [metabase.test-data :as test-data]
+            [metabase.test-data :refer :all]
             [metabase.util :as util]
             [ring.mock.request :as mock]))
+
+
+;; make sure test db is setup
+@test-db
 
 
 ;;;;  ===========================  TEST wrap-sessionid middleware  ===========================
@@ -71,7 +75,7 @@
 
 ;; valid sessionid
 (let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (test-data/user->id :rasta)]
+      user-id (user->id :rasta)]
   (assert sessionid)
   (assert user-id)
   ;; create a new session
@@ -85,7 +89,7 @@
 
 ;; expired sessionid
 (let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (test-data/user->id :rasta)]
+      user-id (user->id :rasta)]
   (assert sessionid)
   (assert user-id)
   ;; create a new session (specifically created some time in the past so it's EXPIRED)
@@ -99,7 +103,7 @@
 
 ;; inactive user sessionid
 (let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (test-data/user->id :trashbird)]              ; NOTE that :trashbird is our INACTIVE test user
+      user-id (user->id :trashbird)]              ; NOTE that :trashbird is our INACTIVE test user
   (assert sessionid)
   (assert user-id)
   ;; create a new session (specifically created some time in the past so it's EXPIRED)
@@ -128,7 +132,7 @@
 
 
 ;; with valid user-id
-(let [{:keys [id email] :as user} (test-data/fetch-user :rasta)]
+(let [{:keys [id email] :as user} (fetch-user :rasta)]
   (assert user)
   (expect
     {:userid id
