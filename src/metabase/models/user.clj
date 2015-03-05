@@ -47,6 +47,8 @@
   (assert (util/is-email? email))
   (assert (and (string? password)
                (not (clojure.string/blank? password))))
+  (assert (not (:password_salt user))
+          "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
   (let [salt (.toString (java.util.UUID/randomUUID))
         defaults {:date_joined (util/new-sql-timestamp)
                   :last_login (util/new-sql-timestamp)
