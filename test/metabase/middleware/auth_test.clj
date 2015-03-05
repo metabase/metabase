@@ -74,42 +74,33 @@
 
 
 ;; valid sessionid
-(let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (user->id :rasta)]
+(let [sessionid (.toString (java.util.UUID/randomUUID))]
   (assert sessionid)
-  (assert user-id)
-  ;; create a new session
-  (korma/insert Session (korma/values {:id sessionid :user_id user-id :created_at (util/new-sql-timestamp)}))
   ;; validate that we are authenticated
-  (expect
-    {:metabase-userid user-id}
+  (expect-let [res (korma/insert Session (korma/values {:id sessionid :user_id (user->id :rasta) :created_at (util/new-sql-timestamp)}))]
+    {:metabase-userid (user->id :rasta)}
     (-> (auth-enforced-handler (request-with-sessionid sessionid))
       (select-keys [:metabase-userid]))))
 
 
 ;; expired sessionid
-(let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (user->id :rasta)]
+(let [sessionid (.toString (java.util.UUID/randomUUID))]
   (assert sessionid)
-  (assert user-id)
   ;; create a new session (specifically created some time in the past so it's EXPIRED)
-  (korma/insert Session (korma/values {:id sessionid :user_id user-id :created_at (java.sql.Timestamp. 0)}))
   ;; should fail due to session expiration
-  (expect
+  (expect-let [res (korma/insert Session (korma/values {:id sessionid :user_id (user->id :rasta) :created_at (java.sql.Timestamp. 0)}))]
     {:status (:status response-unauthentic)
      :body (:body response-unauthentic)}
     (auth-enforced-handler (request-with-sessionid sessionid))))
 
 
 ;; inactive user sessionid
-(let [sessionid (.toString (java.util.UUID/randomUUID))
-      user-id (user->id :trashbird)]              ; NOTE that :trashbird is our INACTIVE test user
+(let [sessionid (.toString (java.util.UUID/randomUUID))]
   (assert sessionid)
-  (assert user-id)
   ;; create a new session (specifically created some time in the past so it's EXPIRED)
-  (korma/insert Session (korma/values {:id sessionid :user_id user-id :created_at (util/new-sql-timestamp)}))
   ;; should fail due to inactive user
-  (expect
+  ;; NOTE that :trashbird is our INACTIVE test user
+  (expect-let [res (korma/insert Session (korma/values {:id sessionid :user_id (user->id :trashbird) :created_at (util/new-sql-timestamp)}))]
     {:status (:status response-unauthentic)
      :body (:body response-unauthentic)}
     (auth-enforced-handler (request-with-sessionid sessionid))))
