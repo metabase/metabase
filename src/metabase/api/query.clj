@@ -115,15 +115,13 @@
   (read-check Query id)
   (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10)))
 
+(defendpoint GET "/:id/csv" [id]
+  (let-404 [{{:keys [columns rows]} :result_data :as query-execution} (sel :one all-fields, :query_id id, (order :started_at :DESC))]
+    (let-404 [{{:keys [can_read name]} :query} (hydrate query-execution :query)]
+      (check-403 @can_read)
+      {:status 200
+       :body (with-out-str (csv/write-csv *out* (into [columns] rows)))
+       :headers {"Content-Type" "text/csv"
+                 "Content-Disposition" (str "attachment; filename=\"" name ".csv\"")}})))
 
-(def query-csv
-  (GET "/:id/csv" [id]
-    (let-404 [{:keys [result_data query_id] :as query-execution} (eval `(sel :one ~all-fields :query_id ~id (order :started_at :DESC) (limit 1)))]
-      (let-404 [{{can_read :can_read name :name} :query} (hydrate query-execution :query)]
-        (check-403 @can_read)
-        {:status 200
-         :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
-         :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"" name ".csv\"")}}))))
-
-
-(define-routes query-csv)
+(define-routes)
