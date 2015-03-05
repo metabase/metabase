@@ -46,8 +46,7 @@
                       :email email
                       :first_name (prompt-read-line "User first name" "Cam")
                       :last_name (prompt-read-line "User last name" "Saul")
-                      :password (-> (prompt-read-line "User password" "password")
-                                    cemerick.friend.credentials/hash-bcrypt)))
+                      :password (prompt-read-line "User password" "password")))
         use-test-org? (prompt-read-line-boolean "Should we use the test data? (User will be added to \"Test Organization\")" "true")
         org (if use-test-org? (do @data/test-db   ; load the test data reaaallly quick
                                   @data/test-org)
