@@ -122,21 +122,24 @@
 
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password
-(expect-eval-actual-first (sel :one :fields [Session :id] (order :created_at :desc)) ; get the latest Session from the DB
-  (let [password {:old "password"
-                  :new "new_password"}
-        {:keys [email id] :as user} (create-user :password (:old password))
-        creds {:old {:password (:old password)
-                     :email email}
-               :new {:password (:new password)
-                     :email email}}]
-    ;; Check that creds work
-    (metabase.http-client/client :post 200 "session" (:old creds))
-    ;; Change the PW
-    (metabase.http-client/client (:old creds) :put 200 (format "user/%d/password" id) {:password (:new password)
-                                                                                       :old_password (:old password)})
-    ;; Old creds should no longer work
-    (assert (= (metabase.http-client/client :post 400 "session" (:old creds))
-               "password mismatch"))
-    ;; New creds *should* work
-    (metabase.http-client/client :post 200 "session" (:new creds))))
+(let [user-last-name (random-name)]
+  (expect-eval-actual-first
+      (let [{user-id :id} (sel :one User :last_name user-last-name)]
+        (sel :one :fields [Session :id] :user_id user-id (order :created_at :desc))) ; get the latest Session for this User
+    (let [password {:old "password"
+                    :new "new_password"}
+          {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name)
+          creds {:old {:password (:old password)
+                       :email email}
+                 :new {:password (:new password)
+                       :email email}}]
+      ;; Check that creds work
+      (metabase.http-client/client :post 200 "session" (:old creds))
+      ;; Change the PW
+      (metabase.http-client/client (:old creds) :put 200 (format "user/%d/password" id) {:password (:new password)
+                                                                                         :old_password (:old password)})
+      ;; Old creds should no longer work
+      (assert (= (metabase.http-client/client :post 400 "session" (:old creds))
+                 "password mismatch"))
+      ;; New creds *should* work
+      (metabase.http-client/client :post 200 "session" (:new creds)))))
