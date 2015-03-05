@@ -1,6 +1,7 @@
 (ns metabase.middleware.auth-test
   (:require [expectations :refer :all]
             [korma.core :as korma]
+            [metabase.api.common :refer [*current-user-id* *current-user*]]
             [metabase.middleware.auth :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test-data :as test-data]
@@ -82,7 +83,7 @@
       (select-keys [:metabase-userid]))))
 
 
-;;; expired sessionid
+;; expired sessionid
 (let [sessionid (.toString (java.util.UUID/randomUUID))
       user-id (test-data/user->id :rasta)]
   (assert sessionid)
@@ -96,7 +97,7 @@
     (auth-enforced-handler (request-with-sessionid sessionid))))
 
 
-;;; inactive user sessionid
+;; inactive user sessionid
 (let [sessionid (.toString (java.util.UUID/randomUUID))
       user-id (test-data/user->id :trashbird)]              ; NOTE that :trashbird is our INACTIVE test user
   (assert sessionid)
@@ -108,3 +109,35 @@
     {:status (:status response-unauthentic)
      :body (:body response-unauthentic)}
     (auth-enforced-handler (request-with-sessionid sessionid))))
+
+
+;;;;  ===========================  TEST bind-current-user middleware  ===========================
+
+
+;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
+(def user-bound-handler
+  (bind-current-user (fn [req] {:userid *current-user-id*
+                                :user (select-keys @*current-user* [:id :email])})))
+
+
+(defn request-with-userid
+  "Creates a mock Ring request with the given userid applied"
+  [userid]
+  (-> (mock/request :get "/anyurl")
+    (assoc :metabase-userid userid)))
+
+
+;; with valid user-id
+(let [{:keys [id email] :as user} (test-data/fetch-user :rasta)]
+  (assert user)
+  (expect
+    {:userid id
+     :user {:id id
+            :email email}}
+    (user-bound-handler (request-with-userid id))))
+
+;; with invalid user-id (not sure how this could ever happen, but lets test it anyways)
+(expect
+  {:userid 0
+   :user {}}
+  (user-bound-handler (request-with-userid 0)))
