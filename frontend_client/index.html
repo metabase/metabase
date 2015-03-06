@@ -14,83 +14,127 @@
 </head>
 
 <body ng-controller="Corvus">
-  <nav class="CoreNav clearfix" ng-class="{'CoreNav--showing' : navShowing }">
-    <div class="col col-sm-12">
-      <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-        <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-        <span dropdown-toggle ng-if="user.is_multi_org">
-          <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-        </span>
-        <ul class="Dropdown-content">
-          <li ng-repeat="organization in memberOf()">
-            <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
-          </li>
-        </ul>
-      </div>
-      <ul class="float-left ml4">
-        <li class="inline-block">
-          <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
-            <div class="IconWrapper">
-              <cv-dashboards-icon></cv-dashboards-icon>
-            </div>
-            <span class="NavItem-text">Dashboards</span>
-          </a>
-        </li>
-        <li class="inline-block">
-          <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
-            <div class="IconWrapper">
-              <cv-cards-icon></cv-cards-icon>
-            </div>
-            <span class="NavItem-text">Cards</span>
-          </a>
-        </li>
-        <li class="inline-block">
-          <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
-            <div class="IconWrapper">
-              <cv-explore-icon></cv-explore-icon>
-            </div>
-            <span class="NavItem-text">Explore</span>
-          </a>
-        </li>
-      </ul>
-      <ul class="float-right">
-        <li class="SearchNav NavItem mr4" selectable-nav-item="search">
-          <form class="Search" ng-submit="submit()" ng-controller="SearchBox">
-            <input class="Search-field" type="text" placeholder="Search" ng-model="searchText">
-              <a class="Search-button">
-                <cv-search-icon width="16px" height="16px" ng-click="submit()"></cv-search-icon>
-              </a>
-            </form>
-          </li>
-          <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
-            <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
-              <span class="NavItem-text" ng-if="!user.first_name">Me</span>
-              <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
+    <div ng-controller="Nav">
+        <nav class="CoreNav clearfix" ng-show="nav == 'main'">
+        <div class="col col-sm-12">
+          <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
+            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
+            <span dropdown-toggle ng-if="user.is_multi_org">
               <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-            </a>
-            <ul class="Dropdown-content right">
-              <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-              <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/" target="_self">Admin</a></li>
-              <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
+            </span>
+            <ul class="Dropdown-content">
+              <li ng-repeat="organization in memberOf()">
+                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
+              </li>
             </ul>
-          </li>
-        </ul>
-      </div>
-    </nav>
+          </div>
+          <ul class="float-left ml4">
+            <li class="inline-block">
+              <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
+                <div class="IconWrapper">
+                  <cv-dashboards-icon></cv-dashboards-icon>
+                </div>
+                <span class="NavItem-text">Dashboards</span>
+              </a>
+            </li>
+            <li class="inline-block">
+              <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
+                <div class="IconWrapper">
+                  <cv-cards-icon></cv-cards-icon>
+                </div>
+                <span class="NavItem-text">Cards</span>
+              </a>
+            </li>
+            <li class="inline-block">
+              <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
+                <div class="IconWrapper">
+                  <cv-explore-icon></cv-explore-icon>
+                </div>
+                <span class="NavItem-text">Explore</span>
+              </a>
+            </li>
+          </ul>
+          <ul class="float-right">
+            <li class="SearchNav NavItem mr4" selectable-nav-item="search">
+              <form class="Search" ng-submit="submit()" ng-controller="SearchBox">
+                <input class="Search-field" type="text" placeholder="Search" ng-model="searchText">
+                  <a class="Search-button">
+                    <cv-search-icon width="16px" height="16px" ng-click="submit()"></cv-search-icon>
+                  </a>
+                </form>
+              </li>
+              <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
+                <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
+                  <span class="NavItem-text" ng-if="!user.first_name">Me</span>
+                  <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
+                  <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                </a>
+                <ul class="Dropdown-content right">
+                  <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
+                  <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
+                  <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </nav>
 
+        <nav ng-show="nav == 'admin'">
+          <div class="border-bottom bg-white py1">
+            <div class="wrapper">
+              <label class="Select" ng-if="user.is_multi_org">
+                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in adminOf()"></select>
+                </select>
+              </label>
+              <a cv-org-href="/admin/">
+                <h3 class="AdminPageTitle my2 inline-block">
+                    <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
+                </h3>
+              </a>
+              <div class="mx1 my2 float-right">
+                <a class="inline-block" cv-org-href="/">Exit Admin</a>
+              </div>
+            </div>
+          </div>
+        </nav>
+          <nav class="my4 col col-sm-3" ng-show="nav == 'admin'">
+            <ul class="CoreNav">
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/">Organization</a>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/people/">People</a>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
+                    <ul class="ContextNav">
+                        <li>
+                            <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
+                        </li>
+                        <li>
+                            <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a class="NavItem" cv-org-href="/admin/search">Search</a>
+                </li>
+            </ul>
+          </nav>
+
+    </div>
     <div class="MainContent">
       <div ng-view></div>
     </div>
-    <a class="CoreNav-trigger hide-md" ng-class="{ 'CoreNav--showing' : navShowing }"  href="#" ng-click="navShowing = !navShowing">
-      <div class="CoreNav-triggerIconClose text-white" ng-class="{ 'CoreNav--showing' : navShowing }">
-        <cv-close-icon width="18px" height="18px"></cv-close-icon>
-      </div>
-      <div class="CoreNav-triggerIconOpen text-white" ng-class="{ 'CoreNav--showing' : navShowing }">
-        <cv-list-icon width="18px" height="18px"></cv-close-icon>
-      </div>
-    </a>
-    <div class="CoreNav-showingBg hide-sm" ng-class="{ 'CoreNav--showing': navShowing }" ng-click="navShowing = !navShowing"></div>
-
   </body>
 
   <!-- JS INCLUDES -->
