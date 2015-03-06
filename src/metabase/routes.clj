@@ -5,7 +5,7 @@
             [metabase.api.routes :as api]))
 
 
-(let [index (resp/resource-response "frontend_client/index.html")]
+(let [index (fn [_] (resp/resource-response "frontend_client/index.html"))]
   (defroutes routes
     (GET "/" [] index)                                     ; ^/$           -> index.html
     (context "/api" [] api/routes)                         ; ^/api/        -> API routes
