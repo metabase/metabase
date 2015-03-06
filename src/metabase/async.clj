@@ -35,6 +35,6 @@
 (defn push-afuture
   "Add future FTR to `afutures`. Returns FTR."
   [ftr]
-  (clear-finished-afutures) ; Run this whenever we create a new afuture so we this get GC'ed in a reasonable amount of time
-  (swap! afutures conj ftr)
+  (clear-finished-afutures) ; Run this whenever we create a new afuture so old ones
+  (swap! afutures conj ftr) ; will get GC'ed in a reasonable amount of time
   ftr)
