@@ -1,7 +1,5 @@
 (ns metabase.async)
 
-(def great-future (future nil))
-
 (defn cancel-all-futures []
   (->> (all-ns)             ; seq of all loaded namespaces
        (mapcat ns-interns)  ; seq of *every* [symbol var]
