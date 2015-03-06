@@ -23,13 +23,6 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     $scope.currentOrg = undefined;
 
     $scope.alerts = CorvusAlert.alerts;
-    $scope.navShowing = false;
-
-    //keep track of changes to the hash so we can update the UI accordingly (i.e. to show comments)
-    $scope.$on("$locationChangeSuccess", function() {
-        $scope.hash = $location.hash();
-        $scope.navShowing = false;
-    });
 
     $scope.$on("appstate:user", function (event, user) {
         // change in current user
@@ -84,4 +77,18 @@ CorvusControllers.controller('SearchBox', ['$scope', '$location', function($scop
 
 CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($scope, $location) {
 
+}]);
+
+
+CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', function($scope, $routeParams, $location) {
+    $scope.nav = 'main'
+    $scope.$on('$routeChangeSuccess', function () {
+        if($routeParams.orgSlug && $location.path().indexOf('admin') > 0) {
+            $scope.nav = 'admin'
+        } else if ($location.path().indexOf('setup') >0 ) {
+            $scope.nav = 'setup'
+        } else {
+            $scope.nav = 'main'
+        }
+    });
 }]);

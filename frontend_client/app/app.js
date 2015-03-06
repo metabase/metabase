@@ -24,7 +24,15 @@ var Corvus = angular.module('corvus', [
     'corvus.operator', // this is a short term hack
     'corvus.reserve',
     'corvus.search',
-    'corvus.user'
+    'corvus.user',
+    'corvusadmin.index.controllers',
+    'corvusadmin.databases',
+    'corvusadmin.datasets',
+    'corvusadmin.emailreport',
+    'corvusadmin.people',
+    'corvusadmin.query',
+    'corvusadmin.annotation',
+    'corvusadmin.search'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
@@ -42,6 +50,17 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         redirectTo: function(routeParams, path, search) {
             return '/' + routeParams.orgSlug + '/dash/';
         }
+    });
+
+    // admin routes
+    $routeProvider.when('/:orgSlug/admin/', {
+        templateUrl: '/app/admin/home.html',
+        controller: 'AdminHome'
+    });
+
+    $routeProvider.when('/:orgSlug/admin/test_login_form', {
+        templateUrl: '/app/admin/test_login_form.html',
+        controller: 'TestLoginForm'
     });
 
     // TODO: we need an appropriate homepage or something to show in this situation
