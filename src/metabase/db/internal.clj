@@ -35,7 +35,7 @@
 
     *  If entity is a vector like `[User :name]`, only keeps the first arg (`User`)
     *  Converts fully-qualified entity name strings like `\"metabase.models.user/User\"` to the corresponding entity
-  and requires their namespace if needed."
+       and requires their namespace if needed."
   (memoize
    (fn -entity->korma [entity]
      {:post [(= (type %) :korma.core/Entity)]}
