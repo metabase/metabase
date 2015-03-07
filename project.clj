@@ -56,6 +56,6 @@
              :exclude-linters [:constant-test]}             ; korma macros generate some formats with if statements that are always logically true or false
   :profiles {:dev {:dependencies [[expectations "2.0.16"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]]
-                   :jvm-opts ["-Dlogfile.path=target/log"]}
+                   :jvm-opts ["-Dlogfile.path=target/log -XX:PermSize=64m -XX:MaxPermSize=256m -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"]}
              :uberjar {:aot :all
                        :prep-tasks ["npm" "gulp" "javac" "compile"]}})
