@@ -79,7 +79,7 @@
              {:created_at $
               :engine "h2"
               :id $
-              :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+              :details $
               :updated_at $
               :name "Test Database"
               :organization_id (:id @test-org)

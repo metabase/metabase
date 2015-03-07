@@ -49,8 +49,7 @@
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
-  :jar-exclusions [#"\.java"]
-  :prep-tasks ["npm" "gulp" "javac" "compile"]
+  ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
@@ -58,4 +57,5 @@
   :profiles {:dev {:dependencies [[expectations "2.0.16"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]]
                    :jvm-opts ["-Dlogfile.path=target/log"]}
-             :uberjar {:aot :all}})
+             :uberjar {:aot :all
+                       :prep-tasks ["npm" "gulp" "javac" "compile"]}})
