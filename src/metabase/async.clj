@@ -1,10 +1,40 @@
-(ns metabase.async)
+(ns metabase.async
+  (:require [medley.core :as m]))
 
-(defn cancel-all-futures []
-  (->> (all-ns)             ; seq of all loaded namespaces
-       (mapcat ns-interns)  ; seq of *every* [symbol var]
-       vals                 ; seq of *every* var
-       (map var-get)        ; get values of each var
-       (filter future?)
-       (map future-cancel)  ; cancel all futures
-       dorun))              ; force lazy eval without retaining head
+;; afuture for "auto-cancelling future" (?)
+
+(defonce ^{:private true
+           :doc "Atom that holds a of list of all afutures."}
+  afutures
+  (atom '()))
+
+(declare push-afuture)
+
+;; # PUBLIC FNS + MACROS
+
+(defmacro afuture
+  "Create a new future that can be cancelled with `cancel-afutures`."
+  [& body]
+  `(push-afuture (future ~@body)))
+
+(defn cancel-afutures
+  "Cancel all afutures."
+  []
+  (let [futures (m/deref-reset! afutures '())] ; automically swap out list of cancellable futures with new empty list
+    (dorun (map future-cancel                  ; Cancel all the futures in the old list
+                futures))))
+
+;; # INTERNAL FNS
+
+(defn- clear-finished-afutures
+  "Clear out any futures that have already finished so the can be GC'ed"
+  []
+  (swap! afutures (fn [futures]
+                    (filter #(not (future-done? %)) futures))))
+
+(defn push-afuture
+  "Add future FTR to `afutures`. Returns FTR."
+  [ftr]
+  (clear-finished-afutures) ; Run this whenever we create a new afuture so old ones
+  (swap! afutures conj ftr) ; will get GC'ed in a reasonable amount of time
+  ftr)
