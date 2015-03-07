@@ -10,12 +10,12 @@
 
 (defn select-non-nil-keys
   "Like `select-keys` but filters out key-value pairs whose value is nil.
-   Unlike `select-keys`, KEYS are rest args (should not be wrapped in a vector).
+   Unlike `select-keys`, KS are rest args (should not be wrapped in a vector).
    TODO: Why?"
-  [m & keys]
+  [m & ks]
   {:pre [(map? m)
-         (every? keyword? keys)]}
-  (->> (select-keys m keys)
+         (every? keyword? ks)]}
+  (->> (select-keys m ks)
        (filter-vals identity)))
 
 (defmacro fn->
@@ -78,10 +78,10 @@
       (-assoc* ~@kvs))
     ~object))
 
-(defmacro -assoc* [k v & rest]
+(defmacro -assoc* [k v & more]
   `(let [~'<> (assoc ~'<> ~k ~v)]
-        ~(if (empty? rest) `~'<>
-             `(-assoc* ~@rest))))
+        ~(if (empty? more) `~'<>
+             `(-assoc* ~@more))))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.

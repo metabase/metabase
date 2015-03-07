@@ -50,7 +50,7 @@
 
 (defn check
   "Assertion mechanism for use inside API functions.
-   Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
+   Checks that TST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
 
@@ -66,13 +66,13 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  ([test code-or-code-message-pair & rest-args]
+  ([tst code-or-code-message-pair & rest-args]
    (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
-     (when-not test
+     (when-not tst
        (throw (ApiException. (int code) message)))
-     (if (empty? rest-args) test
+     (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
 (defmacro require-params
@@ -91,7 +91,7 @@
 ;;     (let [binding x] ...) -> (api-let [500 \"Not OK!\"] [binding x] ...)
 
 (defmacro api-let
-  "If TEST is true, bind it to BINDING and evaluate BODY.
+  "If TST is true, bind it to BINDING and evaluate BODY.
 
     (api-let [404 \"Not found.\"] [user @*current-user*]
       (:id user))"
@@ -102,19 +102,19 @@
        ~@body)))
 
 (defmacro api->
-  "If TEST is true, thread the result using `->` through BODY.
+  "If TST is true, thread the result using `->` through BODY.
 
     (api-> [404 \"Not found\"] @*current-user*
       :id)"
-  [response-pair test & body]
-  `(api-let ~response-pair [result# ~test]
+  [response-pair tst & body]
+  `(api-let ~response-pair [result# ~tst]
      (-> result#
          ~@body)))
 
 (defmacro api->>
   "Like `api->`, but threads result using `->>`."
-  [response-pair test & body]
-  `(api-let ~response-pair [result# ~test]
+  [response-pair tst & body]
+  `(api-let ~response-pair [result# ~tst]
      (->> result#
           ~@body)))
 
@@ -124,14 +124,14 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def generic-400 [400 "Invalid Request."])
-(defn     check-400 [test]    (check test generic-400))
+(defn     check-400 [tst]     (check tst  generic-400))
 (defmacro let-400   [& args] `(api-let   ~generic-400 ~@args))
 (defmacro ->400     [& args] `(api->     ~generic-400 ~@args))
 (defmacro ->>400    [& args] `(api->>    ~generic-400 ~@args))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def generic-404 [404 "Not found."])
-(defn     check-404 [test]    (check test generic-404))
+(defn     check-404 [tst]     (check tst  generic-404))
 (defmacro let-404   [& args] `(api-let   ~generic-404 ~@args))
 (defmacro ->404     [& args] `(api->     ~generic-404 ~@args))
 (defmacro ->>404    [& args] `(api->>    ~generic-404 ~@args))
@@ -139,7 +139,7 @@
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
 (def generic-403 [403 "You don't have permissions to do that."])
-(defn     check-403 [test]    (check test generic-403))
+(defn     check-403 [tst]     (check tst  generic-403))
 (defmacro let-403   [& args] `(api-let   ~generic-403 ~@args))
 (defmacro ->403     [& args] `(api->     ~generic-403 ~@args))
 (defmacro ->>403    [& args] `(api->>    ~generic-403 ~@args))
@@ -147,7 +147,7 @@
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def generic-500 [500 "Internal server error."])
-(defn     check-500 [test]    (check test generic-500))
+(defn     check-500 [tst]     (check tst  generic-500))
 (defmacro let-500   [& args] `(api-let   ~generic-500 ~@args))
 (defmacro ->500     [& args] `(api->     ~generic-500 ~@args))
 (defmacro ->>500    [& args] `(api->>    ~generic-500 ~@args))
