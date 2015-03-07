@@ -22,7 +22,7 @@
       {:created_at $
        :engine "h2"
        :id $
-       :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+       :details $
        :updated_at $
        :organization {:id (:id @test-org)
                       :slug "test"
@@ -110,7 +110,7 @@
          {:created_at $
           :engine "h2"
           :id $
-          :details {:conn_str "file:t.db;AUTO_SERVER=TRUE"}
+          :details $
           :updated_at $
           :organization {:id (:id @test-org)
                          :slug "test"
