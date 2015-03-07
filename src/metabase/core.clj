@@ -1,26 +1,22 @@
 (ns metabase.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
-            [clojure.java.jdbc :as jdbc]
+            [medley.core :as medley]
+            [metabase.config :as config]
+            [metabase.db :as db]
+            (metabase.middleware [auth :as auth]
+                                 [log-api-call :refer :all]
+                                 [format :refer :all])
+            [metabase.routes :as routes]
+            [metabase.util :as util]
+            [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [json :refer [wrap-json-response
                                            wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])
-            (metabase.middleware [auth :as auth]
-                                 [log-api-call :refer :all]
-                                 [format :refer :all])
-            [metabase.routes :as routes]
-            [metabase.db :as db]))
+                             [session :refer [wrap-session]])))
 
-(defn liquibase-sql []
-  (db/migrate :up))
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (liquibase-sql))
 
 (def app
   "The primary entry point to the HTTP server"
@@ -36,3 +32,16 @@
       wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key
       ))
+
+
+(defn -main
+  "Launch Metabase in standalone mode."
+  [& args]
+  (log/info "Launching Metabase in STANDALONE mode")
+
+  ;; TODO - startup database.  validates connection & runs any necessary migrations
+
+  ;; startup webserver
+  ;; TODO - allow for env configuration
+  (let [jetty-config {:port 3000}]
+    (ring-jetty/run-jetty app jetty-config)))

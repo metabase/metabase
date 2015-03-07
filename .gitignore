@@ -7,7 +7,9 @@ pom.xml
 pom.xml.asc
 *.jar
 *.class
-/.lein-*
+/.lein-env
+/.lein-failures
+/.lein-repl-history
 /.nrepl-port
 .hgignore
 .hg/
@@ -17,6 +19,6 @@ profiles.clj
 /*.h2.db
 /*.lock.db
 /*.trace.db
-/frontend_client/app/bower_components
+/resources/frontend_client/app/bower_components
+/resources/frontend_client/app/dist/
 /node_modules/
-/frontend_client/app/dist/
