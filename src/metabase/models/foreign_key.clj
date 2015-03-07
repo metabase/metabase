@@ -1,5 +1,5 @@
 (ns metabase.models.foreign-key
-  (:use korma.core))
+  (:require [korma.core :refer :all]))
 
 (defentity ForeignKey
   (table :metabase_foreignkey))

@@ -55,7 +55,7 @@
   Note that these delays depend upon the presence of `creator_id`, `organization_id`, and `public_perms`
   fields in OBJ. `organization_id` may be a delay in case a DB call is neccesary to determine it (e.g.
   determining the `organization_id` of a `Query` requires fetching the corresponding `Database`."
-  [{:keys [creator_id organization_id public_perms] :as obj}]
+  [obj]
   (assoc* obj
           :public-permissions-set (delay (public-permissions <>))
           :user-permissions-set (delay (user-permissions <>))

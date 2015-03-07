@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-subscription
-  (:use korma.core))
+  (:require [korma.core :refer :all]))
 
 (defentity DashboardSubscription
   (table :report_dashboardsubscription))

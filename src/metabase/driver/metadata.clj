@@ -4,7 +4,7 @@
 
 (defn- field-dispatch-fn
   "Dispatch function that keys of of `(:engine @(:db field))`."
-  [{:keys [db] :as field}]
+  [{:keys [db]}]
   ((util/db-dispatch-fn "metadata") @db))
 
 (defmulti field-count

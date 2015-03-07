@@ -1,5 +1,5 @@
 (ns metabase.models.field-values
-  (:use korma.core))
+  (:require [korma.core :refer :all]))
 
 (defentity FieldValues
   (table :metabase_fieldvalues))

@@ -1,5 +1,5 @@
 (ns metabase.models.emailreport-recipients
-  (:use korma.core))
+  (:require [korma.core :refer :all]))
 
 (defentity EmailReportRecipients
   (table :report_emailreport_recipients))

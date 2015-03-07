@@ -1,6 +1,6 @@
 (ns metabase.db.internal
   "Internal functions and macros used by the public-facing functions in `metabase.db`."
-  (:require [korma.core :refer :all]))
+  (:require [korma.core :refer [where]]))
 
 (declare entity->korma)
 
@@ -29,24 +29,25 @@
   (if-not (vector? entity) [entity nil]
           [(first entity) (vec (rest entity))]))
 
-(defn entity->korma
+(def entity->korma
   "Convert an ENTITY argument to `sel`/`sel-fn` into the form we should pass to korma `select` and to various multi-methods such as
    `post-select`.
 
     *  If entity is a vector like `[User :name]`, only keeps the first arg (`User`)
     *  Converts fully-qualified entity name strings like `\"metabase.models.user/User\"` to the corresponding entity
        and requires their namespace if needed."
-  [entity]
-  {:post [(= (type %) :korma.core/Entity)]}
-  (cond (vector? entity) (entity->korma (first entity))
-        (string? entity) (entity->korma (symbol entity))
-        (symbol? entity) (try (eval entity)
-                              (catch clojure.lang.Compiler$CompilerException _ ; a wrapped ClassNotFoundException
-                                (-> entity
-                                    str
-                                    (.split "/")
-                                    first
-                                    symbol
-                                    require)
-                                (eval entity)))
-        :else entity))
+  (memoize
+   (fn -entity->korma [entity]
+     {:post [(= (type %) :korma.core/Entity)]}
+     (cond (vector? entity) (-entity->korma (first entity))
+           (string? entity) (-entity->korma (symbol entity))
+           (symbol? entity) (try (eval entity)
+                                 (catch clojure.lang.Compiler$CompilerException _ ; a wrapped ClassNotFoundException
+                                   (-> entity
+                                       str
+                                       (.split "/")
+                                       first
+                                       symbol
+                                       require)
+                                   (eval entity)))
+           :else entity))))

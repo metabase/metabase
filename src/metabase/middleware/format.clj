@@ -1,6 +1,6 @@
 (ns metabase.middleware.format
-  (:require [cheshire.factory :require :all]
-            [clojure.core.match :refer [match]]
+  (:require [clojure.core.match :refer [match]]
+            cheshire.factory
             [medley.core :refer [filter-vals map-vals]]
             [metabase.util :as util]))
 

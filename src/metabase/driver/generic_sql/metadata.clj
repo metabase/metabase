@@ -3,7 +3,7 @@
 ;; TODO - These implementations are wack. We should just use korma to do this instead of raw SQL
 
 (defn field-count
-  [{:keys [db table name] :as field}]
+  [{:keys [db table name]}]
   (-> ((:native-query @db)
        (format "SELECT COUNT(\"%s\".\"%s\") AS count FROM \"%s\""
                (:name (table))
@@ -13,7 +13,7 @@
       :count))
 
 (defn field-distinct-count
-  [{:keys [db table name] :as field}]
+  [{:keys [db table name]}]
   (-> ((:native-query @db)
        (format "SELECT COUNT(DISTINCT \"%s\".\"%s\") AS count FROM \"%s\""
                (:name (table))

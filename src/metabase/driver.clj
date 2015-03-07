@@ -72,7 +72,7 @@
     (try
       (let [query-result (qp/process-and-run query)]
         (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result)) (throw (Exception. (get query-result :error "general error"))))
+        (when (= :failed (:status query-result)) (throw (Exception. ^String (get query-result :error "general error"))))
         (query-complete query-execution query-result (:cache_result options)))
       (catch Exception ex
         (log/warn ex)
