@@ -17,7 +17,6 @@
                  [org.clojure/tools.macro "0.1.5"]          ; tools for writing macros
                  [org.clojure/tools.trace "0.7.8"]          ; "tracing macros/fns to help you see what your code is doing"
                  [cheshire "5.4.0"]                         ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "1.0.1"]                         ; HTTP Client
                  [clj-time "0.9.0"]                         ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]              ; auth library
                  [com.h2database/h2 "1.4.186"]              ; embedded SQL database
@@ -48,13 +47,15 @@
             [lein-ring "0.8.10"]]                           ; start the HTTP server with 'lein ring server'
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
+  :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test]}             ; korma macros generate some formats with if statements that are always logically true or false
-  :profiles {:dev {:dependencies [[expectations "2.0.16"]   ; unit tests
+  :profiles {:dev {:dependencies [[clj-http "1.0.1"]                         ; HTTP Client
+                                  [expectations "2.0.16"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]]
                    :jvm-opts ["-Dlogfile.path=target/log"]}
              :uberjar {:aot :all
