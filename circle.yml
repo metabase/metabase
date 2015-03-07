@@ -1,6 +1,6 @@
 test:
   override:
     - lein check
-    - lein bikeshed -max-line-length 200
+    - lein bikeshed --max-line-length 200
     - lein eastwood
     - lein expectations
