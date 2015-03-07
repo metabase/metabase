@@ -1,5 +1,5 @@
 (ns metabase.models.table-segment
-  (:use korma.core))
+  (:require [korma.core :refer :all]))
 
 (defentity TableSegment
   (table :metabase_tablesegment))

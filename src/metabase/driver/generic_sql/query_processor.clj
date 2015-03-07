@@ -57,7 +57,7 @@
     (aggregate (count :*) :count)
 
   An implementation of `apply-form` may optionally return a vector of several forms to insert into the generated korma `select` form."
-  (fn [[clause-name clause-value]] clause-name))
+  (fn [[clause-name _]] clause-name))
 
 ;; ### `:aggregation`
 ;; ex.

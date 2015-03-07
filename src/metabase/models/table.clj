@@ -15,7 +15,7 @@
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
-  [{:keys [name db] :as table}]
+  [{:keys [name db]}]
   {:table name
    :pk :id
    :db @(:korma-db (db))})

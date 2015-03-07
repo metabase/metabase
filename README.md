@@ -26,7 +26,15 @@ Then run the HTTP server with
     lein ring server
 
 
-## Unit Tests
+## Unit Tests / Linting
+
+Check that the project can compile successfully with
+
+    lein check
+
+Run the linter with
+
+    lein eastwood
 
 Run unit tests with
 

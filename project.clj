@@ -3,7 +3,7 @@
 (defproject metabase "metabase-0.1.0-SNAPSHOT"
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
-  :min-lein-version "2.4.0"
+  :min-lein-version "2.3.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "LATEST"]          ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
                  [org.clojure/core.match "0.3.0-alpha4"]    ; optimized pattern matching library for Clojure
@@ -15,6 +15,7 @@
                  [org.clojure/tools.logging "0.3.1"]        ; logging framework
                  [org.clojure/tools.macro "0.1.5"]          ; tools for writing macros
                  [org.clojure/tools.trace "0.7.8"]          ; "tracing macros/fns to help you see what your code is doing"
+                 [cheshire "5.4.0"]                         ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "1.0.1"]                         ; HTTP Client
                  [clj-time "0.9.0"]                         ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]              ; auth library
@@ -38,6 +39,7 @@
                  [ring/ring-json "0.3.1"]                   ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]]                    ; 'Magic wand' macro -<>, etc.
   :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]            ; Interactive development w/ cider NREPL in Emacs
+            [jonase/eastwood "0.2.1"]                       ; Linting
             [lein-ancient "0.6.4"]                          ; Check project for outdated dependencies + plugins w/ 'lein ancient'
             [lein-environ "0.5.0"]                          ; easy access to environment variables
             [lein-expectations "0.0.7"]                     ; run unit tests with 'lein expectations'
@@ -47,6 +49,9 @@
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
   :ring {:handler metabase.core/app}
+  :eastwood {:exclude-namespaces [:test-paths]
+             :add-linters [:unused-private-vars]
+             :exclude-linters [:constant-test]}             ; korma macros generate some formats with if statements that are always logically true or false
   :profiles {:dev {:dependencies [[expectations "2.0.16"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]]
                    :jvm-opts ["-Dlogfile.path=target/log"]}

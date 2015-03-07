@@ -6,7 +6,6 @@
             [environ.core :refer [env]]
             (korma [core :refer :all]
                    [db :refer :all])
-            [medley.core :refer [filter-vals]]
             [metabase.config :refer [app-defaults]]
             [metabase.db.internal :refer :all]
             [metabase.util :as u]))
@@ -15,22 +14,30 @@
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
-  (str "file:" (or (:database-file env)
-                   (:database-file app-defaults))   ; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
-       ";AUTO_SERVER=TRUE"))                        ; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
-(log/info (str "Using H2 database file: " db-file))
+  (delay
+   (str "file:" (or (:database-file env)
+                    (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
+        ";AUTO_SERVER=TRUE")))
+;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
+;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
-(defdb db (h2 {:db db-file
-               :naming {:keys str/lower-case
-                        :fields str/upper-case}}))
+(defn- setup-db
+  "Setup Korma default DB."
+  []
+  (log/info (str "Using H2 database file: " @db-file))
+  (let [db (create-db (h2 {:db @db-file
+                           :naming {:keys str/lower-case
+                                    :fields str/upper-case}}))]
+    (default-connection db)))
 
 (defn migrate
   "Migrate the database `:up` or `:down.`"
   [direction]
+  (setup-db)
   (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname db-file})]
+                                   :subname @db-file})]
     (case direction
-      :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
+      :up   (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
       :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn))))
 
 

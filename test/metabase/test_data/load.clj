@@ -16,8 +16,10 @@
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
-(def ^:private test-db-filename "t.db")
-(def ^:private test-db-connection-string (format "file:%s;AUTO_SERVER=TRUE" test-db-filename))
+(def ^:private test-db-filename
+  (delay (format "%s/t.db" (System/getProperty "user.dir"))))
+(def ^:private test-db-connection-string
+  (delay (format "file:%s;AUTO_SERVER=TRUE" @test-db-filename)))
 
 ;; # PUBLIC INTERFACE
 
@@ -37,14 +39,14 @@
   {:post [(map? %)]}
   (binding [*log-db-calls* false]
     (or (sel :one Database :name db-name)
-        (do (when-not (.exists (clojure.java.io/file (str test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
+        (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
               (create-and-populate-tables))
             (println "Creating new metabase Database object...")
             (let [db (ins Database
                           :organization_id (:id (test-org))
                           :name db-name
                           :engine :h2
-                          :details {:conn_str test-db-connection-string})]
+                          :details {:conn_str @test-db-connection-string})]
               (println "Syncing Tables...")
               (sync/sync-tables db)
               (println "Finished. Enjoy your test data <3")
@@ -76,7 +78,7 @@
   "Binds `*test-db*` if not already bound to a Korma DB entity and executes BODY."
   [& body]
   `(if *test-db* (do ~@body)
-       (binding [*test-db* (create-db (h2 {:db test-db-connection-string
+       (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
                                            :naming {:keys s/lower-case
                                                     :fields s/upper-case}}))]
          (println "CREATING H2 TEST DATABASE...")

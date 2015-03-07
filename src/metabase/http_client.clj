@@ -78,7 +78,7 @@
                                          :object)))]
 
     ;; -check the status code if EXPECTED-STATUS was passed
-    (println method-name url status) status
+    (println method-name url status)
     (when expected-status
       (when-not (= status expected-status)
         (println "\n****************************************\n")
