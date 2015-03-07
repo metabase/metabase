@@ -1,4 +1,5 @@
 ;; -*- comment-column: 60; -*-
+;; full set of options are here .. https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 
 (defproject metabase "metabase-0.1.0-SNAPSHOT"
   :description "Metabase Community Edition"
@@ -47,6 +48,8 @@
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :target-path "target/%s"
+  :jar-exclusions [#"\.java"]
+  :prep-tasks ["npm" "gulp" "javac" "compile"]
   :ring {:handler metabase.core/app}
   :profiles {:dev {:dependencies [[expectations "2.0.12"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]
