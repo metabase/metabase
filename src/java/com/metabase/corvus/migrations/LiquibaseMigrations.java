@@ -1,6 +1,7 @@
 package com.metabase.corvus.migrations;
 
 import java.io.FileWriter;
+import java.io.StringWriter;
 import java.sql.SQLException;
 import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
@@ -53,11 +54,13 @@ public class LiquibaseMigrations {
     }
   }
 
-  public static final void genSqlDatabase(java.sql.Connection dbConnection) throws Exception {
+  public static final String genSqlDatabase(java.sql.Connection dbConnection) throws Exception {
     try {
+      StringWriter strw = new StringWriter();
       Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(dbConnection));
       Liquibase liquibase = new Liquibase(LIQUIBASE_CHANGELOG, new ClassLoaderResourceAccessor(), database);
-      liquibase.update("", new FileWriter("/tmp/script.sql"));
+      liquibase.update("", strw);
+      return strw.toString();
     } catch (Exception e) {
       throw new DatabaseException(e);
     } finally {
