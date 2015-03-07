@@ -5,7 +5,7 @@ var gulp = require('gulp'),
     react = require('gulp-react'),
     myth = require('gulp-myth');
 
-var basePath = 'frontend_client/app/';
+var basePath = 'resources/frontend_client/app/';
 
 var SRC = {
     css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
