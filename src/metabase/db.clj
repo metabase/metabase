@@ -10,6 +10,7 @@
             [metabase.db.internal :refer :all]
             [metabase.util :as u]))
 
+
 (declare post-select)
 
 (def db-file
@@ -21,6 +22,7 @@
 ;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
+
 (defn- setup-db
   "Setup Korma default DB."
   []
@@ -30,15 +32,34 @@
                                     :fields str/upper-case}}))]
     (default-connection db)))
 
+
 (defn migrate
-  "Migrate the database `:up` or `:down.`"
+  "Migrate the database `:up`, `:down`, or `:print`."
   [direction]
   (setup-db)
   (let [conn (jdbc/get-connection {:subprotocol "h2"
                                    :subname @db-file})]
     (case direction
-      :up   (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
-      :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn))))
+      :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
+      :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
+      :print (let [sql (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn)]
+               (log/info (str "Database migrations required\n\n"
+                           "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                           "Please execute the following sql commands on your database before proceeding.\n\n"
+                           sql
+                           "\n\n"
+                           "Once you're database is updated try running the application again.\n"))))))
+
+
+(defn setup
+  "Do general perparation of database by validating that we can connect.
+   Caller can specify if we should run any pending database migrations."
+  [auto-migrate]
+  ;; TODO - test db connection and throw exception if we have trouble connecting
+  (if auto-migrate
+    (migrate :up)
+    ;; if we are not doing auto migrations then return migration sql for user to run manually
+    (migrate :print)))
 
 
 ;;; # UTILITY FUNCTIONS
