@@ -39,7 +39,9 @@
   [& args]
   (log/info "Launching Metabase in STANDALONE mode")
 
-  ;; TODO - startup database.  validates connection & runs any necessary migrations
+  ;; startup database.  validates connection & runs any necessary migrations
+  ;; TODO - allow for env configuration regarding migrations process
+  (db/setup true)
 
   ;; startup webserver
   ;; TODO - allow for env configuration
