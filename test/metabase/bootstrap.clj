@@ -19,7 +19,7 @@
    Permissions will be created for `User` <-> `Org`."
   []
   (binding [*log-db-calls* false]
-    (migrate :up)
+    (setup-db true)
     (let [{:keys [email]} (bootstrap-user)]
       (println (format "Successfully created User \"%s\"." email)))))
 

@@ -17,7 +17,7 @@
 ;; it's pretty annoying to have our DB reset all the time
 (expectations/disable-run-on-shutdown)
 
-(defn setup-db
+(defn setup-test-db
   "setup database schema"
   {:expectations-options :before-run}
   []
@@ -31,9 +31,9 @@
           ".lock.db"]))
   ; TODO - lets just completely delete the db before each test to ensure we start fresh
   (log/info "tearing down database and resetting to empty schema")
-  (migrate :down)
+  (migrate (setup-jdbc-db) :down)
   (log/info "setting up database and running all migrations")
-  (migrate :up)
+  (setup-db true)
   (log/info "database setup complete"))
 
 

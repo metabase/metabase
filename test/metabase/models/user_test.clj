@@ -1,6 +1,6 @@
 (ns metabase.models.user-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-utils :refer [setup-db]]
+            [metabase.test-utils :refer [setup-test-db]]
             [metabase.db :refer :all]
             [metabase.models.user :refer [User]]
             [korma.core :refer :all]

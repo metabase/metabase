@@ -23,43 +23,64 @@
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
 
-(defn- setup-db
-  "Setup Korma default DB."
+(defn setup-jdbc-db
+  "Configure connection details for JDBC."
+  []
+  {:subprotocol "h2"
+   :subname     @db-file})
+
+
+(defn setup-korma-db
+  "Configure connection details for Korma."
   []
   (log/info (str "Using H2 database file: " @db-file))
-  (let [db (create-db (h2 {:db @db-file
-                           :naming {:keys str/lower-case
-                                    :fields str/upper-case}}))]
-    (default-connection db)))
+  (h2 {:db @db-file
+       :naming {:keys str/lower-case
+                :fields str/upper-case}}))
+
+
+(defn test-db-conn
+  "Simple test of a JDBC connection."
+  [jdbc-conn]
+  (let [result (first (jdbc/query jdbc-conn ["select 7 as num"] :row-fn :num))]
+    (assert (= 7 result) "JDBC Connection Test FAILED")))
 
 
 (defn migrate
   "Migrate the database `:up`, `:down`, or `:print`."
-  [direction]
-  (setup-db)
-  (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname @db-file})]
+  [jdbc-db direction]
+  (let [conn (jdbc/get-connection jdbc-db)]
     (case direction
       :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
       :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
-      :print (let [sql (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn)]
-               (log/info (str "Database migrations required\n\n"
-                           "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                           "Please execute the following sql commands on your database before proceeding.\n\n"
-                           sql
-                           "\n\n"
-                           "Once you're database is updated try running the application again.\n"))))))
+      :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
 
 
-(defn setup
+(defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [auto-migrate]
-  ;; TODO - test db connection and throw exception if we have trouble connecting
-  (if auto-migrate
-    (migrate :up)
-    ;; if we are not doing auto migrations then return migration sql for user to run manually
-    (migrate :print)))
+  (let [jdbc-db (setup-jdbc-db)
+        korma-db (setup-korma-db)]
+    ;; Test DB connection and throw exception if we have any troubles connecting
+    (test-db-conn jdbc-db)
+    (log/info "Verify Database Connection ... CHECK")
+    ;; Run through our DB migration process and make sure DB is fully prepared
+    (if auto-migrate
+      (migrate jdbc-db :up)
+      ;; if we are not doing auto migrations then print out migration sql for user to run manually
+      ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
+      (let [sql (migrate jdbc-db :print)]
+        (log/info (str "Database Upgrade Required\n\n"
+                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                    "Please execute the following sql commands on your database before proceeding.\n\n"
+                    sql
+                    "\n\n"
+                    "Once you're database is updated try running the application again.\n"))
+        (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (log/info "Database Migrations Current ... CHECK")
+    ;; Establish our 'default' Korma DB Connection
+    (default-connection (create-db korma-db))))
 
 
 ;;; # UTILITY FUNCTIONS

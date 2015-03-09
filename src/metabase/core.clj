@@ -41,7 +41,7 @@
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup (config/config-bool :mb-db-automigrate))
+  (db/setup-db (config/config-bool :mb-db-automigrate))
 
   ;; this is a temporary need until we finalize the code for bootstrapping the first user
   (when-not (db/exists? metabase.models.user/User :id 1)
