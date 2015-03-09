@@ -68,7 +68,7 @@
        :preview_display true
        :created_at $
        :base_type "FloatField"})
-  (let [result ((user->client :rasta) :put 200 (format "meta/field/:id" (field->id :venues :latitude)) {:special_type :latitude})]
+  (let [result ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :latitude})]
     ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
     (upd Field (field->id :venues :latitude) :special_type nil)
     ;; return the modified Field
