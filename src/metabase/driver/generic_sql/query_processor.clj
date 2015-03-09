@@ -201,8 +201,8 @@
   (println "SOURCE TABLE: " source_table)
   (log/debug
    "\n********************"
-   "\nQUERY ->" (with-out-str (clojure.pprint/pprint query))
+   "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
    "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
-   "\nSQL ->" (eval `(let [entity# (table-id->korma-entity ~source_table)]
-                       (sql-only (select entity# ~@forms))))
+   "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
+                              (sql-only (select entity# ~@forms))))
    "\n********************\n"))
