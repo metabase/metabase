@@ -45,7 +45,7 @@
                            (korma/where {:id metabase-sessionid})))
           session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (java.util.Date. 0))))]
       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-      (if (and session (> (:max-session-age config/app-defaults) (quot session-age-ms 60000)))
+      (if (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
         (handler (assoc request :metabase-userid (:user_id session)))
         ;; default response is 401
         response-unauthentic))))
