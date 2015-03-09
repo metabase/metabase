@@ -19,7 +19,7 @@
                               (hydrate :card))
                           (map :card)
                           (sort-by :name)))
-      (hydrate :creator))) ; TODO maybe do a batched hydrate here instead?
+      (simple-batched-hydrate User :creator_id :creator)))
 
 (defendpoint POST "/" [:as {:keys [body]}]
   (->> (-> body
