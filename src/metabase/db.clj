@@ -18,7 +18,7 @@
   (delay
    (str "file:" (or (:database-file env)
                     (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
-        ";AUTO_SERVER=TRUE")))
+        ";AUTO_SERVER=TRUE;MV_STORE=FALSE")))
 ;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
