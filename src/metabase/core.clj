@@ -34,14 +34,25 @@
       ))
 
 
+(defn init
+  "General application initialization function which should be run once at application startup."
+  []
+  (log/info "Metabase Initializing ... ")
+
+  ;; startup database.  validates connection & runs any necessary migrations
+  ;; TODO - allow for env configuration regarding migrations process
+  (db/setup true)
+
+  (log/info "Metabase Initialization COMPLETE"))
+
+
 (defn -main
   "Launch Metabase in standalone mode."
   [& args]
   (log/info "Launching Metabase in STANDALONE mode")
 
-  ;; startup database.  validates connection & runs any necessary migrations
-  ;; TODO - allow for env configuration regarding migrations process
-  (db/setup true)
+  ;; run our main initialization function
+  (init)
 
   ;; startup webserver
   ;; TODO - allow for env configuration
