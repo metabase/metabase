@@ -59,7 +59,7 @@
       {:description nil
        :table_id (table->id :venues)
        :special_type "latitude"
-       :name "LONGITUDE"
+       :name "LATITUDE"
        :updated_at $
        :active true
        :id $
