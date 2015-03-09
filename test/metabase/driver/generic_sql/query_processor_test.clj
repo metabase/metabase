@@ -217,7 +217,8 @@
                                            (field->id :checkins :user_id)
                                            (field->id :checkins :id)]
                                   :order_by [[(field->id :checkins :venue_id) "ascending"]
-                                             [(field->id :checkins :user_id) "descending"]]}}))
+                                             [(field->id :checkins :user_id) "descending"]
+                                             [(field->id :checkins :id) "ascending"]]}}))
 
 ;; ## "FILTER" CLAUSE
 (expect {:status :completed,

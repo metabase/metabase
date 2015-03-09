@@ -59,6 +59,6 @@
   :profiles {:dev {:dependencies [[clj-http "1.0.1"]                         ; HTTP Client
                                   [expectations "2.0.16"]   ; unit tests
                                   [ring/ring-mock "0.2.0"]]
-                   :jvm-opts ["-Dlogfile.path=target/log"]}
+                   :jvm-opts ["-Dlogfile.path=target/log -XX:PermSize=64m -XX:MaxPermSize=256m -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"]}
              :uberjar {:aot :all
                        :prep-tasks ["npm" "gulp" "javac" "compile"]}})
