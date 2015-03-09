@@ -221,6 +221,19 @@
                                              [(field->id :checkins :id) "ascending"]]}}))
 
 ;; ## "FILTER" CLAUSE
+
+(def venues-columns
+  (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
+
+(def venues-cols
+  (delay [{:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
+          {:special_type nil, :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
+          {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
+          {:special_type nil, :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
+          {:special_type nil, :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
+          {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
+
+;; FILTER -- "AND", ">", ">="
 (expect {:status :completed,
          :row_count 5,
          :data
@@ -228,14 +241,9 @@
                  [61 67 4 -118.376 34.0677 "Lawry's The Prime Rib"]
                  [77 40 4 -74.0045 40.7318 "Sushi Nakazawa"]
                  [79 40 4 -73.9736 40.7514 "Sushi Yasuda"]
-                 [81 40 4 -73.9533 40.7677 "Tanoshi Sushi & Sake Bar"]],
-          :columns ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"],
-          :cols [{:special_type nil, :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-                 {:special_type nil, :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-                 {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-                 {:special_type nil, :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-                 {:special_type nil, :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-                 {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
+                 [81 40 4 -73.9533 40.7677 "Tanoshi Sushi & Sake Bar"]]
+          :columns @venues-columns
+          :cols @venues-cols}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
@@ -245,6 +253,65 @@
                                   :aggregation ["rows"]
                                   :breakout [nil]
                                   :limit nil}}))
+
+;; FILTER -- "AND", "<", "!="
+(expect
+    {:status :completed
+     :row_count 2
+     :data {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
+                   [23 50 2 -122.42 37.765 "Taqueria Los Coyotes"]]
+            :columns @venues-columns
+            :cols @venues-cols}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :venues)
+                            :filter ["AND"
+                                     ["<" (field->id :venues :id) 24]
+                                     ["!=" (field->id :venues :id) 22]]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
+
+;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
+(expect
+    {:status :completed
+     :row_count 2
+     :data {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
+                   [22 50 1 -122.484 37.7822 "Gordo Taqueria"]]
+            :columns @venues-columns
+            :cols @venues-cols}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :venues)
+                            :filter ["BETWEEN" (field->id :venues :id) 21 22]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
+
+;; FILTER -- "OR", "<=", "="
+(expect
+    {:status :completed,
+     :row_count 4,
+     :data {:rows [[1 4 3 -118.374 34.0646 "Red Medicine"]
+                   [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
+                   [3 11 2 -118.428 34.0406 "The Apple Pan"]
+                   [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
+            :columns @venues-columns
+            :cols @venues-cols}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :venues)
+                            :filter ["OR"
+                                     ["<=" (field->id :venues :id) 3]
+                                     ["=" (field->id :venues :id) 5]]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
+
+;; TODO - These are working, but it would be nice to have some tests that covered
+;; *  NOT_NULL
+;; *  NULL
+
 
 ;; ## "BREAKOUT"
 (expect {:status :completed,
