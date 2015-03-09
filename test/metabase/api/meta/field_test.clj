@@ -4,7 +4,9 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
-            [metabase.test.util :refer [match-$]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
+
+
 
 ;; ## GET /api/meta/field/:id
 (expect
@@ -43,8 +45,31 @@
        :base_type "TextField"})
   ((user->client :rasta) :get 200 (format "meta/field/%d" (field->id :users :name))))
 
-;; GET /api/meta/field/:id/summary
 
+;; ## GET /api/meta/field/:id/summary
 (expect [["count" 75]      ; why doesn't this come back as a dictionary ?
          ["distincts" 75]]
   ((user->client :rasta) :get 200 (format "meta/field/%d/summary" (field->id :categories :name))))
+
+
+;; ## PUT /api/meta/field/:id
+;; Check that we can update a Field
+(expect-eval-actual-first
+    (match-$ (sel :one Field :id (field->id :venues :latitude))
+      {:description nil
+       :table_id (table->id :venues)
+       :special_type "latitude"
+       :name "LATITUDE"
+       :updated_at $
+       :active true
+       :id $
+       :field_type "dimension"
+       :position 0
+       :preview_display true
+       :created_at $
+       :base_type "FloatField"})
+  (let [result ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :latitude})]
+    ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
+    (upd Field (field->id :venues :latitude) :special_type nil)
+    ;; return the modified Field
+    result))
