@@ -78,7 +78,7 @@
   [results entity source-key dest-key]
   (let [ids (->> (map source-key results)
                  set)
-        objs (->> (eval `(sel :many ~entity :id ~(vector 'in ids)))
+        objs (->> (sel :many entity :id [in ids])
                   (map (fn [obj]
                          {(:id obj) obj}))
                   (reduce merge {}))]
