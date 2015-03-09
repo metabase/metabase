@@ -230,15 +230,15 @@
          (string? password)
          (medley/boolean? admin)
          (medley/boolean? superuser)]}
-  (or (sel :one User :email email)
-      (let [org (load/test-org)
-            user (ins User
-                   :email email
-                   :first_name first
-                   :last_name last
-                   :password password
-                   :is_superuser superuser
-                   :is_active active)]
-        (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
-            (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
-        user)))
+  (let [org @test-org]                 ; we're derefing test-org here to force lazy loading of DB
+    (or (sel :one User :email email)
+        (let [user (ins User
+                     :email email
+                     :first_name first
+                     :last_name last
+                     :password password
+                     :is_superuser superuser
+                     :is_active active)]
+          (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
+              (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
+          user))))
