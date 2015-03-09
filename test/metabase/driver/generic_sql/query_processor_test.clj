@@ -254,7 +254,7 @@
                                   :breakout [nil]
                                   :limit nil}}))
 
-;; FILTER -- "AND", "<", "!="
+;; FILTER -- "AND", "<", ">", "!="
 (expect
     {:status :completed
      :row_count 2
@@ -267,6 +267,7 @@
                     :query {:source_table (table->id :venues)
                             :filter ["AND"
                                      ["<" (field->id :venues :id) 24]
+                                     [">" (field->id :venues :id) 20]
                                      ["!=" (field->id :venues :id) 22]]
                             :aggregation ["rows"]
                             :breakout [nil]
