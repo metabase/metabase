@@ -31,6 +31,7 @@
                                com.sun.jmx/jmxri]]
                  [marginalia "0.8.0"]                       ; for documentation
                  [medley "0.5.5"]                           ; lightweight lib of useful functions
+                 [org.apache.httpcomponents/httpclient "4.3.5"]
                  [org.liquibase/liquibase-core "3.3.2"]     ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.10"]
                  [org.yaml/snakeyaml "1.15"]                ; YAML parser (required by liquibase)
