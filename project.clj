@@ -42,6 +42,7 @@
   :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]            ; Interactive development w/ cider NREPL in Emacs
             [jonase/eastwood "0.2.1"]                       ; Linting
             [lein-ancient "0.6.4"]                          ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+            [lein-bikeshed "0.2.0"]                         ; More linting. 'lein bikeshed --max-line-length 200'
             [lein-environ "0.5.0"]                          ; easy access to environment variables
             [lein-expectations "0.0.7"]                     ; run unit tests with 'lein expectations'
             [lein-marginalia "LATEST"]                      ; generate documentation with 'lein marg'

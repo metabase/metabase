@@ -51,11 +51,11 @@
               (assoc object k hydrated-val)))))
 
 (defn- read-json-str-or-clob
-  "If STR is a JDBC Clob, convert to a String. Then call `json/read-str`."
-  [str]
-  (when-let [str (if-not (= (type str) org.h2.jdbc.JdbcClob) str
-                         (util/jdbc-clob->str str))]
-    (json/read-str str)))
+  "If string S is a JDBC Clob, convert to a String. Then call `json/read-str`."
+  [s]
+  (when-let [s (if-not (= (type s) org.h2.jdbc.JdbcClob) s
+                       (util/jdbc-clob->str s))]
+    (json/read-str s)))
 
 (defn realize-json
   "Deserialize JSON strings keyed by JSON-KEYS.
