@@ -37,7 +37,8 @@
        :data {:columns ["count(*)"]
               :cols [{:base_type "IntegerField"
                       :name "count(*)"}]
-              :rows [[75]]}})
+              :rows [[75]]}
+       :row_count 1})
   (let [{uuid :uuid} (create-query)]
     (Thread/sleep 100)   ; this query is simple as f**k. Give it 100ms to complete
     (fetch-query uuid))) ; if it doesn't by then our QP might be brokesies
