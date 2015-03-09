@@ -13,6 +13,10 @@
 ;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
 ;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
 
+;; Don't run unit tests whenever JVM shuts down
+;; it's pretty annoying to have our DB reset all the time
+(expectations/disable-run-on-shutdown)
+
 (defn setup-db
   "setup database schema"
   {:expectations-options :before-run}
