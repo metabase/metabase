@@ -38,23 +38,38 @@
   "General application initialization function which should be run once at application startup."
   []
   (log/info "Metabase Initializing ... ")
+  (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
 
   ;; startup database.  validates connection & runs any necessary migrations
-  ;; TODO - allow for env configuration regarding migrations process
-  (db/setup true)
+  (db/setup (config/config-bool :mb-db-automigrate))
 
-  (log/info "Metabase Initialization COMPLETE"))
+  ;; this is a temporary need until we finalize the code for bootstrapping the first user
+  (when-not (db/exists? metabase.models.user/User :id 1)
+    (db/ins metabase.models.user/User :email "admin@admin.com" :first_name "admin" :last_name "admin" :password "admin" :is_superuser true))
+
+  (log/info "Metabase Initialization COMPLETE")
+  true)
 
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& args]
-  (log/info "Launching Metabase in STANDALONE mode")
+  (log/info "Starting Metabase in STANDALONE mode")
 
-  ;; run our main initialization function
-  (init)
-
-  ;; startup webserver
-  ;; TODO - allow for env configuration
-  (let [jetty-config {:port 3000}]
-    (ring-jetty/run-jetty app jetty-config)))
+  ;; run application init and if there are no issues then continue on to launching the webserver
+  (when (try
+          (init)
+          (catch Exception e
+            (log/error "Metabase Initialization FAILED: " (.getMessage e))))
+    ;; startup webserver
+    (let [jetty-config (->> {:port (config/config-int :mb-jetty-port)
+                             :host (config/config-str :mb-jetty-host)
+                             :join? (config/config-bool :mb-jetty-join?)
+                             :daemon? (config/config-bool :mb-jetty-daemon?)
+                             :max-threads (config/config-int :mb-jetty-maxthreads)
+                             :min-threads (config/config-int :mb-jetty-minthreads)
+                             :max-queued (config/config-int :mb-jetty-maxqueued)
+                             :max-idle-time (config/config-int :mb-jetty-maxidletime)}
+                         (medley/filter-vals identity))]
+      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
+      (ring-jetty/run-jetty app jetty-config))))
