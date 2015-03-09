@@ -78,15 +78,14 @@
          (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [timezone database details] :as body} :body}]
-  (require-params database details)
+(defendpoint PUT "/:id" [id :as {{:keys [timezone database] :as body} :body}]
+  (require-params database)
   (read-check Database (:id database))
   (let-404 [query (sel :one Query :id id)]
     (write-check query)
-    (-> (util/select-non-nil-keys body :name :public_perms)
-      (assoc :version (:version query)                      ; don't increment this here.  that happens on pre-update
-             :database_id (:id database)
-             :details details)
+    (-> (util/select-non-nil-keys body :name :public_perms :details)
+      (assoc :version (:version query)    ; don't increment this here. That happens on pre-update
+             :database_id (:id database)) ; you can change the DB of a Query why??
       (#(mapply upd Query id %)))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
