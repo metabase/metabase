@@ -101,13 +101,29 @@
 ;;     ["AND"
 ;;       [">" 1413 1]
 ;;       [">=" 1412 4]]
+(defn- filter-subclause->predicate
+  "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
+
+    (filter-subclause->predicate [\">\" 1413 1]) -> {:field_name [> 1]} "
+  [[_ field-id :as subclause]]
+  {(field-id->kw field-id)
+   (match subclause
+     [">"  _ value]        ['>    value]
+     ["<"  _ value]        ['<    value]
+     [">=" _ value]        ['>=   value]
+     ["<=" _ value]        ['<=   value]
+     ["="  _ value]        ['=    value]
+     ["!=" _ value]        ['not= value]
+     ["NOT_NULL" _]        ['not= nil]
+     ["IS_NULL _"]         ['=    nil]
+     ["BETWEEN" _ min max] ['between [min max]])})
+
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
     nil                  nil ; empty clause
     [nil nil]            nil ; empty clause
-    ["AND" & subclauses] (let [m (->> subclauses                                                      ; so far only `AND` filtering is available in the UI
-                                      (map (fn [[filter-type field-id value]]                          ; just convert filter-types like `"<="` directly to symbols
-                                             {(field-id->kw field-id) [(symbol filter-type) value]}))
+    ["AND" & subclauses] (let [m (->> subclauses                        ; so far only `AND` filtering is available in the UI
+                                      (map filter-subclause->predicate) ; it is easy enough to add other types like 'OR', however
                                       (apply merge {}))]
                            `(where ~m))))
 
