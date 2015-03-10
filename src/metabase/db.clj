@@ -13,8 +13,8 @@
 
 (declare post-select)
 
-(def db-file
-  "Path to our H2 DB file from env var or app config."
+(defonce ^{:doc "Path to our H2 DB file from env var or app config."}
+  db-file
   (delay
    (str "file:" (or (:database-file env)
                     (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
@@ -23,14 +23,16 @@
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
 
-(defn- setup-db
-  "Setup Korma default DB."
-  []
-  (log/info (str "Using H2 database file: " @db-file))
-  (let [db (create-db (h2 {:db @db-file
-                           :naming {:keys str/lower-case
-                                    :fields str/upper-case}}))]
-    (default-connection db)))
+(defonce ^{:private true
+           :doc "Setup Korma default DB."}
+  setup-db
+  (memoize
+   (fn []
+     (log/info (str "Using H2 database file: " @db-file))
+     (let [db (create-db (h2 {:db @db-file
+                              :naming {:keys str/lower-case
+                                       :fields str/upper-case}}))]
+       (default-connection db)))))
 
 
 (defn migrate
@@ -40,15 +42,15 @@
   (let [conn (jdbc/get-connection {:subprotocol "h2"
                                    :subname @db-file})]
     (case direction
-      :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
-      :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
+      :up    (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
+      :down  (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
       :print (let [sql (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn)]
                (log/info (str "Database migrations required\n\n"
-                           "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                           "Please execute the following sql commands on your database before proceeding.\n\n"
-                           sql
-                           "\n\n"
-                           "Once you're database is updated try running the application again.\n"))))))
+                              "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                              "Please execute the following sql commands on your database before proceeding.\n\n"
+                              sql
+                              "\n\n"
+                              "Once you're database is updated try running the application again.\n"))))))
 
 
 (defn setup
