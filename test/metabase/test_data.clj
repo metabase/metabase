@@ -143,7 +143,7 @@
         (catch ApiException e
           (if-not (= (.getStatusCode e) 401) (throw e)
                   ;; If we got a 401 unauthenticated clear the tokens cache + recur
-                  (do (reset! user-credentials-tokens {})
+                  (do (reset! tokens {})
                       (apply call-client args))))))))
 
 (defn user->org-perm
