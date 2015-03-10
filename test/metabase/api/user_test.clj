@@ -101,6 +101,11 @@
            :common_name "Rasta Toucan"})
   ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
 
+;; Check that a non-superuser CANNOT fetch someone else's user details
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
+
+
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
 (expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user)
