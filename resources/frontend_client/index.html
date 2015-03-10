@@ -14,7 +14,7 @@
 </head>
 
 <body ng-controller="Corvus">
-    <div ng-controller="Nav" ng-if="currentUser">
+    <div ng-controller="Nav" ng-if="user">
         <nav class="CoreNav clearfix" ng-show="nav == 'main'">
         <div class="col col-sm-12">
           <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
@@ -72,7 +72,7 @@
                 <ul class="Dropdown-content right">
                   <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
                   <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
-                  <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
+                  <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
                 </ul>
               </li>
             </ul>
