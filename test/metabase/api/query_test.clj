@@ -159,6 +159,7 @@
        (Thread/sleep 100)
        ((user->client :rasta) :get 200 (format "query/%d/results" id)))]))
 
+
 ;; ## GET /api/query
 ;; Fetch Queries for the current Org
 (expect-eval-actual-first
@@ -213,6 +214,7 @@
       (create-query)
       (create-query)
       ((user->client :rasta) :get 200 "query" :org (:id @test-org))))
+
 
 ;; ## POST /api/query/:id/csv
 (expect-eval-actual-first
