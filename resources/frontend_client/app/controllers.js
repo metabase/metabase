@@ -9,6 +9,13 @@ var CorvusControllers = angular.module('corvus.controllers', ['corvus.services']
 
 CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, CorvusCore, CorvusAlert, AppState) {
 
+    var clearState = function() {
+        $scope.user = undefined;
+        $scope.userIsAdmin = false;
+        $scope.currentOrgSlug = undefined;
+        $scope.currentOrg = undefined;
+    };
+
     // make our utilities object available throughout the application
     $scope.utils = CorvusCore;
 
@@ -34,6 +41,10 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
         $scope.currentOrgSlug = org.slug;
         $scope.currentOrg = org;
         $scope.userIsAdmin = AppState.userIsAdmin();
+    });
+
+    $scope.$on("appstate:logout", function (event, user) {
+        clearState();
     });
 
     $scope.closeAlert = function(index) {
