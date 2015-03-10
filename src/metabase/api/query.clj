@@ -24,6 +24,7 @@
 
 
 (defendpoint GET "/" [org f]
+  (require-params org)
   (check-403 ((:perms-for-org @*current-user*) org))
   (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
         :all (sel :many Query
