@@ -3,7 +3,8 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [query :refer [Query]]
+            (metabase.models [database :refer [Database]]
+                             [query :refer [Query]]
                              [query-execution :refer [QueryExecution]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
             [metabase.test-data :refer :all]))
@@ -16,7 +17,7 @@
                                                   kwargs)))
 
 ;; ## GET /api/query/form_input
-(expect
+(expect-eval-actual-first
     {:databases [(match-$ @test-db
                    {:id $
                     :name "Test Database"})]
@@ -33,7 +34,10 @@
      :permissions [{:name "None",         :id 0}
                    {:name "Read Only",    :id 1}
                    {:name "Read & Write", :id 2}]}
-  ((user->client :rasta) :get 200 "query/form_input" :org (:id @test-org)))
+  (do
+    @test-db                                                                             ; force lazy creation of test data / Metabase DB if it doesn't already exist
+    (cascade-delete Database :organization_id (:id @test-org) :id [not= (:id @test-db)]) ; delete any other rando test DBs made by other tests
+    ((user->client :rasta) :get 200 "query/form_input" :org (:id @test-org))))
 
 ;; ## POST /api/query (create)
 ;; Check that we can save a Query
