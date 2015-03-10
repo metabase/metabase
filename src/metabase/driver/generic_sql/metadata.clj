@@ -6,9 +6,9 @@
   [{:keys [db table name]}]
   (-> ((:native-query @db)
        (format "SELECT COUNT(\"%s\".\"%s\") AS count FROM \"%s\""
-               (:name (table))
+               (:name @table)
                name
-               (:name (table))))
+               (:name @table)))
       first
       :count))
 
@@ -16,8 +16,8 @@
   [{:keys [db table name]}]
   (-> ((:native-query @db)
        (format "SELECT COUNT(DISTINCT \"%s\".\"%s\") AS count FROM \"%s\""
-               (:name (table))
+               (:name @table)
                name
-               (:name (table))))
+               (:name @table)))
       first
       :count))

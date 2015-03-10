@@ -10,8 +10,9 @@
 
 ;; ## GET /api/meta/field/:id
 (expect
-    (match-$ (sel :one Field :id (field->id :users :name))
-      {:description nil
+    (match-$ (let [field-id (field->id :users :name)] ; !!! field->id causes lazy loading of the test data and Metabase DB
+               (sel :one Field :id field-id))         ; If it's not evaluated before sel then the Metabase DB won't exist when sel
+      {:description nil                               ; is executed
        :table_id (table->id :users)
        :table (match-$ (sel :one Table :id (table->id :users))
                 {:description nil

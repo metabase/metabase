@@ -16,6 +16,7 @@
 
 
 (defendpoint GET "/form_input" [org]
+  (require-params org)
   (check-403 ((:perms-for-org @*current-user*) org))
   (let [dbs (databases-for-org org)]
     {:permissions common/permissions
@@ -24,6 +25,7 @@
 
 
 (defendpoint GET "/" [org f]
+  (require-params org)
   (check-403 ((:perms-for-org @*current-user*) org))
   (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
         :all (sel :many Query
@@ -39,6 +41,7 @@
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
+  {:pre [(integer? query-id)]}
   (let-400 [{:keys [name] :as query} (sel :one Query :id query-id)]
     (read-check query)
     (->> (-> query
@@ -78,15 +81,14 @@
          (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [timezone database details] :as body} :body}]
-  (require-params database details)
+(defendpoint PUT "/:id" [id :as {{:keys [timezone database] :as body} :body}]
+  (require-params database)
   (read-check Database (:id database))
   (let-404 [query (sel :one Query :id id)]
     (write-check query)
-    (-> (util/select-non-nil-keys body :name :public_perms)
-      (assoc :version (:version query)                      ; don't increment this here.  that happens on pre-update
-             :database_id (:id database)
-             :details details)
+    (-> (util/select-non-nil-keys body :name :public_perms :details)
+      (assoc :version (:version query)    ; don't increment this here. That happens on pre-update
+             :database_id (:id database)) ; you can change the DB of a Query why??
       (#(mapply upd Query id %)))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
@@ -98,17 +100,18 @@
 
 
 (defendpoint POST "/:id" [id]
-  (let-404 [query (sel :one Query :id id)]
-           (read-check query)
-           (let [dataset-query {:type "native"
-                                :database (:database_id query)
-                                :native {:query (get-in query [:details :sql])
-                                         :timezone (get-in query [:details :timezone])}}
-                 options {:executed_by *current-user-id*
-                          :saved_query query
-                          :synchronously false
-                          :cache_result true}]
-             (driver/dataset-query dataset-query options))))
+  (let-404 [{database-id :database_id
+             {:keys [sql timezone]} :details :as query} (sel :one Query :id id)]
+    (read-check query)
+    (let [dataset-query {:type "native"
+                         :database database-id
+                         :native {:query sql
+                                  :timezone timezone}}
+          options {:executed_by *current-user-id*
+                   :saved_query query
+                   :synchronously false
+                   :cache_result true}]
+      (driver/dataset-query dataset-query options))))
 
 
 (defendpoint GET "/:id/results" [id]

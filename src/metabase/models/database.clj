@@ -27,16 +27,27 @@
    This will reuse `*jdbc-metadata*` if it's already set (to avoid opening extra connections).
    Otherwise it will open a new metadata connection and bind `*jdbc-metadata*` so it's available in subsequent calls to `with-jdbc-metadata` within F."
   [{:keys [connection]} f]
+  {:pre [(delay? connection)]}
   (if *jdbc-metadata* (f *jdbc-metadata*)
       (jdbc/with-db-metadata [md @connection]
         (binding [*jdbc-metadata* md]
           (f *jdbc-metadata*)))))
 
+;; Cache the Korma DB connections for given Database
+;; instead of creating new ones every single time
+(def ^:private connection->korma-db
+  (memoize
+   (fn [connection]
+     {:pre [(map? connection)]}
+     (log/debug "CREATING A NEW DB CONNECTION...")
+     (kdb/create-db connection))))
+
 (defn korma-db
   "Return a Korma database definition for DATABASE."
   [{:keys [connection]}]
+  {:pre [(delay? connection)]}
   (log/debug "CREATING A NEW DB CONNECTION...")
-  (kdb/create-db @connection))
+  (connection->korma-db @connection))
 
 (defn table-names
   "Fetch a list of table names for DATABASE."
@@ -59,7 +70,7 @@
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
       (realize-json :details) ; TODO wouldn't we want to actually strip this info instead of returning it?
-      (assoc* :organization       (sel-fn :one Org :id organization_id)
+      (assoc* :organization       (delay (sel :one Org :id organization_id))
               :can_read           (delay (org-can-read organization_id))
               :can_write          (delay (org-can-write organization_id))
               :connection-details (delay (conn/connection-details <>))
@@ -78,6 +89,10 @@
 (defmethod pre-update Database [_ {:keys [details] :as database}]
   (cond-> (assoc database :updated_at (new-sql-timestamp))
     details (assoc :details (json/write-str details))))
+
+(defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
+  (cascade-delete 'metabase.models.table/Table :db_id id)
+  (cascade-delete 'metabase.models.query/Query :database_id id))
 
 (defn databases-for-org
   "Selects the ID and NAME for all databases available to the given org-id."

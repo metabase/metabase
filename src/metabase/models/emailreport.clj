@@ -11,14 +11,28 @@
             [metabase.util :as util]))
 
 
-;; Static Definitions
-
-(def mode-active 0)
-(def mode-disabled 1)
+;; ## Static Definitions
 
 (def modes
-  [{:id mode-active :name "Active"},
-   {:id mode-disabled :name "Disabled"}])
+  {:active   {:id 0
+              :name "Active"}
+   :disabled {:id 1
+              :name "Disabled"}})
+
+(def mode-kws
+  (set (keys modes)))
+
+(defn mode->id [mode]
+  {:pre [(contains? mode-kws mode)]}
+  (:id (modes mode)))
+
+(defn mode->name [mode]
+  {:pre [(contains? mode-kws mode)]}
+  (:name (modes mode)))
+
+(def modes-input
+  [{:id (mode->id :active),   :name (mode->name :active)}
+   {:id (mode->id :disabled), :name (mode->name :disabled)}])
 
 (def days-of-week
   [{:id "sun" :name "Sun"},
@@ -37,13 +51,15 @@
    {:id "midnight" :name "Midnight" :realhour 0}])
 
 
+;; ## Entity
+
 (defentity EmailReport
   (table :report_emailreport))
 
 
 (defmethod pre-insert EmailReport [_ {:keys [dataset_query schedule] :as report}]
   (let [defaults {:public_perms perms-none
-                  :mode mode-active
+                  :mode (mode->id :active)
                   :version 1
                   :created_at (util/new-sql-timestamp)
                   :updated_at (util/new-sql-timestamp)}]
@@ -53,23 +69,20 @@
 
 (defmethod pre-update EmailReport [_ {:keys [version dataset_query schedule] :as report}]
   (assoc report
-    :updated_at (util/new-sql-timestamp)
+    :updated_at    (util/new-sql-timestamp)
     :dataset_query (json/write-str dataset_query)
-    :schedule (json/write-str schedule)
-    :version (+ 1 version)))
+    :schedule      (json/write-str schedule)
+    :version       (inc version)))
 
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
   (-> report
     (realize-json :dataset_query :schedule)
     (util/assoc*
-      :creator (delay
-                 (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
-                 (sel :one User :id creator_id))
-      :organization (delay
-                      (check organization_id 500 "Can't get database: Query doesn't have a :database_id.")
-                      (sel :one Org :id organization_id))
-      :recipients (delay
-                    (sel :many User
-                      (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
+      :creator      (delay (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
+                           (sel :one User :id creator_id))
+      :organization (delay (check organization_id 500 "Can't get database: Query doesn't have a :database_id.")
+                           (sel :one Org :id organization_id))
+      :recipients   (delay (sel :many User
+                                (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
     assoc-permissions-sets))

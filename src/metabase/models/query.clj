@@ -14,7 +14,7 @@
   (table :query_query))
 
 
-;; default fields to return for `sel Query
+;; default fields to return for `sel` Query
 (defmethod default-fields Query [_]
   [:id
    :created_at
@@ -50,5 +50,8 @@
               :database (delay
                          (check database_id 500 "Can't get database: Query doesn't have a :database_id.")
                          (sel :one Database :id database_id))
-              :organization_id (delay (:organization_id ((:database <>)))))
+              :organization_id (delay (:organization_id @(:database <>))))
       assoc-permissions-sets))
+
+(defmethod pre-cascade-delete Query [_ {:keys [id] :as query}]
+  (cascade-delete 'metabase.models.query-execution/QueryExecution :query_id id))

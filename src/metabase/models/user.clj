@@ -28,9 +28,10 @@
 
 (defn user-perms-for-org
   "Return the permissions level User with USER-ID has for Org with ORG-ID.
-   nil      -> no permissions
-   :default -> default permissions
-   :admin   -> admin permissions"
+
+     nil      -> no permissions
+     :default -> default permissions
+     :admin   -> admin permissions"
   [user-id org-id]
   (when-let [{superuser? :is_superuser} (sel :one [User :is_superuser] :id user-id)]
     (if superuser? :admin
@@ -39,9 +40,9 @@
 
 (defmethod post-select User [_ {:keys [id] :as user}]
   (-> user
-      (assoc :org_perms (sel-fn :many OrgPerm :user_id id)
+      (assoc :org_perms     (delay (sel :many OrgPerm :user_id id))
              :perms-for-org (memoize (partial user-perms-for-org id))
-             :common_name (str (:first_name user) " " (:last_name user)))))
+             :common_name   (str (:first_name user) " " (:last_name user)))))
 
 (defmethod pre-insert User [_ {:keys [email password] :as user}]
   (assert (util/is-email? email))

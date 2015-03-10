@@ -41,8 +41,7 @@
                           ":" (config/config-str :mb-db-port)
                           "/" (config/config-str :mb-db-dbname))
                :user (config/config-str :mb-db-user)
-               :password (config/config-str :mb-db-pass)})
-  )
+               :password (config/config-str :mb-db-pass)}))
 
 
 (defn setup-korma-db
@@ -239,13 +238,6 @@
                           forms)))
        (->> (select entity-select-form# ~@forms)
             (map (partial post-select entity#))))))                             ; map `post-select` over the results
-
-(defmacro sel-fn
-  "Returns a memoized fn that calls `sel`."
-  [one-or-many entity & forms]
-  `(memoize
-    (fn []
-      (sel ~one-or-many ~entity ~@forms))))
 
 
 ;; ## INS

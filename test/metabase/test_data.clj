@@ -8,7 +8,8 @@
                              [org-perm :refer [OrgPerm]]
                              [table :refer [Table]]
                              [user :refer [User]])
-            [metabase.test-data.load :as load]))
+            [metabase.test-data.load :as load])
+  (:import com.metabase.corvus.api.ApiException))
 
 (declare fetch-or-create-user
          tables
@@ -122,15 +123,28 @@
      {:pre [(contains? usernames username)]}
      (:id (fetch-user username)))))
 
-(defn user->client
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
-   In addition, it forces lazy creation of the User if needed.
+(let [tokens (atom {})
+      user->token (fn [user]
+                    (or (@tokens user)
+                        (let [token (http/authenticate (user->credentials user))]
+                          (swap! tokens assoc user token)
+                          token)))]
+  (defn user->client
+    "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
+     In addition, it forces lazy creation of the User if needed.
 
-    ((user->client) :get 200 \"meta/table\")"
-  [username]
-  {:pre [(contains? usernames username)]}
-  (user->id username)                                 ; call a function that will force User to created if need be
-  (partial http/client (user->credentials username)))
+       ((user->client) :get 200 \"meta/table\")"
+    [username]
+    ;; Force lazy creation of User if need be
+    (user->id username)
+    (fn call-client [& args]
+      (try
+        (apply http/client (user->token username) args)
+        (catch ApiException e
+          (if-not (= (.getStatusCode e) 401) (throw e)
+                  ;; If we got a 401 unauthenticated clear the tokens cache + recur
+                  (do (reset! tokens {})
+                      (apply call-client args))))))))
 
 (defn user->org-perm
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
@@ -164,12 +178,12 @@
     :private true}
   tables
   (delay
+   @test-db ; force lazy evaluation of Test DB
    (binding [*log-db-calls* false]
-     (letfn [(table-kw->table-id [table-kw]
-               (->> (-> table-kw name .toUpperCase)
-                    (sel :one [Table :id] :db_id @db-id :name)
-                    :id))]
-       (map-table-kws table-kw->table-id)))))
+     (map-table-kws (fn [table-kw]
+                      (->> (-> table-kw name .toUpperCase)
+                           (sel :one [Table :id] :db_id @db-id :name)
+                           :id))))))
 
 (def
   ^{:doc "A map of Table name keywords -> map of Field name keywords -> Field IDs.
@@ -180,16 +194,16 @@
     :private true}
   table-fields
   (delay
+   @test-db ; force lazy evaluation of Test DB
    (binding [*log-db-calls* false]
-     (letfn [(table-kw->fields [table-kw]
-               (->> (sel :many [Field :name :id] :table_id (@tables table-kw))
-                    (map (fn [{:keys [^String name id]}]
-                           {:pre [(string? name)
-                                  (integer? id)
-                                  (not (zero? id))]}
-                           {(keyword (.toLowerCase name)) id}))
-                    (reduce merge {})))]
-       (map-table-kws table-kw->fields)))))
+     (map-table-kws (fn [table-kw]
+                      (->> (sel :many [Field :name :id] :table_id (@tables table-kw))
+                           (map (fn [{:keys [^String name id]}]
+                                  {:pre [(string? name)
+                                         (integer? id)
+                                         (not (zero? id))]}
+                                  {(keyword (.toLowerCase name)) id}))
+                           (reduce merge {})))))))
 
 ;; ## Users
 
@@ -230,15 +244,15 @@
          (string? password)
          (medley/boolean? admin)
          (medley/boolean? superuser)]}
-  (or (sel :one User :email email)
-      (let [org (load/test-org)
-            user (ins User
-                   :email email
-                   :first_name first
-                   :last_name last
-                   :password password
-                   :is_superuser superuser
-                   :is_active active)]
-        (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
-            (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
-        user)))
+  (let [org @test-org]                 ; we're derefing test-org here to force lazy loading of DB
+    (or (sel :one User :email email)
+        (let [user (ins User
+                     :email email
+                     :first_name first
+                     :last_name last
+                     :password password
+                     :is_superuser superuser
+                     :is_active active)]
+          (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
+              (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
+          user))))

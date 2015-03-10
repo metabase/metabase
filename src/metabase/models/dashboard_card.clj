@@ -23,8 +23,8 @@
   (-> dashcard
       (clojure.set/rename-keys {:sizex :sizeX   ; mildly retarded: H2 columns are all uppercase, we're converting them
                                 :sizey :sizeY}) ; to all downcase, and the Angular app expected mixed-case names here
-      (assoc :card (sel-fn :one Card :id card_id)
-             :dashboard (sel-fn :one "metabase.models.dashboard/Dashboard" :id dashboard_id))))
+      (assoc :card      (delay (sel :one Card :id card_id))
+             :dashboard (delay (sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id)))))
 
 (defmethod pre-insert DashboardCard [_ dashcard]
   (let [defaults {:created_at (util/new-sql-timestamp)

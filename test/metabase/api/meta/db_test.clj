@@ -14,7 +14,25 @@
                                               :name db-name
                                               :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}}))
 
-;; DB LIFECYCLE ENDPOINTS
+;; # FORM INPUT
+
+;; ## GET /api/meta/db/form_input
+(expect
+    {:engines [["h2" "H2"]
+               ["postgres" "PostgreSQL"]]
+     :timezones ["GMT"
+                 "UTC"
+                 "US/Alaska"
+                 "US/Arizona"
+                 "US/Central"
+                 "US/Eastern"
+                 "US/Hawaii"
+                 "US/Mountain"
+                 "US/Pacific"
+                 "America/Costa_Rica"]}
+  ((user->client :crowberto) :get 200 "meta/db/form_input"))
+
+;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/meta/db/:id
 (expect
