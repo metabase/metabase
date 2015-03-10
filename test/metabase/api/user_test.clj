@@ -3,6 +3,8 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :as http]
+            [metabase.middleware.auth :as auth]
             (metabase.models [org-perm :refer [OrgPerm]]
                              [session :refer [Session]]
                              [user :refer [User]])
@@ -11,6 +13,14 @@
             [metabase.test-data.create :refer [create-user]]))
 
 (def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
+
+;; ## /api/user/* AUTHENTICATION Tests
+;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
+;; authentication test on every single individual endpoint
+
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "user"))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "user/current"))
+
 
 ;; ## GET /api/user
 ;; Check that superusers can get a list of all Users
