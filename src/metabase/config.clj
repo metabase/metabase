@@ -15,6 +15,7 @@
    ;:mb-db-pass "metabase"
    :mb-db-file "metabase.db"
    :mb-db-automigrate "true"
+   :mb-db-logging "true"
    ;; Embedded Jetty Webserver
    ;; check here for all available options:
    ;; https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj

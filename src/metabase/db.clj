@@ -104,11 +104,6 @@
 
 ;;; # UTILITY FUNCTIONS
 
-(def ^:dynamic *log-db-calls*
-  "Should we enable DB call logging? (You might want to disable this if we're doing many in parallel)"
-  true)
-
-
 ;; ## UPD
 
 (defmulti pre-update
@@ -230,7 +225,7 @@
                                    (assoc :fields (or field-keys#
                                                       (default-fields entity#))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
                                    (merge *entity-overrides*))]                  ; then do a `default-fields` lookup at runtime
-       (when *log-db-calls*
+       (when (config/config-bool :mb-db-logging)
          (log/debug "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")
                   ~@(mapv (fn [[form & args]]

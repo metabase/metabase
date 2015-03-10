@@ -39,10 +39,9 @@
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
          (map? (:query query))
          (= (name (:type query)) "query")]}
-  (binding [*log-db-calls* false]
-    (->> (process query)
-         eval
-         (annotate/annotate query))))
+  (->> (process query)
+    eval
+    (annotate/annotate query)))
 
 
 ;; ## Query Clause Processors
