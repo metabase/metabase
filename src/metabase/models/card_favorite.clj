@@ -10,8 +10,8 @@
 
 (defmethod post-select CardFavorite [_ {:keys [card_id owner_id] :as card-favorite}]
   (assoc card-favorite
-         :owner (sel-fn :one User :id owner_id)
-         :card (sel-fn :one Card :id card_id)))
+         :owner (delay (sel :one User :id owner_id))
+         :card  (delay (sel :one Card :id card_id))))
 
 (defmethod pre-insert CardFavorite [_ card-favorite]
   (let [defaults {:created_at (new-sql-timestamp)

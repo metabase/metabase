@@ -26,7 +26,7 @@
   "Primarily for debugging purposes. Evaulates BODY as if `*current-user*` was the User with USER-ID."
   [user-id & body]
   `(binding [*current-user-id* ~user-id
-             *current-user* (delay ((sel-fn :one "metabase.models.user/User" :id ~user-id))) ]
+             *current-user* (delay (sel :one 'metabase.models.user/User :id ~user-id))]
      ~@body))
 
 (defn current-user-perms-for-org

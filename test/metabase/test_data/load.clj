@@ -59,13 +59,8 @@
   "Drop the test `Database` and `Fields`/`Tables` associated with it."
   []
   (when-let [{:keys [id]} (sel :one [Database :id] :name db-name)]
-    (let [table-ids (->> (sel :many [Table :id] :db_id id)
-                         (map :id)
-                         set)]
-      (delete Field (where {:table_id [in table-ids]}))
-      (delete Table (where {:id [in table-ids]}))
-      (del Database :id id)
-      (recur)))) ; recurse and delete any other DBs named db-name in case we somehow created more than one
+    (cascade-delete Database :id id)
+    (recur))) ; recurse and delete any other DBs named db-name in case we somehow created more than one
 
 
 ;; # INTERNAL IMPLENTATION DETAILS

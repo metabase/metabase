@@ -10,8 +10,8 @@
 
 (defmethod post-select OrgPerm [_ {:keys [organization_id user_id] :as org-perm}]
   (assoc org-perm
-         :organization (sel-fn :one Org :id organization_id)
-         :user (sel-fn :one "metabase.models.user/User" :id user_id)))
+         :organization (delay (sel :one Org :id organization_id))
+         :user         (delay (sel :one 'metabase.models.user/User :id user_id))))
 
 
 (defn grant-org-perm

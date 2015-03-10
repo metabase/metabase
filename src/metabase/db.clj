@@ -201,13 +201,6 @@
        (->> (select entity-select-form# ~@forms)
             (map (partial post-select entity#))))))                             ; map `post-select` over the results
 
-(defmacro sel-fn
-  "Returns a memoized fn that calls `sel`."
-  [one-or-many entity & forms]
-  `(memoize
-    (fn []
-      (sel ~one-or-many ~entity ~@forms))))
-
 
 ;; ## INS
 

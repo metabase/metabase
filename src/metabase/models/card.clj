@@ -28,6 +28,6 @@
 (defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
   (-> card
       (realize-json :dataset_query :visualization_settings)
-      (assoc :creator (sel-fn :one User :id creator_id)
-             :organization (sel-fn :one Org :id organization_id))
+      (assoc :creator (delay (sel :one User :id creator_id))
+             :organization (delay (sel :one Org :id organization_id)))
       assoc-permissions-sets))
