@@ -20,7 +20,7 @@
 (def ^:private test-db-filename
   (delay (format "%s/t.db" (System/getProperty "user.dir"))))
 (def ^:private test-db-connection-string
-  (delay (format "file:%s;AUTO_SERVER=TRUE" @test-db-filename)))
+  (delay (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" @test-db-filename)))
 
 ;; # PUBLIC INTERFACE
 
