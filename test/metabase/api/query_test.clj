@@ -158,3 +158,58 @@
        ;; wait 100ms for QueryExecution to complete. If it takes longer than that, it's probably brokesies
        (Thread/sleep 100)
        ((user->client :rasta) :get 200 (format "query/%d/results" id)))]))
+
+;; ## GET /api/query
+;; Fetch Queries for the current Org
+(expect-eval-actual-first
+    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :id :ASC))
+          rasta (match-$ (fetch-user :rasta)
+                  {:common_name "Rasta Toucan"
+                   :date_joined $
+                   :last_name "Toucan"
+                   :id $
+                   :is_superuser false
+                   :last_login $
+                   :first_name "Rasta"
+                   :email "rasta@metabase.com"})
+          db (match-$ @test-db
+               {:created_at $
+                :engine "h2"
+                :id $
+                :details $
+                :updated_at $
+                :name "Test Database"
+                :organization_id (:id @test-org)
+                :description nil})]
+      [(match-$ query-1
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})
+       (match-$ query-2
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})])
+  (do (cascade-delete Query :database_id (:id @test-db))
+      (create-query)
+      (create-query)
+      ((user->client :rasta) :get 200 "query" :org (:id @test-org))))
