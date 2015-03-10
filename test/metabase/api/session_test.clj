@@ -15,6 +15,19 @@
   (do (del Session :user_id (user->id :rasta))                  ; delete all other sessions for the bird first
       (client :post 200 "session" (user->credentials :rasta))))
 
+;; Test for required params
+(expect "'email' is a required param."
+  (client :post 400 "session" {}))
+
+(expect "'password' is a required param."
+  (client :post 400 "session" {:email "anything"}))
+
+;; Test for password checking
+(expect "password mismatch"
+  (client :post 400 "session" (-> (user->credentials :rasta)
+                                (assoc :password "something else"))))
+
+
 ;; ## DELETE /api/session
 ;; Test that we can logout
 (expect-eval-actual-first nil
