@@ -122,15 +122,17 @@
      {:pre [(contains? usernames username)]}
      (:id (fetch-user username)))))
 
-(defn user->client
+(def user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
 
     ((user->client) :get 200 \"meta/table\")"
-  [username]
-  {:pre [(contains? usernames username)]}
-  (user->id username)                                 ; call a function that will force User to created if need be
-  (partial http/client (user->credentials username)))
+  (memoize
+   (fn [username]
+     {:pre [(contains? usernames username)]}
+     ;; Force lazy creation of User if need be
+     (user->id username)
+     (partial http/client (user->credentials username)))))
 
 (defn user->org-perm
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
