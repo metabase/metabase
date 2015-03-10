@@ -13,7 +13,7 @@
   []
   (let [{query-id :id} (create-query)
         query-execution ((user->client :rasta) :post 200 (format "query/%d" query-id))]
-    (Thread/sleep 100) ; Give it 100ms to finish
+    (Thread/sleep 50) ; Give it 50ms to finish
     query-execution))
 
 ;; ## GET /result/:id
@@ -52,3 +52,10 @@
        :row_count 1})
   (let [{execution-id :id} (create-and-execute-query)]
     ((user->client :rasta) :get 200 (format "result/%d/response" execution-id))))
+
+
+;; ## GET /result/:id/csv
+(expect-eval-actual-first
+    "count(*)\n100\n"
+  (let [{execution-id :id} (create-and-execute-query)]
+    ((user->client :rasta) :get 200 (format "result/%d/csv" execution-id))))

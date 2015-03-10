@@ -15,6 +15,26 @@
                                                    :sql "SELECT COUNT(*) FROM VENUES;"}
                                                   kwargs)))
 
+;; ## GET /api/query/form_input
+(expect
+    {:databases [(match-$ @test-db
+                   {:id $
+                    :name "Test Database"})]
+     :timezones ["GMT"
+                 "UTC"
+                 "US/Alaska"
+                 "US/Arizona"
+                 "US/Central"
+                 "US/Eastern"
+                 "US/Hawaii"
+                 "US/Mountain"
+                 "US/Pacific"
+                 "America/Costa_Rica"]
+     :permissions [{:name "None",         :id 0}
+                   {:name "Read Only",    :id 1}
+                   {:name "Read & Write", :id 2}]}
+  ((user->client :rasta) :get 200 "query/form_input" :org (:id @test-org)))
+
 ;; ## POST /api/query (create)
 ;; Check that we can save a Query
 (expect-eval-actual-first
@@ -158,3 +178,69 @@
        ;; wait 100ms for QueryExecution to complete. If it takes longer than that, it's probably brokesies
        (Thread/sleep 100)
        ((user->client :rasta) :get 200 (format "query/%d/results" id)))]))
+
+
+;; ## GET /api/query
+;; Fetch Queries for the current Org
+(expect-eval-actual-first
+    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :id :ASC))
+          rasta (match-$ (fetch-user :rasta)
+                  {:common_name "Rasta Toucan"
+                   :date_joined $
+                   :last_name "Toucan"
+                   :id $
+                   :is_superuser false
+                   :last_login $
+                   :first_name "Rasta"
+                   :email "rasta@metabase.com"})
+          db (match-$ @test-db
+               {:created_at $
+                :engine "h2"
+                :id $
+                :details $
+                :updated_at $
+                :name "Test Database"
+                :organization_id (:id @test-org)
+                :description nil})]
+      [(match-$ query-1
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})
+       (match-$ query-2
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})])
+  (do (cascade-delete Query :database_id (:id @test-db))
+      (create-query)
+      (create-query)
+      ((user->client :rasta) :get 200 "query" :org (:id @test-org))))
+
+
+;; ## POST /api/query/:id/csv
+(expect-eval-actual-first
+    "count(*)\n100\n"
+  (let [{query-id :id} (create-query)]
+    ((user->client :rasta) :post 200 (format "query/%d" query-id))
+    ;; 50ms should be long enough for query to finish
+    (Thread/sleep 50)
+    ((user->client :rasta) :get 200 (format "query/%d/csv" query-id))))
