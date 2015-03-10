@@ -13,7 +13,7 @@
 
 (declare post-select)
 
-(defn- db-file
+(defn db-file
   "Path to our H2 DB file from env var or app config."
   []
   (let [db-file-name (config/config-str :mb-db-file)

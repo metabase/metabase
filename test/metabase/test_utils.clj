@@ -21,7 +21,7 @@
   "setup database schema"
   {:expectations-options :before-run}
   []
-  (let [filename (-> (re-find #"file:(\w+\.db).*" @db-file) second)] ; db-file is prefixed with "file:", so we strip that off
+  (let [filename (-> (re-find #"file:(\w+\.db).*" (db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
     (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
            (let [file (str filename file-extension)]
              (when (.exists (io/file file))
