@@ -1,6 +1,7 @@
 (ns metabase.test-data.load
   "Functions for creating a test Database with some mock data."
   (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (korma [core :refer :all]
                    [db :refer :all])
             [metabase.db :refer :all]
@@ -40,15 +41,15 @@
   (or (sel :one Database :name db-name)
     (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
           (create-and-populate-tables))
-        (println "Creating new metabase Database object...")
+        (log/info "Creating new metabase Database object...")
         (let [db (ins Database
                    :organization_id (:id (test-org))
                    :name db-name
                    :engine :h2
                    :details {:conn_str @test-db-connection-string})]
-          (println "Syncing Tables...")
+          (log/info "Syncing Tables...")
           (sync/sync-tables db)
-          (println "Finished. Enjoy your test data <3")
+          (log/info "Finished. Enjoy your test data <3")
           db))))
 
 
@@ -75,7 +76,7 @@
        (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
                                            :naming {:keys s/lower-case
                                                     :fields s/upper-case}}))]
-         (println "CREATING H2 TEST DATABASE...")
+         (log/info "CREATING H2 TEST DATABASE...")
          ~@body)))
 
 (defn- exec-sql
@@ -108,14 +109,14 @@
   (with-test-db
     (let [table-name (-> table-name name s/upper-case)
           fields-for-insert (->> fields (map first))]               ; get ordered field names of data e.g. (:name :last_login)
-      (println (format "CREATING TABLE \"%s\"..." table-name))
+      (log/info (format "CREATING TABLE \"%s\"..." table-name))
       (exec-sql (format "DROP TABLE IF EXISTS \"%s\";" table-name)
                 (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" table-name (format-fields fields)))
       (-> (create-entity table-name)
           (database *test-db*)
           (insert (values (map (partial zipmap fields-for-insert) ; data rows look like [name last-login]
                                rows))))                           ; need to convert to {:name name :last_login last-login} for insert
-      (println (format "Inserted %d rows." (count rows))))))
+      (log/info (format "Inserted %d rows." (count rows))))))
 
 (defn- create-and-populate-tables []
   (with-test-db
