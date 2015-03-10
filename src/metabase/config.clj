@@ -32,8 +32,8 @@
    2.  jvm opitons (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
-  (let [k (if (string? k) (keyword k) k)]
-    (or (environ/env k) (k app-defaults))))
+  (let [k (keyword k)]
+    (or (k environ/env) (k app-defaults))))
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
