@@ -137,6 +137,11 @@
                                                                   :email new-email})
        (fetch-user))])
 
+;; Check that a non-superuser CANNOT update someone else's user details
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
+
+
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password
 (let [user-last-name (random-name)]
