@@ -39,6 +39,7 @@
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
+  {:pre [(integer? query-id)]}
   (let-400 [{:keys [name] :as query} (sel :one Query :id query-id)]
     (read-check query)
     (->> (-> query
@@ -97,17 +98,18 @@
 
 
 (defendpoint POST "/:id" [id]
-  (let-404 [query (sel :one Query :id id)]
-           (read-check query)
-           (let [dataset-query {:type "native"
-                                :database (:database_id query)
-                                :native {:query (get-in query [:details :sql])
-                                         :timezone (get-in query [:details :timezone])}}
-                 options {:executed_by *current-user-id*
-                          :saved_query query
-                          :synchronously false
-                          :cache_result true}]
-             (driver/dataset-query dataset-query options))))
+  (let-404 [{database-id :database_id
+             {:keys [sql timezone]} :details :as query} (sel :one Query :id id)]
+    (read-check query)
+    (let [dataset-query {:type "native"
+                         :database database-id
+                         :native {:query sql
+                                  :timezone timezone}}
+          options {:executed_by *current-user-id*
+                   :saved_query query
+                   :synchronously false
+                   :cache_result true}]
+      (driver/dataset-query dataset-query options))))
 
 
 (defendpoint GET "/:id/results" [id]
