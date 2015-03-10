@@ -37,20 +37,19 @@
    If it does not exist, it creates it, loads relevant data, and calls `sync-tables`."
   []
   {:post [(map? %)]}
-  (binding [*log-db-calls* false]
-    (or (sel :one Database :name db-name)
-        (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
-              (create-and-populate-tables))
-            (println "Creating new metabase Database object...")
-            (let [db (ins Database
-                          :organization_id (:id (test-org))
-                          :name db-name
-                          :engine :h2
-                          :details {:conn_str @test-db-connection-string})]
-              (println "Syncing Tables...")
-              (sync/sync-tables db)
-              (println "Finished. Enjoy your test data <3")
-              db)))))
+  (or (sel :one Database :name db-name)
+    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
+          (create-and-populate-tables))
+        (println "Creating new metabase Database object...")
+        (let [db (ins Database
+                   :organization_id (:id (test-org))
+                   :name db-name
+                   :engine :h2
+                   :details {:conn_str @test-db-connection-string})]
+          (println "Syncing Tables...")
+          (sync/sync-tables db)
+          (println "Finished. Enjoy your test data <3")
+          db))))
 
 
 ;; ## Debugging/Interactive Development Functions

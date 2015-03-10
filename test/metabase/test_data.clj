@@ -179,11 +179,10 @@
   tables
   (delay
    @test-db ; force lazy evaluation of Test DB
-   (binding [*log-db-calls* false]
-     (map-table-kws (fn [table-kw]
-                      (->> (-> table-kw name .toUpperCase)
-                           (sel :one [Table :id] :db_id @db-id :name)
-                           :id))))))
+    (map-table-kws (fn [table-kw]
+                     (->> (-> table-kw name .toUpperCase)
+                       (sel :one [Table :id] :db_id @db-id :name)
+                       :id)))))
 
 (def
   ^{:doc "A map of Table name keywords -> map of Field name keywords -> Field IDs.
@@ -195,15 +194,14 @@
   table-fields
   (delay
    @test-db ; force lazy evaluation of Test DB
-   (binding [*log-db-calls* false]
-     (map-table-kws (fn [table-kw]
-                      (->> (sel :many [Field :name :id] :table_id (@tables table-kw))
-                           (map (fn [{:keys [^String name id]}]
-                                  {:pre [(string? name)
-                                         (integer? id)
-                                         (not (zero? id))]}
-                                  {(keyword (.toLowerCase name)) id}))
-                           (reduce merge {})))))))
+    (map-table-kws (fn [table-kw]
+                     (->> (sel :many [Field :name :id] :table_id (@tables table-kw))
+                       (map (fn [{:keys [^String name id]}]
+                              {:pre [(string? name)
+                                     (integer? id)
+                                     (not (zero? id))]}
+                              {(keyword (.toLowerCase name)) id}))
+                       (reduce merge {}))))))
 
 ;; ## Users
 
