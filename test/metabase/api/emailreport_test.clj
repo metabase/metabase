@@ -11,43 +11,40 @@
 
 ;; ## Helper Fns
 
-(defn create-email-report []
+(defn create-email-report [& {:as kwargs}]
   ((user->client :rasta) :post 200 "emailreport"
-   {:name "My Cool Email Report"
-    :mode (emailreport/mode->id :active)
-    :public_perms common/perms-readwrite
-    :email_addresses ""
-    :recipients [{:id (user->id :lucky)}]
-    :dataset_query {:type "query"
-                    :query {:source_table (table->id :venues)
-                            :filter [nil nil]
-                            :aggregation ["rows"]
-                            :breakout [nil]
-                            :limit nil}
-                    :database (:id @test-db)}
-    :schedule {:days_of_week {:mon true
-                               :tue true
-                               :wed true
-                               :thu true
-                               :fri true
-                               :sat true
-                               :sun true}
-               :time_of_day "morning"
-               :timezone ""}
-    :organization (:id @test-org)}))
+   (merge {:name "My Cool Email Report"
+           :mode (emailreport/mode->id :active)
+           :public_perms common/perms-readwrite
+           :email_addresses ""
+           :recipients [{:id (user->id :lucky)}]
+           :dataset_query {:type "query"
+                           :query {:source_table (table->id :venues)
+                                   :filter [nil nil]
+                                   :aggregation ["rows"]
+                                   :breakout [nil]
+                                   :limit nil}
+                           :database (:id @test-db)}
+           :schedule {:days_of_week {:mon true
+                                     :tue true
+                                     :wed true
+                                     :thu true
+                                     :fri true
+                                     :sat true
+                                     :sun true}
+                      :time_of_day "morning"
+                      :timezone ""}
+           :organization (:id @test-org)}
+          kwargs)))
 
 ;; ## GET /api/emailreport/form_input
 ;; Test that we can get the form input options for the Test Org
 (expect-let [_ @test-db ; force lazy loading of Test Data / Metabase DB
              _ (cascade-delete Database :name [not= "Test Database"])] ; Delete all Databases that aren't the Test DB
-  {:users [{:id (user->id :rasta)
-            :name "Rasta Toucan"}
-           {:id (user->id :crowberto)
-            :name "Crowberto Corv"}
-           {:id (user->id :lucky)
-            :name "Lucky Pigeon"}
-           {:id (user->id :trashbird)
-            :name "Trash Bird"}],
+  {:users #{{:id (user->id :rasta),     :name "Rasta Toucan"}
+            {:id (user->id :crowberto), :name "Crowberto Corv"}
+            {:id (user->id :lucky),     :name "Lucky Pigeon"}
+            {:id (user->id :trashbird), :name "Trash Bird"}}
    :databases [{:id (:id @test-db)
                 :name "Test Database"}],
    :timezones ["GMT"
@@ -77,7 +74,8 @@
    :permissions [{:name "None",         :id 0}
                  {:name "Read Only",    :id 1}
                  {:name "Read & Write", :id 2}]}
-  ((user->client :rasta) :get 200 "emailreport/form_input" :org (:id @test-org)))
+  (-> ((user->client :rasta) :get 200 "emailreport/form_input" :org (:id @test-org)) ; convert to a set so test doesn't fail if order differs
+        (update-in [:users] set)))
 
 
 ;; ## POST /api/emailreport
@@ -161,3 +159,17 @@
        :created_at $})
   (let [{id :id} (create-email-report)]
     ((user->client :rasta) :get 200 (format "emailreport/%d" id))))
+
+;; ## DELETE /api/emailreport/:id
+(let [er-name (random-name)
+      er-exists? (fn [] (exists? EmailReport :name er-name))]
+  (expect-eval-actual-first
+      [false
+       true
+       false]
+    [(er-exists?)
+     (do (create-email-report :name er-name)
+         (er-exists?))
+     (let [{id :id} (sel :one EmailReport :name er-name)]
+       ((user->client :rasta) :delete 204 (format "emailreport/%d" id))
+       (er-exists?))]))
