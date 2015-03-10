@@ -213,3 +213,12 @@
       (create-query)
       (create-query)
       ((user->client :rasta) :get 200 "query" :org (:id @test-org))))
+
+;; ## POST /api/query/:id/csv
+(expect-eval-actual-first
+    "count(*)\n100\n"
+  (let [{query-id :id} (create-query)]
+    ((user->client :rasta) :post 200 (format "query/%d" query-id))
+    ;; 50ms should be long enough for query to finish
+    (Thread/sleep 50)
+    ((user->client :rasta) :get 200 (format "query/%d/csv" query-id))))
