@@ -16,7 +16,7 @@
   "http://localhost:3000/api/")
 
 (defn
-  ^{:arglists ([credentials-map? method expected-status-code? url http-body-map? & url-kwargs])}
+  ^{:arglists ([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   client
   "Perform an API call and return the response (for test purposes).
    The first arg after URL will be passed as a JSON-encoded body if it is a map.
@@ -30,14 +30,15 @@
 
   Args:
 
-   *  CREDENTIALS-MAP       Optional map of `:email` and `:password` of a User whose credentials we should perform the request with.
+   *  CREDENTIALS           Optional map of `:email` and `:password` or `X-METABASE-SESSION` token of a User who we should perform the request as
    *  METHOD                `:get`, `:post`, `:delete`, or `:put`
    *  EXPECTED-STATUS-CODE  When passed, throw an exception if the response has a different status code.
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
    *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
   [& args]
-  (let [[credentials [method & args]] (u/optional map? args)
+  (let [[credentials [method & args]] (u/optional #(or (map? %)
+                                                       (string? %)) args)
         [expected-status [url & args]] (u/optional integer? args)
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     (-client credentials method expected-status url body url-param-kwargs)))
@@ -48,7 +49,8 @@
 (defn- -client [credentials method expected-status url http-body url-param-kwargs]
   ;; Since the params for this function can get a little complicated make sure we validate them
   {:pre [(or (nil? credentials)
-             (map? credentials))
+             (map? credentials)
+             (string? credentials))
          (contains? #{:get :post :put :delete} method)
          (or (nil? expected-status)
              (integer? expected-status))
@@ -60,7 +62,8 @@
 
   (let [request-map {:content-type :json
                      :accept :json
-                     :headers {"X-METABASE-SESSION" (when credentials (authenticate credentials))}
+                     :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
+                                                                          credentials))}
                      :body (json/write-str http-body)}
         request-fn (case method
                      :get  client/get
@@ -97,7 +100,7 @@
          (catch Exception _
            body))))
 
-(defn- authenticate [{:keys [email password] :as credentials}]
+(defn authenticate [{:keys [email password] :as credentials}]
   {:pre [(string? email)
          (string? password)]}
   (try

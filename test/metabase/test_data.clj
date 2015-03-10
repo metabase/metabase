@@ -132,7 +132,7 @@
      {:pre [(contains? usernames username)]}
      ;; Force lazy creation of User if need be
      (user->id username)
-     (partial http/client (user->credentials username)))))
+     (partial http/client (http/authenticate (user->credentials username))))))
 
 (defn user->org-perm
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
