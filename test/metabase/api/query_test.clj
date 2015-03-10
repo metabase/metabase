@@ -3,7 +3,8 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [query :refer [Query]])
+            (metabase.models [query :refer [Query]]
+                             [query-execution :refer [QueryExecution]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
             [metabase.test-data :refer :all]))
 
@@ -119,3 +120,41 @@
     ;; Clone Query with a different User than the one that created it
     (let [{id :id} (create-query :name query-name)]
       ((user->client :crowberto) :post 200 "query" {:clone id}))))
+
+
+;; ## POST /api/query/:id & GET /api/query/:id/results
+;; Can we execute a Query (i.e., create a new QueryExecution) ?
+(expect-eval-actual-first
+    (let [{query-id :id :as query} (sel :one Query (order :id :DESC))
+          query-execution (sel :one QueryExecution :query_id query-id (order :id :DESC))]
+      [(match-$ query-execution
+         {:id $
+          :uuid $
+          :query_id query-id
+          :version 1
+          :status "starting"
+          :started_at $})
+       [(match-$ query-execution
+           {:query_id query-id
+            :raw_query ""
+            :result_rows 1
+            :finished_at $
+            :started_at $
+            :json_query {:native {:timezone nil
+                                  :query "SELECT COUNT(*) FROM VENUES;"}
+                         :database (:id @test-db)
+                         :type "native"}
+            :status "completed"
+            :id $
+            :uuid $
+            :row_count 1
+            :running_time $
+            :version 1})]])
+  (let [{id :id} (create-query)]
+    [;; POST /query/:id should create a new QueryExecution
+     ((user->client :rasta) :post 200 (format "query/%d" id))
+     ;; GET /query/:id/results should return array of QueryExecutions for the Query (e.g., the one we just created)
+     (do
+       ;; wait 100ms for QueryExecution to complete. If it takes longer than that, it's probably brokesies
+       (Thread/sleep 100)
+       ((user->client :rasta) :get 200 (format "query/%d/results" id)))]))
