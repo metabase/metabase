@@ -139,7 +139,7 @@
 
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
+  ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird))))
 
 
 ;; ## PUT /api/user/:id/password
@@ -165,3 +165,8 @@
                  "password mismatch"))
       ;; New creds *should* work
       (metabase.http-client/client :post 200 "session" (:new creds)))))
+
+;; Check that a non-superuser CANNOT update someone else's password
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "anything"
+                                                                                     :old_password "whatever"}))
