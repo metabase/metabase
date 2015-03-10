@@ -6,70 +6,104 @@
             [environ.core :refer [env]]
             (korma [core :refer :all]
                    [db :refer :all])
-            [metabase.config :refer [app-defaults]]
+            [metabase.config :as config]
             [metabase.db.internal :refer :all]
             [metabase.util :as u]))
 
 
 (declare post-select)
 
-(defonce ^{:doc "Path to our H2 DB file from env var or app config."}
-  db-file
-  (delay
-   (str "file:" (or (:database-file env)
-                    (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
-        ";AUTO_SERVER=TRUE;MV_STORE=FALSE")))
+(defn db-file
+  "Path to our H2 DB file from env var or app config."
+  []
+  (let [db-file-name (config/config-str :mb-db-file)
+        db-file (clojure.java.io/file db-file-name)
+        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE"]
+    (if (.isAbsolute db-file)
+      ;; when an absolute path is given for the db file then don't mess with it
+      (str "file:" db-file-name options)
+      ;; if we don't have an absolute path then make sure we start from "user.dir"
+      (str "file:" (str (System/getProperty "user.dir") "/" db-file-name options)))))
 ;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
 
-(defonce ^{:private true
-           :doc "Setup Korma default DB."}
-  setup-db
-  (memoize
-   (fn []
-     (log/info (str "Using H2 database file: " @db-file))
-     (let [db (create-db (h2 {:db @db-file
-                              :naming {:keys str/lower-case
-                                       :fields str/upper-case}}))]
-       (default-connection db)))))
+(defn setup-jdbc-db
+  "Configure connection details for JDBC."
+  []
+  (case (config/config-kw :mb-db-type)
+    :h2 {:subprotocol "h2"
+         :classname "org.h2.Driver"
+         :subname     (db-file)}
+    :postgres {:subprotocol "postgresql"
+               :classname "org.postgresql.Driver"
+               :subname (str "//" (config/config-str :mb-db-host)
+                          ":" (config/config-str :mb-db-port)
+                          "/" (config/config-str :mb-db-dbname))
+               :user (config/config-str :mb-db-user)
+               :password (config/config-str :mb-db-pass)}))
+
+
+(defn setup-korma-db
+  "Configure connection details for Korma."
+  []
+  (case (config/config-kw :mb-db-type)
+    :h2 (h2 {:db (db-file)
+             :naming {:keys str/lower-case
+                      :fields str/upper-case}})
+    :postgres (postgres {:db (config/config-str :mb-db-dbname)
+                         :port (config/config-int :mb-db-port)
+                         :user (config/config-str :mb-db-user)
+                         :password (config/config-str :mb-db-pass)
+                         :host (config/config-str :mb-db-host)})))
+
+
+(defn test-db-conn
+  "Simple test of a JDBC connection."
+  [jdbc-conn]
+  (let [result (first (jdbc/query jdbc-conn ["select 7 as num"] :row-fn :num))]
+    (assert (= 7 result) "JDBC Connection Test FAILED")))
 
 
 (defn migrate
   "Migrate the database `:up`, `:down`, or `:print`."
-  [direction]
-  (setup-db)
-  (let [conn (jdbc/get-connection {:subprotocol "h2"
-                                   :subname @db-file})]
+  [jdbc-db direction]
+  (let [conn (jdbc/get-connection jdbc-db)]
     (case direction
-      :up    (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
-      :down  (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
-      :print (let [sql (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn)]
-               (log/info (str "Database migrations required\n\n"
-                              "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                              "Please execute the following sql commands on your database before proceeding.\n\n"
-                              sql
-                              "\n\n"
-                              "Once you're database is updated try running the application again.\n"))))))
+      :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
+      :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
+      :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
 
 
-(defn setup
+(defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
-  [auto-migrate]
-  ;; TODO - test db connection and throw exception if we have trouble connecting
-  (if auto-migrate
-    (migrate :up)
-    ;; if we are not doing auto migrations then return migration sql for user to run manually
-    (migrate :print)))
+  [& {:keys [auto-migrate]
+      :or {auto-migrate true}}]
+  (let [jdbc-db (setup-jdbc-db)
+        korma-db (setup-korma-db)]
+    ;; Test DB connection and throw exception if we have any troubles connecting
+    (test-db-conn jdbc-db)
+    (log/info "Verify Database Connection ... CHECK")
+    ;; Run through our DB migration process and make sure DB is fully prepared
+    (if auto-migrate
+      (migrate jdbc-db :up)
+      ;; if we are not doing auto migrations then print out migration sql for user to run manually
+      ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
+      (let [sql (migrate jdbc-db :print)]
+        (log/info (str "Database Upgrade Required\n\n"
+                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                    "Please execute the following sql commands on your database before proceeding.\n\n"
+                    sql
+                    "\n\n"
+                    "Once you're database is updated try running the application again.\n"))
+        (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (log/info "Database Migrations Current ... CHECK")
+    ;; Establish our 'default' Korma DB Connection
+    (default-connection (create-db korma-db))))
 
 
 ;;; # UTILITY FUNCTIONS
-
-(def ^:dynamic *log-db-calls*
-  "Should we enable DB call logging? (You might want to disable this if we're doing many in parallel)"
-  true)
-
 
 ;; ## UPD
 
@@ -192,7 +226,7 @@
                                    (assoc :fields (or field-keys#
                                                       (default-fields entity#))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
                                    (merge *entity-overrides*))]                  ; then do a `default-fields` lookup at runtime
-       (when *log-db-calls*
+       (when (config/config-bool :mb-db-logging)
          (log/debug "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")
                   ~@(mapv (fn [[form & args]]

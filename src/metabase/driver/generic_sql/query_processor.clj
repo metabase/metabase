@@ -3,10 +3,12 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
+            [metabase.config :as config]
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])))
+
 
 (declare apply-form
          log-query
@@ -14,10 +16,6 @@
          table-id->korma-entity)
 
 ;; ## Public Functions
-
-(def ^:dynamic *enable-debug-logging*
-  "Log the query dictionary, korma form, and SQL output when running the Query Processor?"
-  true)
 
 (defn process
   "Convert QUERY into a korma `select` form."
@@ -28,10 +26,11 @@
                      (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
                                            [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
                      doall)]
-      (when *enable-debug-logging*
+      (when (config/config-bool :mb-db-logging)
         (log-query query forms))
       `(let [entity# (table-id->korma-entity ~source_table)]
          (select entity# ~@forms)))))
+
 
 (defn process-and-run
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
@@ -39,10 +38,9 @@
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
          (map? (:query query))
          (= (name (:type query)) "query")]}
-  (binding [*log-db-calls* false]
-    (->> (process query)
-         eval
-         (annotate/annotate query))))
+  (->> (process query)
+    eval
+    (annotate/annotate query)))
 
 
 ;; ## Query Clause Processors
@@ -198,9 +196,9 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (println "SOURCE TABLE: " source_table)
   (log/debug
    "\n********************"
+   "\nSOURCE TABLE: " source_table
    "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
    "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
    "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]

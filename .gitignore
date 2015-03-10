@@ -17,6 +17,7 @@ pom.xml.asc
 /docs
 profiles.clj
 /*.h2.db
+/*.mv.db
 /*.lock.db
 /*.trace.db
 /resources/frontend_client/app/bower_components

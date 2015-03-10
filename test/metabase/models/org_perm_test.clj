@@ -1,6 +1,6 @@
 (ns metabase.models.org-perm-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-utils :refer [setup-db]]
+            [metabase.test-utils :refer [setup-test-db]]
             [metabase.db :refer :all]
             [metabase.models.org-perm :refer [OrgPerm]]
             [metabase.models.org :refer [Org]]

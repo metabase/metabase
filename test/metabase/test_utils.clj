@@ -17,11 +17,11 @@
 ;; it's pretty annoying to have our DB reset all the time
 (expectations/disable-run-on-shutdown)
 
-(defn setup-db
+(defn setup-test-db
   "setup database schema"
   {:expectations-options :before-run}
   []
-  (let [filename (-> (re-find #"file:(\w+\.db).*" @db-file) second)] ; db-file is prefixed with "file:", so we strip that off
+  (let [filename (-> (re-find #"file:(\w+\.db).*" (db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
     (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
            (let [file (str filename file-extension)]
              (when (.exists (io/file file))
@@ -29,11 +29,10 @@
          [".h2.db"
           ".trace.db"
           ".lock.db"]))
-  ; TODO - lets just completely delete the db before each test to ensure we start fresh
   (log/info "tearing down database and resetting to empty schema")
-  (migrate :down)
+  (migrate (setup-jdbc-db) :down)
   (log/info "setting up database and running all migrations")
-  (migrate :up)
+  (setup-db :auto-migrate true)
   (log/info "database setup complete"))
 
 
@@ -44,13 +43,13 @@
    (try (ring/run-jetty core/app {:port 3000
                                   :join? false}) ; detach the thread
         (catch java.net.BindException e          ; assume server is already running if port's already bound
-          (println "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
+          (log/warn "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
 
 (defn start-jetty
   "Start the Jetty web server."
   {:expectations-options :before-run}
   []
-  (println "STARTING THE JETTY SERVER...")
+  (log/info "STARTING THE JETTY SERVER...")
   @jetty-instance)
 
 (defn stop-jetty
