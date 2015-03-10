@@ -84,6 +84,6 @@
                   :position 0}]
     (let [{:keys [field_type base_type special_type] :as field} (merge defaults field)]
       (assoc field
-             :base_type (name base_type)
+             :base_type    (name base_type)
              :special_type (when special_type (name special_type))
-             :field_type (name field_type)))))
+             :field_type   (name field_type)))))

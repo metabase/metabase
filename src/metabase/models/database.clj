@@ -79,6 +79,10 @@
   (cond-> (assoc database :updated_at (new-sql-timestamp))
     details (assoc :details (json/write-str details))))
 
+(defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
+  (cascade-delete 'metabase.models.table/Table :db_id id)
+  (cascade-delete 'metabase.models.query/Query :database_id id))
+
 (defn databases-for-org
   "Selects the ID and NAME for all databases available to the given org-id."
   [org-id]

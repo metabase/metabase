@@ -18,7 +18,7 @@
   [{:keys [name db]}]
   {:table name
    :pk :id
-   :db @(:korma-db (db))})
+   :db @(:korma-db @db)})
 
 (defn korma-count [{:keys [korma-entity]}]
   (-> @korma-entity
@@ -48,3 +48,6 @@
   (assoc table
          :created_at (util/new-sql-timestamp)
          :updated_at (util/new-sql-timestamp)))
+
+(defmethod pre-cascade-delete Table [_ {:keys [id] :as table}]
+  (cascade-delete Field :table_id id))
