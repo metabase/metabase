@@ -50,5 +50,5 @@
               :database (delay
                          (check database_id 500 "Can't get database: Query doesn't have a :database_id.")
                          (sel :one Database :id database_id))
-              :organization_id (delay (:organization_id ((:database <>)))))
+              :organization_id (delay (:organization_id @(:database <>))))
       assoc-permissions-sets))

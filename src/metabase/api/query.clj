@@ -39,6 +39,7 @@
 (defn query-clone
   "Create a new query by cloning an existing query.  Returns a 403 if user doesn't have acces to read query."
   [query-id]
+  {:pre [(integer? query-id)]}
   (let-400 [{:keys [name] :as query} (sel :one Query :id query-id)]
     (read-check query)
     (->> (-> query

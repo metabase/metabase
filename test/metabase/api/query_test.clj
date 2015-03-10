@@ -14,7 +14,7 @@
                                                    :sql "SELECT COUNT(*) FROM VENUES;"}
                                                   kwargs)))
 
-;; ## POST /api/query
+;; ## POST /api/query (create)
 ;; Check that we can save a Query
 (expect-eval-actual-first
     (match-$ (sel :one Query (order :id :DESC))
@@ -74,16 +74,18 @@
 ;; ## PUT /api/query/:id
 ;; Check that we can update a Query
 (expect-eval-actual-first
-    ["My Awesome Query"
-     "My Awesome Query 2"]
+    [{:name "My Awesome Query"
+      :version 2}
+     {:name "My Awesome Query 2"
+      :version 3}]
   (let [{:keys [id name database_id]} (create-query)
-        get-query-name (fn [] (sel :one :field [Query :name] :id id))]
+        get-query-name-and-version (fn [] (sel :one :fields [Query :name :version] :id id))]
     [(do ((user->client :rasta) :put 200 (format "query/%d" id) {:name "My Awesome Query"
                                                                  :database {:id database_id}})
-         (get-query-name))
+         (get-query-name-and-version))
      (do ((user->client :rasta) :put 200 (format "query/%d" id) {:name "My Awesome Query 2"
                                                                  :database {:id database_id}})
-         (get-query-name))]))
+         (get-query-name-and-version))]))
 
 
 ;; ## DELETE /api/query/:id
@@ -97,3 +99,23 @@
       [(get-query-name)
        (do ((user->client :rasta) :delete 204 (format "query/%d" id))
            (get-query-name))])))
+
+;; ## POST /api/query (clone)
+;; Can we clone a Query?
+(let [query-name (random-name)]
+  (expect-eval-actual-first
+      (match-$ (sel :one Query :name (format "%s CLONED" query-name))
+        {:database_id (:id @test-db)
+         :name $
+         :type "rawsql"
+         :creator_id (user->id :crowberto)
+         :updated_at $
+         :details {:timezone nil
+                   :sql "SELECT COUNT(*) FROM VENUES;"}
+         :id $
+         :version 1
+         :public_perms 0
+         :created_at $})
+    ;; Clone Query with a different User than the one that created it
+    (let [{id :id} (create-query :name query-name)]
+      ((user->client :crowberto) :post 200 "query" {:clone id}))))
