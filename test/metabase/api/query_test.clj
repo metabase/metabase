@@ -34,14 +34,34 @@
 ;; Check that we can fetch details for a Query
 (expect-eval-actual-first
     (match-$ (sel :one Query (order :id :DESC))
-      {:database_id (:id @test-db)
+      {:id $
        :name $
        :type "rawsql"
        :creator_id (user->id :rasta)
        :updated_at $
        :details {:timezone nil
                  :sql "SELECT COUNT(*) FROM VENUES;"}
-       :id $
+       :database_id (:id @test-db)
+       :database (match-$ @test-db
+                   {:created_at $
+                    :engine "h2"
+                    :id $
+                    :details $
+                    :updated_at $
+                    :name "Test Database"
+                    :organization_id (:id @test-org)
+                    :description nil})
+       :creator (match-$ (fetch-user :rasta)
+                  {:common_name "Rasta Toucan"
+                   :date_joined $
+                   :last_name "Toucan"
+                   :id $
+                   :is_superuser false
+                   :last_login $
+                   :first_name "Rasta"
+                   :email "rasta@metabase.com"})
+       :can_read true
+       :can_write true
        :version $
        :public_perms 0
        :created_at $})
@@ -56,8 +76,8 @@
   (let [{:keys [id name database_id]} (create-query)
         get-query-name (fn [] (sel :one :field [Query :name] :id id))]
     [(do ((user->client :rasta) :put 200 (format "query/%d" id) {:name "My Awesome Query"
-                                                                 :database database_id})
+                                                                 :database {:id database_id}})
          (get-query-name))
      (do ((user->client :rasta) :put 200 (format "query/%d" id) {:name "My Awesome Query 2"
-                                                                 :database database_id})
+                                                                 :database {:id database_id}})
          (get-query-name))]))
