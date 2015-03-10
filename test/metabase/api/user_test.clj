@@ -180,3 +180,12 @@
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "anything"
                                                                                      :old_password "whatever"}))
+
+;; Test input validations on password change
+(expect "'password' is a required param."
+  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
+
+;; Make sure that if current password doesn't match we get a 400
+(expect "password mismatch"
+  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "anything"
+                                                                                 :old_password "mismatched"}))
