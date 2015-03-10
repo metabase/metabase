@@ -1,5 +1,4 @@
 test:
   override:
-    - lein check
     - lein eastwood
     - lein expectations
