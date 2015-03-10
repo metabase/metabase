@@ -18,14 +18,12 @@
   []
   (let [db-file-name (config/config-str :mb-db-file)
         db-file (clojure.java.io/file db-file-name)
-        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE"]
+        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"] ; see http://h2database.com/html/features.html for explanation of optionss
     (if (.isAbsolute db-file)
       ;; when an absolute path is given for the db file then don't mess with it
       (str "file:" db-file-name options)
       ;; if we don't have an absolute path then make sure we start from "user.dir"
       (str "file:" (str (System/getProperty "user.dir") "/" db-file-name options)))))
-;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
-;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
 
 (defn setup-jdbc-db

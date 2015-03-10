@@ -4,7 +4,8 @@
             [expectations :refer :all]
             [ring.adapter.jetty :as ring]
             (metabase [core :as core]
-                      [db :refer :all])))
+                      [db :refer :all]
+                      [test-data :refer :all])))
 
 
 ;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
@@ -33,7 +34,10 @@
   (migrate (setup-jdbc-db) :down)
   (log/info "setting up database and running all migrations")
   (setup-db :auto-migrate true)
-  (log/info "database setup complete"))
+  (log/info "database setup complete")
+
+  ;; Now load the test data
+  @test-db)
 
 
 ;; ## Jetty (Web) Server
