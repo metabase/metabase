@@ -3,14 +3,42 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [database :refer [Database]]
-                             [emailreport :refer [EmailReport]])
+            (metabase.models [common :as common]
+                             [database :refer [Database]]
+                             [emailreport :refer [EmailReport] :as emailreport])
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
             [metabase.test-data :refer :all]))
 
+;; ## Helper Fns
+
+(defn create-email-report []
+  ((user->client :rasta) :post 200 "emailreport"
+   {:name "My Cool Email Report"
+    :mode (emailreport/mode->id :active)
+    :public_perms common/perms-readwrite
+    :email_addresses ""
+    :recipients [{:id (user->id :lucky)}]
+    :dataset_query {:type "query"
+                    :query {:source_table (table->id :venues)
+                            :filter [nil nil]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}
+                    :database (:id @test-db)}
+    :schedule {:days_of_week {:mon true
+                               :tue true
+                               :wed true
+                               :thu true
+                               :fri true
+                               :sat true
+                               :sun true}
+               :time_of_day "morning"
+               :timezone ""}
+    :organization (:id @test-org)}))
+
 ;; ## GET /api/emailreport/form_input
 ;; Test that we can get the form input options for the Test Org
-(expect-let [_ @test-db                                                ; force lazy loading of Test Data / Metabase DB
+(expect-let [_ @test-db ; force lazy loading of Test Data / Metabase DB
              _ (cascade-delete Database :name [not= "Test Database"])] ; Delete all Databases that aren't the Test DB
   {:users [{:id (user->id :rasta)
             :name "Rasta Toucan"}
@@ -36,17 +64,50 @@
                   {:id "midday",    :realhour 12, :name "Midday"}
                   {:id "afternoon", :realhour 16, :name "Afternoon"}
                   {:id "evening",   :realhour 20, :name "Evening"}
-                  {:id "midnight",  :realhour 0,  :name "Midnight"}],
+                  {:id "midnight",  :realhour 0,  :name "Midnight"}]
    :days_of_week [{:id "sun", :name "Sun"}
                   {:id "mon", :name "Mon"}
                   {:id "tue", :name "Tue"}
                   {:id "wed", :name "Wed"}
                   {:id "thu", :name "Thu"}
                   {:id "fri", :name "Fri"}
-                  {:id "sat", :name "Sat"}],
+                  {:id "sat", :name "Sat"}]
    :modes [{:name "Active", :id 0}
            {:name "Disabled", :id 1}]
    :permissions [{:name "None",         :id 0}
                  {:name "Read Only",    :id 1}
                  {:name "Read & Write", :id 2}]}
   ((user->client :rasta) :get 200 "emailreport/form_input" :org (:id @test-org)))
+
+
+;; ## POST /api/emailreport
+(expect-eval-actual-first
+    (match-$ (sel :one EmailReport (order :id :DESC))
+      {:description nil
+       :email_addresses ""
+       :schedule {:days_of_week {:mon true
+                                 :tue true
+                                 :wed true
+                                 :thu true
+                                 :fri true
+                                 :sat true
+                                 :sun true}
+                  :timezone ""
+                  :time_of_day "morning"}
+       :organization_id (:id @test-org)
+       :name "My Cool Email Report"
+       :mode (emailreport/mode->id :active)
+       :creator_id (user->id :rasta)
+       :updated_at $
+       :dataset_query {:database (:id @test-db)
+                       :query {:limit nil
+                               :breakout [nil]
+                               :aggregation ["rows"]
+                               :filter [nil nil]
+                               :source_table (table->id :venues)}
+                       :type "query"}
+       :id $
+       :version 1
+       :public_perms common/perms-readwrite
+       :created_at $})
+  (create-email-report))

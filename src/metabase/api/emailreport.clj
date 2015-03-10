@@ -8,7 +8,7 @@
             (metabase.models [common :as common]
                              [hydrate :refer :all]
                              [database :refer [databases-for-org]]
-                             [emailreport :refer [EmailReport modes days-of-week times-of-day]]
+                             [emailreport :refer [EmailReport modes-input days-of-week times-of-day]]
                              [emailreport-executions :refer [EmailReportExecutions]]
                              [user :refer [users-for-org]])
             [metabase.util :as util]))
@@ -21,7 +21,7 @@
   (let [dbs (databases-for-org org)
         users (users-for-org org)]
     {:permissions common/permissions
-     :modes modes
+     :modes modes-input
      :days_of_week days-of-week
      :times_of_day times-of-day
      :timezones common/timezones
