@@ -1,15 +1,16 @@
 (ns metabase.api.emailreport
+  "/api/emailreport endpoints."
   (:require [korma.core :refer [where subselect fields order limit]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
-              [hydrate :refer :all]
-              [database :refer [databases-for-org]]
-              [emailreport :refer [EmailReport modes days-of-week times-of-day]]
-              [emailreport-executions :refer [EmailReportExecutions]]
-              [user :refer [users-for-org]])
+                             [hydrate :refer :all]
+                             [database :refer [databases-for-org]]
+                             [emailreport :refer [EmailReport modes days-of-week times-of-day]]
+                             [emailreport-executions :refer [EmailReportExecutions]]
+                             [user :refer [users-for-org]])
             [metabase.util :as util]))
 
 
