@@ -78,7 +78,8 @@
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
-  [auto-migrate]
+  [& {:keys [auto-migrate]
+      :or {auto-migrate true}}]
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
     ;; Test DB connection and throw exception if we have any troubles connecting

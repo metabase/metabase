@@ -32,7 +32,7 @@
   (log/info "tearing down database and resetting to empty schema")
   (migrate (setup-jdbc-db) :down)
   (log/info "setting up database and running all migrations")
-  (setup-db true)
+  (setup-db :auto-migrate true)
   (log/info "database setup complete"))
 
 

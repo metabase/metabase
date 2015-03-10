@@ -18,7 +18,7 @@
    You may optionally load the test data and use the test `Org`.
    Permissions will be created for `User` <-> `Org`."
   []
-  (setup-db true)
+  (setup-db :auto-migrate true)
   (let [{:keys [email]} (bootstrap-user)]
     (println (format "Successfully created User \"%s\"." email))))
 
