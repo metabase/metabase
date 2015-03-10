@@ -9,9 +9,10 @@
 
 ;; ## Helper Fns
 
-(defn create-query []
-  ((user->client :rasta) :post 200 "query" {:database (:id @test-db)
-                                            :sql "SELECT COUNT(*) FROM VENUES;"}))
+(defn create-query [& {:as kwargs}]
+  ((user->client :rasta) :post 200 "query" (merge {:database (:id @test-db)
+                                                   :sql "SELECT COUNT(*) FROM VENUES;"}
+                                                  kwargs)))
 
 ;; ## POST /api/query
 ;; Check that we can save a Query
@@ -30,7 +31,8 @@
        :created_at $})
   (create-query))
 
-;; ## GET /api/query
+
+;; ## GET /api/query/:id
 ;; Check that we can fetch details for a Query
 (expect-eval-actual-first
     (match-$ (sel :one Query (order :id :DESC))
@@ -68,7 +70,8 @@
   (let [{id :id} (create-query)]
     ((user->client :rasta) :get 200 (format "query/%d" id))))
 
-;; ## PUT /api/query
+
+;; ## PUT /api/query/:id
 ;; Check that we can update a Query
 (expect-eval-actual-first
     ["My Awesome Query"
@@ -81,3 +84,16 @@
      (do ((user->client :rasta) :put 200 (format "query/%d" id) {:name "My Awesome Query 2"
                                                                  :database {:id database_id}})
          (get-query-name))]))
+
+
+;; ## DELETE /api/query/:id
+;; Check that we can delete a Query
+(let [query-name (random-name)
+      get-query-name (fn [] (sel :one :field [Query :name] :name query-name))]
+  (expect-eval-actual-first
+      [query-name
+       nil]
+    (let [{id :id} (create-query :name query-name)]
+      [(get-query-name)
+       (do ((user->client :rasta) :delete 204 (format "query/%d" id))
+           (get-query-name))])))
