@@ -8,7 +8,8 @@
                              [org-perm :refer [OrgPerm]]
                              [table :refer [Table]]
                              [user :refer [User]])
-            [metabase.test-data.load :as load]))
+            [metabase.test-data.load :as load])
+  (:import com.metabase.corvus.api.ApiException))
 
 (declare fetch-or-create-user
          tables
@@ -122,17 +123,28 @@
      {:pre [(contains? usernames username)]}
      (:id (fetch-user username)))))
 
-(def user->client
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
-   In addition, it forces lazy creation of the User if needed.
+(let [tokens (atom {})
+      user->token (fn [user]
+                    (or (@tokens user)
+                        (let [token (http/authenticate (user->credentials user))]
+                          (swap! tokens assoc user token)
+                          token)))]
+  (defn user->client
+    "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
+     In addition, it forces lazy creation of the User if needed.
 
-    ((user->client) :get 200 \"meta/table\")"
-  (memoize
-   (fn [username]
-     {:pre [(contains? usernames username)]}
-     ;; Force lazy creation of User if need be
-     (user->id username)
-     (partial http/client (http/authenticate (user->credentials username))))))
+       ((user->client) :get 200 \"meta/table\")"
+    [username]
+    ;; Force lazy creation of User if need be
+    (user->id username)
+    (fn call-client [& args]
+      (try
+        (apply http/client (user->token username) args)
+        (catch ApiException e
+          (if-not (= (.getStatusCode e) 401) (throw e)
+                  ;; If we got a 401 unauthenticated clear the tokens cache + recur
+                  (do (reset! user-credentials-tokens {})
+                      (apply call-client args))))))))
 
 (defn user->org-perm
   "Return the `OrgPerm` for User with USERNAME for the Test Org."

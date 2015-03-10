@@ -2,7 +2,8 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [clojure.data.json :as json]
             [clj-http.client :as client]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.metabase.corvus.api.ApiException))
 
 (declare authenticate
          auto-deserialize-dates
@@ -90,7 +91,7 @@
                                                          clojure.walk/keywordize-keys)
                                                      (catch Exception _ body))]
           (clojure.pprint/pprint body)
-          (throw (Exception. message)))))
+          (throw (ApiException. status message)))))
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body
