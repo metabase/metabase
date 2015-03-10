@@ -105,6 +105,18 @@
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
 
+;; A superuser should be allowed to fetch another users data
+(expect (match-$ (fetch-user :rasta)
+          {:email "rasta@metabase.com"
+           :first_name "Rasta"
+           :last_login $
+           :is_superuser false
+           :id $
+           :last_name "Toucan"
+           :date_joined $
+           :common_name "Rasta Toucan"})
+  ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
+
 
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
