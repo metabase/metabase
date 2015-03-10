@@ -6,19 +6,24 @@
             [environ.core :refer [env]]
             (korma [core :refer :all]
                    [db :refer :all])
-            [metabase.config :refer [app-defaults]]
+            [metabase.config :as config]
             [metabase.db.internal :refer :all]
             [metabase.util :as u]))
 
 
 (declare post-select)
 
-(def db-file
+(defn- db-file
   "Path to our H2 DB file from env var or app config."
-  (delay
-   (str "file:" (or (:database-file env)
-                    (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
-        ";AUTO_SERVER=TRUE;MV_STORE=FALSE")))
+  []
+  (let [db-file-name (config/config-str :mb-db-file)
+        db-file (clojure.java.io/file db-file-name)
+        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE"]
+    (if (.isAbsolute db-file)
+      ;; when an absolute path is given for the db file then don't mess with it
+      (str "file:" db-file-name options)
+      ;; if we don't have an absolute path then make sure we start from "user.dir"
+      (str "file:" (str (System/getProperty "user.dir") "/" db-file-name options)))))
 ;; Tell the DB to open an "AUTO_SERVER" connection so multiple processes can connect to it (e.g. web server + REPL)
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
@@ -26,17 +31,32 @@
 (defn setup-jdbc-db
   "Configure connection details for JDBC."
   []
-  {:subprotocol "h2"
-   :subname     @db-file})
+  (case (config/config-kw :mb-db-type)
+    :h2 {:subprotocol "h2"
+         :classname "org.h2.Driver"
+         :subname     (db-file)}
+    :postgres {:subprotocol "postgresql"
+               :classname "org.postgresql.Driver"
+               :subname (str "//" (config/config-str :mb-db-host)
+                          ":" (config/config-str :mb-db-port)
+                          "/" (config/config-str :mb-db-dbname))
+               :user (config/config-str :mb-db-user)
+               :password (config/config-str :mb-db-pass)})
+  )
 
 
 (defn setup-korma-db
   "Configure connection details for Korma."
   []
-  (log/info (str "Using H2 database file: " @db-file))
-  (h2 {:db @db-file
-       :naming {:keys str/lower-case
-                :fields str/upper-case}}))
+  (case (config/config-kw :mb-db-type)
+    :h2 (h2 {:db (db-file)
+             :naming {:keys str/lower-case
+                      :fields str/upper-case}})
+    :postgres (postgres {:db (config/config-str :mb-db-dbname)
+                         :port (config/config-int :mb-db-port)
+                         :user (config/config-str :mb-db-user)
+                         :password (config/config-str :mb-db-pass)
+                         :host (config/config-str :mb-db-host)})))
 
 
 (defn test-db-conn

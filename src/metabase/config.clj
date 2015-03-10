@@ -1,17 +1,19 @@
 (ns metabase.config
   (:require [environ.core :as environ]
-            [medley.core :as medley]))
+            [medley.core :as medley])
+  (:import (clojure.lang Keyword)))
 
 
 (def app-defaults
   "Global application defaults"
   {;; Database Configuration  (general options?  dburl?)
    :mb-db-type "h2"
-   :mb-db-host "localhost"
-   :mb-db-port "0"
-   :mb-db-user "metabase"
-   :mb-db-pass "metabase"
-   :database-file "metabase.db"
+   ;:mb-db-dbname "postgres"
+   ;:mb-db-host "localhost"
+   ;:mb-db-port "5432"
+   ;:mb-db-user "metabase"
+   ;:mb-db-pass "metabase"
+   :mb-db-file "metabase.db"
    :mb-db-automigrate "true"
    ;; Embedded Jetty Webserver
    ;; check here for all available options:
@@ -36,6 +38,7 @@
 ;; These are convenience functions for accessing config values that ensures a specific return type
 (defn ^Integer config-int [k] (when-let [val (config-str k)] (Integer/parseInt val)))
 (defn ^Boolean config-bool [k] (when-let [val (config-str k)] (Boolean/parseBoolean val)))
+(defn ^Keyword config-kw [k] (when-let [val (config-str k)] (keyword val)))
 
 
 (def config-all
