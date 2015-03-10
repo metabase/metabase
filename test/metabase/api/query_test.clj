@@ -15,6 +15,26 @@
                                                    :sql "SELECT COUNT(*) FROM VENUES;"}
                                                   kwargs)))
 
+;; ## GET /api/query/form_input
+(expect
+    {:databases [(match-$ @test-db
+                   {:id $
+                    :name "Test Database"})]
+     :timezones ["GMT"
+                 "UTC"
+                 "US/Alaska"
+                 "US/Arizona"
+                 "US/Central"
+                 "US/Eastern"
+                 "US/Hawaii"
+                 "US/Mountain"
+                 "US/Pacific"
+                 "America/Costa_Rica"]
+     :permissions [{:name "None",         :id 0}
+                   {:name "Read Only",    :id 1}
+                   {:name "Read & Write", :id 2}]}
+  ((user->client :rasta) :get 200 "query/form_input" :org (:id @test-org)))
+
 ;; ## POST /api/query (create)
 ;; Check that we can save a Query
 (expect-eval-actual-first

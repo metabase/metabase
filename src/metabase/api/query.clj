@@ -16,6 +16,7 @@
 
 
 (defendpoint GET "/form_input" [org]
+  (require-params org)
   (check-403 ((:perms-for-org @*current-user*) org))
   (let [dbs (databases-for-org org)]
     {:permissions common/permissions
