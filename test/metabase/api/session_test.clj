@@ -22,6 +22,10 @@
 (expect "'password' is a required param."
   (client :post 400 "session" {:email "anything"}))
 
+;; Test for inactive user (user shouldn't be able to login if :is_active = false)
+(expect "Invalid Request."
+  (client :post 400 "session" (user->credentials :trashbird)))
+
 ;; Test for password checking
 (expect "password mismatch"
   (client :post 400 "session" (-> (user->credentials :rasta)
