@@ -13,8 +13,8 @@
 
 (declare post-select)
 
-(defonce db-file
-  "Path to our H2 DB file from env var or app config."
+(defonce ^{:doc "Path to our H2 DB file from env var or app config."}
+  db-file
   (delay
    (str "file:" (or (:database-file env)
                     (str (System/getProperty "user.dir") "/" (:database-file app-defaults)))
@@ -23,8 +23,9 @@
 ;; Do this by appending `;AUTO_SERVER=TRUE` to the JDBC URL (see http://h2database.com/html/features.html#auto_mixed_mode)
 
 
-(defonce ^:private setup-db
-  "Setup Korma default DB."
+(defonce ^{:private true
+           :doc "Setup Korma default DB."}
+  setup-db
   (memoize
    (fn []
      (log/info (str "Using H2 database file: " @db-file))
