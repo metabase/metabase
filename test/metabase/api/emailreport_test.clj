@@ -111,3 +111,53 @@
        :public_perms common/perms-readwrite
        :created_at $})
   (create-email-report))
+
+;; ## GET /api/emailreport/:id
+(expect-eval-actual-first
+    (match-$ (sel :one EmailReport (order :id :DESC))
+      {:description nil
+       :email_addresses ""
+       :can_read true
+       :schedule {:days_of_week {:mon true
+                                 :tue true
+                                 :wed true
+                                 :thu true
+                                 :fri true
+                                 :sat true
+                                 :sun true}
+                  :timezone ""
+                  :time_of_day "morning"}
+       :creator (match-$ (fetch-user :rasta)
+                  {:common_name "Rasta Toucan"
+                   :date_joined $
+                   :last_name "Toucan"
+                   :id $
+                   :is_superuser false
+                   :last_login $
+                   :first_name "Rasta"
+                   :email "rasta@metabase.com"})
+       :can_write true
+       :organization_id (:id @test-org)
+       :name "My Cool Email Report"
+       :mode (emailreport/mode->id :active)
+       :organization {:id (:id @test-org)
+                      :slug "test"
+                      :name "Test Organization"
+                      :description nil
+                      :logo_url nil
+                      :inherits true}
+       :creator_id (user->id :rasta)
+       :updated_at $
+       :dataset_query {:database (:id @test-db)
+                       :query {:limit nil
+                               :breakout [nil]
+                               :aggregation ["rows"]
+                               :filter [nil nil]
+                               :source_table (table->id :venues)}
+                       :type "query"}
+       :id $
+       :version 1
+       :public_perms common/perms-readwrite
+       :created_at $})
+  (let [{id :id} (create-email-report)]
+    ((user->client :rasta) :get 200 (format "emailreport/%d" id))))
