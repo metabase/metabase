@@ -14,7 +14,7 @@
   (table :query_query))
 
 
-;; default fields to return for `sel Query
+;; default fields to return for `sel` Query
 (defmethod default-fields Query [_]
   [:id
    :created_at
