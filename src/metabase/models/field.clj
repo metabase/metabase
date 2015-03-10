@@ -68,11 +68,11 @@
 
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (util/assoc* field
-               :table (sel-fn :one "metabase.models.table/Table" :id table_id)
-               :db (delay ((:db ((:table <>)))))
-               :can_read (delay @(:can_read ((:table <>))))
-               :can_write (delay @(:can_write ((:table <>))))
-               :count (delay (field-count <>))
+               :table          (delay (sel :one 'metabase.models.table/Table :id table_id))
+               :db             (delay ((:db ((:table <>)))))
+               :can_read       (delay @(:can_read ((:table <>))))
+               :can_write      (delay @(:can_write ((:table <>))))
+               :count          (delay (field-count <>))
                :distinct-count (delay (field-distinct-count <>))))
 
 (defmethod pre-insert Field [_ field]

@@ -30,12 +30,13 @@
           [(first entity) (vec (rest entity))]))
 
 (def entity->korma
-  "Convert an ENTITY argument to `sel`/`sel-fn` into the form we should pass to korma `select` and to various multi-methods such as
+  "Convert an ENTITY argument to `sel` into the form we should pass to korma `select` and to various multi-methods such as
    `post-select`.
 
     *  If entity is a vector like `[User :name]`, only keeps the first arg (`User`)
     *  Converts fully-qualified entity name strings like `\"metabase.models.user/User\"` to the corresponding entity
-       and requires their namespace if needed."
+       and requires their namespace if needed.
+    *  Symbols like `'metabase.models.user/User` are handled the same way as strings."
   (memoize
    (fn -entity->korma [entity]
      {:post [(= (type %) :korma.core/Entity)]}

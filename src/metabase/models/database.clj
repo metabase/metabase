@@ -59,7 +59,7 @@
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
       (realize-json :details) ; TODO wouldn't we want to actually strip this info instead of returning it?
-      (assoc* :organization       (sel-fn :one Org :id organization_id)
+      (assoc* :organization       (delay (sel :one Org :id organization_id))
               :can_read           (delay (org-can-read organization_id))
               :can_write          (delay (org-can-write organization_id))
               :connection-details (delay (conn/connection-details <>))
