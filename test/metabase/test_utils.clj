@@ -43,7 +43,7 @@
    (try (ring/run-jetty core/app {:port 3000
                                   :join? false}) ; detach the thread
         (catch java.net.BindException e          ; assume server is already running if port's already bound
-          (log/error "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
+          (log/warn "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
 
 (defn start-jetty
   "Start the Jetty web server."
