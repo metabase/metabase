@@ -88,6 +88,13 @@
        :inherits false})
     (create-org org-name)))
 
+;; Test input validations on org create
+(expect "'name' is a required param."
+  ((user->client :crowberto) :post 400 "org" {}))
+
+(expect "'slug' is a required param."
+  ((user->client :crowberto) :post 400 "org" {:name "anything"}))
+
 
 ;; ## GET /api/org/:id
 (expect
