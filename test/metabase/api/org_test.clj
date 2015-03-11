@@ -1,6 +1,8 @@
 (ns metabase.api.org-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :as http]
+            [metabase.middleware.auth :as auth]
             (metabase.models [org :refer [Org]]
                              [org-perm :refer [OrgPerm]])
             [metabase.test-data :refer :all]
@@ -13,6 +15,14 @@
   {:pre [(string? org-name)]}
   ((user->client :crowberto) :post 200 "org" {:name org-name
                                               :slug org-name}))
+
+;; ## /api/org/* AUTHENTICATION Tests
+;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
+;; authentication test on every single individual endpoint
+
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "org"))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "org/%d" (:id @test-org))))
+
 
 ;; # GENERAL ORG ENDPOINTS
 
