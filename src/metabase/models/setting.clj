@@ -6,7 +6,8 @@
 
 (declare Setting
          cached-setting-values
-         restore-cache-if-needed)
+         restore-cache-if-needed
+         settings-list)
 
 ;; # PUBLIC
 
@@ -89,18 +90,6 @@
        (filter identity)
        (reduce merge {})))
 
-(defn settings-list
-  "Return a list of all Settings (as created with `defsetting`)."
-  []
-  (->> (all-ns)
-       (mapcat ns-interns)
-       vals
-       (map meta)
-       (filter :is-setting?)
-       (map (fn [{k :name desc :doc}]
-              {:key (keyword k)
-               :description desc}))))
-
 (defn all-with-descriptions
   "Return a combined list of all `Settings` and values for `Org`, if they exist."
   [org-id]
@@ -108,7 +97,8 @@
     (->> (settings-list)
          (map (fn [{k :key :as setting}]
                 (assoc setting
-                       :value (k settings-for-org)))))))
+                       :value (k settings-for-org))))
+         (sort-by :key))))
 
 
 ;; # IMPLEMENTATION
@@ -125,3 +115,15 @@
 
 (defentity ^:private Setting
   (table :setting))
+
+(defn- settings-list
+  "Return a list of all Settings (as created with `defsetting`)."
+  []
+  (->> (all-ns)
+       (mapcat ns-interns)
+       vals
+       (map meta)
+       (filter :is-setting?)
+       (map (fn [{k :name desc :doc}]
+              {:key (keyword k)
+               :description desc}))))

@@ -3,21 +3,21 @@
 var SettingsAdminServices = angular.module('corvusadmin.settings.services', ['ngResource', 'ngCookies']);
 
 SettingsAdminServices.factory('SettingsAdminServices', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/settings', {}, {
+    return $resource('/api/setting', {}, {
         list: {
-            url: '/api/settings?org=:org',
+            url: '/api/setting?org=:org',
             method: 'GET',
             isArray: true
         },
 
         // POST endpoint handles create + update in this case
         save: {
-            url: '/api/settings',
+            url: '/api/setting',
             method: 'POST'
         },
 
         delete: {
-            url: '/api/settings/:key?org=:org',
+            url: '/api/setting/:key?org=:org',
             method: 'DELETE'
         }
     });

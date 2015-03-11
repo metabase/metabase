@@ -11,7 +11,7 @@
                           [result :as result]
                           [search :as search]
                           [session :as session]
-                          [settings :as settings]
+                          [setting :as setting]
                           [user :as user])
             (metabase.api.meta [dataset :as dataset]
                                [db :as db]
@@ -42,7 +42,7 @@
   (context "/result"       [] (+auth result/routes))
   (context "/search"       [] (+auth search/routes))
   (context "/session"      [] session/routes)
-  (context "/settings"     [] (+auth settings/routes))
+  (context "/setting"     [] (+auth setting/routes))
   (context "/user"         [] (+auth user/routes))
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404

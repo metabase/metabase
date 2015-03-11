@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [clj-http.client :as client]
             [medley.core :as medley]
-            [metabase.models.setting :refer [defsetting] :as settings]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u]))
 
 (declare api-post-messages-send
