@@ -137,6 +137,25 @@
   ((user->client :rasta) :get 404 "org/slug/ksdlfkjdkfd"))
 
 
+;; ## PUT /api/org/:id
+;; Test that we can update an Org
+(expect-let [orig-name (random-name)
+             upd-name (random-name)
+             {:keys [id slug inherits] :as org} (create-org orig-name)]
+  {:id id
+   :slug slug
+   :name upd-name
+   :description upd-name
+   :logo_url upd-name
+   :inherits false}
+  ;; we try setting `slug` & `inherits` which should both remain unmodified
+  ((user->client :crowberto) :put 200 (format "org/%d" id) {:slug upd-name
+                                                            :name upd-name
+                                                            :description upd-name
+                                                            :logo_url upd-name
+                                                            :inherits true}))
+
+
 ;; # MEMBERS ENDPOINTS
 
 ;; ## GET /api/org/:id/members
