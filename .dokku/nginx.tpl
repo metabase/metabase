@@ -3,11 +3,11 @@ server {
   if ($http_user_agent !~* (ELB-HealthChecker/.*)) {
     return 410;
   }
-  location /hc {
-    resolver 8.8.8.8;
-    proxy_set_header Host ${APP};
-    proxy_pass $scheme://127.0.0.1/api/health;
-  }
+#  location /hc {
+#    resolver 8.8.8.8;
+#    proxy_set_header Host ${APP};
+#    proxy_pass $scheme://127.0.0.1/api/health;
+#  }
   log_not_found off;
 }
 
