@@ -20,7 +20,6 @@
 
 ;; Disable debug logging since it clutters up our output
 (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO)
-(println "OK!")
 
 (defn setup-test-db
   "setup database schema"

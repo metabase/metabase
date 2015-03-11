@@ -17,7 +17,13 @@
               (do
                 (when log-request?
                   (log-request request))
-                (let [response (time (handler request))]
+                (let [start-time (System/nanoTime)
+                      response (handler request)]
+                  (when log-request?
+                    (let [elapsed-time (-> (- (System/nanoTime) start-time)
+                                           double
+                                           (/ 1000000.0))]
+                      (log/debug (str "Elapsed time: " elapsed-time " msecs"))))
                   (when log-response?
                     (log/debug (with-out-str (pprint response))))
                   response))))))
