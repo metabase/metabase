@@ -44,12 +44,12 @@
   [org-id endpoint & {:keys [body] :as request-map
                       :or {body {}}}]
   {:pre [(string? endpoint)]}
-  (if-not (mandrill-api-key org-id)
+  (if-not (mandrill-api-key)
     (log/warn "Cannot send email: no Mandrill API key!")
     (let [defaults {:content-type :json
                     :accept :json}
           body (-> body
-                   (assoc :key (mandrill-api-key org-id))
+                   (assoc :key (mandrill-api-key))
                    json/write-str)]
       (client/post (str api-prefix endpoint ".json")
                    (merge defaults request-map {:body body})))))

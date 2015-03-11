@@ -7,25 +7,18 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'Setti
     function($scope, SettingsAdminServices) {
         $scope.settings = [];
 
-        $scope.$watch('currentOrg', function(org) {
-            if (!org) return;
-
-            SettingsAdminServices.list({
-                org: org.id
-            }, function(results) {
-                $scope.settings = _.map(results, function(result) {
-                    result.originalValue = result.value;
-                    return result;
-                });
-            }, function(error) {
-                console.log("Error fetching settings list: ", error);
+        SettingsAdminServices.list(function(results) {
+            $scope.settings = _.map(results, function(result) {
+                result.originalValue = result.value;
+                return result;
             });
+        }, function(error) {
+            console.log("Error fetching settings list: ", error);
         });
 
         $scope.saveSetting = function(setting) {
             SettingsAdminServices.put({
-                key: setting.key,
-                org: $scope.currentOrg.id
+                key: setting.key
             }, setting, function() {
                 setting.originalValue = setting.value;
             }, function(error) {
@@ -35,8 +28,7 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'Setti
 
         $scope.deleteSetting = function(setting) {
             SettingsAdminServices.delete({
-                key: setting.key,
-                org: $scope.currentOrg.id
+                key: setting.key
             }, function() {
                 setting.value = null;
                 setting.originalValue = null;

@@ -11,33 +11,10 @@
                             "columns": [
                                 {
                                     "column": {
-                                        "name": "id",
-                                        "type": "int",
-                                        "autoIncrement": true,
-                                        "constraints": {
-                                            "primaryKey": true,
-                                            "nullable": false
-                                        }
-                                    }
-                                },
-                                {
-                                    "column": {
-                                        "name": "organization_id",
-                                        "type": "int",
-                                        "constraints": {
-                                            "nullable": false,
-                                            "references": "core_organization(id)",
-                                            "foreignKeyName": "fk_setting_ref_organization_id",
-                                            "deferrable": false,
-                                            "initiallyDeferred": false
-                                        }
-                                    }
-                                },
-                                {
-                                    "column": {
                                         "name": "key",
                                         "type": "varchar(254)",
                                         "constraints": {
+                                            "primaryKey": true,
                                             "nullable": false
                                         }
                                     }
@@ -49,47 +26,6 @@
                                         "constraints": {
                                             "nullable": false
                                         }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "addUniqueConstraint": {
-                            "tableName": "setting",
-                            "constraintName": "idx_setting_unique_key_organization_id",
-                            "columnNames": "key, organization_id"
-                        }
-                    },
-                    {
-                        "createIndex": {
-                            "tableName": "setting",
-                            "indexName": "idx_setting_organization_id",
-                            "columns": [
-                                {
-                                    "column": {
-                                        "name": "organization_id",
-                                        "type": "int"
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "createIndex": {
-                            "tableName": "setting",
-                            "indexName": "idx_setting_organization_id_key",
-                            "columns": [
-                                {
-                                    "column": {
-                                        "name": "organization_id",
-                                        "type": "int"
-                                    }
-                                },
-                                {
-                                    "column": {
-                                        "name": "key",
-                                        "type": "varchar(254)"
                                     }
                                 }
                             ]

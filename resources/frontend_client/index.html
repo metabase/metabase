@@ -88,7 +88,7 @@
               </label>
               <a cv-org-href="/admin/">
                 <h3 class="AdminPageTitle my2 inline-block">
-                    <span ng-bind="currentOrg.name" ng-if="!user.is_multi_org"></span>- Admin
+                    <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
                 </h3>
               </a>
               <div class="mx1 my2 float-right">
@@ -128,7 +128,7 @@
                 <li>
                     <a class="NavItem" cv-org-href="/admin/search">Search</a>
                 </li>
-                <li>
+                <li ng-if="user.is_superuser">
                     <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
                 </li>
             </ul>

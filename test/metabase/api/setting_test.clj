@@ -12,10 +12,10 @@
 (defn fetch-all-settings  []
   (filter (fn [{k :key}]
             (re-find #"^test-setting-\d$" (name k)))
-          ((user->client :rasta) :get 200 "setting" :org @org-id)))
+          ((user->client :crowberto) :get 200 "setting")))
 
 (defn fetch-setting [setting-name]
-  ((user->client :rasta) :get 200 (format "setting/%s" (name setting-name)) :org @org-id))
+  ((user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
 
 ;; ## GET /api/setting
 ;; Check that we can fetch all Settings for Org
@@ -25,16 +25,16 @@
     (do (set-settings nil "FANCY")
         (fetch-all-settings)))
 
-;; Check that a non-admin can't read settings
+;; Check that a non-superuser can't read settings
 (expect "You don't have permissions to do that."
-  ((user->client :lucky) :get 403 "setting" :org @org-id))
+  ((user->client :rasta) :get 403 "setting"))
 
 
 ;; ## GET /api/setting/:key
 ;; Test that we can fetch a single setting
 (expect-eval-actual-first
     "OK!"
-    (do (test-setting-2 @org-id "OK!")
+    (do (test-setting-2 "OK!")
         (fetch-setting :test-setting-2)))
 
 
@@ -42,20 +42,20 @@
 (expect-eval-actual-first
     ["NICE!"
      "NICE!"]
-  (do ((user->client :rasta) :put 200 "setting/test-setting-1" {:value "NICE!"} :org @org-id)
-      [(test-setting-1 @org-id)
+  (do ((user->client :crowberto) :put 200 "setting/test-setting-1" {:value "NICE!"})
+      [(test-setting-1)
        (fetch-setting :test-setting-1)]))
 
-;; ## Check non-admin can't set a Setting
+;; ## Check non-superuser can't set a Setting
 (expect "You don't have permissions to do that."
-  ((user->client :lucky) :put 403 "setting/test-setting-1" {:value "NICE!"} :org @org-id))
+  ((user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"}))
 
 ;; ## DELETE /api/setting/:key
 (expect-eval-actual-first
     [nil
      nil
      false]
-  (do ((user->client :rasta) :delete 204 "setting/test-setting-1" :org @org-id)
-      [(test-setting-1 @org-id)
+  (do ((user->client :crowberto) :delete 204 "setting/test-setting-1")
+      [(test-setting-1)
        (fetch-setting :test-setting-1)
        (setting-exists? :test-setting-1)]))

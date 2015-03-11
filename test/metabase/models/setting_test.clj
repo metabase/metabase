@@ -1,8 +1,9 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (metabase [db :refer [sel exists?]]
-                      [test-data :refer :all])
+            (metabase [db :refer [sel]]
+                      [test-data :refer :all]
+                      test-utils)
             [metabase.models.setting :refer [defsetting Setting] :as setting]
             [metabase.test.util :refer :all]))
 
@@ -17,24 +18,26 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (sel :one :field [Setting :value] :key (name setting-name) :organization_id @org-id))
+  (sel :one :field [Setting :value] :key (name setting-name)))
 
 (defn setting-exists? [setting-name]
-  (exists? Setting :key (name setting-name) :organization_id @org-id))
+  (boolean (sel :one Setting :key (name setting-name))))
 
 (defn set-settings [setting-1-value setting-2-value]
-  (test-setting-1 @org-id setting-1-value)
-  (test-setting-2 @org-id setting-2-value))
+  (test-setting-1 setting-1-value)
+  (test-setting-2 setting-2-value))
 
 
 ;; ## GETTERS
 ;; Test defsetting getter fn
 (expect nil
-  (test-setting-1 @org-id))
+  (do (set-settings nil nil)
+    (test-setting-1)))
 
 ;; Test `get` function
 (expect nil
-  (setting/get @org-id :test-setting-1))
+  (do (set-settings nil nil)
+    (setting/get :test-setting-1)))
 
 
 ;; ## SETTERS
@@ -42,16 +45,16 @@
 (expect-eval-actual-first
     ["FANCY NEW VALUE <3"
      "FANCY NEW VALUE <3"]
-  [(do (test-setting-2 @org-id "FANCY NEW VALUE <3")
-       (test-setting-2 @org-id))
+  [(do (test-setting-2 "FANCY NEW VALUE <3")
+       (test-setting-2))
    (db-fetch-setting :test-setting-2)])
 
 ;; Test `set` function
 (expect-eval-actual-first
     ["WHAT A NICE VALUE <3"
      "WHAT A NICE VALUE <3"]
-  [(do (setting/set @org-id :test-setting-2 "WHAT A NICE VALUE <3")
-       (test-setting-2 @org-id))
+  [(do (setting/set :test-setting-2 "WHAT A NICE VALUE <3")
+       (test-setting-2))
    (db-fetch-setting :test-setting-2)])
 
 
@@ -62,11 +65,11 @@
      true
      nil
      false]
-  [(do (test-setting-2 @org-id "COOL")
-       (test-setting-2 @org-id))
+  [(do (test-setting-2 "COOL")
+       (test-setting-2))
    (setting-exists? :test-setting-2)
-   (do (test-setting-2 @org-id nil)
-       (test-setting-2 @org-id))
+   (do (test-setting-2 nil)
+       (test-setting-2))
    (setting-exists? :test-setting-2)])
 
 ;; Test `delete`
@@ -75,11 +78,11 @@
      true
      nil
      false]
-  [(do (test-setting-2 @org-id "VERY NICE!")
-       (test-setting-2 @org-id))
+  [(do (test-setting-2 "VERY NICE!")
+       (test-setting-2))
    (setting-exists? :test-setting-2)
-   (do (test-setting-2 @org-id nil)
-       (test-setting-2 @org-id))
+   (do (test-setting-2 nil)
+       (test-setting-2))
    (setting-exists? :test-setting-2)])
 
 ;; ## ALL SETTINGS FUNCTIONS
@@ -89,7 +92,7 @@
     {:test-setting-2 "TOUCANS"}
   (do (set-settings nil "TOUCANS")
       (m/filter-keys #(re-find #"^test-setting-\d$" (name %)) ; filter out any non-test settings
-                     (setting/all @org-id))))
+                     (setting/all))))
 
 ;; all-with-descriptions
 (expect-eval-actual-first
@@ -98,4 +101,4 @@
   (do (set-settings nil "S2")
       (filter (fn [{k :key}]
                 (re-find #"^test-setting-\d$" (name k)))
-              (setting/all-with-descriptions @org-id))))
+              (setting/all-with-descriptions))))

@@ -32,5 +32,4 @@
     (merge defaults org)))
 
 (defmethod pre-cascade-delete Org [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.org-perm/OrgPerm :organization_id id)
-  (cascade-delete 'metabase.models.setting/Setting :organization_id id))
+  (cascade-delete 'metabase.models.org-perm/OrgPerm :organization_id id))
