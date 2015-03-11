@@ -1,4 +1,4 @@
 test:
   override:
-    - lein eastwood
-    - lein expectations
+    - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein expectations ;; esac:
+        parallel: true
