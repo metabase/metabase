@@ -5,9 +5,10 @@
             [ring.adapter.jetty :as ring]
             (metabase [core :as core]
                       [db :refer :all]
+                      test-utils
                       [test-data :refer :all])))
 
-(declare set-test-logging-level
+(declare load-test-data
          setup-test-db
          start-jetty)
 
@@ -26,13 +27,14 @@
   ;; Disable debug logging since it clutters up our output
   (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO)
   (setup-test-db)
+  (load-test-data)
   (start-jetty))
 
 ;; ## DB Setup
 ;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
 ;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
 
-(defn setup-test-db
+(defn- setup-test-db
   "Setup database schema."
   []
   (let [filename (-> (re-find #"file:(\w+\.db).*" (db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
@@ -47,9 +49,9 @@
   (migrate (setup-jdbc-db) :down)
   (log/info "setting up database and running all migrations")
   (setup-db :auto-migrate true)
-  (log/info "database setup complete")
+  (log/info "database setup complete"))
 
-  ;; Now load the test data
+(defn- load-test-data []
   @test-db)
 
 
@@ -62,7 +64,7 @@
         (catch java.net.BindException e          ; assume server is already running if port's already bound
           (log/warn "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
 
-(defn start-jetty
+(defn- start-jetty
   "Start the Jetty web server."
   []
   (log/info "STARTING THE JETTY SERVER...")

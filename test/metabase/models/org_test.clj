@@ -1,10 +1,10 @@
 (ns metabase.models.org-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-utils :refer [setup-test-db]]
-            [metabase.db :refer :all]
-            [metabase.models.org :refer [Org]]
+            [expectations :refer :all]
             [korma.core :refer :all]
-            [expectations :refer :all]))
+            (metabase [db :refer :all]
+                      test-utils)
+            [metabase.models.org :refer [Org]]))
 
 
 ;(defn count-orgs []

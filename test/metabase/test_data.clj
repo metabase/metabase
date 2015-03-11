@@ -45,8 +45,7 @@
 
 (def test-db
   "The test `Database` object."
-  (delay (setup-db :auto-migrate true)
-         (load/test-db)))
+  (delay (load/test-db)))
 
 (def db-id
   "The ID of the test `Database`."
@@ -79,8 +78,7 @@
 
 (def test-org
   "The test Organization."
-  (delay (setup-db :auto-migrate true)
-         (load/test-org)))
+  (delay (load/test-org)))
 
 (def org-id
   "The ID of the test Organization."
