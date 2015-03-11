@@ -16,6 +16,14 @@
   ((user->client :crowberto) :post 200 "org" {:name org-name
                                               :slug org-name}))
 
+(defn org-perm-exists? [org-id user-id]
+  (exists? OrgPerm :organization_id org-id :user_id user-id))
+
+(defn create-org-perm [org-id user-id & {:keys [admin]
+                                         :or {admin false}}]
+  ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id) {:admin admin}))
+
+
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -161,21 +169,21 @@
         my-org (create-org org-name)]
     ((user->client :rasta) :put 403 (format "org/%d" (:id my-org)) {})))
 
+;; Validate that write-perms are required to modify the org details (with user having read perms on org)
+(expect "You don't have permissions to do that."
+  (let [{user-id :id, email :email, password :first_name} (create-user)
+        {org-id :id} (create-org (random-name))
+        my-perm (create-org-perm org-id user-id :admin false)
+        session-id (http/authenticate {:email email
+                                       :password password})]
+    (http/client session-id :put 403 (format "org/%d" org-id) {})))
+
 ;; Test that invalid org id returns 404
 (expect "Not found."
   ((user->client :rasta) :put 404 "org/1000" {}))
 
 
 ;; # MEMBERS ENDPOINTS
-
-;; ## Helper Fns
-
-(defn org-perm-exists? [org-id user-id]
-    (exists? OrgPerm :organization_id org-id :user_id user-id))
-
-(defn create-org-perm [org-id user-id]
-    ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id) {:admin false}))
-
 
 ;; ## GET /api/org/:id/members
 (expect
