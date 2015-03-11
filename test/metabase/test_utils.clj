@@ -1,4 +1,5 @@
-(ns metabase.test-utils
+(ns metabase.test-utils ; TODO - rename to setup
+  "Functions that run before + after unit tests (setup DB, start web server, load test data)."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [expectations :refer :all]

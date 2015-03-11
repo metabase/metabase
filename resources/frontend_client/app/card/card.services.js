@@ -78,134 +78,120 @@ CardServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
                     return $cookies.csrftoken;
                 }
             }
-        },
-        cards_for_db: {
-            url: '/api/card/for_db/:dbId',
-            method: 'GET',
-            params: {
-                dashId: '@dbId'
-            },
-            isArray: true
         }
     });
 }]);
 
-CardServices.service('VisualizationUtils', [ function () {
-       this.visualizationTypes =  {
-            scalar: {
-                display: 'scalar',
-                label: 'Scalar',
-                available: false,
-                notAvailableReasons: []
-            },
-            table: {
-                display: 'table',
-                label: 'Table',
-                available: false,
-                notAvailableReasons: []
-            },
-            pie: {
-                display: 'pie',
-                label: 'Pie Chart',
-                available: false,
-                notAvailableReasons: []
-            },
-            bar: {
-                display: 'bar',
-                label: 'Bar Chart',
-                available: false,
-                notAvailableReasons: []
-            },
-            line: {
-                display: 'line',
-                label: 'Line Chart',
-                available: false,
-                notAvailableReasons: []
-            },
-            area: {
-                display: 'area',
-                label: 'Area Chart',
-                available: false,
-                notAvailableReasons: []
-            },
-            timeseries: {
-                display: 'timeseries',
-                label: 'Time Series',
-                available: false,
-                notAvailableReasons: []
-            },
-            pin_map: {
-                display: 'pin_map',
-                label: 'Pin Map',
-                available: false,
-                notAvailableReasons: []
-            },
-            state: {
-                display: 'state',
-                label: 'State Heatmap',
-                available: false,
-                notAvailableReasons: []
-            },
-            country: {
-                display: 'country',
-                label: 'World Heatmap',
-                available: false,
-                notAvailableReasons: []
-            }
-        };
+CardServices.service('VisualizationUtils', [function() {
+    this.visualizationTypes = {
+        scalar: {
+            display: 'scalar',
+            label: 'Scalar',
+            available: false,
+            notAvailableReasons: []
+        },
+        table: {
+            display: 'table',
+            label: 'Table',
+            available: false,
+            notAvailableReasons: []
+        },
+        pie: {
+            display: 'pie',
+            label: 'Pie Chart',
+            available: false,
+            notAvailableReasons: []
+        },
+        bar: {
+            display: 'bar',
+            label: 'Bar Chart',
+            available: false,
+            notAvailableReasons: []
+        },
+        line: {
+            display: 'line',
+            label: 'Line Chart',
+            available: false,
+            notAvailableReasons: []
+        },
+        area: {
+            display: 'area',
+            label: 'Area Chart',
+            available: false,
+            notAvailableReasons: []
+        },
+        timeseries: {
+            display: 'timeseries',
+            label: 'Time Series',
+            available: false,
+            notAvailableReasons: []
+        },
+        pin_map: {
+            display: 'pin_map',
+            label: 'Pin Map',
+            available: false,
+            notAvailableReasons: []
+        },
+        state: {
+            display: 'state',
+            label: 'State Heatmap',
+            available: false,
+            notAvailableReasons: []
+        },
+        country: {
+            display: 'country',
+            label: 'World Heatmap',
+            available: false,
+            notAvailableReasons: []
+        }
+    };
 
-        this.zoomTypes = [
-            {
-                'label': 'Disabled',
-                'value': null
-            }, {
-                'label': 'X',
-                'value': 'x'
-            }, {
-                'label': 'Y',
-                'value': 'y'
-            }, {
-                'label': 'XY',
-                'value': 'xy'
-            }
-        ];
+    this.zoomTypes = [{
+        'label': 'Disabled',
+        'value': null
+    }, {
+        'label': 'X',
+        'value': 'x'
+    }, {
+        'label': 'Y',
+        'value': 'y'
+    }, {
+        'label': 'XY',
+        'value': 'xy'
+    }];
 }]);
 
-CardServices.service('QueryUtils', function () {
-    this.limitOptions = [
-        {
-            label: "1",
-            value: 1
-        }, {
-            label: "10",
-            value: 10
-        }, {
-            label: "25",
-            value: 25
-        }, {
-            label: "50",
-            value: 50
-        }, {
-            label: "100",
-            value: 100
-        }, {
-            label: "1000",
-            value: 1000
-        }
-    ];
+CardServices.service('QueryUtils', function() {
+    this.limitOptions = [{
+        label: "1",
+        value: 1
+    }, {
+        label: "10",
+        value: 10
+    }, {
+        label: "25",
+        value: 25
+    }, {
+        label: "50",
+        value: 50
+    }, {
+        label: "100",
+        value: 100
+    }, {
+        label: "1000",
+        value: 1000
+    }];
 
-    this.emptyQuery = function () {
+    this.emptyQuery = function() {
         return {
             filter: [
                 null,
                 null
             ],
             source_table: null,
-            breakout: [
-            ],
+            breakout: [],
             limit: null,
-            aggregation: [
-            ],
+            aggregation: [],
             database: 1,
             type: null,
             native: {}
@@ -223,7 +209,7 @@ CardServices.service('QueryUtils', function () {
         "allowTitleEdits": false
     };
 
-    this.populateQueryOptions = function (table) {
+    this.populateQueryOptions = function(table) {
         // create empty objects to store our lookups
         table.fields_lookup = {};
         table.aggregation_lookup = {};

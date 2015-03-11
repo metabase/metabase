@@ -21,8 +21,7 @@
 ;; Check that we can fetch all Settings for Org
 (expect-eval-actual-first
     [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)"}
-     {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)"}
-     {:key "test-setting-3", :value nil,     :description "Test setting - this only shows up in dev (3)"}]
+     {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)"}]
     (do (set-settings nil "FANCY" nil)
         (fetch-all-settings)))
 
@@ -43,13 +42,13 @@
 (expect-eval-actual-first
     ["NICE!"
      "NICE!"]
-  (do ((user->client :rasta) :put 200 "setting/test-setting-1" {:value "NICE!"})
+  (do ((user->client :rasta) :put 200 "setting/test-setting-1" :org @org-id {:value "NICE!"})
       [(test-setting-1 @org-id)
        (fetch-setting :test-setting-1)]))
 
 ;; ## Check non-admin can't set a Setting
 (expect "You don't have permissions to do that."
-  ((user->client :lucky) :put 403 "setting/test-setting-1" {:value "NICE!"}))
+  ((user->client :lucky) :put 403 "setting/test-setting-1" :org @org-id {:value "NICE!"}))
 
 ;; ## DELETE /api/setting/:key
 (expect-eval-actual-first

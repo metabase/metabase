@@ -10,7 +10,6 @@
 
 (defsetting test-setting-1 "Test setting - this only shows up in dev (1)")
 (defsetting test-setting-2 "Test setting - this only shows up in dev (2)")
-(defsetting test-setting-3 "Test setting - this only shows up in dev (3)")
 
 
 ;; ## HELPER FUNCTIONS
@@ -23,10 +22,9 @@
 (defn setting-exists? [setting-name]
   (exists? Setting :key (name setting-name) :organization_id @org-id))
 
-(defn set-settings [setting-1-value setting-2-value setting-3-value]
+(defn set-settings [setting-1-value setting-2-value]
   (test-setting-1 @org-id setting-1-value)
-  (test-setting-2 @org-id setting-2-value)
-  (test-setting-3 @org-id setting-3-value))
+  (test-setting-2 @org-id setting-2-value))
 
 
 ;; ## GETTERS
@@ -42,23 +40,19 @@
 ;; ## SETTERS
 ;; Test defsetting setter fn
 (expect-eval-actual-first
-    [nil
-     "FANCY NEW VALUE <3"
+    ["FANCY NEW VALUE <3"
      "FANCY NEW VALUE <3"]
-  [(test-setting-2 @org-id)
-   (do (test-setting-2 @org-id "FANCY NEW VALUE <3")
+  [(do (test-setting-2 @org-id "FANCY NEW VALUE <3")
        (test-setting-2 @org-id))
    (db-fetch-setting :test-setting-2)])
 
 ;; Test `set` function
 (expect-eval-actual-first
-    [nil
-     "WHAT A NICE VALUE <3"
+    ["WHAT A NICE VALUE <3"
      "WHAT A NICE VALUE <3"]
-  [(test-setting-3 @org-id)
-   (do (setting/set @org-id :test-setting-3 "WHAT A NICE VALUE <3")
-       (test-setting-3 @org-id))
-   (db-fetch-setting :test-setting-3)])
+  [(do (setting/set @org-id :test-setting-2 "WHAT A NICE VALUE <3")
+       (test-setting-2 @org-id))
+   (db-fetch-setting :test-setting-2)])
 
 
 ;; ## DELETE
@@ -92,18 +86,16 @@
 
 ;; all
 (expect-eval-actual-first
-    {:test-setting-2 "BIRDS<3"
-     :test-setting-3 "TOUCANS"}
-  (do (set-settings nil "BIRDS<3" "TOUCANS")
+    {:test-setting-2 "TOUCANS"}
+  (do (set-settings nil "TOUCANS")
       (m/filter-keys #(re-find #"^test-setting-\d$" (name %)) ; filter out any non-test settings
                      (setting/all @org-id))))
 
 ;; all-with-descriptions
 (expect-eval-actual-first
     [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)"}
-     {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)"}
-     {:key :test-setting-3, :value "S3", :description "Test setting - this only shows up in dev (3)"}]
-  (do (set-settings nil "S2" "S3")
+     {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)"}]
+  (do (set-settings nil "S2")
       (filter (fn [{k :key}]
                 (re-find #"^test-setting-\d$" (name k)))
               (setting/all-with-descriptions @org-id))))
