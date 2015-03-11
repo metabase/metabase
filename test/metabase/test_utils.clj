@@ -5,7 +5,6 @@
             [ring.adapter.jetty :as ring]
             (metabase [core :as core]
                       [db :refer :all]
-                      test-utils
                       [test-data :refer :all])))
 
 (declare load-test-data
