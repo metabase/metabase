@@ -3,11 +3,11 @@ server {
   if ($http_user_agent !~* (ELB-HealthChecker/.*)) {
     return 410;
   }
-#  location /hc {
-#    resolver 8.8.8.8;
-#    proxy_set_header Host ${APP};
-#    proxy_pass $scheme://127.0.0.1/api/health;
-#  }
+  location /hc {
+    resolver 8.8.8.8;
+    proxy_set_header Host ${APP};
+    proxy_pass $scheme://127.0.0.1/api/health;
+  }
   log_not_found off;
 }
 
@@ -21,8 +21,8 @@ server {
   real_ip_header     X-Forwarded-For;
   set_real_ip_from   0.0.0.0/0;
 
-  log_format expa '"2" "$remote_addr" "$remote_user" "$time_local" "$request_method" "$request_uri" "$server_protocol" "$status" "$bytes_sent" "$request_time" "$http_referer" "$http_user_agent"';
-  access_log /var/log/expa/nginx/$host/$hostname-${APP}-access.log expa;
+  log_format metabase '"2" "$remote_addr" "$remote_user" "$time_local" "$request_method" "$request_uri" "$server_protocol" "$status" "$bytes_sent" "$request_time" "$http_referer" "$http_user_agent"';
+  access_log /var/log/expa/nginx/$host/$hostname-${APP}-access.log metabase;
 
   include /etc/nginx/conf.d/flower*;
   include /etc/nginx/conf.d/health-endpoint*;
