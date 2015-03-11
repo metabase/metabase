@@ -695,7 +695,7 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             }
         },
         update_password: {
-            url: '/api/user/update_password/:userId',
+            url: '/api/user/:userId/password',
             method: 'PUT',
             params: {
                 'userId': '@id'
