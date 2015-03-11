@@ -168,6 +168,15 @@
 
 ;; # MEMBERS ENDPOINTS
 
+;; ## Helper Fns
+
+(defn org-perm-exists? [org-id user-id]
+    (exists? OrgPerm :organization_id org-id :user_id user-id))
+
+(defn create-org-perm [org-id user-id]
+    ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id) {:admin false}))
+
+
 ;; ## GET /api/org/:id/members
 (expect
     #{(match-$ (user->org-perm :crowberto)
@@ -228,13 +237,6 @@
                   :email "rasta@metabase.com"})})}
   (set ((user->client :rasta) :get 200 (format "org/%d/members" @org-id))))
 
-;; ## Helper Fns
-
-(defn org-perm-exists? [org-id user-id]
-  (exists? OrgPerm :organization_id org-id :user_id user-id))
-
-(defn create-org-perm [org-id user-id]
-  ((user->client :crowberto) :post 200 (format "org/%d/members/%d" org-id user-id) {:admin false}))
 
 ;; ## POST /api/org/:id/members/:user-id
 ;; Check that we can create an OrgPerm between existing User + Org
