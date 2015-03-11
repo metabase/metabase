@@ -2,8 +2,8 @@
   "Functions relating to using the test data, Database, Organization, and Users."
   (:require [cemerick.friend.credentials :as creds]
             [medley.core :as medley]
-            [metabase.db :refer :all]
-            [metabase.http-client :as http]
+            (metabase [db :refer :all]
+                      [http-client :as http])
             (metabase.models [field :refer [Field]]
                              [org-perm :refer [OrgPerm]]
                              [table :refer [Table]]
@@ -45,7 +45,7 @@
 
 (def test-db
   "The test `Database` object."
-  (delay (setup-db :auto-migrate true)
+  (delay (setup-db-if-needed :auto-migrate true)
          (load/test-db)))
 
 (def db-id
@@ -79,7 +79,7 @@
 
 (def test-org
   "The test Organization."
-  (delay (setup-db :auto-migrate true)
+  (delay (setup-db-if-needed :auto-migrate true)
          (load/test-org)))
 
 (def org-id

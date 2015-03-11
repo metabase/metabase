@@ -1,12 +1,12 @@
 (ns metabase.models.user-test
   (:require [clojure.tools.logging :as log]
-            [metabase.test-utils :refer [setup-test-db]]
-            [metabase.db :refer :all]
-            [metabase.models.user :refer [User]]
-            [korma.core :refer :all]
-            [expectations :refer :all]
+            [clj-time.coerce :as tc]
             [clj-time.core :as time]
-            [clj-time.coerce :as tc]))
+            [expectations :refer :all]
+            [korma.core :refer :all]
+            (metabase [db :refer :all]
+                      test-utils)
+            [metabase.models.user :refer [User]]))
 
 
 ;(defn count-users []

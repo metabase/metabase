@@ -8,13 +8,7 @@
             [metabase.util :as util]
             [ring.mock.request :as mock]))
 
-
-;; make sure test db is setup
-@test-db
-
-
 ;;;;  ===========================  TEST wrap-sessionid middleware  ===========================
-
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
 ;; this works in this case because the only impact our middleware has is on the request
