@@ -6,7 +6,7 @@
   "repository": "https://github.com/expa/data",
   "license": "private",
   "engines": {
-    "node": "0.10.25"
+    "node": "v0.10.25"
   },
   "dependencies": {
     "bower": "1.3.12",

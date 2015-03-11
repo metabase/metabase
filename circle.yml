@@ -1,4 +1,26 @@
-test:
+machine:
+  python:
+    version: 2.7.6
+  node:
+    version: 0.10.25
+  # Add AWS deploy-only creds
+  environment:
+    AWS_ACCESS_KEY_ID: AKIAJHJESLS47NJJF6VQ
+    AWS_SECRET_ACCESS_KEY: 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
+    AWS_DEFAULT_REGION: us-east-1
+    PRODUCTION_STACK_ID:
+    PRODUCTION_APP_ID:
+    STAGING_STACK_ID: 51c1dd2a-88ce-4a1b-ba2a-a09db65c4f5b
+    STAGING_APP_ID: c0929052-6c1a-4cff-99fe-6e2eb377643c
+dependencies:
   override:
-    - lein eastwood
-    - lein expectations
+    - pip install awscli==1.7.3
+deployment:
+  production:
+    branch: prd
+    commands:
+      - ./deploy/deploy_aws.sh $PRODUCTION_STACK_ID $PRODUCTION_APP_ID
+  staging:
+    branch: master
+    commands:
+      - ./deploy/deploy_aws.sh $STAGING_STACK_ID $STAGING_APP_ID
