@@ -155,6 +155,16 @@
                                                             :logo_url upd-name
                                                             :inherits true}))
 
+;; Check that non-superusers can't modify orgs they don't have permissions to
+(expect "You don't have permissions to do that."
+  (let [org-name (random-name)
+        my-org (create-org org-name)]
+    ((user->client :rasta) :put 403 (format "org/%d" (:id my-org)) {})))
+
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :put 404 "org/1000" {}))
+
 
 ;; # MEMBERS ENDPOINTS
 
