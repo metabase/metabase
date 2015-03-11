@@ -73,11 +73,15 @@
       :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
 
 
+(def ^:private setup-db-has-been-called?
+  (atom false))
+
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [auto-migrate]
       :or {auto-migrate true}}]
+  (reset! setup-db-has-been-called? true)
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
     ;; Test DB connection and throw exception if we have any troubles connecting
@@ -99,6 +103,10 @@
     (log/info "Database Migrations Current ... CHECK")
     ;; Establish our 'default' Korma DB Connection
     (default-connection (create-db korma-db))))
+
+(defn setup-db-if-needed [& args]
+  (when-not @setup-db-has-been-called?
+    (apply setup-db args)))
 
 
 ;;; # UTILITY FUNCTIONS

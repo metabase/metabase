@@ -56,22 +56,25 @@
 
 ;; ## Jetty (Web) Server
 
+
 (def ^:private jetty-instance
-  (delay
-   (try (ring/run-jetty core/app {:port 3000
-                                  :join? false}) ; detach the thread
-        (catch java.net.BindException e          ; assume server is already running if port's already bound
-          (log/warn "ALREADY RUNNING!")))))       ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
+  (atom nil))
 
 (defn- start-jetty
   "Start the Jetty web server."
   []
   (log/info "STARTING THE JETTY SERVER...")
-  @jetty-instance)
+  (when-not @jetty-instance
+    (try (->> (ring/run-jetty core/app {:port 3000
+                                        :join? false}) ; detach the thread
+              (reset! jetty-instance))
+        (catch java.net.BindException e                ; assume server is already running if port's already bound
+          (log/warn "ALREADY RUNNING!")))))            ; e.g. if someone is running `lein ring server` locally. Tests should still work normally.
 
 (defn stop-jetty
   "Stop the Jetty web server."
   {:expectations-options :after-run}
   []
   (when @jetty-instance
-    (.stop ^org.eclipse.jetty.server.Server @jetty-instance)))
+    (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
+    (reset! jetty-instance nil)))
