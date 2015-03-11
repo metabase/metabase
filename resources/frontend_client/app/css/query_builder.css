@@ -15,11 +15,23 @@ body {
     background: #fff;
     border-radius: 4px;
     position: absolute;
-    bottom: 2em;
-    right: 2em;
+    bottom: 0.5em;
+    right: 1.5em;
     width: 400px;
 }
 
+.QueryBuilder .dc-chart {
+    padding: 2em;
+}
+
+.QueryBuilder .dc-chart .pie-slice {
+    font-size: 1em;
+}
+
+.QueryWrapper {
+    padding-left: 1.5em;
+    padding-right: 1.5em;
+}
 
 .SaveModal.Modal--showing {
     border: 1px solid #ddd;
@@ -50,11 +62,20 @@ body {
     display: block;
 }
 
+.SaveButton {
+    position: relative;
+    z-index: 10;
+}
+
+.QueryBar {
+    display: inline-block;
+    margin: 0 0 1.2em 0;
+}
+
 .QueryName {
     font-weight: 200;
-    margin-right: 1em;
-    font-size: 1.5em;
-    margin: 2em 0 1.25em;
+    margin: 1em 0;
+    font-size: 1.35em;
 }
 
 .QueryBar .SelectionModule {
@@ -62,11 +83,15 @@ body {
     display: inline-block;
 }
 
+.SelectionModule {
+    color: var(--brand-color);
+}
+
 .SelectionModule .SelectionItems {
     opacity: 0;
     pointer-events: none;
     position: absolute;
-    top: 2em;
+    top: 2.75em;
     border: 1px solid #ddd;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
     border-radius: 4px;
@@ -74,13 +99,12 @@ body {
     z-index: 2;
     left: 0;
     right: 0;
-    overflow: hidden;
+    overflow-y: scroll;
     max-height: 360px;
 }
 
 .SelectionList {
     max-height: 420px;
-    overflow-y: scroll;
 }
 
 .SelectionItems.open {
@@ -89,12 +113,13 @@ body {
 }
 
 .SelectionItem {
-    padding: 0.8em;
-    font-size: 1em;
+    padding: 0.75em;
+    font-size: 0.85em;
     position: relative;
     background: #fff;
     display: flex;
     align-items: center;
+    cursor: pointer;
 }
 
 .SelectionItems {
@@ -102,9 +127,13 @@ body {
 }
 
 .SelectionItem:hover {
-    background: #FBFCFD;
-    transition: background .3s linear;
+    background-color: currentColor;
 }
+
+.SelectionItem:hover .SelectionModule-display {
+    color: #fff;
+}
+
 
 .SelectionItem:before {
     content: '';
@@ -113,6 +142,7 @@ body {
     border: 2px solid #ddd;
     border-radius: 99px;
     margin-right: 1em;
+    color: currentColor;
 }
 
 .SelectionItem.selected {
@@ -121,22 +151,14 @@ body {
 }
 
 .SelectionItem.selected:before {
-    color: inherit;
     background-color: currentColor;
     border-color: currentColor;
 }
 
 .QueryBar .SelectionItem:hover:before {
+    color: #fff;
     border-color: currentColor;
     transition: border .3s linear;
-}
-
-.SelectionTitle {
-    display: block;
-}
-
-.SelectionTitle:hover {
-    cursor: pointer;
 }
 
 .QueryBar .SelectionTitle {
@@ -144,6 +166,26 @@ body {
     font-size: 0.85em;
     border: 1px dotted #999;
     border-radius: 2px;
+}
+
+.FilterSection .SelectionModule,
+.FilterSection .SelectionModule a {
+    color: #A8C28e;
+}
+
+.FilterSection .input {
+    color: #A8C28e;
+    border-color: transparent;
+}
+
+.FilterSection .input:focus {
+    border-color: transparent;
+    border-bottom: 1px solid #A8C28e;
+}
+
+.DimensionList .SelectionModule,
+.DimensionList .SelectionModule a {
+    color: #B9A2CD;
 }
 
 .QueryBar .ActionButton {
@@ -173,7 +215,7 @@ body {
 }
 
 .SelectionModule-display {
-    color: #444;
+    color: currentColor;
 }
 
 .SelectionModule.selected .SelectionTitle {
@@ -184,6 +226,11 @@ body {
     box-shadow: 0 1px 1px rgba(0, 0, 0, .08);
 }
 
+.SelectionModule.selected .SelectionTitle:hover {
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .18);
+    cursor: pointer;
+}
+
 
 .RemoveTrigger {
     display: inline-block;
@@ -192,9 +239,9 @@ body {
 .ActionBar {
     position: fixed;
     bottom: 0;
-    left: 0;
     right: 0;
     padding: 1em;
+    z-index: 100;
 }
 
 .ActionButton {
@@ -283,33 +330,8 @@ body {
 }
 
 .QueryPicker-group {
-    padding: 2em 0;
     border-bottom: 1px solid #ddd;
     background: #fff;
-}
-
-
-/*
-.with-breakouts:after {
-    content: 'By';
-    display: block;
-    position: absolute;
-    top: 0;
-    right: -1.5em;
-    bottom: 0;
-    color: #999;
-    border: 1px solid #ddd;
-    border-radius: 99px;
-    background: #fff;
-    width: 3em;
-    line-height: 3em;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-}
-*/
-
-.SaveButton {
-    position: relative;
-    z-index: 5;
 }
 
 .QueryBar .ActionButton {
@@ -377,6 +399,8 @@ body {
 .Metric-sourceTable:after {
     content: '•';
     display: inline-block;
+    color: #ddd;
+    margin-left: 1em;
 }
 
 .DimensionList .RemoveTrigger {
@@ -390,9 +414,6 @@ body {
 @media screen and (min-width: 60em) {
     .SelectionTitle {
         padding: 0.75em 1.25em;
-    }
-    .QueryPicker-group {
-        padding: 1.2em;
     }
 }
 
@@ -441,25 +462,6 @@ body {
 }
 
 
-.FilterSection .SelectionModule,
-.FilterSection .SelectionModule a {
-    color: #A8C28e;
-}
-
-.FilterSection .input {
-    color: #A8C28e;
-    border-color: transparent;
-}
-
-.FilterSection .input:focus {
-    border-color: transparent;
-    border-bottom: 1px solid #A8C28e;
-}
-
-.DimensionList .SelectionModule,
-.DimensionList .SelectionModule a {
-    color: #B9A2CD;
-}
 
 .FilterTrigger .icon {
     display: flex;
@@ -468,4 +470,21 @@ body {
 .QueryHeader {
     overflow: hidden;
     background: #fff;
+}
+
+.TypeControls {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 100;
+    left: 0;
+    right: 0;
+    text-align: center;
+    margin: 1em 0;
+}
+
+.TypeControls .ActionButton {
+    display: inline-block;
+    font-size: 0.85em;
+    margin: 0 0.5em;
 }

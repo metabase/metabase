@@ -1450,6 +1450,12 @@ CardControllers.controller('CardDetailNew', [
                             console.log('could not run card!', error);
                         });
                     },
+                    setDisplay: function (type) {
+                        // change the card visualization type and refresh chart settings
+                        $scope.model.card.display = type;
+                        $scope.model.card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
+                        $scope.model.inform();
+                    },
                 };
                 if ($routeParams.cardId) {
                     // loading up an existing card
