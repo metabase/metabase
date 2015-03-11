@@ -22,6 +22,8 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     // current User
     // TODO: can we directly bind to Appstate.model?
     $scope.user = undefined;
+    $scope.userMemberOf = undefined;
+    $scope.userAdminOf = undefined;
     $scope.userIsAdmin = false;
 
     // current Organization
@@ -34,13 +36,15 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     $scope.$on("appstate:user", function (event, user) {
         // change in current user
         $scope.user = user;
+        $scope.userMemberOf = user.memberOf();
+        $scope.userAdminOf = user.adminOf();
     });
 
     $scope.$on("appstate:organization", function (event, org) {
         // change in current organization
         $scope.currentOrgSlug = org.slug;
         $scope.currentOrg = org;
-        $scope.userIsAdmin = AppState.userIsAdmin();
+        $scope.userIsAdmin = $scope.user.isAdmin(org.slug);
     });
 
     $scope.$on("appstate:logout", function (event, user) {
@@ -65,14 +69,6 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
 
     $scope.refreshCurrentUser = function() {
         AppState.refreshCurrentUser();
-    };
-
-    $scope.memberOf = function(){
-        return AppState.memberOf();
-    };
-
-    $scope.adminOf = function(){
-        return AppState.adminOf();
     };
 }]);
 

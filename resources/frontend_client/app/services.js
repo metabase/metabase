@@ -51,6 +51,36 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 User.current(function(result) {
                     service.model.currentUser = result;
 
+                    // add isMember(orgSlug) method to the object
+                    service.model.currentUser.isMember = function (orgSlug) {
+                        return this.org_perms.some(function (org_perm) {
+                            return org_perm.organization.slug === orgSlug;
+                        });
+                    };
+
+                    // add isAdmin(orgSlug) method to the object
+                    service.model.currentUser.isAdmin = function (orgSlug) {
+                        return this.org_perms.some(function (org_perm) {
+                            return org_perm.organization.slug === orgSlug && org_perm.admin;
+                        }) || this.is_superuser;
+                    };
+
+                    // add memberOf() method to the object enumerating Organizations user is member of
+                    service.model.currentUser.memberOf = function () {
+                        return this.org_perms.map(function (org_perm) {
+                            return org_perm.organization;
+                        });
+                    };
+
+                    // add adminOf() method to the object enumerating Organizations user is admin of
+                    service.model.currentUser.adminOf = function () {
+                        return this.org_perms.filter(function (org_perm) {
+                            return org_perm.admin;
+                        }).map(function (org_perm) {
+                            return org_perm.organization;
+                        });
+                    };
+
                     $rootScope.$broadcast('appstate:user', result);
 
                     deferred.resolve(result);
@@ -60,33 +90,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 });
 
                 return deferred.promise;
-            },
-
-            userIsAdmin: function() {
-                // Let's also figure out if this user is an admin each time the user or the organization changes
-                return service.model.currentUser.org_perms.some(function(org_perm) {
-                    return org_perm.organization.slug === $routeParams.orgSlug && org_perm.admin;
-                });
-            },
-
-            userIsMember: function() {
-                return service.model.currentUser.org_perms.some(function(org_perm) {
-                    return org_perm.organization.slug === $routeParams.orgSlug;
-                });
-            },
-
-            memberOf: function() {
-                return service.model.currentUser.org_perms.map(function(org_perm) {
-                    return org_perm.organization;
-                });
-            },
-
-            adminOf: function() {
-                return service.model.currentUser.org_perms.filter(function(org_perm) {
-                    return org_perm.admin;
-                }).map(function(org_perm) {
-                    return org_perm.organization;
-                });
             },
 
             // This function performs whatever state cleanup and next steps are required when a user tries to access
@@ -153,8 +156,8 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
                     // Making convenience vars so it's easier to scan conditions for correctness
                     var isSuperuser = service.model.currentUser.is_superuser;
-                    var isOrgMember = service.userIsMember();
-                    var isOrgAdmin = service.userIsAdmin();
+                    var isOrgMember = service.model.currentUser.isMember($routeParams.orgSlug);
+                    var isOrgAdmin = service.model.currentUser.isAdmin($routeParams.orgSlug);
                     var onAdminPage = $location.path().indexOf('/' + $routeParams.orgSlug + '/admin') === 0;
 
                     if (!isSuperuser && !isOrgMember) {

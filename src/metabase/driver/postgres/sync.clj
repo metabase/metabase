@@ -16,6 +16,7 @@
    :int4 :IntegerField
    :serial :IntegerField
    :text :TextField
+   :timestamp :DateTimeField
    :timestamptz :DateTimeField
    :varchar :TextField})
 

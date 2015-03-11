@@ -4,6 +4,122 @@
 var cx = React.addons.classSet,
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
+var QueryVisualization = React.createClass({
+    getInitialState: function () {
+        return {
+            type: 'table',
+            chartId: Math.floor((Math.random() * 698754) + 1)
+        }
+    },
+    _changeType: function (type) {
+        this.setState({
+            type: type
+        });
+        this.props.setDisplay(type);
+    },
+    componentDidMount: function () {
+        if (this.state.type !== 'table') {
+            CardRenderer[this.state.type](this.state.chartId, this.props.card, this.props.result.data);
+        }
+    },
+    componentDidUpdate: function () {
+        if (this.state.type !== 'table') {
+            CardRenderer[this.state.type](this.state.chartId, this.props.card, this.props.result.data);
+        }
+    },
+    render: function () {
+        // for table rendering
+        var tableRows,
+            tableHeaders,
+            table;
+        // for chart rendering
+        var titleId,
+            innerId;
+
+        if(this.props.result && this.props.result.data) {
+            if(this.state.type === 'table') {
+                tableRows = this.props.result.data.rows.map(function (row) {
+                    var rowCols = row.map(function (data) {
+                        return (<td>{data.toString()}</td>)
+                    });
+
+                    return (<tr>{rowCols}</tr>);
+                });
+
+                tableHeaders = this.props.result.data.columns.map(function (column) {
+                    return (
+                        <th>{column.toString()}</th>
+                    );
+                });
+
+                table = (
+                    <table className="QueryTable Table">
+                        <thead>
+                            <tr>
+                                {tableHeaders}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableRows}
+                        </tbody>
+                    </table>
+                );
+            } else {
+                titleId = 'card-title--'+this.state.chartId;
+                innerId = 'card-inner--'+this.state.chartId;
+            }
+        }
+
+        var viz;
+        if(this.state.type != 'table') {
+            viz = (
+                <div class="Card--{this.state.type} Card-outer px1" id={this.state.chartId}>
+                    <div id={titleId} class="text-centered"></div>
+                    <div id={innerId} class="card-inner"></div>
+                </div>
+            );
+        } else {
+            viz = (
+                <div className="Table-wrapper">
+                    {table}
+                </div>
+            );
+        }
+
+        var types = [
+            'table',
+            'line',
+            'bar',
+            'pie',
+            'area',
+            'timeseries'
+        ], typeControls = types.map(function (type) {
+            if(this.props.result) {
+                var buttonClasses = cx({
+                    'ActionButton': true,
+                    'ActionButton--primary' : (type == this.state.type)
+                })
+                return (
+                    <a className={buttonClasses} href="#" onClick={this._changeType.bind(null, type)}>{type}</a>
+                );
+            } else {
+                return false;
+            }
+        }.bind(this));
+
+        return (
+            <div>
+                <div className="TypeControls">
+                    <div className="wrapper">
+                        {typeControls}
+                    </div>
+                </div>
+                {viz}
+            </div>
+        );
+    }
+});
+
 var ResultTable = React.createClass({
     render: function () {
         var table,
@@ -109,7 +225,7 @@ var Saver = React.createClass({
                     <div className="ModalContent">
                         <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.name} />
                         <input ref="description" type="text" placeholder="Add a description" defaultValue={this.props.description}/>
-                        <div className="mt4 clearfix">
+                        <div className="mt4 ml2 mr2 clearfix">
                             <span className="text-grey-3 inline-block my1">Privacy:</span>
                             <div className="float-right">
                                 <SelectionModule
@@ -388,7 +504,7 @@ var QueryPicker = React.createClass({
                 }
                 aggregationTargetHtml = (
                     <SelectionModule
-                        placeholder='Lets start with...'
+                        placeholder='field named...'
                         items={this.props.aggregationFieldList[0]}
                         display='1'
                         selectedValue={this.props.query.aggregation[1]}
@@ -497,10 +613,19 @@ var FilterWidget = React.createClass({
         }
         if(this.props.valueFields) {
             if(this.props.valueFields.values) {
+                // do some fixing up of the values so we can display true / false safely
+                var values = this.props.valueFields.values.map(function(value) {
+                    var safeValues = {}
+                    for(var key in value) {
+                        safeValues[key] = value[key].toString()
+                    }
+                    return safeValues
+                })
+
                 valueHtml = (
                     <SelectionModule
                         placeholder="..."
-                        items={this.props.valueFields.values}
+                        items={values}
                         display='name'
                         selectedValue={this.props.value}
                         selectedKey='key'
@@ -522,7 +647,7 @@ var FilterWidget = React.createClass({
             <div className="QueryFilter relative inline-block">
                 <div className="FilterSection">
                     <SelectionModule
-                        placeholder="..."
+                        placeholder="Filter by..."
                         items={this.props.filterFieldList}
                         display='name'
                         selectedValue={this.props.field}
@@ -647,11 +772,22 @@ var QueryBuilder = React.createClass({
             'QueryPicker-group': true
         })
 
+        var saver
+        if(this.props.model.result) {
+            saver = (
+                <Saver
+                    save={this.props.model.save.bind(this.props.model)}
+                    name={this.props.model.card.name}
+                    description={this.props.model.card.description}
+                    hasChanged={this.props.model.hasChanged}
+                />
+            )
+        }
 
         return (
             <div className="full-height">
                     <div className="QueryHeader">
-                        <div className="wrapper">
+                        <div className="QueryWrapper">
                             <QueryHeader
                                 name={this.props.model.card.name}
                                 user={this.props.model.user}
@@ -660,7 +796,7 @@ var QueryBuilder = React.createClass({
                     </div>
                     <div className={queryPickerClasses}>
                         <div>
-                            <div className="wrapper">
+                            <div className="QueryWrapper">
                                 <div className="clearfix">
                                     {runButton}
                                     <QueryPicker
@@ -683,24 +819,22 @@ var QueryBuilder = React.createClass({
                             </div>
                         </div>
                         <div>
-                            <div className="wrapper my2">
+                            <div className="QueryWrapper my2">
                                 {filterHtml}
                             </div>
                         </div>
                     </div>
 
-
-                    <div className="wrapper">
-                        <ResultTable result={this.props.model.result} />
+                    <div className="QueryWrapper mb4">
+                        <QueryVisualization
+                            card={this.props.model.card}
+                            result={this.props.model.result}
+                            setDisplay={this.props.model.setDisplay.bind(this.props.model)}
+                        />
                     </div>
 
                     <div className="ActionBar">
-                            <Saver
-                                save={this.props.model.save.bind(this.props.model)}
-                                name={this.props.model.card.name}
-                                description={this.props.model.card.description}
-                                hasChanged={this.props.model.hasChanged}
-                            />
+                        {saver}
                     </div>
             </div>
         )
