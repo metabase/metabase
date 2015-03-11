@@ -119,6 +119,7 @@ function getComputedProperty(prop, elementOrId) {
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, elementOrId) {
     var val = getComputedProperty(prop, elementOrId);
+    if (!val) return null;
     return Number(val.replace("px", ""));
 }
 var getComputedWidth = _.partial(getComputedSizeProperty, "width");

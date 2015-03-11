@@ -14,8 +14,13 @@
    :inet :TextField             ; This was `GenericIPAddressField` in some places in the Django code but not others ...
    :int2 :IntegerField
    :int4 :IntegerField
+   :int8 :BigIntegerField
+   :json :TextField
+   :numeric :DecimalField
    :serial :IntegerField
    :text :TextField
+   :time :TimeField
+   :timestamp :DateTimeField
    :timestamptz :DateTimeField
    :varchar :TextField})
 

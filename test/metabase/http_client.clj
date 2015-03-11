@@ -1,6 +1,7 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
-  (:require [clojure.data.json :as json]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as cheshire]
             [clj-http.client :as client]
             [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
@@ -65,7 +66,7 @@
                      :accept :json
                      :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
                                                                           credentials))}
-                     :body (json/write-str http-body)}
+                     :body (cheshire/generate-string http-body)}
         request-fn (case method
                      :get  client/get
                      :post client/post
@@ -77,25 +78,24 @@
         ;; Now perform the HTTP request
         {:keys [status body]} (try (request-fn url request-map)
                                    (catch clojure.lang.ExceptionInfo e
-                                     (println method-name url)
+                                     (log/debug method-name url)
                                      (-> (.getData ^clojure.lang.ExceptionInfo e)
                                          :object)))]
 
     ;; -check the status code if EXPECTED-STATUS was passed
-    (println method-name url status)
+    (log/debug method-name url status)
     (when expected-status
       (when-not (= status expected-status)
-        (println "\n****************************************\n")
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              {stacktrace :stacktrace :as body} (try (-> (json/read-str body)
+              {stacktrace :stacktrace :as body} (try (-> (cheshire/parse-string body)
                                                          clojure.walk/keywordize-keys)
                                                      (catch Exception _ body))]
-          (clojure.pprint/pprint body)
+          (log/warn (with-out-str (clojure.pprint/pprint body)))
           (throw (ApiException. status message)))))
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body
-             json/read-str
+             cheshire/parse-string
              clojure.walk/keywordize-keys
              auto-deserialize-dates)
          (catch Exception _
@@ -109,7 +109,7 @@
     (-> (client :post 200 "session" credentials)
         :id)
     (catch Exception e
-      (println "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
+      (log/error "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
 
 (defn- build-url [url url-param-kwargs]
   {:pre [(string? url)
@@ -140,7 +140,7 @@
   "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
    Parse their values and convert to `java.sql.Timestamps`."
   [response]
-  (cond (vector? response) (mapv auto-deserialize-dates response)
+  (cond (sequential? response) (map auto-deserialize-dates response)
         (map? response) (->> response
                              (map (fn [[k v]]
                                     {k (if (contains? auto-deserialize-dates-keys k)

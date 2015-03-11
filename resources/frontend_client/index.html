@@ -23,7 +23,7 @@
               <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
             </span>
             <ul class="Dropdown-content">
-              <li ng-repeat="organization in memberOf()">
+              <li ng-repeat="organization in userMemberOf">
                 <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
               </li>
             </ul>
@@ -83,7 +83,7 @@
           <div class="border-bottom bg-white py1">
             <div class="wrapper">
               <label class="Select" ng-if="user.is_multi_org">
-                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in adminOf()"></select>
+                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
                 </select>
               </label>
               <a cv-org-href="/admin/">

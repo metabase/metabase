@@ -40,7 +40,7 @@ AdminDatasetsControllers.controller('AdminDatasetList', ['$scope', 'Metabase', f
 }]);
 
 
-AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
+AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'ForeignKey', function($scope, $routeParams, $location, Metabase, ForeignKey) {
 
     $scope.annotations = [];
     $scope.fields = [];
@@ -54,26 +54,45 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         },
     };
 
-    Metabase.table_get({
+
+    Metabase.table_query_metadata({
         'tableId': $routeParams.tableId
     }, function(result) {
         $scope.table = result;
-
-        // get the fields for this table
-        Metabase.table_fields({
-            'tableId': $routeParams.tableId
-        }, function(result) {
-            $scope.fields = result;
-        });
-
-        // table annotations
-
+        $scope.getIdFields();
+        $scope.decorateWithTargets();
     }, function(error) {
         console.log(error);
         if (error.status == 404) {
             $location.path('/');
         }
     });
+
+    $scope.getIdFields = function(){
+            // fetch the ID fields
+        Metabase.db_idfields({
+            'dbId': $scope.table.db.id
+        }, function(result) {
+            if (result && !result.error) {
+                $scope.idfields = result;
+                result.forEach(function(field) {
+                    field.displayName = field.table.name + '.' + field.name;
+                });
+            } else {
+                console.log(result);
+            }
+        });
+
+    };
+    
+    $scope.decorateWithTargets = function(){
+        console.log($scope.table);
+        $scope.table.fields.forEach(function(field){
+            if (field.target){
+                field.target_id = field.target.id;
+            }
+        });
+    };
 
     $scope.syncMetadata = function () {
         Metabase.table_sync_metadata({
@@ -97,16 +116,72 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         }
     };
 
+    $scope.inlineSpecialTypeChange = function(idx){
+        // If we are changing the field from a FK to something else, we should delete any FKs present
+        var field = $scope.table.fields[idx];
+        if (field.target_id && field.special_type != "fk"){
+            // we have something that used to be an FK and is now not an FK
+            // Let's delete its foreign keys
+            var fks = Metabase.field_foreignkeys({'fieldId': field.id}, function(result){
+                fks.forEach(function(fk){
+                    console.log("deleting ", fk);
+                    ForeignKey.delete({'fkID': fks[0].id}, function(result){
+                        console.log("deleted fk");
+                    }, function(error){
+                        console.log("error deleting fk");
+                    });
+                });
+            });
+            // clean up after ourselves
+            field.target = null;
+            field.target_id = null;
+        }
+        // save the field
+        $scope.inlineSaveField(idx);
+    };
+
     $scope.inlineSaveField = function(idx) {
-        if ($scope.fields && $scope.fields[idx]) {
-            Metabase.field_update($scope.fields[idx], function(result) {
+        if ($scope.table.fields && $scope.table.fields[idx]) {
+            Metabase.field_update($scope.table.fields[idx], function(result) {
                 if (result && !result.error) {
-                    $scope.fields[idx] = result;
+                    $scope.table.fields[idx] = result;
                 } else {
                     console.log(result);
                 }
             });
         }
+    };
+
+    $scope.inlineChangeFKTarget = function(idx) {
+        // This function notes a change in the target of the target of a foreign key
+        // If there is already a target, we should delete that FK and create a new one
+        // This is meant to be transitional until we add an FK modify function to the API
+        // If there was not a target, we should create a new FK
+        if ($scope.table.fields && $scope.table.fields[idx]) {
+            var field = $scope.table.fields[idx];
+            var new_target_id = field.target_id;
+
+            var fks = Metabase.field_foreignkeys({'fieldId': field.id});
+
+            if(fks.length > 0){
+                // delete this key
+                var relationship_id = 0;
+                 ForeignKey.delete({'fkID': fks[0].id}, function(result){
+                            console.log("Deleted FK");
+                            Metabase.field_addfk({"db": field.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
+                            
+                        }, function(error){
+                            console.log('Error deleting key ', error);
+                        });
+            }else{
+
+                Metabase.field_addfk({"db": field.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
+            }
+        }
+    };
+
+    $scope.deleteTarget = function(field, target){
+
     };
 }]);
 
