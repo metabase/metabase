@@ -3,6 +3,8 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :as http]
+            [metabase.middleware.auth :as auth]
             (metabase.models [org-perm :refer [OrgPerm]]
                              [session :refer [Session]]
                              [user :refer [User]])
@@ -11,6 +13,14 @@
             [metabase.test-data.create :refer [create-user]]))
 
 (def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
+
+;; ## /api/user/* AUTHENTICATION Tests
+;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
+;; authentication test on every single individual endpoint
+
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "user"))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "user/current"))
+
 
 ;; ## GET /api/user
 ;; Check that superusers can get a list of all Users
@@ -101,6 +111,23 @@
            :common_name "Rasta Toucan"})
   ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
 
+;; Check that a non-superuser CANNOT fetch someone else's user details
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
+
+;; A superuser should be allowed to fetch another users data
+(expect (match-$ (fetch-user :rasta)
+          {:email "rasta@metabase.com"
+           :first_name "Rasta"
+           :last_login $
+           :is_superuser false
+           :id $
+           :last_name "Toucan"
+           :date_joined $
+           :common_name "Rasta Toucan"})
+  ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
+
+
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
 (expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user)
@@ -119,6 +146,11 @@
    (do ((user->client :crowberto) :put 200 (format "user/%d" id) {:first_name new-first
                                                                   :email new-email})
        (fetch-user))])
+
+;; Check that a non-superuser CANNOT update someone else's user details
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird))))
+
 
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password
@@ -143,3 +175,17 @@
                  "password mismatch"))
       ;; New creds *should* work
       (metabase.http-client/client :post 200 "session" (:new creds)))))
+
+;; Check that a non-superuser CANNOT update someone else's password
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "anything"
+                                                                                     :old_password "whatever"}))
+
+;; Test input validations on password change
+(expect "'password' is a required param."
+  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
+
+;; Make sure that if current password doesn't match we get a 400
+(expect "password mismatch"
+  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "anything"
+                                                                                 :old_password "mismatched"}))
