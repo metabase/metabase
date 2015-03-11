@@ -33,9 +33,9 @@
   "TODO - A very similar implementation exists in `metabase.models`. Find some way to combine them."
   [org-id]
   (when *current-user-id*
-    (when-let [{superuser? :is_superuser} (sel :one ["metabase.models.user/User" :is_superuser] :id *current-user-id*)]
+    (when-let [{superuser? :is_superuser} (sel :one ['metabase.models.user/User :is_superuser] :id *current-user-id*)]
       (if superuser? :admin
-          (when-let [{admin? :admin} (sel :one ["metabase.models.org-perm/OrgPerm" :admin] :user_id *current-user-id* :organization_id org-id)]
+          (when-let [{admin? :admin} (sel :one ['metabase.models.org-perm/OrgPerm :admin] :user_id *current-user-id* :organization_id org-id)]
             (if admin? :admin :default))))))
 
 (defmacro org-perms-case
@@ -210,7 +210,9 @@
       (check-403 @~'can_read)
       obj#))
   ([entity id]
-   `(read-check (sel :one ~entity :id ~id))))
+   (if (= (name entity) "Org")
+     `(check-403 (current-user-perms-for-org ~id)) ; current-user-perms-for-org is faster, optimize this common usage
+     `(read-check (sel :one ~entity :id ~id)))))
 
 (defmacro write-check
   "Checks that `@can_write` is true for this object."
@@ -219,4 +221,6 @@
       (check-403 @~'can_write)
       obj#))
   ([entity id]
-   `(write-check (sel :one ~entity :id ~id))))
+   (if (= (name entity) "Org")
+     `(check-403 (= (current-user-perms-for-org ~id) :admin))
+     `(write-check (sel :one ~entity :id ~id)))))
