@@ -28,14 +28,21 @@
 
 ;; ## GET /api/org
 ;; Non-superusers should only be able to see Orgs they are members of
-(expect
+(let [org-name (random-name)]
+  (expect-eval-actual-first
     [{:id @org-id
       :slug "test"
       :name "Test Organization"
       :description nil
       :logo_url nil
       :inherits true}]
-  ((user->client :rasta) :get 200 "org"))
+    (do
+      ;; Delete all the random test Orgs we've created
+      (cascade-delete Org :id [not= (:id @test-org)])
+      ;; Create a random Org so we ensure there is an Org that should NOT show up in our list
+      (create-org org-name)
+      ;; Now perform the API request
+      ((user->client :rasta) :get 200 "org"))))
 
 ;; Superusers should be able to see all Orgs
 (let [org-name (random-name)]
