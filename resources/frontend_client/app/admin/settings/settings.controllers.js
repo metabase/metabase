@@ -23,8 +23,10 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'Setti
         });
 
         $scope.saveSetting = function(setting) {
-            setting.org = $scope.currentOrg.id;
-            SettingsAdminServices.save(setting, function() {
+            SettingsAdminServices.put({
+                key: setting.key,
+                org: $scope.currentOrg.id
+            }, setting, function() {
                 setting.originalValue = setting.value;
             }, function(error) {
                 console.log("Error saving setting: ", error);

@@ -39,21 +39,17 @@
         (fetch-setting :test-setting-2)))
 
 
-;; ## POST /api/setting
+;; ## PUT /api/setting/:key
 (expect-eval-actual-first
     ["NICE!"
      "NICE!"]
-    (do ((user->client :rasta) :post 200 "setting" {:org @org-id
-                                                    :key "test-setting-1"
-                                                    :value "NICE!"})
-        [(test-setting-1 @org-id)
-         (fetch-setting :test-setting-1)]))
+  (do ((user->client :rasta) :put 200 "setting/test-setting-1" {:value "NICE!"})
+      [(test-setting-1 @org-id)
+       (fetch-setting :test-setting-1)]))
 
 ;; ## Check non-admin can't set a Setting
 (expect "You don't have permissions to do that."
-  ((user->client :lucky) :post 403 "setting" {:org @org-id
-                                              :key "test-setting-1"
-                                              :value "NICE!"}))
+  ((user->client :lucky) :put 403 "setting/test-setting-1" {:value "NICE!"}))
 
 ;; ## DELETE /api/setting/:key
 (expect-eval-actual-first

@@ -1,6 +1,6 @@
 (ns metabase.api.setting
   "/api/setting endpoints"
-  (:require [compojure.core :refer [GET POST DELETE]]
+  (:require [compojure.core :refer [GET PUT DELETE]]
             [metabase.api.common :refer :all]
             (metabase.models [org :refer [Org]]
                              [setting :as setting])))
@@ -18,8 +18,7 @@
   (setting/get org (keyword key)))
 
 ;; ## Create/update a setting
-;; We could write a separate `PUT` endpoint but that's just needless duplication IMO
-(defendpoint POST "/" [:as {{:keys [org key value]} :body}]
+(defendpoint PUT "/:key" [key org :as {{:keys [value]} :body}]
   (require-params key value org)
   (write-check Org org)
   (setting/set org (keyword key) value))

@@ -22,8 +22,8 @@
 ;;     (setting/get org-id :mandrill-api-key)
 ;;     (mandrill-api-key org-id)
 ;;
-;;     (setting/set org-id :mandrill-api-key "MY NEW API KEY")
-;;     (mandrill-api-key org-id "MY NEW API KEY")
+;;     (setting/set org-id :mandrill-api-key "NEW_KEY")
+;;     (mandrill-api-key org-id "NEW_KEY")
 ;;
 ;;     (setting/delete org-id :mandrill-api-key)
 ;;     (mandrill-api-key org-id nil)

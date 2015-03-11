@@ -11,9 +11,9 @@ SettingsAdminServices.factory('SettingsAdminServices', ['$resource', '$cookies',
         },
 
         // POST endpoint handles create + update in this case
-        save: {
-            url: '/api/setting',
-            method: 'POST'
+        put: {
+            url: '/api/setting/:key?org=:org',
+            method: 'PUT'
         },
 
         delete: {
