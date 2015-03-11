@@ -32,7 +32,8 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.people',
     'corvusadmin.query',
     'corvusadmin.annotation',
-    'corvusadmin.search'
+    'corvusadmin.search',
+    'corvusadmin.settings'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({

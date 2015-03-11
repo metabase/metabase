@@ -11,6 +11,7 @@
                           [result :as result]
                           [search :as search]
                           [session :as session]
+                          [settings :as settings]
                           [user :as user])
             (metabase.api.meta [dataset :as dataset]
                                [db :as db]
@@ -18,23 +19,31 @@
                                [table :as table])
             [metabase.middleware.auth :as auth]))
 
+(defn- +auth
+  "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
+  [api-routes]
+  (-> api-routes
+      auth/bind-current-user
+      auth/enforce-authentication))
+
 (defroutes routes
-  (context "/annotation"   [] (-> annotation/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/card"         [] (-> card/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/dash"         [] (-> dash/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/emailreport"  [] (-> emailreport/routes auth/bind-current-user auth/enforce-authentication))
+  (context "/annotation"   [] (+auth annotation/routes))
+  (context "/card"         [] (+auth card/routes))
+  (context "/dash"         [] (+auth dash/routes))
+  (context "/emailreport"  [] (+auth emailreport/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
-  (context "/meta/dataset" [] (-> dataset/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/meta/db"      [] (-> db/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/meta/field"   [] (-> field/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/meta/table"   [] (-> table/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/org"          [] (-> org/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/qs"           [] (-> qs/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/query"        [] (-> query/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/result"       [] (-> result/routes auth/bind-current-user auth/enforce-authentication))
-  (context "/search"       [] (-> search/routes auth/bind-current-user auth/enforce-authentication))
+  (context "/meta/dataset" [] (+auth dataset/routes))
+  (context "/meta/db"      [] (+auth db/routes))
+  (context "/meta/field"   [] (+auth field/routes))
+  (context "/meta/table"   [] (+auth table/routes))
+  (context "/org"          [] (+auth org/routes))
+  (context "/qs"           [] (+auth qs/routes))
+  (context "/query"        [] (+auth query/routes))
+  (context "/result"       [] (+auth result/routes))
+  (context "/search"       [] (+auth search/routes))
   (context "/session"      [] session/routes)
-  (context "/user"         [] (-> user/routes auth/bind-current-user auth/enforce-authentication))
+  (context "/settings"     [] (+auth settings/routes))
+  (context "/user"         [] (+auth user/routes))
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404
                          :body (str (.toUpperCase (name request-method)) " " uri " is not yet implemented.")})))
