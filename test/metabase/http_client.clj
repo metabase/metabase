@@ -99,7 +99,8 @@
              clojure.walk/keywordize-keys
              auto-deserialize-dates)
          (catch Exception _
-           body))))
+           (if (clojure.string/blank? body) nil
+               body)))))
 
 (defn authenticate [{:keys [email password] :as credentials}]
   {:pre [(string? email)

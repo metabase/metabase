@@ -39,7 +39,7 @@
   []
   {:post [(map? %)]}
   (or (sel :one Database :name db-name)
-    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".h2.db"))) ; only create + populate the test DB file if needed
+    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
           (create-and-populate-tables))
         (log/info "Creating new metabase Database object...")
         (let [db (ins Database

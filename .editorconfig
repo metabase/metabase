@@ -1,0 +1,17 @@
+# corvus editor config settings
+# http://editorconfig.org/
+
+#use the top most editor config file
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[Makefile]
+indent_style = tab
+
+[*.css]
+indent_size = 2
