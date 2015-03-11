@@ -3,6 +3,6 @@
       {"include": {"file": "migrations/liquibase_0.1.0.json"}},
       {"include": {"file": "migrations/liquibase_0.5.0.json"}},
       {"include": {"file": "migrations/liquibase_0.6.0.json"}},
-      {"include": {"file": "migrations/004_settings.json"}}
+      {"include": {"file": "migrations/004_add_setting_table.json"}}
   ]
 }

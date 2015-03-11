@@ -11,29 +11,6 @@
                             "columns": [
                                 {
                                     "column": {
-                                        "name": "key",
-                                        "type": "varchar(254)",
-                                        "constraints": {
-                                            "primaryKey": true,
-                                            "nullable": false
-                                        }
-                                    }
-                                },
-                                {
-                                    "column": {
-                                        "name": "description",
-                                        "type": "varchar(254)"
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "createTable": {
-                            "tableName": "setting_value",
-                            "columns": [
-                                {
-                                    "column": {
                                         "name": "id",
                                         "type": "int",
                                         "autoIncrement": true,
@@ -50,7 +27,7 @@
                                         "constraints": {
                                             "nullable": false,
                                             "references": "core_organization(id)",
-                                            "foreignKeyName": "fk_setting_value_ref_organization_id",
+                                            "foreignKeyName": "fk_setting_ref_organization_id",
                                             "deferrable": false,
                                             "initiallyDeferred": false
                                         }
@@ -58,14 +35,10 @@
                                 },
                                 {
                                     "column": {
-                                        "name": "setting_key",
+                                        "name": "key",
                                         "type": "varchar(254)",
                                         "constraints": {
-                                            "nullable": false,
-                                            "references": "setting(key)",
-                                            "foreignKeyName": "fk_setting_value_ref_setting_key",
-                                            "deferrable": false,
-                                            "initiallyDeferred": false
+                                            "nullable": false
                                         }
                                     }
                                 },
@@ -83,15 +56,15 @@
                     },
                     {
                         "addUniqueConstraint": {
-                            "tableName": "setting_value",
-                            "constraintName": "idx_unique_setting_id_organization_id",
-                            "columnNames": "setting_key, organization_id"
+                            "tableName": "setting",
+                            "constraintName": "idx_setting_unique_key_organization_id",
+                            "columnNames": "key, organization_id"
                         }
                     },
                     {
                         "createIndex": {
-                            "tableName": "setting_value",
-                            "indexName": "idx_setting_value_organization_id",
+                            "tableName": "setting",
+                            "indexName": "idx_setting_organization_id",
                             "columns": [
                                 {
                                     "column": {
@@ -104,8 +77,8 @@
                     },
                     {
                         "createIndex": {
-                            "tableName": "setting_value",
-                            "indexName": "idx_setting_value_organization_id_setting_key",
+                            "tableName": "setting",
+                            "indexName": "idx_setting_organization_id_key",
                             "columns": [
                                 {
                                     "column": {
@@ -115,7 +88,7 @@
                                 },
                                 {
                                     "column": {
-                                        "name": "setting_key",
+                                        "name": "key",
                                         "type": "varchar(254)"
                                     }
                                 }
