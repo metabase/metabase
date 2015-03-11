@@ -78,7 +78,7 @@
         ;; Now perform the HTTP request
         {:keys [status body]} (try (request-fn url request-map)
                                    (catch clojure.lang.ExceptionInfo e
-                                     (log/info method-name url)
+                                     (log/debug method-name url)
                                      (-> (.getData ^clojure.lang.ExceptionInfo e)
                                          :object)))]
 
