@@ -68,6 +68,27 @@
       ;; Now perform the API request
       ((user->client :crowberto) :get 200 "org"))))
 
+
+;; ## POST /api/org
+;; Check that non-superusers can't create Orgs
+(expect "You don't have permissions to do that."
+  (let [org-name (random-name)]
+    ((user->client :rasta) :post 403 "org" {:name org-name
+                                            :slug org-name})))
+
+;; Check that superusers *can* create Orgs
+(let [org-name (random-name)]
+  (expect-eval-actual-first
+    (match-$ (sel :one Org :name org-name)
+      {:id $
+       :slug org-name
+       :name org-name
+       :description nil
+       :logo_url nil
+       :inherits false})
+    (create-org org-name)))
+
+
 ;; ## GET /api/org/:id
 (expect
     {:id @org-id
@@ -87,25 +108,6 @@
      :logo_url nil
      :inherits true}
   ((user->client :rasta) :get 200 (format "org/slug/%s" (:slug @test-org))))
-
-;; ## POST /api/org
-;; Check that non-superusers can't create Orgs
-(expect "You don't have permissions to do that."
-  (let [org-name (random-name)]
-    ((user->client :rasta) :post 403 "org" {:name org-name
-                                            :slug org-name})))
-
-;; Check that superusers *can* create Orgs
-(let [org-name (random-name)]
-  (expect-eval-actual-first
-      (match-$ (sel :one Org :name org-name)
-        {:id $
-         :slug org-name
-         :name org-name
-         :description nil
-         :logo_url nil
-         :inherits false})
-    (create-org org-name)))
 
 
 ;; # MEMBERS ENDPOINTS
