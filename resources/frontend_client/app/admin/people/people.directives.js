@@ -20,6 +20,7 @@ AdminPeopleDirectives.directive('cvAdminCreateUser', ['$modal', function ($modal
 
                     $scope.submit = function() {
                         $scope.newUser.orgId = organization.id;
+                        $scope.newUser.admin = false;
                         Organization.member_create($scope.newUser, function(result) {
                             CorvusFormService.submitSuccessCallback(formName, submitSuccessMessage);
                             if (callback) {
