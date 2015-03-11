@@ -22,7 +22,7 @@
 (expect-eval-actual-first
     [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)"}
      {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)"}]
-    (do (set-settings nil "FANCY" nil)
+    (do (set-settings nil "FANCY")
         (fetch-all-settings)))
 
 ;; Check that a non-admin can't read settings
@@ -42,13 +42,13 @@
 (expect-eval-actual-first
     ["NICE!"
      "NICE!"]
-  (do ((user->client :rasta) :put 200 "setting/test-setting-1" :org @org-id {:value "NICE!"})
+  (do ((user->client :rasta) :put 200 "setting/test-setting-1" {:value "NICE!"} :org @org-id)
       [(test-setting-1 @org-id)
        (fetch-setting :test-setting-1)]))
 
 ;; ## Check non-admin can't set a Setting
 (expect "You don't have permissions to do that."
-  ((user->client :lucky) :put 403 "setting/test-setting-1" :org @org-id {:value "NICE!"}))
+  ((user->client :lucky) :put 403 "setting/test-setting-1" {:value "NICE!"} :org @org-id))
 
 ;; ## DELETE /api/setting/:key
 (expect-eval-actual-first
