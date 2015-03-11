@@ -25,6 +25,6 @@
     "shelljs": "^0.2.6"
   },
   "scripts": {
-    "postinstall": "./node_modules/bower/bin/bower install --allow-root --config.interactive=false"
+    "postinstall": "./node_modules/bower/bin/bower install --allow-root --config.interactive=false && ./node_modules/gulp/bin/gulp.js build"
   }
 }
