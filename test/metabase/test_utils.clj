@@ -23,18 +23,10 @@
 (defn test-setup
   {:expectations-options :before-run}
   []
-  (set-test-logging-level)
+  ;; Disable debug logging since it clutters up our output
+  (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO)
   (setup-test-db)
   (start-jetty))
-
-
-;; ## Logging Setup
-
-(defn set-test-logging-level
-  "Disable debug logging since it clutters up our output."
-  []
-  (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO))
-
 
 ;; ## DB Setup
 ;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
