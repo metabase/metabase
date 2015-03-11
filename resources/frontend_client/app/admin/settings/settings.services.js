@@ -5,8 +5,9 @@ var SettingsAdminServices = angular.module('corvusadmin.settings.services', ['ng
 SettingsAdminServices.factory('SettingsAdminServices', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/settings', {}, {
         list: {
-            url: '/api/settings',
-            method: 'GET'
+            url: '/api/settings?org=:org',
+            method: 'GET',
+            isArray: true
         },
 
         // POST endpoint handles create + update in this case
@@ -16,7 +17,7 @@ SettingsAdminServices.factory('SettingsAdminServices', ['$resource', '$cookies',
         },
 
         delete: {
-            url: '/api/settings/:name',
+            url: '/api/settings/:key?org=:org',
             method: 'DELETE'
         }
     });

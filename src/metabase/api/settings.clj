@@ -5,19 +5,21 @@
             [metabase.models.setting :as settings]))
 
 ;; ## Get all settings + values
-(defendpoint GET "/" []
+(defendpoint GET "/" [org]
+  (require-params org)
   ;; TODO - need to do a permissions check here !
-  (settings/all))
+  (settings/all-with-descriptions org))
 
 ;; ## Create/update a setting
-(defendpoint POST "/" [:as {{:keys [name value]} :body}]
-  (require-params name value)
+(defendpoint POST "/" [:as {{:keys [org key value]} :body}]
+  (require-params key value org)
   ;; TODO - permissions check
-  (settings/set (keyword name) value))
+  (settings/set org (keyword key) value))
 
 ;; ## Delete a setting
-(defendpoint DELETE "/:name" [name]
-  (require-params name)
-  (settings/delete (keyword name)))
+(defendpoint DELETE "/:key" [key org]
+  (require-params key org)
+  ;; TODO - perms check
+  (settings/delete org (keyword key)))
 
 (define-routes)

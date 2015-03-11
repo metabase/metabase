@@ -3,33 +3,19 @@
     <table class="Table my2">
         <tr>
             <th>Name</th>
+            <th>Description</th>
             <th>Value</th>
         </tr>
-        <tr ng-repeat="setting in settingsList">
-            <td>{{setting.name}}</td>
+        <tr ng-repeat="setting in settings">
+            <td>{{setting.key}}</td>
+            <td>{{setting.description}}</td>
             <td>
                 <input class="input block full" type="text" ng-model="setting.value"></input>
             </td>
             <td>
                 <button class="Button" ng-click="saveSetting(setting)" ng-disabled="!setting.value || setting.value === setting.originalValue">Save</a>
-                <button class="mx2 Button" ng-click="deleteSetting(setting.name)">Delete</a>
-            </td>
-        </tr>
-        <!-- Empty forms for newSetting -->
-        <tr>
-            <td>
-                <input class="input block full" type="text" ng-model="newSetting.name"></input>
-            </td>
-            <td>
-                <input class="input block full" type="text" ng-model="newSetting.value"></input>
-            </td>
-            <td>
-                <button class="Button" ng-click="saveNewSetting()" ng-disabled="!newSetting.name || !newSetting.value || !settingNameIsValid(newSetting.name)">Save</a>
+                <button class="mx2 Button" ng-click="deleteSetting(setting)" ng-disabled="!setting.value">Clear</a>
             </td>
         </tr>
     </table>
-    <!-- Error message echo area -->
-    <div class="my1 text-error" ng-if="newSetting.name && !settingNameIsValid(newSetting.name)">
-        Setting name can only contain lowercase letters and "-".
-    </div>
 </div>

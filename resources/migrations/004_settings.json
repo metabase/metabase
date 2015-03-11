@@ -1,0 +1,129 @@
+{
+    "databaseChangeLog": [
+        {
+            "changeSet": {
+                "id": "4",
+                "author": "cammsaul",
+                "changes": [
+                    {
+                        "createTable": {
+                            "tableName": "setting",
+                            "columns": [
+                                {
+                                    "column": {
+                                        "name": "key",
+                                        "type": "varchar(254)",
+                                        "constraints": {
+                                            "primaryKey": true,
+                                            "nullable": false
+                                        }
+                                    }
+                                },
+                                {
+                                    "column": {
+                                        "name": "description",
+                                        "type": "varchar(254)"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "createTable": {
+                            "tableName": "setting_value",
+                            "columns": [
+                                {
+                                    "column": {
+                                        "name": "id",
+                                        "type": "int",
+                                        "autoIncrement": true,
+                                        "constraints": {
+                                            "primaryKey": true,
+                                            "nullable": false
+                                        }
+                                    }
+                                },
+                                {
+                                    "column": {
+                                        "name": "organization_id",
+                                        "type": "int",
+                                        "constraints": {
+                                            "nullable": false,
+                                            "references": "core_organization(id)",
+                                            "foreignKeyName": "fk_setting_value_ref_organization_id",
+                                            "deferrable": false,
+                                            "initiallyDeferred": false
+                                        }
+                                    }
+                                },
+                                {
+                                    "column": {
+                                        "name": "setting_key",
+                                        "type": "varchar(254)",
+                                        "constraints": {
+                                            "nullable": false,
+                                            "references": "setting(key)",
+                                            "foreignKeyName": "fk_setting_value_ref_setting_key",
+                                            "deferrable": false,
+                                            "initiallyDeferred": false
+                                        }
+                                    }
+                                },
+                                {
+                                    "column": {
+                                        "name": "value",
+                                        "type": "varchar(254)",
+                                        "constraints": {
+                                            "nullable": false
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "addUniqueConstraint": {
+                            "tableName": "setting_value",
+                            "constraintName": "idx_unique_setting_id_organization_id",
+                            "columnNames": "setting_key, organization_id"
+                        }
+                    },
+                    {
+                        "createIndex": {
+                            "tableName": "setting_value",
+                            "indexName": "idx_setting_value_organization_id",
+                            "columns": [
+                                {
+                                    "column": {
+                                        "name": "organization_id",
+                                        "type": "int"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "createIndex": {
+                            "tableName": "setting_value",
+                            "indexName": "idx_setting_value_organization_id_setting_key",
+                            "columns": [
+                                {
+                                    "column": {
+                                        "name": "organization_id",
+                                        "type": "int"
+                                    }
+                                },
+                                {
+                                    "column": {
+                                        "name": "setting_key",
+                                        "type": "varchar(254)"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

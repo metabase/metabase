@@ -5,71 +5,42 @@ var SettingsAdminControllers = angular.module('corvusadmin.settings.controllers'
 
 SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'SettingsAdminServices',
     function($scope, SettingsAdminServices) {
-        $scope.settingsList = [];
-        $scope.newSetting = {
-            name: null,
-            value: null
-        };
+        $scope.settings = [];
 
-        SettingsAdminServices.list(function(results) {
-            delete results.$resolved; // these keys come back as part of results
-            delete results.$promise; // remove them since they are not actually part of the results we want to show
+        $scope.$watch('currentOrg', function(org) {
+            if (!org) return;
 
-            $scope.settingsList = _.map(_.pairs(results), function(pair) {
-                return {
-                    name: pair[0],
-                    value: pair[1],
-                    originalValue: pair[1]
-                };
+            SettingsAdminServices.list({
+                org: org.id
+            }, function(results) {
+                $scope.settings = _.map(results, function(result) {
+                    result.originalValue = result.value;
+                    return result;
+                });
+            }, function(error) {
+                console.log("Error fetching settings list: ", error);
             });
-            console.log("SETTINGS:", $scope.settingsList);
-        }, function(error) {
-            console.log("Error fetching settings list: ", error);
         });
 
-        $scope.deleteSetting = function(name) {
+        $scope.saveSetting = function(setting) {
+            setting.org = $scope.currentOrg.id;
+            SettingsAdminServices.save(setting, function() {
+                setting.originalValue = setting.value;
+            }, function(error) {
+                console.log("Error saving setting: ", error);
+            });
+        };
+
+        $scope.deleteSetting = function(setting) {
             SettingsAdminServices.delete({
-                name: name
+                key: setting.key,
+                org: $scope.currentOrg.id
             }, function() {
-                $scope.settingsList = _.filter($scope.settingsList, function(setting) {
-                    return setting.name !== name;
-                });
+                setting.value = null;
+                setting.originalValue = null;
             }, function(error) {
                 console.log("Error deleting setting: ", error);
             });
         };
-
-        $scope.saveSetting = function(setting) {
-            SettingsAdminServices.save(setting, function() {
-                // update new value in settingsList
-                $scope.settingsList = _.map($scope.settingsList, function(s) {
-                    if (s.name == setting.name) {
-                        s.value = setting.value;
-                        s.originalValue = setting.value;
-                    }
-                    return s;
-                });
-            }, function(error) {
-                console.log("Error saving setting: ", error);
-            });
-        };
-
-        /// is settingName only lowercase letters or '-'?
-        $scope.settingNameIsValid = function(settingName) {
-            return !!(settingName.match(/^[a-z-]+$/));
-        };
-
-        $scope.saveNewSetting = function() {
-            SettingsAdminServices.save($scope.newSetting, function() {
-                $scope.newSetting.originalValue = $scope.newSetting.value;
-                $scope.settingsList.push($scope.newSetting);
-                $scope.newSetting = {
-                    name: null,
-                    value: null
-                };
-            }, function(error) {
-                console.log("Error saving setting: ", error);
-            })
-        }
     }
 ]);
