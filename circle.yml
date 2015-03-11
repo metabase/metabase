@@ -15,6 +15,10 @@ machine:
 dependencies:
   override:
     - pip install awscli==1.7.3
+test:
+  override:
+    - lein eastwood
+    - lein expectations
 deployment:
   production:
     branch: prd
