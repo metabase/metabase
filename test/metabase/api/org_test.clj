@@ -112,6 +112,9 @@
         my-org (create-org org-name)]
     ((user->client :rasta) :get 403 (format "org/%d" (:id my-org)))))
 
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :get 404 "org/1000"))
 
 ;; ## GET /api/org/slug/:slug
 (expect
@@ -128,6 +131,10 @@
   (let [org-name (random-name)
         my-org (create-org org-name)]
     ((user->client :rasta) :get 403 (format "org/slug/%s" (:slug my-org)))))
+
+;; Test that invalid org slug returns 404
+(expect "Not found."
+  ((user->client :rasta) :get 404 "org/slug/ksdlfkjdkfd"))
 
 
 ;; # MEMBERS ENDPOINTS
