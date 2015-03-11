@@ -106,6 +106,13 @@
      :inherits true}
   ((user->client :rasta) :get 200 (format "org/%d" @org-id)))
 
+;; Check that non-superusers can't access orgs they don't have permissions to
+(expect "You don't have permissions to do that."
+  (let [org-name (random-name)
+        my-org (create-org org-name)]
+    ((user->client :rasta) :get 403 (format "org/%d" (:id my-org)))))
+
+
 ;; ## GET /api/org/slug/:slug
 (expect
     {:id @org-id
@@ -115,6 +122,12 @@
      :logo_url nil
      :inherits true}
   ((user->client :rasta) :get 200 (format "org/slug/%s" (:slug @test-org))))
+
+;; Check that non-superusers can't access orgs they don't have permissions to
+(expect "You don't have permissions to do that."
+  (let [org-name (random-name)
+        my-org (create-org org-name)]
+    ((user->client :rasta) :get 403 (format "org/slug/%s" (:slug my-org)))))
 
 
 ;; # MEMBERS ENDPOINTS
