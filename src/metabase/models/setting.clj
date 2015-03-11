@@ -62,7 +62,8 @@
 
      (defsetting mandrill-api-key \"API key for Mandrill.\")
      (mandrill-api-key org-id)           ; get the value for Org
-     (mandrill-api-key org-id new-value) ; update the value for Org"
+     (mandrill-api-key org-id new-value) ; update the value for Org
+     (mandrill-api-key org-id nil)       ; delete the value for Org"
   [nm description]
   {:pre [(symbol? nm)
          (string? description)]}
@@ -72,14 +73,18 @@
          ([org-id#]
           (get org-id# ~setting-key))
          ([org-id# value#]
-          (set org-id# ~setting-key value#)))
+          (if-not value#
+            (delete org-id# ~setting-key)
+            (set org-id# ~setting-key value#))))
        (alter-meta! #'~nm assoc :is-setting? true))))
 
 
 ;; ## ALL SETTINGS (ETC)
 
 (defn all
-  "Return all `Settings` for `Org`."
+  "Return a map of all `Settings` for `Org`.
+
+    (all org-id) -> {:mandrill-api-key ...}"
   [org-id]
   {:pre [(integer? org-id)]}
   (restore-cache-if-needed)
@@ -113,7 +118,7 @@
 (def ^:private cached-setting-values
   (atom nil))
 
-(defentity ^:private Setting
+(defentity Setting
   (table :setting))
 
 (defn- settings-list
