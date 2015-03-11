@@ -7,23 +7,41 @@
                       [db :refer :all]
                       [test-data :refer :all])))
 
+(declare set-test-logging-level
+         setup-test-db
+         start-jetty)
 
-;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
-
-;; ## DB Setup
-;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
-;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
+;; # SETTINGS
 
 ;; Don't run unit tests whenever JVM shuts down
 ;; it's pretty annoying to have our DB reset all the time
 (expectations/disable-run-on-shutdown)
 
-;; Disable debug logging since it clutters up our output
-(.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO)
+
+;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
+
+(defn test-setup
+  {:expectations-options :before-run}
+  []
+  (set-test-logging-level)
+  (setup-test-db)
+  (start-jetty))
+
+
+;; ## Logging Setup
+
+(defn set-test-logging-level
+  "Disable debug logging since it clutters up our output."
+  []
+  (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO))
+
+
+;; ## DB Setup
+;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
+;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
 
 (defn setup-test-db
-  "setup database schema"
-  {:expectations-options :before-run}
+  "Setup database schema."
   []
   (let [filename (-> (re-find #"file:(\w+\.db).*" (db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
     (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
@@ -54,7 +72,6 @@
 
 (defn start-jetty
   "Start the Jetty web server."
-  {:expectations-options :before-run}
   []
   (log/info "STARTING THE JETTY SERVER...")
   @jetty-instance)
