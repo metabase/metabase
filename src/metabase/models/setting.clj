@@ -130,7 +130,7 @@
     (reset! cached-setting-values (->> (sel :many Setting)
                                        (map (fn [{k :key v :value}]
                                               {(keyword k) v}))
-                                       (reduce merge {})))))
+                                       (into {})))))
 
 (def ^:private cached-setting-values
   (atom nil))

@@ -35,7 +35,7 @@
                                                               :id [in field-ids])     ; Fetch names of fields from `fields` clause
                                                          (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
                                                                 {id (keyword name)}))
-                                                         (reduce merge {}))]
+                                                         (into {}))]
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
                           keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
@@ -52,7 +52,7 @@
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                          ; build map of column-name -> column
                             {name (select-keys column [:id :table_id :name :description :base_type :special_type])}))
-                     (apply merge {}))]
+                     (into {}))]
     (->> column-names
          (map (fn [column-name]
                 (or (columns column-name)                             ; try to get matching column from the map we build earlier
