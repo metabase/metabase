@@ -4,6 +4,34 @@
             [korma.core :refer :all :exclude [delete]]
             [metabase.db :refer [sel del]]))
 
+;; Settings are a fast + simple way to create an Org-specific setting that can be
+;; set from the admin page. They are saved to the Database, but intelligently
+;; cached internally for super-fast lookups.
+;;
+;; Define a new Setting with `defsetting`:
+;;
+;;    (defsetting mandrill-api-key "API key for Mandrill")
+;;
+;; The setting and docstr will then be auto-magically accessible from the admin page.
+;;
+;; The var created with `defsetting` can be used as a getter/setter, or you can
+;; use `get`/`set`/`delete`:
+;;
+;;     (require '[metabase.models.setting :as setting])
+;;
+;;     (setting/get org-id :mandrill-api-key)
+;;     (mandrill-api-key org-id)
+;;
+;;     (setting/set org-id :mandrill-api-key "MY NEW API KEY")
+;;     (mandrill-api-key org-id "MY NEW API KEY")
+;;
+;;     (setting/delete org-id :mandrill-api-key)
+;;     (mandrill-api-key org-id nil)
+;;
+;; Get a map of all Settings for an Org:
+;;
+;;    (setting/all org-id)
+
 (declare Setting
          cached-setting-values
          restore-cache-if-needed
@@ -96,7 +124,7 @@
        (reduce merge {})))
 
 (defn all-with-descriptions
-  "Return a combined list of all `Settings` and values for `Org`, if they exist."
+  "Return a combined list of all `Settings` (including description) and values for `Org`, if they exist."
   [org-id]
   (let [settings-for-org (all org-id)]
     (->> (settings-list)

@@ -15,13 +15,18 @@
 
 ;; ## HELPER FUNCTIONS
 
-(defn fetch-setting
+(defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
   (sel :one :field [Setting :value] :key (name setting-name) :organization_id @org-id))
 
 (defn setting-exists? [setting-name]
   (exists? Setting :key (name setting-name) :organization_id @org-id))
+
+(defn set-settings [setting-1-value setting-2-value setting-3-value]
+  (test-setting-1 @org-id setting-1-value)
+  (test-setting-2 @org-id setting-2-value)
+  (test-setting-3 @org-id setting-3-value))
 
 
 ;; ## GETTERS
@@ -43,7 +48,7 @@
   [(test-setting-2 @org-id)
    (do (test-setting-2 @org-id "FANCY NEW VALUE <3")
        (test-setting-2 @org-id))
-   (fetch-setting :test-setting-2)])
+   (db-fetch-setting :test-setting-2)])
 
 ;; Test `set` function
 (expect-eval-actual-first
@@ -53,7 +58,7 @@
   [(test-setting-3 @org-id)
    (do (setting/set @org-id :test-setting-3 "WHAT A NICE VALUE <3")
        (test-setting-3 @org-id))
-   (fetch-setting :test-setting-3)])
+   (db-fetch-setting :test-setting-3)])
 
 
 ;; ## DELETE
@@ -87,11 +92,9 @@
 
 ;; all
 (expect-eval-actual-first
-    {:test-setting-1 "GREAT!"
-     :test-setting-2 "TOUCANS"}
-  (do (test-setting-1 @org-id nil)
-      (test-setting-2 @org-id "GREAT!")
-      (test-setting-3 @org-id "TOUCANS")
+    {:test-setting-2 "BIRDS<3"
+     :test-setting-3 "TOUCANS"}
+  (do (set-settings nil "BIRDS<3" "TOUCANS")
       (m/filter-keys #(re-find #"^test-setting-\d$" (name %)) ; filter out any non-test settings
                      (setting/all @org-id))))
 
@@ -100,9 +103,7 @@
     [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)"}
      {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)"}
      {:key :test-setting-3, :value "S3", :description "Test setting - this only shows up in dev (3)"}]
-  (do (test-setting-1 @org-id nil)
-      (test-setting-2 @org-id "S2")
-      (test-setting-3 @org-id "S3")
+  (do (set-settings nil "S2" "S3")
       (filter (fn [{k :key}]
                 (re-find #"^test-setting-\d$" (name k)))
               (setting/all-with-descriptions @org-id))))
