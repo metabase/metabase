@@ -65,9 +65,9 @@
    (let [request-map (cond-> {:accept :json
                               :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
                                                                                    credentials))}}
-                       http-body (assoc
-                                  :content-type :json
-                                  :body (cheshire/generate-string http-body)))
+                       (not (empty? http-body)) (assoc
+                                                 :content-type :json
+                                                 :body (cheshire/generate-string http-body)))
         request-fn (case method
                      :get  client/get
                      :post client/post
