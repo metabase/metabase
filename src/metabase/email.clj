@@ -20,16 +20,15 @@
 
 ;; ## PUBLIC INTERFACE
 
-(defn send-message [org-id subject recipients message-type message & {:as kwargs}]
-  {:pre [(integer? org-id)
-         (string? subject)
+(defn send-message [subject recipients message-type message & {:as kwargs}]
+  {:pre [(string? subject)
          (map? recipients)
          (contains? #{:text :html} message-type)
          (string? message)]}
-  (medley/mapply api-post-messages-send org-id (merge {:subject subject
-                                                       :to (format-recipients recipients)
-                                                       message-type message}
-                                                      kwargs)))
+  (medley/mapply api-post-messages-send (merge {:subject subject
+                                                :to (format-recipients recipients)
+                                                message-type message}
+                                               kwargs)))
 
 ;; ## IMPLEMENTATION
 
@@ -40,9 +39,9 @@
 (defn- api-post
   "Make a `POST` call to the Mandrill API.
 
-    (api-post org-id \"messages/send\" :body { ... })"
-  [org-id endpoint & {:keys [body] :as request-map
-                      :or {body {}}}]
+    (api-post \"messages/send\" :body { ... })"
+  [endpoint & {:keys [body] :as request-map
+               :or {body {}}}]
   {:pre [(string? endpoint)]}
   (if-not (mandrill-api-key)
     (log/warn "Cannot send email: no Mandrill API key!")
@@ -56,10 +55,10 @@
 
 (defn- api-post-messages-send
   "Make a `POST messages/send` call to the Mandrill API."
-  [org-id & {:as kwargs}]
+  [& {:as kwargs}]
   (let [defaults {:from_email (message-sender :email)
                   :from_name (message-sender :name)}]
-    (= (:status (api-post org-id "messages/send"
+    (= (:status (api-post "messages/send"
                           :body {:message (merge defaults kwargs)}))
        200)))
 
