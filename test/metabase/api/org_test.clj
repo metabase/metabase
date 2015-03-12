@@ -30,7 +30,7 @@
 ;; authentication test on every single individual endpoint
 
 (expect (get auth/response-unauthentic :body) (http/client :get 401 "org"))
-(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "org/%d" (:id @test-org))))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "org/%d" @org-id)))
 
 
 ;; # GENERAL ORG ENDPOINTS
@@ -47,7 +47,7 @@
       :inherits true}]
     (do
       ;; Delete all the random test Orgs we've created
-      (cascade-delete Org :id [not= (:id @test-org)])
+      (cascade-delete Org :id [not= @org-id])
       ;; Create a random Org so we ensure there is an Org that should NOT show up in our list
       (create-org org-name)
       ;; Now perform the API request
@@ -188,62 +188,62 @@
 
 ;; ## GET /api/org/:id/members
 (expect
-    #{(match-$ (user->org-perm :crowberto)
-        {:id $
-         :admin true
-         :user_id (user->id :crowberto)
-         :organization_id @org-id
-         :user (match-$ (fetch-user :crowberto)
-                 {:common_name "Crowberto Corv"
-                  :date_joined $
-                  :last_name "Corv"
-                  :id $
-                  :is_superuser true
-                  :last_login $
-                  :first_name "Crowberto"
-                  :email "crowberto@metabase.com"})})
-      (match-$ (user->org-perm :trashbird)
-        {:id $
-         :admin false
-         :user_id (user->id :trashbird)
-         :organization_id @org-id
-         :user (match-$ (fetch-user :trashbird)
-                 {:common_name "Trash Bird"
-                  :date_joined $
-                  :last_name "Bird"
-                  :id $
-                  :is_superuser false
-                  :last_login $
-                  :first_name "Trash"
-                  :email "trashbird@metabase.com"})})
-      (match-$ (user->org-perm :lucky)
-        {:id $
-         :admin false
-         :user_id (user->id :lucky)
-         :organization_id @org-id
-         :user (match-$ (fetch-user :lucky)
-                 {:common_name "Lucky Pigeon"
-                  :date_joined $
-                  :last_name "Pigeon"
-                  :id $
-                  :is_superuser false
-                  :last_login $
-                  :first_name "Lucky"
-                  :email "lucky@metabase.com"})})
-      (match-$ (user->org-perm :rasta)
-        {:id $
-         :admin true
-         :user_id (user->id :rasta)
-         :organization_id @org-id
-         :user (match-$ (fetch-user :rasta)
-                 {:common_name "Rasta Toucan"
-                  :date_joined $
-                  :last_name "Toucan"
-                  :id $
-                  :is_superuser false
-                  :last_login $
-                  :first_name "Rasta"
-                  :email "rasta@metabase.com"})})}
+  #{(match-$ (user->org-perm :crowberto)
+      {:id $
+       :admin true
+       :user_id (user->id :crowberto)
+       :organization_id @org-id
+       :user (match-$ (fetch-user :crowberto)
+               {:common_name "Crowberto Corv"
+                :date_joined $
+                :last_name "Corv"
+                :id $
+                :is_superuser true
+                :last_login $
+                :first_name "Crowberto"
+                :email "crowberto@metabase.com"})})
+    (match-$ (user->org-perm :trashbird)
+      {:id $
+       :admin false
+       :user_id (user->id :trashbird)
+       :organization_id @org-id
+       :user (match-$ (fetch-user :trashbird)
+               {:common_name "Trash Bird"
+                :date_joined $
+                :last_name "Bird"
+                :id $
+                :is_superuser false
+                :last_login $
+                :first_name "Trash"
+                :email "trashbird@metabase.com"})})
+    (match-$ (user->org-perm :lucky)
+      {:id $
+       :admin false
+       :user_id (user->id :lucky)
+       :organization_id @org-id
+       :user (match-$ (fetch-user :lucky)
+               {:common_name "Lucky Pigeon"
+                :date_joined $
+                :last_name "Pigeon"
+                :id $
+                :is_superuser false
+                :last_login $
+                :first_name "Lucky"
+                :email "lucky@metabase.com"})})
+    (match-$ (user->org-perm :rasta)
+      {:id $
+       :admin true
+       :user_id (user->id :rasta)
+       :organization_id @org-id
+       :user (match-$ (fetch-user :rasta)
+               {:common_name "Rasta Toucan"
+                :date_joined $
+                :last_name "Toucan"
+                :id $
+                :is_superuser false
+                :last_login $
+                :first_name "Rasta"
+                :email "rasta@metabase.com"})})}
   (set ((user->client :rasta) :get 200 (format "org/%d/members" @org-id))))
 
 ;; Check that users without any org perms cannot list members
@@ -294,20 +294,44 @@
 
 ;; Test input validations on org member create
 (expect "Invalid Request."
-  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {}))
+  ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {}))
 
 (expect "Invalid Request."
-  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"}))
+  ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"}))
 
 (expect "Invalid Request."
-  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"
+  ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
                                                                                   :last_name "anything"}))
 
 ;; this should fail due to invalid formatted email address
 (expect "Invalid Request."
-  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"
+  ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
                                                                                   :last_name "anything"
                                                                                   :email "anything"}))
+
+;; Check that users without any org perms cannot modify members
+(expect "You don't have permissions to do that."
+  (let [{:keys [id]} (create-org (random-name))]
+    ((user->client :rasta) :post 403 (format "org/%d/members" id) {:first_name "anything"
+                                                                   :last_name "anything"
+                                                                   :email "anything@anything.com"})))
+
+;; Check that users without WRITE org perms cannot modify members (test user with READ perms on org)
+(expect "You don't have permissions to do that."
+  (let [{user-id :id, email :email, password :first_name} (create-user)
+        {org-id :id} (create-org (random-name))
+        my-perm (create-org-perm org-id user-id :admin false)
+        session-id (http/authenticate {:email email
+                                       :password password})]
+    (http/client session-id :post 403 (format "org/%d/members" org-id) {:first_name "anything"
+                                                                        :last_name "anything"
+                                                                        :email "anything@anything.com"})))
+
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :post 404 "org/1000/members" {:first_name "anything"
+                                                       :last_name "anything"
+                                                       :email "anything@anything.com"}))
 
 ; must have write-perms
 ; existing user vs. new user
