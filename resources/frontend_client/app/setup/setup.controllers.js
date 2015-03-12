@@ -111,7 +111,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             }
 
             // Validate the connection string
-            Metabase.validate_connection(database, function(result){
+            Metabase.validate_connection($scope.connection, function(result){
                 if(newConnection) {
                     Metabase.db_create(database, success, error);
                 } else {
