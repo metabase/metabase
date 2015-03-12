@@ -1234,6 +1234,8 @@ CardControllers.controller('CardDetailNew', [
         */
         var MAX_DIMENSIONS = 2;
 
+        window.scope = $scope
+
         $scope.$watch('currentOrg', function (org) {
             // we need org always, so we just won't do anything if we don't have one
             if(org) {
@@ -1380,8 +1382,14 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.inform();
                     },
                     updateFilter: function (value, filterIndex, listIndex) {
-                        var filterListIndex = listIndex || 0;
-                        $scope.model.card.dataset_query.query.filter[filterListIndex][filterIndex] = value;
+                        var filters = $scope.model.card.dataset_query.query.filter,
+                            filterListIndex = listIndex || 0;
+
+                        console.log(filters)
+                        console.log(arguments)
+                        // check to see if we need to add another item for
+
+                        filters[filterListIndex][filterIndex] = value;
                         $scope.model.inform();
                     },
                     removeFilter: function (index) {
@@ -1391,15 +1399,30 @@ CardControllers.controller('CardDetailNew', [
                     addFilter: function () {
                         var filter = $scope.model.card.dataset_query.query.filter;
                         if(filter[0] == 'AND') {
-                            filter.push([null, null, null]);
+                            pushFilterTemplate()
                             $scope.model.inform();
                         } else if (filter.length > 0) {
                             // TODO - this may be not quite right
                             filter.unshift('AND');
+                            pushFilterTemplate()
                             $scope.model.inform();
                         } else {
-                            filter.push([null, null, null]);
+                            pushFilterTemplate()
                             $scope.model.inform();
+                        }
+
+                        function pushFilterTemplate() {
+                            // push an array template with null values for the basic indexes of
+                            // filters that will eventually take the form of...
+                            /*
+                                [
+                                    clause -<string> e.g. "=", "<", "BETWEEN"
+                                    fieldId: <int> e.g. 22
+                                    value: <string>
+                                    value2: <string>
+                                ]
+                            */
+                            filter.push([null, null, null])
                         }
                     },
                     save: function (settings) {
@@ -1426,6 +1449,7 @@ CardControllers.controller('CardDetailNew', [
                         var filters = dataset_query.query.filter,
                             cleanFilters = [];
                         // in instances where there's only one filter, the api expects just one array with the values
+                        debugger;
                         if(typeof(filters[0]) == 'object' && filters[0] != 'AND') {
                             for(var filter in filters[0]) {
                                 cleanFilters.push(filters[0][filter]);

@@ -413,10 +413,18 @@ var DateFilter = React.createClass({
     displayName: 'DateFilter',
     render: function () {
         // our date will either be provided or we'll need to set up a new one
-        var date = this.props.date || moment()
+        var date
+
+        if(this.props.date) {
+            console.log(typeof(this.props.date))
+            date = moment(this.props.date)
+        } else {
+            date = moment()
+        }
+
         return (
             <DatePicker
-                dateFormat="YYYY/MM/DD"
+                dateFormat="YYYY-MM-DD"
                 selected={date}
                 onChange={this.props.onChange}
             />
@@ -674,7 +682,12 @@ var FilterWidget = React.createClass({
                         valueHtml = (
                             <DateFilter
                                 date={this.props.value}
-                                onChange={function (date) {this.props.updateFilter(date, 2) }.bind(this)}
+                                onChange={
+                                    function (date) {
+                                        console.log('date to be sent to model', date)
+                                        this.props.updateFilter(date.format('YYYY-MM-DD'), 2)
+                                    }.bind(this)
+                                }
                             />
                         )
                         break;
