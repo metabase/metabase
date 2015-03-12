@@ -1,0 +1,22 @@
+.Grid {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+}
+
+/* grid cells are used to create columns */
+.Grid-cell {
+    flex: 1;
+}
+
+.Grid--gutters {
+  margin: -1em 0 0 -1em;
+}
+.Grid--gutters > .Grid-cell {
+  padding: 1em 0 0 1em;
+}
+
+.Grid--1of4 > .Grid-cell {
+    flex: 0 0 25%;
+}

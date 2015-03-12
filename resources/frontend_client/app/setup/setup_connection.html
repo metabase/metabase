@@ -1,0 +1,42 @@
+<section class="SetupSubNav">
+    <div class="SetupWrapper">
+        <div class="SetupBreadcrumbs">
+            <ul>
+                <li class="inline-block text-grey-3"><a class="Breadcrumb" href="/setup/data">Your data</a></li>
+                <li class="Breadcrumb-separator inline-block mx2"></li>
+                <li class="inline-block text-brand">{{breadcrumb}}</li>
+            </ul>
+        </div>
+    </div>
+</section>
+<section class="SetupOffset">
+    <div class="SetupWrapper">
+<div class="AdminContent AdminContent-shallow">
+    <div class="p4">
+        <div>
+            <label class="Connection-label">Database name</label>
+            <input class="Connection-input" type="text" placeholder="What do you want to call this data in Metabase?" ng-model="connection.dbname" autofocus>
+            <label class="Connection-label">Database type</label>
+            <ul class="border-bottom mb2">
+                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)">
+                    {{engine}}
+                </li>
+            </ul>
+            <div ng-show="connection.engine != undefined">
+                <label class="Connection-label">Host</label>
+                <input class="Connection-input" type="text" placeholder="Database Host" ng-model="connection.host">
+                <label class="Connection-label">Database port</label>
+                <input class="Connection-input" type="text" placeholder="Port" ng-model="connection.port">
+                <label class="Connection-label">Database username</label>
+                <input class="Connection-input" type="text" placeholder="Username" ng-model="connection.user">
+                <label class="Connection-label">Database password</label>
+                <input class="Connection-input" type="password" placeholder="Password" ng-model="connection.password">
+            </div>
+        </div>
+    </div>
+    <div class="p3 border-top clearfix">
+        <button class="Button Button--primary float-right" ng-click="submit()">Connect</button>
+        <a class="Button" href="/setup/data">Cancel</a>
+    </div>
+</div>
+</section>

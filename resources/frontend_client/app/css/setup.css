@@ -1,0 +1,176 @@
+.Setup {
+    background: #FBFCFD;
+    height: 100%:
+}
+
+.SetupNav {
+    font-size: 0.85em;
+}
+
+.SetupWrapper {
+    max-width: 80%;
+    margin: 0 auto;
+}
+
+.SetupOffset {
+    margin-top: -2em;
+}
+
+.SetupStage {
+    border-top: 1px solid #E8E8E9;
+}
+
+.SetupFooter {
+    color: #DBDBDB;
+    font-size: 0.85em;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+}
+
+.SetupNav-item {
+    font-size: 1em;
+    display: inline-block;
+    text-decoration: none;
+    margin: 0 4em;
+}
+
+.SetupNav-item.complete {
+    color: #A8C28E;
+}
+
+.SetupNav-item a {
+    text-decoration: none;
+}
+
+.SetupBreadcrumbs {
+    font-size: 1.2em;
+    font-weight: 200;
+    display: flex;
+    align-items: flex-start;
+}
+
+.SetupSubNav {
+    background: #fff;
+    padding: 1.2em 0 4em;
+    border-bottom: 1px solid #ddd;
+}
+
+.SetupNav {
+    background: #fff;
+    color: #686868;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .SetupWrapper {
+        max-width: 100em;
+    }
+}
+
+.Connections {
+    margin-top: 2em;
+}
+
+
+.Connection-engine {
+    padding: 1em 0;
+    border-bottom: 1px solid red;
+    display: inline-block;
+}
+
+.Connection-type {
+    border: 1px solid #ddd;
+    padding: 1em;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    background: #fff;
+    display: block;
+    text-decoration: none;
+}
+
+.Connection-typeNew {
+    border-style: dashed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.Connection-name {
+    padding: 4em;
+    text-align: center;
+    display: block;
+}
+
+.Connection-type:hover {
+    border-color: var(--brand-color);
+    cursor: pointer;
+}
+
+.Connection-typeDisabled {
+    opacity: 0.4;
+}
+
+.Connection-success {
+    color: #A8C28E;
+    border: 1px solid #A8C28E;
+    border-radius: 99px;
+    width: 2em;
+    height: 2em;
+    float: right;
+}
+
+.Connection-input {
+    font-size: 1em;
+    display: block;
+    border: none;
+    padding: 0.85em 0 0.85em 0;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 1em;
+    min-width: 22em;
+}
+
+.Connection-label {
+    font-size: 0.85em;
+    margin-bottom: 1em;
+    color: #999;
+}
+
+.Connection-input:focus {
+    outline: none;
+    border-bottom-color: red;
+}
+
+.AdminContent {
+    border: 1px solid #D7D7D7;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    max-width: 50em;
+    margin: 0 auto;
+}
+
+.SetupBar {
+    background: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #ddd;
+    padding: 1em 0;
+    text-align: center;
+}
+
+.Breadcrumb-separator {
+    width: 1.4em;
+    height: 1.4em;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0,0, .12);
+    border-radius: 99px;
+    display: flex;
+}
+
+.Breadcrumb {
+    text-decoration: none;
+}

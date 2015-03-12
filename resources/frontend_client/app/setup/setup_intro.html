@@ -1,0 +1,30 @@
+<section class="SetupSubNav">
+    <div class="SetupWrapper">
+        <div class="SetupBreadcrumbs hidden">
+            <ul>
+                <li class="inline-block text-grey-3"><a class="Breadcrumb" href="/setup/team">Team</a></li>
+            </ul>
+        </div>
+    </div>
+</section>
+<section class="SetupOffset">
+    <div class="AdminContent AdminContent-shallow text-centered">
+        <h1>Welcome to Metabase</h1>
+        <p>Let's get you connected to your data and invite your team.</p>
+        <div>
+            <input class="Connection-input text-centered inline-block"
+                type="text"
+                placeholder="What's your company or organization called?"
+                ng-model="userOrgName"
+                autofocus
+             />
+
+            <div class="py4">
+                <cv-step-button
+                    ng-click="setOrgName(userOrgName)">
+                </cv-step-button>
+            </div>
+        </div>
+        <div>{{error}}</div>
+    </div>
+</section>
