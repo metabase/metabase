@@ -31,14 +31,6 @@
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
 
-
-
-
-
-
-
-{{:body {}} :body}
-
 ;Stub function that will eventually validate a connection string
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
   (require-params host port)
