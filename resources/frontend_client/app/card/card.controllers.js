@@ -1234,8 +1234,6 @@ CardControllers.controller('CardDetailNew', [
         */
         var MAX_DIMENSIONS = 2;
 
-        window.scope = $scope
-
         $scope.$watch('currentOrg', function (org) {
             // we need org always, so we just won't do anything if we don't have one
             if(org) {
