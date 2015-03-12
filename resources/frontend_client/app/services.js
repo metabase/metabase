@@ -92,18 +92,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 return deferred.promise;
             },
 
-            switchOrg: function (org_slug) {
-                console.log('swtiching to...', org_slug)
-                Organization.get_by_slug({
-                    'slug':  org_slug
-                }, function(org) {
-                    service.model.currentOrg = org;
-                    $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                }, function(error) {
-                    console.log('error getting current org', error);
-                });
-            },
-
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
@@ -139,6 +127,18 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     // we must already have the user, so carry on
                     service.routeChangedImpl(event);
                 }
+            },
+
+            switchOrg: function (org_slug) {
+                console.log('swtiching to...', org_slug)
+                Organization.get_by_slug({
+                    'slug':  org_slug
+                }, function(org) {
+                    service.model.currentOrg = org;
+                    $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
+                }, function(error) {
+                    console.log('error getting current org', error);
+                });
             },
 
             routeChangedImpl: function(event) {
@@ -182,15 +182,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     if (service.model.currentOrgSlug != $routeParams.orgSlug) {
                         // we just navigated to a new organization
-                        Organization.get_by_slug({
-                            'slug': $routeParams.orgSlug
-                        }, function(org) {
-                            service.model.currentOrg = org;
-                            $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                        }, function(error) {
-                            console.log('error getting current org', error);
-                        });
-
+                        this.switchOrg($routeParams.orgSlug)
                         service.model.currentOrgSlug = $routeParams.orgSlug;
                         service.setCurrentOrgCookie(service.model.currentOrgSlug);
                     }
@@ -727,6 +719,15 @@ CoreServices.factory('Organization', ['$resource', '$cookies', function($resourc
             url: '/api/org/',
             method: 'GET',
             isArray: true
+        },
+        create: {
+            url: '/api/org',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': function() {
+                    return $cookies.csrftoken;
+                }
+            },
         },
         get: {
             url: '/api/org/:orgId',
