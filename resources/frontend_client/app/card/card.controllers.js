@@ -1234,6 +1234,8 @@ CardControllers.controller('CardDetailNew', [
         */
         var MAX_DIMENSIONS = 2;
 
+        window.scope = $scope
+
         $scope.$watch('currentOrg', function (org) {
             // we need org always, so we just won't do anything if we don't have one
             if(org) {
@@ -1244,20 +1246,33 @@ CardControllers.controller('CardDetailNew', [
                             'orgId': org.id
                         }, function(dbs) {
                             $scope.model.database_list = dbs;
-                            // if there's only one DB auto-select it
-                            if (dbs.length === 1) {
-                                $scope.model.setDatabase(dbs[0].id);
-                            } else {
-                                $scope.model.inform();
-                            }
+                            // set the database to the first db, the user will be able to change it
+                            // TODO be smarter about this and use the most recent or popular db
+                            $scope.model.setDatabase(dbs[0].id);
                         }, function(error) {
                             console.log('error getting database list', error);
                         });
                     },
                     setDatabase: function (databaseId) {
-                        $scope.model.card.dataset_query.database = databaseId;
-                        $scope.model.getTables(databaseId);
-                        $scope.model.inform();
+                        // check if this is the same db or not
+                        if(databaseId != $scope.model.card.dataset_query.database) {
+                            $scope.model.resetQuery();
+                            $scope.model.card.dataset_query.database = databaseId;
+                            $scope.model.getTables(databaseId);
+                            $scope.model.inform();
+                        } else {
+                            return false
+                        }
+                    },
+                    resetQuery: function () {
+                        $scope.model.card.dataset_query = {
+                            type: "query",
+                            query: {
+                                aggregation: [null],
+                                breakout: [],
+                                filter: []
+                            }
+                        }
                     },
                     getTableFields: function(tableId) {
                         Metabase.table_query_metadata({
