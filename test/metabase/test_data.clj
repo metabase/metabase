@@ -167,7 +167,7 @@
   (->> [:users :venues :checkins :categories]
        (map (fn [table-kw]
               {table-kw (f table-kw)}))
-       (reduce merge {})))
+       (into {})))
 
 (def
   ^{:doc "A map of Table name keywords -> Table IDs.
@@ -201,7 +201,7 @@
                                      (integer? id)
                                      (not (zero? id))]}
                               {(keyword (.toLowerCase name)) id}))
-                       (reduce merge {}))))))
+                       (into {}))))))
 
 ;; ## Users
 

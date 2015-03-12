@@ -23,7 +23,7 @@
                          (map (fn [[k v]]
                                 {k (if (= v '$) `(~k ~source##)
                                        v)}))
-                         (reduce merge {}))]
+                         (into {}))]
     `(let [~source## ~source-obj]
        ~(clojure.walk/prewalk (partial $->prop source##)
                               dest-object))))

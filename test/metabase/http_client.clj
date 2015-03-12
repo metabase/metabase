@@ -146,5 +146,5 @@
                                     {k (if (contains? auto-deserialize-dates-keys k)
                                          (deserialize-date v)
                                          (auto-deserialize-dates v))}))
-                             (reduce merge {}))
+                             (into {}))
         :else response))
