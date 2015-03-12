@@ -127,6 +127,8 @@
       user->token (fn [user]
                     (or (@tokens user)
                         (let [token (http/authenticate (user->credentials user))]
+                          (when-not token
+                            (throw (Exception. (format "Authentication failed for %s with credentials %s" user (user->credentials user)))))
                           (swap! tokens assoc user token)
                           token)))]
   (defn user->client

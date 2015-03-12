@@ -50,7 +50,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :name)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -63,7 +63,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :id)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -93,7 +93,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $
@@ -106,7 +106,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $
