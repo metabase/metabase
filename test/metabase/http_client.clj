@@ -2,7 +2,7 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as cheshire]
-            [clj-http.client :as client]
+            [clj-http.lite.client :as client]
             [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
@@ -62,11 +62,12 @@
          (or (nil? url-param-kwargs)
              (map? url-param-kwargs))]}
 
-  (let [request-map {:content-type :json
-                     :accept :json
-                     :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
-                                                                          credentials))}
-                     :body (cheshire/generate-string http-body)}
+   (let [request-map (cond-> {:accept :json
+                              :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
+                                                                                   credentials))}}
+                       (not (empty? http-body)) (assoc
+                                                 :content-type :json
+                                                 :body (cheshire/generate-string http-body)))
         request-fn (case method
                      :get  client/get
                      :post client/post
