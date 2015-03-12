@@ -1449,12 +1449,11 @@ CardControllers.controller('CardDetailNew', [
                         var filters = dataset_query.query.filter,
                             cleanFilters = [];
                         // in instances where there's only one filter, the api expects just one array with the values
-                        debugger;
                         if(typeof(filters[0]) == 'object' && filters[0] != 'AND') {
                             for(var filter in filters[0]) {
                                 cleanFilters.push(filters[0][filter]);
                             }
-                            dataset_query.filter = cleanFilters;
+                            dataset_query.query.filter = cleanFilters;
                         }
                         // reset to initial state of filters if we've removed 'em all
                         if(filters.length == 1 && filters[0] == 'AND') {
