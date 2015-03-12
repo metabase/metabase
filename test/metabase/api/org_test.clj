@@ -266,6 +266,34 @@
      (do (create-org-perm org-id user-id)
          (org-perm-exists?))]))
 
+;; Check that users without any org perms cannot modify members
+(expect "You don't have permissions to do that."
+  (let [{:keys [id]} (create-org (random-name))]
+    ((user->client :rasta) :post 403 (format "org/%d/members/1000" id) {})))
+
+;; Check that users without WRITE org perms cannot modify members (test user with READ perms on org)
+(expect "You don't have permissions to do that."
+  (let [{user-id :id, email :email, password :first_name} (create-user)
+        {org-id :id} (create-org (random-name))
+        my-perm (create-org-perm org-id user-id :admin false)
+        session-id (http/authenticate {:email email
+                                       :password password})]
+    (http/client session-id :post 403 (format "org/%d/members/1000" org-id) {})))
+
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :post 404 "org/1000/members/1000"))
+
+;; Test that invalid user id returns 404
+(expect "Not found."
+  (let [{user-id :id, email :email, password :first_name} (create-user)
+        {org-id :id} (create-org (random-name))
+        my-perm (create-org-perm org-id user-id :admin true)
+        session-id (http/authenticate {:email email
+                                       :password password})]
+    (http/client session-id :post 404 (format "org/%d/members/1000" org-id) {})))
+
+
 ;; ## DELETE /api/org/:id/members/:user-id
 ;; Check we can delete OrgPerms between a User + Org
 (expect [false
