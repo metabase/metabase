@@ -3,9 +3,11 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes POST DELETE]]
+            [hiccup.core :refer [html]]
             [korma.core :as korma]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.email :as email]
             (metabase.models [user :refer [User set-user-password]]
                              [session :refer [Session]])))
 
@@ -30,14 +32,24 @@
 
 
 ;; forgotten password reset email
-(defendpoint POST "/forgot_password" [:as {{:keys [email] :as body} :body}]
+(defendpoint POST "/forgot_password" [:as {{:keys [email]} :body, {:strs [origin]} :headers}]
+  ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
+  ;; (Currently, there's no other way to get this info)
+  ;;
+  ;; This is a bit sketchy. Someone malicious could send a bad origin header and hit this endpoint to send
+  ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
+  ;; what you could phish from them since they already forgot their password.
   (require-params email)
-  (let [user-id (sel :one :id User :email email)
-        reset-token (java.util.UUID/randomUUID)]
+  (let [{user-id :id user-name :common_name} (sel :one User :email email)
+        reset-token (java.util.UUID/randomUUID)
+        password-reset-url (str origin "/auth/reset_password/" reset-token)]
     (check-404 user-id)
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-    ;; TODO - send email
-    (log/info (str "/auth/reset_password/" reset-token))))
+    (email/send-message "Metabase Password Reset" {email user-name}
+                        :html (html [:p "Hey, " user-name ", sorry you forgot your password :'(."]
+                                    [:p [:a {:href password-reset-url} "Click here to reset it!"]]
+                                    [:p "<3"]))
+    (log/info password-reset-url)))
 
 
 ;; set password from reset token

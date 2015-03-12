@@ -11,7 +11,7 @@
 
 ;; ## Helper fns
 (defn post-card [card-name]
-  ((user->client :rasta) :post 200 "card" {:organization (:id @test-org)
+  ((user->client :rasta) :post 200 "card" {:organization @org-id
                                            :name card-name
                                            :public_perms 0
                                            :can_read true
@@ -31,7 +31,7 @@
 (let [card-name (random-name)]
   (expect-eval-actual-first (match-$ (sel :one Card :name card-name)
                               {:description nil
-                               :organization_id (:id @test-org)
+                               :organization_id @org-id
                                :name card-name
                                :creator_id (user->id :rasta)
                                :updated_at $
@@ -41,7 +41,7 @@
                                                        :aggregation ["count"]
                                                        :breakout [nil]
                                                        :limit nil}
-                                               :database (:id @test-org)}
+                                               :database @org-id}
                                :id $
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
@@ -57,14 +57,14 @@
         {:description nil
          :can_read true
          :can_write true
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :name card-name
          :organization {:inherits true
                         :logo_url nil
                         :description nil
                         :name "Test Organization"
                         :slug "test"
-                        :id (:id @test-org)}
+                        :id @org-id}
          :creator_id (user->id :rasta)
          :updated_at $
          :dataset_query {:type "query"

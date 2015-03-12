@@ -9,7 +9,7 @@
 ;; HELPER FNS
 
 (defn create-db [db-name]
-  ((user->client :rasta) :post 200 "meta/db" {:org (:id @test-org)
+  ((user->client :rasta) :post 200 "meta/db" {:org @org-id
                                               :engine :postgres
                                               :name db-name
                                               :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}}))
@@ -42,14 +42,14 @@
        :id $
        :details $
        :updated_at $
-       :organization {:id (:id @test-org)
+       :organization {:id @org-id
                       :slug "test"
                       :name "Test Organization"
                       :description nil
                       :logo_url nil
                       :inherits true}
        :name "Test Database"
-       :organization_id (:id @test-org)
+       :organization_id @org-id
        :description nil})
   ((user->client :rasta) :get 200 (format "meta/db/%d" (:id @test-db))))
 
@@ -64,7 +64,7 @@
          :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
          :updated_at $
          :name db-name
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :description nil})
     (create-db db-name)))
 
@@ -115,14 +115,14 @@
           :id $
           :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
           :updated_at $
-          :organization {:id (:id @test-org)
+          :organization {:id @org-id
                          :slug "test"
                          :name "Test Organization"
                          :description nil
                          :logo_url nil
                          :inherits true}
           :name $
-          :organization_id (:id @test-org)
+          :organization_id @org-id
           :description nil})
        (match-$ @test-db
          {:created_at $
@@ -130,22 +130,22 @@
           :id $
           :details $
           :updated_at $
-          :organization {:id (:id @test-org)
+          :organization {:id @org-id
                          :slug "test"
                          :name "Test Organization"
                          :description nil
                          :logo_url nil
                          :inherits true}
           :name "Test Database"
-          :organization_id (:id @test-org)
+          :organization_id @org-id
           :description nil})]
     (do
       ;; Delete all the randomly created Databases we've made so far
-      (cascade-delete Database :organization_id (:id @test-org) :id [not= (:id @test-db)])
+      (cascade-delete Database :organization_id @org-id :id [not= (:id @test-db)])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
-      ((user->client :rasta) :get 200 "meta/db" :org (:id @test-org)))))
+      ((user->client :rasta) :get 200 "meta/db" :org @org-id))))
 
 
 ;; # DB TABLES ENDPOINTS

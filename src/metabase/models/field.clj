@@ -80,7 +80,7 @@
                   :updated_at (util/new-sql-timestamp)
                   :active true
                   :preview_display true
-                  :field_type :dimension
+                  :field_type :info
                   :position 0}]
     (let [{:keys [field_type base_type special_type] :as field} (merge defaults field)]
       (assoc field

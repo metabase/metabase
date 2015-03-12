@@ -2,8 +2,8 @@
   "Functions relating to using the test data, Database, Organization, and Users."
   (:require [cemerick.friend.credentials :as creds]
             [medley.core :as medley]
-            [metabase.db :refer :all]
-            [metabase.http-client :as http]
+            (metabase [db :refer :all]
+                      [http-client :as http])
             (metabase.models [field :refer [Field]]
                              [org-perm :refer [OrgPerm]]
                              [table :refer [Table]]
@@ -45,7 +45,7 @@
 
 (def test-db
   "The test `Database` object."
-  (delay (setup-db :auto-migrate true)
+  (delay (setup-db-if-needed :auto-migrate true)
          (load/test-db)))
 
 (def db-id
@@ -79,7 +79,7 @@
 
 (def test-org
   "The test Organization."
-  (delay (setup-db :auto-migrate true)
+  (delay (setup-db-if-needed :auto-migrate true)
          (load/test-org)))
 
 (def org-id
@@ -127,6 +127,8 @@
       user->token (fn [user]
                     (or (@tokens user)
                         (let [token (http/authenticate (user->credentials user))]
+                          (when-not token
+                            (throw (Exception. (format "Authentication failed for %s with credentials %s" user (user->credentials user)))))
                           (swap! tokens assoc user token)
                           token)))]
   (defn user->client
@@ -150,7 +152,7 @@
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
   [username]
   {:pre [(contains? usernames username)]}
-  (sel :one OrgPerm :organization_id (:id @test-org) :user_id (user->id username)))
+  (sel :one OrgPerm :organization_id @org-id :user_id (user->id username)))
 
 
 ;; # INTERNAL
@@ -167,7 +169,7 @@
   (->> [:users :venues :checkins :categories]
        (map (fn [table-kw]
               {table-kw (f table-kw)}))
-       (reduce merge {})))
+       (into {})))
 
 (def
   ^{:doc "A map of Table name keywords -> Table IDs.
@@ -201,7 +203,7 @@
                                      (integer? id)
                                      (not (zero? id))]}
                               {(keyword (.toLowerCase name)) id}))
-                       (reduce merge {}))))))
+                       (into {}))))))
 
 ;; ## Users
 

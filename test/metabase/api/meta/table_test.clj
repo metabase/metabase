@@ -29,7 +29,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "VENUES"
        :rows 100
@@ -50,7 +50,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :name)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -63,7 +63,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :id)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -82,7 +82,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "CATEGORIES"
        :fields [(match-$ (sel :one Field :id (field->id :categories :name))
@@ -93,7 +93,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $
@@ -106,7 +106,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $

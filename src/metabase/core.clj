@@ -7,6 +7,7 @@
             (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
+            [metabase.models.user :refer [User]]
             [metabase.routes :as routes]
             [metabase.util :as util]
             [ring.adapter.jetty :as ring-jetty]
@@ -44,8 +45,9 @@
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
   ;; this is a temporary need until we finalize the code for bootstrapping the first user
-  (when-not (db/exists? metabase.models.user/User :id 1)
-    (db/ins metabase.models.user/User :email "admin@admin.com" :first_name "admin" :last_name "admin" :password "admin" :is_superuser true))
+  (when-not (or (db/exists? User :id 1)
+                (db/exists? User :email "admin@admin.com")) ; possible for User 1 to have been deleted
+    (db/ins User :email "admin@admin.com" :first_name "admin" :last_name "admin" :password "admin" :is_superuser true))
 
   (log/info "Metabase Initialization COMPLETE")
   true)

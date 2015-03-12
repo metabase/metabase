@@ -81,7 +81,7 @@
         objs (->> (sel :many entity :id [in ids])
                   (map (fn [obj]
                          {(:id obj) obj}))
-                  (reduce merge {}))]
+                  (into {}))]
     (->> results
          (map (fn [result]
                 (let [source-id (result source-key)

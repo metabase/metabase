@@ -50,7 +50,7 @@
         table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
                             (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name
                                    {id name}))
-                            (apply merge {}))
+                            (into {}))
         matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
                              (filter (fn [^String table-name]
                                        (= prefix (.substring table-name 0 prefix-len))))

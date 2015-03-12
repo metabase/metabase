@@ -18,7 +18,7 @@
     "angular-cookie": "4.0.6",
     "jquery": "2.1.1",
     "angular-animate": "1.2.26",
-    "underscore": "1.7.0",
+    "underscore": "1.8.2",
     "angularytics": "0.3.0",
     "angular-gridster": "git://github.com/psalami/angular-gridster.git#v0.10.8.4",
     "angular-http-auth": "1.2.1",

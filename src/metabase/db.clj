@@ -18,7 +18,7 @@
   []
   (let [db-file-name (config/config-str :mb-db-file)
         db-file (clojure.java.io/file db-file-name)
-        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"] ; see http://h2database.com/html/features.html for explanation of optionss
+        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"] ; see http://h2database.com/html/features.html for explanation of options
     (if (.isAbsolute db-file)
       ;; when an absolute path is given for the db file then don't mess with it
       (str "file:" db-file-name options)
@@ -31,13 +31,13 @@
   []
   (case (config/config-kw :mb-db-type)
     :h2 {:subprotocol "h2"
-         :classname "org.h2.Driver"
+         :classname   "org.h2.Driver"
          :subname     (db-file)}
     :postgres {:subprotocol "postgresql"
                :classname "org.postgresql.Driver"
                :subname (str "//" (config/config-str :mb-db-host)
-                          ":" (config/config-str :mb-db-port)
-                          "/" (config/config-str :mb-db-dbname))
+                             ":" (config/config-str :mb-db-port)
+                             "/" (config/config-str :mb-db-dbname))
                :user (config/config-str :mb-db-user)
                :password (config/config-str :mb-db-pass)}))
 
@@ -58,8 +58,8 @@
 
 (defn test-db-conn
   "Simple test of a JDBC connection."
-  [jdbc-conn]
-  (let [result (first (jdbc/query jdbc-conn ["select 7 as num"] :row-fn :num))]
+  [jdbc-db]
+  (let [result (first (jdbc/query jdbc-db ["select 7 as num"] :row-fn :num))]
     (assert (= 7 result) "JDBC Connection Test FAILED")))
 
 
@@ -73,11 +73,15 @@
       :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
 
 
+(def ^:private setup-db-has-been-called?
+  (atom false))
+
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [auto-migrate]
       :or {auto-migrate true}}]
+  (reset! setup-db-has-been-called? true)
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
     ;; Test DB connection and throw exception if we have any troubles connecting
@@ -99,6 +103,10 @@
     (log/info "Database Migrations Current ... CHECK")
     ;; Establish our 'default' Korma DB Connection
     (default-connection (create-db korma-db))))
+
+(defn setup-db-if-needed [& args]
+  (when-not @setup-db-has-been-called?
+    (apply setup-db args)))
 
 
 ;;; # UTILITY FUNCTIONS
@@ -268,7 +276,7 @@
 
     (exists? User :id 100)"
   [entity & {:as kwargs}]
-  `(not (empty? (select ~entity
+  `(not (empty? (select (entity->korma ~entity)
                         (fields [:id])
                         (where ~kwargs)
                         (limit 1)))))
