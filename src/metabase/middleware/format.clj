@@ -21,8 +21,8 @@
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."
   [m]
-  (filter-vals #(and (not (fn? %))
-                     (not (delay? %)))
+  (filter-vals #(not (or (delay? %)
+                         (fn? %)))
                m))
 
 (defn- clob? [obj]
@@ -31,7 +31,7 @@
 (defn- -format-response [obj]
   (cond
     (map? obj)  (->> (remove-fns-and-delays obj)   ; recurse over all vals in the map
-                    (map-vals -format-response))
+                     (map-vals -format-response))
     (coll? obj) (map -format-response obj)        ; recurse over all items in the collection
     (clob? obj) (util/jdbc-clob->str obj)
     :else       obj))
