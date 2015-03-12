@@ -102,7 +102,6 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                     conn_str: buildConnectionString($scope.connection)
                 }
             };
-
             function success (result) {
                 $location.path('/setup/data')
             }
@@ -111,13 +110,22 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                 console.log('error', error)
             }
 
-            if(newConnection) {
-                Metabase.db_create(database, success, error);
-            } else {
-                // add the id since we're updating
-                database.id = $scope.database.id
-                Metabase.db_update(database, success, error);
-            }
+            // Validate the connection string
+            Metabase.validate_connection(database, function(result){
+                if(newConnection) {
+                    Metabase.db_create(database, success, error);
+                } else {
+                    // add the id since we're updating
+                    database.id = $scope.database.id
+                    Metabase.db_update(database, success, error);
+                }
+                
+            }, function(error){
+                console.log(error);
+                alert("Invalid Connection String - " + error.data.message);
+
+            })
+
         }
 }])
 

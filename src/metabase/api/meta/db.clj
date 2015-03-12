@@ -30,6 +30,13 @@
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
 
+;Stub function that will eventually validate a connection string
+(defendpoint POST "/validate" []
+    (if (= (rand-int 2) 1)
+        {:status 200 :body {:valid true}} 
+        (let [error-message (rand-nth ["Host not reachable" "Invalid Port" "Invalid User or Password"])]
+          {:status 400 :body {:valid false :message error-message}} )))
+
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
@@ -71,5 +78,6 @@
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
            (sync/sync-tables db))
   {:status :ok})
+
 
 (define-routes)
