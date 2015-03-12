@@ -409,6 +409,21 @@ var SelectionModule = React.createClass({
     }
 })
 
+var DateFilter = React.createClass({
+    displayName: 'DateFilter',
+    render: function () {
+        // our date will either be provided or we'll need to set up a new one
+        var date = this.props.date || moment()
+        return (
+            <DatePicker
+                dateFormat="YYYY/MM/DD"
+                selected={date}
+                onChange={this.props.onChange}
+            />
+        )
+    }
+})
+
 var QueryPicker = React.createClass({
     render: function () {
 
@@ -613,8 +628,10 @@ var FilterWidget = React.createClass({
         var style = {
             fill: '#ddd'
         }
+
         if(this.props.valueFields) {
             if(this.props.valueFields.values) {
+                console.log(this.props.valueFields.values)
                 // do some fixing up of the values so we can display true / false safely
                 var values = this.props.valueFields.values.map(function(value) {
                     var safeValues = {}
@@ -638,9 +655,34 @@ var FilterWidget = React.createClass({
                     />
                 )
             } else {
-                valueHtml = (
-                    <input className="input" type="text" defaultValue={this.props.value} onChange={this._updateTextFilterValue.bind(null, this.props.index)} ref="textFilterValue" placeholder="What value?" />
-                )
+                // react to the type of the valueFields object
+                console.log('val', this.props.valueFields.type)
+                switch(this.props.valueFields.type) {
+                    case 'text':
+                        valueHtml = (
+                            <input
+                                className="input"
+                                type="text"
+                                defaultValue={this.props.value}
+                                onChange={this._updateTextFilterValue.bind(null, this.props.index)}
+                                ref="textFilterValue"
+                                placeholder="What value?"
+                            />
+                        );
+                        break;
+                    case 'date':
+                        valueHtml = (
+                            <DateFilter
+                                date={this.props.value}
+                                onChange={function (date) {this.props.updateFilter(date, 2) }.bind(this)}
+                            />
+                        )
+                        break;
+                    default:
+                        valueHtml = (
+                            <span>DEFAULT</span>
+                        )
+                }
             }
         }
 
