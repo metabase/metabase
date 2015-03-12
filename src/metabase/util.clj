@@ -158,17 +158,17 @@
   [hostname port]
   (try
     (let [sock-addr (InetSocketAddress. hostname port)
-        timeout 5000]
-     (with-open [sock (Socket.)]
-       (. sock connect sock-addr timeout)
-       true))
-     (catch Exception _ false)))
+          timeout 5000]
+      (with-open [sock (Socket.)]
+        (. sock connect sock-addr timeout)
+        true))
+    (catch Exception _ false)))
 
 (defn host-up? 
   "Returns true if the host given by hostname is reachable, false otherwise "
   [hostname]
   (try 
     (let [host-addr (. InetAddress getByName hostname)
-        timeout 5000]
+          timeout 5000]
       (. host-addr isReachable timeout))
-      (catch Exception _ false)))
+    (catch Exception _ false)))
