@@ -64,7 +64,7 @@
 (defmethod apply-form :aggregation [[_ value]]
   (match value
     ["rows"]  nil                                  ; don't need to do anything special for `rows` - `select` selects all rows by default
-    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation
+    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation (?)
     [_ _]     (let [[ag-type field-id] value       ; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
                     field (field-id->kw field-id)]
                 (match (keyword ag-type)
@@ -78,11 +78,13 @@
 ;; ex.
 ;;
 ;;     [1412 1413]
-(defmethod apply-form :breakout [[_ field-ids]]      ; TODO - not yet implemented
-  (when-not (= field-ids [nil])                      ; `:breakout [nil]` is considered a valid 'empty' form
-    (let [field-names (map field-id->kw field-ids)]
-      `[(group ~@field-names)
-        (fields ~@field-names)])))
+(defmethod apply-form :breakout [[_ field-ids]]
+  (match field-ids
+    []    nil ; empty clause
+    [nil] nil ; empty clause
+    _     (let [field-names (map field-id->kw field-ids)]
+            `[(group ~@field-names)
+              (fields ~@field-names)])))
 
 ;; ### `:fields`
 ;; ex.
@@ -120,6 +122,7 @@
   (match filter-clause
     nil                  nil ; empty clause
     [nil nil]            nil ; empty clause
+    []                   nil ; empty clause
     ["AND" & subclauses] `(where (~'and ~@(map filter-subclause->predicate
                                                subclauses)))
     ["OR" & subclauses]  `(where (~'or  ~@(map filter-subclause->predicate
