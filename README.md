@@ -1,5 +1,18 @@
 [![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
+## Updating this Fork
+
+1. Checkout this repo locally `git clone ...`
+2. Make sure you are on local master branch `git checkout master`
+3. (one time only) Add the parent repo as a remote `git remote add upstream https://github.com/metabase/metabase-init.git`
+4. (one time only) Double check your new remote is there `git remote -v` and you should see upstream in the list
+5. Fetch all the changes on the upstream repo `git fetch upstream`
+6. Merge the upstream master branch into your local master branch.  `git merge upstream/master` (remember, you should be in local master branch)
+7. Always a good time to pause and doublecheck that the merge was sane and everything is as you expect.  Run tests, etc.
+8. Push your local master back to its origin.  `git push origin master`
+9. Deployment will then kick off automatically.
+
+
 ## Install Prerequisites
 
 1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
