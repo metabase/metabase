@@ -1,7 +1,6 @@
 (ns metabase.models.org-perm
   (:require [korma.core :refer :all]
-            [metabase.db :refer :all]
-            [metabase.models.org :refer [Org]]))
+            [metabase.db :refer :all]))
 
 
 (defentity OrgPerm
@@ -10,7 +9,7 @@
 
 (defmethod post-select OrgPerm [_ {:keys [organization_id user_id] :as org-perm}]
   (assoc org-perm
-         :organization (delay (sel :one Org :id organization_id))
+         :organization (delay (sel :one 'metabase.models.org/Org :id organization_id))
          :user         (delay (sel :one 'metabase.models.user/User :id user_id))))
 
 
