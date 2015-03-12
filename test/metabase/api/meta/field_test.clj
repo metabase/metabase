@@ -39,7 +39,7 @@
        :updated_at $
        :active true
        :id (field->id :users :name)
-       :field_type "dimension"
+       :field_type "info"
        :position 0
        :preview_display true
        :created_at $
@@ -64,7 +64,7 @@
        :updated_at $
        :active true
        :id $
-       :field_type "dimension"
+       :field_type "info"
        :position 0
        :preview_display true
        :created_at $
