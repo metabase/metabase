@@ -39,8 +39,8 @@
                  [ring/ring-jetty-adapter "1.3.2"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.3.1"]                             ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :plugins [[lein-environ "0.5.0"]                                    ; easy access to environment variables
-            [lein-ring "0.8.10"]]                                     ; start the HTTP server with 'lein ring server'
+  :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
+            [lein-ring "0.9.2"]]                                      ; start the HTTP server with 'lein ring server'
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
@@ -57,9 +57,9 @@
                                   [ring/ring-mock "0.2.0"]]
                    :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]     ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
-                             [lein-ancient "0.6.4"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
-                             [lein-expectations "0.0.7"]              ; run unit tests with 'lein expectations'
-                             [lein-marginalia "LATEST"]]              ; generate documentation with 'lein marg'
+                             [lein-ancient "0.6.5"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+                             [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
+                             [lein-marginalia "0.8.0"]]               ; generate documentation with 'lein marg'
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
