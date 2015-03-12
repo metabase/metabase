@@ -4,7 +4,8 @@
             [metabase.http-client :as http]
             [metabase.middleware.auth :as auth]
             (metabase.models [org :refer [Org]]
-                             [org-perm :refer [OrgPerm]])
+                             [org-perm :refer [OrgPerm]]
+                             [user :refer [User]])
             [metabase.test-data :refer :all]
             [metabase.test-data.create :refer [create-user]]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
@@ -253,6 +254,64 @@
 ;; Test that invalid org id returns 404
 (expect "Not found."
   ((user->client :rasta) :get 404 "org/1000/members"))
+
+
+;; ## POST /api/org/:id/members
+;; Check that we can create a new User w/ OrgPerm
+(let [test-org-name (random-name)
+      user-to-create (random-name)]
+  (expect-eval-actual-first
+    (let [{my-user-id :id, :as my-user} (sel :one User :first_name user-to-create)
+          {my-org-id :id} (sel :one Org :name test-org-name)]
+      (match-$ (first (sel :many OrgPerm :user_id my-user-id))
+        {:id $,
+         :admin false,
+         :user_id my-user-id,
+         :organization_id my-org-id,
+         :organization {:id my-org-id,
+                        :slug test-org-name,
+                        :name test-org-name,
+                        :description nil,
+                        :logo_url nil,
+                        :inherits false},
+         :user {:common_name (:common_name my-user),
+                :date_joined (:date_joined my-user),
+                :last_name user-to-create,
+                :id my-user-id,
+                :is_superuser false,
+                :last_login (:last_login my-user),
+                :first_name user-to-create,
+                :email (:email my-user)}}))
+    (let [{user-id :id, email :email, password :first_name} (create-user)
+          {org-id :id} (create-org test-org-name)
+          my-perm (create-org-perm org-id user-id :admin true)
+          session-id (http/authenticate {:email email
+                                         :password password})]
+      (http/client session-id :post 200 (format "org/%d/members" org-id) {:first_name user-to-create
+                                                                          :last_name user-to-create
+                                                                          :email (str user-to-create "@metabase.com")
+                                                                          :admin false}))))
+
+;; Test input validations on org member create
+(expect "Invalid Request."
+  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {}))
+
+(expect "Invalid Request."
+  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"}))
+
+(expect "Invalid Request."
+  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"
+                                                                                  :last_name "anything"}))
+
+;; this should fail due to invalid formatted email address
+(expect "Invalid Request."
+  ((user->client :crowberto) :post 400 (format "org/%d/members" (:id @test-org)) {:first_name "anything"
+                                                                                  :last_name "anything"
+                                                                                  :email "anything"}))
+
+; must have write-perms
+; existing user vs. new user
+; expect OrgPerm response
 
 
 ;; ## POST /api/org/:id/members/:user-id
