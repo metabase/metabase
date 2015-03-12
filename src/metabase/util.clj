@@ -1,10 +1,13 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [medley.core :refer :all]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            [medley.core :refer :all]
             [clj-time.format :as time]
             [clj-time.coerce :as coerce]))
-
+  (import '(java.lang Exception)
+           '(java.net Socket)
+           '(java.net InetSocketAddress)
+           '(java.net InetAddress))
 
 (defn contains-many? [m & ks]
   (every? true? (map #(contains? m %) ks)))
@@ -151,14 +154,6 @@
     (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (clojure.string/lower-case v)))))
 
-
-(import '(java.io IOException)
-        '(java.net Socket)
-        '(java.net InetSocketAddress)
-        '(java.net InetAddress)
-        '(java.net SocketTimeoutException)
-        '(java.net UnknownHostException))
-
 (defn host-port-up? [hostname port]
   (log/debug "in host-port-up?" hostname port)
   (let [sock-addr (InetSocketAddress. hostname port)
@@ -167,15 +162,11 @@
      (with-open [sock (Socket.)]
        (. sock connect sock-addr timeout)
        true)
-     (catch IOException e false)
-     (catch SocketTimeoutException e false)
-     (catch UnknownHostException e false))))
+     (catch Exception _ false))))
 
 (defn host-up? [hostname]
   (let [host-addr (. InetAddress getByName hostname)
         timeout 5000]
     (try 
       (. host-addr isReachable timeout)
-      (catch IOException e false)
-      (catch SocketTimeoutException e false)
-      (catch UnknownHostException e false))))
+      (catch Exception _ false))))
