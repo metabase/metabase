@@ -36,8 +36,8 @@
                    {:name "Read & Write", :id 2}]}
   (do
     @test-db                                                                             ; force lazy creation of test data / Metabase DB if it doesn't already exist
-    (cascade-delete Database :organization_id (:id @test-org) :id [not= (:id @test-db)]) ; delete any other rando test DBs made by other tests
-    ((user->client :rasta) :get 200 "query/form_input" :org (:id @test-org))))
+    (cascade-delete Database :organization_id @org-id :id [not= (:id @test-db)]) ; delete any other rando test DBs made by other tests
+    ((user->client :rasta) :get 200 "query/form_input" :org @org-id)))
 
 ;; ## POST /api/query (create)
 ;; Check that we can save a Query
@@ -76,7 +76,7 @@
                     :details $
                     :updated_at $
                     :name "Test Database"
-                    :organization_id (:id @test-org)
+                    :organization_id @org-id
                     :description nil})
        :creator (match-$ (fetch-user :rasta)
                   {:common_name "Rasta Toucan"
@@ -204,7 +204,7 @@
                 :details $
                 :updated_at $
                 :name "Test Database"
-                :organization_id (:id @test-org)
+                :organization_id @org-id
                 :description nil})]
       [(match-$ query-1
          {:creator rasta
@@ -237,7 +237,7 @@
   (do (cascade-delete Query :database_id (:id @test-db))
       (create-query)
       (create-query)
-      ((user->client :rasta) :get 200 "query" :org (:id @test-org))))
+      ((user->client :rasta) :get 200 "query" :org @org-id)))
 
 
 ;; ## POST /api/query/:id/csv

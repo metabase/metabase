@@ -24,7 +24,7 @@
                         :details $
                         :updated_at $
                         :name "Test Database"
-                        :organization_id (:id @test-org)
+                        :organization_id @org-id
                         :description nil})
                  :name "USERS"
                  :rows 15

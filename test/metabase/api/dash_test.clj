@@ -17,7 +17,7 @@
 ;; ## Helper Fns
 (defn create-dash [dash-name]
   ((user->client :rasta) :post 200 "dash" {:name dash-name
-                                           :organization (:id @test-org)
+                                           :organization @org-id
                                            :public_perms 0}))
 
 ;; ## POST /api/dash
@@ -46,7 +46,7 @@
       :creator (-> (sel :one User :id (user->id :rasta))
                    (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
       :can_write true
-      :organization_id (:id @test-org)
+      :organization_id @org-id
       :name $
       :organization (-> @test-org
                         (select-keys [:inherits :logo_url :description :name :slug :id]))
@@ -103,7 +103,7 @@
                     {:description nil
                      :creator (-> (sel :one User :id (user->id :rasta))
                                   (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
-                     :organization_id (:id @test-org)
+                     :organization_id @org-id
                      :name $
                      :creator_id (user->id :rasta)
                      :updated_at $
