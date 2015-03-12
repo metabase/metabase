@@ -264,23 +264,23 @@
     (let [{my-user-id :id, :as my-user} (sel :one User :first_name user-to-create)
           {my-org-id :id} (sel :one Org :name test-org-name)]
       (match-$ (first (sel :many OrgPerm :user_id my-user-id))
-        {:id $,
-         :admin false,
-         :user_id my-user-id,
-         :organization_id my-org-id,
-         :organization {:id my-org-id,
-                        :slug test-org-name,
-                        :name test-org-name,
-                        :description nil,
-                        :logo_url nil,
-                        :inherits false},
-         :user {:common_name (:common_name my-user),
-                :date_joined (:date_joined my-user),
-                :last_name user-to-create,
-                :id my-user-id,
-                :is_superuser false,
-                :last_login (:last_login my-user),
-                :first_name user-to-create,
+        {:id $
+         :admin false
+         :user_id my-user-id
+         :organization_id my-org-id
+         :organization {:id my-org-id
+                        :slug test-org-name
+                        :name test-org-name
+                        :description nil
+                        :logo_url nil
+                        :inherits false}
+         :user {:common_name (:common_name my-user)
+                :date_joined (:date_joined my-user)
+                :last_name user-to-create
+                :id my-user-id
+                :is_superuser false
+                :last_login (:last_login my-user)
+                :first_name user-to-create
                 :email (:email my-user)}}))
     (let [{user-id :id, email :email, password :first_name} (create-user)
           {org-id :id} (create-org test-org-name)
@@ -291,6 +291,23 @@
                                                                           :last_name user-to-create
                                                                           :email (str user-to-create "@metabase.com")
                                                                           :admin false}))))
+
+;; Check that we can add an Existing User to an Org (so we are NOT creating a new user account)
+(let [test-org-name (random-name)]
+  (expect-eval-actual-first
+    (let [{my-org-id :id} (sel :one Org :name test-org-name)]
+      (match-$ (first (sel :many OrgPerm :organization_id my-org-id))
+        {:id $
+         :admin true
+         :user_id $
+         :organization_id my-org-id}))
+    (let [{email :email} (create-user)
+          {org-id :id} (create-org test-org-name)]
+      (-> ((user->client :crowberto) :post 200 (format "org/%d/members" org-id) {:first_name "anything"
+                                                                                 :last_name "anything"
+                                                                                 :email email
+                                                                                 :admin true})
+        (select-keys [:id :admin :user_id :organization_id])))))
 
 ;; Test input validations on org member create
 (expect "Invalid Request."
@@ -332,10 +349,6 @@
   ((user->client :rasta) :post 404 "org/1000/members" {:first_name "anything"
                                                        :last_name "anything"
                                                        :email "anything@anything.com"}))
-
-; must have write-perms
-; existing user vs. new user
-; expect OrgPerm response
 
 
 ;; ## POST /api/org/:id/members/:user-id
