@@ -72,7 +72,7 @@ You'll be walked through the steps to get started.
 
     lein ancient
 
-Will give you a list of out-of-date plugins and dependencies. (Once's this repo is made public, this Clojars badge will work and show the status as well:)
+Will give you a list of out-of-date plugins and dependencies. This requires leiningen version 2.4.0 or higher so run `lein upgrade` first if needed. Once's this repo is made public, this Clojars badge will work and show the status as well:
 
 [![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
 
