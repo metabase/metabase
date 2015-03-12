@@ -34,7 +34,7 @@
                                      :sun true}
                       :time_of_day "morning"
                       :timezone ""}
-           :organization (:id @test-org)}
+           :organization @org-id}
           kwargs)))
 
 ;; ## GET /api/emailreport/form_input
@@ -74,7 +74,7 @@
    :permissions [{:name "None",         :id 0}
                  {:name "Read Only",    :id 1}
                  {:name "Read & Write", :id 2}]}
-  (-> ((user->client :rasta) :get 200 "emailreport/form_input" :org (:id @test-org)) ; convert to a set so test doesn't fail if order differs
+  (-> ((user->client :rasta) :get 200 "emailreport/form_input" :org @org-id) ; convert to a set so test doesn't fail if order differs
         (update-in [:users] set)))
 
 
@@ -92,7 +92,7 @@
                                  :sun true}
                   :timezone ""
                   :time_of_day "morning"}
-       :organization_id (:id @test-org)
+       :organization_id @org-id
        :name "My Cool Email Report"
        :mode (emailreport/mode->id :active)
        :creator_id (user->id :rasta)
@@ -135,10 +135,10 @@
                    :first_name "Rasta"
                    :email "rasta@metabase.com"})
        :can_write true
-       :organization_id (:id @test-org)
+       :organization_id @org-id
        :name "My Cool Email Report"
        :mode (emailreport/mode->id :active)
-       :organization {:id (:id @test-org)
+       :organization {:id @org-id
                       :slug "test"
                       :name "Test Organization"
                       :description nil

@@ -29,7 +29,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "VENUES"
        :rows 100
@@ -82,7 +82,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "CATEGORIES"
        :fields [(match-$ (sel :one Field :id (field->id :categories :name))

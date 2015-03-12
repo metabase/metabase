@@ -19,7 +19,7 @@
 ;; ## GET /api/org
 ;; Non-superusers should only be able to see Orgs they are members of
 (expect
-    [{:id (:id @test-org)
+    [{:id @org-id
       :slug "test"
       :name "Test Organization"
       :description nil
@@ -30,7 +30,7 @@
 ;; Superusers should be able to see all Orgs
 (let [org-name (random-name)]
   (expect-eval-actual-first
-      [{:id (:id @test-org)
+      [{:id @org-id
         :slug "test"
         :name "Test Organization"
         :description nil
@@ -45,7 +45,7 @@
           :inherits false})]
     (do
       ;; Delete all the random test Orgs we've created
-      (cascade-delete Org :id [not= (:id @test-org)])
+      (cascade-delete Org :id [not= @org-id])
       ;; Create a random Org so we can check that we still get Orgs we're not members of
       (create-org org-name)
       ;; Now perform the API request
@@ -53,17 +53,17 @@
 
 ;; ## GET /api/org/:id
 (expect
-    {:id (:id @test-org)
+    {:id @org-id
      :slug "test"
      :name "Test Organization"
      :description nil
      :logo_url nil
      :inherits true}
-  ((user->client :rasta) :get 200 (format "org/%d" (:id @test-org))))
+  ((user->client :rasta) :get 200 (format "org/%d" @org-id)))
 
 ;; ## GET /api/org/slug/:slug
 (expect
-    {:id (:id @test-org)
+    {:id @org-id
      :slug "test"
      :name "Test Organization"
      :description nil
@@ -99,7 +99,7 @@
         {:id $
          :admin true
          :user_id (user->id :crowberto)
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :user (match-$ (fetch-user :crowberto)
                  {:common_name "Crowberto Corv"
                   :date_joined $
@@ -113,7 +113,7 @@
         {:id $
          :admin false
          :user_id (user->id :trashbird)
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :user (match-$ (fetch-user :trashbird)
                  {:common_name "Trash Bird"
                   :date_joined $
@@ -127,7 +127,7 @@
         {:id $
          :admin false
          :user_id (user->id :lucky)
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :user (match-$ (fetch-user :lucky)
                  {:common_name "Lucky Pigeon"
                   :date_joined $
@@ -141,7 +141,7 @@
         {:id $
          :admin true
          :user_id (user->id :rasta)
-         :organization_id (:id @test-org)
+         :organization_id @org-id
          :user (match-$ (fetch-user :rasta)
                  {:common_name "Rasta Toucan"
                   :date_joined $
@@ -151,7 +151,7 @@
                   :last_login $
                   :first_name "Rasta"
                   :email "rasta@metabase.com"})})}
-  (set ((user->client :rasta) :get 200 (format "org/%d/members" (:id @test-org)))))
+  (set ((user->client :rasta) :get 200 (format "org/%d/members" @org-id))))
 
 ;; ## Helper Fns
 
