@@ -543,11 +543,26 @@ var QueryPicker = React.createClass({
                 </div>
             )
         }
+        var dbSelector
+        if(this.props.dbList.length > 1) {
+            dbSelector = (
+                <DatabaseSelector
+                    dbList={this.props.dbList}
+                    setDatabase={this.props.setDatabase}
+                    db={this.props.db}
+                />
+            )
+        }
 
         return (
             <div>
                 <div className="QueryBar">
-                    {querySelection}
+                    <div className="inline-block">
+                        {dbSelector}
+                    </div>
+                    <div className="inline-block">
+                        {querySelection}
+                    </div>
                 </div>
 
             </div>
@@ -787,16 +802,6 @@ var QueryBuilder = React.createClass({
             )
         }
 
-        var dbSelector
-        if(this.props.model.database_list.length > 1) {
-            dbSelector = (
-                <DatabaseSelector
-                    dbList={this.props.model.database_list}
-                    setDatabase={this.props.model.setDatabase.bind(this.props.model)}
-                    db={this.props.model.card.dataset_query.database}
-                />
-            )
-        }
 
         return (
             <div className="full-height">
@@ -808,9 +813,6 @@ var QueryBuilder = React.createClass({
                                     user={this.props.model.user}
                                 />
                             </div>
-                            <div className="inline-block">
-                                {dbSelector}
-                            </div>
                         </div>
                     </div>
                     <div className={queryPickerClasses}>
@@ -819,9 +821,11 @@ var QueryBuilder = React.createClass({
                                 <div className="clearfix">
                                     {runButton}
                                     <QueryPicker
+                                        dbList={this.props.model.database_list}
+                                        setDatabase={this.props.model.setDatabase.bind(this.props.model)}
+                                        db={this.props.model.card.dataset_query.database}
                                         options={this.props.model.selected_table_fields}
                                         tables={this.props.model.table_list}
-                                        db={this.props.model.card.dataset_query.database}
                                         aggregationFieldList={this.props.model.aggregation_field_list}
                                         query={this.props.model.card.dataset_query.query}
                                         setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
