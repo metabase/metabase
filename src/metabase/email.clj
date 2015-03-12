@@ -1,7 +1,7 @@
 (ns metabase.email
   (:require [clojure.data.json :as json]
             [clojure.tools.logging :as log]
-            [clj-http.client :as client]
+            [clj-http.lite.client :as client]
             [medley.core :as medley]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u]))

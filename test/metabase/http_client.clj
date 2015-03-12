@@ -2,7 +2,7 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as cheshire]
-            [clj-http.client :as client]
+            [clj-http.lite.client :as client]
             [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 

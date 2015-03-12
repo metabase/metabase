@@ -17,6 +17,7 @@
                  [org.clojure/tools.macro "0.1.5"]                ; tools for writing macros
                  [org.clojure/tools.trace "0.7.8"]                ; "tracing macros/fns to help you see what your code is doing"
                  [cheshire "5.4.0"]                               ; fast JSON encoding (used by Ring JSON middleware)
+                 [clj-http-lite "0.2.1"]                          ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.9.0"]                               ; library for dealing with date/time
                  [com.cemerick/friend "0.2.1"]                    ; auth library
                  [com.h2database/h2 "1.4.186"]                    ; embedded SQL database
@@ -31,7 +32,6 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.5.5"]                                 ; lightweight lib of useful functions
-                 [org.apache.httpcomponents/httpclient "4.4"]
                  [org.liquibase/liquibase-core "3.3.2"]           ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.10"]
                  [org.yaml/snakeyaml "1.15"]                      ; YAML parser (required by liquibase)
@@ -51,8 +51,7 @@
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test]}                   ; korma macros generate some formats with if statements that are always logically true or false
-  :profiles {:dev {:dependencies [[clj-http "1.0.1"]              ; HTTP Client
-                                  [expectations "2.0.16"]         ; unit tests
+  :profiles {:dev {:dependencies [[expectations "2.0.16"]         ; unit tests
                                   [marginalia "0.8.0"]            ; for documentation
                                   [ring/ring-mock "0.2.0"]]
                    :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"] ; Interactive development w/ cider NREPL in Emacs
