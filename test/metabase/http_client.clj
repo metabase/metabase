@@ -143,8 +143,9 @@
   (cond (sequential? response) (map auto-deserialize-dates response)
         (map? response) (->> response
                              (map (fn [[k v]]
-                                    {k (if (contains? auto-deserialize-dates-keys k)
-                                         (deserialize-date v)
-                                         (auto-deserialize-dates v))}))
+                                    {k (cond
+                                         (contains? auto-deserialize-dates-keys k) (deserialize-date v)
+                                         (coll? v) (auto-deserialize-dates v)
+                                         :else v)}))
                              (into {}))
         :else response))
