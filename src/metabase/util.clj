@@ -4,8 +4,7 @@
             [medley.core :refer :all]
             [clj-time.format :as time]
             [clj-time.coerce :as coerce]))
-  (import '(java.lang Exception)
-           '(java.net Socket)
+  (import  '(java.net Socket)
            '(java.net InetSocketAddress)
            '(java.net InetAddress))
 
@@ -154,19 +153,22 @@
     (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (clojure.string/lower-case v)))))
 
-(defn host-port-up? [hostname port]
-  (log/debug "in host-port-up?" hostname port)
-  (let [sock-addr (InetSocketAddress. hostname port)
+(defn host-port-up? 
+  "Returns true if the port is active on a given host, false otherwise"
+  [hostname port]
+  (try
+    (let [sock-addr (InetSocketAddress. hostname port)
         timeout 5000]
-    (try
      (with-open [sock (Socket.)]
        (. sock connect sock-addr timeout)
-       true)
-     (catch Exception _ false))))
+       true))
+     (catch Exception _ false)))
 
-(defn host-up? [hostname]
-  (let [host-addr (. InetAddress getByName hostname)
+(defn host-up? 
+  "Returns true if the host given by hostname is reachable, false otherwise "
+  [hostname]
+  (try 
+    (let [host-addr (. InetAddress getByName hostname)
         timeout 5000]
-    (try 
-      (. host-addr isReachable timeout)
-      (catch Exception _ false))))
+      (. host-addr isReachable timeout))
+      (catch Exception _ false)))
