@@ -245,6 +245,15 @@
                   :email "rasta@metabase.com"})})}
   (set ((user->client :rasta) :get 200 (format "org/%d/members" @org-id))))
 
+;; Check that users without any org perms cannot list members
+(expect "You don't have permissions to do that."
+  (let [{:keys [id]} (create-org (random-name))]
+    ((user->client :rasta) :get 403 (format "org/%d/members" id) {})))
+
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :get 404 "org/1000/members"))
+
 
 ;; ## POST /api/org/:id/members/:user-id
 ;; Check that we can create an OrgPerm between existing User + Org
