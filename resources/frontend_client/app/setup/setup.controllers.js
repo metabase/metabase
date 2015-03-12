@@ -1,12 +1,5 @@
 var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services'])
 
-SetupControllers.controller('SetupNav', ['$scope', function ($scope) {
-    $scope.$on('setup:orgCreated', function () {
-        $scope.showNav = true
-    })
-}])
-
-
 SetupControllers.controller('SetupIntro', ['$scope', '$location', 'Organization', 'AppState', function ($scope, $location, Organization, AppState) {
     window.scope = $scope
     $scope.setOrgName = function (name) {
