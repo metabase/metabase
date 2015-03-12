@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes POST DELETE]]
+            [hiccup.core :refer [html]]
             [korma.core :as korma]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -45,9 +46,9 @@
     (check-404 user-id)
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
     (email/send-message "Metabase Password Reset" {email user-name}
-                        :html (format "Hey %s, sorry you forgot your password :'(<br /><br /><a href=\"%s\">Click here to reset it!</a> <3"
-                                      user-name
-                                      password-reset-url))
+                        :html (html [:p "Hey, " user-name ", sorry you forgot your password :'(."]
+                                    [:p [:a {:href password-reset-url} "Click here to reset it!"]]
+                                    [:p "<3"]))
     (log/info password-reset-url)))
 
 
