@@ -6,7 +6,7 @@
                    [db :as kdb])
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.connection :as conn]
+            [metabase.driver :refer [connection connection-details]]
             (metabase.models [hydrate :refer [realize-json]]
                              [org :refer [Org org-can-read org-can-write]])
             [metabase.util :refer :all]))
@@ -73,8 +73,8 @@
       (assoc* :organization       (delay (sel :one Org :id organization_id))
               :can_read           (delay (org-can-read organization_id))
               :can_write          (delay (org-can-write organization_id))
-              :connection-details (delay (conn/connection-details <>))
-              :connection         (delay (conn/connection <>))
+              :connection-details (delay (connection-details <>))
+              :connection         (delay (connection <>))
               :korma-db           (delay (korma-db <>))
               :native-query       (partial native-query <>)
               :table-names        (delay (table-names <>)))))

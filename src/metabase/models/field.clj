@@ -1,7 +1,7 @@
 (ns metabase.models.field
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.metadata :refer [field-count field-distinct-count]]
+            [metabase.driver :refer [field-count field-distinct-count]]
             (metabase.models [database :refer [Database]])
             [metabase.util :as util]))
 

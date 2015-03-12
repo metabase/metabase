@@ -17,7 +17,7 @@
 
 ;; ## Public Functions
 
-(defn process
+(defn -process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
   (when-not (zero? source_table)
@@ -38,7 +38,7 @@
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
          (map? (:query query))
          (= (name (:type query)) "query")]}
-  (->> (process query)
+  (->> (-process query)
     eval
     (annotate/annotate query)))
 

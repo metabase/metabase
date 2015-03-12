@@ -3,7 +3,7 @@
             [clojure.string :as s]
             [korma.db]
             [swiss.arrows :refer :all]
-            [metabase.driver.connection :refer :all]))
+            [metabase.driver :refer [connection connection-details]]))
 
 (defmethod connection-details :postgres [database]
   (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
