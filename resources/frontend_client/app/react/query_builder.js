@@ -542,25 +542,27 @@ var QueryPicker = React.createClass({
                     {addDimensionButton}
                 </div>
             )
-        } else {
-            querySelection = (
-                <div className="inline-block">
-                    <SelectionModule
-                        placeholder="What database would you like to work with?"
-                        items={this.props.dbList}
-                        action={this.props.setDatabase}
-                        isInitiallyOpen={true}
-                        selectedKey='id'
-                        display='name'
-                    />
-                </div>
+        }
+        var dbSelector
+        if(this.props.dbList.length > 1) {
+            dbSelector = (
+                <DatabaseSelector
+                    dbList={this.props.dbList}
+                    setDatabase={this.props.setDatabase}
+                    db={this.props.db}
+                />
             )
         }
 
         return (
             <div>
                 <div className="QueryBar">
-                    {querySelection}
+                    <div className="inline-block">
+                        {dbSelector}
+                    </div>
+                    <div className="inline-block">
+                        {querySelection}
+                    </div>
                 </div>
 
             </div>
@@ -681,6 +683,22 @@ var QueryHeader = React.createClass({
     }
 });
 
+var DatabaseSelector = React.createClass({
+    render: function () {
+        return (
+            <SelectionModule
+                placeholder="What database would you like to work with?"
+                items={this.props.dbList}
+                action={this.props.setDatabase}
+                isInitiallyOpen={false}
+                selectedValue={this.props.db}
+                selectedKey='id'
+                display='name'
+            />
+        )
+    }
+})
+
 var QueryBuilder = React.createClass({
     render: function () {
         var filterFieldList = [],
@@ -784,14 +802,17 @@ var QueryBuilder = React.createClass({
             )
         }
 
+
         return (
             <div className="full-height">
                     <div className="QueryHeader">
                         <div className="QueryWrapper">
-                            <QueryHeader
-                                name={this.props.model.card.name}
-                                user={this.props.model.user}
-                            />
+                            <div className="inline-block">
+                                <QueryHeader
+                                    name={this.props.model.card.name}
+                                    user={this.props.model.user}
+                                />
+                            </div>
                         </div>
                     </div>
                     <div className={queryPickerClasses}>
@@ -800,13 +821,13 @@ var QueryBuilder = React.createClass({
                                 <div className="clearfix">
                                     {runButton}
                                     <QueryPicker
+                                        dbList={this.props.model.database_list}
+                                        setDatabase={this.props.model.setDatabase.bind(this.props.model)}
+                                        db={this.props.model.card.dataset_query.database}
                                         options={this.props.model.selected_table_fields}
                                         tables={this.props.model.table_list}
-                                        db={this.props.model.card.dataset_query.database}
                                         aggregationFieldList={this.props.model.aggregation_field_list}
-                                        dbList={this.props.model.database_list}
                                         query={this.props.model.card.dataset_query.query}
-                                        setDatabase={this.props.model.setDatabase.bind(this.props.model)}
                                         setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
                                         setAggregation={this.props.model.setAggregation.bind(this.props.model)}
                                         setAggregationTarget={this.props.model.setAggregationTarget.bind(this.props.model)}

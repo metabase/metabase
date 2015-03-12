@@ -23,6 +23,7 @@
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [compojure "1.3.2"]                              ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                ; easy environment management
+                 [hiccup "1.0.5"]                                 ; HTML templating
                  [korma "0.4.0"]                                  ; SQL lib
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
