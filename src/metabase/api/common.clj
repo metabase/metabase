@@ -1,10 +1,14 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [compojure.core :refer [defroutes]]
+            [korma.core :refer :all :exclude [update]]
             [medley.core :refer :all]
             [metabase.api.common.internal :refer :all]
-            [metabase.db :refer :all])
+            [metabase.db :refer :all]
+            [metabase.db.internal :refer [entity->korma]])
   (:import com.metabase.corvus.api.ApiException))
+
+(declare check-404)
 
 ;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
@@ -33,10 +37,21 @@
   "TODO - A very similar implementation exists in `metabase.models`. Find some way to combine them."
   [org-id]
   (when *current-user-id*
-    (when-let [{superuser? :is_superuser} (sel :one ['metabase.models.user/User :is_superuser] :id *current-user-id*)]
-      (if superuser? :admin
-          (when-let [{admin? :admin} (sel :one ['metabase.models.org-perm/OrgPerm :admin] :user_id *current-user-id* :organization_id org-id)]
-            (if admin? :admin :default))))))
+    (let [[{org-id :id
+            [{admin? :admin}] :org-perms}] (select (-> (entity->korma 'metabase.models.org/Org)                ; this is a complicated join but Org permissions checking
+                                                       (entity-fields [:id]))                                  ; is a very common case so optimization is worth it here
+                                                   (where {:id org-id})
+                                                   (with (-> (entity->korma 'metabase.models.org-perm/OrgPerm)
+                                                             (entity-fields [:admin]))
+                                                         (where {:organization_id org-id
+                                                                 :user_id *current-user-id*})))
+            superuser? (sel :one :field ['metabase.models.user/User :is_superuser] :id *current-user-id*)]
+      (check-404 org-id)
+      (cond
+        superuser?      :admin
+        admin?          :admin
+        (false? admin?) :default ; perm still exists but admin = false
+        :else           nil))))
 
 (defmacro org-perms-case
   "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
