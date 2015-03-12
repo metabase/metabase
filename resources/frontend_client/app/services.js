@@ -92,6 +92,18 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 return deferred.promise;
             },
 
+            switchOrg: function (org_slug) {
+                console.log('swtiching to...', org_slug)
+                Organization.get_by_slug({
+                    'slug':  org_slug
+                }, function(org) {
+                    service.model.currentOrg = org;
+                    $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
+                }, function(error) {
+                    console.log('error getting current org', error);
+                });
+            },
+
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
