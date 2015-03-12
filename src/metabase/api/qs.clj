@@ -10,7 +10,7 @@
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
-(declare execute-query build-response)
+(declare execute-query)
 
 
 (defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
