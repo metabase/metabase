@@ -79,6 +79,36 @@
           </div>
         </nav>
 
+        <nav class="SetupNav" ng-show="nav == 'setup'">
+            <div class="SetupWrapper py4 clearfix">
+                <span class="SetupOrg">
+                    {{currentOrg.name}}
+                </span>
+                <ul class="SetupNav inline-block ml4" ng-show="canShowSteps">
+                    <li class="SetupNav-item">
+                        <a href="/setup">Start</a>
+                    </li>
+                    <li class="SetupNav-item">
+                        <a href="/setup/data">
+                            <span>Add data</span>
+                        </a>
+                    </li>
+                    <li class="SetupNav-item">
+                        <a href="/setup/team">Invite team</a>
+                    </li>
+                </ul>
+                <span class="SetupUser float-right Dropdown" dropdown on-toggle="toggled(open)">
+                    <div dropdown-toggle>
+                        {{user.email}}
+                        <cv-chevron-down-icon class="ml1" width="10px" height="10px"></cv-chevron-down-icon>
+                      </div>
+                    <ul class="Dropdown-content right">
+                      <li class="" ><a class="link" href="/auth/logout" target="_self">Logout</a></li>
+                    </ul>
+                </span>
+            </div>
+        </nav>
+
         <nav ng-show="nav == 'admin'">
           <div class="border-bottom bg-white py1">
             <div class="wrapper">
