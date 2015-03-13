@@ -573,7 +573,6 @@ var FilterWidget = React.createClass({
         );
     },
     render: function () {
-        console.log('filter widget props', this.props)
         var fieldListOpen = true,
             operatorListHtml,
             canShowOperatorList = false,
