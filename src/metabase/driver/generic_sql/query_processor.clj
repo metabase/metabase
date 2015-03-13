@@ -3,7 +3,6 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
-            [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
@@ -185,8 +184,8 @@
   "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `DateTimeField`).
 
     (castify :name \"TextField\")                      -> :name
-    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE) AS \"date\"\")
-    (castify :date \"DateTimeField\" :cast-include-as) -> (raw \"CAST(\"date\" AS DATE)"
+    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)
+    (castify :date \"DateTimeField\" :cast-include-as) -> (raw \"CAST(\"date\" AS DATE) AS \"date\"\")"
   [field-name field-base-type & options]
   {:pre [(string? field-name)
          (string? field-base-type)
