@@ -1380,22 +1380,31 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.inform();
                     },
                     updateFilter: function (value, index, filterListIndex) {
-                        var filters = $scope.model.card.dataset_query.query.filter
+                        var filters = $scope.model.card.dataset_query.query.filter;
                         if(filterListIndex) {
-                            filters[filterListIndex][index] = value
+                            filters[filterListIndex][index] = value;
                         } else {
-                            filters[index] = value
+                            filters[index] = value;
                         }
 
                         $scope.model.inform();
                     },
                     removeFilter: function (index) {
                         var filters = $scope.model.card.dataset_query.query.filter
-                        // if there is just one filter
-                        if((filters.length === 3 && filters[0] != 'AND') || (filters[0] == 'AND' && filters.length == 2)) {
+
+                        /*
+                            HERE BE MORE DRAGONS
+
+                            1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
+                            instead of slicing off individual elements
+
+                            2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
+                            having added multiple so we should reset to [] in this case as well
+                        */
+
+                        if((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
                             // just reset the array
-                            console.log('we be here?')
-                            $scope.model.card.dataset_query.query.filter = []
+                            $scope.model.card.dataset_query.query.filter = [];
                         } else {
                             $scope.model.card.dataset_query.query.filter.splice(index, 1);
                         }
@@ -1403,18 +1412,18 @@ CardControllers.controller('CardDetailNew', [
                     },
                     addFilter: function () {
                         var filter = $scope.model.card.dataset_query.query.filter,
-                            filterLength = filter.length
+                            filterLength = filter.length;
 
                         // this gets run the second time you click the add filter button
-                        if(filterLength === 3 && filter[0] != 'AND') {
-                            var newFilters = []
-                            newFilters.push(filter)
-                            newFilters.unshift('AND')
-                            newFilters.push([null, null, null])
-                            $scope.model.card.dataset_query.query.filter = newFilters
+                        if(filterLength === 3 && filter[0] !== 'AND') {
+                            var newFilters = [];
+                            newFilters.push(filter);
+                            newFilters.unshift('AND');
+                            newFilters.push([null, null, null]);
+                            $scope.model.card.dataset_query.query.filter = newFilters;
                             $scope.model.inform();
-                        } else if(filter[0] == 'AND'){
-                            pushFilterTemplate(filterLength)
+                        } else if(filter[0] === 'AND'){
+                            pushFilterTemplate(filterLength);
                             $scope.model.inform();
                         } else {
                             pushFilterTemplate();
@@ -1423,9 +1432,9 @@ CardControllers.controller('CardDetailNew', [
 
                         function pushFilterTemplate(index) {
                             if(index) {
-                                filter[index] = [null, null, null]
+                                filter[index] = [null, null, null];
                             } else {
-                                filter.push(null, null, null)
+                                filter.push(null, null, null);
                             }
                         }
                     },
@@ -1460,7 +1469,7 @@ CardControllers.controller('CardDetailNew', [
                             dataset_query.query.filter = cleanFilters;
                         }
                         // reset to initial state of filters if we've removed 'em all
-                        if(filters.length == 1 && filters[0] == 'AND') {
+                        if(filters.length === 1 && filters[0] === 'AND') {
                             dataset_query.filter = [];
                         }
                         return dataset_query;
