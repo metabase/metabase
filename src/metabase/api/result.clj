@@ -4,13 +4,12 @@
             [korma.core :refer [where subselect fields]]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [medley.core :refer [mapply]]
-            (metabase.api [common :refer :all]
-                          [qs :as qs])
+            (metabase.api [common :refer :all])
             [metabase.db :refer :all]
             (metabase.models [database :refer [Database databases-for-org]]
                              [hydrate :refer :all]
                              [org :refer [Org]]
-                             [query-execution :refer [QueryExecution all-fields]])))
+                             [query-execution :refer [QueryExecution all-fields build-response]])))
 
 
 ;; Returns the basic information about a given query result
@@ -30,7 +29,7 @@
     (check-404 query_id)
     (let-404 [{{can_read :can_read} :query} (hydrate query-execution :query)]
       (check-403 @can_read)
-      (qs/build-response query-execution))))
+      (build-response query-execution))))
 
 
 ;; Returns the data response for a given query result as a CSV file

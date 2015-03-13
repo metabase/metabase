@@ -1,148 +1,171 @@
 <!DOCTYPE html>
 <html lang="en" ng-app="corvus" class="no-js">
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Corvus</title>
-  <link href="/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet" />
-  <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
-  <link href="/app/bower_components/react-date-picker/react-datepicker.css" rel="stylesheet" />
-  <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
-  <link rel="stylesheet" href="/app/dist/corvus.css" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Metabase</title>
+    <link href="/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet" />
+    <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
+    <link href="/app/bower_components/react-date-picker/react-datepicker.css" rel="stylesheet" />
+    <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/app/dist/corvus.css" />
+    <script src="/app/bower_components/angular/angular.min.js"></script>
 </head>
 
 <body ng-controller="Corvus">
-    <div ng-controller="Nav" ng-if="user">
-        <nav class="CoreNav clearfix" ng-show="nav == 'main'">
+<div ng-controller="Nav" ng-if="user" ng-cloak>
+    <nav class="CoreNav clearfix" ng-show="nav == 'main'">
         <div class="col col-sm-12">
-          <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
+            <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
+                <span class="NavItem-text" ng-bind="currentOrg.name"></span>
             <span dropdown-toggle ng-if="user.is_multi_org">
               <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
             </span>
-            <ul class="Dropdown-content">
-              <li ng-repeat="organization in userMemberOf">
-                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
-              </li>
-            </ul>
-          </div>
-          <ul class="float-left ml4">
-            <li class="inline-block">
-              <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
-                <div class="IconWrapper">
-                  <cv-dashboards-icon></cv-dashboards-icon>
-                </div>
-                <span class="NavItem-text">Dashboards</span>
-              </a>
-            </li>
-            <li class="inline-block">
-              <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
-                <div class="IconWrapper">
-                  <cv-cards-icon></cv-cards-icon>
-                </div>
-                <span class="NavItem-text">Cards</span>
-              </a>
-            </li>
-            <li class="inline-block">
-              <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
-                <div class="IconWrapper">
-                  <cv-explore-icon></cv-explore-icon>
-                </div>
-                <span class="NavItem-text">Explore</span>
-              </a>
-            </li>
-          </ul>
-          <ul class="float-right">
-            <li class="SearchNav NavItem mr4" selectable-nav-item="search">
-              <form class="Search" ng-submit="submit()" ng-controller="SearchBox">
-                <input class="Search-field" type="text" placeholder="Search" ng-model="searchText">
-                  <a class="Search-button">
-                    <cv-search-icon width="16px" height="16px" ng-click="submit()"></cv-search-icon>
-                  </a>
-                </form>
-              </li>
-              <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
-                <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
-                  <span class="NavItem-text" ng-if="!user.first_name">Me</span>
-                  <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
-                  <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-                </a>
-                <ul class="Dropdown-content right">
-                  <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-                  <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
-                  <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
+                <ul class="Dropdown-content">
+                    <li ng-repeat="organization in userMemberOf">
+                        <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
+                    </li>
                 </ul>
-              </li>
-            </ul>
-          </div>
-        </nav>
-
-        <nav ng-show="nav == 'admin'">
-          <div class="border-bottom bg-white py1">
-            <div class="wrapper">
-              <label class="Select" ng-if="user.is_multi_org">
-                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-                </select>
-              </label>
-              <a cv-org-href="/admin/">
-                <h3 class="AdminPageTitle my2 inline-block">
-                    <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-                </h3>
-              </a>
-              <div class="mx1 my2 float-right">
-                <a class="inline-block" cv-org-href="/">Exit Admin</a>
-              </div>
             </div>
-          </div>
-        </nav>
-          <nav class="my4 col col-sm-3" ng-show="nav == 'admin'">
-            <ul class="CoreNav">
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/">Organization</a>
+            <ul class="float-left ml4">
+                <li class="inline-block">
+                    <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
+                        <div class="IconWrapper">
+                            <cv-dashboards-icon></cv-dashboards-icon>
+                        </div>
+                        <span class="NavItem-text">Dashboards</span>
+                    </a>
                 </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/people/">People</a>
+                <li class="inline-block">
+                    <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
+                        <div class="IconWrapper">
+                            <cv-cards-icon></cv-cards-icon>
+                        </div>
+                        <span class="NavItem-text">Cards</span>
+                    </a>
                 </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+                <li class="inline-block">
+                    <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
+                        <div class="IconWrapper">
+                            <cv-explore-icon></cv-explore-icon>
+                        </div>
+                        <span class="NavItem-text">Explore</span>
+                    </a>
                 </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+            </ul>
+            <ul class="float-right">
+                <li class="SearchNav NavItem mr4" selectable-nav-item="search">
+                    <form class="Search" ng-submit="submit()" ng-controller="SearchBox">
+                        <input class="Search-field" type="text" placeholder="Search" ng-model="searchText">
+                        <a class="Search-button">
+                            <cv-search-icon width="16px" height="16px" ng-click="submit()"></cv-search-icon>
+                        </a>
+                    </form>
                 </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
-                </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
-                    <ul class="ContextNav">
-                        <li>
-                            <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
-                        </li>
-                        <li>
-                            <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
-                        </li>
+                <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
+                    <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
+                        <span class="NavItem-text" ng-if="!user.first_name">Me</span>
+                        <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
+                        <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                    </a>
+                    <ul class="Dropdown-content right">
+                        <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
+                        <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
+                        <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
                     </ul>
                 </li>
-                <li>
-                    <a class="NavItem" cv-org-href="/admin/search">Search</a>
-                </li>
-                <li ng-if="user.is_superuser">
-                    <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
-                </li>
             </ul>
-          </nav>
+        </div>
+    </nav>
 
-    </div>
-    <div class="MainContent">
-      <div ng-view></div>
-    </div>
-  </body>
+    <nav ng-show="nav == 'admin'">
+        <div class="border-bottom bg-white py1">
+            <div class="wrapper">
+                <label class="Select" ng-if="user.is_multi_org">
+                    <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
+                    </select>
+                </label>
+                <a cv-org-href="/admin/">
+                    <h3 class="AdminPageTitle my2 inline-block">
+                        <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
+                    </h3>
+                </a>
+                <div class="mx1 my2 float-right">
+                    <a class="inline-block" cv-org-href="/">Exit Admin</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <nav class="my4 col col-sm-3" ng-show="nav == 'admin'">
+        <ul class="CoreNav">
+            <li>
+                <a class="NavItem" cv-org-href="/admin/">Organization</a>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/people/">People</a>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
+                <ul class="ContextNav">
+                    <li>
+                        <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
+                    </li>
+                    <li>
+                        <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <a class="NavItem" cv-org-href="/admin/search">Search</a>
+            </li>
+            <li ng-if="user.is_superuser">
+                <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
+            </li>
+        </ul>
+    </nav>
 
-  <!-- JS INCLUDES -->
+    <nav ng-show="nav == 'superadmin'">
+        <div class="border-bottom bg-white py1">
+            <div class="wrapper clearfix">
+                <div class="mx1 my2 float-right">
+                    <a class="inline-block" href="/">Exit</a>
+                </div>
+                <h3 class="AdminPageTitle my2">Site Administration</h3>
+            </div>
+        </div>
+    </nav>
+    <nav class="my4 col col-sm-3" ng-show="nav == 'superadmin'">
+        <ul class="CoreNav">
+            <li>
+                <a class="NavItem NavItem--large" href="/superadmin/">Global Settings</a>
+            </li>
+            <li>
+                <a class="NavItem NavItem--large" href="/superadmin/organization/">Organizations</a>
+            </li>
+        </ul>
+    </nav>
+</div>
 
+<div class="MainContent">
+    <div ng-view></div>
+</div>
+</body>
+
+<!-- JS INCLUDES -->
+
+<<<<<<< HEAD
   <script src="/app/bower_components/react/react-with-addons.js"></script>
   <script src="/app/bower_components/react-onclickoutside/index.js"></script>
   <script src="/app/bower_components/moment/min/moment.min.js"></script>
@@ -150,122 +173,121 @@
   <script src="/app/bower_components/react-date-picker/react-datepicker.js"></script>
 
   <script src="/app/dist/query_builder.js" type="text/javascript"></script>
+=======
+<script src="/app/bower_components/react/react-with-addons.js"></script>
+<script src="/app/bower_components/react-onclickoutside/index.js"></script>
+<script src="/app/dist/query_builder.js" type="text/javascript"></script>
+>>>>>>> origin/master
 
-  <script src="/app/bower_components/jquery/dist/jquery.min.js"></script>
-  <script src="/app/bower_components/underscore/underscore.js"></script>
-  <script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
+<script src="/app/bower_components/jquery/dist/jquery.min.js"></script>
+<script src="/app/bower_components/underscore/underscore.js"></script>
+<script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
 
-  <script src="/app/bower_components/angular/angular.min.js"></script>
-  <script src="/app/bower_components/angular-route/angular-route.min.js"></script>
-  <script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
-  <script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
-  <script src="/app/bower_components/angular-animate/angular-animate.min.js"></script>
-  <script src="/app/bower_components/angular-sanitize/angular-sanitize.min.js"></script>
-  <script src="/app/bower_components/angular-xeditable/dist/js/xeditable.js"></script>
-  <script src="/app/bower_components/angular-cookie/angular-cookie.min.js"></script>
-  <script src="/app/bower_components/javascript-detect-element-resize/detect-element-resize.js"></script>
-  <script src="/app/bower_components/angular-gridster/src/angular-gridster.js"></script>
-  <script src="/app/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
-  <script src="/app/bower_components/angular-http-auth/src/http-auth-interceptor.js"></script>
-  <script src="/app/bower_components/ace-builds/src-min-noconflict/ace.js"></script>
-  <script src="/app/bower_components/ace-builds/src-min-noconflict/mode-sql.js"></script>
-  <script src="/app/bower_components/ace-builds/src-min-noconflict/ext-language_tools.js"></script>
-  <script src="/app/bower_components/angular-ui-ace/ui-ace.js"></script>
-  <script src="/app/bower_components/angularytics/dist/angularytics.min.js"></script>
-  <script src="/app/bower_components/ng-sortable/dist/ng-sortable.min.js"></script>
-  <script src="/app/bower_components/angular-readable-time/angular-readable-time.min.js"></script>
+<script src="/app/bower_components/angular-route/angular-route.min.js"></script>
+<script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
+<script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
+<script src="/app/bower_components/angular-animate/angular-animate.min.js"></script>
+<script src="/app/bower_components/angular-sanitize/angular-sanitize.min.js"></script>
+<script src="/app/bower_components/angular-xeditable/dist/js/xeditable.js"></script>
+<script src="/app/bower_components/angular-cookie/angular-cookie.min.js"></script>
+<script src="/app/bower_components/javascript-detect-element-resize/detect-element-resize.js"></script>
+<script src="/app/bower_components/angular-gridster/src/angular-gridster.js"></script>
+<script src="/app/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+<script src="/app/bower_components/angular-http-auth/src/http-auth-interceptor.js"></script>
+<script src="/app/bower_components/ace-builds/src-min-noconflict/ace.js"></script>
+<script src="/app/bower_components/ace-builds/src-min-noconflict/mode-sql.js"></script>
+<script src="/app/bower_components/ace-builds/src-min-noconflict/ext-language_tools.js"></script>
+<script src="/app/bower_components/angular-ui-ace/ui-ace.js"></script>
+<script src="/app/bower_components/angularytics/dist/angularytics.min.js"></script>
+<script src="/app/bower_components/ng-sortable/dist/ng-sortable.min.js"></script>
+<script src="/app/bower_components/angular-readable-time/angular-readable-time.min.js"></script>
 
-  <script src="/app/bower_components/d3/d3.min.js"></script>
-  <script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
-  <script src="/app/bower_components/dc.js/dc.min.js"></script>
+<script src="/app/bower_components/d3/d3.min.js"></script>
+<script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
+<script src="/app/bower_components/dc.js/dc.min.js"></script>
 
-  <script src="/js/google_maps.js"></script>
+<script src="/js/google_maps.js"></script>
 
-  <!-- global app -->
-  <script src="/app/app.js"></script>
-  <script src="/app/services.js"></script>
-  <script src="/app/controllers.js"></script>
-  <script src="/app/filters.js"></script>
-  <script src="/app/directives.js"></script>
-  <script src="/app/auth/auth.module.js"></script>
-  <script src="/app/auth/auth.controllers.js"></script>
+<!-- global app -->
+<script src="/app/app.js"></script>
+<script src="/app/services.js"></script>
+<script src="/app/controllers.js"></script>
+<script src="/app/filters.js"></script>
+<script src="/app/directives.js"></script>
+<script src="/app/auth/auth.module.js"></script>
+<script src="/app/auth/auth.controllers.js"></script>
 
-  <!-- components and shared bits -->
+<!-- components and shared bits -->
 
-  <script src="/app/annotation/annotation.services.js"></script>
-  <script src="/app/annotation/annotation.directives.js"></script>
-  <script src="/app/metabase/metabase.services.js"></script>
+<script src="/app/annotation/annotation.services.js"></script>
+<script src="/app/annotation/annotation.directives.js"></script>
+<script src="/app/metabase/metabase.services.js"></script>
 
-  <script src="/app/components/components.module.js"></script>
-  <script src="/app/components/core_nav/core_nav.js"></script>
-  <script src="/app/components/workspace/workspace.js"></script>
-  <script src="/app/components/icons/icons.js"></script>
+<script src="/app/components/components.module.js"></script>
+<script src="/app/components/core_nav/core_nav.js"></script>
+<script src="/app/components/workspace/workspace.js"></script>
+<script src="/app/components/icons/icons.js"></script>
 
-  <!-- superadmin section -->
-  <script src="/app/superadmin/superadmin.app.js"></script>
-  <script src="/app/superadmin/superadmin.controllers.js"></script>
-  <script src="/app/superadmin/index/index.module.js"></script>
-  <script src="/app/superadmin/index/index.controllers.js"></script>
-  <script src="/app/superadmin/datamarts/datamarts.module.js"></script>
-  <script src="/app/superadmin/datamarts/datamarts.controllers.js"></script>
-  <script src="/app/superadmin/datamarts/datamarts.services.js"></script>
+<!-- superadmin section -->
+<script src="/app/superadmin/index/index.module.js"></script>
+<script src="/app/superadmin/index/index.controllers.js"></script>
+<script src="/app/superadmin/index/index.services.js"></script>
+<script src="/app/superadmin/organization/organization.module.js"></script>
+<script src="/app/superadmin/organization/organization.controllers.js"></script>
 
-  <!-- admin section -->
-  <script src="/app/admin/admin.controllers.js"></script>
-  <script src="/app/admin/databases/databases.module.js"></script>
-  <script src="/app/admin/databases/databases.controllers.js"></script>
-  <script src="/app/admin/datasets/datasets.module.js"></script>
-  <script src="/app/admin/datasets/datasets.controllers.js"></script>
-  <script src="/app/admin/datasets/datasets.directives.js"></script>
-  <script src="/app/admin/emailreport/emailreport.module.js"></script>
-  <script src="/app/admin/emailreport/emailreport.controllers.js"></script>
-  <script src="/app/admin/emailreport/emailreport.services.js"></script>
-  <script src="/app/admin/people/people.module.js"></script>
-  <script src="/app/admin/people/people.controllers.js"></script>
-  <script src="/app/admin/people/people.directives.js"></script>
-  <script src="/app/admin/query/query.module.js"></script>
-  <script src="/app/admin/query/query.controllers.js"></script>
-  <script src="/app/admin/query/query.services.js"></script>
-  <script src="/app/admin/annotation/annotation.module.js"></script>
-  <script src="/app/admin/annotation/annotation.controllers.js"></script>
-  <script src="/app/admin/search/search.module.js"></script>
-  <script src="/app/admin/search/search.controllers.js"></script>
-  <script src="/app/admin/settings/settings.module.js"></script>
-  <script src="/app/admin/settings/settings.controllers.js"></script>
-  <script src="/app/admin/settings/settings.services.js"></script>
+<!-- admin section -->
+<script src="/app/admin/admin.controllers.js"></script>
+<script src="/app/admin/databases/databases.module.js"></script>
+<script src="/app/admin/databases/databases.controllers.js"></script>
+<script src="/app/admin/datasets/datasets.module.js"></script>
+<script src="/app/admin/datasets/datasets.controllers.js"></script>
+<script src="/app/admin/datasets/datasets.directives.js"></script>
+<script src="/app/admin/emailreport/emailreport.module.js"></script>
+<script src="/app/admin/emailreport/emailreport.controllers.js"></script>
+<script src="/app/admin/emailreport/emailreport.services.js"></script>
+<script src="/app/admin/people/people.module.js"></script>
+<script src="/app/admin/people/people.controllers.js"></script>
+<script src="/app/admin/people/people.directives.js"></script>
+<script src="/app/admin/query/query.module.js"></script>
+<script src="/app/admin/query/query.controllers.js"></script>
+<script src="/app/admin/query/query.services.js"></script>
+<script src="/app/admin/annotation/annotation.module.js"></script>
+<script src="/app/admin/annotation/annotation.controllers.js"></script>
+<script src="/app/admin/search/search.module.js"></script>
+<script src="/app/admin/search/search.controllers.js"></script>
 
-  <!-- main app -->
-  <script src="/app/card/card.module.js"></script>
-  <script src="/app/card/card.controllers.js"></script>
-  <script src="/app/card/card.services.js"></script>
-  <script src="/app/card/card.directives.js"></script>
-  <script src="/app/card/card.charting.js"></script>
-  <script src="/app/dashboard/dashboard.module.js"></script>
-  <script src="/app/dashboard/dashboard.controllers.js"></script>
-  <script src="/app/dashboard/dashboard.services.js"></script>
-  <script src="/app/dashboard/dashboard.directives.js"></script>
-  <script src="/app/explore/explore.module.js"></script>
-  <script src="/app/explore/explore.controllers.js"></script>
-  <script src="/app/explore/explore.directives.js"></script>
-  <script src="/app/explore/explore.services.js"></script>
-  <script src="/app/user/user.module.js"></script>
-  <script src="/app/user/user.controllers.js"></script>
-  <script src="/app/user/user.directives.js"></script>
-  <script src="/app/search/search.module.js"></script>
-  <script src="/app/search/search.controllers.js"></script>
-  <script src="/app/search/search.services.js"></script>
+<!-- main app -->
+<script src="/app/card/card.module.js"></script>
+<script src="/app/card/card.controllers.js"></script>
+<script src="/app/card/card.services.js"></script>
+<script src="/app/card/card.directives.js"></script>
+<script src="/app/card/card.charting.js"></script>
+<script src="/app/dashboard/dashboard.module.js"></script>
+<script src="/app/dashboard/dashboard.controllers.js"></script>
+<script src="/app/dashboard/dashboard.services.js"></script>
+<script src="/app/dashboard/dashboard.directives.js"></script>
+<script src="/app/explore/explore.module.js"></script>
+<script src="/app/explore/explore.controllers.js"></script>
+<script src="/app/explore/explore.directives.js"></script>
+<script src="/app/explore/explore.services.js"></script>
+<script src="/app/user/user.module.js"></script>
+<script src="/app/user/user.controllers.js"></script>
+<script src="/app/user/user.directives.js"></script>
+<script src="/app/search/search.module.js"></script>
+<script src="/app/search/search.controllers.js"></script>
+<script src="/app/search/search.services.js"></script>
 
-  <!-- custom shtuff:  be wary -->
-  <script src="/app/operator/operator.module.js"></script>
-  <script src="/app/operator/operator.controllers.js"></script>
-  <script src="/app/operator/operator.services.js"></script>
+<!-- custom shtuff:  be wary -->
+<script src="/app/operator/operator.module.js"></script>
+<script src="/app/operator/operator.controllers.js"></script>
+<script src="/app/operator/operator.services.js"></script>
 
-  <script src="/app/reserve/reserve.module.js"></script>
-  <script src="/app/reserve/reserve.controllers.js"></script>
-  <script src="/app/reserve/reserve.services.js"></script>
+<script src="/app/reserve/reserve.module.js"></script>
+<script src="/app/reserve/reserve.controllers.js"></script>
+<script src="/app/reserve/reserve.services.js"></script>
 
-  <script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
-  <script>
+<script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+<script>
     WebFont.load({
       google: {
         families: ['Lato:n1,n4,n7']
@@ -273,5 +295,5 @@
     });
   </script>
 
-  <!-- TODO - need to handle GA -->
+<!-- TODO - need to handle GA -->
 </html>

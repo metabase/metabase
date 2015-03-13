@@ -1,0 +1,23 @@
+<div class="wrapper">
+    <div class="py2 border-bottom">
+        <div class="float-right">
+            <a class="Button Button--primary" href="/superadmin/organization/create">Add Organization</a>
+        </div>
+        <h2>Organizations</h2>
+    </div>
+
+    <div>
+        <div ng-if="!organizations">
+            <h3 class="text-normal text-centered">Loading ...</h3>
+        </div>
+
+        <ul>
+            <li class="py2 border-bottom" ng-repeat="org in organizations">
+                <div>
+                    <h4><a class="link" href="/superadmin/organization/{{org.id}}">{{org.name}}</a></h4>
+                    <span>{{org.description}}</span>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>

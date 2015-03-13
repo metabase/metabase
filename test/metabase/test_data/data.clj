@@ -2,28 +2,31 @@
 
 (defn- timestamp
   "Return a new `java.sql.Timestamp` with YEAR MONTH and DAY."
-  [year month day]
-  (-> (java.util.Date. (- year 1900) (- month 1) day)
-      .getTime
-      java.sql.Timestamp.))
+  ([year month day hour minute]
+   (-> (java.util.Date. (- year 1900) (- month 1) day)
+       .getTime                                        ; this is in ms
+       (+ (* 60 60 1000 hour) (* 60 1000 minute))
+       java.sql.Timestamp.))
+  ([year month day]
+   (timestamp year month day 0 0)))
 
 ;; [name last_login]
 (defonce ^:private users
-  [["Justin Ho" (timestamp 2013 4 1)]
-   ["David Baden" (timestamp 2013 12 5)]
-   ["Roberto Sanabria" (timestamp 2014 11 6)]
-   ["Noah Sidman-Gale" (timestamp 2015 1 1)]
-   ["Cam Saül" (timestamp 2013 10 3)]
-   ["Kyle Doherty" (timestamp 2014 8 4)]
-   ["Anshu Agarwal" (timestamp 2014 8 2)]
-   ["Kiah Buchner" (timestamp 2014 2 1)]
-   ["Adam Stocker" (timestamp 2014 4 3)]
-   ["Allen Gilliland" (timestamp 2014 7 3)]
+  [["Justin Ho" (timestamp 2014 4 1 1 30)]
+   ["David Baden" (timestamp 2014 12 5 7 15)]
+   ["Roberto Sanabria" (timestamp 2014 11 6 8 15)]
+   ["Noah Sidman-Gale" (timestamp 2014 1 1 0 30)]
+   ["Cam Saül" (timestamp 2014 10 3 10 30)]
+   ["Kyle Doherty" (timestamp 2014 8 2 5 30)]
+   ["Anshu Agarwal" (timestamp 2014 8 2 2 30)]
+   ["Kiah Buchner" (timestamp 2014 2 1 2 15)]
+   ["Adam Stocker" (timestamp 2014 4 3 2 30)]
+   ["Allen Gilliland" (timestamp 2014 7 3 12 30)]
    ["Christina Crosetti" (timestamp 2014 11 1)]
-   ["Sameer Al-Sakran" (timestamp 2014 7 2)]
-   ["Daniel Wiesenthal" (timestamp 2014 8 1)]
-   ["Douglas Graves" (timestamp 2014 10 3)]
-   ["RoveLine Ibañez" (timestamp 2013 8 1)]])
+   ["Sameer Al-Sakran" (timestamp 2014 7 2 18 30)]
+   ["Daniel Wiesenthal" (timestamp 2014 8 1 3 30)]
+   ["Douglas Graves" (timestamp 2014 10 3 6 45)]
+   ["RoveLine Ibañez" (timestamp 2014 8 1 5 45)]])
 
 ;; name
 (defonce ^:private categories
@@ -1211,7 +1214,7 @@
 
 (defonce test-data
   {:users {:fields [[:name "VARCHAR(254)"] ; fields are pairs of [field-name h2-sql-type]
-                    [:last_login "DATE"]]
+                    [:last_login "TIMESTAMP"]]
            :rows users}
    :categories {:fields [[:name "VARCHAR(254)"]]
                 :rows categories}

@@ -1,0 +1,37 @@
+
+<div class="wrapper">
+    <div class="border-bottom">
+        <h2 ng-if="!organization.id">Add Organization</h2>
+        <h2 ng-if="organization.id">{{organization.name}}</h2>
+    </div>
+
+    <form novalidate>
+        <div class="py1">
+            <div class="py1">
+                <label>Slug:</label>
+                <input class="input block full" type="text" ng-model="organization.slug" ng-disabled="organization.id"/>
+            </div>
+
+            <div class="py1">
+                <label for="id_name">Name:</label>
+                <input class="input block full" id="id_name" type="text" ng-model="organization.name"/>
+            </div>
+
+            <div class="py1">
+                <label for="id_desc">Description:</label>
+                <textarea class="input block full" id="id_desc" rows="5" ng-model="organization.description"></textarea>
+            </div>
+
+            <div class="py1">
+                <label for="id_logo">Logo Url:</label>
+                <input class="input block full" id="id_logo" type="text" ng-model="organization.logo_url"/>
+            </div>
+        </div>
+
+        <div class="py2 border-top">
+            <div class="inline-block">
+                <input class="Button Button--primary" type="button" value="Save" ng-click="save(organization)"/>
+            </div>
+        </div>
+    </form>
+</div>

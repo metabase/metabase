@@ -1,8 +1,8 @@
 'use strict';
 
-var SettingsAdminServices = angular.module('corvusadmin.settings.services', ['ngResource', 'ngCookies']);
+var SettingsAdminServices = angular.module('superadmin.index.services', ['ngResource']);
 
-SettingsAdminServices.factory('SettingsAdminServices', ['$resource', '$cookies', function($resource, $cookies) {
+SettingsAdminServices.factory('SettingsAdminServices', ['$resource', function($resource) {
     return $resource('/api/setting', {}, {
         list: {
             url: '/api/setting',

@@ -94,6 +94,8 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', func
             $scope.nav = 'admin'
         } else if ($location.path().indexOf('setup') >0 ) {
             $scope.nav = 'setup'
+        } else if ($location.path().indexOf('superadmin') >0 ) {
+            $scope.nav = 'superadmin'
         } else {
             $scope.nav = 'main'
         }
