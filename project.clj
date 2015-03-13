@@ -16,6 +16,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.trace "0.7.8"]                    ; "tracing macros/fns to help you see what your code is doing"
+                 [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.2.1"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.9.0"]                                   ; library for dealing with date/time
