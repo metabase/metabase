@@ -1,5 +1,5 @@
 (ns metabase.driver.generic-sql.sync
-  "Generic implementations of `metabase.driver.sync` functions that should work across any SQL database supported by Korma."
+  "Generic implementations of `metabase.driver` `(sync-tables [db]) function that should work across any SQL database supported by Korma."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
@@ -18,12 +18,6 @@
                     jdbc/result-set-seq)
                (mapv :table_name)))))
 
-(defn korma-count [{:keys [korma-entity]}]
-  (-> @korma-entity
-    (select (aggregate (count :*) :count))
-    first
-    :count))
-
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
   [database table-name]
@@ -32,9 +26,6 @@
                     (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
                     jdbc/result-set-seq)
                (mapv #(select-keys % [:column_name :type_name]))))))
-
-
-;;;; ===============
 
 
 (defn get-table-row-count
@@ -67,13 +58,13 @@
                       :base_type (or (*column->base-type* (keyword type_name))
                                      (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
                                                              "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
-              (jdbc-columns db name))))                     ; TODO - more fixing.  reuse database connections.
+              (jdbc-columns db name))))
 
 (defn sync-tables
   [{:keys [id] :as database}]
-  (with-jdbc-metadata database ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
-    (fn [_]                     ; by wrapping the entire sync operation in this we can reuse the same connection throughout
-      (->> (table-names database)                           ; TODO - fix this.  used to reuse db connection
+  (with-jdbc-metadata database                                                                ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
+    (fn [_]                                                                                   ; by wrapping the entire sync operation in this we can reuse the same connection throughout
+      (->> (table-names database)
         (pmap (fn [table-name]
                 (binding [*entity-overrides* {:transforms [#(assoc % :db (delay database))]}] ; add a korma transform to Table that will assoc :db on results.
                   (let [table (or (sel :one Table :db_id id :name table-name)                 ; Table's post-select only sets :db if it's not already set.
