@@ -523,7 +523,7 @@ var QueryPicker = React.createClass({
             );
         }
         var dbSelector
-        if(this.props.dbList.length > 1) {
+        if(this.props.dbList && this.props.dbList.length > 1) {
             dbSelector = (
                 <DatabaseSelector
                     dbList={this.props.dbList}
