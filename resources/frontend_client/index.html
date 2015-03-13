@@ -134,6 +134,27 @@
             </li>
         </ul>
     </nav>
+
+    <nav ng-show="nav == 'superadmin'">
+        <div class="border-bottom bg-white py1">
+            <div class="wrapper">
+                <div class="mx1 my2 float-right">
+                    <a class="inline-block" href="/">Exit</a>
+                </div>
+                <h3 class="AdminPageTitle my2">Site Administration</h3>
+            </div>
+        </div>
+    </nav>
+    <nav class="my4 col col-sm-3" ng-show="nav == 'superadmin'">
+        <ul class="CoreNav">
+            <li>
+                <a class="NavItem NavItem--large" href="/superadmin/">Global Settings</a>
+            </li>
+            <li>
+                <a class="NavItem NavItem--large" href="/superadmin/organizations/">Organizations</a>
+            </li>
+        </ul>
+    </nav>
 </div>
 
 <div class="MainContent">
