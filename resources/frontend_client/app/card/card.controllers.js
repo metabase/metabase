@@ -1407,7 +1407,6 @@ CardControllers.controller('CardDetailNew', [
                             newFilters.unshift('AND')
                             newFilters.push([null, null, null])
                             $scope.model.card.dataset_query.query.filter = newFilters
-                            debugger;
                             $scope.model.inform();
                         } else if(filter[0] == 'AND'){
                             pushFilterTemplate(filterLength)
