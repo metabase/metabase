@@ -1,13 +1,13 @@
 'use strict';
 
-// Admin
-var SuperAdminIndex = angular.module('superadmin.index', ['superadmin.index.controllers']);
+var SettingsAdmin = angular.module('superadmin.index', [
+    'superadmin.index.controllers',
+    'superadmin.index.services'
+]);
 
-SuperAdminIndex.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/superadmin/',
-        {
-            templateUrl: '/app/superadmin/index/partials/index.html',
-            controller: 'SuperAdminIndex'
-        }
-    );
+SettingsAdmin.config(['$routeProvider', function($routeProvider) {
+    $routeProvider.when('/superadmin/', {
+        templateUrl: '/app/superadmin/index/partials/settings.html',
+        controller: 'SettingsAdminController'
+    });
 }]);
