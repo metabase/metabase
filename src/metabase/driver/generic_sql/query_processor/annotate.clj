@@ -46,7 +46,7 @@
 (defn- uncastify
   "Remove CAST statements from a column name if needed.
 
-    (uncastify \"DATE\") -> \"DATE\"
+    (uncastify \"DATE\")               -> \"DATE\"
     (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
   [column-name]
   (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
