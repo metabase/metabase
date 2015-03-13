@@ -82,15 +82,16 @@
   (match field-ids
     []    nil ; empty clause
     [nil] nil ; empty clause
-    _     `[(group  ~@(map field-id->kw field-ids))
-            (fields ~@(map #(field-id->kw % :cast-include-as) field-ids))]))
+    _     (let [field-names (map field-id->kw field-ids)]
+            `[(group  ~@field-names)
+              (fields ~@field-names)])))
 
 ;; ### `:fields`
 ;; ex.
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
-  (let [field-names (map #(field-id->kw % :cast-include-as) field-ids)]
+  (let [field-names (map field-id->kw field-ids)]
     `(fields ~@field-names)))
 
 ;; ### `:filter`
@@ -147,9 +148,9 @@
          (mapv (fn [[field-id asc-desc]]
                  {:pre [(integer? field-id)
                         (string? asc-desc)]}
-                 `(order ~(field-id->kw field-id :no-cast) ~(case asc-desc
-                                                              "ascending" :ASC
-                                                              "descending" :DESC)))))))
+                 `(order ~(field-id->kw field-id) ~(case asc-desc
+                                                     "ascending" :ASC
+                                                     "descending" :DESC)))))))
 
 ;; ### `:page`
 ;; ex.
@@ -184,35 +185,23 @@
   "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `DateTimeField`).
 
     (castify :name \"TextField\")                      -> :name
-    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)
-    (castify :date \"DateTimeField\" :cast-include-as) -> (raw \"CAST(\"date\" AS DATE) AS \"date\"\")"
-  [field-name field-base-type & options]
+    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)"
+  [field-name field-base-type]
   {:pre [(string? field-name)
-         (string? field-base-type)
-         (every? keyword? options)]}
-  (let [options (set options)]
-    (if (or (= field-base-type "DateField")                      ; do we need to cast DateFields ?
-            (= field-base-type "DateTimeField"))                 ; or just DateTimeFields ?
-      `(raw ~(format "CAST(\"%s\" AS DATE)%s" field-name (if (contains? options :cast-include-as) (format " AS \"%s\"" field-name)
-                                                             "")))
-      (keyword field-name))))
+         (string? field-base-type)]}
+  (if (or (= field-base-type "DateField")              ; do we need to cast DateFields ?
+          (= field-base-type "DateTimeField"))         ; or just DateTimeFields ?
+    `(raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+    (keyword field-name)))
 
 ;; TODO - should we memoize this?
 (defn- field-id->kw
-  "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields).
-
-   OPTIONS
-   *  `:no-cast`         Disable casting for this `Field`, even if it's a date. (i.e., for ordering, we probably don't want to cast away relevant parts of the timestamp).
-   *  `:cast-include-as` If `Field` is casted, add an `AS \"original-field-name\"` to the cast (i.e, for `SELECT` clauses)."
-  [field-id & options]
-  {:pre [(integer? field-id)
-         (every? keyword? options)
-         (every? (partial contains? #{:no-cast :cast-include-as}) options)]}
-  (let [options (set options)]
-    (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
-      (if (contains? options :no-cast) (keyword field-name)
-          (apply castify-field field-name field-type options))
-      (throw (Exception. (format "Field with ID %d doesn't exist!" field-id))))))
+  "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
+    (castify-field field-name field-type)
+    (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 
 ;; ## Debugging Functions (Internal)
