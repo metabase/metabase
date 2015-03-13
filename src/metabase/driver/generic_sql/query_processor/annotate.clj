@@ -43,11 +43,21 @@
     (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
          (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
+(defn- uncastify
+  "Remove CAST statements from a column name if needed.
+
+    (uncastify \"DATE\")               -> \"DATE\"
+    (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
+  [column-name]
+  (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
+      column-name))
+
 (defn- get-column-info
   "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
    information about special columns such as `count` via `get-special-column-info`."
   [query column-names]
   (let [table-id (get-in query [:query :source_table])
+        column-names (map uncastify column-names)
         columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                          ; build map of column-name -> column

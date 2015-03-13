@@ -2,6 +2,7 @@
   "Shared functions for our generic-sql query processor."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [korma.core :as korma]
             [korma.db :as kdb]
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
@@ -62,13 +63,24 @@
     (korma-entity table)))
 
 
+(defn castify-field
+  "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `DateTimeField`).
+
+    (castify :name \"TextField\")                      -> :name
+    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)"
+  [field-name field-base-type]
+  {:pre [(string? field-name)
+         (string? field-base-type)]}
+  (if (or (= field-base-type "DateField")              ; do we need to cast DateFields ?
+        (= field-base-type "DateTimeField"))         ; or just DateTimeFields ?
+    `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+    (keyword field-name)))
+
 ;; TODO - should we memoize this?
-(defn field-id->kw
-  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
+(defn- field-id->kw
+  "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
   [field-id]
-  {:pre [(integer? field-id)]
-   :post [(keyword? %)]}
-  (or (-> (sel :one [Field :name] :id field-id)
-        :name
-        keyword)
+  {:pre [(integer? field-id)]}
+  (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
+    (castify-field field-name field-type)
     (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))

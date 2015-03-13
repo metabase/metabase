@@ -12,6 +12,7 @@
             [metabase.util :as util]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
+                             [gzip :refer [wrap-gzip]]
                              [json :refer [wrap-json-response
                                            wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
@@ -32,7 +33,7 @@
       auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
       wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key
-      ))
+      wrap-gzip))             ; GZIP response if client can handle it
 
 
 (defn init

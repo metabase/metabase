@@ -93,7 +93,7 @@
     []    nil ; empty clause
     [nil] nil ; empty clause
     _     (let [field-names (map field-id->kw field-ids)]
-            `[(group ~@field-names)
+            `[(group  ~@field-names)
               (fields ~@field-names)])))
 
 ;; ### `:fields`
@@ -101,8 +101,7 @@
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
-  (let [field-names (->> (sel :many [Field :name] :id [in (set field-ids)])
-                         (map :name))]
+  (let [field-names (map field-id->kw field-ids)]
     `(fields ~@field-names)))
 
 ;; ### `:filter`
