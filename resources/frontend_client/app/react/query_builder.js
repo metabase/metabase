@@ -175,6 +175,21 @@ var Saver = React.createClass({
             buttonText = "Edit"
         }
 
+        var privacyOptions = [
+            {
+                code: 0,
+                display: 'Private'
+            },
+            {
+                code: 1,
+                display: 'Others can read'
+            },
+            {
+                code: 2,
+                display: 'Others can modify'
+            },
+        ]
+
         return (
             <div className="SaveWrapper float-right mr2">
                 <div className={modalClasses}>
@@ -186,10 +201,11 @@ var Saver = React.createClass({
                             <div className="float-right">
                                 <SelectionModule
                                     placeholder="Privacy"
-                                    items={[['0', 'Private'], ['1', 'Others can read'], ['2', 'Others can modify']]}
-                                    selectedKey='0'
-                                    selectedValue='1'
-                                    display='1'
+                                    items={privacyOptions}
+                                    selectedKey='code'
+                                    selectedValue={this.props.permissions}
+                                    display='display'
+                                    action={this.props.setPermissions}
                                 />
                             </div>
                         </div>
@@ -818,6 +834,8 @@ var QueryBuilder = React.createClass({
                     name={this.props.model.card.name}
                     description={this.props.model.card.description}
                     hasChanged={this.props.model.hasChanged}
+                    setPermissions={this.props.model.setPermissions.bind(this.props.model)}
+                    permissions={this.props.model.card.public_perms}
                 />
             );
         }

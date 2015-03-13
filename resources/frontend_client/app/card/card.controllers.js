@@ -1272,6 +1272,10 @@ CardControllers.controller('CardDetailNew', [
                             }
                         }
                     },
+                    setPermissions: function (permission) {
+                        $scope.model.card.public_perms = permission;
+                        $scope.model.inform();
+                    },
                     getTableFields: function(tableId) {
                         Metabase.table_query_metadata({
                             'tableId': tableId
