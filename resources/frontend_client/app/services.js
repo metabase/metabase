@@ -716,6 +716,10 @@ CoreServices.factory('Organization', ['$resource', '$cookies', function($resourc
             method: 'GET',
             isArray: true
         },
+        create: {
+            url: '/api/org/',
+            method: 'POST'
+        },
         get: {
             url: '/api/org/:orgId',
             method: 'GET',
