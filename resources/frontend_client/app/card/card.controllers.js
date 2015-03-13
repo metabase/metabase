@@ -1383,7 +1383,6 @@ CardControllers.controller('CardDetailNew', [
                     },
                     updateFilter: function (value, index, filterListIndex) {
                         var filters = $scope.model.card.dataset_query.query.filter
-                        debugger
                         if(filterListIndex) {
                             filters[filterListIndex][index] = value
                         } else {

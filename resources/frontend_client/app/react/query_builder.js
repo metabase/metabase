@@ -666,18 +666,6 @@ var FilterWidget = React.createClass({
                 )
             } else {
                 switch(this.props.valueFields.type) {
-                    case 'text':
-                        valueHtml = (
-                            <input
-                                className="input"
-                                type="text"
-                                defaultValue={this.props.value}
-                                onChange={this._updateTextFilterValue.bind(null, this.props.index)}
-                                ref="textFilterValue"
-                                placeholder="What value?"
-                            />
-                        );
-                        break;
                     case 'date':
                         valueHtml = (
                             <DateFilter
@@ -693,8 +681,15 @@ var FilterWidget = React.createClass({
                         break;
                     default:
                         valueHtml = (
-                            <span>DEFAULT</span>
-                        )
+                            <input
+                                className="input"
+                                type="text"
+                                defaultValue={this.props.value}
+                                onChange={this._updateTextFilterValue.bind(null, this.props.index)}
+                                ref="textFilterValue"
+                                placeholder="What value?"
+                            />
+                        );
                 }
             }
         }
