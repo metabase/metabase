@@ -1381,12 +1381,9 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.card.dataset_query.query.aggregation[1] = target;
                         $scope.model.inform();
                     },
-                    updateFilter: function (value, filterIndex, listIndex) {
-                        var filters = $scope.model.card.dataset_query.query.filter,
-                            filterListIndex = listIndex || 0;
+                    updateFilter: function (value, index, filterListIndex) {
+                        var filters = $scope.model.card.dataset_query.query.filter
 
-                        console.log(filters)
-                        console.log(arguments)
                         // check to see if we need to add another item for
                         /*
                         scope.addFilter = function() {
@@ -1418,8 +1415,12 @@ CardControllers.controller('CardDetailNew', [
                             return result;
                         };
                         */
+                        if(filterListIndex) {
+                            filters[filterListIndex][index] = value
+                        } else {
+                            filters[index] = value
+                        }
 
-                        filters[filterListIndex][filterIndex] = value;
                         $scope.model.inform();
                     },
                     removeFilter: function (index) {
@@ -1435,7 +1436,6 @@ CardControllers.controller('CardDetailNew', [
                             $scope.model.card.dataset_query.query.filter = [];
                             $scope.model.card.dataset_query.query.filter.push('AND');
                             $scope.model.card.dataset_query.query.filter.push(newFilters);
-                            debugger
                             $scope.model.inform();
                         } else if(filter[0] == 'AND'){
                             pushFilterTemplate(filterLength)
@@ -1446,7 +1446,6 @@ CardControllers.controller('CardDetailNew', [
                         }
 
                         function pushFilterTemplate(index) {
-                            console.log('index', index)
                             if(index) {
                                 filter[index] = [null, null, null]
                             } else {

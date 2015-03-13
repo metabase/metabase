@@ -599,12 +599,35 @@ var FilterWidget = React.createClass({
         // we always know the index will 2 for the value of a filter
         this.props.updateFilter(value, 2, index)
     },
+    _operatorList: function (open) {
+        return (
+            <div className="FilterSection">
+                <SelectionModule
+                    placeholder="..."
+                    items={this.props.operatorList}
+                    display='verbose_name'
+                    selectedValue={this.props.operator}
+                    selectedKey='name'
+                    index={0}
+                    isInitiallyOpen={open}
+                    parentIndex={this.props.index}
+                    action={this.props.updateFilter}
+                />
+            </div>
+        )
+    },
     render: function () {
+        console.log('filter widget props', this.props)
         var fieldListOpen = true,
-            operatorList,
+            operatorListHtml,
             canShowOperatorList = false,
             operatorListOpen = true,
             valueHtml
+
+        var style = {
+            fill: '#ddd'
+        }
+
 
         if(this.props.field != null) {
             fieldListOpen = false,
@@ -616,25 +639,7 @@ var FilterWidget = React.createClass({
         }
 
         if(canShowOperatorList) {
-            operatorList = (
-                <div className="FilterSection">
-                    <SelectionModule
-                        placeholder="..."
-                        items={this.props.operatorList}
-                        display='verbose_name'
-                        selectedValue={this.props.operator}
-                        selectedKey='name'
-                        index={0}
-                        isInitiallyOpen={operatorListOpen}
-                        parentIndex={this.props.index}
-                        action={this.props.updateFilter}
-                    />
-                </div>
-            )
-        }
-
-        var style = {
-            fill: '#ddd'
+            operatorListHtml = this._operatorList(operatorListOpen)
         }
 
         if(this.props.valueFields) {
@@ -715,7 +720,7 @@ var FilterWidget = React.createClass({
                         action={this.props.updateFilter}
                     />
                 </div>
-                {operatorList}
+                {operatorListHtml}
                 <div className="FilterSection">
                     {valueHtml}
                 </div>
@@ -770,9 +775,8 @@ var QueryBuilder = React.createClass({
             value = filter[2],
 
             operatorList = [],
-            valueFields
-
-        var filterFieldList = this._getFilterFields()
+            valueFields,
+            filterFieldList = this._getFilterFields()
 
         // extract the real info
         for(var fieldItem in filterFieldList) {
@@ -792,8 +796,6 @@ var QueryBuilder = React.createClass({
                 }
             }
         }
-
-        debugger;
 
         return (
             <FilterWidget
@@ -820,15 +822,15 @@ var QueryBuilder = React.createClass({
 
         var filters = this.props.model.card.dataset_query.query.filter
 
+        // if we have filters...
         if(filters.length != 0) {
-
-            // if we have multiple filters, map through and return a filter widget
+            // and if we have multiple filters, map through and return a filter widget
             if(filters[0] == 'AND') {
                 filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
                     this._getFilterWidget(filter, index)
                 }.bind(this))
             } else {
-                this._getFilterWidget(filters)
+                filterList = this._getFilterWidget(filters)
             }
         }
 
