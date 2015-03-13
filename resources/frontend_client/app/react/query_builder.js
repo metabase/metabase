@@ -188,7 +188,7 @@ var Saver = React.createClass({
                 code: 2,
                 display: 'Others can modify'
             },
-        ]
+        ];
 
         return (
             <div className="SaveWrapper float-right mr2">
