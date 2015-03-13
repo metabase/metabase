@@ -83,7 +83,7 @@
     []    nil ; empty clause
     [nil] nil ; empty clause
     _     (let [field-names (map field-id->kw field-ids)]
-            `[(group ~@field-names)
+            `[(group  ~@field-names)
               (fields ~@field-names)])))
 
 ;; ### `:fields`
@@ -91,8 +91,7 @@
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
-  (let [field-names (->> (sel :many [Field :name] :id [in (set field-ids)])
-                         (map :name))]
+  (let [field-names (map field-id->kw field-ids)]
     `(fields ~@field-names)))
 
 ;; ### `:filter`
@@ -182,16 +181,27 @@
     (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
     @korma-entity))
 
+(defn castify-field
+  "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `DateTimeField`).
+
+    (castify :name \"TextField\")                      -> :name
+    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)"
+  [field-name field-base-type]
+  {:pre [(string? field-name)
+         (string? field-base-type)]}
+  (if (or (= field-base-type "DateField")              ; do we need to cast DateFields ?
+          (= field-base-type "DateTimeField"))         ; or just DateTimeFields ?
+    `(raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+    (keyword field-name)))
+
 ;; TODO - should we memoize this?
 (defn- field-id->kw
-  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
+  "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
   [field-id]
-  {:pre [(integer? field-id)]
-   :post [(keyword? %)]}
-  (or (-> (sel :one [Field :name] :id field-id)
-          :name
-          keyword)
-      (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
+  {:pre [(integer? field-id)]}
+  (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
+    (castify-field field-name field-type)
+    (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 
 ;; ## Debugging Functions (Internal)
