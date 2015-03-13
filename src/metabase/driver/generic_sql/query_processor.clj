@@ -5,15 +5,16 @@
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.db :refer :all]
+            [metabase.driver.generic-sql.native :as native]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
-            (metabase.models [field :refer [Field]]
+            [metabase.driver.generic-sql.util :refer :all]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table]])))
 
 
 (declare apply-form
-         log-query
-         field-id->kw
-         table-id->korma-entity)
+         log-query)
 
 ;; ## Public Functions
 
@@ -32,7 +33,7 @@
          (select entity# ~@forms)))))
 
 
-(defn process-and-run
+(defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [query]
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
@@ -41,6 +42,15 @@
   (->> (process query)
     eval
     (annotate/annotate query)))
+
+
+(defn process-and-run
+  "Process and run a query and return results."
+  [{:keys [type] :as query}]
+  ;; we know how to handle :native and :query (structured) type queries
+  (case (keyword type)
+    :native (native/process-and-run query)
+    :query (process-structured query)))
 
 
 ;; ## Query Clause Processors
@@ -169,29 +179,6 @@
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
-
-
-;; ## Utility Functions (Internal)
-
-(defn table-id->korma-entity
-  "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
-  [table-id]
-  {:pre [(integer? table-id)]
-   :post [(map? %)]}
-  (let [{:keys [korma-entity] :as table} (sel :one Table :id table-id)]
-    (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
-    @korma-entity))
-
-;; TODO - should we memoize this?
-(defn- field-id->kw
-  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
-  [field-id]
-  {:pre [(integer? field-id)]
-   :post [(keyword? %)]}
-  (or (-> (sel :one [Field :name] :id field-id)
-          :name
-          keyword)
-      (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 
 ;; ## Debugging Functions (Internal)

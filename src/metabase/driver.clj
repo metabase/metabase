@@ -3,8 +3,7 @@
             [clojure.tools.logging :as log]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            (metabase.driver [native :as native]
-                             [result :as result])
+            (metabase.driver [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.util :as util]))
@@ -42,7 +41,7 @@
   "Process and run a query and return results."
   [{:keys [type] :as query}]
   (case (keyword type)
-    :native (native/process-and-run query)
+    :native (process-and-run query)
     :query (process-and-run query)
     :result (result/process-and-run query)))
 

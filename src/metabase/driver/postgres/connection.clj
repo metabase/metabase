@@ -19,7 +19,7 @@
                :port (Integer/parseInt port))                 ; convert :port to an Integer
         (rename-keys {:dbname :db}))))
 
-(defmethod connection :postgres [{:keys [connection-details]}]
-  (-> @connection-details
+(defmethod connection :postgres [database]
+  (-> (connection-details database)
       (dissoc :db-type)
       korma.db/postgres))
