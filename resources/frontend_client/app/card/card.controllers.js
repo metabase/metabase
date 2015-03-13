@@ -1392,7 +1392,15 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.inform();
                     },
                     removeFilter: function (index) {
-                        $scope.model.card.dataset_query.query.filter.splice(index, 1);
+                        var filters = $scope.model.card.dataset_query.query.filter
+                        // if there is just one filter
+                        if((filters.length === 3 && filters[0] != 'AND') || (filters[0] == 'AND' && filters.length == 2)) {
+                            // just reset the array
+                            console.log('we be here?')
+                            $scope.model.card.dataset_query.query.filter = []
+                        } else {
+                            $scope.model.card.dataset_query.query.filter.splice(index, 1);
+                        }
                         $scope.model.inform();
                     },
                     addFilter: function () {
