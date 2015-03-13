@@ -1397,32 +1397,30 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.inform();
                     },
                     addFilter: function () {
-                        var filter = $scope.model.card.dataset_query.query.filter;
-                        if(filter[0] == 'AND') {
-                            pushFilterTemplate()
+                        var filter = $scope.model.card.dataset_query.query.filter,
+                            filterLength = filter.length
+
+                        if(filterLength === 3 && filter[0] != 'AND') {
+                            var newFilters = filter
+                            $scope.model.card.dataset_query.query.filter = [];
+                            $scope.model.card.dataset_query.query.filter.push('AND');
+                            $scope.model.card.dataset_query.query.filter.push(newFilters);
                             $scope.model.inform();
-                        } else if (filter.length > 0) {
-                            // TODO - this may be not quite right
-                            filter.unshift('AND');
-                            pushFilterTemplate()
+                        } else if(filter[0] == 'AND'){
+                            pushFilterTemplate(filterLength)
                             $scope.model.inform();
                         } else {
-                            pushFilterTemplate()
+                            pushFilterTemplate();
                             $scope.model.inform();
                         }
 
-                        function pushFilterTemplate() {
-                            // push an array template with null values for the basic indexes of
-                            // filters that will eventually take the form of...
-                            /*
-                                [
-                                    clause -<string> e.g. "=", "<", "BETWEEN"
-                                    fieldId: <int> e.g. 22
-                                    value: <string>
-                                    value2: <string>
-                                ]
-                            */
-                            filter.push([null, null, null])
+                        function pushFilterTemplate(index) {
+                            console.log('index', index)
+                            if(index) {
+                                filter[index] = [null, null, null]
+                            } else {
+                                filter.push([null, null, null])
+                            }
                         }
                     },
                     save: function (settings) {
