@@ -622,12 +622,10 @@ var FilterWidget = React.createClass({
             operatorListHtml,
             canShowOperatorList = false,
             operatorListOpen = true,
-            valueHtml
-
-        var style = {
-            fill: '#ddd'
-        }
-
+            valueHtml,
+            style = {
+                fill: '#ddd'
+            }
 
         if(this.props.field != null) {
             fieldListOpen = false,
@@ -644,7 +642,6 @@ var FilterWidget = React.createClass({
 
         if(this.props.valueFields) {
             if(this.props.valueFields.values) {
-                console.log(this.props.valueFields.values)
                 // do some fixing up of the values so we can display true / false safely
                 var values = this.props.valueFields.values.map(function(value) {
                     var safeValues = {}
@@ -668,8 +665,6 @@ var FilterWidget = React.createClass({
                     />
                 )
             } else {
-                // react to the type of the valueFields object
-                console.log('val', this.props.valueFields.type)
                 switch(this.props.valueFields.type) {
                     case 'text':
                         valueHtml = (
@@ -690,7 +685,7 @@ var FilterWidget = React.createClass({
                                 onChange={
                                     function (date) {
                                         console.log('date to be sent to model', date)
-                                        this.props.updateFilter(date.format('YYYY-MM-DD'), 2)
+                                        this.props.updateFilter(date.format('YYYY-MM-DD'), 2, this.props.index)
                                     }.bind(this)
                                 }
                             />
@@ -806,7 +801,7 @@ var QueryBuilder = React.createClass({
                 operatorList={operatorList}
                 value={value}
                 valueFields={valueFields}
-                index={index}
+                index={index || 0}
                 remove={this.props.model.removeFilter.bind(this.props.model)}
                 updateFilter={this.props.model.updateFilter.bind(this.props.model)}
             />
@@ -827,7 +822,14 @@ var QueryBuilder = React.createClass({
             // and if we have multiple filters, map through and return a filter widget
             if(filters[0] == 'AND') {
                 filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
-                    this._getFilterWidget(filter, index)
+                    console.log('we be mapping?')
+                    if(filter == 'AND') {
+                        return
+                    } else {
+                        return (
+                            this._getFilterWidget(filter, index)
+                        )
+                    }
                 }.bind(this))
             } else {
                 filterList = this._getFilterWidget(filters)
