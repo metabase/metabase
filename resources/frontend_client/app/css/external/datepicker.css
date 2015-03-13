@@ -1,0 +1,80 @@
+/* styling for the datepicker used in the query builder */
+
+.datepicker {
+    border: 1px solid #ddd;
+    font-family: "Lato";
+    font-size: 0.75em;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+}
+
+.datepicker__day {
+    color: #999;
+    padding: 1em;
+    width: 4em;
+    border-radius: 99px;
+}
+
+.datepicker__month {
+    display: flex;
+    flex-direction: column;
+}
+
+.datepicker__header > div,
+.datepicker__month > div {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.datepicker__day {
+    flex: 1;
+    width: auto;
+    line-height: normal;
+}
+
+/* triangles? we don't need no stinking triangles */
+.datepicker__triangle {
+    display: none;
+}
+
+.datepicker__day--this-month {
+    color: #252525;
+}
+
+.datepicker__day:hover {
+    border-radius: 99px;
+    color: #A8C28e;
+    background: transparent;
+}
+
+.datepicker__header {
+    padding: 1em 1em 0.25em;
+    background: #fff;
+}
+
+.datepicker__day--selected {
+    color: #fff;
+    background-color: #A8C28e;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+}
+
+.datepicker__day--selected:hover {
+    background-color: #A8C28e;
+    color: #fff;
+}
+
+.datepicker__input,
+.datepicker__input:focus {
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.datepicker__month {
+    padding: 1em;
+}
+
+.datepicker__header {
+    border-bottom: 1px solid #ddd;
+}

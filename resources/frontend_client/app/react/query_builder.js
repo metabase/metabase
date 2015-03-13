@@ -9,7 +9,7 @@ var QueryVisualization = React.createClass({
         return {
             type: 'table',
             chartId: Math.floor((Math.random() * 698754) + 1)
-        }
+        };
     },
     _changeType: function (type) {
         this.setState({
@@ -120,57 +120,13 @@ var QueryVisualization = React.createClass({
     }
 });
 
-var ResultTable = React.createClass({
-    render: function () {
-        var table,
-            tableHeaders,
-            tableRows
-
-        // we have a result to show
-        if(this.props.result && this.props.result.data) {
-            tableRows = this.props.result.data.rows.map(function (row) {
-                var rowCols = row.map(function (data) {
-                    return (<td>{data}</td>)
-                })
-
-                return (<tr>{rowCols}</tr>)
-            })
-
-            tableHeaders = this.props.result.data.columns.map(function (column) {
-                return (
-                    <th>{column}</th>
-                )
-            })
-
-            table = (
-                <table className="QueryTable Table">
-                    <thead>
-                        <tr>
-                            {tableHeaders}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tableRows}
-                    </tbody>
-                </table>
-            )
-        }
-
-        return (
-            <div className="Table-wrapper">
-                {table}
-            </div>
-        )
-    }
-})
-
 var Saver = React.createClass({
     mixins: [OnClickOutside],
     getInitialState: function () {
         return {
             modalOpen: false,
             triggerAction: this._openModal
-        }
+        };
     },
     handleClickOutside: function () {
         this.replaceState(this.getInitialState())
@@ -246,18 +202,18 @@ var Saver = React.createClass({
         )
 
     }
-})
+});
 
 var SearchBar = React.createClass({
     handleInputChange: function () {
-        this.props.onFilter(this.refs.filterTextInput.getDOMNode().value)
+        this.props.onFilter(this.refs.filterTextInput.getDOMNode().value);
     },
     render: function () {
-        return(
+        return (
             <input className="SearchBar" type="text" ref="filterTextInput" value={this.props.filter} placeholder="Search for" onChange={this.handleInputChange}/>
-        )
+        );
     }
-})
+});
 
 var SelectionModule = React.createClass({
     mixins: [OnClickOutside],
@@ -275,7 +231,7 @@ var SelectionModule = React.createClass({
     handleClickOutside: function () {
         this.setState({
             open: false
-        })
+        });
     },
     _enableSearch: function () {
         /*
@@ -286,11 +242,11 @@ var SelectionModule = React.createClass({
             return false
         }
         */
-        return false
+        return false;
     },
     _toggleOpen: function () {
-        var open = this.state.open
-        open = !open
+        var open = this.state.open;
+        open = !open;
         this.setState({
             open: open
         })
@@ -306,46 +262,47 @@ var SelectionModule = React.createClass({
     },
     _listItems: function (selection) {
         var items,
-            remove
+            remove;
+
         if(this.props.items) {
             items = this.props.items.map(function (item, index) {
-                var display = item[this.props.display] || item
+                var display = item[this.props.display] || item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
                     'selected': selection == display
-                })
+                });
                 // if children are provided, use the custom layout display
-                return(
+                return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
                         <span className="SelectionModule-display">
                             {display}
                         </span>
                     </li>
-                )
-            }.bind(this))
-            return items
+                );
+            }.bind(this));
+            return items;
         } else {
-            return "Sorry. Something went wrong."
+            return "Sorry. Something went wrong.";
         }
     },
     _select: function (item) {
-        var index = this.props.index
+        var index = this.props.index;
         // send back the item with the specified action
         if(this.props.action) {
             if(index != undefined) {
                 if(this.props.parentIndex) {
-                    this.props.action(item[this.props.selectedKey], index, this.props.parentIndex)
+                    this.props.action(item[this.props.selectedKey], index, this.props.parentIndex);
                 } else {
-                    this.props.action(item[this.props.selectedKey], index)
+                    this.props.action(item[this.props.selectedKey], index);
                 }
             } else {
-                this.props.action(item[this.props.selectedKey])
+                this.props.action(item[this.props.selectedKey]);
             }
         }
-        this._toggleOpen()
+        this._toggleOpen();
     },
     render: function () {
-        var selection
+        var selection;
         this.props.items.map(function (item) {
             if(item[this.props.selectedKey] === this.props.selectedValue) {
                 selection = item[this.props.display];
@@ -355,10 +312,10 @@ var SelectionModule = React.createClass({
         var placeholder = selection || this.props.placeholder,
             searchBar,
             remove,
-            removeable = false
+            removeable = false;
 
         if(this.props.remove) {
-            removeable = true
+            removeable = true;
         }
 
         var moduleClasses = cx({
@@ -366,12 +323,12 @@ var SelectionModule = React.createClass({
             'relative': true,
             'selected': selection,
             'removeable': removeable
-        })
+        });
 
         var itemListClasses = cx({
             'SelectionItems': true,
             'open' : this.state.open
-        })
+        });
 
         if(this._enableSearch()) {
             searchBar = <SearchBar onFilter={this._filterSelections} />
@@ -387,7 +344,7 @@ var SelectionModule = React.createClass({
                         <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
                     </svg>
                 </a>
-            )
+            );
         }
 
         return (
@@ -405,53 +362,75 @@ var SelectionModule = React.createClass({
                     </ul>
                 </div>
             </div>
-        )
+        );
     }
-})
+});
+
+var DateFilter = React.createClass({
+    displayName: 'DateFilter',
+    render: function () {
+        // our date will either be provided or we'll need to set up a new one
+        var date;
+
+        if(this.props.date) {
+            date = moment(this.props.date);
+        } else {
+            date = moment();
+        }
+
+        return (
+            <DatePicker
+                dateFormat="YYYY-MM-DD"
+                selected={date}
+                onChange={this.props.onChange}
+            />
+        );
+    }
+});
 
 var QueryPicker = React.createClass({
     render: function () {
 
         /* @souce table */
         var sourceTableSelection = this.props.query.source_table,
-            sourceTableListOpen = true
+            sourceTableListOpen = true;
 
         if(sourceTableSelection) {
-            sourceTableListOpen = false
+            sourceTableListOpen = false;
         }
 
         /* @aggregation table */
         var aggregationSelectionHtml,
             aggregationSelection = this.props.query.aggregation[0],
-            aggregationListOpen = true
+            aggregationListOpen = true;
 
         if(aggregationSelection) {
-            aggregationListOpen = false
+            aggregationListOpen = false;
         }
 
         /* @aggregation target */
         var aggregationTargetHtml,
-            aggregationTargetListOpen = true
+            aggregationTargetListOpen = true;
 
         var dimensionList,
             addDimensionButton,
-            addDimensionButtonText
+            addDimensionButtonText;
 
         if(this.props.aggregationComplete()) {
 
-            (this.props.query.breakout.length < 1) ? addDimensionButtonText = "Grouped by" : addDimensionButtonText = "and"
+            (this.props.query.breakout.length < 1) ? addDimensionButtonText = "Grouped by" : addDimensionButtonText = "and";
 
             if(this.props.query.breakout.length < 2) {
                 addDimensionButton = (
                     <a className="ActionButton" onClick={this.props.addDimension}>{addDimensionButtonText}</a>
-                )
+                );
             }
 
             if(this.props.options.breakout_options) {
                 dimensionList = this.props.query.breakout.map(function (breakout, index) {
-                        var  open
+                        var  open;
                         if(breakout === null) {
-                            open = true
+                            open = true;
                         }
 
                         return (
@@ -468,19 +447,19 @@ var QueryPicker = React.createClass({
                                     remove={this.props.removeDimension}
                                 />
                             </div>
-                        )
-                }.bind(this))
+                        );
+                }.bind(this));
             }
         }
 
-        var dimensionLabel
+        var dimensionLabel;
 
         if(this.props.query.breakout.length > 0) {
             dimensionLabel = (
                 <div className="text-grey-3 inline-block mx2">
                     Grouped by:
                 </div>
-            )
+            );
         }
 
 
@@ -495,7 +474,7 @@ var QueryPicker = React.createClass({
                     isInitiallyOpen={aggregationListOpen}
                     action={this.props.setAggregation}
                 />
-            )
+            );
 
             // if there's a value in the second aggregation slot
             if(this.props.query.aggregation.length > 1) {
@@ -512,7 +491,7 @@ var QueryPicker = React.createClass({
                         isInitiallyOpen={aggregationTargetListOpen}
                         action={this.props.setAggregationTarget}
                     />
-                )
+                );
             }
         }
 
@@ -541,17 +520,17 @@ var QueryPicker = React.createClass({
                     {dimensionList}
                     {addDimensionButton}
                 </div>
-            )
+            );
         }
         var dbSelector
-        if(this.props.dbList.length > 1) {
+        if(this.props.dbList && this.props.dbList.length > 1) {
             dbSelector = (
                 <DatabaseSelector
                     dbList={this.props.dbList}
                     setDatabase={this.props.setDatabase}
                     db={this.props.db}
                 />
-            )
+            );
         }
 
         return (
@@ -566,63 +545,66 @@ var QueryPicker = React.createClass({
                 </div>
 
             </div>
-        )
+        );
     }
-})
+});
 
 var FilterWidget = React.createClass({
     _updateTextFilterValue: function (index) {
-        var value = this.refs.textFilterValue.getDOMNode().value
+        var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will 2 for the value of a filter
-        this.props.updateFilter(value, 2, index)
+        this.props.updateFilter(value, 2, index);
+    },
+    _operatorList: function (open) {
+        return (
+            <div className="FilterSection">
+                <SelectionModule
+                    placeholder="..."
+                    items={this.props.operatorList}
+                    display='verbose_name'
+                    selectedValue={this.props.operator}
+                    selectedKey='name'
+                    index={0}
+                    isInitiallyOpen={open}
+                    parentIndex={this.props.index}
+                    action={this.props.updateFilter}
+                />
+            </div>
+        );
     },
     render: function () {
         var fieldListOpen = true,
-            operatorList,
+            operatorListHtml,
             canShowOperatorList = false,
             operatorListOpen = true,
-            valueHtml
+            valueHtml,
+            style = {
+                fill: '#ddd'
+            };
 
         if(this.props.field != null) {
             fieldListOpen = false,
-            canShowOperatorList = true
+            canShowOperatorList = true;
         }
 
         if(this.props.operator != null) {
-            operatorListOpen = false
+            operatorListOpen = false;
         }
 
         if(canShowOperatorList) {
-            operatorList = (
-                <div className="FilterSection">
-                    <SelectionModule
-                        placeholder="..."
-                        items={this.props.operatorList}
-                        display='verbose_name'
-                        selectedValue={this.props.operator}
-                        selectedKey='name'
-                        index={0}
-                        isInitiallyOpen={operatorListOpen}
-                        parentIndex={this.props.index}
-                        action={this.props.updateFilter}
-                    />
-                </div>
-            )
+            operatorListHtml = this._operatorList(operatorListOpen);
         }
 
-        var style = {
-            fill: '#ddd'
-        }
         if(this.props.valueFields) {
             if(this.props.valueFields.values) {
                 // do some fixing up of the values so we can display true / false safely
                 var values = this.props.valueFields.values.map(function(value) {
                     var safeValues = {}
                     for(var key in value) {
-                        safeValues[key] = value[key].toString()
+                        safeValues[key] = value[key].toString();
                     }
-                    return safeValues
-                })
+                    return safeValues;
+                });
 
                 valueHtml = (
                     <SelectionModule
@@ -636,11 +618,33 @@ var FilterWidget = React.createClass({
                         isInitiallyOpen={false}
                         action={this.props.updateFilter}
                     />
-                )
+                );
             } else {
-                valueHtml = (
-                    <input className="input" type="text" defaultValue={this.props.value} onChange={this._updateTextFilterValue.bind(null, this.props.index)} ref="textFilterValue" placeholder="What value?" />
-                )
+                switch(this.props.valueFields.type) {
+                    case 'date':
+                        valueHtml = (
+                            <DateFilter
+                                date={this.props.value}
+                                onChange={
+                                    function (date) {
+                                        this.props.updateFilter(date.format('YYYY-MM-DD'), 2, this.props.index)
+                                    }.bind(this)
+                                }
+                            />
+                        );
+                        break;
+                    default:
+                        valueHtml = (
+                            <input
+                                className="input"
+                                type="text"
+                                defaultValue={this.props.value}
+                                onChange={this._updateTextFilterValue.bind(null, this.props.index)}
+                                ref="textFilterValue"
+                                placeholder="What value?"
+                            />
+                        );
+                }
             }
         }
 
@@ -660,7 +664,7 @@ var FilterWidget = React.createClass({
                         action={this.props.updateFilter}
                     />
                 </div>
-                {operatorList}
+                {operatorListHtml}
                 <div className="FilterSection">
                     {valueHtml}
                 </div>
@@ -670,9 +674,9 @@ var FilterWidget = React.createClass({
                     </svg>
                 </a>
             </div>
-        )
+        );
     }
-})
+});
 
 var QueryHeader = React.createClass({
     render: function () {
@@ -695,74 +699,90 @@ var DatabaseSelector = React.createClass({
                 selectedKey='id'
                 display='name'
             />
-        )
+        );
     }
-})
+});
 
 var QueryBuilder = React.createClass({
-    render: function () {
-        var filterFieldList = [],
-            runButton,
-            runButtonText,
-            filterHtml
-
-        // populate the list of possible filterable fields
+    _getFilterFields: function () {
+        var filterFieldList = [];
         if(this.props.model.selected_table_fields) {
             for(var key in this.props.model.selected_table_fields.fields_lookup) {
-                filterFieldList.push(this.props.model.selected_table_fields.fields_lookup[key])
+                filterFieldList.push(this.props.model.selected_table_fields.fields_lookup[key]);
+            }
+        }
+        return filterFieldList;
+    },
+    _getFilterWidget: function (filter, index) {
+        var operator = filter[0], // name of the operator
+            field = filter[1], // id of the field
+            value = filter[2],
+
+            operatorList = [],
+            valueFields,
+            filterFieldList = this._getFilterFields();
+
+        // extract the real info
+        for(var fieldItem in filterFieldList) {
+            var theField = filterFieldList[fieldItem];
+
+            if(theField.id == field) {
+
+                for(var operatorItem in theField.operators_lookup) {
+                    var theOperator = theField.operators_lookup[operatorItem]
+                    // push the operator into the list we'll use for selection
+                    operatorList.push(theOperator);
+
+                    if(theOperator.name == operator) {
+                    // this is structured strangely
+                        valueFields = theOperator.fields[0];
+                    }
+                }
             }
         }
 
-        var filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
+        return (
+            <FilterWidget
+                placeholder="Item"
+                field={field}
+                filterFieldList={filterFieldList}
+                operator={operator}
+                operatorList={operatorList}
+                value={value}
+                valueFields={valueFields}
+                index={index || 0}
+                remove={this.props.model.removeFilter.bind(this.props.model)}
+                updateFilter={this.props.model.updateFilter.bind(this.props.model)}
+            />
+        );
+    },
+    render: function () {
+        var runButton,
+            runButtonText,
+            filterHtml,
+            filterList;
 
-            // this filter object contains multiple filters,
-            if(filter != 'AND') {
-                // set variables based on array structure
+        // populate the list of possible filterable fields
 
-                var operator = filter[0], // name of the operator
-                    field = filter[1], // id of the field
-                    value = filter[2],
+        var filters = this.props.model.card.dataset_query.query.filter;
 
-                    operatorList = [],
-                    valueFields
-
-                    // extract the real info
-                    for(var fieldItem in filterFieldList) {
-                        var theField = filterFieldList[fieldItem]
-
-                        if(theField.id == field) {
-
-                            for(var operatorItem in theField.operators_lookup) {
-                                var theOperator = theField.operators_lookup[operatorItem]
-                                // push the operator into the list we'll use for selection
-                                operatorList.push(theOperator)
-
-                                if(theOperator.name == operator) {
-                                    // this is structured strangely
-                                    valueFields = theOperator.fields[0]
-                                }
-                            }
-                        }
+        // if we have filters...
+        if(filters.length != 0) {
+            // and if we have multiple filters, map through and return a filter widget
+            if(filters[0] == 'AND') {
+                filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
+                    if(filter == 'AND') {
+                        return
+                    } else {
+                        return (
+                            this._getFilterWidget(filter, index)
+                        )
                     }
-
-                    return (
-                        <FilterWidget
-                            placeholder="Item"
-                            field={field}
-                            filterFieldList={filterFieldList}
-                            operator={operator}
-                            operatorList={operatorList}
-                            value={value}
-                            valueFields={valueFields}
-                            index={index}
-                            remove={this.props.model.removeFilter.bind(this.props.model)}
-                            updateFilter={this.props.model.updateFilter.bind(this.props.model)}
-                        />
-                    )
+                }.bind(this))
             } else {
-                return;
+                filterList = this._getFilterWidget(filters)
             }
-        }.bind(this))
+        }
 
         if(this.props.model.canRun()) {
             if(this.props.model.isRunning) {
@@ -788,9 +808,9 @@ var QueryBuilder = React.createClass({
 
         var queryPickerClasses = cx({
             'QueryPicker-group': true
-        })
+        });
 
-        var saver
+        var saver;
         if(this.props.model.result) {
             saver = (
                 <Saver
@@ -799,7 +819,7 @@ var QueryBuilder = React.createClass({
                     description={this.props.model.card.description}
                     hasChanged={this.props.model.hasChanged}
                 />
-            )
+            );
         }
 
 
@@ -860,6 +880,6 @@ var QueryBuilder = React.createClass({
             </div>
         )
     }
-})
+});
 
 /* jshint ignore:end */

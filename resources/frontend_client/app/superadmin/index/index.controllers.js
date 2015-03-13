@@ -1,14 +1,40 @@
-"use strict";
+'use strict';
 /*global _*/
 
-var IndexControllers = angular.module('superadmin.index.controllers', []);
+var SettingsAdminControllers = angular.module('superadmin.index.controllers', ['superadmin.index.services']);
 
-IndexControllers.controller('SuperAdminIndex', ['$scope',
-    function($scope) {
-        $scope.$watch('user', function(user) {
-            if (user) {
-                // TODO: get global site settings
-            }
+SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'SettingsAdminServices',
+    function($scope, SettingsAdminServices) {
+        $scope.settings = [];
+
+        SettingsAdminServices.list(function(results) {
+            $scope.settings = _.map(results, function(result) {
+                result.originalValue = result.value;
+                return result;
+            });
+        }, function(error) {
+            console.log("Error fetching settings list: ", error);
         });
+
+        $scope.saveSetting = function(setting) {
+            SettingsAdminServices.put({
+                key: setting.key
+            }, setting, function() {
+                setting.originalValue = setting.value;
+            }, function(error) {
+                console.log("Error saving setting: ", error);
+            });
+        };
+
+        $scope.deleteSetting = function(setting) {
+            SettingsAdminServices.delete({
+                key: setting.key
+            }, function() {
+                setting.value = null;
+                setting.originalValue = null;
+            }, function(error) {
+                console.log("Error deleting setting: ", error);
+            });
+        };
     }
 ]);
