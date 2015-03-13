@@ -77,7 +77,7 @@
     (keyword field-name)))
 
 ;; TODO - should we memoize this?
-(defn- field-id->kw
+(defn field-id->kw
   "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
   [field-id]
   {:pre [(integer? field-id)]}
