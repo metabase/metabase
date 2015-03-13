@@ -60,6 +60,8 @@
   []
   (when-let [{:keys [id]} (sel :one [Database :id] :name db-name)]
     (cascade-delete Database :id id)
+    (clojure.java.io/delete-file (str @test-db-filename ".mv.db") :silently)
+    (clojure.java.io/delete-file (str @test-db-filename ".lock.db") :silently)
     (recur))) ; recurse and delete any other DBs named db-name in case we somehow created more than one
 
 
