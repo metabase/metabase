@@ -11,10 +11,11 @@
   <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
   <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
   <link rel="stylesheet" href="/app/dist/corvus.css" />
+    <script src="/app/bower_components/angular/angular.min.js"></script>
 </head>
 
 <body ng-controller="Corvus">
-    <div ng-controller="Nav" ng-if="user">
+    <div ng-controller="Nav" ng-if="user" ng-cloak>
         <nav class="CoreNav clearfix" ng-show="nav == 'main'">
         <div class="col col-sm-12">
           <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
@@ -133,8 +134,8 @@
                 </li>
             </ul>
           </nav>
-
     </div>
+
     <div class="MainContent">
       <div ng-view></div>
     </div>
@@ -150,7 +151,6 @@
   <script src="/app/bower_components/underscore/underscore.js"></script>
   <script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
 
-  <script src="/app/bower_components/angular/angular.min.js"></script>
   <script src="/app/bower_components/angular-route/angular-route.min.js"></script>
   <script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
   <script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
