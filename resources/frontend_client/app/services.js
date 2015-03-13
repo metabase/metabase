@@ -5,8 +5,8 @@
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Organization',
-    function($rootScope, $routeParams, $q, $location, $timeout, ipCookie, Session, User, Organization) {
+CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Organization', 'PermissionViolation',
+    function($rootScope, $routeParams, $q, $location, $timeout, ipCookie, Session, User, Organization, PermissionViolation) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -148,9 +148,19 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 }
                 console.log('routeChangedImpl-withUser');
 
+                var onSuperadminPage = $location.path().indexOf('/superadmin/') === 0;
+
                 // NOTE: if you try to do this outside this event you'll run into issues where $routeParams is not set.
                 //       so that's why we explicitly wait until we know when $routeParams will be available
-                if ($routeParams.orgSlug) {
+                if (onSuperadminPage) {
+                    // the user is trying to change to a superuser page
+
+                    if (!service.model.currentUser.is_superuser) {
+                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not a superuser!!!");
+                        return;
+                    }
+
+                } else if ($routeParams.orgSlug) {
                     // the url is telling us what Organization we are working in
                     console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
