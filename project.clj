@@ -41,7 +41,7 @@
                  [ring/ring-json "0.3.1"]                             ; Ring middleware for reading/writing JSON automatically
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
-            [lein-ring "0.9.2"]]                                      ; start the HTTP server with 'lein ring server'
+            [lein-ring "0.9.3"]]                                      ; start the HTTP server with 'lein ring server'
   :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
