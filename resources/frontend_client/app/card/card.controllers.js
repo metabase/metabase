@@ -1513,6 +1513,7 @@ CardControllers.controller('CardDetailNew', [
                     }, function(result) {
                         console.log('result', result);
                         $scope.model.extractQuery(result);
+                        $scope.model.getDatabaseList();
                         // run the query
                         $scope.model.run();
                         // execute the query
