@@ -755,69 +755,82 @@ var DatabaseSelector = React.createClass({
 })
 
 var QueryBuilder = React.createClass({
-    render: function () {
-        var filterFieldList = [],
-            runButton,
-            runButtonText,
-            filterHtml
-
-        // populate the list of possible filterable fields
+    _getFilterFields: function () {
+        var filterFieldList = []
         if(this.props.model.selected_table_fields) {
             for(var key in this.props.model.selected_table_fields.fields_lookup) {
                 filterFieldList.push(this.props.model.selected_table_fields.fields_lookup[key])
             }
         }
+        return filterFieldList
+    },
+    _getFilterWidget: function (filter, index) {
+        var operator = filter[0], // name of the operator
+            field = filter[1], // id of the field
+            value = filter[2],
 
-        var filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
+            operatorList = [],
+            valueFields
 
-            // this filter object contains multiple filters,
-            if(filter != 'AND') {
-                // set variables based on array structure
+        var filterFieldList = this._getFilterFields()
 
-                var operator = filter[0], // name of the operator
-                    field = filter[1], // id of the field
-                    value = filter[2],
+        // extract the real info
+        for(var fieldItem in filterFieldList) {
+            var theField = filterFieldList[fieldItem]
 
-                    operatorList = [],
-                    valueFields
+            if(theField.id == field) {
 
-                    // extract the real info
-                    for(var fieldItem in filterFieldList) {
-                        var theField = filterFieldList[fieldItem]
+                for(var operatorItem in theField.operators_lookup) {
+                    var theOperator = theField.operators_lookup[operatorItem]
+                    // push the operator into the list we'll use for selection
+                    operatorList.push(theOperator)
 
-                        if(theField.id == field) {
-
-                            for(var operatorItem in theField.operators_lookup) {
-                                var theOperator = theField.operators_lookup[operatorItem]
-                                // push the operator into the list we'll use for selection
-                                operatorList.push(theOperator)
-
-                                if(theOperator.name == operator) {
-                                    // this is structured strangely
-                                    valueFields = theOperator.fields[0]
-                                }
-                            }
-                        }
+                    if(theOperator.name == operator) {
+                    // this is structured strangely
+                        valueFields = theOperator.fields[0]
                     }
-
-                    return (
-                        <FilterWidget
-                            placeholder="Item"
-                            field={field}
-                            filterFieldList={filterFieldList}
-                            operator={operator}
-                            operatorList={operatorList}
-                            value={value}
-                            valueFields={valueFields}
-                            index={index}
-                            remove={this.props.model.removeFilter.bind(this.props.model)}
-                            updateFilter={this.props.model.updateFilter.bind(this.props.model)}
-                        />
-                    )
-            } else {
-                return;
+                }
             }
-        }.bind(this))
+        }
+
+        debugger;
+
+        return (
+            <FilterWidget
+                placeholder="Item"
+                field={field}
+                filterFieldList={filterFieldList}
+                operator={operator}
+                operatorList={operatorList}
+                value={value}
+                valueFields={valueFields}
+                index={index}
+                remove={this.props.model.removeFilter.bind(this.props.model)}
+                updateFilter={this.props.model.updateFilter.bind(this.props.model)}
+            />
+        )
+    },
+    render: function () {
+        var runButton,
+            runButtonText,
+            filterHtml,
+            filterList
+
+        // populate the list of possible filterable fields
+
+        var filters = this.props.model.card.dataset_query.query.filter
+
+        if(filters.length != 0) {
+
+            // if we have multiple filters, map through and return a filter widget
+            if(filters[0] == 'AND') {
+                filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
+                    this._getFilterWidget(filter, index)
+                }.bind(this))
+            } else {
+                this._getFilterWidget(filters)
+            }
+        }
 
         if(this.props.model.canRun()) {
             if(this.props.model.isRunning) {

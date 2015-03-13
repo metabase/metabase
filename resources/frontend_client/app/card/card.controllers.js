@@ -1388,6 +1388,36 @@ CardControllers.controller('CardDetailNew', [
                         console.log(filters)
                         console.log(arguments)
                         // check to see if we need to add another item for
+                        /*
+                        scope.addFilter = function() {
+                            if (scope.query.filter[0] != "AND") {
+                                // prepend with an AND
+                                scope.query.filter = ["AND", scope.query.filter];
+                            }
+                            scope.query.filter.push([null, null]);
+                        };
+
+                        scope.removeFilter = function(table_filter_index) {
+                            if (scope.query.filter[0] != "AND") {
+                                scope.query.filter = [null, null];
+                            } else {
+                                scope.query.filter.splice(table_filter_index + 1, 1);
+                            }
+                        };
+                        scope.wrapped_filters = function() {
+                            var result;
+                            if (typeof scope.query == "undefined") {
+                                return result;
+                            }
+                            if (scope.query.filter[0] != "AND") {
+                                result = [scope.query.filter];
+                            } else {
+                                result = scope.query.filter.slice(1);
+                            }
+                            //console.log(result);
+                            return result;
+                        };
+                        */
 
                         filters[filterListIndex][filterIndex] = value;
                         $scope.model.inform();
@@ -1405,6 +1435,7 @@ CardControllers.controller('CardDetailNew', [
                             $scope.model.card.dataset_query.query.filter = [];
                             $scope.model.card.dataset_query.query.filter.push('AND');
                             $scope.model.card.dataset_query.query.filter.push(newFilters);
+                            debugger
                             $scope.model.inform();
                         } else if(filter[0] == 'AND'){
                             pushFilterTemplate(filterLength)
@@ -1419,7 +1450,7 @@ CardControllers.controller('CardDetailNew', [
                             if(index) {
                                 filter[index] = [null, null, null]
                             } else {
-                                filter.push([null, null, null])
+                                filter.push(null, null, null)
                             }
                         }
                     },
