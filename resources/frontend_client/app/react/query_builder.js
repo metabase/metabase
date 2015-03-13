@@ -672,7 +672,6 @@ var FilterWidget = React.createClass({
                                 date={this.props.value}
                                 onChange={
                                     function (date) {
-                                        console.log('date to be sent to model', date)
                                         this.props.updateFilter(date.format('YYYY-MM-DD'), 2, this.props.index)
                                     }.bind(this)
                                 }
@@ -817,7 +816,6 @@ var QueryBuilder = React.createClass({
             // and if we have multiple filters, map through and return a filter widget
             if(filters[0] == 'AND') {
                 filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
-                    console.log('we be mapping?')
                     if(filter == 'AND') {
                         return
                     } else {
