@@ -3,6 +3,7 @@
             [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field]])
             [metabase.util :as u]))
@@ -19,10 +20,10 @@
   (sel :one Field :id id))
 
 (defendpoint GET "/:id/summary" [id]
-  (let-404 [{:keys [count distinct-count] :as field} (sel :one Field :id id)]
+  (let-404 [field (sel :one Field :id id)]
     (read-check field)
-    [[:count @count]
-     [:distincts @distinct-count]]))
+    [[:count (driver/field-count field)]
+     [:distincts (driver/field-distinct-count field)]]))
 
 ;; ## TODO - Endpoints not yet implemented
 ;; (defendpoint GET "/:id/values" [id])

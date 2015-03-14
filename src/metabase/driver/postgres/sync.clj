@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres.sync
   "Implementation of `sync-tables` for Postgres."
   (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver.sync :as driver]))
+            [metabase.driver :refer [sync-tables]]))
 
 (def column->base-type
   "Map of Postgres column types -> Field base types.
@@ -24,6 +24,6 @@
    :timestamptz :DateTimeField
    :varchar :TextField})
 
-(defmethod driver/sync-tables :postgres [database]
+(defmethod sync-tables :postgres [database]
   (binding [generic/*column->base-type* column->base-type]
     (generic/sync-tables database)))
