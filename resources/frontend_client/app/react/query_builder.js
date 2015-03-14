@@ -39,12 +39,23 @@ var QueryVisualization = React.createClass({
         if(this.props.result && this.props.result.data) {
             if(this.state.type === 'table') {
                 tableRows = this.props.result.data.rows.map(function (row) {
-                    var rowCols = row.map(function (data) {
-                        return (<td>{data.toString()}</td>)
-                    });
+                    var rowCols = row.map(function (data, index) {
+                        var dataHtml,
+                            column = this.props.result.data.cols[index];
+
+                        // if there is a special_type of id, create a link to the entity
+                        if(column.special_type === 'id') {
+                            dataHtml = (
+                                <a href={'/test/explore/table/' + column.table_id + '/' + data.toString() } title={'View this entity'}>{data.toString()}</a>
+                            )
+                        } else {
+                            dataHtml = data.toString()
+                        }
+                        return (<td>{dataHtml}</td>)
+                    }.bind(this));
 
                     return (<tr>{rowCols}</tr>);
-                });
+                }.bind(this));
 
                 tableHeaders = this.props.result.data.columns.map(function (column) {
                     return (
