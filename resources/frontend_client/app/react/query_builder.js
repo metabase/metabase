@@ -894,6 +894,7 @@ var QueryBuilder = React.createClass({
 
                     <div className="ActionBar">
                         {saver}
+                        <a className="ActionButton inline-block mr1" href={this.props.model.getDownloadLink()} target="_blank">Download data</a>
                     </div>
             </div>
         )
