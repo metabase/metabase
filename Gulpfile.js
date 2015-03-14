@@ -39,6 +39,7 @@ gulp.task('css', function(){
 
 gulp.task('jsx', function () {
     return gulp.src(SRC.jsx)
+        .pipe(concat('query_builder.js'))
         .pipe(react())
         .pipe(gulp.dest(DEST.js))
 })
