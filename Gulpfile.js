@@ -9,7 +9,7 @@ var basePath = 'resources/frontend_client/app/';
 
 var SRC = {
     css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
-    jsx: [basePath + 'react/*.js']
+    jsx: [basePath + 'query_builder/*.js']
 };
 
 var DEST = {
