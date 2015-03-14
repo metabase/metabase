@@ -46,7 +46,7 @@ var QueryVisualization = React.createClass({
                         // if there is a special_type of id, create a link to the entity
                         if(column.special_type === 'id') {
                             dataHtml = (
-                                <a href={'/test/explore/table/' + column.table_id + '/' + data.toString() } title={'View this entity'}>{data.toString()}</a>
+                                <a href={'/' + this.props.orgSlug + '/explore/table/' + column.table_id + '/' + data.toString() } title={'View this entity'}>{data.toString()}</a>
                             )
                         } else {
                             dataHtml = data.toString()
@@ -900,6 +900,7 @@ var QueryBuilder = React.createClass({
                             card={this.props.model.card}
                             result={this.props.model.result}
                             setDisplay={this.props.model.setDisplay.bind(this.props.model)}
+                            orgSlug={this.props.model.org.slug}
                         />
                     </div>
 
