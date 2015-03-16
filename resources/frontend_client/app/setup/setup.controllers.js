@@ -119,11 +119,10 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                     database.id = $scope.database.id
                     Metabase.db_update(database, success, error);
                 }
-                
+
             }, function(error){
                 console.log(error);
-                alert("Invalid Connection String - " + error.data.message);
-
+                $scope.error = "Invalid Connection String - " + error.data.message;
             })
 
         }
@@ -165,6 +164,9 @@ SetupControllers.controller('SetupProfile', ['$scope', '$location', 'Organizatio
 
 }]);
 
+/*
+    not yet included in the flow but eventually
+*/
 SetupControllers.controller('SetupTeam', ['$scope', '$location', 'Organization', function ($scope, $location, Organization) {
     $scope.$watch('currentOrg', function(org) {
         Organization.members({

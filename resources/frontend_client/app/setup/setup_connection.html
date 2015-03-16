@@ -4,7 +4,7 @@
             <ul>
                 <li class="inline-block text-grey-3"><a class="Breadcrumb" href="/setup/data">Your data</a></li>
                 <li class="Breadcrumb-separator inline-block mx2"></li>
-                <li class="inline-block text-brand">{{breadcrumb}}</li>
+                <li class="inline-block text-brand"><a class="Breadcrumb">{{breadcrumb}}</a></li>
             </ul>
         </div>
     </div>
@@ -13,6 +13,9 @@
     <div class="SetupWrapper">
 <div class="AdminContent AdminContent-shallow">
     <div class="p4">
+        <div class="bg-error text-white p2 rounded mb2" ng-show="error">
+            {{error}}
+        </div>
         <div>
             <label class="Connection-label">Database name</label>
             <input class="Connection-input" type="text" placeholder="What do you want to call this data in Metabase?" ng-model="connection.dbname" autofocus>

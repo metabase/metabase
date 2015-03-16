@@ -16,7 +16,7 @@
                     <span class="Connection-engine block">{{database.engine}}</span>
                 </a>
             </li>
-            <li class="Grid-cell" ng-hide="databases.length < 0">
+            <li class="Grid-cell relative" ng-hide="databases.length < 0">
                 <a href="/setup/data/add" class="Connection-type Connection-typeNew">
                     <div class="Connection-icon Connection-add">
                         <cv-add-icon width="16px" height="16px"></cv-add-icon>
@@ -32,8 +32,8 @@
 <div class="SetupBar">
     <div ng-show="databases.length > 0">
         <cv-step-button
-            text="Next"
-            destination="/setup/team">
+            text="Done"
+            destination="/">
         </cv-step-button>
     </div>
 </div>

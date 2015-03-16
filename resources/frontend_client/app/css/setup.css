@@ -4,12 +4,19 @@
 }
 
 .SetupNav {
-    font-size: 0.85em;
+    font-size: 1em;
+    background: #fff;
+    color: #686868;
 }
 
 .SetupWrapper {
     max-width: 80%;
     margin: 0 auto;
+}
+
+.SetupIntro-heading {
+    margin: 2.5em 0 1em;
+    color: var(--brand-color);
 }
 
 .SetupOffset {
@@ -56,11 +63,6 @@
     border-bottom: 1px solid #ddd;
 }
 
-.SetupNav {
-    background: #fff;
-    color: #686868;
-}
-
 @media screen and (--breakpoint-min-xl) {
     .SetupWrapper {
         max-width: 100em;
@@ -71,40 +73,50 @@
     margin-top: 2em;
 }
 
-
-.Connection-engine {
-    padding: 1em 0;
-    border-bottom: 1px solid red;
-    display: inline-block;
-}
-
 .Connection-type {
     border: 1px solid #ddd;
-    padding: 1em;
+    padding: 4em;
     border-radius: 2px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
     background: #fff;
-    display: block;
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
+}
+
+.Connection-icon {
+    text-align: center;
+}
+
+.Connection-type .Connection-engine {
+    text-align: center;
 }
 
 .Connection-typeNew {
     border-style: dashed;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-grow: 1;
 }
 
 .Connection-name {
-    padding: 4em;
+    font-size: 1.2em;
     text-align: center;
-    display: block;
+    color: var(--brand-color);
+}
+
+.Connection-typeNew .Connection-name {
+    padding: 0;
 }
 
 .Connection-type:hover {
-    border-color: var(--brand-color);
+    background-color: var(--brand-color);
     cursor: pointer;
+    color: #fff;
+    border-color: var(--brand-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .32);
+    transition: background .2s linear, border .2s linear, color .2s linear;
+}
+
+.Connection-type:hover .Connection-name {
+    color: #fff;
 }
 
 .Connection-typeDisabled {
@@ -138,7 +150,7 @@
 
 .Connection-input:focus {
     outline: none;
-    border-bottom-color: red;
+    border-bottom-color: var(--brand-color);
 }
 
 .AdminContent {

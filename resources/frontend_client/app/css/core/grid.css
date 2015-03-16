@@ -20,3 +20,22 @@
 .Grid--1of4 > .Grid-cell {
     flex: 0 0 25%;
 }
+
+
+/* TODO - use breakpoint md and add responsive grid classes */
+@media screen and (--breakpoint-max-lg) {
+    .Grid--1of4 > .Grid-cell {
+        flex: 50%;
+    }
+}
+
+@media screen and (--breakpoint-max-sm) {
+    .Grid--1of4 > .Grid-cell {
+        flex: 100%;
+    }
+}
+
+/* a simple utility to make sure an item fills its height */
+.fill-height: {
+    flex: 1;
+}

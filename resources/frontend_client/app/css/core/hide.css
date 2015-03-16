@@ -39,3 +39,7 @@
 @media screen and (--breakpoint-min-xl) {
   .show-xl { display: block !important; }
 }
+
+.invisible {
+    opacity: 0;
+}
