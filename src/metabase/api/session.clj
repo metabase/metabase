@@ -9,7 +9,8 @@
             [metabase.db :refer :all]
             [metabase.email :as email]
             (metabase.models [user :refer [User set-user-password]]
-                             [session :refer [Session]])))
+                             [session :refer [Session]])
+            [metabase.util.password :as password]))
 
 
 ;; login
@@ -55,10 +56,10 @@
 ;; set password from reset token
 (defendpoint POST "/reset_password" [:as {{:keys [token password] :as body} :body}]
   (require-params token password)
+  (check (password/is-complex? password) [400 "Insufficient password strength"])
   (let-404 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
     ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
     (check-404 (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0))))
-    ;; TODO - check that password is of required strength
     (set-user-password (:id user) password)
     {:success true}))
 
