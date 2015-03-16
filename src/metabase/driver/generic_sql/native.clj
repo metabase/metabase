@@ -1,10 +1,11 @@
-(ns metabase.driver.native
+(ns metabase.driver.generic-sql.native
   "The `native` query processor."
   (:import com.metabase.corvus.api.ApiException)
   (:require [clojure.tools.logging :as log]
-            [metabase.api.common :refer :all]
+            [korma.core :as korma]
             [metabase.db :refer [sel]]
-            (metabase.models [database :refer [Database]])))
+            [metabase.driver.generic-sql.util :refer :all]
+            [metabase.models.database :refer [Database]]))
 
 (def class->base-type
   "Map of classes returned from DB call to metabase.models.field/base-types"
@@ -29,11 +30,14 @@
               {:name k
                :base_type (value->base-type v)}))))
 
+
 (defn process-and-run [{:keys [native database] :as query}]
   (log/debug "QUERY: " query)
   (let [db (sel :one Database :id database)
         sql (:query native)
-        results ((:native-query db) sql)]
+        ;; this is where we actually run things
+        ;; TODO - exception catching
+        results (korma/exec-raw (korma-db db) sql :results)]
     {:status :completed
      :row_count (count results)
      :data {:rows (map vals results)

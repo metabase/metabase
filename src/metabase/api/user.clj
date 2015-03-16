@@ -6,7 +6,8 @@
             [metabase.db :refer [sel upd exists?]]
             (metabase.models [hydrate :refer [hydrate]]
                              [user :refer [User set-user-password]])
-            [metabase.util :refer [is-email? select-non-nil-keys]]))
+            [metabase.util :refer [is-email? select-non-nil-keys]]
+            [metabase.util.password :as password]))
 
 
 (defendpoint GET "/" []
@@ -40,6 +41,7 @@
 
 (defendpoint PUT "/:id/password" [id :as {{:keys [password old_password] :as body} :body}]
   (require-params password old_password)
+  (check (password/is-complex? password) [400 "Insufficient password strength"])
   (check-403 (or (= id *current-user-id*)
                  (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password_salt :password] :id id)]
