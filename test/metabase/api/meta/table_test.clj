@@ -6,7 +6,7 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
-            [metabase.test.util :refer [match-$]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
@@ -119,3 +119,34 @@
        :db_id (:id @test-db)
        :created_at $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :categories))))
+
+
+;; ## PUT /api/meta/table/:id
+(expect-eval-actual-first
+    [(match-$ (sel :one Table :id (table->id :users))
+       {:description "What a nice table!"
+        :entity_type "person"
+        :db (match-$ @test-db
+              {:description nil
+               :organization_id $
+               :name "Test Database"
+               :updated_at $
+               :details $
+               :id $
+               :engine "h2"
+               :created_at $})
+        :name "USERS"
+        :rows 15
+        :updated_at $
+        :entity_name "Userz"
+        :active true
+        :id $
+        :db_id @db-id
+        :created_at $})
+     true]
+  [(do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
+                                                                                        :entity_type "person"
+                                                                                        :description "What a nice table!"})
+       ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users))))
+   ;; Now reset the Table to it's original state
+   (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)])
