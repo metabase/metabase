@@ -17,15 +17,14 @@
             {{error}}
         </div>
         <div>
-            <label class="Connection-label">Database name</label>
-            <input class="Connection-input" type="text" placeholder="What do you want to call this data in Metabase?" ng-model="connection.dbname" autofocus>
-            <label class="Connection-label">Database type</label>
-            <ul class="border-bottom mb2">
-                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)">
+            <ul class="Connection-enginePicker">
+                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)" ng-class="{'Connection-engineSelected'}">
                     {{engine}}
                 </li>
             </ul>
             <div ng-show="connection.engine != undefined">
+                <label class="Connection-label">Database name</label>
+                <input class="Connection-input" type="text" placeholder="Database name" ng-model="connection.dbname" autofocus>
                 <label class="Connection-label">Host</label>
                 <input class="Connection-input" type="text" placeholder="Database Host" ng-model="connection.host">
                 <label class="Connection-label">Database port</label>

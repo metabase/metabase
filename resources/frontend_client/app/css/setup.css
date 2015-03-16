@@ -140,7 +140,31 @@
     padding: 0.85em 0 0.85em 0;
     border-bottom: 1px solid #ddd;
     margin-bottom: 1em;
-    min-width: 22em;
+    color: #222;
+    width: 100%;
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .Connection-input {
+        font-size: 1.25em;
+        padding: 1em 0;
+        max-width: 22em;
+    }
+}
+
+.Connection-enginePicker {
+    padding: 1em 0;
+    margin-bottom: 1em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.Connection-enginePicker .Connection-engine {
+    display: inline-block;
+    padding: 1em;
+}
+
+.Connection-enginePicker .Connection-engine:hover {
+    cursor: pointer;
 }
 
 .Connection-label {

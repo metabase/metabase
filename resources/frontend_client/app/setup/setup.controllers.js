@@ -31,7 +31,9 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
         }
 
         $scope.engines = [
-            'Postgres'
+            'Postgres',
+            'MySQl',
+            'H2'
         ]
 
         $scope.connection = {}
