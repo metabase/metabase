@@ -34,13 +34,12 @@
 ;Stub function that will eventually validate a connection string
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
   (require-params host port)
-  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})
-        port (Integer/parseInt port)]
-        (cond
-            (not (u/host-up? host)) (response-invalid "Host not reachable")
-            (not (u/host-port-up? host port)) (response-invalid "Invalid port")
-            (= (rand-int 2) 1)  (response-invalid "Invalid User or Password")
-            :else {:valid true} )))
+  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
+    (cond
+      (not (u/host-up? host)) (response-invalid "Host not reachable")
+      (not (u/host-port-up? host port)) (response-invalid "Invalid port")
+      (= (rand-int 2) 1) (response-invalid "Invalid User or Password")
+      :else {:valid true})))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
