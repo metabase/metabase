@@ -1,3 +1,5 @@
+'use strict';
+
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
     propTypes: {

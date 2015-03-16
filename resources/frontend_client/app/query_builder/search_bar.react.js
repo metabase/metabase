@@ -1,4 +1,5 @@
 'use strict';
+
 var SearchBar = React.createClass({
     displayName: 'SearchBar',
     propTypes: {
