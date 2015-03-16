@@ -233,7 +233,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
         // login just took place, so lets force a refresh of the current user
         $rootScope.$on("appstate:login", function(event, session_id) {
             console.log('loginCompleted', session_id);
-            service.refreshCurrentUser();
+            service.model.currentUserPromise = service.refreshCurrentUser();
         });
 
         // logout just took place, do some cleanup
