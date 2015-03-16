@@ -1,7 +1,10 @@
 var DateFilter = React.createClass({
     displayName: 'DateFilter',
+    propTypes: {
+        date: React.PropTypes.string.isRequired,
+        onChange: React.PropTypes.func.isRequired
+    },
     render: function () {
-        // our date will either be provided or we'll need to set up a new one
         var date;
 
         if(this.props.date) {

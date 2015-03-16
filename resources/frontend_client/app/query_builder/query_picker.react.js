@@ -1,4 +1,11 @@
 var QueryPicker = React.createClass({
+    displayName: 'QueryPicker',
+    propTypes: {
+        query: React.PropTypes.object
+    },
+    _aggregationSelection: function () {
+
+    },
     render: function () {
 
         /* @souce table */
@@ -136,9 +143,9 @@ var QueryPicker = React.createClass({
         if(this.props.dbList && this.props.dbList.length > 1) {
             dbSelector = (
                 <DatabaseSelector
-                    dbList={this.props.dbList}
+                    databases={this.props.dbList}
                     setDatabase={this.props.setDatabase}
-                    db={this.props.db}
+                    currentDatabaseId={this.props.db}
                 />
             );
         }

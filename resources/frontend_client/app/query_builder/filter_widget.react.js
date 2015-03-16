@@ -1,12 +1,30 @@
 var FilterWidget = React.createClass({
+    displayName: 'FilterWidget',
+    propTypes: {
+        index: React.PropTypes.number.isRequired,
+        field: React.PropTypes.number.isRequired, // the id of the field
+        operator: React.PropTypes.string.isRequired,
+        operatorList: React.PropTypes.array.isRequired,
+        filterFieldList: React.PropTypes.array.isRequired,
+        updateFilter: React.PropTypes.func.isRequired, // a function to update the
+        valueFields: React.PropTypes.array.isRequired
+    },
+    sectionClassName: 'FilterSection',
     _updateTextFilterValue: function (index) {
         var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will 2 for the value of a filter
         this.props.updateFilter(value, 2, index);
     },
-    _operatorList: function (open) {
+    _isOpen: function (value) {
+        if(value != undefined) {
+            return true;
+        } else {
+            return false;
+        }
+    },
+    _operatorList: function () {
         return (
-            <div className="FilterSection">
+            <div className={this.sectionClassName}>
                 <SelectionModule
                     placeholder="..."
                     items={this.props.operatorList}
@@ -14,58 +32,64 @@ var FilterWidget = React.createClass({
                     selectedValue={this.props.operator}
                     selectedKey='name'
                     index={0}
-                    isInitiallyOpen={open}
+                    isInitiallyOpen={this._isOpen()}
                     parentIndex={this.props.index}
                     action={this.props.updateFilter}
                 />
             </div>
         );
     },
-    render: function () {
-        var fieldListOpen = true,
-            operatorListHtml,
-            canShowOperatorList = false,
-            operatorListOpen = true,
-            valueHtml,
-            style = {
-                fill: '#ddd'
-            };
-
-        if(this.props.field != null) {
-            fieldListOpen = false,
-            canShowOperatorList = true;
-        }
-
-        if(this.props.operator != null) {
-            operatorListOpen = false;
-        }
-
-        if(canShowOperatorList) {
-            operatorListHtml = this._operatorList(operatorListOpen);
-        }
+    _fieldList: function () {
+        return (
+            <div className={this.sectionClassName}>
+                <SelectionModule
+                    action={this.props.updateFilter}
+                    display='name'
+                    index={1}
+                    items={this.props.filterFieldList}
+                    placeholder="Filter by..."
+                    selectedValue={this.props.field}
+                    selectedKey='id'
+                    isInitiallyOpen={this._isOpen()}
+                    parentIndex={this.props.index}
+                />
+            </div>
+        )
+    },
+    _getSafeValues: function () {
+        return this.props.valueFields.values.map(function(value) {
+            var safeValues = {};
+            for(var key in value) {
+                safeValues[key] = value[key].toString();
+            }
+            return safeValues;
+        });
+    },
+    _filterValue: function () {
+        var valueHtml,
+            isOpen = true;
 
         if(this.props.valueFields) {
+
             if(this.props.valueFields.values) {
-                // do some fixing up of the values so we can display true / false safely
-                var values = this.props.valueFields.values.map(function(value) {
-                    var safeValues = {}
-                    for(var key in value) {
-                        safeValues[key] = value[key].toString();
-                    }
-                    return safeValues;
-                });
+                // do some fixing up of the values so we can display true / false without causing "return true" or "return false"
+                var values = this._getSafeValues();
+
+                if(this.props.value) {
+                    isOpen = false;
+                }
 
                 valueHtml = (
                     <SelectionModule
-                        placeholder="..."
-                        items={values}
+                        action={this.props.updateFilter}
                         display='name'
+                        index='2'
+                        items={values}
+                        isInitiallyOpen={isOpen}
+                        placeholder="..."
                         selectedValue={this.props.value}
                         selectedKey='key'
-                        index='2'
                         parentIndex={this.props.index}
-                        isInitiallyOpen={false}
-                        action={this.props.updateFilter}
                     />
                 );
             } else {
@@ -76,7 +100,11 @@ var FilterWidget = React.createClass({
                                 date={this.props.value}
                                 onChange={
                                     function (date) {
-                                        this.props.updateFilter(date.format('YYYY-MM-DD'), 2, this.props.index)
+                                        this.props.updateFilter(
+                                            date.format('YYYY-MM-DD'),
+                                            2,
+                                            this.props.index
+                                        )
                                     }.bind(this)
                                 }
                             />
@@ -96,29 +124,24 @@ var FilterWidget = React.createClass({
                 }
             }
         }
-
+        return (
+            <div className="FilterSection">
+                {valueHtml}
+            </div>
+        );
+    },
+    render: function () {
+        var closeStyle = {
+                fill: '#ddd'
+            };
 
         return (
             <div className="QueryFilter relative inline-block">
-                <div className="FilterSection">
-                    <SelectionModule
-                        placeholder="Filter by..."
-                        items={this.props.filterFieldList}
-                        display='name'
-                        selectedValue={this.props.field}
-                        selectedKey='id'
-                        index={1}
-                        isInitiallyOpen={fieldListOpen}
-                        parentIndex={this.props.index}
-                        action={this.props.updateFilter}
-                    />
-                </div>
-                {operatorListHtml}
-                <div className="FilterSection">
-                    {valueHtml}
-                </div>
+                {this._fieldList()}
+                {this._operatorList()}
+                {this._filterValue()}
                 <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={style} width="16px" height="16px">
+                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={closeStyle} width="16px" height="16px">
                         <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
                     </svg>
                 </a>
