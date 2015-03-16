@@ -153,18 +153,23 @@
 }
 
 .Connection-enginePicker {
-    padding: 1em 0;
-    margin-bottom: 1em;
+    margin-bottom: 1.5em;
+    padding-bottom: 1em;
     border-bottom: 1px solid var(--border-color);
 }
 
 .Connection-enginePicker .Connection-engine {
     display: inline-block;
-    padding: 1em;
+    padding: 1em 1em    1em 0;
+    margin-right: 1em;
 }
 
 .Connection-enginePicker .Connection-engine:hover {
     cursor: pointer;
+}
+
+.Connection-engineSelected {
+    color: var(--brand-color);
 }
 
 .Connection-label {

@@ -18,7 +18,7 @@
         </div>
         <div>
             <ul class="Connection-enginePicker">
-                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)" ng-class="{'Connection-engineSelected'}">
+                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)" ng-class="{'Connection-engineSelected': connection.engine == engine }">
                     {{engine}}
                 </li>
             </ul>

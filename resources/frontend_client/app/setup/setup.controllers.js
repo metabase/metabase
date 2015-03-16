@@ -59,6 +59,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             $scope.connection = {
                 host: "localhost",
                 port: defaultPorts[connectionType],
+                engine: 'Postgres'
             }
         }
 
