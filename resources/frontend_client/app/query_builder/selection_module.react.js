@@ -1,4 +1,18 @@
+'use strict';
+
 var SelectionModule = React.createClass({
+    displayName:'SelectionModule',
+    propTypes: {
+        action: React.PropTypes.func.isRequired,
+        display: React.PropTypes.string.isRequired,
+        isInitiallyOpen: React.PropTypes.bool,
+        items: React.PropTypes.array,
+        remove: React.PropTypes.func,
+        selectedKey: React.PropTypes.string,
+        selectedValue: React.PropTypes.number,
+        parentIndex: React.PropTypes.number,
+        placeholder: React.PropTypes.string
+    },
     mixins: [OnClickOutside],
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed

@@ -1,11 +1,11 @@
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
     propTypes: {
-        index: React.PropTypes.number.isRequired,
-        field: React.PropTypes.number.isRequired, // the id of the field
-        operator: React.PropTypes.string.isRequired,
-        operatorList: React.PropTypes.array.isRequired,
+        field: React.PropTypes.number, // the id of the field
         filterFieldList: React.PropTypes.array.isRequired,
+        index: React.PropTypes.number.isRequired,
+        operator: React.PropTypes.string,
+        operatorList: React.PropTypes.array.isRequired,
         updateFilter: React.PropTypes.func.isRequired, // a function to update the
         valueFields: React.PropTypes.array.isRequired
     },

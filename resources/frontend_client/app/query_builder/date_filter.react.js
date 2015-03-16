@@ -1,3 +1,5 @@
+'use strict';
+
 var DateFilter = React.createClass({
     displayName: 'DateFilter',
     propTypes: {

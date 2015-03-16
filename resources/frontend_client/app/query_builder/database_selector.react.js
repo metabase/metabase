@@ -1,9 +1,11 @@
+'use strict';
+
 var DatabaseSelector = React.createClass({
     displayName: 'DatabaseSelector',
     propTypes: {
+        currentDatabaseId: React.PropTypes.number.isRequired,
         databases: React.PropTypes.array.isRequired,
         setDatabase: React.PropTypes.func.isRequired,
-        currentDatabaseId: React.PropTypes.number.isRequired
     },
     render: function () {
         return (

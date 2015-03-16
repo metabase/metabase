@@ -1,4 +1,13 @@
 var Saver = React.createClass({
+    displayName: 'Saver',
+    propTypes: {
+        description: React.PropTypes.string,
+        hasChanged: React.PropTypes.bool,
+        name: React.PropTypes.string,
+        permissions: React.PropTypes.number,
+        setPermissions: React.PropTypes.func.isRequired,
+        save: React.PropTypes.func.isRequired
+    },
     mixins: [OnClickOutside],
     getInitialState: function () {
         return {

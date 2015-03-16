@@ -1,10 +1,18 @@
+'use strict';
+
 var QueryPicker = React.createClass({
     displayName: 'QueryPicker',
     propTypes: {
-        query: React.PropTypes.object
-    },
-    _aggregationSelection: function () {
-
+        addDimension: React.PropTypes.func.isRequired,
+        aggregationComplete: React.PropTypes.func,
+        options: React.PropTypes.object,
+        query: React.PropTypes.object,
+        removeDimension: React.PropTypes.func.isRequired,
+        setAggregation: React.PropTypes.func.isRequired,
+        setAggregationTarget: React.PropTypes.func.isRequired,
+        setDatabase: React.PropTypes.func,
+        tables: React.PropTypes.array,
+        updateDimension: React.PropTypes.func.isRequired,
     },
     render: function () {
 

@@ -1,10 +1,13 @@
-/* jshint ignore:start */
-/* @jsx React.DOM */
 'use strict';
+/* jshint ignore:start */
 var cx = React.addons.classSet,
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 var QueryBuilder = React.createClass({
+    displayName: 'QueryBuilder',
+    propTypes: {
+        model: React.PropTypes.object.isRequired
+    },
     _getFilterFields: function () {
         var filterFieldList = [];
         if(this.props.model.selected_table_fields) {
@@ -111,7 +114,8 @@ var QueryBuilder = React.createClass({
             'QueryPicker-group': true
         });
 
-        var saver;
+        var saver,
+            result;
         if(this.props.model.result) {
             saver = (
                 <Saver
@@ -123,7 +127,15 @@ var QueryBuilder = React.createClass({
                     permissions={this.props.model.card.public_perms}
                 />
             );
+            result = (
+                <QueryVisualization
+                    card={this.props.model.card}
+                    result={this.props.model.result}
+                    setDisplay={this.props.model.setDisplay.bind(this.props.model)}
+                />
+            )
         }
+
 
 
         return (
@@ -170,11 +182,7 @@ var QueryBuilder = React.createClass({
                     </div>
 
                     <div className="QueryWrapper mb4">
-                        <QueryVisualization
-                            card={this.props.model.card}
-                            result={this.props.model.result}
-                            setDisplay={this.props.model.setDisplay.bind(this.props.model)}
-                        />
+                        {result}
                     </div>
 
                     <div className="ActionBar">

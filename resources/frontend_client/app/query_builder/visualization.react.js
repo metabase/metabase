@@ -1,6 +1,10 @@
 'use strict';
 
 var QueryVisualization = React.createClass({
+    displayName: 'QueryVisualization',
+    propTypes: {
+        result: React.PropTypes.object.isRequired
+    },
     getInitialState: function () {
         return {
             type: 'table',
