@@ -35,7 +35,7 @@
 ;; Returns the data response for a given query result as a CSV file
 (def query-result-csv
   (GET "/:id/csv" [id]
-    (let-404 [{:keys [result_data query_id] :as query-execution} (eval `(sel :one ~all-fields :id ~id))]
+    (let-404 [{:keys [result_data query_id] :as query-execution} (sel :one all-fields :id id)]
       ;; NOTE - this endpoint requires there to be a saved query associated with this execution
       (check-404 query_id)
       (let-404 [{{can_read :can_read name :name} :query} (hydrate query-execution :query)]
