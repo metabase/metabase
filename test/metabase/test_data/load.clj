@@ -9,11 +9,12 @@
             [metabase.test-data.data :as data]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [org :refer [Org]]
                              [org-perm :refer [OrgPerm]])))
 
-(declare create-and-populate-tables)
+(declare create-and-populate-tables add-metadata)
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
@@ -49,6 +50,8 @@
                    :details {:conn_str @test-db-connection-string})]
           (log/info "Syncing Tables...")
           (driver/sync-tables db)
+          (log/info "Adding Schema Metadata...")
+          (add-metadata)
           (log/info "Finished. Enjoy your test data <3")
           db))))
 
@@ -122,3 +125,43 @@
   (with-test-db
     (dorun (map create-and-populate-table
                 data/test-data))))
+
+(defn- add-metadata []
+  (let [user-table (sel :one Table :name "USERS")
+        user-id-field (sel :one Field :name "ID" :table_id (:id user-table))
+        categories-table (sel :one Table :name "CATEGORIES")
+        categories-id-field (sel :one Field :name "ID" :table_id (:id categories-table))
+        venues-table (sel :one Table :name "VENUES")
+        venues-id-field (sel :one Field :name "ID" :table_id (:id venues-table))
+        venues-cat-field (sel :one Field :name "CATEGORY_ID" :table_id (:id venues-table))
+        venues-lat-field (sel :one Field :name "LATITUDE" :table_id (:id venues-table))
+        venues-long-field (sel :one Field :name "LONGITUDE" :table_id (:id venues-table))
+        checkins-table (sel :one Table :name "CHECKINS")
+        checkins-id-field (sel :one Field :name "ID" :table_id (:id checkins-table))
+        checkins-user-field (sel :one Field :name "USER_ID" :table_id (:id checkins-table))
+        checkins-venues-field (sel :one Field :name "VENUE_ID" :table_id (:id checkins-table))]
+    ;; setup USERS table metadata
+    (upd Field (:id user-id-field) :special_type "id")
+    ;; setup CATEGORIES table metadata
+    (upd Field (:id categories-id-field) :special_type "id")
+    ;; setup VENUES table metadata
+    (upd Field (:id venues-id-field) :special_type "id")
+    (upd Field (:id venues-cat-field) :special_type "fk")
+    (upd Field (:id venues-lat-field) :special_type "latitude")
+    (upd Field (:id venues-long-field) :special_type "longitude")
+    (ins ForeignKey
+      :origin_id (:id venues-cat-field)
+      :destination_id (:id categories-id-field)
+      :relationship "Mt1")
+    ;; setup CHECKINS table metadata
+    (upd Field (:id checkins-id-field) :special_type "id")
+    (upd Field (:id checkins-user-field) :special_type "fk")
+    (upd Field (:id checkins-venues-field) :special_type "fk")
+    (ins ForeignKey
+      :origin_id (:id checkins-user-field)
+      :destination_id (:id user-id-field)
+      :relationship "Mt1")
+    (ins ForeignKey
+      :origin_id (:id checkins-venues-field)
+      :destination_id (:id venues-id-field)
+      :relationship "Mt1")))

@@ -36,7 +36,7 @@
        :updated_at $
        :entity_name nil
        :active true
-       :pk_field nil
+       :pk_field (deref $pk_field)
        :id (table->id :venues)
        :db_id (:id @test-db)
        :created_at $})
@@ -59,7 +59,7 @@
          (match-$ (sel :one Field :id (field->id :categories :id))
            {:description nil
             :table_id (table->id :categories)
-            :special_type nil
+            :special_type "id"
             :name "ID"
             :updated_at $
             :active true
@@ -102,7 +102,7 @@
                 (match-$ (sel :one Field :id (field->id :categories :id))
                   {:description nil
                    :table_id (table->id :categories)
-                   :special_type nil
+                   :special_type "id"
                    :name "ID"
                    :updated_at $
                    :active true
@@ -141,7 +141,7 @@
         :updated_at $
         :entity_name "Userz"
         :active true
-        :pk_field nil
+        :pk_field (deref $pk_field)
         :id $
         :db_id @db-id
         :created_at $})
