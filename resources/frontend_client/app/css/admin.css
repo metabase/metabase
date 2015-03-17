@@ -3,5 +3,15 @@
 }
 
 .AdminNav .NavItem {
-    padding: 1.5em 1em;
+    padding: 1.15em 0;
+    margin: 0 1em 0 0;
+    font-size: 1.12em;
+}
+
+.AdminExit-trigger {
+    color: #ddd;
+}
+
+.AdminTitle {
+    color: #222;
 }

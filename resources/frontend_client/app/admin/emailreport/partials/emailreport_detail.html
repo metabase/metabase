@@ -1,25 +1,8 @@
 <section class="wrapper">
     <h2 class="py2">New Email Report</h2>
+
     <form novalidate class="bg-white bordered rounded shadowed">
-
-            <div class="p4 border-bottom">
-                <div class="py1 float-right">
-                  <div>
-                    <label class="block">Mode:</label>
-                    <div class="Button-group">
-                      <a class="Button" ng-repeat="mode in form_input.modes" ng-class="{ 'Button--selected' : report.mode == mode.id }" ng-model="report.mode" btn-radio="mode.id">{{mode.name}}</a>
-                    </div>
-                  </div>
-
-                  <div class="py2">
-                    <label class="block">Permissions:</label>
-                    <div class="Select block">
-                        <select class="block" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions">
-                        </select>
-                    </div>
-                  </div>
-                </div>
-
+        <div class="p4 border-bottom">
                 <div class="py1">
                     <label >Report Name:</label>
                     <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
@@ -29,24 +12,40 @@
                     <label >Description:</label>
                     <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
                 </div>
-            </div>
+              <div>
+                <label class="block">Mode:</label>
+                <div class="Button-group">
+                  <a class="Button" ng-repeat="mode in form_input.modes" ng-class="{ 'Button--selected' : report.mode == mode.id }" ng-model="report.mode" btn-radio="mode.id">{{mode.name}}</a>
+                </div>
+              </div>
+
+              <div class="py2">
+                <label class="block">Permissions:</label>
+                <div class="Select block">
+                    <select class="block" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions">
+                    </select>
+                </div>
+              </div>
+        </div>
 
         <div class="p4 border-bottom">
             <h3>Recipients</h3>
 
             <div class="py1">
                 <label >Team Members:</label>
-                <table class="Table bordered bg-white">
-                  <tr ng-repeat="user in form_input.users">
-                    <td><input type="checkbox" ng-model="user.incl" /></td>
-                    <td class="full">{{user.name}}</td>
-                  </tr>
-                </table>
+                <div class="Table-wrapper">
+                    <table class="Table bordered bg-white">
+                      <tr ng-repeat="user in form_input.users">
+                        <td><input type="checkbox" ng-model="user.incl" /></td>
+                        <td class="full">{{user.name}}</td>
+                      </tr>
+                    </table>
+                </div>
             </div>
 
             <div class="py1">
                 <label >Email Aliases:</label>
-                <input class="input block full" size="80" maxlength="255" type="text" ng-model="report.email_addresses"/>
+                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.email_addresses"/>
             </div>
         </div>
 
@@ -96,11 +95,15 @@
         </div>
 
         <div class="my1 py2 border-top">
-          <div class="float-right">
-            <input class="Button" type="button" value="Send Now" ng-if="report.id" ng-click="executeReport(report.id)"/>
-          </div>
+          <div class="clearfix">
+              <div class="float-left">
+                <input class="Button" type="button" value="Send Now" ng-if="report.id" ng-click="executeReport(report.id)"/>
+              </div>
 
-          <input class="Button Button--primary" type="button" value="Save" ng-click="save(report)"/>
+              <div class="float-right">
+                  <input class="Button Button--primary" type="button" value="Save" ng-click="save(report)"/>
+              </div>
+          </div>
 
           <div class="inline-block" ng-cloak>
               <span class="px2 text-success" ng-if="success_message" cv-delayed-call="clearStatus()">{{success_message}}</span>

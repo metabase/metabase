@@ -87,11 +87,11 @@
                 <label class="Select" ng-if="user.is_multi_org">
                     <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
                 </label>
-                <a class="link" cv-org-href="/admin/">
+                <a class="AdminTitle link" cv-org-href="/admin/">
                     <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
                 </a>
                 <div class="mx1 float-right">
-                    <a class="link" cv-org-href="/">Exit Admin</a>
+                    <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
                 </div>
             </div>
             <section class="mt1 wrapper">
