@@ -113,6 +113,8 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                 console.log('error', error)
             }
 
+            // api needs a int
+            $scope.connection.port = parseInt($scope.connection.port);
             // Validate the connection string
             Metabase.validate_connection($scope.connection, function(result){
                 if(newConnection) {
