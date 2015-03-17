@@ -1,5 +1,6 @@
 (ns metabase.models.field
   (:require [korma.core :refer :all]
+            [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [database :refer [Database]])
             [metabase.util :as util]))
@@ -62,25 +63,38 @@
     :dimension
     :info})
 
+(defn- check-valid-field-type
+  "Assert that FIELD-TYPE is valid value for `Field.field_type`, or throw a 400."
+  [field-type]
+  (check (contains? field-types (keyword field-type))
+         [400 (format "Invalid field_type: '%s'" (when field-type
+                                                   (name field-type)))]))
+
 (defentity Field
   (table :metabase_field))
 
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (util/assoc* field
-               :table          (delay (sel :one 'metabase.models.table/Table :id table_id))
-               :db             (delay @(:db @(:table <>)))
-               :can_read       (delay @(:can_read @(:table <>)))
-               :can_write      (delay @(:can_write @(:table <>)))))
+               :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
+               :db        (delay @(:db @(:table <>)))
+               :can_read  (delay @(:can_read @(:table <>)))
+               :can_write (delay @(:can_write @(:table <>)))))
 
 (defmethod pre-insert Field [_ field]
-  (let [defaults {:created_at (util/new-sql-timestamp)
-                  :updated_at (util/new-sql-timestamp)
-                  :active true
+  (let [defaults {:created_at      (util/new-sql-timestamp)
+                  :updated_at      (util/new-sql-timestamp)
+                  :active          true
                   :preview_display true
-                  :field_type :info
-                  :position 0}]
+                  :field_type      :info
+                  :position        0}]
     (let [{:keys [field_type base_type special_type] :as field} (merge defaults field)]
+      (check-valid-field-type field_type)
       (assoc field
              :base_type    (name base_type)
              :special_type (when special_type (name special_type))
              :field_type   (name field_type)))))
+
+(defmethod pre-update Field [_ field]
+  (when (contains? field :field_type)
+    (check-valid-field-type (:field_type field)))
+  field)
