@@ -4,6 +4,7 @@
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             (metabase.models [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
@@ -152,3 +153,66 @@
        ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users))))
    ;; Now reset the Table to it's original state
    (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)])
+
+
+;; ## GET /api/meta/table/:id/fks
+;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
+(expect-let [checkins-user-field (sel :one Field :table_id (table->id :checkins) :name "USER_ID")
+             users-id-field (sel :one Field :table_id (table->id :users) :name "ID")]
+  [(match-$ (sel :one ForeignKey :destination_id (:id users-id-field))
+     {:id $
+      :origin_id (:id checkins-user-field)
+      :destination_id (:id users-id-field)
+      :relationship "Mt1"
+      :created_at $
+      :updated_at $
+      :origin (match-$ checkins-user-field
+                {:id $
+                 :table_id $
+                 :name "USER_ID"
+                 :description nil
+                 :base_type "IntegerField"
+                 :preview_display $
+                 :position $
+                 :field_type "info"
+                 :active true
+                 :special_type "fk"
+                 :created_at $
+                 :updated_at $
+                 :table (match-$ (sel :one Table :id (table->id :checkins))
+                          {:description nil
+                           :entity_type nil
+                           :name "CHECKINS"
+                           :rows 1000
+                           :updated_at $
+                           :entity_name nil
+                           :active true
+                           :id $
+                           :db_id $
+                           :created_at $})})
+      :destination (match-$ users-id-field
+                     {:id $
+                      :table_id $
+                      :name "ID"
+                      :description nil
+                      :base_type "IntegerField"
+                      :preview_display $
+                      :position $
+                      :field_type "info"
+                      :active true
+                      :special_type "id"
+                      :created_at $
+                      :updated_at $
+                      :table (match-$ (sel :one Table :id (table->id :users))
+                               {:description nil
+                                :entity_type nil
+                                :name "USERS"
+                                :rows 15
+                                :updated_at $
+                                :entity_name nil
+                                :active true
+                                :id $
+                                :db_id $
+                                :created_at $})})})]
+  ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (table->id :users))))
+
