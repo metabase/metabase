@@ -145,3 +145,93 @@
     (if (is-wrapped? response) response
         {:status 200
          :body response})))
+
+
+;;; ## ARG ANNOTATION FUNCTIONALITY
+
+;;; ### Args Form Deannotation
+
+(defn deannotate-arg
+  "If FORM is a symbol, strip off any annotations.
+
+    (deannotate-arg 'password.required) -> password"
+  [form]
+  (if-not (symbol? form) form
+          (let [[arg & _] (clojure.string/split (name form) #"\.")]
+            (symbol arg))))
+
+(defn deannotate-args-form
+  "Walk ARGS-FORM and strip off any annotations.
+
+    (deannotate-args-form [id :as {{:keys [password.required old_password.required]} :body}])
+      -> [id :as {{:keys [password old_password]} :body}]"
+  [args-form]
+  (if (= args-form []) '[:as _]
+      (->> args-form
+           (mapv (partial clojure.walk/prewalk deannotate-arg)))))
+
+
+;;; ### Args Form Annotation Gathering
+
+(defn args-form->symbols
+  "Recursively walk ARGS-FORM and return a sequence of symbols.
+
+    (args-form->symbols [id :as {{:keys [password.required old_password.required]} :body}])
+      -> (id password.required old_password.required)"
+  [args-form]
+  {:post [(sequential? %)
+          (every? symbol? %)]}
+  (cond
+    (symbol? args-form) [args-form]
+    (map? args-form) (->> args-form
+                          (mapcat (fn [[k v]]
+                                    [(args-form->symbols k) (args-form->symbols v)]))
+                          (mapcat args-form->symbols))
+    (sequential? args-form) (mapcat args-form->symbols
+                                    args-form)
+    :else []))
+
+(defn symb->arg+annotations
+  "Return a sequence of pairs of `[annotation-kw deannotated-arg-symb]` for an annotated ARG.
+
+    (symb->arg+annotations 'password)              -> nil
+    (symb->arg+annotations 'password.required)     -> [[:required password]]
+    (symb->arg+annotations 'password.required.str) -> [[:required password], [:str password]]"
+  [arg]
+  {:pre [(symbol? arg)]}
+  (let [[arg & annotations] (clojure.string/split (name arg) #"\.")]
+    (when (seq annotations)
+      (->> annotations
+           (map (fn [annotation]
+                  [(keyword annotation) (symbol arg)]))))))
+
+(defn args-form->arg+annotations-pairs
+  [annotated-args-form]
+  {:pre [(vector? annotated-args-form)]}
+  (->> annotated-args-form
+       args-form->symbols
+       (mapcat symb->arg+annotations)))
+
+
+;;; ### let-annotated-args
+
+(defn arg-annotation-let-binding
+  "Return a pair like `[arg-symb arg-annotation-form]`, where `arg-annotation-form` is the result of calling the `arg-annotation-fn` implementation
+   for ANNOTATION-KW."
+  [[annotation-kw arg-symb]] ; dispatch-fn passed as a param to avoid circular dependencies
+  {:pre [(keyword? annotation-kw)
+         (symbol? arg-symb)]}
+  `[~arg-symb ~((eval 'metabase.api.common/arg-annotation-fn) annotation-kw arg-symb)])
+
+(defmacro let-annotated-args
+  "Wrap BODY in a let-form that calls corresponding implementations of `arg-annotation-fn` for annotated args in ANNOTATED-ARGS-FORM."
+  [annotated-args-form & body]
+  {:pre [(vector? annotated-args-form)]}
+  (let [annotations (->> annotated-args-form
+                         args-form->symbols
+                         (mapcat symb->arg+annotations)
+                         (mapcat arg-annotation-let-binding))]
+    (if (seq annotations)
+      `(let [~@annotations]
+         ~@body)
+      `(do ~@body))))

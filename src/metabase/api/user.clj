@@ -26,20 +26,22 @@
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (check-404 (sel :one User :id id)))
 
+(defmethod arg-annotation-fn :email [_ arg-symb]
+  `(do (check (is-email? ~arg-symb) [400 (format ~(str (name arg-symb) " '%s' is not a valid email.") ~arg-symb)])
+       ~arg-symb))
 
-(defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [email.email] :as body} :body}]
   ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
   (when id
-    (check-400 (is-email? email))
     (check-400 (not (exists? User :email email :id [not= id]))))
   (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
                   (mapply upd User id)))
   (sel :one User :id id))
 
 
-(defendpoint PUT "/:id/password" [id :as {{:keys [password old_password] :as body} :body}]
+(defendpoint PUT "/:id/password" [id :as {{:keys [password.required old_password.required]} :body}]
   (require-params password old_password)
   (check (password/is-complex? password) [400 "Insufficient password strength"])
   (check-403 (or (= id *current-user-id*)

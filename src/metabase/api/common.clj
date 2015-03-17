@@ -170,6 +170,37 @@
 
 ;;; ## DEFENDPOINT AND RELATED FUNCTIONS
 
+
+;;; ### Arg annotation fns
+
+(defmulti arg-annotation-fn
+  "Multimethod that should return a form suitable for use in a let binding.
+
+   Dispatches on the arg annotation as a keyword, and is also passed the symbol
+   of the argument that should be checked.
+
+    (defendpoint GET ... [id.required])
+
+     -> (let [id ~(arg-annotation-fn :required id)] ...)
+
+     -> (let [id (do (require-params id) id)] ...)"
+  (fn [annotation-kw arg-symb]
+    {:pre [(keyword? annotation-kw)
+           (symbol? arg-symb)]}
+    annotation-kw))
+
+;; By default, throw an exception if we see an arg annotation we don't understand
+(defmethod arg-annotation-fn :default [annotation-kw arg-symbol]
+  (throw (Exception. (format "Don't know what to do with arg annotation '%s' on arg '%s'!" (name annotation-kw) (name arg-symbol)))))
+
+;; `required` just calls require-params
+(defmethod arg-annotation-fn :required [_ arg-symbol]
+  `(do (require-params ~arg-symbol)
+       ~arg-symbol))
+
+
+;;; ### defendpoint
+
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -185,13 +216,16 @@
              (vector? route))
          (vector? args)]}
   (let [name (route-fn-name method route)
-        route (typify-route route)]
+        route (typify-route route)
+        annotated-args args
+        args (deannotate-args-form args)]
     `(do (def ~name
            (~method ~route ~args
                     (auto-parse ~args
                       (catch-api-exceptions
-                        (-> (do ~@body)
-                            wrap-response-if-needed)))))
+                        (let-annotated-args ~annotated-args
+                          (-> (do ~@body)
+                              wrap-response-if-needed))))))
          (alter-meta! #'~name assoc :is-endpoint? true))))
 
 (defmacro define-routes
