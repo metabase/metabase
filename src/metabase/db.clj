@@ -55,6 +55,18 @@
                          :password (config/config-str :mb-db-pass)
                          :host (config/config-str :mb-db-host)})))
 
+(defn metabase-db-conn-str
+  "A connection string that can be used when pretending the Metabase DB is itself a `Database`
+   (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
+  []
+  (case (config/config-kw :mb-db-type)
+    :h2 (db-file)
+    :postgres (format "host=%s port=%d dbname=%s user=%s password=%s"
+                      (config/config-str :mb-db-host)
+                      (config/config-int :mb-db-port)
+                      (config/config-str :mb-db-dbname)
+                      (config/config-str :mb-db-user)
+                      (config/config-str :mb-db-pass))))
 
 (defn test-db-conn
   "Simple test of a JDBC connection."
