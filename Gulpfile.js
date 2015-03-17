@@ -9,7 +9,7 @@ var basePath = 'resources/frontend_client/app/';
 
 var SRC = {
     css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
-    jsx: [basePath + 'react/*.js']
+    jsx: [basePath + 'query_builder/*.js']
 };
 
 var DEST = {
@@ -39,6 +39,7 @@ gulp.task('css', function(){
 
 gulp.task('jsx', function () {
     return gulp.src(SRC.jsx)
+        .pipe(concat('query_builder.js'))
         .pipe(react())
         .pipe(gulp.dest(DEST.js))
 })

@@ -5,15 +5,16 @@
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.db :refer :all]
+            [metabase.driver.generic-sql.native :as native]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
-            (metabase.models [field :refer [Field]]
+            [metabase.driver.generic-sql.util :refer :all]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table]])))
 
 
 (declare apply-form
-         log-query
-         field-id->kw
-         table-id->korma-entity)
+         log-query)
 
 ;; ## Public Functions
 
@@ -32,7 +33,7 @@
          (select entity# ~@forms)))))
 
 
-(defn process-and-run
+(defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [query]
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
@@ -41,6 +42,15 @@
   (->> (process query)
     eval
     (annotate/annotate query)))
+
+
+(defn process-and-run
+  "Process and run a query and return results."
+  [{:keys [type] :as query}]
+  ;; we know how to handle :native and :query (structured) type queries
+  (case (keyword type)
+    :native (native/process-and-run query)
+    :query (process-structured query)))
 
 
 ;; ## Query Clause Processors
@@ -64,7 +74,7 @@
 (defmethod apply-form :aggregation [[_ value]]
   (match value
     ["rows"]  nil                                  ; don't need to do anything special for `rows` - `select` selects all rows by default
-    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation
+    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation (?)
     [_ _]     (let [[ag-type field-id] value       ; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
                     field (field-id->kw field-id)]
                 (match (keyword ag-type)
@@ -78,19 +88,20 @@
 ;; ex.
 ;;
 ;;     [1412 1413]
-(defmethod apply-form :breakout [[_ field-ids]]      ; TODO - not yet implemented
-  (when-not (= field-ids [nil])                      ; `:breakout [nil]` is considered a valid 'empty' form
-    (let [field-names (map field-id->kw field-ids)]
-      `[(group ~@field-names)
-        (fields ~@field-names)])))
+(defmethod apply-form :breakout [[_ field-ids]]
+  (match field-ids
+    []    nil ; empty clause
+    [nil] nil ; empty clause
+    _     (let [field-names (map field-id->kw field-ids)]
+            `[(group  ~@field-names)
+              (fields ~@field-names)])))
 
 ;; ### `:fields`
 ;; ex.
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :fields [[_ field-ids]]
-  (let [field-names (->> (sel :many [Field :name] :id [in (set field-ids)])
-                         (map :name))]
+  (let [field-names (map field-id->kw field-ids)]
     `(fields ~@field-names)))
 
 ;; ### `:filter`
@@ -120,6 +131,7 @@
   (match filter-clause
     nil                  nil ; empty clause
     [nil nil]            nil ; empty clause
+    []                   nil ; empty clause
     ["AND" & subclauses] `(where (~'and ~@(map filter-subclause->predicate
                                                subclauses)))
     ["OR" & subclauses]  `(where (~'or  ~@(map filter-subclause->predicate
@@ -166,29 +178,6 @@
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
-
-
-;; ## Utility Functions (Internal)
-
-(defn table-id->korma-entity
-  "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
-  [table-id]
-  {:pre [(integer? table-id)]
-   :post [(map? %)]}
-  (let [{:keys [korma-entity] :as table} (sel :one Table :id table-id)]
-    (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
-    @korma-entity))
-
-;; TODO - should we memoize this?
-(defn- field-id->kw
-  "Lookup `Field` with FIELD-ID and return its name as a keyword (suitable for use in a korma clause)."
-  [field-id]
-  {:pre [(integer? field-id)]
-   :post [(keyword? %)]}
-  (or (-> (sel :one [Field :name] :id field-id)
-          :name
-          keyword)
-      (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 
 ;; ## Debugging Functions (Internal)

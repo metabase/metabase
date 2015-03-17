@@ -6,7 +6,7 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
-            [metabase.test.util :refer [match-$]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
@@ -29,7 +29,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "VENUES"
        :rows 100
@@ -50,7 +50,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :name)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -63,7 +63,7 @@
             :updated_at $
             :active true
             :id (field->id :categories :id)
-            :field_type "dimension"
+            :field_type "info"
             :position 0
             :preview_display true
             :created_at $
@@ -82,7 +82,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id (:id @test-org)
+              :organization_id @org-id
               :description nil})
        :name "CATEGORIES"
        :fields [(match-$ (sel :one Field :id (field->id :categories :name))
@@ -93,7 +93,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $
@@ -106,7 +106,7 @@
                    :updated_at $
                    :active true
                    :id $
-                   :field_type "dimension"
+                   :field_type "info"
                    :position 0
                    :preview_display true
                    :created_at $
@@ -119,3 +119,34 @@
        :db_id (:id @test-db)
        :created_at $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :categories))))
+
+
+;; ## PUT /api/meta/table/:id
+(expect-eval-actual-first
+    [(match-$ (sel :one Table :id (table->id :users))
+       {:description "What a nice table!"
+        :entity_type "person"
+        :db (match-$ @test-db
+              {:description nil
+               :organization_id $
+               :name "Test Database"
+               :updated_at $
+               :details $
+               :id $
+               :engine "h2"
+               :created_at $})
+        :name "USERS"
+        :rows 15
+        :updated_at $
+        :entity_name "Userz"
+        :active true
+        :id $
+        :db_id @db-id
+        :created_at $})
+     true]
+  [(do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
+                                                                                        :entity_type "person"
+                                                                                        :description "What a nice table!"})
+       ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users))))
+   ;; Now reset the Table to it's original state
+   (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)])

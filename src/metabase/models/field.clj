@@ -1,7 +1,6 @@
 (ns metabase.models.field
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.metadata :refer [field-count field-distinct-count]]
             (metabase.models [database :refer [Database]])
             [metabase.util :as util]))
 
@@ -71,16 +70,14 @@
                :table          (delay (sel :one 'metabase.models.table/Table :id table_id))
                :db             (delay @(:db @(:table <>)))
                :can_read       (delay @(:can_read @(:table <>)))
-               :can_write      (delay @(:can_write @(:table <>)))
-               :count          (delay (field-count <>))
-               :distinct-count (delay (field-distinct-count <>))))
+               :can_write      (delay @(:can_write @(:table <>)))))
 
 (defmethod pre-insert Field [_ field]
   (let [defaults {:created_at (util/new-sql-timestamp)
                   :updated_at (util/new-sql-timestamp)
                   :active true
                   :preview_display true
-                  :field_type :dimension
+                  :field_type :info
                   :position 0}]
     (let [{:keys [field_type base_type special_type] :as field} (merge defaults field)]
       (assoc field

@@ -43,6 +43,14 @@ Run unit tests with
 
 ## Documentation
 
+#### Instant Cheatsheet
+
+Start up an instant cheatsheet for the project + dependencies by running
+
+    lein instant-cheatsheet
+
+#### Marginalia
+
 Available at http://metabase.github.io/metabase-init/.
 
 You can generate and view documentation with
@@ -63,16 +71,33 @@ To quickly get your dev environment set up, use the `bootstrap` function to crea
 Open a REPL in Emacs or with `lein repl` and enter the following:
 
     (use 'metabase.bootstrap)
-	(bootstrap)
+    (bootstrap)
 
 You'll be walked through the steps to get started.
 
+## API Client (for Development)
+
+You can make API calls from the REPL using `metabase.http-client`:
+
+    (use 'metabase.http-client)
+    (defn cl [& args] 
+      (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
+          clojure.pprint/pprint))
+    (cl :get "user/current")
+    ;; -> {:email "crowbetro@metabase.com",
+    ;;     :first_name "Crowbero",
+    ;;     :last_login #inst "2015-03-13T22:55:05.390000000-00:00",
+    ;;     ...}
 
 ## Checking for Out-of-Date Dependencies
 
-    lein ancient
+    lein ancient                   # list all out-of-date dependencies
+    lein ancient latest lein-ring  # list latest version of artifact lein-ring
 
-Will give you a list of out-of-date plugins and dependencies. (Once's this repo is made public, this Clojars badge will work and show the status as well:)
+Will give you a list of out-of-date dependencies. This requires leiningen version 2.4.0 or higher so run `lein upgrade` first if needed.
+This doesn't seem to check plugins, so you'll have to do that manually using `lein ancient latest`.
+
+Once's this repo is made public, this Clojars badge will work and show the status as well:
 
 [![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
 

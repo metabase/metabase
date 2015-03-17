@@ -34,12 +34,18 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.query',
     'corvusadmin.annotation',
     'corvusadmin.search',
-    'corvusadmin.settings'
+    'superadmin.index',
+    'superadmin.organization'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
+    });
+
+    $routeProvider.when('/', {
+        template: '',
+        controller: 'Homepage'
     });
 
     $routeProvider.when('/unauthorized/', {

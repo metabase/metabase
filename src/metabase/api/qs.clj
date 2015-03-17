@@ -4,14 +4,13 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
-                             [query-execution :refer [QueryExecution all-fields]])
+                             [query-execution :refer [QueryExecution all-fields build-response]])
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
-(declare execute-query build-response)
+(declare execute-query)
 
 
 (defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
@@ -41,24 +40,3 @@
                "Content-Disposition" (str "attachment; filename=\"query_result_" (now-iso8601) ".csv\"")}}))
 
 (define-routes)
-
-
-;; ===============================================================================================================
-
-
-(defn build-response
-  "Build a query response from a QueryExecution record."
-  [{{:keys [cols columns rows data]
-     :or {cols []
-          columns []}} :result_data :as query-execution}]
-  (let [rows (or rows data [])]
-    (->
-     (select-keys query-execution [:id :uuid :status])
-     (assoc :data {:rows rows
-                   :cols cols
-                   :columns columns}
-            :row_count (count rows))
-     (cond->
-         (= "failed" (:status query-execution)) (assoc :error (:error query-execution)
-                                                       ;; TODO - sql error formatting FN
-                                                       :sql_error (:error query-execution))))))

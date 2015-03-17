@@ -5,7 +5,7 @@
             (korma [core :refer :all]
                    [db :refer :all])
             [metabase.db :refer :all]
-            [metabase.driver.sync :as sync]
+            [metabase.driver :as driver]
             [metabase.test-data.data :as data]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
@@ -48,7 +48,7 @@
                    :engine :h2
                    :details {:conn_str @test-db-connection-string})]
           (log/info "Syncing Tables...")
-          (sync/sync-tables db)
+          (driver/sync-tables db)
           (log/info "Finished. Enjoy your test data <3")
           db))))
 

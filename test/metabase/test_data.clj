@@ -127,6 +127,8 @@
       user->token (fn [user]
                     (or (@tokens user)
                         (let [token (http/authenticate (user->credentials user))]
+                          (when-not token
+                            (throw (Exception. (format "Authentication failed for %s with credentials %s" user (user->credentials user)))))
                           (swap! tokens assoc user token)
                           token)))]
   (defn user->client
@@ -150,7 +152,7 @@
   "Return the `OrgPerm` for User with USERNAME for the Test Org."
   [username]
   {:pre [(contains? usernames username)]}
-  (sel :one OrgPerm :organization_id (:id @test-org) :user_id (user->id username)))
+  (sel :one OrgPerm :organization_id @org-id :user_id (user->id username)))
 
 
 ;; # INTERNAL

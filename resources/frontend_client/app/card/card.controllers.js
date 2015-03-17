@@ -1181,7 +1181,7 @@ CardControllers.controller('CardDetail', [
                         'public_perms': 0,
                         'can_read': true,
                         'can_write': true,
-                        'display': 'none',
+                        'display': 'table',
                         'dataset_query': {
                             'type': 'native',
                             'native': {}
@@ -1244,19 +1244,36 @@ CardControllers.controller('CardDetailNew', [
                             'orgId': org.id
                         }, function(dbs) {
                             $scope.model.database_list = dbs;
-                            // if there's only one DB auto-select it
-                            if (dbs.length === 1) {
-                                $scope.model.setDatabase(dbs[0].id);
-                            } else {
-                                $scope.model.inform();
-                            }
+                            // set the database to the first db, the user will be able to change it
+                            // TODO be smarter about this and use the most recent or popular db
+                            $scope.model.setDatabase(dbs[0].id);
                         }, function(error) {
                             console.log('error getting database list', error);
                         });
                     },
                     setDatabase: function (databaseId) {
-                        $scope.model.card.dataset_query.database = databaseId;
-                        $scope.model.getTables(databaseId);
+                        // check if this is the same db or not
+                        if(databaseId != $scope.model.card.dataset_query.database) {
+                            $scope.model.resetQuery();
+                            $scope.model.card.dataset_query.database = databaseId;
+                            $scope.model.getTables(databaseId);
+                            $scope.model.inform();
+                        } else {
+                            return false
+                        }
+                    },
+                    resetQuery: function () {
+                        $scope.model.card.dataset_query = {
+                            type: "query",
+                            query: {
+                                aggregation: [null],
+                                breakout: [],
+                                filter: []
+                            }
+                        }
+                    },
+                    setPermissions: function (permission) {
+                        $scope.model.card.public_perms = permission;
                         $scope.model.inform();
                     },
                     getTableFields: function(tableId) {
@@ -1366,27 +1383,63 @@ CardControllers.controller('CardDetailNew', [
                         $scope.model.card.dataset_query.query.aggregation[1] = target;
                         $scope.model.inform();
                     },
-                    updateFilter: function (value, filterIndex, listIndex) {
-                        var filterListIndex = listIndex || 0;
-                        $scope.model.card.dataset_query.query.filter[filterListIndex][filterIndex] = value;
+                    updateFilter: function (value, index, filterListIndex) {
+                        var filters = $scope.model.card.dataset_query.query.filter;
+                        if(filterListIndex) {
+                            filters[filterListIndex][index] = value;
+                        } else {
+                            filters[index] = value;
+                        }
+
                         $scope.model.inform();
                     },
                     removeFilter: function (index) {
-                        $scope.model.card.dataset_query.query.filter.splice(index, 1);
+                        var filters = $scope.model.card.dataset_query.query.filter
+
+                        /*
+                            HERE BE MORE DRAGONS
+
+                            1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
+                            instead of slicing off individual elements
+
+                            2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
+                            having added multiple so we should reset to [] in this case as well
+                        */
+
+                        if((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
+                            // just reset the array
+                            $scope.model.card.dataset_query.query.filter = [];
+                        } else {
+                            $scope.model.card.dataset_query.query.filter.splice(index, 1);
+                        }
                         $scope.model.inform();
                     },
                     addFilter: function () {
-                        var filter = $scope.model.card.dataset_query.query.filter;
-                        if(filter[0] == 'AND') {
-                            filter.push([null, null, null]);
+                        var filter = $scope.model.card.dataset_query.query.filter,
+                            filterLength = filter.length;
+
+                        // this gets run the second time you click the add filter button
+                        if(filterLength === 3 && filter[0] !== 'AND') {
+                            var newFilters = [];
+                            newFilters.push(filter);
+                            newFilters.unshift('AND');
+                            newFilters.push([null, null, null]);
+                            $scope.model.card.dataset_query.query.filter = newFilters;
                             $scope.model.inform();
-                        } else if (filter.length > 0) {
-                            // TODO - this may be not quite right
-                            filter.unshift('AND');
+                        } else if(filter[0] === 'AND'){
+                            pushFilterTemplate(filterLength);
                             $scope.model.inform();
                         } else {
-                            filter.push([null, null, null]);
+                            pushFilterTemplate();
                             $scope.model.inform();
+                        }
+
+                        function pushFilterTemplate(index) {
+                            if(index) {
+                                filter[index] = [null, null, null];
+                            } else {
+                                filter.push(null, null, null);
+                            }
                         }
                     },
                     save: function (settings) {
@@ -1417,10 +1470,10 @@ CardControllers.controller('CardDetailNew', [
                             for(var filter in filters[0]) {
                                 cleanFilters.push(filters[0][filter]);
                             }
-                            dataset_query.filter = cleanFilters;
+                            dataset_query.query.filter = cleanFilters;
                         }
                         // reset to initial state of filters if we've removed 'em all
-                        if(filters.length == 1 && filters[0] == 'AND') {
+                        if(filters.length === 1 && filters[0] === 'AND') {
                             dataset_query.filter = [];
                         }
                         return dataset_query;
@@ -1464,6 +1517,7 @@ CardControllers.controller('CardDetailNew', [
                     }, function(result) {
                         console.log('result', result);
                         $scope.model.extractQuery(result);
+                        $scope.model.getDatabaseList();
                         // run the query
                         $scope.model.run();
                         // execute the query

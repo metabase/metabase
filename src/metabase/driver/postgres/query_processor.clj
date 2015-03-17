@@ -1,6 +1,6 @@
 (ns metabase.driver.postgres.query-processor
   (:require [metabase.driver.generic-sql.query-processor :as generic]
-            [metabase.driver.query-processor :as driver]))
+            [metabase.driver :refer [process-and-run]]))
 
-(defmethod driver/process2 :postgres [query]
+(defmethod process-and-run :postgres [query]
   (generic/process-and-run query))

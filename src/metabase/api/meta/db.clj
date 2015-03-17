@@ -7,7 +7,6 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.sync :as sync]
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
@@ -80,7 +79,7 @@
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
-           (sync/sync-tables db))
+           (driver/sync-tables db))
   {:status :ok})
 
 
