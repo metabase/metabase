@@ -84,7 +84,7 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         });
 
     };
-    
+
     $scope.decorateWithTargets = function(){
         console.log($scope.table);
         $scope.table.fields.forEach(function(field){
@@ -166,16 +166,17 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
             if(fks.length > 0){
                 // delete this key
                 var relationship_id = 0;
-                 ForeignKey.delete({'fkID': fks[0].id}, function(result){
-                            console.log("Deleted FK");
-                            Metabase.field_addfk({"db": field.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
-                            
-                        }, function(error){
-                            console.log('Error deleting key ', error);
-                        });
-            }else{
+                 ForeignKey.delete({
+                     'fkID': fks[0].id
+                 }, function(result){
+                     console.log("Deleted FK");
+                     Metabase.field_addfk({"db": $scope.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
 
-                Metabase.field_addfk({"db": field.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
+                 }, function(error){
+                     console.log('Error deleting key ', error);
+                 });
+            }else{
+                Metabase.field_addfk({"db": $scope.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
             }
         }
     };
