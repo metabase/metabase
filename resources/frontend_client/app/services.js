@@ -52,31 +52,31 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     service.model.currentUser = result;
 
                     // add isMember(orgSlug) method to the object
-                    service.model.currentUser.isMember = function (orgSlug) {
-                        return this.org_perms.some(function (org_perm) {
+                    service.model.currentUser.isMember = function(orgSlug) {
+                        return this.org_perms.some(function(org_perm) {
                             return org_perm.organization.slug === orgSlug;
                         });
                     };
 
                     // add isAdmin(orgSlug) method to the object
-                    service.model.currentUser.isAdmin = function (orgSlug) {
-                        return this.org_perms.some(function (org_perm) {
+                    service.model.currentUser.isAdmin = function(orgSlug) {
+                        return this.org_perms.some(function(org_perm) {
                             return org_perm.organization.slug === orgSlug && org_perm.admin;
                         }) || this.is_superuser;
                     };
 
                     // add memberOf() method to the object enumerating Organizations user is member of
-                    service.model.currentUser.memberOf = function () {
-                        return this.org_perms.map(function (org_perm) {
+                    service.model.currentUser.memberOf = function() {
+                        return this.org_perms.map(function(org_perm) {
                             return org_perm.organization;
                         });
                     };
 
                     // add adminOf() method to the object enumerating Organizations user is admin of
-                    service.model.currentUser.adminOf = function () {
-                        return this.org_perms.filter(function (org_perm) {
+                    service.model.currentUser.adminOf = function() {
+                        return this.org_perms.filter(function(org_perm) {
                             return org_perm.admin;
-                        }).map(function (org_perm) {
+                        }).map(function(org_perm) {
                             return org_perm.organization;
                         });
                     };
@@ -233,7 +233,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
         // login just took place, so lets force a refresh of the current user
         $rootScope.$on("appstate:login", function(event, session_id) {
             console.log('loginCompleted', session_id);
-            service.refreshCurrentUser();
+            service.model.currentUserPromise = service.refreshCurrentUser();
         });
 
         // logout just took place, do some cleanup
@@ -417,9 +417,6 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'name': 'Zip Code'
     }];
     this.field_field_types = [{
-        'id': null,
-        'name': 'None'
-    }, {
         'id': 'info',
         'name': 'Information'
     }, {

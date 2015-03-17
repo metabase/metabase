@@ -107,11 +107,11 @@
 
 (defn jdbc-clob->str
   "Convert a `JdbcClob` to a `String`."
-  ([clob]
+  (^String
+   [clob]
    (when clob
      (if (string? clob) clob
-         (->> (-> (.getCharacterStream ^org.h2.jdbc.JdbcClob clob)
-                  (jdbc-clob->str []))
+         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
               (interpose "\n")
               (apply str)))))
   ([^java.io.BufferedReader reader acc]

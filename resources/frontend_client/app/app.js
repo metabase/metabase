@@ -42,6 +42,11 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         requireBase: false
     });
 
+    $routeProvider.when('/', {
+        template: '',
+        controller: 'Homepage'
+    });
+
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',
         controller: 'Unauthorized'

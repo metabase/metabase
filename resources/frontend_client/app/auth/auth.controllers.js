@@ -30,16 +30,13 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
             var isSecure = ($location.protocol() === "https") ? true : false;
             ipCookie('metabase.SESSION_ID', new_session.id, {path: '/', expires: 14, secure: isSecure});
 
+            // send a login notification event
+            $scope.$emit('appstate:login', new_session.id);
+
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
             $timeout(function() {
-                // now try refetching current user details and sending user on their way
-                AppState.refreshCurrentUser().then(function (user) {
-                    $scope.$emit('appstate:login', new_session.id);
-                    $location.path('/');
-                }, function (error) {
-                    // hmmm, somehow we still don't have a valid user :(
-                    $scope.error = "Login failure";
-                });
+                // we expect the homepage to handle the routing details about where the user should be going
+                $location.path('/');
             }, 300);
         }, function (error) {
             $scope.error = "Invalid username/password combination specified.";
@@ -47,8 +44,8 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
     };
 
     // do a quick check if the user is already logged in.  if so then send them somewhere better.
-    if (AppState.model.currentUser && AppState.model.currentUser.org_perms && AppState.model.currentUser.org_perms.length > 0) {
-        $location.path('/'+AppState.model.currentUser.org_perms[0].organization.slug+'/');
+    if (AppState.model.currentUser && AppState.model.currentUser.memberOf().length > 0) {
+        $location.path('/'+AppState.model.currentUser.memberOf()[0].slug+'/');
     }
 }]);
 

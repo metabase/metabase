@@ -73,6 +73,42 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
 }]);
 
 
+CorvusControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', 'AppState',
+    function($scope, $location, ipCookie, AppState) {
+
+        // At this point in time we don't actually have any kind of content to show for a homepage, so we just use this
+        // as a simple routing controller which sends users somewhere relevant
+        if(AppState.model.currentUser) {
+            var currentUser = AppState.model.currentUser;
+
+            // We have a logged-in user, so send them somewhere sensible
+            var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
+
+            if(AppState.model.currentOrgSlug) {
+                // we know their current org
+                $location.path('/'+AppState.model.currentOrgSlug+'/');
+
+            } else if(currentOrgFromCookie && currentUser.isMember(currentOrgFromCookie)) {
+                // cookie is telling us their last current org
+                $location.path('/'+currentOrgFromCookie+'/');
+
+            } else if(currentUser.memberOf().length > 0) {
+                // no other indicator, so simply take the first org they have permissions on
+                $location.path('/'+currentUser.memberOf()[0].slug+'/');
+
+            } else {
+                // user doesn't have perms on any orgs, so they go somewhere neutral
+                $location.path('/user/edit_current');
+            }
+        } else {
+            // User is not logged-in, so always send them to login page
+            $location.path('/auth/login');
+        }
+
+    }
+]);
+
+
 CorvusControllers.controller('SearchBox', ['$scope', '$location', function($scope, $location) {
 
     $scope.submit = function () {
