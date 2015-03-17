@@ -11,6 +11,15 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
+
+(defendpoint GET "/" [org]
+  (require-params org)
+  (let [db-ids (->> (sel :many [Database :id] :organization_id org)
+                 (map :id))]
+    (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
+      (simple-batched-hydrate Database :db_id :db))))
+
+
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Table :id id)
          (hydrate :db :pk_field)))
@@ -28,11 +37,5 @@
   (->404 (sel :one Table :id id)
          (hydrate :db :fields)))
 
-(defendpoint GET "/" [org]
-  (require-params org)
-  (let [db-ids (->> (sel :many [Database :id] :organization_id org)
-                    (map :id))]
-    (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
-        (simple-batched-hydrate Database :db_id :db))))
 
 (define-routes)
