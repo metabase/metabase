@@ -206,9 +206,13 @@
   `(defmethod arg-annotation-fn ~(keyword annotation-name) [~'_ ~binding]
      `(do ~~@body)))
 
-
 ;; `required` just calls require-params
 (defannotation required [param]
+  `(require-params ~param)
+  param)
+
+;; `req` is an alias for `required`
+(defannotation req [param]
   `(require-params ~param)
   param)
 

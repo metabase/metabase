@@ -205,13 +205,6 @@
            (map (fn [annotation]
                   [(keyword annotation) (symbol arg)]))))))
 
-(defn args-form->arg+annotations-pairs
-  [annotated-args-form]
-  {:pre [(vector? annotated-args-form)]}
-  (->> annotated-args-form
-       args-form->symbols
-       (mapcat symb->arg+annotations)))
-
 
 ;;; ### let-annotated-args
 
