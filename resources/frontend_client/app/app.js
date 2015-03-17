@@ -54,7 +54,7 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     });
 
     $routeProvider.when('/setup/', {
-        templateUrl: '/app/setup/setup_intro.html',
+        templateUrl: '/app/setup/partials/setup_intro.html',
         controller: 'SetupIntro'
     });
 
