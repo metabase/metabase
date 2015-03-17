@@ -81,28 +81,30 @@
         </div>
     </nav>
 
-    <nav class="bg-white py1" ng-show="nav == 'admin'">
-        <div class="wrapper">
-            <label class="Select" ng-if="user.is_multi_org">
-                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-            </label>
-            <a cv-org-href="/admin/">
-                <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-            </a>
-            <div class="mx1 float-right">
-                <a cv-org-href="/">Exit Admin</a>
+    <nav class="AdminNav" ng-show="nav == 'admin'">
+        <div class="bg-white border-bottom">
+            <div class="py2 wrapper">
+                <label class="Select" ng-if="user.is_multi_org">
+                    <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
+                </label>
+                <a class="link" cv-org-href="/admin/">
+                    <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
+                </a>
+                <div class="mx1 float-right">
+                    <a class="link" cv-org-href="/">Exit Admin</a>
+                </div>
             </div>
+            <section class="mt2 wrapper">
+                <a class="NavItem" cv-org-href="/admin/people/">People</a>
+                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
+                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
+                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
+                <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
+                <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
+                <a class="NavItem" cv-org-href="/admin/search">Search</a>
+                <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
+            </section>
         </div>
-        <section class="wrapper">
-            <a class="NavItem" cv-org-href="/admin/people/">People</a>
-            <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
-            <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
-            <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
-            <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
-            <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
-            <a class="NavItem" cv-org-href="/admin/search">Search</a>
-            <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
-        </section>
     </nav>
 
     <nav ng-show="nav == 'superadmin'">
