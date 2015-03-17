@@ -3,11 +3,21 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
+            [metabase.middleware.auth :as auth]
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
+
+
+;; ## /api/org/* AUTHENTICATION Tests
+;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
+;; authentication test on every single individual endpoint
+
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "meta/table"))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "meta/table/%d" (table->id :users))))
+
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
