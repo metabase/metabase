@@ -1,5 +1,5 @@
-<div class="wrapper">
-    <div class="py2 border-bottom">
+<section class="wrapper">
+    <div class="py2">
         <div class="float-right">
             <a class="Button Button--primary" cv-org-href="/admin/databases/create">Add Database</a>
         </div>
@@ -7,21 +7,17 @@
     </div>
 
     <div>
-	<div ng-if="!databases">
-            <h3 class="text-normal text-centered">Loading ...</h3>
-	</div>
+        <div ng-if="!databases">
+                <h3 class="text-normal text-centered">Loading ...</h3>
+        </div>
 
-	<ul>
-            <li class="py2 border-bottom" ng-repeat="database in databases">
-		<div class="my1 float-right">
-		    <a class="Button" ng-click="delete(database.id)" delete-confirm>Delete</a>
-		</div>
+        <ul class="bordered rounded bg-white shadowed">
+            <li class="py2 clearfix" ng-repeat="database in databases">
+                <a class="Button my1 float-right" ng-click="delete(database.id)" delete-confirm>Delete</a>
 
-		<div>
-		    <h4><a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a></h4>
-		    <span>{{database.engine}}</span>
-		</div>
+                <h4><a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a></h4>
+                <span>{{database.engine}}</span>
             </li>
-	</ul>
+        </ul>
     </div>
-</div>
+</section>

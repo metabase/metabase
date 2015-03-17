@@ -1,12 +1,12 @@
-<div>
-    <div class="Form-group border-bottom clearfix">
+<section class="wrapper">
+    <div>
         <h3 class="text-normal">Edit teammate</h3>
     </div>
     <div ng-cloak>
         <alert class="alert" ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" ng-animate=" 'animate' " cv-delayed-call="closeAlert($index)">{{alert.msg}}</alert>
     </div>
 
-    <form name="editUserAdmin" novalidate ng-submit="submit()" cv-form="user">
+    <form name="editUserAdmin" novalidate ng-submit="submit()">
         <div class="clearfix">
             <div class="Form-group" cv-error-flag="first_name">
                 <input class="input block full" ng-model="user.first_name" type="text" name="first_name" placeholder="First Name" autofocus>
@@ -20,9 +20,13 @@
                 <input class="input block full" ng-model="user.email" type="email" name="email" placeholder="Email address" required>
                 <fielderrors for="email"></fielderrors>
             </div>
+            <a class="Button" ng-if="perm.admin" ng-click="revokeAdmin($index)">Revoke Admin</a>
+            <a class="Button" ng-if="!perm.admin" ng-click="grantAdmin($index)">Grant Admin</a>
+            <a class="Button" cv-org-href="/admin/people/{{perm.user.id}}/change_password" >Change password</a>
+            <a class="Button" ng-click="removeMember(perm.user.id)" delete-confirm>x</a>
         </div>
         <div class="Form-group border-top clearfix">
             <button class="Button Button--primary float-right" type="submit" ng-disabled="!form.$dirty || form.$invalid">Save changes</button>
         </div>
     </form>
-</div>
+</section>
