@@ -7,7 +7,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models common
-                             [hydrate :refer [hydrate]]
+                             [hydrate :refer [hydrate simple-batched-hydrate]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [org :refer [org-can-read org-can-write]]
@@ -65,6 +65,12 @@
 
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id (order :name)))
+
+(defendpoint GET "/:id/idfields" [id]
+  (read-check Database id)
+  (let [table_ids (sel :many :id Table :db_id id)]
+    (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+        (simple-batched-hydrate Table :table_id :table))))
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
