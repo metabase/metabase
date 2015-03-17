@@ -1,4 +1,4 @@
-<div>
+<div class="wrapper">
     <div ng-cloak>
         <alert class="alert" ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" ng-animate=" 'animate' " cv-delayed-call="closeAlert($index)">{{alert.msg}}</alert>
     </div>
