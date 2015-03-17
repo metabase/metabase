@@ -8,6 +8,7 @@
             (metabase.models [hydrate :refer :all]
                              [database :refer [Database]]
                              [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
@@ -37,5 +38,18 @@
   (->404 (sel :one Table :id id)
          (hydrate :db :fields)))
 
+(defendpoint GET "/:id/fks" [id]
+  (read-check Table id)
+  (let-404 [field-ids (->> (sel :many :fields [Field :id] :table_id id)
+                        (map :id))]
+    (-> (sel :many ForeignKey :destination_id [in field-ids])
+      ;; TODO - it's a little silly to hydrate both of these table objects
+      (hydrate [:origin [:table]] [:destination [:table]]))))
+
+
+;; TODO - GET /:id/segments
+;; TODO - POST /:id/segments
+;; TODO - GET /:id/sync
+;; TODO - POST /:id/reorder
 
 (define-routes)
