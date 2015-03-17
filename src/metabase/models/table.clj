@@ -14,6 +14,7 @@
                :db          (or db (delay (sel :one db/Database :id db_id))) ; Check to see if `:db` is already set. In some cases we add a korma transform fn to `Table`
                :fields      (delay (sel :many Field :table_id id))           ; and assoc :db if the DB has already been fetched, so we can re-use its DB connections.
                :description (u/jdbc-clob->str description)
+               :pk_field    (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"}))))
                :can_read    (delay @(:can_read @(:db <>)))
                :can_write   (delay @(:can_write @(:db <>)))))
 
