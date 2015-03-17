@@ -1,12 +1,13 @@
 <div class="wrapper">
-    <form id="query_form" novalidate>
+    <form novalidate>
         <input type="hidden" name="q" value="{{queryResultData.uuid}}" ng-if="queryResultData"/>
 
         <div class="py2">
             <h2>Run Query</h2>
 
-            <div class="py1">
-                <cv-ace-sql-editor sql="query.sql" database="query.database" onload="onEditorLoaded"></cv-ace-sql-editor>
+            <div class="bordered bg-white">
+                <cv-ace-sql-editor sql="query.sql" database="query.database" onload="onEditorLoaded">
+                </cv-ace-sql-editor>
             </div>
 
             <div class="">

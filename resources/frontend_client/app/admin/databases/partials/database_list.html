@@ -12,11 +12,11 @@
         </div>
 
         <ul class="bordered rounded bg-white shadowed">
-            <li class="py2 clearfix" ng-repeat="database in databases">
-                <a class="Button my1 float-right" ng-click="delete(database.id)" delete-confirm>Delete</a>
-
-                <h4><a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a></h4>
-                <span>{{database.engine}}</span>
+            <li class="p2 clearfix" ng-repeat="database in databases">
+                <h4 class="inline-block">
+                    <a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
+                </h4>
+                <span class="inline-block">{{database.engine}}</span>
             </li>
         </ul>
     </div>

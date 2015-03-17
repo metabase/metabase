@@ -1,42 +1,42 @@
 <section class="wrapper">
-    <form novalidate>
-        <div class="py2 border-bottom">
-            <h2>Email Report</h2>
+    <h2 class="py2">New Email Report</h2>
+    <form novalidate class="bg-white bordered rounded shadowed">
 
-            <div class="py1 float-right">
-              <div>
-                <label class="block">Mode:</label>
-                <div class="Button-group">
-                  <a class="Button" ng-repeat="mode in form_input.modes" ng-class="{ 'Button--selected' : report.mode == mode.id }" ng-model="report.mode" btn-radio="mode.id">{{mode.name}}</a>
+            <div class="p4 border-bottom">
+                <div class="py1 float-right">
+                  <div>
+                    <label class="block">Mode:</label>
+                    <div class="Button-group">
+                      <a class="Button" ng-repeat="mode in form_input.modes" ng-class="{ 'Button--selected' : report.mode == mode.id }" ng-model="report.mode" btn-radio="mode.id">{{mode.name}}</a>
+                    </div>
+                  </div>
+
+                  <div class="py2">
+                    <label class="block">Permissions:</label>
+                    <div class="Select block">
+                        <select class="block" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions">
+                        </select>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="py2">
-                <label class="block">Permissions:</label>
-                <div class="Select block">
-                    <select class="block" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions">
-                    </select>
+                <div class="py1">
+                    <label >Report Name:</label>
+                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
                 </div>
-              </div>
+
+                <div class="py1">
+                    <label >Description:</label>
+                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
+                </div>
             </div>
 
-            <div class="py1">
-                <label >Report Name:</label>
-                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
-            </div>
-
-            <div class="py1">
-                <label >Description:</label>
-                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
-            </div>
-        </div>
-
-        <div class="py2 border-bottom">
-            <h2>Recipients</h2>
+        <div class="p4 border-bottom">
+            <h3>Recipients</h3>
 
             <div class="py1">
                 <label >Team Members:</label>
-                <table class="Table">
+                <table class="Table bordered bg-white">
                   <tr ng-repeat="user in form_input.users">
                     <td><input type="checkbox" ng-model="user.incl" /></td>
                     <td class="full">{{user.name}}</td>
@@ -50,10 +50,10 @@
             </div>
         </div>
 
-        <div class="py2 border-bottom">
-            <h2>Data</h2>
+        <div class="p4 border-bottom">
+            <h3>Data</h3>
 
-            <div class="py1">
+            <div class="py1 inline-block mr3">
               <label class="block">Database:</label>
               <div class="Select block">
                 <select class="block" ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
@@ -61,7 +61,7 @@
               </div>
             </div>
 
-            <div class="py1">
+            <div class="py1 inline-block">
               <label class="block">Table:</label>
               <div class="Select block">
                 <select class="block" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables">
@@ -70,8 +70,8 @@
             </div>
         </div>
 
-        <div class="py1">
-            <h2>Schedule</h2>
+        <div class="p4">
+            <h3>Schedule</h3>
 
             <div class="Button-group">
                 <label class="Button" ng-class="{ 'Button--selected' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</label>

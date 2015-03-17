@@ -1,3 +1,7 @@
 #id_sql {
     height: 200px;
 }
+
+.AdminNav .NavItem {
+    padding: 1.5em 1em;
+}
