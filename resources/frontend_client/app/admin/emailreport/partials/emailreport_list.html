@@ -7,34 +7,34 @@
     </div>
 
     <div class="py4 rounded bordered bg-white shadowed">
-        <div class="clearfix">
-          <div class="float-left">
-            <span class="float-left">filter:</span>
+        <div class="clearfix" ng-show="reports.length > 0">
+          <div class="float-right">
+            <span class="inline-block text-grey-3">Filter:</span>
             <div class="Button-group">
                 <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">all</a>
                 <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">mine</a>
             </div>
           </div>
 
-          <div class="float-left">
-            <input class="mx3 input" type="text" ng-model="searchFilter" placeholder="Search executions ...">
-          </div>
-
           <div class="float-right">
             <span>Sort by:</span>
-            <select ng-init="sortMode = 'name'" ng-model="sortMode" ng-change="sort()">
-              <option value="name">Name (default)</option>
-              <option value="owner">Owner</option>
-              <option value="date">Last Updated</option>
-            </select>
+            <label class="Select">
+                <select ng-init="sortMode = 'name'" ng-model="sortMode" ng-change="sort()">
+                  <option value="name">Name (default)</option>
+                  <option value="owner">Owner</option>
+                  <option value="date">Last Updated</option>
+                </select>
+            </label>
           </div>
+          <input class="ml4 input" type="text" ng-model="searchFilter" placeholder="Search reports ...">
         </div>
-
 
         <ul>
             <div ng-if="!reports">
+                <cv-loading-icon></cv-loading-icon>
                 <h3>Loading ...</h3>
             </div>
+
             <li class="py2 border-bottom" ng-repeat="report in reports | filter:searchFilter">
                 <div class="my1 float-right">
                     <a class="Button mx1" ng-click="executeReport(report.id)">Send Now</a>
