@@ -1,9 +1,9 @@
 (ns metabase.driver.postgres.metadata
   (:require [metabase.driver.generic-sql.metadata :as generic]
-            [metabase.driver.metadata :as driver]))
+            [metabase.driver :refer [field-count field-distinct-count]]))
 
-(defmethod driver/field-count :postgres [field]
+(defmethod field-count :postgres [field]
   (generic/field-count field))
 
-(defmethod driver/field-distinct-count :postgres [field]
+(defmethod field-distinct-count :postgres [field]
   (generic/field-distinct-count field))

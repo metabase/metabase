@@ -77,6 +77,11 @@ You can update the GitHub pages documentation using
 
 You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
 
+## Migration Summary
+
+    lein migration-summary
+
+Will give you a list of all tables + fields in the Metabase DB.
 
 ## Bootstrapping (for Development)
 
@@ -93,7 +98,7 @@ You'll be walked through the steps to get started.
 You can make API calls from the REPL using `metabase.http-client`:
 
     (use 'metabase.http-client)
-    (defn cl [& args] 
+    (defn cl [& args]
       (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
           clojure.pprint/pprint))
     (cl :get "user/current")

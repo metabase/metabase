@@ -200,7 +200,7 @@
 <script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
 <script src="/app/bower_components/dc.js/dc.min.js"></script>
 
-<script src="/js/google_maps.js"></script>
+<script src="/app/js/google_maps.js"></script>
 
 <!-- global app -->
 <script src="/app/app.js"></script>
@@ -289,5 +289,13 @@
     });
   </script>
 
-<!-- TODO - need to handle GA -->
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js <http://www.google-analytics.com/analytics.js>','ga');
+
+ga('create', 'UA-60817802-1', 'auto');
+ga('send', 'pageview');
+</script>
 </html>

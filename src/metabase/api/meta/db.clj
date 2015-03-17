@@ -6,12 +6,11 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.sync :as sync]
             (metabase.models common
-                             [hydrate :refer [hydrate]]
+                             [hydrate :refer [hydrate simple-batched-hydrate]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [org :refer [org-can-read org-can-write]]
+                             [org :refer [Org org-can-read org-can-write]]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
@@ -19,7 +18,7 @@
   (require-params org)
   (check-403 (org-can-read org))
   (-> (sel :many Database :organization_id org (order :name))
-      (hydrate :organization)))
+      (simple-batched-hydrate Org :organization_id :organization)))
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
   (require-params org name engine details)
@@ -67,9 +66,15 @@
 (defendpoint GET "/:id/tables" [id]
   (sel :many Table :db_id id (order :name)))
 
+(defendpoint GET "/:id/idfields" [id]
+  (read-check Database id)
+  (let [table_ids (sel :many :id Table :db_id id)]
+    (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+        (simple-batched-hydrate Table :table_id :table))))
+
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
-           (sync/sync-tables db))
+           (driver/sync-tables db))
   {:status :ok})
 
 (define-routes)

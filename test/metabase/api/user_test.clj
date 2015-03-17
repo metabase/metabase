@@ -159,7 +159,7 @@
       (let [{user-id :id} (sel :one User :last_name user-last-name)]
         (sel :one :fields [Session :id] :user_id user-id (order :created_at :desc))) ; get the latest Session for this User
     (let [password {:old "password"
-                    :new "new_password"}
+                    :new "whateverUP12!!"}
           {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name)
           creds {:old {:password (:old password)
                        :email email}
@@ -178,7 +178,7 @@
 
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "anything"
+  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "whateverUP12!!"
                                                                                      :old_password "whatever"}))
 
 ;; Test input validations on password change
@@ -187,5 +187,5 @@
 
 ;; Make sure that if current password doesn't match we get a 400
 (expect "password mismatch"
-  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "anything"
+  ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "whateverUP12!!"
                                                                                  :old_password "mismatched"}))

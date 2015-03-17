@@ -3,15 +3,74 @@
             [clojure.tools.logging :as log]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            [metabase.driver.query-processor :as qp]
+            (metabase.driver [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.util :as util]))
+
 
 (def available-drivers
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
   [["h2" "H2"]                 ; TODO it would be very nice if we could just look for files in this namespace at runtime and load them
    ["postgres" "PostgreSQL"]]) ; then the driver dispatch functions wouldn't have to call `require`
+
+
+(defn db-dispatch-fn
+  "Returns a dispatch fn for multi-methods that keys off of a `Database's` `:engine`.
+
+   The correct driver implementation is loaded dynamically to avoid having to require the files elsewhere in the codebase.
+   IMPL-NAMESPACE is the namespace we should load relative to the driver, e.g.
+
+    (defmulti my-multimethod (db-dispatch-fn \"metadata\"))
+
+   Would load `metabase.driver.postgres.metadata` for a `Database` whose `:engine` was `:postgres`."
+  [impl-namespace]
+  (fn [{:keys [engine]}]
+    {:pre [engine]}
+    (require (symbol (str "metabase.driver." engine "." impl-namespace)))
+    (keyword engine)))
+
+
+(defmulti process-and-run
+  "Process a query of type `query` (implemented by various DB drivers)."
+  (fn [{:keys [database] :as query}]
+    ((db-dispatch-fn "query-processor") (sel :one [Database :engine] :id database))))
+
+
+(defn- execute-query
+  "Process and run a query and return results."
+  [{:keys [type] :as query}]
+  (case (keyword type)
+    :native (process-and-run query)
+    :query (process-and-run query)
+    :result (result/process-and-run query)))
+
+
+(defmulti connection-details
+  "Return a map of connection details (in format usable by korma) for DATABASE."
+  (db-dispatch-fn "connection"))
+
+(defmulti connection
+  "Return a korma connection to DATABASE."
+  (db-dispatch-fn "connection"))
+
+(defn- field-dispatch-fn
+  "Dispatch function that keys of of `(:engine @(:db field))`."
+  [{:keys [db]}]
+  ((db-dispatch-fn "metadata") @db))
+
+(defmulti field-count
+  "Return number of rows for FIELD."
+  field-dispatch-fn)
+
+(defmulti field-distinct-count
+  "Return number of distinct rows for FIELD."
+  field-dispatch-fn)
+
+(defmulti sync-tables
+  "Fetch the table names for DATABASE and create corresponding `Tables` if they don't already exist.
+  (This is executed in parallel.)"
+  (db-dispatch-fn "sync"))
 
 
 (declare -dataset-query query-fail query-complete save-query-execution)
@@ -70,7 +129,7 @@
   [query options query-execution]
   (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
     (try
-      (let [query-result (qp/process-and-run query)]
+      (let [query-result (execute-query query)]
         (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
         (when (= :failed (:status query-result)) (throw (Exception. ^String (get query-result :error "general error"))))
         (query-complete query-execution query-result (:cache_result options)))

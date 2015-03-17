@@ -74,7 +74,7 @@
   (let [user-last-name (random-name)
         token (.toString (java.util.UUID/randomUUID))
         password {:old "password"
-                  :new "new_password"}
+                  :new "whateverUP12!!"}
         {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name :reset_token token :reset_triggered (System/currentTimeMillis))
         creds {:old {:password (:old password)
                      :email    email}
@@ -103,11 +103,11 @@
 ;; Test that invalid token returns 404
 (expect "Not found."
   (client :post 404 "session/reset_password" {:token "not-found"
-                                              :password "whatever"}))
+                                              :password "whateverUP12!!"}))
 
 ;; Test that old token can expire
 (expect "Not found."
   (let [token (.toString (java.util.UUID/randomUUID))]
     (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
     (client :post 404 "session/reset_password" {:token "not-found"
-                                                :password "whatever"})))
+                                                :password "whateverUP12!!"})))

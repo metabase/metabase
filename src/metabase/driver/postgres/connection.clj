@@ -3,7 +3,7 @@
             [clojure.string :as s]
             [korma.db]
             [swiss.arrows :refer :all]
-            [metabase.driver.connection :refer :all]))
+            [metabase.driver :refer [connection connection-details]]))
 
 (defmethod connection-details :postgres [database]
   (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
@@ -19,7 +19,7 @@
                :port (Integer/parseInt port))                 ; convert :port to an Integer
         (rename-keys {:dbname :db}))))
 
-(defmethod connection :postgres [{:keys [connection-details]}]
-  (-> @connection-details
+(defmethod connection :postgres [database]
+  (-> (connection-details database)
       (dissoc :db-type)
       korma.db/postgres))
