@@ -13,9 +13,6 @@
     <div class="SetupWrapper">
 <div class="AdminContent AdminContent-shallow">
     <div class="p4">
-        <div class="bg-error text-white p2 rounded mb2" ng-show="error">
-            {{error}}
-        </div>
         <div>
             <ul class="Connection-enginePicker">
                 <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine)" ng-class="{'Connection-engineSelected': connection.engine == engine }">
@@ -34,6 +31,9 @@
                 <label class="Connection-label">Database password</label>
                 <input class="Connection-input" type="password" placeholder="Password" ng-model="connection.password">
             </div>
+        </div>
+        <div class="bg-error text-white p2 rounded mb2" ng-show="error">
+            {{error}}
         </div>
     </div>
     <div class="p3 border-top clearfix">
