@@ -21,14 +21,14 @@
          (hydrate [:org_perms :organization])))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id" [id fish.required]
   ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   (check-404 (sel :one User :id id)))
 
-(defmethod arg-annotation-fn :email [_ arg-symb]
-  `(do (check (is-email? ~arg-symb) [400 (format ~(str (name arg-symb) " '%s' is not a valid email.") ~arg-symb)])
-       ~arg-symb))
+(defannotation email [email]
+  `(check (is-email? ~email) [400 (format ~(str (name email) " '%s' is not a valid email.") ~email)])
+  email)
 
 (defendpoint PUT "/:id" [id :as {{:keys [email.email] :as body} :body}]
   ;; user must be getting their own details OR they must be a superuser to proceed
@@ -40,10 +40,12 @@
                   (mapply upd User id)))
   (sel :one User :id id))
 
+(defannotation complex-password [password]
+  `(check (password/is-complex? ~password) [400 "Insufficient password strength"])
+  password)
 
-(defendpoint PUT "/:id/password" [id :as {{:keys [password.required old_password.required]} :body}]
+(defendpoint PUT "/:id/password" [id :as {{:keys [password.required.complex-password old_password.required]} :body}]
   (require-params password old_password)
-  (check (password/is-complex? password) [400 "Insufficient password strength"])
   (check-403 (or (= id *current-user-id*)
                  (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password_salt :password] :id id)]

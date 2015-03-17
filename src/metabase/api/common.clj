@@ -193,10 +193,24 @@
 (defmethod arg-annotation-fn :default [annotation-kw arg-symbol]
   (throw (Exception. (format "Don't know what to do with arg annotation '%s' on arg '%s'!" (name annotation-kw) (name arg-symbol)))))
 
+(defmacro defannotation
+  "Convenience for defining a new `defendpoint` arg annotation.
+
+   BINDING is the actual symbol name of the arg being checked; `defannotation` returns form(s)
+   that will be included in the let binding for the annotated arg.
+
+    (defannotation required [param]
+      `(require-params ~param)       ; quasiquoting needed to keep require-params from being evaluated at macroexpansion time
+      param)"
+  [annotation-name [binding] & body]
+  `(defmethod arg-annotation-fn ~(keyword annotation-name) [~'_ ~binding]
+     `(do ~~@body)))
+
+
 ;; `required` just calls require-params
-(defmethod arg-annotation-fn :required [_ arg-symbol]
-  `(do (require-params ~arg-symbol)
-       ~arg-symbol))
+(defannotation required [param]
+  `(require-params ~param)
+  param)
 
 
 ;;; ### defendpoint
