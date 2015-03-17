@@ -8,23 +8,35 @@
     </div>
 </section>
 <section class="SetupOffset">
-    <div class="AdminContent AdminContent-shallow text-centered">
-        <h1 class="SetupIntro-heading">Welcome to Metabase</h1>
-        <p class="SetupIntro-subHeading">Let's get you connected to your data and invite your team.</p>
-        <div class="mt1">
-            <input class="Connection-input text-centered inline-block"
-                type="text"
-                placeholder="What's your company or organization called?"
-                ng-model="userOrgName"
-                autofocus
-             />
-
-            <div class="py4">
-                <cv-step-button
-                    ng-click="setOrgName(userOrgName)">
-                </cv-step-button>
+    <div class="AdminContent AdminContent-shallow">
+        <div class="p4">
+            <h1 class="SetupIntro-heading">Welcome to Metabase</h1>
+            <p class="SetupIntro-subHeading">Let's set up your profile and get you connected to your data.</p>
+            <div class="mt1">
+                <input class="Connection-input inline-block"
+                    type="text"
+                    placeholder="What's your company or organization called?"
+                    ng-model="userOrgName"
+                    autofocus
+                 />
+                <input class="Connection-input block" type="text" placeholder="Your first name" ng-model="newUser.firstName" autofocus>
+                <input class="Connection-input block" type="text" placeholder="Your last name" ng-model="newUser.lastName" autofocus>
+                <input class="Connection-input block" type="text" placeholder="Your company email address" ng-model="newUser.email">
+                <input class="Connection-input block" type="password" placeholder="Create a password." ng-model="newUser.password">
+                <input class="Connection-input block" type="password" placeholder="Confirm your new password" ng-model="newUser.repeated_password">
+            </div>
+            <div class="bg-error text-white p2 rounded" ng-show="error">
+                {{error}}
             </div>
         </div>
-        <div>{{error}}</div>
     </div>
 </section>
+
+<div class="SetupBar">
+    <div>
+        <cv-step-button
+            text="Next"
+            ng-click="createOrgAndUser()">
+        </cv-step-button>
+    </div>
+</div>

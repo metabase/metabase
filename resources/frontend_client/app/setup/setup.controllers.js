@@ -1,22 +1,27 @@
 var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services'])
 
 SetupControllers.controller('SetupIntro', ['$scope', '$location', 'Organization', 'AppState', function ($scope, $location, Organization, AppState) {
-    window.scope = $scope
-    $scope.setOrgName = function (name) {
+    $scope.createOrgAndUser = function () {
         // Create an organization
-        org = Organization.create({'name': name, 'slug': name}, function(result){
-            console.log('result', result)
+        org = Organization.create({'name': name, 'slug': name}, function(result) {
+            console.log('result', result);
             // switch the org
             // TODO - make sure this is up to snuff from a security standpoint
             AppState.switchOrg(result.slug)
-            // now set the user to be a memeber of the org so we can use the current org
-            Organization.member_create({'orgId': result.id, email: $scope.user.email, first_name: 'lerp', last_name: 'derperson', admin: true}, function (result) {
-                console.log('result', result)
+            // now create an admin user for the org
+            Organization.admin_create({
+                orgId: result.id,
+                email: $scope.newUser.email,
+                first_name: $scope.newUser.firstName,
+                last_name: $scope.newUser.lastName,
+            },
+            function (result) {
                 $location.path('/setup/data/');
             }, function (error) {
-                console.log('error', error)
-            })
+                $scope.error = error;
+            });
         }, function(error){
+            $scope.error = error.data;
             console.log(error);
         })
     }
@@ -28,15 +33,15 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
 
         var connectionEngines = {
             'Postgres': "postgres",
-        }
+        };
 
         $scope.engines = [
             'Postgres',
             'MySQl',
             'H2'
-        ]
+        ];
 
-        $scope.connection = {}
+        $scope.connection = {};
 
         // assume we have a new connection since this is the setup process
         var newConnection = true
@@ -67,15 +72,15 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             // connection strings take the form of
             // 'host="<value>" post="<value" dbname="<value>" user="<value>" password="<value>"'
 
-            var parsedConnection = {}
-            var string = connectionString.split(" ")
+            var parsedConnection = {};
+            var string = connectionString.split(" ");
 
             for(var s in string) {
-                var connectionDetail = string[s].split("=")
-                parsedConnection[connectionDetail[0]] = connectionDetail[1]
+                var connectionDetail = string[s].split("=");
+                parsedConnection[connectionDetail[0]] = connectionDetail[1];
             }
 
-            return parsedConnection
+            return parsedConnection;
         }
 
         function buildConnectionString (values) {
@@ -83,17 +88,17 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             // 'host="<value>" post="<value" dbname="<value>" user="<value>" password="<value>"'
 
             var connectionStringElements = ['host', 'port', 'dbname', 'user', 'password'],
-                conn_str = ''
+                conn_str = '';
 
             for(var element in connectionStringElements) {
-                conn_str = conn_str + ' ' + connectionStringElements[element] + '=' + values[connectionStringElements[element]]
+                conn_str = conn_str + ' ' + connectionStringElements[element] + '=' + values[connectionStringElements[element]];
             }
 
-            return conn_str
+            return conn_str;
         }
 
         $scope.setConnectionEngine = function (engine) {
-            $scope.connection.engine = engine
+            $scope.connection.engine = engine;
         }
 
         $scope.submit = function () {
@@ -106,11 +111,12 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                 }
             };
             function success (result) {
-                $location.path('/setup/data')
+                $location.path('/setup/data');
             }
 
             function error (error) {
-                console.log('error', error)
+                $scope.error = error;
+                console.log('error', error);
             }
 
             // api needs a int
@@ -147,53 +153,3 @@ SetupControllers.controller('SetupData', ['$scope', 'Metabase', function ($scope
         )
     })
 }])
-
-SetupControllers.controller('SetupProfile', ['$scope', '$location', 'Organization', function ($scope, $location, Organization) {
-    var newUser = {}
-
-    $scope.createAdmin = function (newUser) {
-        console.log(newUser)
-        if(newUser.password != newUser.repeated_password){
-            $scope.errors = "Passwords don't match";
-        } else{
-            Organization.admin_create({'orgId': $scope.setupState.currentOrg.id, 'first_name': newUser.firstName, 'last_name':newUser.lastName, 'email': newUser.email, 'password':newUser.password}, function(result){
-            $scope.adminCreated = true;
-            $location.path('/setup/team');
-
-            },function(error){
-                $scope.errors = error;
-            });
-        }
-
-    }
-
-}]);
-
-/*
-    not yet included in the flow but eventually
-*/
-SetupControllers.controller('SetupTeam', ['$scope', '$location', 'Organization', function ($scope, $location, Organization) {
-    $scope.$watch('currentOrg', function(org) {
-        Organization.members({
-            'orgId': org.id
-        }, function (result) {
-            $scope.users = result
-        }, function (error) {
-            console.log('error', error)
-        })
-    })
-
-    $scope.addInvitee = function (email) {
-        Organization.member_create({
-            'orgId': $scope.currentOrg.id,
-            'email': email
-        },
-        function(result){
-            listUsers($scope.setupState.org.id)
-        },
-        function(error){
-            console.log(error)
-        }
-    );
-    }
-}]);
