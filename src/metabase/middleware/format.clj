@@ -34,9 +34,6 @@
                          (fn? %)))
                m))
 
-(defn- clob? [obj]
-  (= (type obj) org.h2.jdbc.JdbcClob))
-
 (defn- -format-response [obj]
   (cond
     (map? obj)  (->> (remove-fns-and-delays obj)   ; recurse over all vals in the map
