@@ -36,6 +36,7 @@
        :updated_at $
        :entity_name nil
        :active true
+       :pk_field nil
        :id (table->id :venues)
        :db_id (:id @test-db)
        :created_at $})
@@ -140,6 +141,7 @@
         :updated_at $
         :entity_name "Userz"
         :active true
+        :pk_field nil
         :id $
         :db_id @db-id
         :created_at $})

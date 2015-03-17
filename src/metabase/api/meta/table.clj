@@ -13,7 +13,7 @@
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Table :id id)
-         (hydrate :db)))
+         (hydrate :db :pk_field)))
 
 (defendpoint PUT "/:id" [id :as {body :body}]
   (write-check Table id)
