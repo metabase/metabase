@@ -30,8 +30,8 @@
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."
   [m]
-  (filter-vals #(not (or (fn? %)
-                         (delay? %)))
+  (filter-vals #(not (or (delay? %)
+                         (fn? %)))
                m))
 
 (defn- clob? [obj]
