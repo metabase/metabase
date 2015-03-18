@@ -239,7 +239,7 @@
          (vector? args)]}
   (let [name (route-fn-name method route)
         route (typify-route route)
-        [arg-annotations body] (u/optional map? more)]
+        [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
     `(do (def ~name
            (~method ~route ~args
                     (auto-parse ~args
