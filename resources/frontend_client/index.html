@@ -81,59 +81,30 @@
         </div>
     </nav>
 
-    <nav ng-show="nav == 'admin'">
-        <div class="border-bottom bg-white py1">
-            <div class="wrapper">
+    <nav class="AdminNav" ng-show="nav == 'admin'">
+        <div class="bg-white border-bottom">
+            <div class="py2 wrapper">
                 <label class="Select" ng-if="user.is_multi_org">
                     <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-                    </select>
                 </label>
-                <a cv-org-href="/admin/">
-                    <h3 class="AdminPageTitle my2 inline-block">
-                        <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-                    </h3>
+                <a class="AdminTitle link" cv-org-href="/admin/">
+                    <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
                 </a>
-                <div class="mx1 my2 float-right">
-                    <a class="inline-block" cv-org-href="/">Exit Admin</a>
+                <div class="mx1 float-right">
+                    <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
                 </div>
             </div>
+            <section class="mt1 wrapper">
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">People</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases">Databases</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets">Datasets</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">Email Reports</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query/run')}"cv-org-href="/admin/query/run">Run Query</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}" cv-org-href="/admin/query/">Saved Queries</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/search')}" cv-org-href="/admin/search">Search</a>
+                <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" cv-org-href="/admin">Settings</a>
+            </section>
         </div>
-    </nav>
-    <nav class="my4 col col-sm-3" ng-show="nav == 'admin'">
-        <ul class="CoreNav">
-            <li>
-                <a class="NavItem" cv-org-href="/admin/">Organization</a>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/people/">People</a>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/databases">Databases</a>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/datasets">Datasets</a>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/emailreport/">Email Reports</a>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/query/run/">Query</a>
-                <ul class="ContextNav">
-                    <li>
-                        <a class="NavItem" cv-org-href="/admin/query/run">Run Query</a>
-                    </li>
-                    <li>
-                        <a class="NavItem" cv-org-href="/admin/query/">Saved Queries</a>
-                    </li>
-                </ul>
-            </li>
-            <li>
-                <a class="NavItem" cv-org-href="/admin/search">Search</a>
-            </li>
-            <li ng-if="user.is_superuser">
-                <a class="NavItem" cv-org-href="/admin/settings">Settings</a>
-            </li>
-        </ul>
     </nav>
 
     <nav ng-show="nav == 'superadmin'">

@@ -124,16 +124,23 @@ CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($s
 
 
 CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', function($scope, $routeParams, $location) {
-    $scope.nav = 'main'
+    $scope.nav = 'main';
+    $scope.activeClass = 'is--selected';
+
+    $scope.isActive = function (location) {
+        var active = ($location.path().indexOf(location) > 0);
+        return active;
+    }
+
     $scope.$on('$routeChangeSuccess', function () {
         if($routeParams.orgSlug && $location.path().indexOf('admin') > 0) {
-            $scope.nav = 'admin'
-        } else if ($location.path().indexOf('setup') >0 ) {
-            $scope.nav = 'setup'
-        } else if ($location.path().indexOf('superadmin') >0 ) {
-            $scope.nav = 'superadmin'
+            $scope.nav = 'admin';
+        } else if ($location.path().indexOf('setup') > 0) {
+            $scope.nav = 'setup';
+        } else if ($location.path().indexOf('superadmin') > 0) {
+            $scope.nav = 'superadmin';
         } else {
-            $scope.nav = 'main'
+            $scope.nav = 'main';
         }
     });
 }]);

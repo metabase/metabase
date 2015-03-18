@@ -16,7 +16,7 @@ h5,
 h6,
 .h6 {
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: subpixel-antialiased;
   margin-top: var(--default-header-margin);
   margin-bottom: var(--default-header-margin);
   color: var(--default-header-text-color);
@@ -29,4 +29,3 @@ h6,
 .h4 { font-size: 1.12em; }
 .h5 { font-size: .83em; }
 .h6 { font-size: .75em; }
-
