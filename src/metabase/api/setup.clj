@@ -23,7 +23,8 @@
                    :email email
                    :first_name first_name
                    :last_name last_name
-                   :password (str (java.util.UUID/randomUUID)))]
+                   :password (str (java.util.UUID/randomUUID))
+                   :is_superuser true)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (set-user-password (:id new-user) password)
     ;; clear the setup token now, it's no longer needed
