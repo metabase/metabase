@@ -81,9 +81,9 @@
   (del EmailReport :id id))
 
 
-(defendpoint POST "/:id" [id]
-  ;; TODO - implementation (execute a report)
-  {:TODO "TODO"})
+;; TODO
+;; (defendpoint POST "/:id" [id]
+;;   {:TODO "TODO"})
 
 
 (defendpoint GET "/:id/executions" [id]

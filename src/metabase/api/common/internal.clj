@@ -1,7 +1,7 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
   (:require [clojure.tools.logging :as log]
-            [metabase.util :refer [fn-> regex?]])
+            [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
@@ -70,7 +70,7 @@
     (route-arg-keywords \"/:id/cards\") -> [:id]"
   [route]
   (->> (re-seq #":([\w-]+)" route)
-       (map (fn-> second keyword))))
+       (map (u/fn-> second keyword))))
 
 (defn typify-args
   "Given a sequence of keyword ARGS, return a sequence of `[:arg pattern :arg pattern ...]`
@@ -145,3 +145,39 @@
     (if (is-wrapped? response) response
         {:status 200
          :body response})))
+
+
+;;; ## ARG ANNOTATION FUNCTIONALITY
+
+(defn arg-annotation-let-binding
+  "Return a pair like `[arg-symb arg-annotation-form]`, where `arg-annotation-form` is the result of calling the `arg-annotation-fn` implementation
+   for ANNOTATION-KW."
+  [[annotation-kw arg-symb]] ; dispatch-fn passed as a param to avoid circular dependencies
+  {:pre [(keyword? annotation-kw)
+         (symbol? arg-symb)]}
+  `[~arg-symb ~((eval 'metabase.api.common/arg-annotation-fn) annotation-kw arg-symb)])
+
+(defn process-arg-annotations [annotations-map]
+  {:pre [(or (nil? annotations-map)
+             (map? annotations-map))]}
+  (some->> annotations-map
+           (mapcat (fn [[arg annotations]]
+                     {:pre [(symbol? arg)
+                            (or (symbol? annotations)
+                                (every? symbol? annotations))]}
+                     (if (sequential? annotations) (->> annotations
+                                                        (map keyword)
+                                                        (map (u/rpartial vector arg)))
+                         [[(keyword annotations) arg]])))
+           (mapcat arg-annotation-let-binding)))
+
+(defmacro let-annotated-args
+  "Wrap BODY in a let-form that calls corresponding implementations of `arg-annotation-fn` for annotated args in ANNOTATED-ARGS-FORM."
+  [arg-annotations & body]
+  {:pre [(or (nil? arg-annotations)
+             (map? arg-annotations))]}
+  (let [annotations (process-arg-annotations arg-annotations)]
+    (if (seq annotations)
+      `(let [~@annotations]
+         ~@body)
+      `(do ~@body))))
