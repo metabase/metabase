@@ -1462,6 +1462,9 @@ CardControllers.controller('CardDetailNew', [
 
                         }
                     },
+                    getDownloadLink: function () {
+                        return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify($scope.model.card.dataset_query));
+                    },
                     cleanFilters: function (dataset_query) {
                         var filters = dataset_query.query.filter,
                             cleanFilters = [];

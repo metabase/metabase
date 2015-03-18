@@ -110,11 +110,11 @@
 
 (defn jdbc-clob->str
   "Convert a `JdbcClob` to a `String`."
-  ([clob]
+  (^String
+   [clob]
    (when clob
      (if (string? clob) clob
-         (->> (-> (.getCharacterStream ^org.h2.jdbc.JdbcClob clob)
-                  (jdbc-clob->str []))
+         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
               (interpose "\n")
               (apply str)))))
   ([^java.io.BufferedReader reader acc]
@@ -153,7 +153,7 @@
     (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (clojure.string/lower-case v)))))
 
-(defn host-port-up? 
+(defn host-port-up?
   "Returns true if the port is active on a given host, false otherwise"
   [hostname port]
   (try
@@ -164,11 +164,21 @@
         true))
     (catch Exception _ false)))
 
-(defn host-up? 
+(defn host-up?
   "Returns true if the host given by hostname is reachable, false otherwise "
   [hostname]
-  (try 
+  (try
     (let [host-addr (. InetAddress getByName hostname)
           timeout 5000]
       (. host-addr isReachable timeout))
     (catch Exception _ false)))
+
+(defn rpartial
+  "Like `partial`, but applies additional args *before* BOUND-ARGS.
+   Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
+
+    ((partial - 5) 8)  -> (- 5 8) -> -3
+    ((rpartial - 5) 8) -> (- 8 5) -> 3"
+  [f & bound-args]
+  (fn [& args]
+    (apply f (concat args bound-args))))
