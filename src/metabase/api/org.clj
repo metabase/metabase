@@ -23,8 +23,14 @@
   (require-params name slug)
   ;; user must be a superuser to proceed
   (check-403 (:is_superuser @*current-user*))
-  (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
-       (mapply ins Org)))
+  ;; create the new org
+  (let-500 [{:keys [id] :as new-org} (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
+                                       (mapply ins Org))]
+    ;; now that the Org exists, add the creator as the first admin member
+    (grant-org-perm id *current-user-id* true)
+    ;; make sure the api response is still the newly created org
+    new-org))
+
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)
