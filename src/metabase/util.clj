@@ -149,3 +149,13 @@
     false
     (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (clojure.string/lower-case v)))))
+
+(defn rpartial
+  "Like `partial`, but applies additional args *before* BOUND-ARGS.
+   Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
+
+    ((partial - 5) 8)  -> (- 5 8) -> -3
+    ((rpartial - 5) 8) -> (- 8 5) -> 3"
+  [f & bound-args]
+  (fn [& args]
+    (apply f (concat args bound-args))))
