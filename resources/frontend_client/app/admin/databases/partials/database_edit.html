@@ -1,40 +1,39 @@
+<section class="wrapper">
+      <h2 class="py2" ng-if="!database.id">Add Database</h2>
+      <h2 class="py2" ng-if="database.id">{{database.name}}</h2>
 
-<div class="wrapper">
-    <div class="border-bottom">
-      <h2 ng-if="!database.id">Add Database</h2>
-      <h2 ng-if="database.id">{{database.name}}</h2>
-    </div>
+    <form class="bordered bg-white shadowed rounded" novalidate>
+        <div class="p4">
+            <div class="py1">
+                <label class="text-grey-4">Type:</label>
+                <label class="Select ml2">
+                    <select class="my2" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in databaseTypes"></select>
+                </label>
+            </div>
 
-    <form novalidate>
-        <div class="py1">
-	    <div class="py1">
-		<label>Type:</label>
-		<select class="my2 block full" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in databaseTypes"></select>
-	    </div>
+            <div class="py1">
+                <label>Name:</label>
+                <input class="input block" type="text" ng-model="database.name"/>
+            </div>
 
-	    <div class="py1">
-		<label>Name:</label>
-		<input class="input block full" type="text" ng-model="database.name"/>
-	    </div>
+            <div class="py1">
+                <label>{{databaseTypes[database.engine].name}} Connection String:</label>
+                <input class="input block" type="text" ng-model="database.details.conn_str"/>
+                <span class="block mt1 text-grey-3">ex: {{databaseTypes[database.engine].example}}</span>
+            </div>
 
-	    <div class="py1">
-		<label>{{databaseTypes[database.engine].name}} Connection String:</label>
-		<input class="input block full" type="text" ng-model="database.details.conn_str"/>
-		<span>ex: {{databaseTypes[database.engine].example}}</span>
-	    </div>
+            <div class="py1">
+                <label>Timezone:</label>
+                <label class="Select ml2">
+                    <select ng-model="database.details.timezone" ng-options="tz for tz in form_input['timezones']">
+                        <option value="">Select a timezone...</option>
+                    </select>
+                </label>
+            </div>
+        </div>
 
-	    <div class="py1">
-		<label>Timezone:</label>
-		<select class="block" ng-model="database.details.timezone" ng-options="tz for tz in form_input['timezones']">
-		    <option value="">----------</option>
-		</select>
-	    </div>
-	</div>
-
-	<div class="py2 border-top">
-	    <div class="inline-block">
-		<input class="Button Button--primary" type="button" value="Save" ng-click="save(database)"/>
-	    </div>
-	</div>
+        <div class="py3 px4 border-top clearfix">
+            <input class="Button Button--primary float-right" type="button" value="Save" ng-click="save(database)"/>
+        </div>
     </form>
-</div>
+</section>

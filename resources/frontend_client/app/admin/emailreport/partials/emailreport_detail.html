@@ -1,10 +1,17 @@
+<section class="wrapper">
+    <h2 class="py2">New Email Report</h2>
 
-<div class="wrapper">
-    <form class="Form" novalidate>
-        <div class="py2 border-bottom">
-            <h2>Email Report</h2>
+    <form novalidate class="bg-white bordered rounded shadowed">
+        <div class="p4 border-bottom">
+                <div class="py1">
+                    <label >Report Name:</label>
+                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
+                </div>
 
-            <div class="py1 float-right">
+                <div class="py1">
+                    <label >Description:</label>
+                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
+                </div>
               <div>
                 <label class="block">Mode:</label>
                 <div class="Button-group">
@@ -19,42 +26,33 @@
                     </select>
                 </div>
               </div>
-            </div>
-
-            <div class="py1">
-                <label >Report Name:</label>
-                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
-            </div>
-
-            <div class="py1">
-                <label >Description:</label>
-                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
-            </div>
         </div>
 
-        <div class="py2 border-bottom">
-            <h2>Recipients</h2>
+        <div class="p4 border-bottom">
+            <h3>Recipients</h3>
 
             <div class="py1">
                 <label >Team Members:</label>
-                <table class="Table">
-                  <tr ng-repeat="user in form_input.users">
-                    <td><input type="checkbox" ng-model="user.incl" /></td>
-                    <td class="full">{{user.name}}</td>
-                  </tr>
-                </table>
+                <div class="Table-wrapper">
+                    <table class="Table bordered bg-white">
+                      <tr ng-repeat="user in form_input.users">
+                        <td><input type="checkbox" ng-model="user.incl" /></td>
+                        <td class="full">{{user.name}}</td>
+                      </tr>
+                    </table>
+                </div>
             </div>
 
             <div class="py1">
                 <label >Email Aliases:</label>
-                <input class="input block full" size="80" maxlength="255" type="text" ng-model="report.email_addresses"/>
+                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.email_addresses"/>
             </div>
         </div>
 
-        <div class="py2 border-bottom">
-            <h2>Data</h2>
+        <div class="p4 border-bottom">
+            <h3>Data</h3>
 
-            <div class="py1">
+            <div class="py1 inline-block mr3">
               <label class="block">Database:</label>
               <div class="Select block">
                 <select class="block" ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
@@ -62,7 +60,7 @@
               </div>
             </div>
 
-            <div class="py1">
+            <div class="py1 inline-block">
               <label class="block">Table:</label>
               <div class="Select block">
                 <select class="block" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables">
@@ -71,8 +69,8 @@
             </div>
         </div>
 
-        <div class="py1">
-            <h2>Schedule</h2>
+        <div class="p4">
+            <h3>Schedule</h3>
 
             <div class="Button-group">
                 <label class="Button" ng-class="{ 'Button--selected' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</label>
@@ -97,11 +95,15 @@
         </div>
 
         <div class="my1 py2 border-top">
-          <div class="float-right">
-            <input class="Button" type="button" value="Send Now" ng-if="report.id" ng-click="executeReport(report.id)"/>
-          </div>
+          <div class="clearfix">
+              <div class="float-left">
+                <input class="Button" type="button" value="Send Now" ng-if="report.id" ng-click="executeReport(report.id)"/>
+              </div>
 
-          <input class="Button Button--primary" type="button" value="Save" ng-click="save(report)"/>
+              <div class="float-right">
+                  <input class="Button Button--primary" type="button" value="Save" ng-click="save(report)"/>
+              </div>
+          </div>
 
           <div class="inline-block" ng-cloak>
               <span class="px2 text-success" ng-if="success_message" cv-delayed-call="clearStatus()">{{success_message}}</span>
@@ -111,4 +113,4 @@
           </div>
         </div>
     </form>
-</div>
+</section>
