@@ -12,21 +12,21 @@
 
 ;; [name last_login]
 (defonce ^:private users
-  [["Justin Ho" (timestamp 2014 4 1 1 30)]
-   ["David Baden" (timestamp 2014 12 5 7 15)]
-   ["Roberto Sanabria" (timestamp 2014 11 6 8 15)]
-   ["Noah Sidman-Gale" (timestamp 2014 1 1 0 30)]
-   ["Cam Saül" (timestamp 2014 10 3 10 30)]
-   ["Kyle Doherty" (timestamp 2014 8 2 5 30)]
-   ["Anshu Agarwal" (timestamp 2014 8 2 2 30)]
-   ["Kiah Buchner" (timestamp 2014 2 1 2 15)]
-   ["Adam Stocker" (timestamp 2014 4 3 2 30)]
-   ["Allen Gilliland" (timestamp 2014 7 3 12 30)]
-   ["Christina Crosetti" (timestamp 2014 11 1)]
-   ["Sameer Al-Sakran" (timestamp 2014 7 2 18 30)]
-   ["Daniel Wiesenthal" (timestamp 2014 8 1 3 30)]
-   ["Douglas Graves" (timestamp 2014 10 3 6 45)]
-   ["RoveLine Ibañez" (timestamp 2014 8 1 5 45)]])
+  [["Plato Yeshua" (timestamp 2014 4 1 1 30)]
+   ["Felipinho Asklepios" (timestamp 2014 12 5 7 15)]
+   ["Kaneonuskatew Eiran" (timestamp 2014 11 6 8 15)]
+   ["Simcha Yan" (timestamp 2014 1 1 0 30)]
+   ["Quentin Sören" (timestamp 2014 10 3 10 30)]
+   ["Shad Ferdynand" (timestamp 2014 8 2 5 30)]
+   ["Conchúr Tihomir" (timestamp 2014 8 2 2 30)]
+   ["Szymon Theutrich" (timestamp 2014 2 1 2 15)]
+   ["Nils Gotam" (timestamp 2014 4 3 2 30)]
+   ["Frans Hevel" (timestamp 2014 7 3 12 30)]
+   ["Spiros Teofil" (timestamp 2014 11 1)]
+   ["Kfir Caj" (timestamp 2014 7 2 18 30)]
+   ["Dwight Gresham" (timestamp 2014 8 1 3 30)]
+   ["Broen Olujimi" (timestamp 2014 10 3 6 45)]
+   ["Rüstem Hebel" (timestamp 2014 8 1 5 45)]])
 
 ;; name
 (defonce ^:private categories

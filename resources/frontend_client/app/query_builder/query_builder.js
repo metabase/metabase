@@ -115,7 +115,8 @@ var QueryBuilder = React.createClass({
         });
 
         var saver,
-            result;
+            result,
+            download;
         if(this.props.model.result) {
             saver = (
                 <Saver
@@ -133,7 +134,10 @@ var QueryBuilder = React.createClass({
                     result={this.props.model.result}
                     setDisplay={this.props.model.setDisplay.bind(this.props.model)}
                 />
-            )
+            );
+            download = (
+                <a className="ActionButton inline-block mr1" href={this.props.model.getDownloadLink()} target="_blank">Download data</a>
+            );
         }
 
 
@@ -187,6 +191,7 @@ var QueryBuilder = React.createClass({
 
                     <div className="ActionBar">
                         {saver}
+                        {download}
                     </div>
             </div>
         )
