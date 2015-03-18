@@ -149,7 +149,7 @@
 
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird)) {email "toucan@metabase.com"}))
+  ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird)) {:email "toucan@metabase.com"}))
 
 
 ;; ## PUT /api/user/:id/password
