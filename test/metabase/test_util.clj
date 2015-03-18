@@ -33,7 +33,7 @@
 ;;; tests for RPARTIAL
 
 (expect -3
-  ((rpartial -5) 8))
+  ((rpartial - 5) 8))
 
 (expect -7
   ((rpartial - 5 10) 8))
