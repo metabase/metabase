@@ -180,9 +180,9 @@
    Dispatches on the arg annotation as a keyword, and is also passed the symbol
    of the argument that should be checked.
 
-    (defendpoint GET ... [id] {id required})
+    (defendpoint GET ... [id] {id Required})
 
-     -> (let [id ~(arg-annotation-fn :required id)]
+     -> (let [id ~(arg-annotation-fn :Required id)]
            ...)
 
      -> (let [id (do (require-params id) id)]
