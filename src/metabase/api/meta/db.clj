@@ -23,6 +23,7 @@
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
   (require-params org name engine details)
+  (check (contains? (set (map first available-drivers)) engine) [400 "Invalid engine type specified."])
   (check-403 (org-can-write org))
   (ins Database :organization_id org :name name :engine engine :details details))
 
