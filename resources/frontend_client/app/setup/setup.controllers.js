@@ -44,9 +44,10 @@ SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'i
                     // now that we should be logged in and our session cookie is established, lets do the rest of the work
 
                     // create our first Organization
+                    // TODO - we need some logic to slugify the name specified.  can't have spaces, caps, etc.
                     Organization.create({
-                        'name': name,
-                        'slug': name
+                        'name': $scope.userOrgName,
+                        'slug': $scope.userOrgName
                     }, function (org) {
                         console.log('first org created', org);
 
@@ -184,6 +185,8 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
 
 SetupControllers.controller('SetupData', ['$scope', 'Metabase', function ($scope, Metabase) {
     $scope.$watch('currentOrg', function (org) {
+        if(!org) return;
+        
         Metabase.db_list({
             'orgId': org.id
             },
