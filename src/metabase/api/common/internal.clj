@@ -216,11 +216,14 @@
          (symbol? arg-symb)]}
   `[~arg-symb ~((eval 'metabase.api.common/arg-annotation-fn) annotation-kw arg-symb)])
 
-(defn process-arg-annotations [annotations]
-  {:pre [(or (nil? annotations)
-             (map? annotations))]}
-  (some->> annotations
+(defn process-arg-annotations [annotations-map]
+  {:pre [(or (nil? annotations-map)
+             (map? annotations-map))]}
+  (some->> annotations-map
            (mapcat (fn [[arg annotations]]
+                     {:pre [(symbol? arg)
+                            (or (symbol? annotations)
+                                (every? symbol? annotations))]}
                      (if (sequential? annotations) (->> annotations
                                                         (map keyword)
                                                         (map (u/rpartial vector arg)))
