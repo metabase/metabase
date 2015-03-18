@@ -1,0 +1,217 @@
+.Setup {
+    background: #FBFCFD;
+    height: 100%:
+}
+
+.SetupNav {
+    font-size: 1em;
+    background: #fff;
+    color: #686868;
+}
+
+.SetupWrapper {
+    max-width: 80%;
+    margin: 0 auto;
+}
+
+.SetupIntro-heading {
+    color: var(--brand-color);
+}
+
+.SetupOffset {
+    margin-top: -2em;
+}
+
+.SetupStage {
+    border-top: 1px solid #E8E8E9;
+}
+
+.SetupFooter {
+    color: #DBDBDB;
+    font-size: 0.85em;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+}
+
+.SetupNav-item {
+    font-size: 1em;
+    display: inline-block;
+    text-decoration: none;
+    margin: 0 4em;
+}
+
+.SetupNav-item.complete {
+    color: #A8C28E;
+}
+
+.SetupNav-item a {
+    text-decoration: none;
+}
+
+.SetupBreadcrumbs {
+    font-size: 1.2em;
+    font-weight: 200;
+    display: flex;
+    align-items: flex-start;
+}
+
+.SetupSubNav {
+    background: #fff;
+    padding: 1.2em 0 4em;
+    border-bottom: 1px solid #ddd;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .SetupWrapper {
+        max-width: 100em;
+    }
+}
+
+.Connections {
+    margin-top: 2em;
+}
+
+.Connection-type {
+    border: 1px solid #ddd;
+    padding: 4em;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+}
+
+.Connection-icon {
+    text-align: center;
+}
+
+.Connection-type .Connection-engine {
+    text-align: center;
+}
+
+.Connection-typeNew {
+    border-style: dashed;
+}
+
+.Connection-name {
+    font-size: 1.2em;
+    text-align: center;
+    color: var(--brand-color);
+}
+
+.Connection-typeNew .Connection-name {
+    padding: 0;
+}
+
+.Connection-type:hover {
+    background-color: var(--brand-color);
+    cursor: pointer;
+    color: #fff;
+    border-color: var(--brand-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .32);
+    transition: background .2s linear, border .2s linear, color .2s linear;
+}
+
+.Connection-type:hover .Connection-name {
+    color: #fff;
+}
+
+.Connection-typeDisabled {
+    opacity: 0.4;
+}
+
+.Connection-success {
+    color: #A8C28E;
+    border: 1px solid #A8C28E;
+    border-radius: 99px;
+    width: 2em;
+    height: 2em;
+    float: right;
+}
+
+.Connection-input {
+    font-family: "Lato";
+    font-size: 1em;
+    display: block;
+    border: none;
+    padding: 0.85em 0 0.85em 0;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 1em;
+    color: #222;
+    width: 100%;
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .Connection-input {
+        font-size: 1.25em;
+        padding: 1em 0;
+        max-width: 22em;
+    }
+}
+
+.Connection-enginePicker {
+    margin-bottom: 1.5em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.Connection-enginePicker .Connection-engine {
+    display: inline-block;
+    padding: 1em 1em    1em 0;
+    margin-right: 1em;
+}
+
+.Connection-enginePicker .Connection-engine:hover {
+    cursor: pointer;
+}
+
+.Connection-engineSelected {
+    color: var(--brand-color);
+}
+
+.Connection-label {
+    font-size: 0.85em;
+    margin-bottom: 1em;
+    color: #999;
+}
+
+.Connection-input:focus {
+    outline: none;
+    border-bottom-color: var(--brand-color);
+}
+
+.AdminContent {
+    border: 1px solid #D7D7D7;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    max-width: 50em;
+    margin: 0 auto;
+}
+
+.SetupBar {
+    background: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #ddd;
+    padding: 1em 0;
+    text-align: center;
+}
+
+.Breadcrumb-separator {
+    width: 1.4em;
+    height: 1.4em;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0,0, .12);
+    border-radius: 99px;
+    display: flex;
+}
+
+.Breadcrumb {
+    text-decoration: none;
+}
