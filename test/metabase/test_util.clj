@@ -28,3 +28,12 @@
           :a 100
           :b (+ 100 (:a <>))
           :c (+ 100 (:b <>))))
+
+
+;;; tests for RPARTIAL
+
+(expect 3
+  ((rpartial - 5) 8))
+
+(expect -7
+  ((rpartial - 5 10) 8))
