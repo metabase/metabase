@@ -149,65 +149,6 @@
 
 ;;; ## ARG ANNOTATION FUNCTIONALITY
 
-;;; ### Args Form Deannotation
-
-;; (defn deannotate-arg
-;;   "If FORM is a symbol, strip off any annotations.
-
-;;     (deannotate-arg 'password.required) -> password"
-;;   [form]
-;;   (if-not (symbol? form) form
-;;           (let [[arg & _] (clojure.string/split (name form) #"\.")]
-;;             (symbol arg))))
-
-;; (defn deannotate-args-form
-;;   "Walk ARGS-FORM and strip off any annotations.
-
-;;     (deannotate-args-form [id :as {{:keys [password.required old_password.required]} :body}])
-;;       -> [id :as {{:keys [password old_password]} :body}]"
-;;   [args-form]
-;;   (if (= args-form []) '[:as _]
-;;       (->> args-form
-;;            (mapv (partial clojure.walk/prewalk deannotate-arg)))))
-
-
-;;; ### Args Form Annotation Gathering
-
-;; (defn args-form->symbols
-;;   "Recursively walk ARGS-FORM and return a sequence of symbols.
-
-;;     (args-form->symbols [id :as {{:keys [password.required old_password.required]} :body}])
-;;       -> (id password.required old_password.required)"
-;;   [args-form]
-;;   {:post [(sequential? %)
-;;           (every? symbol? %)]}
-;;   (cond
-;;     (symbol? args-form) [args-form]
-;;     (map? args-form) (->> args-form
-;;                           (mapcat (fn [[k v]]
-;;                                     [(args-form->symbols k) (args-form->symbols v)]))
-;;                           (mapcat args-form->symbols))
-;;     (sequential? args-form) (mapcat args-form->symbols
-;;                                     args-form)
-;;     :else []))
-
-;; (defn symb->arg+annotations
-;;   "Return a sequence of pairs of `[annotation-kw deannotated-arg-symb]` for an annotated ARG.
-
-;;     (symb->arg+annotations 'password)              -> nil
-;;     (symb->arg+annotations 'password.required)     -> [[:required password]]
-;;     (symb->arg+annotations 'password.required.str) -> [[:required password], [:str password]]"
-;;   [arg]
-;;   {:pre [(symbol? arg)]}
-;;   (let [[arg & annotations] (clojure.string/split (name arg) #"\.")]
-;;     (when (seq annotations)
-;;       (->> annotations
-;;            (map (fn [annotation]
-;;                   [(keyword annotation) (symbol arg)]))))))
-
-
-;;; ### let-annotated-args
-
 (defn arg-annotation-let-binding
   "Return a pair like `[arg-symb arg-annotation-form]`, where `arg-annotation-form` is the result of calling the `arg-annotation-fn` implementation
    for ANNOTATION-KW."
