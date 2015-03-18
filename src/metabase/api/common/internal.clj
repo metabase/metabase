@@ -1,7 +1,7 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
   (:require [clojure.tools.logging :as log]
-            [metabase.util :refer [fn-> regex?]])
+            [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
@@ -70,7 +70,7 @@
     (route-arg-keywords \"/:id/cards\") -> [:id]"
   [route]
   (->> (re-seq #":([\w-]+)" route)
-       (map (fn-> second keyword))))
+       (map (u/fn-> second keyword))))
 
 (defn typify-args
   "Given a sequence of keyword ARGS, return a sequence of `[:arg pattern :arg pattern ...]`
@@ -151,59 +151,59 @@
 
 ;;; ### Args Form Deannotation
 
-(defn deannotate-arg
-  "If FORM is a symbol, strip off any annotations.
+;; (defn deannotate-arg
+;;   "If FORM is a symbol, strip off any annotations.
 
-    (deannotate-arg 'password.required) -> password"
-  [form]
-  (if-not (symbol? form) form
-          (let [[arg & _] (clojure.string/split (name form) #"\.")]
-            (symbol arg))))
+;;     (deannotate-arg 'password.required) -> password"
+;;   [form]
+;;   (if-not (symbol? form) form
+;;           (let [[arg & _] (clojure.string/split (name form) #"\.")]
+;;             (symbol arg))))
 
-(defn deannotate-args-form
-  "Walk ARGS-FORM and strip off any annotations.
+;; (defn deannotate-args-form
+;;   "Walk ARGS-FORM and strip off any annotations.
 
-    (deannotate-args-form [id :as {{:keys [password.required old_password.required]} :body}])
-      -> [id :as {{:keys [password old_password]} :body}]"
-  [args-form]
-  (if (= args-form []) '[:as _]
-      (->> args-form
-           (mapv (partial clojure.walk/prewalk deannotate-arg)))))
+;;     (deannotate-args-form [id :as {{:keys [password.required old_password.required]} :body}])
+;;       -> [id :as {{:keys [password old_password]} :body}]"
+;;   [args-form]
+;;   (if (= args-form []) '[:as _]
+;;       (->> args-form
+;;            (mapv (partial clojure.walk/prewalk deannotate-arg)))))
 
 
 ;;; ### Args Form Annotation Gathering
 
-(defn args-form->symbols
-  "Recursively walk ARGS-FORM and return a sequence of symbols.
+;; (defn args-form->symbols
+;;   "Recursively walk ARGS-FORM and return a sequence of symbols.
 
-    (args-form->symbols [id :as {{:keys [password.required old_password.required]} :body}])
-      -> (id password.required old_password.required)"
-  [args-form]
-  {:post [(sequential? %)
-          (every? symbol? %)]}
-  (cond
-    (symbol? args-form) [args-form]
-    (map? args-form) (->> args-form
-                          (mapcat (fn [[k v]]
-                                    [(args-form->symbols k) (args-form->symbols v)]))
-                          (mapcat args-form->symbols))
-    (sequential? args-form) (mapcat args-form->symbols
-                                    args-form)
-    :else []))
+;;     (args-form->symbols [id :as {{:keys [password.required old_password.required]} :body}])
+;;       -> (id password.required old_password.required)"
+;;   [args-form]
+;;   {:post [(sequential? %)
+;;           (every? symbol? %)]}
+;;   (cond
+;;     (symbol? args-form) [args-form]
+;;     (map? args-form) (->> args-form
+;;                           (mapcat (fn [[k v]]
+;;                                     [(args-form->symbols k) (args-form->symbols v)]))
+;;                           (mapcat args-form->symbols))
+;;     (sequential? args-form) (mapcat args-form->symbols
+;;                                     args-form)
+;;     :else []))
 
-(defn symb->arg+annotations
-  "Return a sequence of pairs of `[annotation-kw deannotated-arg-symb]` for an annotated ARG.
+;; (defn symb->arg+annotations
+;;   "Return a sequence of pairs of `[annotation-kw deannotated-arg-symb]` for an annotated ARG.
 
-    (symb->arg+annotations 'password)              -> nil
-    (symb->arg+annotations 'password.required)     -> [[:required password]]
-    (symb->arg+annotations 'password.required.str) -> [[:required password], [:str password]]"
-  [arg]
-  {:pre [(symbol? arg)]}
-  (let [[arg & annotations] (clojure.string/split (name arg) #"\.")]
-    (when (seq annotations)
-      (->> annotations
-           (map (fn [annotation]
-                  [(keyword annotation) (symbol arg)]))))))
+;;     (symb->arg+annotations 'password)              -> nil
+;;     (symb->arg+annotations 'password.required)     -> [[:required password]]
+;;     (symb->arg+annotations 'password.required.str) -> [[:required password], [:str password]]"
+;;   [arg]
+;;   {:pre [(symbol? arg)]}
+;;   (let [[arg & annotations] (clojure.string/split (name arg) #"\.")]
+;;     (when (seq annotations)
+;;       (->> annotations
+;;            (map (fn [annotation]
+;;                   [(keyword annotation) (symbol arg)]))))))
 
 
 ;;; ### let-annotated-args
@@ -216,14 +216,23 @@
          (symbol? arg-symb)]}
   `[~arg-symb ~((eval 'metabase.api.common/arg-annotation-fn) annotation-kw arg-symb)])
 
+(defn process-arg-annotations [annotations]
+  {:pre [(or (nil? annotations)
+             (map? annotations))]}
+  (some->> annotations
+           (mapcat (fn [[arg annotations]]
+                     (if (sequential? annotations) (->> annotations
+                                                        (map keyword)
+                                                        (map (u/rpartial vector arg)))
+                         [[(keyword annotations) arg]])))
+           (mapcat arg-annotation-let-binding)))
+
 (defmacro let-annotated-args
   "Wrap BODY in a let-form that calls corresponding implementations of `arg-annotation-fn` for annotated args in ANNOTATED-ARGS-FORM."
-  [annotated-args-form & body]
-  {:pre [(vector? annotated-args-form)]}
-  (let [annotations (->> annotated-args-form
-                         args-form->symbols
-                         (mapcat symb->arg+annotations)
-                         (mapcat arg-annotation-let-binding))]
+  [arg-annotations & body]
+  {:pre [(or (nil? arg-annotations)
+             (map? arg-annotations))]}
+  (let [annotations (process-arg-annotations arg-annotations)]
     (if (seq annotations)
       `(let [~@annotations]
          ~@body)

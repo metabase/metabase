@@ -5,7 +5,8 @@
             [medley.core :refer :all]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
-            [metabase.db.internal :refer [entity->korma]])
+            [metabase.db.internal :refer [entity->korma]]
+            [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
 (declare check-404)
@@ -216,6 +217,9 @@
   `(require-params ~param)
   param)
 
+(defannotation int [param]
+  `(Integer/parseInt ~param))
+
 
 ;;; ### defendpoint
 
@@ -229,19 +233,18 @@
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form."
-  [method route args & body]
+  [method route args & more]
   {:pre [(or (string? route)
              (vector? route))
          (vector? args)]}
   (let [name (route-fn-name method route)
         route (typify-route route)
-        annotated-args args
-        args (deannotate-args-form args)]
+        [arg-annotations body] (u/optional map? more)]
     `(do (def ~name
            (~method ~route ~args
                     (auto-parse ~args
                       (catch-api-exceptions
-                        (let-annotated-args ~annotated-args
+                        (let-annotated-args ~arg-annotations
                           (-> (do ~@body)
                               wrap-response-if-needed))))))
          (alter-meta! #'~name assoc :is-endpoint? true))))

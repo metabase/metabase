@@ -31,7 +31,8 @@
   `(check (is-email? ~email) [400 (format ~(str (name email) " '%s' is not a valid email.") ~email)])
   email)
 
-(defendpoint PUT "/:id" [id :as {{:keys [email.email] :as body} :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
+  {email email}
   ;; user must be getting their own details OR they must be a superuser to proceed
   (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
@@ -45,8 +46,9 @@
   `(check (password/is-complex? ~password) [400 "Insufficient password strength"])
   password)
 
-(defendpoint PUT "/:id/password" [id :as {{:keys [password.req.complex-pw old_password.req]} :body}]
-  (require-params password old_password)
+(defendpoint PUT "/:id/password" [id :as {{:keys [password old_password]} :body}]
+  {password [req complex-pw]
+   old_password req}
   (check-403 (or (= id *current-user-id*)
                  (:is_superuser @*current-user*)))
   (let-404 [user (sel :one [User :password_salt :password] :id id)]
