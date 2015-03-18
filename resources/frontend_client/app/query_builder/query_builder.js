@@ -95,12 +95,12 @@ var QueryBuilder = React.createClass({
                 runButtonText = "Find out!"
             }
             runButton = (
-                <a className="ActionButton ActionButton--primary float-right"onClick={this.props.model.run.bind(this.props.model)}>{runButtonText}</a>
+                <a className="Button Button--primary float-right"onClick={this.props.model.run.bind(this.props.model)}>{runButtonText}</a>
             )
 
             filterHtml = (
                 <div className="clearfix">
-                    <a className="FilterTrigger float-left ActionButton inline-block mr4" onClick={this.props.model.addFilter.bind(this.props.model)}>
+                    <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.props.model.addFilter.bind(this.props.model)}>
                         <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                             <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
                         </svg>
@@ -136,7 +136,7 @@ var QueryBuilder = React.createClass({
                 />
             );
             download = (
-                <a className="ActionButton inline-block mr1" href={this.props.model.getDownloadLink()} target="_blank">Download data</a>
+                <a className="Button inline-block mr1" href={this.props.model.getDownloadLink()} target="_blank">Download data</a>
             );
         }
 

@@ -47,7 +47,7 @@ var QueryPicker = React.createClass({
 
             if(this.props.query.breakout.length < 2) {
                 addDimensionButton = (
-                    <a className="ActionButton" onClick={this.props.addDimension}>{addDimensionButtonText}</a>
+                    <a className="Button" onClick={this.props.addDimension}>{addDimensionButtonText}</a>
                 );
             }
 

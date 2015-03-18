@@ -44,9 +44,9 @@ var Saver = React.createClass({
     render: function () {
         var buttonClasses = cx({
             'SaveButton': true,
-            'ActionButton': true,
+            'Button': true,
             'block': true,
-            'ActionButton--primary': this.state.modalOpen
+            'Button--primary': this.state.modalOpen
         })
         var modalClasses = cx({
             'SaveModal': true,
