@@ -166,7 +166,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             // api needs a int
             $scope.connection.port = parseInt($scope.connection.port);
             // Validate the connection string
-            Metabase.validate_connection($scope.connection, function(result){
+            Metabase.validate_connection($scope.connection, function (result) {
                 if(newConnection) {
                     Metabase.db_create(database, success, error);
                 } else {
@@ -175,18 +175,17 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
                     Metabase.db_update(database, success, error);
                 }
 
-            }, function(error){
+            }, function (error) {
                 console.log(error);
                 $scope.error = "Invalid Connection String - " + error.data.message;
-            })
-
-        }
+            });
+        };
 }])
 
 SetupControllers.controller('SetupData', ['$scope', 'Metabase', function ($scope, Metabase) {
     $scope.$watch('currentOrg', function (org) {
         if(!org) return;
-        
+
         Metabase.db_list({
             'orgId': org.id
             },
@@ -196,6 +195,6 @@ SetupControllers.controller('SetupData', ['$scope', 'Metabase', function ($scope
             function (error) {
                 console.log('error', error)
             }
-        )
+        );
     })
 }])
