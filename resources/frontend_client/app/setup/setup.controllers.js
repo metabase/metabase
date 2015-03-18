@@ -1,31 +1,74 @@
-var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services'])
+var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services', 'corvus.setup.services'])
 
-SetupControllers.controller('SetupIntro', ['$scope', '$location', 'Organization', 'AppState', function ($scope, $location, Organization, AppState) {
-    $scope.createOrgAndUser = function () {
-        // Create an organization
-        org = Organization.create({'name': name, 'slug': name}, function(result) {
-            console.log('result', result);
-            // switch the org
-            // TODO - make sure this is up to snuff from a security standpoint
-            AppState.switchOrg(result.slug)
-            // now create an admin user for the org
-            Organization.admin_create({
-                orgId: result.id,
-                email: $scope.newUser.email,
-                first_name: $scope.newUser.firstName,
-                last_name: $scope.newUser.lastName,
-            },
-            function (result) {
-                $location.path('/setup/data/');
-            }, function (error) {
-                $scope.error = error;
-            });
-        }, function(error){
-            $scope.error = error.data;
-            console.log(error);
-        })
+SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams', 'AppState',
+    function ($scope, $location, $routeParams, AppState) {
+
+        // The only thing this controller does is grab the setup token from the url and store it in our AppState
+        // then we begin the actual setup workflow by sending the user to /setup/
+
+        AppState.model.setupToken = $routeParams.setupToken;
+
+        $location.path('/setup/');
     }
-}]);
+]);
+
+SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup',
+    function ($scope, $location, $timeout, ipCookie, Organization, AppState, Setup) {
+
+        $scope.createOrgAndUser = function () {
+
+            // start off by creating the first user of the system
+            // NOTE: this should both create the user AND log us in and return a session id
+            Setup.create_user({
+                'token': AppState.model.setupToken,
+                'email': $scope.newUser.email,
+                'first_name': $scope.newUser.firstName,
+                'last_name': $scope.newUser.lastName,
+                'password': $scope.newUser.password
+            }, function (result) {
+                // result should have a single :id value which is our new session id
+                var sessionId = result.id;
+
+                // we've now used the setup token for all it's worth, so lets actively purge it now
+                AppState.model.setupToken = null;
+
+                // TODO - this session cookie code needs to be somewhere easily reusable
+                var isSecure = ($location.protocol() === "https") ? true : false;
+                ipCookie('metabase.SESSION_ID', sessionId, {path: '/', expires: 14, secure: isSecure});
+
+                // send a login notification event
+                $scope.$emit('appstate:login', sessionId);
+
+                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+                $timeout(function() {
+                    // now that we should be logged in and our session cookie is established, lets do the rest of the work
+
+                    // create our first Organization
+                    Organization.create({
+                        'name': name,
+                        'slug': name
+                    }, function (org) {
+                        console.log('first org created', org);
+
+                        // switch the org
+                        // TODO - make sure this is up to snuff from a security standpoint
+                        AppState.switchOrg(org.slug)
+
+                        // we should be good to carry on with setting up data at this point
+                        $location.path('/setup/data/');
+
+                    }, function(error){
+                        $scope.error = error.data;
+                        console.log('error creating organization', error);
+                    });
+                }, 300);
+            }, function (error) {
+                $scope.error = error.data;
+                console.log('error with initial user creation', error);
+            });
+        }
+    }
+]);
 
 SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
 

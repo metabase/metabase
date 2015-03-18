@@ -58,6 +58,11 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         controller: 'SetupIntro'
     });
 
+    $routeProvider.when('/setup/init/:setupToken', {
+        template: '',
+        controller: 'SetupInit'
+    });
+
     // TODO: we need actual homepages for orgs!
     $routeProvider.when('/:orgSlug/', {
         redirectTo: function(routeParams, path, search) {

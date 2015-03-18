@@ -55,7 +55,7 @@
           setup-url (str "http://"
                       (or hostname "localhost")
                       (when-not (= 80 port) (str ":" port))
-                      "/setup/"
+                      "/setup/init/"
                       setup-token)]
       (log/info (str "Please use the following url to setup your Metabase installation:\n\n"
                   setup-url

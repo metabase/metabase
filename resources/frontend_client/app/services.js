@@ -15,6 +15,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
         var service = {
 
             model: {
+                setupToken: null,
                 currentUserPromise: null,
                 currentUser: null,
                 currentOrgSlug: null,
@@ -150,7 +151,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     // make sure we clear out any current state just to be safe
                     service.clearState();
 
-                    if ($location.path().indexOf('/auth/') !== 0) {
+                    if ($location.path().indexOf('/auth/') !== 0 && $location.path().indexOf('/setup/') !== 0) {
                         // if the user is asking for a url outside of /auth/* then send them to login page
                         // otherwise we will let the user continue on to their requested page
                         $location.path('/auth/login');
