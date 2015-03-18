@@ -9,7 +9,8 @@ var basePath = 'resources/frontend_client/app/';
 
 var SRC = {
     css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
-    jsx: [basePath + 'query_builder/*.js']
+    jsx: [basePath + 'query_builder/*.js'],
+    appJS: [basePath + '**/*.js', '!' + basePath + 'bower_components/**/*.js', '!' + basePath + 'dist/*.js', '!' + basePath + 'query_builder/*.js', '!' + basePath + '/test/**/*.js']
 };
 
 var DEST = {
@@ -41,16 +42,21 @@ gulp.task('jsx', function () {
     return gulp.src(SRC.jsx)
         .pipe(concat('query_builder.js'))
         .pipe(react())
-        .pipe(gulp.dest(DEST.js))
-})
+        .pipe(gulp.dest(DEST.js));
+});
 
+gulp.task('build-js', function () {
+    return gulp.src(SRC.appJS)
+        .pipe(concat('app.js'))
+        .pipe(gulp.dest(DEST.js));
+});
 
 gulp.task('watch', function(){
     gulp.watch(SRC.css, ['css']);
     gulp.watch(SRC.jsx, ['jsx']);
+    gulp.watch(SRC.appJS, ['build-js']);
 });
 
+gulp.task('build', ['css', 'jsx', 'build-js']);
 
-gulp.task('build', ['css', 'jsx']);
-
-gulp.task('default', ['build','watch', 'jsx']);
+gulp.task('default', ['build', 'watch']);
