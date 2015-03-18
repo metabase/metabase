@@ -175,8 +175,11 @@
        (GET ["/:id" :id "#[0-9]+"] [id]
          (metabase.api.common.internal/auto-parse [id]
            (metabase.api.common.internal/catch-api-exceptions
-             (clojure.core/-> (do (->404 (sel :one Card :id id)))
-                              metabase.api.common.internal/wrap-response-if-needed)))))
+             (metabase.api.common.internal/let-annotated-args
+              {id required}
+              (clojure.core/-> (do (->404 (sel :one Card :id id)))
+                               metabase.api.common.internal/wrap-response-if-needed))))))
      (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
    (defendpoint GET "/:id" [id]
+     {id required}
      (->404 (sel :one Card :id id)))))
