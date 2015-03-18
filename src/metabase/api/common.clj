@@ -180,11 +180,13 @@
    Dispatches on the arg annotation as a keyword, and is also passed the symbol
    of the argument that should be checked.
 
-    (defendpoint GET ... [id.required])
+    (defendpoint GET ... [id] {id required})
 
-     -> (let [id ~(arg-annotation-fn :required id)] ...)
+     -> (let [id ~(arg-annotation-fn :required id)]
+           ...)
 
-     -> (let [id (do (require-params id) id)] ...)"
+     -> (let [id (do (require-params id) id)]
+          ...)"
   (fn [annotation-kw arg-symb]
     {:pre [(keyword? annotation-kw)
            (symbol? arg-symb)]}
@@ -194,31 +196,27 @@
 (defmethod arg-annotation-fn :default [annotation-kw arg-symbol]
   (throw (Exception. (format "Don't know what to do with arg annotation '%s' on arg '%s'!" (name annotation-kw) (name arg-symbol)))))
 
+;; ### defannotation
+
 (defmacro defannotation
   "Convenience for defining a new `defendpoint` arg annotation.
 
    BINDING is the actual symbol name of the arg being checked; `defannotation` returns form(s)
    that will be included in the let binding for the annotated arg.
 
-    (defannotation required [param]
+    (defannotation Required [param]
       `(require-params ~param)       ; quasiquoting needed to keep require-params from being evaluated at macroexpansion time
       param)"
   [annotation-name [binding] & body]
   `(defmethod arg-annotation-fn ~(keyword annotation-name) [~'_ ~binding]
      `(do ~~@body)))
 
+;; ### common annotation definitions
+
 ;; `required` just calls require-params
-(defannotation required [param]
+(defannotation Required [param]
   `(require-params ~param)
   param)
-
-;; `req` is an alias for `required`
-(defannotation req [param]
-  `(require-params ~param)
-  param)
-
-(defannotation int [param]
-  `(Integer/parseInt ~param))
 
 
 ;;; ### defendpoint
@@ -229,10 +227,12 @@
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  sequentially applies specified annotation functions on args to validate or cast them.
    -  executes BODY inside a `try-catch` block that handles `ApiExceptions`
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form."
+  {:arglists '([method route args annotations-map? & body])}
   [method route args & more]
   {:pre [(or (string? route)
              (vector? route))

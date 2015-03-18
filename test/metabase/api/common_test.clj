@@ -176,10 +176,10 @@
          (metabase.api.common.internal/auto-parse [id]
            (metabase.api.common.internal/catch-api-exceptions
              (metabase.api.common.internal/let-annotated-args
-              {id required}
+              {id Required}
               (clojure.core/-> (do (->404 (sel :one Card :id id)))
                                metabase.api.common.internal/wrap-response-if-needed))))))
      (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
    (defendpoint GET "/:id" [id]
-     {id required}
+     {id Required}
      (->404 (sel :one Card :id id)))))
