@@ -9,7 +9,7 @@
                                  [format :refer :all])
             [metabase.models.user :refer [User]]
             [metabase.routes :as routes]
-            [metabase.util :as util]
+            [metabase.setup :as setup]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -45,10 +45,21 @@
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
-  ;; this is a temporary need until we finalize the code for bootstrapping the first user
-  (when-not (or (db/exists? User :id 1)
-                (db/exists? User :email "admin@admin.com")) ; possible for User 1 to have been deleted
-    (db/ins User :email "admin@admin.com" :first_name "admin" :last_name "admin" :password "admin" :is_superuser true))
+  ;; run a very quick check to see if we are doing a first time installation
+  ;; the test we are using is if there is at least 1 User in the database
+  (when-not (db/sel :one :fields [User :id])
+    (log/info "Looks like this is a new installation ... preparing setup wizard")
+    (let [setup-token (setup/token-create)
+          hostname (or (config/config-str :mb-jetty-host) "localhost")
+          port (config/config-int :mb-jetty-port)
+          setup-url (str "http://"
+                      (or hostname "localhost")
+                      (when-not (= 80 port) (str ":" port))
+                      "/setup/"
+                      setup-token)]
+      (log/info (str "Please use the following url to setup your Metabase installation:\n\n"
+                  setup-url
+                  "\n\n"))))
 
   (log/info "Metabase Initialization COMPLETE")
   true)
