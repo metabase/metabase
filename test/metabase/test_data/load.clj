@@ -96,7 +96,7 @@
   "Convert a sequence of pairs `[field-name-kw field-sql-type]` FIELDS into a string suitable for use in a SQL \"CREATE TABLE\" statement."
   [fields]
   (->> fields
-       (map (fn [[field-name field-type]]
+       (map (fn [{field-name :name field-type :type}]
               {:pre [(keyword? field-name)
                      (string? field-type)]}
               (let [field-name (-> field-name name s/upper-case)]
@@ -112,7 +112,7 @@
          (sequential? rows)]}
   (with-test-db
     (let [table-name (-> table-name name s/upper-case)
-          fields-for-insert (->> fields (map first))]               ; get ordered field names of data e.g. (:name :last_login)
+          fields-for-insert (->> fields (map :name))]              ; get ordered field names of data e.g. (:name :last_login)
       (log/info (format "CREATING TABLE \"%s\"..." table-name))
       (exec-sql (format "DROP TABLE IF EXISTS \"%s\";" table-name)
                 (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" table-name (format-fields fields)))

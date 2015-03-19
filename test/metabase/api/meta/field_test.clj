@@ -58,12 +58,12 @@
 (expect-eval-actual-first
     (match-$ (let [field (sel :one Field :id (field->id :venues :latitude))]
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
-               (upd Field (field->id :venues :latitude) :special_type nil)
-               ;; return the modified Field)
+               (upd Field (field->id :venues :latitude) :special_type "latitude")
+               ;; match against the modified Field
                field)
       {:description nil
        :table_id (table->id :venues)
-       :special_type "latitude"
+       :special_type "fk"
        :name "LATITUDE"
        :updated_at $
        :active true
@@ -73,4 +73,4 @@
        :preview_display true
        :created_at $
        :base_type "FloatField"})
-      ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :latitude}))
+      ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
