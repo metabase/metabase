@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as cheshire]
             [clj-http.lite.client :as client]
+            [metabase.config :as config]
             [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
@@ -15,7 +16,7 @@
 
 (def ^:dynamic *url-prefix*
   "Prefix to automatically prepend to the URL of calls made with `client`."
-  "http://localhost:3000/api/")
+  (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
 (defn
   ^{:arglists ([credentials? method expected-status-code? url http-body-map? & url-kwargs])}

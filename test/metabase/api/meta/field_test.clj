@@ -55,6 +55,7 @@
 
 ;; ## PUT /api/meta/field/:id
 ;; Check that we can update a Field
+;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
 (expect-eval-actual-first
     (match-$ (let [field (sel :one Field :id (field->id :venues :latitude))]
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
@@ -73,4 +74,4 @@
        :preview_display true
        :created_at $
        :base_type "FloatField"})
-      ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
+  ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))

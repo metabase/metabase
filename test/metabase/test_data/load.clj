@@ -20,7 +20,7 @@
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
 (def ^:private test-db-filename
-  (delay (format "%s/t.db" (System/getProperty "user.dir"))))
+  (delay (format "%s/target/test-data" (System/getProperty "user.dir"))))
 (def ^:private test-db-connection-string
   (delay (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" @test-db-filename)))
 
@@ -41,20 +41,20 @@
   []
   {:post [(map? %)]}
   (or (sel :one Database :name db-name)
-    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
-          (create-and-populate-tables))
-        (log/info "Creating new metabase Database object...")
-        (let [db (ins Database
-                   :organization_id (:id (test-org))
-                   :name db-name
-                   :engine :h2
-                   :details {:conn_str @test-db-connection-string})]
-          (log/info "Syncing Tables...")
-          (driver/sync-tables db)
-          (log/info "Adding Schema Metadata...")
-          (add-metadata!)
-          (log/info "Finished. Enjoy your test data <3")
-          db))))
+      (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
+            (create-and-populate-tables))
+          (log/info "Creating new metabase Database object...")
+          (let [db (ins Database
+                     :organization_id (:id (test-org))
+                     :name db-name
+                     :engine :h2
+                     :details {:conn_str @test-db-connection-string})]
+            (log/info "Syncing Tables...")
+            (driver/sync-tables db)
+            (log/info "Adding Schema Metadata...")
+            (add-metadata!)
+            (log/info "Finished. Enjoy your test data <3")
+            db))))
 
 
 ;; ## Debugging/Interactive Development Functions
@@ -77,11 +77,11 @@
   "Binds `*test-db*` if not already bound to a Korma DB entity and executes BODY."
   [& body]
   `(if *test-db* (do ~@body)
-       (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
-                                           :naming {:keys s/lower-case
-                                                    :fields s/upper-case}}))]
-         (log/info "CREATING H2 TEST DATABASE...")
-         ~@body)))
+                 (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
+                                                     :naming {:keys s/lower-case
+                                                              :fields s/upper-case}}))]
+                   (log/info "CREATING H2 TEST DATABASE...")
+                   ~@body)))
 
 (defn- exec-sql
   "Execute raw SQL STATEMENTS against the test database."
