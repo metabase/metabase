@@ -994,7 +994,7 @@ CardControllers.controller('CardDetail', [
                 }
 
                 //timeseries
-                if (data.cols.length > 1 && hasAscendingDate && hasScalar && result.row_count <= AXIS_CHART_MAX_ROWS) {
+                if (data.cols.length > 1 && hasAscendingDate && hasScalar) {
                     $scope.displayTypes.timeseries.available = true;
                 } else {
                     if (data.cols.length < 2) {
@@ -1005,9 +1005,6 @@ CardControllers.controller('CardDetail', [
                     }
                     if (!hasAscendingDate) {
                         $scope.displayTypes.timeseries.notAvailableReasons.push("The data must contain at least one ascending date column");
-                    }
-                    if (result.row_count > AXIS_CHART_MAX_ROWS) {
-                        $scope.displayTypes.timeseries.notAvailableReasons.push("The data must contain no more than " + AXIS_CHART_MAX_ROWS + " rows");
                     }
                 }
 
