@@ -20,7 +20,7 @@
 (defannotation EmailReportMode
   "Check that param is a value int ID for an email report mode."
   [symb value :nillable]
-  (annotation:IsInteger symb value)
+  (annotation:Integer symb value)
   (checkp-contains? (set (map :id (vals model/modes))) symb value))
 
 (defendpoint GET "/form_input" [org]

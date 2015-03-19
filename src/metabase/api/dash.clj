@@ -53,7 +53,7 @@
   (del Dashboard :id id))
 
 (defendpoint POST "/:id/cards" [id :as {{:keys [cardId]} :body}]
-  {cardId [Required IsInteger]}
+  {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
   (ins DashboardCard :card_id cardId :dashboard_id id))

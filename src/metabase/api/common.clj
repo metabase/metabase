@@ -269,7 +269,7 @@
    You can also use it inside the body of another annotation:
 
     (defannotation PublicPerm [symb value :nillable]
-      (annotation:IsInteger symb value]
+      (annotation:Integer symb value]
       (checkp-contains? #{0 1 2} symb value))"
   {:arglists '([annotation-name docstr? [symbol-binding value-binding nillable?] & body])}
   [annotation-name & args]
@@ -312,17 +312,17 @@
        (catch java.lang.NumberFormatException _
          (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
 
-(defannotation IsInteger
+(defannotation Integer
   "Check that a param is an integer (this does *not* cast the param!)"
   [symb value :nillable]
   (checkp-with integer? symb value "value must be an integer."))
 
-(defannotation IsBool
+(defannotation Boolean
   "Check that param is a boolean (this does *not* cast the param!)"
   [symb value :nillable]
   (checkp-with boolean? symb value "value must be a boolean."))
 
-(defannotation IsDict
+(defannotation Dict
   "Check that param is a dictionary (this does *not* cast the param!)"
   [symb value :nillable]
   (checkp-with map? symb value "value must be a dictionary."))
@@ -335,7 +335,7 @@
 (defannotation PublicPerms
   "check that perms is `int` in `#{0 1 2}`"
   [symb value :nillable]
-  (annotation:IsInteger symb value)
+  (annotation:Integer symb value)
   (checkp-contains? #{0 1 2} symb value))
 
 (defannotation Email

@@ -72,7 +72,7 @@
 
 
 (defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
-  {clone IsInteger}
+  {clone Integer}
   (if clone
     (query-clone clone)
     (query-create body)))
@@ -85,7 +85,7 @@
 
 
 (defendpoint PUT "/:id" [id :as {{:keys [name public_perms details timezone database] :as body} :body}]
-  {database     [Required IsDict]
+  {database     [Required Dict]
    name         NonEmptyString
    public_perms PublicPerms}
   (read-check Database (:id database))

@@ -22,7 +22,7 @@
       object-models))
 
 (defannotation AnnotationType [symb value :nillable]
-  (annotation:IsInteger symb value)
+  (annotation:Integer symb value)
   (checkp-contains? (set [annotation-description annotation-general]) symb value))
 
 
@@ -40,14 +40,14 @@
 (defendpoint POST "/" [:as {{:keys [organization start end title body annotation_type object_model object_id]
                              :or {annotation_type annotation-general}
                              :as request-body} :body}]
-  {organization    [Required IsInteger]
+  {organization    [Required Integer]
    start           [Required Date]
    end             [Required Date]
    body            [Required NonEmptyString]
    title           NonEmptyString
    annotation_type [Required AnnotationType]
    object_model    [Required AnnotationObjectModel->ID]
-   object_id       [Required IsInteger]}
+   object_id       [Required Integer]}
   ;; user only needs to be member of an organization (read perms) to be able to post annotations
   (read-check Org organization)
   (-> (ins Annotation

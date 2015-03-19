@@ -55,7 +55,7 @@
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]
                                            :or {admin false}} :body}]
-  {admin      IsBool
+  {admin      Boolean
    first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]}
@@ -72,7 +72,7 @@
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
-  {admin IsBool}
+  {admin Boolean}
   (write-check Org id)
   (check-exists? User user-id)
   (grant-org-perm id user-id admin)
@@ -81,7 +81,7 @@
 ;; TODO `POST` and `PUT` endpoints are exactly the same. Do we need both?
 
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
-  {admin IsBool}
+  {admin Boolean}
   (write-check Org id)
   (check-exists? User user-id)
   (grant-org-perm id user-id admin)

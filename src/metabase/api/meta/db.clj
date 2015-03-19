@@ -28,7 +28,7 @@
   {org     Required
    name    [Required NonEmptyString]
    engine  [Required DBEngine]
-   details [Required IsDict]}
+   details [Required Dict]}
   (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
@@ -55,7 +55,7 @@
          (hydrate :organization)))
 
 (defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
-  {name NonEmptyString, details IsDict} ; TODO - check that engine is a valid choice
+  {name NonEmptyString, details Dict} ; TODO - check that engine is a valid choice
   (write-check Database id)
   (check-500 (upd-non-nil-keys Database id
                                :name name

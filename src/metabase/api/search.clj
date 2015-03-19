@@ -59,8 +59,8 @@
 (defendpoint POST "/" [:as {{:keys [page results_per_page q models]
                              :or {page 1
                                   results_per_page 10}} :body}]
-  {page             IsInteger
-   results_per_page IsInteger
+  {page             Integer
+   results_per_page Integer
    q                [Required NonEmptyString]}
   (let [models (if (empty? models) (vals search-choices)         ; if `models` is unspecified default to all search choices
                    (->> models                                   ; otherwise get the corresponding search choice maps
