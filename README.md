@@ -14,9 +14,14 @@ Install clojure + npm/bower requirements with
     lein deps
     npm install
 
-Compile application css file with
+Build the application JS and CSS with
 
-    ./node_modules/gulp/bin/gulp.js build
+    lein gulp
+
+When developing the frontend client, you'll want to watch for changes,
+so run the default gulp task.
+
+    ./node_modules/gulp/bin/gulp.js
 
 
 ## Usage
