@@ -1,0 +1,48 @@
+<section class="SetupSubNav">
+    <div class="SetupWrapper">
+        <div class="SetupBreadcrumbs">
+            <ul>
+                <li class="inline-block text-grey-3"><a class="Breadcrumb" href="/setup/data">Your data</a></li>
+                <li class="Breadcrumb-separator inline-block mx2"></li>
+                <li class="inline-block text-brand"><a class="Breadcrumb">{{breadcrumb}}</a></li>
+            </ul>
+        </div>
+    </div>
+</section>
+<section class="SetupOffset">
+    <div class="SetupWrapper">
+<div class="AdminContent AdminContent-shallow">
+    <div class="p4">
+        <div>
+            <ul class="Connection-enginePicker">
+                <li class="Connection-engine" ng-repeat="engine in engines" ng-click="setConnectionEngine(engine.id)" ng-class="{'Connection-engineSelected': connection.engine == engine.id }">
+                    {{engine.name}}
+                </li>
+            </ul>
+            <div ng-show="connection.engine != undefined">
+                <input class="Connection-input" type="text" placeholder="Database name" ng-model="connection.dbname" autofocus>
+                <label class="Connection-label">Database name</label>
+
+                <input class="Connection-input" type="text" placeholder="Database Host" ng-model="connection.host">
+                <label class="Connection-label">Host</label>
+
+                <input class="Connection-input" type="text" placeholder="Port" ng-model="connection.port">
+                <label class="Connection-label">Database port</label>
+
+                <input class="Connection-input" type="text" placeholder="Username" ng-model="connection.user">
+                <label class="Connection-label">Database username</label>
+
+                <input class="Connection-input" type="password" placeholder="Password" ng-model="connection.password">
+                <label class="Connection-label">Database password</label>
+            </div>
+        </div>
+        <div class="bg-error text-white p2 rounded mb2" ng-show="error">
+            {{error}}
+        </div>
+    </div>
+    <div class="p3 border-top clearfix">
+        <button class="Button Button--primary float-right" ng-click="submit()">Connect</button>
+        <a class="Button" href="/setup/data">Cancel</a>
+    </div>
+</div>
+</section>

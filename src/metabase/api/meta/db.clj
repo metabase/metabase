@@ -1,6 +1,7 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
             [medley.core :as medley]
             [metabase.api.common :refer :all]
@@ -22,12 +23,22 @@
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
   (require-params org name engine details)
+  (check (contains? (set (map first driver/available-drivers)) engine) [400 "Invalid engine type specified."])
   (check-403 (org-can-write org))
   (ins Database :organization_id org :name name :engine engine :details details))
 
 (defendpoint GET "/form_input" []
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
+
+;Stub function that will eventually validate a connection string
+(defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
+  (require-params host port)
+  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
+    (cond
+      (not (u/host-up? host)) (response-invalid "Host not reachable")
+      (not (u/host-port-up? host port)) (response-invalid "Invalid port")
+      :else {:valid true})))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
@@ -76,5 +87,6 @@
   (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
            (driver/sync-tables db))
   {:status :ok})
+
 
 (define-routes)

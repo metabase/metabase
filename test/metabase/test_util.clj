@@ -30,6 +30,19 @@
           :c (+ 100 (:b <>))))
 
 
+;;; tests for HOST-UP?
+
+(expect true
+  (host-up? "localhost"))
+
+(expect false
+  (host-up? "nosuchhost"))
+
+;;; tests for HOST--PORT-UP?
+
+(expect false
+  (host-port-up? "nosuchhost" 8005))
+
 ;;; tests for RPARTIAL
 
 (expect 3

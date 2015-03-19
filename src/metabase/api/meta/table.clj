@@ -36,7 +36,7 @@
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)
-         (hydrate :db :fields)))
+         (hydrate :db [:fields [:target]])))
 
 (defendpoint GET "/:id/fks" [id]
   (read-check Table id)

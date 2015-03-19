@@ -188,7 +188,7 @@ body {
     color: #B9A2CD;
 }
 
-.QueryBar .ActionButton {
+.QueryBar .Button {
     padding: 0.75em 1.25em;
     border: 1px dotted #ddd;
     box-shadow: none;
@@ -244,80 +244,8 @@ body {
     z-index: 100;
 }
 
-.ActionButton {
-    text-decoration: none;
-    padding: 0.5em 0.75em;
-    background: #FBFCFD;
-    border: 1px solid #ddd;
-    color: #444;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-}
-
-.ActionButton:hover {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-    transition: border .3s linear, box-shadow .3s linear;
-}
-
-.ActionButton--primary {
-    color: #fff;
-    background: #4A90E2;
-    border: 1px solid #3282DF;
-    transition: background .3s linear, border .3s linear, color .3s linear;
-}
-
 .ActionBar .SettingsButtons {
     float: right;
-}
-
-.ActionButton-enter {
-    opacity: 0.01;
-    tansition: opacity .3s linear;
-}
-.ActionButton-enter-active {
-    opacity: 1;
-}
-
-.DimensionButton-enter {
-    opacity: 0.01
-    transition: opacity .3s linear;
-}
-
-.DimensionButton-enter-active {
-    opacity: 1;
-}
-
-.DimensionButton-leave {
-    opacity: 1;
-    transition: opacity .3s linear;
-}
-
-.DimensionButton-leave-active {
-    opacity: 0.01
-}
-
-.ActionBar .SaveModal,
-.ActionBar .SettingsButtons .ActionButton {
-    display: inline-block;
-}
-
-.ActionButton-enter {
-    margin-top: 100px;
-}
-
-.ActionButton-enter-active {
-    margin-top: 0;
-    transition: margin .3s linear;
-}
-
-.VisualisationOptions-enter {
-    margin-top: 120px;
-}
-
-.VisualisationOptions-enter-active {
-    margin-top: 0;
-    transition: margin .3s linear .3s;
 }
 
 .FilterGroupWrapper {
@@ -334,7 +262,7 @@ body {
     background: #fff;
 }
 
-.QueryBar .ActionButton {
+.QueryBar .Button {
     font-size: 0.85em;
 }
 
@@ -421,8 +349,8 @@ body {
     body {
         font-size: 1em;
     }
-    .ActionButton,
-    .QueryBar .ActionButton {
+    .Button,
+    .QueryBar .Button {
         padding: 1em 2em;
     }
     .Table-wrapper {
@@ -482,7 +410,7 @@ body {
     margin: 1em 0;
 }
 
-.TypeControls .ActionButton {
+.TypeControls .Button {
     display: inline-block;
     font-size: 0.85em;
     margin: 0 0.5em;

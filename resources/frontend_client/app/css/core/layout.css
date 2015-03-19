@@ -1,10 +1,3 @@
-@media screen and (--breakpoint-min-sm) {
-  .MainContent {
-    overflow-y: scroll;
-    height: 100%;
-  }
-}
-
 .wrapper {
   width: 100%;
   margin: 0 auto;
@@ -216,4 +209,3 @@
   .offset-xl-10 { margin-left: calc(10/12 * 100%); }
   .offset-xl-11 { margin-left: calc(11/12 * 100%); }
 }
-

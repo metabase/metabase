@@ -95,7 +95,13 @@
        :description nil
        :logo_url nil
        :inherits false})
-    (create-org org-name)))
+    (let [new-org (create-org org-name)
+          org-perm (sel :one OrgPerm :organization_id (:id new-org))]
+      ;; do a quick validation that the creator is now an admin of the new org
+      (assert (= (:user_id org-perm) (user->id :crowberto)))
+      (assert (:admin org-perm))
+      ;; return the original api response, which should be the newly created org
+      new-org)))
 
 ;; Test input validations on org create
 (expect "'name' is a required param."
@@ -296,7 +302,7 @@
 (let [test-org-name (random-name)]
   (expect-eval-actual-first
     (let [{my-org-id :id} (sel :one Org :name test-org-name)]
-      (match-$ (first (sel :many OrgPerm :organization_id my-org-id))
+      (match-$ (sel :one OrgPerm :organization_id my-org-id :user_id [not= (user->id :crowberto)])
         {:id $
          :admin true
          :user_id $

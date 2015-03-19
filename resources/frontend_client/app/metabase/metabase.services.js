@@ -19,6 +19,11 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
             method:'POST',
             headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }}
         },
+        validate_connection: {
+            url:'/api/meta/db/validate/',
+            method:'POST',
+            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }}
+        },
         db_get: {
             url:'/api/meta/db/:dbId',
             method:'GET',
