@@ -23,7 +23,7 @@
 
 (defannotation AnnotationType [symb value :nillable]
   (annotation:IsInteger symb value)
-  (checkp-contains? (set annotation-description annotation-general) symb value))
+  (checkp-contains? (set [annotation-description annotation-general]) symb value))
 
 
 (defendpoint GET "/" [org object_model object_id]
