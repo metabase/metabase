@@ -32,7 +32,7 @@
 ;; Test for password checking
 (expect "password mismatch"
   (client :post 400 "session" (-> (user->credentials :rasta)
-                                (assoc :password "something else"))))
+                                  (assoc :password "something else"))))
 
 
 ;; ## DELETE /api/session
