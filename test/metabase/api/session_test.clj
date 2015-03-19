@@ -46,15 +46,18 @@
 
 ;; ## POST /api/session/forgot_password
 ;; Test that we can initiate password reset
-(expect true
-  (do
+(expect
+    true
+  (let [reset-fields-set? (fn []
+                            (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
+                              (boolean (and reset_token reset_triggered))))]
     ;; make sure user is starting with no values
     (upd User (user->id :rasta) :reset_token nil :reset_triggered nil)
+    (assert (not (reset-fields-set?)))
     ;; issue reset request (token & timestamp should be saved)
     ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
     ;; TODO - how can we test email sent here?
-    (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
-      (and reset_token reset_triggered))))
+    (reset-fields-set?)))
 
 ;; Test that email is required
 (expect "'email' is a required param."
