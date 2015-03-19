@@ -95,7 +95,7 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
                 }
             });
         };
-        element.click(openAddToDashModal);
+        element.bind('click', openAddToDashModal);
     }
 
     return {

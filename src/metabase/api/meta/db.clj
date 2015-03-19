@@ -15,6 +15,9 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
+(defannotation DBEngine [symb value :nillable]
+  (checkp-contains? (set (map first driver/available-drivers)) symb value))
+
 (defendpoint GET "/" [org]
   {org Required}
   (read-check Org org)
@@ -24,18 +27,23 @@
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
   {org     Required
    name    [Required NonEmptyString]
-   engine  Required                  ; TODO - check that engine is a valid engine
+   engine  [Required DBEngine]
    details [Required IsDict]}
   (write-check Org org)
-  (ins Database :organization_id org :name name :engine engine :details details))
+  (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
+    ;; kick off background job to gather schema metadata about our new db
+    (future (driver/sync-tables new-db))
+    ;; make sure we return the newly created db object
+    new-db))
 
 (defendpoint GET "/form_input" []
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
 
-;Stub function that will eventually validate a connection string
+;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
-  (require-params host port)
+  {host Required
+   port Required}
   (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
     (cond
       (not (u/host-up? host)) (response-invalid "Host not reachable")
@@ -89,8 +97,8 @@
         (simple-batched-hydrate Table :table_id :table))))
 
 (defendpoint POST "/:id/sync" [id]
-  (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
-           (driver/sync-tables db))
+  (let-404 [db (sel :one Database :id id)]
+    (future (driver/sync-tables db))) ; run sync-tables asynchronously
   {:status :ok})
 
 
