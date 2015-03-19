@@ -9,18 +9,17 @@
 
 (defannotation SetupToken
   "Check that param matches setup token or throw a 403."
-  [_ token]
-  (check (setup/token-match? token)
-    [403 "Token does not match the setup token."]))
+  [symb value]
+  (checkp-with setup/token-match? symb value [403 "Token does not match the setup token."]))
 
 ;; special endpoint for creating the first user during setup
 ;; this endpoint both creates the user AND logs them in and returns a session id
 (defendpoint POST "/user" [:as {{:keys [token first_name last_name email password] :as body} :body}]
-  {token      [Required SetupToken]
-   first_name [Required NonEmptyString]
+  {first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]
-   password   [Required ComplexPassword]}
+   password   [Required ComplexPassword]
+   token      [Required SetupToken]}
   ;; extra check.  don't continue if there is already a user in the db.
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user (ins User

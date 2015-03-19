@@ -107,7 +107,7 @@
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw ApiExceptions w/ relevant error messages.
 
 (defmacro checkp-with
-  "Check (TEST-FN VALUE), or throw a 400.
+  "Check (TEST-FN VALUE), or throw an exception with STATUS-CODE (default is 400).
    SYMB is passed in order to give the user a relevant error message about which parameter was bad.
 
    Returns VALUE upon success.
@@ -118,13 +118,17 @@
       -> ApiException: Invalid value ':bad' for 'f': test failed: (partial? contains? {:all :mine}
 
    You may optionally pass a MESSAGE to append to the ApiException upon failure;
-   this will be used in place of the \"test failed: ...\" message."
-  ([test-fn symb value message]
+   this will be used in place of the \"test failed: ...\" message.
+
+   MESSAGE may be either a string or a pair like `[status-code message]`."
+  ([test-fn symb value message-or-status+message-pair]
    {:pre [(symbol? symb)]}
-   `(let [value# ~value]
-      (check (~test-fn value#)
-        [400 (format "Invalid value '%s' for '%s': %s" (str value#) ~symb ~message)])
-      value#))
+   (let [[status-code message] (if (string? message-or-status+message-pair) [400 message-or-status+message-pair]
+                                   message-or-status+message-pair)]
+     `(let [value# ~value]
+        (check (~test-fn value#)
+          [~status-code (format "Invalid value '%s' for '%s': %s" (str value#) ~symb ~message)])
+        value#)))
   ([test-fn symb value]
    `(checkp-with ~test-fn ~symb ~value ~(str "test failed: " test-fn))))
 
