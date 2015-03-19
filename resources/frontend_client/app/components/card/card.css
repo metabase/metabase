@@ -100,3 +100,7 @@
   margin-right: 1em;
   border-radius: 4px;
 }
+
+.Dash-card .Card {
+  overflow-y: scroll;
+}
