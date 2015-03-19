@@ -2,8 +2,7 @@
   (:require [expectations :refer :all]
             [medley.core :as m]
             (metabase [db :refer [sel]]
-                      [test-data :refer :all]
-                      test-utils)
+                      [test-data :refer :all])
             [metabase.models.setting :refer [defsetting Setting] :as setting]
             [metabase.test.util :refer :all]))
 
