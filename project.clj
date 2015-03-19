@@ -70,7 +70,8 @@
                               "-XX:MaxPermSize=128m"                  ; a little more headroom for PermGen
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
-             :expectations {:jvm-opts ["-Dmb.db.file=target/metabase-test"
+             :expectations {:resource-paths ["test_resources"]
+                            :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"]}
              :uberjar {:aot :all
