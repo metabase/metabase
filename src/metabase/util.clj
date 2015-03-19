@@ -182,3 +182,18 @@
   [f & bound-args]
   (fn [& args]
     (apply f (concat args bound-args))))
+
+(defn runtime-resolved-fn
+  "Return a function that calls a function in another namespace.
+   Function is resolved (and its namespace required, if need be) at runtime.
+   Useful for avoiding circular dependencies.
+
+    (def ^:private table->id (runtime-resolved-fn 'metabase.test-data 'table->id))
+    (table->id :users) -> 4"
+  [orig-namespace orig-fn-name]
+  {:pre [(symbol? orig-namespace)
+         (symbol? orig-fn-name)]}
+  (let [resolved-fn (delay (require orig-namespace)
+                           (ns-resolve orig-namespace orig-fn-name))]
+    (fn [& args]
+      (apply @resolved-fn args))))
