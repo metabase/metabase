@@ -16,21 +16,26 @@
 (declare apply-form
          log-query)
 
+(def ^{:dynamic true, :private true} *query*
+  "Query dictionary that we're currently processing"
+  nil)
+
 ;; ## Public Functions
 
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
   (when-not (zero? source_table)
-    (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
-                     (filter identity)
-                     (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                           [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
-                     doall)]
-      (when (config/config-bool :mb-db-logging)
-        (log-query query forms))
-      `(let [entity# (table-id->korma-entity ~source_table)]
-         (select entity# ~@forms)))))
+    (binding [*query* query]
+      (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
+                       (filter identity)
+                       (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
+                                             [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
+                       doall)]
+        (when (config/config-bool :mb-db-logging)
+          (log-query query forms))
+        `(let [entity# (table-id->korma-entity ~source_table)]
+           (select entity# ~@forms))))))
 
 
 (defn process-structured
@@ -92,9 +97,17 @@
   (match field-ids
     []    nil ; empty clause
     [nil] nil ; empty clause
-    _     (let [field-names (map field-id->kw field-ids)]
+    _     (let [field-names (map field-id->kw field-ids)
+                order-by-field-names (some->> (:order_by *query*) ; get set of names of all fields specified in `order_by`
+                                              (map first)
+                                              (map field-id->kw)
+                                              set)]
             `[(group  ~@field-names)
-              (fields ~@field-names)])))
+              (fields ~@field-names)
+              ~@(->> field-names                                                    ; Add an implicit `order :ASC` clause for every field specified in `breakout`
+                     (filter (complement (partial contains? order-by-field-names))) ; that is *not* specified *explicitly* in `order_by`.
+                     (map (fn [field-name]
+                            `(order ~field-name :ASC))))])))
 
 ;; ### `:fields`
 ;; ex.
