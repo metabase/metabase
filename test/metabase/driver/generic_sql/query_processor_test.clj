@@ -332,7 +332,25 @@
                                   :order_by [[(field->id :checkins :user_id) "ascending"]]
                                   :limit nil}}))
 
-;; ## "BREAKOUT" - MULTIPLE COLUMNS
+;; ## "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
+;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
+(expect {:status :completed,
+         :row_count 10,
+         :data {:rows [[1 1 1] [5 1 1] [7 1 1] [10 1 1] [13 1 1] [16 1 1] [26 1 1] [31 1 1] [35 1 1] [36 1 1]],
+                :columns ["VENUE_ID" "USER_ID" "count"],
+                :cols [{:special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
+        (process-and-run {:type :query
+                          :database @db-id
+                          :query {:source_table (table->id :checkins)
+                                  :limit 10
+                                  :aggregation ["count"]
+                                  :breakout [(field->id :checkins :user_id)
+                                             (field->id :checkins :venue_id)]}}))
+
+;; ## "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
+;; `breakout` should not implicitly order by any fields specified in `order_by`
 (expect {:status :completed,
          :row_count 10,
          :data {:rows [[2 15 1] [3 15 1] [7 15 1] [14 15 1] [16 15 1] [18 15 1] [22 15 1] [23 15 2] [24 15 1] [27 15 1]],
