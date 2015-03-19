@@ -73,16 +73,14 @@ SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'i
 
 SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
 
+        // TODO - we should be getting all this info from the api
+
         var defaultPorts = {'MySql': 3306, 'Postgres': 5432, 'Mongo': 27017, "RedShift": 5439, 'Druid': 8083}
 
-        var connectionEngines = {
-            'Postgres': "postgres",
-        };
-
         $scope.engines = [
-            'Postgres',
-            'MySQl',
-            'H2'
+            {'id': 'postgres', 'name':'Postgres'},
+            {'id': 'h2', 'name':'H2'},
+            {'id': 'mysql', 'name':'MySQL'}
         ];
 
         $scope.connection = {};
@@ -108,7 +106,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
             $scope.connection = {
                 host: "localhost",
                 port: defaultPorts[connectionType],
-                engine: 'Postgres'
+                engine: 'postgres'
             }
         }
 
