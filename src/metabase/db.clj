@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             (korma [core :refer :all]
                    [db :refer :all])
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.db.internal :refer :all]
             [metabase.util :as u]))
@@ -145,6 +146,12 @@
                     (pre-update entity))]
     (-> (update entity (set-fields kwargs) (where {:id entity-id}))
         (> 0))))
+
+(defn upd-non-nil-keys
+  "Calls `upd`, but filters out KWARGS with null values."
+  [entity entity-id & {:as kwargs}]
+  (->> (m/filter-vals identity kwargs)
+       (m/mapply upd entity entity-id)))
 
 
 ;; ## DEL

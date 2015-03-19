@@ -135,34 +135,34 @@
 
 ;; ## PUT /api/meta/table/:id
 (expect-eval-actual-first
-    [(match-$ (sel :one Table :id (table->id :users))
-       {:description "What a nice table!"
-        :entity_type "person"
-        :db (match-$ @test-db
-              {:description nil
-               :organization_id $
-               :name "Test Database"
-               :updated_at $
-               :details $
-               :id $
-               :engine "h2"
-               :created_at $})
-        :name "USERS"
-        :rows 15
-        :updated_at $
-        :entity_name "Userz"
-        :active true
-        :pk_field (deref $pk_field)
-        :id $
-        :db_id @db-id
-        :created_at $})
-     true]
-  [(do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
-                                                                                        :entity_type "person"
-                                                                                        :description "What a nice table!"})
-       ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users))))
-   ;; Now reset the Table to it's original state
-   (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)])
+    (match-$ (let [table (sel :one Table :id (table->id :users))]
+               ;; reset Table back to its original state
+               (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)
+               table)
+      {:description "What a nice table!"
+       :entity_type "person"
+       :db (match-$ @test-db
+             {:description nil
+              :organization_id $
+              :name "Test Database"
+              :updated_at $
+              :details $
+              :id $
+              :engine "h2"
+              :created_at $})
+       :name "USERS"
+       :rows 15
+       :updated_at $
+       :entity_name "Userz"
+       :active true
+       :pk_field (deref $pk_field)
+       :id $
+       :db_id @db-id
+       :created_at $})
+  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
+                                                                                       :entity_type "person"
+                                                                                       :description "What a nice table!"})
+      ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users)))))
 
 
 ;; ## GET /api/meta/table/:id/fks
@@ -225,4 +225,3 @@
                                 :db_id $
                                 :created_at $})})})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (table->id :users))))
-

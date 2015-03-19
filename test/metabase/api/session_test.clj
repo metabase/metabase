@@ -23,7 +23,7 @@
   (client :post 400 "session" {}))
 
 (expect "'password' is a required param."
-  (client :post 400 "session" {:email "anything"}))
+  (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
 (expect "Invalid Request."
@@ -63,7 +63,7 @@
 
 ;; Test that email not found gives 404
 (expect "Not found."
-  (client :post 404 "session/forgot_password" {:email "not-found"}))
+  (client :post 404 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password

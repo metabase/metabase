@@ -12,9 +12,9 @@
 
 (declare execute-query)
 
-
 (defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
-  (require-params database sql)
+  {database [Required IsInteger]
+   sql      [Required NonEmptyString]} ; TODO - check timezone
   (read-check Database database)
   (let [dataset-query {:type "native"
                        :database database

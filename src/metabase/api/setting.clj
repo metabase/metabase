@@ -6,25 +6,25 @@
 
 ;; ## Get all settings + values
 (defendpoint GET "/" []
-  (check-403 (:is_superuser @*current-user*))
+  (check-superuser)
   (setting/all-with-descriptions))
 
 ;; ## Get a single setting
 (defendpoint GET "/:key" [key]
-  (require-params key)
-  (check-403 (:is_superuser @*current-user*))
+  {key Required}
+  (check-superuser)
   (setting/get (keyword key)))
 
 ;; ## Create/update a setting
 (defendpoint PUT "/:key" [key  :as {{:keys [value]} :body}]
-  (require-params key value)
-  (check-403 (:is_superuser @*current-user*))
+  {key Required, value Required}
+  (check-superuser)
   (setting/set (keyword key) value))
 
 ;; ## Delete a setting
 (defendpoint DELETE "/:key" [key]
-  (require-params key)
-  (check-403 (:is_superuser @*current-user*))
+  {key Required}
+  (check-superuser)
   (setting/delete (keyword key)))
 
 (define-routes)

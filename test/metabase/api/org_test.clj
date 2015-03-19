@@ -310,21 +310,21 @@
         (select-keys [:id :admin :user_id :organization_id])))))
 
 ;; Test input validations on org member create
-(expect "Invalid Request."
+(expect "'first_name' is a required param."
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {}))
 
-(expect "Invalid Request."
+(expect "'last_name' is a required param."
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"}))
 
-(expect "Invalid Request."
+(expect "'email' is a required param."
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
-                                                                                  :last_name "anything"}))
+                                                                          :last_name "anything"}))
 
 ;; this should fail due to invalid formatted email address
-(expect "Invalid Request."
+(expect "Invalid value 'anything' for 'email': Not a valid email address."
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
-                                                                                  :last_name "anything"
-                                                                                  :email "anything"}))
+                                                                          :last_name "anything"
+                                                                          :email "anything"}))
 
 ;; Check that users without any org perms cannot modify members
 (expect "You don't have permissions to do that."

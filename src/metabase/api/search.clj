@@ -56,9 +56,12 @@
           models))
 
 ;; primary search endpoint
-(defendpoint POST "/" [:as {{:keys [org page results_per_page load_all q models]
+(defendpoint POST "/" [:as {{:keys [page results_per_page q models]
                              :or {page 1
                                   results_per_page 10}} :body}]
+  {page             IsInteger
+   results_per_page IsInteger
+   q                [Required NonEmptyString]}
   (let [models (if (empty? models) (vals search-choices)         ; if `models` is unspecified default to all search choices
                    (->> models                                   ; otherwise get the corresponding search choice maps
                         (map keyword)
@@ -81,7 +84,7 @@
             :end_index (+ offset (count page-results))}}))
 
 ;; return map of available search choices -> plural name like `{:table "Tables"}`
-(defendpoint GET "/model_choices" [org]
+(defendpoint GET "/model_choices" []
   {:choices {:metabase (->> search-choices
                             (map (fn [[choice {:keys [plural-name]}]]
                                    {choice plural-name}))

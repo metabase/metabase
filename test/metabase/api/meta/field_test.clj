@@ -56,7 +56,11 @@
 ;; ## PUT /api/meta/field/:id
 ;; Check that we can update a Field
 (expect-eval-actual-first
-    (match-$ (sel :one Field :id (field->id :venues :latitude))
+    (match-$ (let [field (sel :one Field :id (field->id :venues :latitude))]
+               ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
+               (upd Field (field->id :venues :latitude) :special_type nil)
+               ;; return the modified Field)
+               field)
       {:description nil
        :table_id (table->id :venues)
        :special_type "latitude"
@@ -69,8 +73,4 @@
        :preview_display true
        :created_at $
        :base_type "FloatField"})
-  (let [result ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :latitude})]
-    ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
-    (upd Field (field->id :venues :latitude) :special_type nil)
-    ;; return the modified Field
-    result))
+      ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :latitude}))

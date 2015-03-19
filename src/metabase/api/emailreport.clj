@@ -8,16 +8,24 @@
             (metabase.models [common :as common]
                              [hydrate :refer :all]
                              [database :refer [databases-for-org]]
-                             [emailreport :refer [EmailReport modes-input days-of-week times-of-day]]
+                             [emailreport :refer [EmailReport modes-input days-of-week times-of-day] :as model]
                              [emailreport-executions :refer [EmailReportExecutions]]
+                             [org :refer [Org]]
                              [user :refer [users-for-org]])
             [metabase.util :as util]))
 
+(defannotation EmailReportFilterOption [symb value :nillable]
+  (checkp-contains? #{:all :mine} symb (keyword value)))
+
+(defannotation EmailReportMode
+  "Check that param is a value int ID for an email report mode."
+  [symb value :nillable]
+  (annotation:IsInteger symb value)
+  (checkp-contains? (set (map :id (vals model/modes))) symb value))
 
 (defendpoint GET "/form_input" [org]
-  (require-params org)
-  ; we require admin/default perms on the org to do this operation
-  (check-403 ((:perms-for-org @*current-user*) org))
+  {org Required}
+  (read-check Org org)
   (let [dbs (databases-for-org org)
         users (users-for-org org)]
     {:permissions common/permissions
@@ -32,28 +40,33 @@
 (defendpoint GET "/" [org f]
   ;; TODO - filter by f == "mine"
   ;; TODO - filter by creator == self OR public_perms > 0
-  (require-params org)
-  ; we require admin/default perms on the org to do this operation
-  (check-403 ((:perms-for-org @*current-user*) org))
+  {org Required, f EmailReportFilterOption}
+  (read-check Org org)
   (-> (sel :many EmailReport
         (where {:organization_id org})
         (where {:public_perms [> common/perms-none]})
         (order :name :ASC))
-    (hydrate :creator :organization :can_read :can_write)))
+    (hydrate :creator :organization :can_read "can_write")))
 
 
-(defendpoint POST "/" [:as {{:keys [organization] :as body} :body}]
-  ; enforce a few required attributes
-  (check-400 (util/contains-many? body :organization :name :dataset_query :schedule))
-  ; we require admin/default perms on the org to do this operation
-  (check-403 ((:perms-for-org @*current-user*) organization))
-  ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
-  ;; TODO - deal with recipients
-  (check-500 (->> (-> body
-                    (select-keys [:organization :name :description :public_perms :mode :dataset_query :email_addresses :schedule])
-                    (clojure.set/rename-keys {:organization :organization_id})
-                    (assoc :creator_id *current-user-id*))
-               (mapply ins EmailReport))))
+(defendpoint POST "/" [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
+  {dataset_query  Required
+   name           Required
+   organization   Required
+   schedule       Required
+   mode           EmailReportMode
+   public_perms   PublicPerms}
+  (read-check Org organization)
+  (check-500 (ins EmailReport
+               :creator_id *current-user-id*
+               :dataset_query dataset_query
+               :description description
+               :email_addresses email_addresses
+               :mode mode
+               :name name
+               :organization_id organization
+               :public_perms public_perms
+               :schedule schedule))) ; TODO - deal with recipients
 
 
 (defendpoint GET "/:id" [id]
@@ -62,18 +75,24 @@
          (hydrate :creator :organization :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {body :body}]
-  ; user must have WRITE permissions on the report
+(defendpoint PUT "/:id" [id :as {{:keys [dataset_query description email_addresses mode name public_perms schedule] :as body} :body}]
+  {name         NonEmptyString
+   mode         EmailReportMode
+   public_perms PublicPerms}
   (let-404 [report (sel :one EmailReport :id id)]
     (write-check report)
-    ;; TODO - validate that for public_perms, mode, etc are within their expected set of possible values
+    (check-500 (upd-non-nil-keys EmailReport id
+                                 :dataset_query   dataset_query
+                                 :description     description
+                                 :email_addresses email_addresses
+                                 :mode            mode
+                                 :name            name
+                                 :public_perms    public_perms
+                                 :schedule        schedule
+                                 :version         (inc (:version report)))))
+  (-> (sel :one EmailReport :id id)
+      (hydrate :creator :database :can_read :can_write)))
     ;; TODO - deal with recipients
-    (check-500 (->> (-> (merge report (util/select-non-nil-keys body :name :description :public_perms :mode :dataset_query :email_addresses :schedule))
-                      ;; filter keys again AFTER merging with the existing report data.  this is needed to add version into the mix
-                      (util/select-non-nil-keys :name :description :public_perms :mode :version :dataset_query :email_addresses :schedule))
-                 (mapply upd EmailReport id)))
-    (-> (sel :one EmailReport :id id)
-      (hydrate :creator :database :can_read :can_write))))
 
 
 (defendpoint DELETE "/:id" [id]

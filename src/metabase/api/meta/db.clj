@@ -15,14 +15,17 @@
             [metabase.util :as u]))
 
 (defendpoint GET "/" [org]
-  (require-params org)
-  (check-403 (org-can-read org))
+  {org Required}
+  (read-check Org org)
   (-> (sel :many Database :organization_id org (order :name))
       (simple-batched-hydrate Org :organization_id :organization)))
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
-  (require-params org name engine details)
-  (check-403 (org-can-write org))
+  {org     Required
+   name    [Required NonEmptyString]
+   engine  Required                  ; TODO - check that engine is a valid engine
+   details [Required IsDict]}
+  (write-check Org org)
   (ins Database :organization_id org :name name :engine engine :details details))
 
 (defendpoint GET "/form_input" []
@@ -33,10 +36,13 @@
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
 
-(defendpoint PUT "/:id" [id :as {body :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
+  {name NonEmptyString, details IsDict} ; TODO - check that engine is a valid choice
   (write-check Database id)
-  (check-500 (->> (u/select-non-nil-keys body :name :engine :details)
-                  (medley/mapply upd Database id)))
+  (check-500 (upd-non-nil-keys Database id
+                               :name name
+                               :engine engine
+                               :details details))
   (sel :one Database :id id))
 
 (defendpoint DELETE "/:id" [id]
