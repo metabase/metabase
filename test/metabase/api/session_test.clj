@@ -48,14 +48,13 @@
 ;; Test that we can initiate password reset
 (expect true
   (do
-    (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
-      ;; make sure user is starting with no values
-      (assert (and (= nil reset_token) (= nil reset_triggered)))
-      ;; issue reset request (token & timestamp should be saved)
-      ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))}))
+    ;; make sure user is starting with no values
+    (upd User (user->id :rasta) :reset_token nil :reset_triggered nil)
+    ;; issue reset request (token & timestamp should be saved)
+    ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
     ;; TODO - how can we test email sent here?
     (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
-      (and (not (nil? reset_token)) (not (nil? reset_triggered))))))
+      (and reset_token reset_triggered))))
 
 ;; Test that email is required
 (expect "'email' is a required param."
