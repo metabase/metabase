@@ -22,53 +22,6 @@ PeopleControllers.controller('PeopleList', ['$scope', '$routeParams', 'Organizat
         $scope.people.unshift(newUser);
     };
 
-    $scope.grantAdmin = function(index) {
-        if ($scope.people) {
-            console.log('grant');
-            Organization.member_update({
-                'orgId': $scope.currentOrg.id,
-                'userId': $scope.people[index].user.id,
-                'admin': true
-            }, function (result) {
-                $scope.people[index].admin = true;
-            }, function (error) {
-                console.log('error', error);
-                $scope.alertError('failed to grant admin to user');
-            });
-        }
-    };
-
-    $scope.revokeAdmin = function(index) {
-        if ($scope.people) {
-            Organization.member_update({
-                'orgId': $scope.currentOrg.id,
-                'userId': $scope.people[index].user.id,
-                'admin': false
-            }, function(result) {
-                $scope.people[index].admin = false;
-            }, function (error) {
-                console.log('error', error);
-                $scope.alertError('failed to revoke admin from user');
-            });
-        }
-    };
-
-    $scope.removeMember = function(userId) {
-        if ($scope.people) {
-            Organization.member_remove({
-                'orgId': $scope.currentOrg.id,
-                'userId': userId
-            }, function(result) {
-                $scope.people = _.filter($scope.people, function(perm){
-                    return perm.user.id != userId;
-                });
-            }, function (error) {
-                console.log('error', error);
-                $scope.alertError('failed to remove user from org');
-            });
-        }
-    };
-
 }]);
 
 
@@ -78,7 +31,54 @@ PeopleControllers.controller('PeopleView', ['$scope', '$routeParams', 'User', 'C
         }
         $scope.password = null;
         $scope.password_verify = null;
-        
+
+        $scope.grantAdmin = function() {
+            if ($scope.user) {
+                console.log('grant');
+                Organization.member_update({
+                    'orgId': $scope.currentOrg.id,
+                    'userId': $scope.people[index].user.id,
+                    'admin': true
+                }, function (result) {
+                    $scope.people[index].admin = true;
+                }, function (error) {
+                    console.log('error', error);
+                    $scope.alertError('failed to grant admin to user');
+                });
+            }
+        };
+
+        $scope.revokeAdmin = function() {
+            if ($scope.user) {
+                Organization.member_update({
+                    'orgId': $scope.currentOrg.id,
+                    'userId': $scope.people[index].user.id,
+                    'admin': false
+                }, function(result) {
+                    $scope.people[index].admin = false;
+                }, function (error) {
+                    console.log('error', error);
+                    $scope.alertError('failed to revoke admin from user');
+                });
+            }
+        };
+
+        $scope.removeMember = function() {
+            if ($scope.user) {
+                Organization.member_remove({
+                    'orgId': $scope.currentOrg.id,
+                    'userId': userId
+                }, function(result) {
+                    $scope.people = _.filter($scope.people, function(perm){
+                        return perm.user.id != userId;
+                    });
+                }, function (error) {
+                    console.log('error', error);
+                    $scope.alertError('failed to remove user from org');
+                });
+            }
+        };
+
         $scope.submit = function() {
             User.update($scope.user, function(result) {
                 CorvusAlert.alertInfo("Successfully updated!");
@@ -120,6 +120,4 @@ PeopleControllers.controller('PeopleView', ['$scope', '$routeParams', 'User', 'C
                 }
             });
         };
-
-
 }]);

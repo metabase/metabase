@@ -1,9 +1,12 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [medley.core :refer :all]
+  (:require [clojure.tools.logging :as log]
+            [medley.core :refer :all]
             [clj-time.format :as time]
             [clj-time.coerce :as coerce]))
-
+  (import  '(java.net Socket)
+           '(java.net InetSocketAddress)
+           '(java.net InetAddress))
 
 (defn contains-many? [m & ks]
   (every? true? (map #(contains? m %) ks)))
@@ -149,6 +152,26 @@
     false
     (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (clojure.string/lower-case v)))))
+
+(defn host-port-up?
+  "Returns true if the port is active on a given host, false otherwise"
+  [hostname port]
+  (try
+    (let [sock-addr (InetSocketAddress. hostname port)
+          timeout 5000]
+      (with-open [sock (Socket.)]
+        (. sock connect sock-addr timeout)
+        true))
+    (catch Exception _ false)))
+
+(defn host-up?
+  "Returns true if the host given by hostname is reachable, false otherwise "
+  [hostname]
+  (try
+    (let [host-addr (. InetAddress getByName hostname)
+          timeout 5000]
+      (. host-addr isReachable timeout))
+    (catch Exception _ false)))
 
 (defn rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.

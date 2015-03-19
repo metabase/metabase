@@ -22,8 +22,10 @@
   {name [Required NonEmptyString]
    slug [Required NonEmptyString]} ; TODO - check logo_url ?
   (check-superuser)
-  (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
-       (mapply ins Org)))
+  (let-500 [{:keys [id] As new-org} (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
+                                         (mapply ins Org))]
+    (grant-org-perm id *current-user-id* true) ; now that the Org exists, add the creator as the first admin member
+    new-org))                                  ; make sure the api response is still the newly created org
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)

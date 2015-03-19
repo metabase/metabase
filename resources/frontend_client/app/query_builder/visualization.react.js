@@ -96,8 +96,8 @@ var QueryVisualization = React.createClass({
         ], typeControls = types.map(function (type) {
             if(this.props.result) {
                 var buttonClasses = cx({
-                    'ActionButton': true,
-                    'ActionButton--primary' : (type == this.state.type)
+                    'Button': true,
+                    'Button--primary' : (type == this.state.type)
                 })
                 return (
                     <a className={buttonClasses} href="#" onClick={this._changeType.bind(null, type)}>{type}</a>

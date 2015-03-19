@@ -25,6 +25,7 @@ var Corvus = angular.module('corvus', [
     'corvus.reserve',
     'corvus.search',
     'corvus.user',
+    'corvus.setup',
     'corvusadmin.index.controllers',
     'corvusadmin.databases',
     'corvusadmin.datasets',
@@ -50,6 +51,16 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',
         controller: 'Unauthorized'
+    });
+
+    $routeProvider.when('/setup/', {
+        templateUrl: '/app/setup/partials/setup_intro.html',
+        controller: 'SetupIntro'
+    });
+
+    $routeProvider.when('/setup/init/:setupToken', {
+        template: '',
+        controller: 'SetupInit'
     });
 
     // TODO: we need actual homepages for orgs!

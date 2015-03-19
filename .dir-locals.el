@@ -13,6 +13,7 @@
                               (ins 1)
                               (let-400 1)
                               (let-404 1)
+                              (let-500 1)
                               (match 1)
                               (match-$ 1)
                               (macrolet 1)

@@ -107,6 +107,7 @@
                    :id $
                    :field_type "info"
                    :position 0
+                   :target nil
                    :preview_display true
                    :created_at $
                    :base_type "TextField"})
@@ -120,6 +121,7 @@
                    :id $
                    :field_type "info"
                    :position 0
+                   :target nil
                    :preview_display true
                    :created_at $
                    :base_type "BigIntegerField"})]

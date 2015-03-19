@@ -2,7 +2,8 @@
   (:require [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
-            (metabase.models [database :refer [Database]])
+            (metabase.models [database :refer [Database]]
+                             [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
 (def special-types
@@ -70,6 +71,9 @@
   (u/assoc* field
             :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
             :db        (delay @(:db @(:table <>)))
+            :target    (delay (when (= "fk" special_type)
+                                   (let [dest-id (:destination_id (sel :one :fields [ForeignKey :destination_id] :origin_id id))]
+                                     (sel :one Field :id dest-id))))
             :can_read  (delay @(:can_read @(:table <>)))
             :can_write (delay @(:can_write @(:table <>)))))
 
