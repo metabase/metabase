@@ -25,7 +25,6 @@
   {:expectations-options :before-run}
   []
   ;; Disable debug logging since it clutters up our output
-  (.setLevel (org.apache.log4j.Logger/getLogger "metabase") org.apache.log4j.Level/INFO)
   (setup-test-db)
   (load-test-data)
   (start-jetty))
