@@ -41,7 +41,7 @@ var QueryPicker = React.createClass({
             addDimensionButton,
             addDimensionButtonText;
 
-        if(this.props.aggregationComplete()) {
+        if(this.props.aggregationComplete() && this.props.options.breakout_options.fields.length > 0) {
 
             (this.props.query.breakout.length < 1) ? addDimensionButtonText = "Grouped by" : addDimensionButtonText = "and";
 
@@ -147,7 +147,8 @@ var QueryPicker = React.createClass({
                 </div>
             );
         }
-        var dbSelector
+
+        var dbSelector;
         if(this.props.dbList && this.props.dbList.length > 1) {
             dbSelector = (
                 <DatabaseSelector
