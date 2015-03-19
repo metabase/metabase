@@ -21,6 +21,10 @@
     flex: 0 0 25%;
 }
 
+.Grid--1of2 > .Grid-cell {
+    flex: 0 0 50%;
+}
+
 
 /* TODO - use breakpoint md and add responsive grid classes */
 @media screen and (--breakpoint-max-lg) {
