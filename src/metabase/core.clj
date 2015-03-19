@@ -53,13 +53,13 @@
           hostname (or (config/config-str :mb-jetty-host) "localhost")
           port (config/config-int :mb-jetty-port)
           setup-url (str "http://"
-                      (or hostname "localhost")
-                      (when-not (= 80 port) (str ":" port))
-                      "/setup/init/"
-                      setup-token)]
+                         (or hostname "localhost")
+                         (when-not (= 80 port) (str ":" port))
+                         "/setup/init/"
+                         setup-token)]
       (log/info (str "Please use the following url to setup your Metabase installation:\n\n"
-                  setup-url
-                  "\n\n"))))
+                     setup-url
+                     "\n\n"))))
 
   (log/info "Metabase Initialization COMPLETE")
   true)
@@ -81,11 +81,11 @@
                                                              :min-threads (config/config-int :mb-jetty-minthreads)
                                                              :max-queued (config/config-int :mb-jetty-maxqueued)
                                                              :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                         (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
-                         (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
+                               (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
+                               (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
       (->> (ring-jetty/run-jetty app jetty-config)
-        (reset! jetty-instance)))))
+           (reset! jetty-instance)))))
 
 (defn stop-jetty
   "Stop the embedded Jetty web server."

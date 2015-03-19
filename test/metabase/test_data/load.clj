@@ -40,20 +40,20 @@
   []
   {:post [(map? %)]}
   (or (sel :one Database :name db-name)
-    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
-          (create-and-populate-tables))
-        (log/info "Creating new metabase Database object...")
-        (let [db (ins Database
-                   :organization_id (:id (test-org))
-                   :name db-name
-                   :engine :h2
-                   :details {:conn_str @test-db-connection-string})]
-          (log/info "Syncing Tables...")
-          (driver/sync-tables db)
-          (log/info "Adding Schema Metadata...")
-          (add-metadata)
-          (log/info "Finished. Enjoy your test data <3")
-          db))))
+      (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
+            (create-and-populate-tables))
+          (log/info "Creating new metabase Database object...")
+          (let [db (ins Database
+                        :organization_id (:id (test-org))
+                        :name db-name
+                        :engine :h2
+                        :details {:conn_str @test-db-connection-string})]
+            (log/info "Syncing Tables...")
+            (driver/sync-tables db)
+            (log/info "Adding Schema Metadata...")
+            (add-metadata)
+            (log/info "Finished. Enjoy your test data <3")
+            db))))
 
 
 ;; ## Debugging/Interactive Development Functions
@@ -76,11 +76,11 @@
   "Binds `*test-db*` if not already bound to a Korma DB entity and executes BODY."
   [& body]
   `(if *test-db* (do ~@body)
-       (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
-                                           :naming {:keys s/lower-case
-                                                    :fields s/upper-case}}))]
-         (log/info "CREATING H2 TEST DATABASE...")
-         ~@body)))
+                 (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
+                                                     :naming {:keys s/lower-case
+                                                              :fields s/upper-case}}))]
+                   (log/info "CREATING H2 TEST DATABASE...")
+                   ~@body)))
 
 (defn- exec-sql
   "Execute raw SQL STATEMENTS against the test database."
@@ -150,18 +150,18 @@
     (upd Field (:id venues-lat-field) :special_type "latitude")
     (upd Field (:id venues-long-field) :special_type "longitude")
     (ins ForeignKey
-      :origin_id (:id venues-cat-field)
-      :destination_id (:id categories-id-field)
-      :relationship "Mt1")
+         :origin_id (:id venues-cat-field)
+         :destination_id (:id categories-id-field)
+         :relationship "Mt1")
     ;; setup CHECKINS table metadata
     (upd Field (:id checkins-id-field) :special_type "id")
     (upd Field (:id checkins-user-field) :special_type "fk")
     (upd Field (:id checkins-venues-field) :special_type "fk")
     (ins ForeignKey
-      :origin_id (:id checkins-user-field)
-      :destination_id (:id user-id-field)
-      :relationship "Mt1")
+         :origin_id (:id checkins-user-field)
+         :destination_id (:id user-id-field)
+         :relationship "Mt1")
     (ins ForeignKey
-      :origin_id (:id checkins-venues-field)
-      :destination_id (:id venues-id-field)
-      :relationship "Mt1")))
+         :origin_id (:id checkins-venues-field)
+         :destination_id (:id venues-id-field)
+         :relationship "Mt1")))
