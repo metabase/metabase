@@ -94,7 +94,8 @@
     [nil] nil ; empty clause
     _     (let [field-names (map field-id->kw field-ids)]
             `[(group  ~@field-names)
-              (fields ~@field-names)])))
+              (fields ~@field-names)
+              (order  ~@field-names :ASC)])))
 
 ;; ### `:fields`
 ;; ex.
