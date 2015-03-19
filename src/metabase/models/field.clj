@@ -67,7 +67,7 @@
 (defentity Field
   (table :metabase_field))
 
-(defmethod post-select Field [_ {:keys [table_id] :as field}]
+(defmethod post-select Field [_ {:keys [id special_type table_id] :as field}]
   (u/assoc* field
             :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
             :db        (delay @(:db @(:table <>)))
