@@ -4,7 +4,7 @@
 }
 
 .SetupNav {
-    font-size: 1em;
+    font-size: 0.85em;
     background: #fff;
     color: #686868;
 }
@@ -16,6 +16,13 @@
 
 .SetupIntro-heading {
     color: var(--brand-color);
+    margin: 0;
+}
+
+.SetupIntro-subHeading {
+    margin: 0.45em 0 1em;
+    color: #989898;
+    font-size: 0.85em;
 }
 
 .SetupOffset {
@@ -49,16 +56,9 @@
     text-decoration: none;
 }
 
-.SetupBreadcrumbs {
-    font-size: 1.2em;
-    font-weight: 200;
-    display: flex;
-    align-items: flex-start;
-}
-
 .SetupSubNav {
     background: #fff;
-    padding: 1.2em 0 4em;
+    padding: 1em 0 2em;
     border-bottom: 1px solid #ddd;
 }
 
@@ -133,23 +133,43 @@
 
 .Connection-input {
     font-family: "Lato";
-    font-size: 1em;
+    font-size: 0.85em;
     display: block;
     border: none;
-    padding: 0.85em 0 0.85em 0;
+    padding: 0.5em 0;
     border-bottom: 1px solid #ddd;
-    margin-bottom: 1em;
+    margin-bottom: 0.25em;
     color: #222;
-    width: 100%;
+}
+
+.Connection-input:focus {
+    outline: none;
+    border-bottom-color: var(--brand-color);
+    transition: border .3s linear;
 }
 
 @media screen and (--breakpoint-min-lg) {
     .Connection-input {
-        font-size: 1.25em;
-        padding: 1em 0;
-        max-width: 22em;
+        font-size: 1.185em;
     }
 }
+
+.Connection-label {
+    font-size: 0.75em;
+    color: #777;
+    opacity: 0;
+}
+
+/* only show connection input labels that have focus */
+.Connection-input:focus + .Connection-label {
+    opacity: 1;
+}
+
+.Connection-label.Connection--error {
+    color: red;
+    opacity: 1;
+}
+
 
 .Connection-enginePicker {
     margin-bottom: 1.5em;
@@ -171,24 +191,13 @@
     color: var(--brand-color);
 }
 
-.Connection-label {
-    font-size: 0.85em;
-    margin-bottom: 1em;
-    color: #999;
-}
-
-.Connection-input:focus {
-    outline: none;
-    border-bottom-color: var(--brand-color);
-}
-
 .AdminContent {
     border: 1px solid #D7D7D7;
     background: #fff;
     border-radius: 2px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     max-width: 50em;
-    margin: 0 auto;
+    margin: 0 auto 4em;
 }
 
 .SetupBar {
@@ -202,6 +211,17 @@
     text-align: center;
 }
 
+.SetupBreadcrumbs {
+    font-size: 1.2em;
+    display: flex;
+    align-items: flex-start;
+}
+
+.SetupBreadcrumbs:last-child {
+    color: var(--brand-color);
+}
+
+
 .Breadcrumb-separator {
     width: 1.4em;
     height: 1.4em;
@@ -212,6 +232,12 @@
     display: flex;
 }
 
+
 .Breadcrumb {
     text-decoration: none;
+}
+
+.SetupIntro {
+    max-width: 30rem;
+    font-size: 1rem;
 }
