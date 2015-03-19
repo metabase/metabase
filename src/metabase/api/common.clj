@@ -123,12 +123,12 @@
    MESSAGE may be either a string or a pair like `[status-code message]`."
   ([test-fn symb value message-or-status+message-pair]
    {:pre [(symbol? symb)]}
-   (let [[status-code message] (if (string? message-or-status+message-pair) [400 message-or-status+message-pair]
-                                   message-or-status+message-pair)]
-     `(let [value# ~value]
-        (check (~test-fn value#)
-          [~status-code (format "Invalid value '%s' for '%s': %s" (str value#) ~symb ~message)])
-        value#)))
+   `(let [[status-code# message#] (if (string? ~message-or-status+message-pair) [400 ~message-or-status+message-pair]
+                                      ~message-or-status+message-pair)
+          value# ~value]
+      (check (~test-fn value#)
+        [status-code# (format "Invalid value '%s' for '%s': %s" (str value#) ~symb message#)])
+      value#))
   ([test-fn symb value]
    `(checkp-with ~test-fn ~symb ~value ~(str "test failed: " test-fn))))
 
