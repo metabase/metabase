@@ -5,15 +5,24 @@
             [metabase.db :refer :all]
             (metabase.models [query-execution :refer [QueryExecution]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]))
+            [metabase.test-data :refer :all]
+            metabase.test-setup))
 
 ;; ## Helper Fns
 (defn create-query []
   ((user->client :rasta) :post 200 "qs" {:database (:id @test-db)
                                          :sql "SELECT COUNT(*) FROM CATEGORIES;"}))
 
-(defn fetch-query [uuid]
-  ((user->client :rasta) :get (format "qs/%s" uuid)))
+(defn fetch-query
+  ([uuid]
+   (fetch-query uuid 500))
+  ([uuid maxwait-ms]
+   (let [{:keys [status] :as result} ((user->client :rasta) :get (format "qs/%s" uuid))]
+     (if (or (not= status "starting")
+             (<= maxwait-ms 0))
+       result
+       (do (Thread/sleep 50)
+           (recur uuid (- maxwait-ms 50)))))))
 
 
 ;; ## POST /api/qs
@@ -28,7 +37,6 @@
   (-> (create-query)
       (dissoc :status))) ; status is a race condition and can be either 'running' or 'completed'
 
-
 ;; ## GET /api/qs/:uuid
 ;; Can we fetch the results of a Query ?
 (expect-eval-actual-first
@@ -42,8 +50,7 @@
               :rows [[75]]}
        :row_count 1})
   (let [{uuid :uuid} (create-query)]
-    (Thread/sleep 100)   ; this query is simple as f**k. Give it 100ms to complete
-    (fetch-query uuid))) ; if it doesn't by then our QP might be brokesies
+    (fetch-query uuid)))
 
 
 ;; ## GET /api/qs/:uuid/csv
