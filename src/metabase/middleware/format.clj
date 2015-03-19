@@ -14,9 +14,16 @@
 
 ;; ## Custom JSON encoders
 
-(add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]  ; stringify JDBC Clobs
+;; stringify JDBC clobs
+(add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]
                                     (.writeString json-generator (util/jdbc-clob->str clob))))
-(add-encoder org.postgresql.util.PGobject encode-str)                                                 ; stringify Postgres binary objects (e.g. PostGIS geometries)
+
+;; stringify Postgres binary objects (e.g. PostGIS geometries)
+(add-encoder org.postgresql.util.PGobject encode-str)
+
+;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
+(add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
+                             (.writeString json-generator (.toString date))))
 
 
 ;; ## FORMAT RESPONSE MIDDLEWARE
