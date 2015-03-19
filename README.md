@@ -43,7 +43,7 @@ Run the linter with
 
 Run unit tests with
 
-    lein expectations
+    lein test
 
 
 ## Documentation

@@ -15,16 +15,21 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
+(defannotation DBEngine [symb value :nillable]
+  (checkp-contains? (set (map first driver/available-drivers)) symb value))
+
 (defendpoint GET "/" [org]
-  (require-params org)
-  (check-403 (org-can-read org))
+  {org Required}
+  (read-check Org org)
   (-> (sel :many Database :organization_id org (order :name))
       (simple-batched-hydrate Org :organization_id :organization)))
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
-  (require-params org name engine details)
-  (check (contains? (set (map first driver/available-drivers)) engine) [400 "Invalid engine type specified."])
-  (check-403 (org-can-write org))
+  {org     Required
+   name    [Required NonEmptyString]
+   engine  [Required DBEngine]
+   details [Required Dict]}
+  (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
     (future (driver/sync-tables new-db))
@@ -35,9 +40,10 @@
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
 
-;Stub function that will eventually validate a connection string
+;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
-  (require-params host port)
+  {host Required
+   port Required}
   (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
     (cond
       (not (u/host-up? host)) (response-invalid "Host not reachable")
@@ -48,10 +54,13 @@
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
 
-(defendpoint PUT "/:id" [id :as {body :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
+  {name NonEmptyString, details Dict} ; TODO - check that engine is a valid choice
   (write-check Database id)
-  (check-500 (->> (u/select-non-nil-keys body :name :engine :details)
-                  (medley/mapply upd Database id)))
+  (check-500 (upd-non-nil-keys Database id
+                               :name name
+                               :engine engine
+                               :details details))
   (sel :one Database :id id))
 
 (defendpoint DELETE "/:id" [id]
@@ -88,8 +97,8 @@
         (simple-batched-hydrate Table :table_id :table))))
 
 (defendpoint POST "/:id/sync" [id]
-  (let-404 [db (sel :one Database :id id)]   ; TODO - run sync-tables asynchronously
-           (driver/sync-tables db))
+  (let-404 [db (sel :one Database :id id)]
+    (future (driver/sync-tables db))) ; run sync-tables asynchronously
   {:status :ok})
 
 

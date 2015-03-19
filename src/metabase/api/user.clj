@@ -3,24 +3,20 @@
             [compojure.core :refer [defroutes GET PUT]]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
-            [metabase.db :refer [sel upd exists?]]
+            [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             (metabase.models [hydrate :refer [hydrate]]
                              [user :refer [User set-user-password]])
-            [metabase.util :refer [is-email? select-non-nil-keys]]
             [metabase.util.password :as password]))
 
-(defannotation Email [email]
-  `(check (is-email? ~email) [400 (format ~(str (name email) " '%s' is not a valid email.") ~email)])
-  email)
-
-(defannotation ComplexPassword [password]
-  `(check (password/is-complex? ~password) [400 "Insufficient password strength"])
-  password)
-
+(defn ^:private check-self-or-superuser
+  "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (check-403 (or (= user-id *current-user-id*)
+                 (:is_superuser @*current-user*))))
 
 (defendpoint GET "/" []
-  ;; user must be a superuser to proceed
-  (check-403 (:is_superuser @*current-user*))
+  (check-superuser) ; user must be a superuser to proceed
   (sel :many User))
 
 
@@ -30,30 +26,30 @@
 
 
 (defendpoint GET "/:id" [id]
-  ;; user must be getting their own details OR they must be a superuser to proceed
-  (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
+  (check-self-or-superuser id)        ; user must be getting their own details OR they must be a superuser to proceed
   (check-404 (sel :one User :id id)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [email] :as body} :body}]
-  {email [Required Email]}
-  ;; user must be getting their own details OR they must be a superuser to proceed
-  (check-403 (or (= id *current-user-id*) (:is_superuser @*current-user*)))
-  ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-  (when id
-    (check-400 (not (exists? User :email email :id [not= id]))))
-  (check-500 (->> (select-non-nil-keys body :email :first_name :last_name)
-                  (mapply upd User id)))
+(defendpoint PUT "/:id" [id :as {{:keys [email first_name last_name] :as body} :body}]
+  {email      [Required Email]
+   first_name NonEmptyString
+   last_name  NonEmptyString}
+  (check-self-or-superuser id)
+  (check-400 (not (exists? User :email email :id [not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
+  (check-500 (upd-non-nil-keys User id
+                               :email email
+                               :first_name first_name
+                               :last_name last_name))
   (sel :one User :id id))
 
 
 (defendpoint PUT "/:id/password" [id :as {{:keys [password old_password]} :body}]
-  {password [Required ComplexPassword]
+  {password     [Required ComplexPassword]
    old_password Required}
-  (check-403 (or (= id *current-user-id*)
-                 (:is_superuser @*current-user*)))
+  (check-self-or-superuser id)
   (let-404 [user (sel :one [User :password_salt :password] :id id)]
-    (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) [400 "password mismatch"]))
+    (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      [400 "password mismatch"]))
   (set-user-password id password)
   (sel :one User :id id))
 

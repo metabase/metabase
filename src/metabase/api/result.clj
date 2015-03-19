@@ -24,7 +24,7 @@
 
 ;; Returns the actual data response for a given query result (as if the query was just executed)
 (defendpoint GET "/:id/response" [id]
-  (let-404 [{:keys [query_id] :as query-execution} (eval `(sel :one ~all-fields :id ~id))]
+  (let-404 [{:keys [query_id] :as query-execution} (sel :one all-fields :id id)]
     ;; NOTE - this endpoint requires there to be a saved query associated with this execution
     (check-404 query_id)
     (let-404 [{{can_read :can_read} :query} (hydrate query-execution :query)]
@@ -33,16 +33,16 @@
 
 
 ;; Returns the data response for a given query result as a CSV file
-(def query-result-csv
-  (GET "/:id/csv" [id]
-    (let-404 [{:keys [result_data query_id] :as query-execution} (sel :one all-fields :id id)]
-      ;; NOTE - this endpoint requires there to be a saved query associated with this execution
-      (check-404 query_id)
-      (let-404 [{{can_read :can_read name :name} :query} (hydrate query-execution :query)]
-        (check-403 @can_read)
-        {:status 200
-         :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
-         :headers {"Content-Type" "text/csv", "Content-Disposition" (str "attachment; filename=\"" name ".csv\"")}}))))
+(defendpoint GET "/:id/csv" [id]
+  (let-404 [{:keys [result_data query_id] :as query-execution} (sel :one all-fields :id id)]
+    ;; NOTE - this endpoint requires there to be a saved query associated with this execution
+    (check-404 query_id)
+    (let-404 [{{can_read :can_read name :name} :query} (hydrate query-execution :query)]
+      (check-403 @can_read)
+      {:status 200
+       :body (with-out-str (csv/write-csv *out* (into [(:columns result_data)] (:rows result_data))))
+       :headers {"Content-Type" "text/csv"
+                 "Content-Disposition" (str "attachment; filename=\"" name ".csv\"")}})))
 
 
-(define-routes query-result-csv)
+(define-routes)

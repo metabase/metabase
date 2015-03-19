@@ -6,10 +6,12 @@
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
             [metabase.db.internal :refer [entity->korma]]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.password :as password])
   (:import com.metabase.corvus.api.ApiException))
 
-(declare check-404)
+(declare check-403
+         check-404)
 
 ;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
@@ -91,13 +93,59 @@
      (if (empty? rest-args) test
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
-(defmacro require-params
-  "Checks that a list of params are non-nil or throws a 400."
-  [& params]
-  `(do
-     ~@(map (fn [param]
-              `(check ~param [400 ~(str "'" (name param) "' is a required param.")]))
-            params)))
+(defn check-exists?
+  "Check that object with ID exists in the DB, or throw a 404."
+  [entity id]
+  (check-404 (exists? entity :id id)))
+
+(defn check-superuser
+  "Check that `*current-user*` is a superuser or throw a 403."
+  []
+  (check-403 (:is_superuser @*current-user*)))
+
+
+;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw ApiExceptions w/ relevant error messages.
+
+(defmacro checkp-with
+  "Check (TEST-FN VALUE), or throw an exception with STATUS-CODE (default is 400).
+   SYMB is passed in order to give the user a relevant error message about which parameter was bad.
+
+   Returns VALUE upon success.
+
+    (checkp-with (partial? contains? {:all :mine}) f :all)
+      -> :all
+    (checkp-with (partial? contains {:all :mine}) f :bad)
+      -> ApiException: Invalid value ':bad' for 'f': test failed: (partial? contains? {:all :mine}
+
+   You may optionally pass a MESSAGE to append to the ApiException upon failure;
+   this will be used in place of the \"test failed: ...\" message.
+
+   MESSAGE may be either a string or a pair like `[status-code message]`."
+  ([test-fn symb value message-or-status+message-pair]
+   {:pre [(symbol? symb)]}
+   (let [[status-code message] (if (string? message-or-status+message-pair) [400 message-or-status+message-pair]
+                                   message-or-status+message-pair)]
+     `(let [value# ~value]
+        (check (~test-fn value#)
+          [~status-code (format "Invalid value '%s' for '%s': %s" (str value#) ~symb ~message)])
+        value#)))
+  ([test-fn symb value]
+   `(checkp-with ~test-fn ~symb ~value ~(str "test failed: " test-fn))))
+
+(defn checkp-contains?
+  "Check that the VALUE of parameter SYMB is in VALID-VALUES, or throw a 400.
+   Returns VALUE upon success.
+
+    (checkp-contains? #{:fav :all :mine} 'f f)
+    -> (check (contains? #{:fav :all :mine} f)
+         [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
+  [valid-values-set symb value]
+  {:pre [(set? valid-values-set)
+         (symbol? symb)]}
+  (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
+
+
+;;; #### api-let, api->, etc.
 
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
@@ -174,50 +222,131 @@
 
 ;;; ### Arg annotation fns
 
-(defmulti arg-annotation-fn
-  "Multimethod that should return a form suitable for use in a let binding.
+(defmulti -arg-annotation-fn
+  "*Internal* - don't use this directly.
 
-   Dispatches on the arg annotation as a keyword, and is also passed the symbol
-   of the argument that should be checked.
+   Multimethod used internally to dispatch arg annotation functions.
+   Dispatches on the arg annotation as a keyword.
 
-    (defendpoint GET ... [id] {id Required})
-
-     -> (let [id ~(arg-annotation-fn :Required id)]
-           ...)
-
-     -> (let [id (do (require-params id) id)]
-          ...)"
-  (fn [annotation-kw arg-symb]
-    {:pre [(keyword? annotation-kw)
-           (symbol? arg-symb)]}
+    {id Required}
+    -> ((-arg-annotation-fn :Required) 'id id)
+    -> (annotation:Required 'id id)"
+  (fn [annotation-kw]
+    {:pre [(keyword? annotation-kw)]}
     annotation-kw))
 
 ;; By default, throw an exception if we see an arg annotation we don't understand
-(defmethod arg-annotation-fn :default [annotation-kw arg-symbol]
-  (throw (Exception. (format "Don't know what to do with arg annotation '%s' on arg '%s'!" (name annotation-kw) (name arg-symbol)))))
+(defmethod -arg-annotation-fn :default [annotation-kw]
+  (throw (Exception. (format "Don't know what to do with arg annotation '%s'!" (name annotation-kw)))))
 
 ;; ### defannotation
 
 (defmacro defannotation
   "Convenience for defining a new `defendpoint` arg annotation.
 
-   BINDING is the actual symbol name of the arg being checked; `defannotation` returns form(s)
-   that will be included in the let binding for the annotated arg.
+    (defannotation Required [symb value]
+      (when-not value
+        (throw (ApiException. 400 (format \"'%s' is a required param.\" symb))))
+      value)
 
-    (defannotation Required [param]
-      `(require-params ~param)       ; quasiquoting needed to keep require-params from being evaluated at macroexpansion time
-      param)"
-  [annotation-name [binding] & body]
-  `(defmethod arg-annotation-fn ~(keyword annotation-name) [~'_ ~binding]
-     `(do ~~@body)))
+   SYMBOL-BINDING is bound to the *symbol* of the annotated API arg (e.g., `'org`).
+   This is useful for returning relevant error messages to the user (see example above).
+
+   VALUE-BINDING is bound to the *value* of the annotated API arg (e.g., `1`).
+
+   You may optionally specify that the param is `:nillable`.
+   This means BODY will only be evaluated if VALUE is non-nil.
+
+    (defannotation CardFilterOption [symb value :nillable]
+      (checkp-contains? #{:all :mine :fav} symb (keyword value)))
+
+   Internally, `defannotation` creates a function with the name of the annotation prefixed by `annotation:`.
+   This can be used to test the annotation:
+
+    (annotation:Required org 100) -> 100
+    (annotation:Required org nil) -> ApiException: 'org' is a required param.
+
+   You can also use it inside the body of another annotation:
+
+    (defannotation PublicPerm [symb value :nillable]
+      (annotation:Integer symb value]
+      (checkp-contains? #{0 1 2} symb value))"
+  {:arglists '([annotation-name docstr? [symbol-binding value-binding nillable?] & body])}
+  [annotation-name & args]
+  {:pre [(symbol? annotation-name)]}
+  (let [[docstr [[symbol-binding value-binding & [nillable?]] & body]] (u/optional string? args)]
+    (assert (symbol? symbol-binding))
+    (assert (symbol? value-binding))
+    (assert (or (nil? nillable?)
+                (= nillable? :nillable)))
+    (let [fn-name (symbol (str "annotation:" annotation-name))]
+      `(do
+         (defn ~fn-name ~@(when docstr [docstr]) [~symbol-binding ~value-binding]
+           {:pre [(symbol? ~symbol-binding)]}
+           ~(if nillable?
+              `(when ~value-binding
+                 ~@body)
+              `(do
+                 ~@body)))
+         (defmethod -arg-annotation-fn ~(keyword annotation-name) [~'_]
+           ~fn-name)))))
 
 ;; ### common annotation definitions
 
-;; `required` just calls require-params
-(defannotation Required [param]
-  `(require-params ~param)
-  param)
+(defannotation Required
+  "Throw a 400 if param is `nil`."
+  [symb value]
+  (when-not value
+    (throw (ApiException. (int 400) (format "'%s' is a required param." symb))))
+  value)
 
+(defannotation Date
+  "try to parse 'date' string as an ISO-8601 date"
+  [symb value :nillable]
+  (try (u/parse-iso8601 value)
+          (catch Throwable _
+            (throw (ApiException. (int 400) (format "'%s' is not a valid date." symb))))))
+
+(defannotation String->Integer [symb value :nillable]
+  (try (Integer/parseInt value)
+       (catch java.lang.NumberFormatException _
+         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
+
+(defannotation Integer
+  "Check that a param is an integer (this does *not* cast the param!)"
+  [symb value :nillable]
+  (checkp-with integer? symb value "value must be an integer."))
+
+(defannotation Boolean
+  "Check that param is a boolean (this does *not* cast the param!)"
+  [symb value :nillable]
+  (checkp-with boolean? symb value "value must be a boolean."))
+
+(defannotation Dict
+  "Check that param is a dictionary (this does *not* cast the param!)"
+  [symb value :nillable]
+  (checkp-with map? symb value "value must be a dictionary."))
+
+(defannotation NonEmptyString
+  "Check that param is a non-empty string (strings that only contain whitespace are considered empty)."
+  [symb value :nillable]
+  (checkp-with (complement clojure.string/blank?) symb value "value must be a non-empty string."))
+
+(defannotation PublicPerms
+  "check that perms is `int` in `#{0 1 2}`"
+  [symb value :nillable]
+  (annotation:Integer symb value)
+  (checkp-contains? #{0 1 2} symb value))
+
+(defannotation Email
+  "Check that param is a valid email address."
+  [symb value :nillable]
+  (checkp-with u/is-email? symb value "Not a valid email address."))
+
+(defannotation ComplexPassword
+  "Check that a password is complex enough."
+  [symb value]
+  (checkp-with password/is-complex? symb value "Insufficient password strength"))
 
 ;;; ### defendpoint
 
@@ -242,11 +371,11 @@
         [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
     `(do (def ~name
            (~method ~route ~args
-                    (auto-parse ~args
-                      (catch-api-exceptions
+                    (catch-api-exceptions
+                      (auto-parse ~args
                         (let-annotated-args ~arg-annotations
-                          (-> (do ~@body)
-                              wrap-response-if-needed))))))
+                                            (-> (do ~@body)
+                                                wrap-response-if-needed))))))
          (alter-meta! #'~name assoc :is-endpoint? true))))
 
 (defmacro define-routes

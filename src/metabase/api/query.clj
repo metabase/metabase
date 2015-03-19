@@ -14,22 +14,23 @@
                              [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :as util]))
 
+(defannotation QueryFilterOption [symb value :nillable]
+  (checkp-contains? #{:all :mine} symb (keyword value)))
 
 (defendpoint GET "/form_input" [org]
-  (require-params org)
-  (check-403 ((:perms-for-org @*current-user*) org))
-  (let [dbs (databases-for-org org)]
-    {:permissions common/permissions
-     :timezones common/timezones
-     :databases dbs}))
+  {org Required}
+  (read-check Org org)
+  {:permissions common/permissions
+   :timezones   common/timezones
+   :databases   (databases-for-org org)})
 
 
 (defendpoint GET "/" [org f]
-  (require-params org)
-  (check-403 ((:perms-for-org @*current-user*) org))
-  (-> (case (or (keyword f) :all) ; default value for `f` is `:all`
+  {org Required, f QueryFilterOption}
+  (read-check Org org)
+  (-> (case (or f :all) ; default value for `f` is `:all`
         :all (sel :many Query
-               (where (or (= :creator_id *current-user-id*) (> :public_perms common/perms-none)))
+                  (where (or (= :creator_id *current-user-id*) (> :public_perms common/perms-none)))
                (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
                (order :name :ASC))
         :mine (sel :many Query :creator_id *current-user-id*
@@ -57,7 +58,8 @@
   [{:keys [name sql timezone public_perms database]
     :or {name (str "New Query: " (java.util.Date.))
          public_perms common/perms-none}}]
-  (require-params database sql)
+  (check database [400 "'database' is a required param."]
+         sql      [400 "'sql' is a required param."])
   (read-check Database database)
   (ins Query
     :type "rawsql"
@@ -70,6 +72,7 @@
 
 
 (defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
+  {clone Integer}
   (if clone
     (query-clone clone)
     (query-create body)))
@@ -81,15 +84,17 @@
          (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [timezone database] :as body} :body}]
-  (require-params database)
+(defendpoint PUT "/:id" [id :as {{:keys [name public_perms details timezone database] :as body} :body}]
+  {database     [Required Dict]
+   name         NonEmptyString
+   public_perms PublicPerms}
   (read-check Database (:id database))
   (let-404 [query (sel :one Query :id id)]
     (write-check query)
     (-> (util/select-non-nil-keys body :name :public_perms :details)
-      (assoc :version (:version query)    ; don't increment this here. That happens on pre-update
-             :database_id (:id database)) ; you can change the DB of a Query why??
-      (#(mapply upd Query id %)))
+        (assoc :version (:version query)    ; don't increment this here. That happens on pre-update
+               :database_id (:id database)) ; you can change the DB of a Query why??
+        (#(mapply upd Query id %)))
     (-> (sel :one Query :id id)
         (hydrate :creator :database))))
 

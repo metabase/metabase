@@ -9,26 +9,31 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]])
+                             [table :refer [Table] :as table])
             [metabase.util :as u]))
 
+(defannotation TableEntityType [symb value :nillable]
+  (checkp-contains? table/entity-types symb (keyword value)))
 
 (defendpoint GET "/" [org]
-  (require-params org)
-  (let [db-ids (->> (sel :many [Database :id] :organization_id org)
-                 (map :id))]
+  {org Required}
+  (let [db-ids (sel :many :id Database :organization_id org)]
     (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
-      (simple-batched-hydrate Database :db_id :db))))
+        (simple-batched-hydrate Database :db_id :db))))
 
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Table :id id)
          (hydrate :db :pk_field)))
 
-(defendpoint PUT "/:id" [id :as {body :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [entity_name entity_type description]} :body}]
+  {entity_name NonEmptyString
+   entity_type TableEntityType}
   (write-check Table id)
-  (check-500 (->> (u/select-non-nil-keys body :entity_name :entity_type :description)
-                  (m/mapply upd Table id)))
+  (check-500 (upd-non-nil-keys Table id
+                               :entity_name entity_name
+                               :entity_type entity_type
+                               :description description))
   (sel :one Table :id id))
 
 (defendpoint GET "/:id/fields" [id]
@@ -40,11 +45,10 @@
 
 (defendpoint GET "/:id/fks" [id]
   (read-check Table id)
-  (let-404 [field-ids (->> (sel :many :fields [Field :id] :table_id id)
-                        (map :id))]
+  (let-404 [field-ids (sel :many :id Field :table_id id)]
     (-> (sel :many ForeignKey :destination_id [in field-ids])
-      ;; TODO - it's a little silly to hydrate both of these table objects
-      (hydrate [:origin [:table]] [:destination [:table]]))))
+        ;; TODO - it's a little silly to hydrate both of these table objects
+        (hydrate [:origin :table] [:destination :table]))))
 
 
 ;; TODO - GET /:id/segments

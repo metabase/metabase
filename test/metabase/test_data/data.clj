@@ -1213,18 +1213,37 @@
    [2 92 (timestamp 2014 6 3)]])
 
 (defonce test-data
-  {:users {:fields [[:name "VARCHAR(254)"] ; fields are pairs of [field-name h2-sql-type]
-                    [:last_login "TIMESTAMP"]]
+  {:users {:fields [{:name :name
+                     :type "VARCHAR(254)"}
+                    {:name :last_login
+                     :type "TIMESTAMP"}]
            :rows users}
-   :categories {:fields [[:name "VARCHAR(254)"]]
+   :categories {:fields [{:name :name
+                          :type "VARCHAR(254)"}]
                 :rows categories}
-   :venues {:fields [[:name "VARCHAR(254)"]
-                     [:latitude "DOUBLE"]
-                     [:longitude "DOUBLE"]
-                     [:price "INTEGER"]
-                     [:category_id "INTEGER"]]
+   :venues {:fields [{:name :name
+                      :type "VARCHAR(254)"}
+                     {:name :latitude
+                      :type "DOUBLE"
+                      :special-type :latitude}
+                     {:name :longitude
+                      :type "DOUBLE"
+                      :special-type :longitude}
+                     {:name :price
+                      :type "INTEGER"}
+                     {:name :category_id
+                      :type "INTEGER"
+                      :special-type :fk
+                      :fk [:categories :Mt1]}]
             :rows venues}
-   :checkins {:fields [[:user_id "INTEGER"]
-                       [:venue_id "INTEGER"]
-                       [:date "DATE"]]
+   :checkins {:fields [{:name :user_id
+                        :type "INTEGER"
+                        :special-type :fk
+                        :fk [:users :Mt1]}
+                       {:name :venue_id
+                        :type "INTEGER"
+                        :special-type :fk
+                        :fk [:venues :Mt1]}
+                       {:name :date
+                        :type "DATE"}]
               :rows checkins}})
