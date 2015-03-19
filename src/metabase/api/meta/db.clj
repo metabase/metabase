@@ -25,7 +25,11 @@
   (require-params org name engine details)
   (check (contains? (set (map first driver/available-drivers)) engine) [400 "Invalid engine type specified."])
   (check-403 (org-can-write org))
-  (ins Database :organization_id org :name name :engine engine :details details))
+  (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
+    ;; kick off background job to gather schema metadata about our new db
+    (future (driver/sync-tables new-db))
+    ;; make sure we return the newly created db object
+    new-db))
 
 (defendpoint GET "/form_input" []
   {:timezones metabase.models.common/timezones
