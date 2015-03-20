@@ -4,14 +4,8 @@ machine:
       oraclejdk8
 dependencies:
   override:
-    - echo "ok!" # Nothing, `lein eastwood`/`lein test` will load dependencies as needed so don't waste time booting Clojure twice
-database:
-  override:
-    - echo "ok!" # We aren't using the test DB
+    - lein deps # no need to run npm install for non-browser tests
 test:
   override:
     - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; esac:
         parallel: true
-teardown:
-  override:
-    - echo "ok!" # don't waste 10 seconds looking for junit xml files or cucumber json files. There are none
