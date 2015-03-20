@@ -148,9 +148,9 @@
         (> 0))))
 
 (defn upd-non-nil-keys
-  "Calls `upd`, but filters out KWARGS with null values."
+  "Calls `upd`, but filters out KWARGS with `nil` values."
   [entity entity-id & {:as kwargs}]
-  (->> (m/filter-vals identity kwargs)
+  (->> (m/filter-vals (complement nil?) kwargs)
        (m/mapply upd entity entity-id)))
 
 
