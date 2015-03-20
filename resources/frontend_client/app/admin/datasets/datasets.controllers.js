@@ -210,18 +210,6 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
 }]);
 
 
-AdminDatasetsControllers.controller('AdminTableDependents', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
-
-    if ($routeParams.tableId) {
-        Metabase.table_dependents({
-            'tableId': $routeParams.tableId
-        }, function(result) {
-            $scope.dependents = result;
-        });
-    }
-}]);
-
-
 AdminDatasetsControllers.controller('AdminFieldDetail', ['$scope', '$routeParams', '$location', 'Metabase', 'ForeignKey', function($scope, $routeParams, $location, Metabase, ForeignKey) {
 
     // $scope.field
