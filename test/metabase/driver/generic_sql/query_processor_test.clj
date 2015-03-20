@@ -1,5 +1,6 @@
 (ns metabase.driver.generic-sql.query-processor-test
-  (:require [expectations :refer :all]
+  (:require [clojure.math.numeric-tower :as math]
+            [expectations :refer :all]
             [metabase.driver.generic-sql.query-processor :refer :all]
             [metabase.test-data :refer [db-id table->id field->id]]
             metabase.test-setup))
@@ -401,20 +402,19 @@
                             :aggregation ["cum_sum" (field->id :users :id)]}}))
 
 ;; ### Cumulative sum w/ a breakout field
-;; incidentally this also tests that the QP is casting timestamps -> date
-(expect (let [sorted-user-timestamps (->> metabase.test-data.data/test-data :users :rows (map last) sort)]
-          {:status :completed,
-           :row_count 15,
-           :data {:rows (map vector                                            ; convert to a seq like [[4 timestamp-1] [12 timestamp-2] ...]
-                             [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120] ; by pairing values with corresponding ordered timestamp
-                             sorted-user-timestamps)                           ; that way we don't have to hard code the last_logins here
-                  :columns ["ID" "CAST(LAST_LOGIN AS DATE)"]
-                  :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
-                         {:special_type nil, :base_type "DateTimeField", :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}})
-  (process-and-run {:type :query
-                    :database @db-id
-                    :query {:limit nil
-                            :source_table (table->id :users)
-                            :filter [nil nil]
-                            :breakout [(field->id :users :last_login)]
-                            :aggregation ["cum_sum" (field->id :users :id)]}}))
+(expect {:status :completed
+         :row_count 15
+         :data {:rows [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120]
+                :columns ["ID" "CAST(LAST_LOGIN AS DATE)"]
+                :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
+                       {:special_type nil, :base_type "DateTimeField", :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}}
+  (-> (process-and-run {:type :query
+                        :database @db-id
+                        :query {:limit nil
+                                :source_table (table->id :users)
+                                :filter [nil nil]
+                                :breakout [(field->id :users :last_login)]
+                                :aggregation ["cum_sum" (field->id :users :id)]}})
+      ;; Rows come back like `[value timestamp]` but it is hard to compare timestamps directly since the values that come back are casted
+      ;; to Dates and the exact value depends on the locale of the machine running the tests. So just drop the timestamps from the results.
+      (update-in [:data :rows] (partial map first))))
