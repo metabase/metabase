@@ -71,3 +71,7 @@
 (defmethod sync-database :h2 [database]
   (binding [generic/*column->base-type* column->base-type]
     (generic/sync-database database)))
+
+(defmethod sync-table :h2 [table]
+  (binding [generic/*column->base-type* column->base-type]
+    (generic/sync-table table)))

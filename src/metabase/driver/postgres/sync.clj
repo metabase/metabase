@@ -67,3 +67,7 @@
 (defmethod sync-database :postgres [database]
   (binding [generic/*column->base-type* column->base-type]
     (generic/sync-database database)))
+
+(defmethod sync-table :postgres [table]
+  (binding [generic/*column->base-type* column->base-type]
+    (generic/sync-table table)))

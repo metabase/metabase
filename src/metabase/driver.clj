@@ -72,6 +72,10 @@
   (This is executed in parallel.)"
   (db-dispatch-fn "sync"))
 
+(defmulti sync-table
+  "Update the metadata for a SINGLE `Table`, creating it if it doesn't already exist.
+  (This is executed in parallel.)"
+  (db-dispatch-fn "sync"))
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
