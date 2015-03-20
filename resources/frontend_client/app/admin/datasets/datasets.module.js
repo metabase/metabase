@@ -1,7 +1,6 @@
 'use strict';
 
 var AdminDatasets = angular.module('corvusadmin.datasets', [
-    'corvusadmin.datasets.directives',
     'corvusadmin.datasets.controllers'
 ]);
 
