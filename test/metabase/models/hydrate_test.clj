@@ -53,6 +53,7 @@
 
 
 ;; ### counts-of
+(def counts-of (ns-resolve 'metabase.models.hydrate 'counts-of))
 
 (expect [:atom :atom]
   (counts-of [{:f d1}
@@ -96,6 +97,7 @@
                :h))
 
 ;; ### counts-flatten
+(def counts-flatten (ns-resolve 'metabase.models.hydrate 'counts-flatten))
 
 (expect [{:g {:i d1}}
          {:g {:i d2}}
@@ -123,6 +125,7 @@
                   :f))
 
 ;; ### counts-unflatten
+(def counts-unflatten (ns-resolve 'metabase.models.hydrate 'counts-unflatten))
 
 (expect [{:f [{:g {:i d1}}
               {:g {:i d2}}
@@ -144,6 +147,7 @@
                     [:atom :atom nil :atom]))
 
 ;; ### counts-apply
+(def counts-apply (ns-resolve 'metabase.models.hydrate 'counts-apply))
 
 (expect [{:f d1}
          {:f d2}]
