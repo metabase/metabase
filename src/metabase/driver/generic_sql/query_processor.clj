@@ -215,8 +215,7 @@
 (defn- query-is-cumulative-sum?
   "Is this a cumulative sum query?"
   [query]
-  (some->> query
-           :aggregation
+  (some->> (:aggregation query)
            first
            (= "cum_sum")))
 
