@@ -220,7 +220,7 @@
            (= "cum_sum")))
 
 (defn- apply-cumulative-sum
-  "Apply `cumulative-sum` to values of the aggregate `Field` in RESULTS."
+  "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
   [{[_ field-id] :aggregation} results]
   (let [field (field-id->kw field-id)
