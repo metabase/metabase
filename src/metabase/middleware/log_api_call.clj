@@ -42,13 +42,13 @@
 
 (defn- log-request [{:keys [uri request-method body]}]
   (log/debug (color/blue (format "%s %s " (.toUpperCase (name request-method)) uri)
-                         (when-let [body-output (with-out-str (pprint body))]
-                           (str "\n" body-output)))))
+                         (when (or (string? body) (coll? body))
+                             (str "\n" (with-out-str (pprint body)))))))
 
 (defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
   (let [error? (>= status 400)
         color-fn (if error? color/red color/green)]
     (log/debug (color-fn (format "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
                          (when (or error? (not only-display-output-on-error))
-                           (when-let [body-output (with-out-str (pprint body))]
-                             (str "\n" body-output)))))))
+                           (when (or (string? body) (coll? body))
+                             (str "\n" (with-out-str (pprint body)))))))))
