@@ -54,8 +54,8 @@
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test]}                       ; korma macros generate some formats with if statements that are always logically true or false
-  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.7"]   ; REPL <3
-                                  [expectations "2.0.16"]             ; unit tests
+  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.8"]   ; REPL <3
+                                  [expectations "2.1.0"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.2.0"]]
                    :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]     ; Interactive development w/ cider NREPL in Emacs
