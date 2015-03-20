@@ -11,7 +11,8 @@
 
 
 (defentity Query
-  (table :query_query))
+  (table :query_query)
+  (assoc :hydration-keys #{:query}))
 
 
 ;; default fields to return for `sel` Query

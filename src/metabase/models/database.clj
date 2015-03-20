@@ -8,7 +8,9 @@
 
 
 (defentity Database
-  (table :metabase_database))
+  (table :metabase_database)
+  (assoc :hydration-keys #{:database
+                           :db}))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
