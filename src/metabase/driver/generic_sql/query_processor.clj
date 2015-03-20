@@ -219,18 +219,6 @@
            first
            (= "cum_sum")))
 
-(defn- cumulative-sum
-  "Recursively cumulative sum a sequence of VALUES."
-  ([values]
-   {:pre [(sequential? values)
-          (every? number? values)]}
-   (cumulative-sum 0 [] values))
-  ([acc-sum acc-values [value & more]]
-   (let [acc-sum (+ acc-sum value)
-         acc-values (conj acc-values acc-sum)]
-     (if-not (seq? more) acc-values
-             (recur acc-sum acc-values more)))))
-
 (defn- apply-cumulative-sum
   "Apply `cumulative-sum` to values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
@@ -238,7 +226,7 @@
   (let [field (field-id->kw field-id)
         values (->> results          ; make a sequence of cumulative sum values for each row
                     (map field)
-                    cumulative-sum)]
+                    (reductions +))]
     (map (fn [row value]              ; replace the value for each row with the cumulative sum value
            (assoc row field value))
          results values)))
