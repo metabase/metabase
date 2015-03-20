@@ -13,7 +13,7 @@
             [metabase.util :as util]))
 
 (defannotation CardFilterOption [symb value :nillable]
-  (checkp-contains? #{:all :mine :fave} symb (keyword value)))
+  (checkp-contains? #{:all :mine :fav} symb (keyword value)))
 
 (defendpoint GET "/" [org f]
   {org Required, f CardFilterOption}
