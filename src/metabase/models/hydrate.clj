@@ -1,8 +1,8 @@
 (ns metabase.models.hydrate
+  "Functions for deserializing and hydrating fields in objects fetched from the DB."
   (:require [clojure.data.json :as json]
             [clojure.walk :as walk]
             [metabase.db :refer [sel]]
-            [metabase.db.internal :refer [entity->korma]]
             [metabase.util :as u]))
 
 
