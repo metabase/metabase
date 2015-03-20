@@ -76,3 +76,11 @@
                     (sync-fields table)
                     (log/debug "Synced" table-name)))))
         dorun))))
+
+(defn sync-table
+  [{:keys [db] :as table}]
+  (with-jdbc-metadata @db
+    (fn [_]
+      (update-table-row-count table)
+      (sync-fields table)
+      (log/debug "Synced" (:name table)))))
