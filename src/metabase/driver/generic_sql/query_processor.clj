@@ -14,13 +14,16 @@
 
 
 (declare apply-form
-         log-query)
+         log-query
+         post-process
+         query-is-cumulative-sum?
+         apply-cumulative-sum)
 
 (def ^{:dynamic true, :private true} *query*
   "Query dictionary that we're currently processing"
   nil)
 
-;; ## Public Functions
+;; # INTERFACE
 
 (defn process
   "Convert QUERY into a korma `select` form."
@@ -45,8 +48,9 @@
          (map? (:query query))
          (= (name (:type query)) "query")]}
   (->> (process query)
-    eval
-    (annotate/annotate query)))
+       eval
+       (post-process query)
+       (annotate/annotate query)))
 
 
 (defn process-and-run
@@ -54,9 +58,11 @@
   [{:keys [type] :as query}]
   ;; we know how to handle :native and :query (structured) type queries
   (case (keyword type)
-    :native (native/process-and-run query)
-    :query (process-structured query)))
+      :native (native/process-and-run query)
+      :query  (process-structured query)))
 
+
+;; # IMPLEMENTATION
 
 ;; ## Query Clause Processors
 
@@ -86,8 +92,9 @@
                        :avg      `(aggregate (~'avg ~field) :avg)
                        :distinct `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
                        :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
-                       :sum      `(aggregate (~'sum ~field) :sum)))))
-                 ;; TODO - `:cum_sum` is not yet implemented (!)
+                       :sum      `(aggregate (~'sum ~field) :sum)
+                       :cum_sum  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
+                                   (group ~field)])))) ; cumulative sum happens in post-processing (see below)
 
 ;; ### `:breakout`
 ;; ex.
@@ -191,6 +198,51 @@
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
+
+
+;; ## Post Processing
+
+(defn- post-process
+  "Post-processing stage for query results."
+  [{query :query} results]
+  (cond
+    (query-is-cumulative-sum? query) (apply-cumulative-sum query results)
+    :else                            (do results)))
+
+;; ### Cumulative sum
+;; Cumulative sum is a special case. We can't do it in the DB because it's not a SQL function; thus we do it as a post-processing step.
+
+(defn- query-is-cumulative-sum?
+  "Is this a cumulative sum query?"
+  [query]
+  (some->> query
+           :aggregation
+           first
+           (= "cum_sum")))
+
+(defn- cumulative-sum
+  "Recursively cumulative sum a sequence of VALUES."
+  ([values]
+   {:pre [(sequential? values)
+          (every? number? values)]}
+   (cumulative-sum 0 [] values))
+  ([acc-sum acc-values [value & more]]
+   (let [acc-sum (+ acc-sum value)
+         acc-values (conj acc-values acc-sum)]
+     (if-not (seq? more) acc-values
+             (recur acc-sum acc-values more)))))
+
+(defn- apply-cumulative-sum
+  "Apply `cumulative-sum` to values of the aggregate `Field` in RESULTS."
+  {:arglists '([query results])}
+  [{[_ field-id] :aggregation} results]
+  (let [field (field-id->kw field-id)
+        values (->> results          ; make a sequence of cumulative sum values for each row
+                    (map field)
+                    cumulative-sum)]
+    (map (fn [row value]              ; replace the value for each row with the cumulative sum value
+           (assoc row field value))
+         results values)))
 
 
 ;; ## Debugging Functions (Internal)

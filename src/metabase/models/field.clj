@@ -94,3 +94,7 @@
   (cond-> (assoc field :updated_at (u/new-sql-timestamp))
     field_type   (assoc :field_type   (name field_type))
     special_type (assoc :special_type (name special_type))))
+
+(defmethod pre-cascade-delete Field [_ {:keys [id]}]
+  (cascade-delete ForeignKey (where (or (= :origin_id id)
+                                        (= :destination_id id)))))

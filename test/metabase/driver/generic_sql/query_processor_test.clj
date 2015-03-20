@@ -135,7 +135,7 @@
 ;; ## "PAGE" CLAUSE
 ;; Test that we can get "pages" of results.
 
-;; Get the first page
+;; ### PAGE - Get the first page
 (expect {:status :completed
          :row_count 5
          :data {:rows [[1 "African"]
@@ -154,7 +154,7 @@
                                    :page 1}
                             :order_by [[(field->id :categories :name) "ascending"]]}}))
 
-;; Get the second page
+;; ### PAGE - Get the second page
 (expect {:status :completed
          :row_count 5
          :data {:rows [[6 "Bakery"]
@@ -235,7 +235,7 @@
           {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
           {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
 
-;; FILTER -- "AND", ">", ">="
+;; ### FILTER -- "AND", ">", ">="
 (expect {:status :completed,
          :row_count 5,
          :data
@@ -256,7 +256,7 @@
                                   :breakout [nil]
                                   :limit nil}}))
 
-;; FILTER -- "AND", "<", ">", "!="
+;; ### FILTER -- "AND", "<", ">", "!="
 (expect
     {:status :completed
      :row_count 2
@@ -275,7 +275,7 @@
                             :breakout [nil]
                             :limit nil}}))
 
-;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
+;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (expect
     {:status :completed
      :row_count 2
@@ -291,7 +291,7 @@
                             :breakout [nil]
                             :limit nil}}))
 
-;; FILTER -- "OR", "<=", "="
+;; ### FILTER -- "OR", "<=", "="
 (expect
     {:status :completed,
      :row_count 4,
@@ -317,6 +317,7 @@
 
 
 ;; ## "BREAKOUT"
+;; ### "BREAKOUT" - SINGLE COLUMN
 (expect {:status :completed,
          :row_count 15,
          :data {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
@@ -332,7 +333,7 @@
                                   :order_by [[(field->id :checkins :user_id) "ascending"]]
                                   :limit nil}}))
 
-;; ## "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
+;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
 (expect {:status :completed,
          :row_count 10,
@@ -349,7 +350,7 @@
                                   :breakout [(field->id :checkins :user_id)
                                              (field->id :checkins :venue_id)]}}))
 
-;; ## "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
+;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
 (expect {:status :completed,
          :row_count 10,
@@ -379,3 +380,50 @@
                                   :aggregation ["rows"]
                                   :breakout [nil]
                                   :limit nil}}))
+
+
+;; # POST PROCESSING TESTS
+
+;; ## CUMULATIVE SUM
+;; ### Simple cumulative sum w/o any breakout
+(expect {:status :completed
+         :row_count 15
+         :data {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
+                :columns ["ID"]
+                :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:limit nil
+                            :source_table (table->id :users)
+                            :filter [nil nil]
+                            :breakout [nil]
+                            :aggregation ["cum_sum" (field->id :users :id)]}}))
+
+;; ### Cumulative sum w/ a breakout field
+(expect {:status :completed,
+         :row_count 15,
+         :data {:rows [[4 #inst "2014-01-01T08:00:00.000-00:00"]  ; incidentally this also tests that the QP is casting timestamps -> date
+                       [12 #inst "2014-02-01T08:00:00.000-00:00"]
+                       [13 #inst "2014-04-01T07:00:00.000-00:00"]
+                       [22 #inst "2014-04-03T07:00:00.000-00:00"]
+                       [34 #inst "2014-07-02T07:00:00.000-00:00"]
+                       [44 #inst "2014-07-03T07:00:00.000-00:00"]
+                       [57 #inst "2014-08-01T07:00:00.000-00:00"]
+                       [72 #inst "2014-08-01T07:00:00.000-00:00"]
+                       [78 #inst "2014-08-02T07:00:00.000-00:00"]
+                       [85 #inst "2014-08-02T07:00:00.000-00:00"]
+                       [90 #inst "2014-10-03T07:00:00.000-00:00"]
+                       [104 #inst "2014-10-03T07:00:00.000-00:00"]
+                       [115 #inst "2014-11-01T07:00:00.000-00:00"]
+                       [118 #inst "2014-11-06T08:00:00.000-00:00"]
+                       [120 #inst "2014-12-05T08:00:00.000-00:00"]]
+                :columns ["ID" "CAST(LAST_LOGIN AS DATE)"]
+                :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
+                       {:special_type nil, :base_type "DateTimeField", :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:limit nil
+                            :source_table (table->id :users)
+                            :filter [nil nil]
+                            :breakout [(field->id :users :last_login)]
+                            :aggregation ["cum_sum" (field->id :users :id)]}}))
