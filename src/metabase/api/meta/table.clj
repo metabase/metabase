@@ -1,16 +1,17 @@
 (ns metabase.api.meta.table
   "/api/meta/table endpoints."
-  (:require [compojure.core :refer [GET PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
             [korma.core :refer :all]
             [medley.core :as m]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table] :as table])
-            [metabase.util :as u]))
+              [database :refer [Database]]
+              [field :refer [Field]]
+              [foreign-key :refer [ForeignKey]]
+              [table :refer [Table] :as table])
+            [metabase.util :as u]
+            [metabase.driver :as driver]))
 
 (defannotation TableEntityType [symb value :nillable]
   (checkp-contains? table/entity-types symb (keyword value)))
@@ -50,10 +51,16 @@
         ;; TODO - it's a little silly to hydrate both of these table objects
         (hydrate [:origin :table] [:destination :table]))))
 
+(defendpoint POST "/:id/sync" [id]
+  (let-404 [table (sel :one Table :id id)]
+    (write-check table)
+    ;; run the task asynchronously
+    (future (driver/sync-table table)))
+  {:status :ok})
+
 
 ;; TODO - GET /:id/segments
 ;; TODO - POST /:id/segments
-;; TODO - GET /:id/sync
 ;; TODO - POST /:id/reorder
 
 (define-routes)
