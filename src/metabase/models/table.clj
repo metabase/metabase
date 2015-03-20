@@ -10,7 +10,8 @@
   #{:person :event :photo :place})
 
 (defentity Table
-  (table :metabase_table))
+  (table :metabase_table)
+  (assoc :hydration-keys #{:table}))
 
 
 (defmethod post-select Table [_ {:keys [id db db_id description] :as table}]

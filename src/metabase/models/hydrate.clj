@@ -5,6 +5,8 @@
             [metabase.db.internal :refer [entity->korma]]
             [metabase.util :as u]))
 
+
+
 (declare hydrate
          hydrate-1)
 
@@ -54,36 +56,34 @@
 
 ;; ## HYDRATE 2.0
 
-;; TODO: this would be nicer if these were instead defined in the entity files
-;; with multimethods for each key?
-;; or for each entity (reflect to "discover" all the metabase entities and then call multimethods)
 (def ^:private hydration-key->entity
-  {:author       'metabase.models.user/User
-   :card         'metabase.models.card/Card
-   :creator      'metabase.models.user/User
-   :database     'metabase.models.database/Database
-   :db           'metabase.models.database/Database
-   :destination  'metabase.models.field/Field
-   :organization 'metabase.models.org/Org
-   :origin       'metabase.models.field/Field
-   :table        'metabase.models.table/Table
-   :user         'metabase.models.user/User
-   :query        'metabase.models.query/Query})
+  "Delay that returns map of `hydration-key` -> korma entity.
+   e.g. `:user -> User`.
+
+   This is built pulling the `:hydration-keys` set from all korma entities."
+  (delay (->> (all-ns)
+              (mapcat ns-publics)
+              vals
+              (map var-get)
+              (filter (u/fn-> type (= :korma.core/Entity)))
+              (filter :hydration-keys)
+              (mapcat (fn [{:keys [hydration-keys] :as entity}]
+                        (assert (and (set? hydration-keys) (every? keyword? hydration-keys))
+                                (str ":hydration-keys should be a set of keywords. In: " entity))
+                        (map (u/rpartial vector entity)
+                             hydration-keys)))
+              (into {}))))
 
 (def ^:private hydration-keys
-  (set (keys hydration-key->entity)))
+  (delay
+   (set (keys @hydration-key->entity))))
 
-
-(def ^:private hydration-key->korma
-  (memoize
-   (fn [k]
-     (->> k hydration-key->entity entity->korma))))
 
 (defn- k->k_id [k]
   (keyword (str (name k) "_id")))
 
 (defn- can-batched-hydrate? [results k]
-  (and (contains? hydration-keys k)
+  (and (contains? @hydration-keys k)
        (every? (u/rpartial contains? (k->k_id k)) results)))
 
 (defn- valid-hydration-form? [k]
@@ -104,7 +104,7 @@
 
 (defn- batched-hydrate [results k]
   {:pre [(keyword? k)]}
-  (simple-batched-hydrate results (hydration-key->korma k) (k->k_id k) k))
+  (simple-batched-hydrate results (@hydration-key->entity k) (k->k_id k) k))
 
 (defn- hydrate-kw [results k]
   (if (can-batched-hydrate? results k) (batched-hydrate results k)

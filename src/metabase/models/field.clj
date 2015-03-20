@@ -65,7 +65,10 @@
     :info})
 
 (defentity Field
-  (table :metabase_field))
+  (table :metabase_field)
+  (assoc :hydration-keys #{:destination
+                           :field
+                           :origin}))
 
 (defmethod post-select Field [_ {:keys [id special_type table_id] :as field}]
   (u/assoc* field

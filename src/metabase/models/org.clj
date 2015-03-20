@@ -7,7 +7,8 @@
 (defentity Org
   (table :core_organization)
   (has-many OrgPerm {:fk :organization_id})
-  (transform #(clojure.set/rename-keys % {:core_userorgperm :org-perms})))
+  (transform #(clojure.set/rename-keys % {:core_userorgperm :org-perms}))
+  (assoc :hydration-keys #{:organization}))
 
 (defn org-can-read
   "Does `*current-user*` have read permissions for `Org` with ORG-ID?"

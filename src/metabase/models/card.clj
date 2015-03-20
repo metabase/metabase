@@ -10,7 +10,8 @@
             [metabase.util :as util]))
 
 (defentity Card
-  (table :report_card))
+  (table :report_card)
+  (assoc :hydration-keys #{:card}))
 
 (defmethod pre-insert Card [_ {:keys [dataset_query visualization_settings] :as card}]
   (let [defaults {:created_at (util/new-sql-timestamp)

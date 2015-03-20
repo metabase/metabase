@@ -7,7 +7,10 @@
 
 (defentity User
   (table :core_user)
-  (has-many OrgPerm {:fk :user_id}))
+  (has-many OrgPerm {:fk :user_id})
+  (assoc :hydration-keys #{:author
+                           :creator
+                           :user}))
 
 ;; fields to return for Users other `*than current-user*`
 (defmethod default-fields User [_]
