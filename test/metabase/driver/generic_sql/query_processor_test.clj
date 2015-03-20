@@ -387,6 +387,7 @@
 ;; # POST PROCESSING TESTS
 
 ;; ## CUMULATIVE SUM
+
 ;; ### Simple cumulative sum w/o any breakout
 (expect {:status :completed
          :row_count 15
