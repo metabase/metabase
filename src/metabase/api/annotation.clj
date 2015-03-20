@@ -35,7 +35,7 @@
         (sel :many Annotation :organization_id org :object_type_id object_model :object_id object_id (korma/order :start :DESC))
         ;; default is to return all annotations
         (sel :many Annotation :organization_id org (korma/order :start :DESC)))
-      (simple-batched-hydrate User :author_id :author)))
+      (hydrate :author)))
 
 
 (defendpoint POST "/" [:as {{:keys [organization start end title body annotation_type object_model object_id]

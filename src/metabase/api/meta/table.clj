@@ -19,7 +19,7 @@
   {org Required}
   (let [db-ids (sel :many :id Database :organization_id org)]
     (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
-        (simple-batched-hydrate Database :db_id :db))))
+        (hydrate :db))))
 
 
 (defendpoint GET "/:id" [id]
