@@ -5,7 +5,7 @@
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer [hydrate simple-batched-hydrate]]
+            (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
                              [org :refer [Org]]
@@ -25,7 +25,7 @@
                        (hydrate :card))
                    (map :card)
                    (sort-by :name)))
-      (simple-batched-hydrate User :creator_id :creator)))
+      (hydrate :creator)))
 
 (defendpoint POST "/" [:as {{:keys [dataset_query description display name organization public_perms visualization_settings]} :body}]
   {name         [Required NonEmptyString]

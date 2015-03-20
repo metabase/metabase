@@ -2,8 +2,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer :all]
-                             [org-perm :refer [OrgPerm]])
+            (metabase.models [org-perm :refer [OrgPerm]])
             [metabase.util :as util]))
 
 (defentity User

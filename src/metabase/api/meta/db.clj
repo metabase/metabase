@@ -8,7 +8,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models common
-                             [hydrate :refer [hydrate simple-batched-hydrate]]
+                             [hydrate :refer [hydrate]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [org :refer [Org org-can-read org-can-write]]
@@ -22,7 +22,7 @@
   {org Required}
   (read-check Org org)
   (-> (sel :many Database :organization_id org (order :name))
-      (simple-batched-hydrate Org :organization_id :organization)))
+      (hydrate :organization)))
 
 (defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
   {org     Required
@@ -94,7 +94,7 @@
   (read-check Database id)
   (let [table_ids (sel :many :id Table :db_id id)]
     (-> (sel :many Field :table_id [in table_ids] :special_type "id")
-        (simple-batched-hydrate Table :table_id :table))))
+        (hydrate :table))))
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]

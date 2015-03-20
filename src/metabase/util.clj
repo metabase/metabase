@@ -3,10 +3,10 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :refer :all]
             [clj-time.format :as time]
-            [clj-time.coerce :as coerce]))
-  (import  '(java.net Socket)
-           '(java.net InetSocketAddress)
-           '(java.net InetAddress))
+            [clj-time.coerce :as coerce])
+  (:import (java.net Socket
+                     InetSocketAddress
+                     InetAddress)))
 
 (defn contains-many? [m & ks]
   (every? true? (map #(contains? m %) ks)))
