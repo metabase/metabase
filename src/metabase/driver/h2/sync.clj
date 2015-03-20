@@ -1,7 +1,7 @@
 (ns metabase.driver.h2.sync
   "Implementation of `sync-tables` for H2."
   (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-tables]]))
+            [metabase.driver :refer [sync-database]]))
 
 (def column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
@@ -68,6 +68,6 @@
    :YEAR                  :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
-(defmethod sync-tables :h2 [database]
+(defmethod sync-database :h2 [database]
   (binding [generic/*column->base-type* column->base-type]
-    (generic/sync-tables database)))
+    (generic/sync-database database)))

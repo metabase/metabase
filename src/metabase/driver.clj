@@ -67,8 +67,8 @@
   "Return number of distinct rows for FIELD."
   field-dispatch-fn)
 
-(defmulti sync-tables
-  "Fetch the table names for DATABASE and create corresponding `Tables` if they don't already exist.
+(defmulti sync-database
+  "Update the metadata for ALL `Tables` within a given DATABASE, creating new `Tables` if they don't already exist.
   (This is executed in parallel.)"
   (db-dispatch-fn "sync"))
 
