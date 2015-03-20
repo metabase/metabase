@@ -50,7 +50,7 @@
                      :engine :h2
                      :details {:conn_str @test-db-connection-string})]
             (log/info "Syncing Tables...")
-            (driver/sync-tables db)
+            (driver/sync-database db)
             (log/info "Adding Schema Metadata...")
             (add-metadata!)
             (log/info "Finished. Enjoy your test data <3")

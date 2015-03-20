@@ -60,7 +60,7 @@
                                                              "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
               (jdbc-columns db name))))
 
-(defn sync-tables
+(defn sync-database
   [{:keys [id] :as database}]
   (with-jdbc-metadata database                                                                ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
     (fn [_]                                                                                    ; by wrapping the entire sync operation in this we can reuse the same connection throughout
@@ -76,3 +76,11 @@
                     (sync-fields table)
                     (log/debug "Synced" table-name)))))
         dorun))))
+
+(defn sync-table
+  [{:keys [db] :as table}]
+  (with-jdbc-metadata @db
+    (fn [_]
+      (update-table-row-count table)
+      (sync-fields table)
+      (log/debug "Synced" (:name table)))))

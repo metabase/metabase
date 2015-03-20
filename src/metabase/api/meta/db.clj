@@ -32,7 +32,7 @@
   (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
-    (future (driver/sync-tables new-db))
+    (future (driver/sync-database new-db))
     ;; make sure we return the newly created db object
     new-db))
 
@@ -98,7 +98,7 @@
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [db (sel :one Database :id id)]
-    (future (driver/sync-tables db))) ; run sync-tables asynchronously
+    (future (driver/sync-database db))) ; run sync-tables asynchronously
   {:status :ok})
 
 
