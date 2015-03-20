@@ -227,11 +227,11 @@
               (map var-get)
               (filter (u/fn-> type (= :korma.core/Entity)))
               (filter :hydration-keys)
-              (mapcat (fn [{:keys [batched-hydration-keys] :as entity}]
-                        (assert (and (set? batched-hydration-keys) (every? keyword? batched-hydration-keys))
+              (mapcat (fn [{:keys [hydration-keys] :as entity}]
+                        (assert (and (set? hydration-keys) (every? keyword? hydration-keys))
                                 (str ":hydration-keys should be a set of keywords. In: " entity))
                         (map (u/rpartial vector entity)
-                             batched-hydration-keys)))
+                             hydration-keys)))
               (into {}))))
 
 (def ^:private batched-hydration-keys
@@ -267,54 +267,23 @@
 ;; At a high level, these functions let you aggressively flatten a sequence of maps by a key
 ;; so you can apply some function across it, and then unflatten that sequence.
 ;;
-;; __In Depth__
+;; 1.  Get a value that can be used to unflatten a sequence later with `counts-of`.
+;; 2.  Flatten the sequence with `counts-flatten`
+;; 3.  Modify the flattened sequence as needed
+;; 4.  Unflatten the sequence by calling `counts-unflatten` with the modified sequence value from step 1
+;; 5.  `map merge` the original sequence and the unflattened sequence.
 ;;
-;; The basic principle is this: take a sequence like
-;;
-;;     (def results [{:a [{:b 1} {:b 2}], :c 2} ; :a is a sequence of maps
-;;                   {:a {:b 3}, :c 4}])        ; :a is a single map
-;;
-;; Then use `counts-of` to get a sequence that can remember how to unflatten it later:
-;;
-;;     (counts-of results :a) -> [2 :atom]
-;;
-;; Flatten the results with `counts-flatten` (notice how the sequence is totally flattened):
-;;
-;;     (counts-flatten results :a) -> [{:b 1} {:b 2} {:b 3}]
-;;
-;; Then modify the flattened results as needed
-;;
-;;     (def modified-results (update-in results [:b] (partial * 2)))
-;;       -> [{:b 2} {:b 4} {:b 6}])
-;;
-;;  Unflatten by passing the modified results and the sequence from `counts-of` to `counts-unflatten`:
-;;
-;;     (def unflattened-results
-;;       (counts-unflatten modified-results :a [2 :atom]))
-;;         -> [{:a [{:b 2} {:b 4}]}
-;;             {:a {:b 6}}]
-;;
-;; At which point you can `map merge` modifications with the original results:
-;;
-;;     (map merge results unflattened-results)
-;;       -> [{:a [{:b 2} {:b 4}], :c 2}
-;;           {:a {:b 3}, :c 4}]
-;;
-;; Which will give you the origin results.
-;; `counts-apply` conveniently combines all of these steps for you:
-;;
-;;     (counts-apply results :a #(update-in % [:b] (partial * 2)))
-;;       -> [{:a [{:b 2} {:b 4}], :c 2}
-;;           {:a {:b 3}, :c 4}]
+;; For your convenience `counts-apply` combines these steps for you.
 
 (defn- counts-of
   "Return a sequence of counts / keywords that can be used to unflatten
    COLL later.
 
-    (counts-of [{:f [:a :b]}, {:f {:c 1}}, {:f nil}] :f)
-      -> [2 :atom nil]
+    (counts-of [{:a [{:b 1} {:b 2}], :c 2}
+                {:a {:b 3}, :c 4}] :a)
+      -> [2 :atom]
 
-   For each `x` in return:
+   For each `x` in COLL, return:
 
    *  `(count (k x))` if `(k x)` is sequential
    *  `:atom`         if `(k x)` is otherwise non-nil
@@ -330,7 +299,11 @@
        coll))
 
 (defn- counts-flatten
-  "Flatten COLL by K."
+  "Flatten COLL by K.
+
+    (counts-flatten [{:a [{:b 1} {:b 2}], :c 2}
+                     {:a {:b 3}, :c 4}] :a)
+      -> [{:b 1} {:b 2} {:b 3}]"
   [coll k]
   {:pre [(sequential? coll)
          (keyword? k)]}
@@ -340,22 +313,20 @@
                  (if (sequential? x)  x
                      [x])))))
 
-(defn- counts-unflatten-1
-  "Unflatten a single item in COLL using one count value.
-  (Recursively called by `counts-unflatten`)."
-  [coll count]
-  (condp = count
-    nil   [nil (rest coll)]
-    :atom [(first coll) (rest coll)]
-    :nil  [:nil (rest coll)]
-    (split-at count coll)))
-
 (defn- counts-unflatten
-  "Unflatten COLL by K using COUNTS from `counts-of`."
+  "Unflatten COLL by K using COUNTS from `counts-of`.
+
+    (counts-unflatten [{:b 2} {:b 4} {:b 6}] :a [2 :atom])
+      -> [{:a [{:b 2} {:b 4}]}
+          {:a {:b 6}}]"
   ([coll k counts]
    (counts-unflatten [] coll k counts))
   ([acc coll k [count & more]]
-   (let [[unflattend coll] (counts-unflatten-1 coll count)
+   (let [[unflattend coll] (condp = count
+                             nil   [nil (rest coll)]
+                             :atom [(first coll) (rest coll)]
+                             :nil  [:nil (rest coll)]
+                             (split-at count coll))
          acc (conj acc unflattend)]
      (if-not (seq more) (map (fn [x]
                                (when x
@@ -364,7 +335,14 @@
              (recur acc coll k more)))))
 
 (defn- counts-apply
-  "Apply F to values of COLL flattened by K, then return unflattened/updated results."
+  "Apply F to values of COLL flattened by K, then return unflattened/updated results.
+
+    (counts-apply [{:a [{:b 1} {:b 2}], :c 2}
+                   {:a {:b 3}, :c 4}]
+      :a #(update-in % [:b] (partial * 2)))
+
+      -> [{:a [{:b 2} {:b 4}], :c 2}
+          {:a {:b 3}, :c 4}]"
   [coll k f]
   (let [counts (counts-of coll k)
         new-vals (-> coll
