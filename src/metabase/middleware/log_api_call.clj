@@ -10,7 +10,7 @@
          log-response)
 
 (def ^:private only-display-output-on-error
-  "Set this to `false` to see out API responses."
+  "Set this to `false` to see all API responses."
   true)
 
 (defn log-api-call
@@ -49,6 +49,6 @@
   (let [error? (>= status 400)
         color-fn (if error? color/red color/green)]
     (log/debug (color-fn (format "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
-                         (when (and error? only-display-output-on-error)
+                         (when (or error? (not only-display-output-on-error))
                            (when-let [body-output (with-out-str (pprint body))]
                              (str "\n" body-output)))))))
