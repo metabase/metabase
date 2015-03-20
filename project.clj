@@ -4,7 +4,7 @@
 (defproject metabase "metabase-0.1.0-SNAPSHOT"
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
-  :min-lein-version "2.3.0"
+  :min-lein-version "2.5.0"
   :aliases {"test" ["with-profile" "+expectations" "expectations"]}
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "LATEST"]                    ; facilities for async programming + communication (using 'LATEST' because this is an alpha library)
@@ -67,8 +67,6 @@
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
-                              "-XX:PermSize=64m"                      ; start with a little more PermGen space
-                              "-XX:MaxPermSize=128m"                  ; a little more headroom for PermGen
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
              :expectations {:resource-paths ["test_resources"]

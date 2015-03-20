@@ -1,3 +1,9 @@
+machine:
+  java:
+    oraclejdk8
+dependencies:
+  override:
+    ## Nothing, `lein eastwood`/`lein test` will load dependencies as needed so don't waste time booting Clojure twice
 test:
   override:
     - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; esac:
