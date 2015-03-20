@@ -113,12 +113,12 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
 
     $scope.inlineSave = function() {
         if ($scope.table) {
-            Metabase.table_update($scope.table, function(result) {
-                if (result && !result.error) {
-                    $scope.table = result;
-                } else {
-                    console.log(result);
-                }
+            Metabase.table_update($scope.table, function (result) {
+                // there is a difference between the output of table/:id and table/:id/query_metadata
+                // so we don't actually want to overwrite $scope.table with this data in this case
+                //$scope.table = result;
+            }, function (error) {
+                console.log('error updating table', error);
             });
         }
     };
