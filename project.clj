@@ -21,6 +21,7 @@
                  [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.2.1"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.9.0"]                                   ; library for dealing with date/time
+                 [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.h2database/h2 "1.4.186"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]

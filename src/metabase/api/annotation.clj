@@ -7,7 +7,8 @@
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [annotation :refer [Annotation annotation-general annotation-description]]
-                             [org :refer [Org]])
+                             [org :refer [Org]]
+                             [user :refer [User]])
             [metabase.util :as util]))
 
 
@@ -34,7 +35,7 @@
         (sel :many Annotation :organization_id org :object_type_id object_model :object_id object_id (korma/order :start :DESC))
         ;; default is to return all annotations
         (sel :many Annotation :organization_id org (korma/order :start :DESC)))
-      (hydrate :author)))
+      (simple-batched-hydrate User :author_id :author)))
 
 
 (defendpoint POST "/" [:as {{:keys [organization start end title body annotation_type object_model object_id]

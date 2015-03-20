@@ -23,11 +23,11 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (log-api-call :request)
+      (log-api-call :request :response)
       format-response         ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       (wrap-json-body         ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
+      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
       auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
