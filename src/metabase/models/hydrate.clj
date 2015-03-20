@@ -270,7 +270,7 @@
 ;; 1.  Get a value that can be used to unflatten a sequence later with `counts-of`.
 ;; 2.  Flatten the sequence with `counts-flatten`
 ;; 3.  Modify the flattened sequence as needed
-;; 4.  Unflatten the sequence by calling `counts-unflatten` with the modified sequence value from step 1
+;; 4.  Unflatten the sequence by calling `counts-unflatten` with the modified sequence and value from step 1
 ;; 5.  `map merge` the original sequence and the unflattened sequence.
 ;;
 ;; For your convenience `counts-apply` combines these steps for you.
