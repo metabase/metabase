@@ -1,7 +1,7 @@
 (ns metabase.driver.h2.sync
   "Implementation of `sync-tables` for H2."
   (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database]]))
+            [metabase.driver :refer [sync-database sync-table]]))
 
 (def column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"

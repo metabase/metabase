@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres.sync
   "Implementation of `sync-tables` for Postgres."
   (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database]]))
+            [metabase.driver :refer [sync-database sync-table]]))
 
 (def column->base-type
   "Map of Postgres column types -> Field base types.
