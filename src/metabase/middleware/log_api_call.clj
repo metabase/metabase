@@ -9,6 +9,22 @@
          log-request
          log-response)
 
+(def ^:private sensitive-fields
+  "Fields that we should censor before logging."
+  #{:password})
+
+(defn- scrub-sensitive-fields
+  "Replace values of fields in `sensitive-fields` with `\"**********\"` before logging."
+  [request]
+  (clojure.walk/prewalk (fn [form]
+                          (if-not (and (vector? form)
+                                       (= (count form) 2)
+                                       (keyword? (first form))
+                                       (contains? sensitive-fields (first form)))
+                            form
+                            [(first form) "**********"]))
+                        request))
+
 (def ^:private only-display-output-on-error
   "Set this to `false` to see all API responses."
   true)
@@ -43,12 +59,18 @@
 (defn- log-request [{:keys [uri request-method body]}]
   (log/debug (color/blue (format "%s %s " (.toUpperCase (name request-method)) uri)
                          (when (or (string? body) (coll? body))
-                             (str "\n" (with-out-str (pprint body)))))))
+                           (str "\n" (with-out-str (pprint (scrub-sensitive-fields body))))))))
 
 (defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
-  (let [error? (>= status 400)
-        color-fn (if error? color/red color/green)]
-    (log/debug (color-fn (format "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
-                         (when (or error? (not only-display-output-on-error))
-                           (when (or (string? body) (coll? body))
-                             (str "\n" (with-out-str (pprint body)))))))))
+  (let [log-error (fn [& args] (log/error (apply str args))) ; inconveniently these are not macros
+        log-debug (fn [& args] (log/debug (apply str args)))
+        log-warn  (fn [& args] (log/warn  (apply str args)))
+        [error? color-fn log-fn] (cond
+                                   (>= status 500) [true  color/red   log-error]
+                                   (=  status 403) [true  color/red   log-warn]
+                                   (>= status 400) [true  color/red   log-debug]
+                                   :else           [false color/green log-debug])]
+    (log-fn (color-fn (format "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
+                      (when (or error? (not only-display-output-on-error))
+                        (when (or (string? body) (coll? body))
+                          (str "\n" (with-out-str (pprint body)))))))))
