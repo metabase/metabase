@@ -2,9 +2,9 @@ machine:
   java:
     version:
       oraclejdk8
-dependencies:    # We can skip inferred `npm install` since we're not running browser tests (yet).
-  override:      # We can also skip `lein deps` since the test commands will install them if needed.
-    - echo "ok." # No need to spin up Clojure twice
+dependencies:
+  override:
+    - lein deps # We can skip inferred `npm install` since we're not running browser tests (yet)
 test:
   override:
     - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; esac:
