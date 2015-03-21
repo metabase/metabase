@@ -1,6 +1,7 @@
 (ns metabase.api.meta.table
   "/api/meta/table endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST PUT]]
             [korma.core :refer :all]
             [medley.core :as m]
             [metabase.api.common :refer :all]
@@ -58,9 +59,24 @@
     (future (driver/sync-table table)))
   {:status :ok})
 
+(defendpoint POST "/:id/reorder" [id :as {{:keys [new_order]} :body}]
+  {new_order [Required ArrayOfIntegers]}
+  (write-check Table id)
+  (let [table-fields (sel :many Field :table_id id)]
+    ;; run a function over the `new_order` list which simply updates `Field` :position to the index in the vector
+    ;; NOTE: we assume that all `Fields` in the table are represented in the array
+    (dorun
+      (map-indexed
+        (fn [index field-id]
+          ;; this is a bit superfluous, but we force ourselves to match the supplied `new_order` field-id with an
+          ;; actual `Field` value selected above in order to ensure people don't accidentally update fields they
+          ;; aren't supposed to or aren't allowed to.  e.g. without this the caller could update any field-id they want
+          (when-let [{:keys [id]} (first (filter #(= field-id (:id %)) table-fields))]
+            (upd Field id :position index)))
+        new_order))
+    {:result "success"}))
 
 ;; TODO - GET /:id/segments
 ;; TODO - POST /:id/segments
-;; TODO - POST /:id/reorder
 
 (define-routes)

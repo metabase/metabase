@@ -66,6 +66,7 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         'tableId': $routeParams.tableId
     }, function(result) {
         $scope.table = result;
+        $scope.fields = $scope.table.fields;
         $scope.getIdFields();
         $scope.decorateWithTargets();
     }, function(error) {
@@ -93,7 +94,6 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
     };
 
     $scope.decorateWithTargets = function() {
-        console.log($scope.table);
         $scope.table.fields.forEach(function(field) {
             if (field.target) {
                 field.target_id = field.target.id;
