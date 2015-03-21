@@ -55,7 +55,7 @@
   `hydrate` will do a batched `sel` if a corresponding key ending with `_id`
   is found in the objects being hydrated.
 
-  `defentity` threads resulting map through its forms using `->`, so define
+  `defentity` threads the resulting map through its forms using `->`, so define
   `:hydration-keys` with `assoc`:
 
     (defentity User
