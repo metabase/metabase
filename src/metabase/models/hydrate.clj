@@ -99,10 +99,7 @@
     (hydrate {:a (delay {:b (delay {:c (delay 1)})
                          :e (delay 2)})}
              [:a [:b :c] :e])
-      -> {:a {:b {:c 1} :e 2}}
-
-    (hydrate {:a (delay {:b (delay {:c (delay 1)})})
-              :e (delay 2)} [:a [:b :c] :e])"
+      -> {:a {:b {:c 1} :e 2}}"
   [results k & ks]
   {:pre [(valid-hydration-form? k)
          (every? valid-hydration-form? ks)]}
