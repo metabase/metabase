@@ -327,6 +327,12 @@
   [symb value :nillable]
   (checkp-with map? symb value "value must be a dictionary."))
 
+(defannotation ArrayOfIntegers
+  "Check that param is an array or Integers (this does *not* cast the param!)"
+  [symb value :nillable]
+  (checkp-with vector? symb value "value must be an array.")
+  (map (fn [v] (checkp-with integer? symb v "array value must be an integer.")) value))
+
 (defannotation NonEmptyString
   "Check that param is a non-empty string (strings that only contain whitespace are considered empty)."
   [symb value :nillable]
