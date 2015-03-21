@@ -56,7 +56,7 @@
   is found in the objects being hydrated.
 
   `defentity` threads resulting map through its forms using `->`, so define
-  `:hydration-keys` with `:assoc`:
+  `:hydration-keys` with `assoc`:
 
     (defentity User
       (assoc :hydration-keys #{:user}))
@@ -249,6 +249,13 @@
   [results k]
   (and (contains? @batched-hydration-keys k)
        (every? (u/rpartial contains? (k->k_id k)) results)))
+
+(and (contains? @batched-hydration-keys k)
+     (every? (u/rpartial contains? (k->k_id k)) results))
+
+(and (contains? @batched-hydration-keys k)
+     (every? (util/rpartial contains? (k->k_id k)) results))
+
 
 (defn- valid-hydration-form?
   "Is this a valid argument to `hydrate`?"
