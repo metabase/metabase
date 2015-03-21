@@ -247,13 +247,6 @@
   (and (contains? @batched-hydration-keys k)
        (every? (u/rpartial contains? (k->k_id k)) results)))
 
-(and (contains? @batched-hydration-keys k)
-     (every? (u/rpartial contains? (k->k_id k)) results))
-
-(and (contains? @batched-hydration-keys k)
-     (every? (util/rpartial contains? (k->k_id k)) results))
-
-
 (defn- valid-hydration-form?
   "Is this a valid argument to `hydrate`?"
   [k]
