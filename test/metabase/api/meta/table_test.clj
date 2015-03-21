@@ -227,3 +227,20 @@
                                 :db_id $
                                 :created_at $})})})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (table->id :users))))
+
+
+;; ## POST /api/meta/table/:id/reorder
+(expect-eval-actual-first
+  {:result "success"}
+  (let [categories-id-field (sel :one Field :table_id (table->id :categories) :name "ID")
+        categories-name-field (sel :one Field :table_id (table->id :categories) :name "NAME")
+        api-response ((user->client :rasta) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
+                       {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
+    ;; check the modified values (have to do it here because the api response tells us nothing)
+    (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
+    (assert (= 1 (:position (sel :one :fields [Field :position] :id (:id categories-id-field)))))
+    ;; put the values back to their previous state
+    (upd Field (:id categories-name-field) :position 0)
+    (upd Field (:id categories-id-field) :position 0)
+    ;; return our origin api response for validation
+    api-response))
