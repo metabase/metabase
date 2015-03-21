@@ -60,6 +60,7 @@
         :relationship relationship)
       (hydrate [:origin :table] [:destination :table])))
 
+
 (defn- create-field-values
   "Create `FieldValues` for a `Field`."
   [{:keys [id] :as field} human-readable-values]
@@ -67,6 +68,7 @@
     :field_id id
     :values (driver-metadata/field-distinct-values field)
     :human_readable_values human-readable-values))
+
 
 (defendpoint GET "/:id/values" [id]
   (let-404 [{:keys [special_type] :as field} (sel :one Field :id id)]
@@ -76,8 +78,7 @@
       (or (sel :one FieldValues :field_id id)
           (create-field-values field nil)))))
 
-;; TODO
-;; POST /:id/value_map_update
+
 (defendpoint POST "/:id/value_map_update" [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
   (let-404 [{:keys [special_type]  :as field} (sel :one Field :id id)]
@@ -89,5 +90,6 @@
                    :human_readable_values values_map))
       (create-field-values field values_map)))
   {:status :success})
+
 
 (define-routes)
