@@ -267,6 +267,12 @@
 ;; At a high level, these functions let you aggressively flatten a sequence of maps by a key
 ;; so you can apply some function across it, and then unflatten that sequence.
 ;;
+;;          +-------------------------------------------------------------------------+
+;;          |                                                                         +--> (map merge) --> new seq
+;;     seq -+--> counts-of ------------------------------------+                      |
+;;          |                                                  +--> counts-unflatten -+
+;;          +--> counts-flatten -> (modify the flattened seq) -+
+;;
 ;; 1.  Get a value that can be used to unflatten a sequence later with `counts-of`.
 ;; 2.  Flatten the sequence with `counts-flatten`
 ;; 3.  Modify the flattened sequence as needed
