@@ -97,21 +97,7 @@
               :organization_id @org-id
               :description nil})
        :name "CATEGORIES"
-       :fields [(match-$ (sel :one Field :id (field->id :categories :name))
-                  {:description nil
-                   :table_id (table->id :categories)
-                   :special_type nil
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})
-                (match-$ (sel :one Field :id (field->id :categories :id))
+       :fields [(match-$ (sel :one Field :id (field->id :categories :id))
                   {:description nil
                    :table_id (table->id :categories)
                    :special_type "id"
@@ -124,7 +110,21 @@
                    :target nil
                    :preview_display true
                    :created_at $
-                   :base_type "BigIntegerField"})]
+                   :base_type "BigIntegerField"})
+                (match-$ (sel :one Field :id (field->id :categories :name))
+                  {:description nil
+                   :table_id (table->id :categories)
+                   :special_type nil
+                   :name "NAME"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})]
        :rows 75
        :updated_at $
        :entity_name nil
