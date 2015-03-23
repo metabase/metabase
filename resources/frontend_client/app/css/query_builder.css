@@ -1,7 +1,3 @@
-html {
-    height: 100%;
-}
-
 body {
     height: 100%;
     background: #FBFCFD;
@@ -14,18 +10,6 @@ body {
 .SaveModal {
     background: #fff;
     border-radius: 4px;
-    position: absolute;
-    bottom: 0.5em;
-    right: 1.5em;
-    width: 400px;
-}
-
-.QueryBuilder .dc-chart {
-    padding: 2em;
-}
-
-.QueryBuilder .dc-chart .pie-slice {
-    font-size: 1em;
 }
 
 .QueryWrapper {
@@ -236,14 +220,6 @@ body {
     display: inline-block;
 }
 
-.ActionBar {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    padding: 1em;
-    z-index: 100;
-}
-
 .ActionBar .SettingsButtons {
     float: right;
 }
@@ -337,45 +313,6 @@ body {
     right: 14px;
 }
 
-/* breakpoints */
-
-@media screen and (min-width: 60em) {
-    .SelectionTitle {
-        padding: 0.75em 1.25em;
-    }
-}
-
-@media screen and (min-width: 120em) {
-    body {
-        font-size: 1em;
-    }
-    .Button,
-    .QueryBar .Button {
-        padding: 1em 2em;
-    }
-    .Table-wrapper {
-        margin-top: 3em;
-    }
-    .SelectionItems.open {
-        top: 3em;
-    }
-    .DimensionList .RemoveTrigger {
-        top: 15px;
-        right: 17px;
-    }
-
-    .QueryName {
-        margin-bottom: 1em;
-    }
-
-    .ActionBar {
-        padding: 1em 0;
-    }
-    .QueryBar .SelectionTitle {
-        padding: 1em 2em;
-    }
-}
-
 .FilterTrigger {
     border-radius: 99px;
     padding: 0.85em;
@@ -389,25 +326,12 @@ body {
     color: #fff;
 }
 
-
-
 .FilterTrigger .icon {
     display: flex;
 }
 
 .QueryHeader {
     background: #fff;
-}
-
-.TypeControls {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    z-index: 100;
-    left: 0;
-    right: 0;
-    text-align: center;
-    margin: 1em 0;
 }
 
 .TypeControls .Button {
