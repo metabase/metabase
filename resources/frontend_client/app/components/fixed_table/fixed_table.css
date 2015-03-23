@@ -1,0 +1,30 @@
+.FixedTable {
+    padding-top: 2em;
+    position: relative;
+}
+
+.FixedTable-headerBackground {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2em;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.FixedTable-headerInner {
+    position: absolute;
+    top: 0;
+    padding: 0.5em;
+    line-height: 1.5em;
+}
+
+.FixedTable-inner {
+    max-height: 200px;
+    overflow-x: hidden;
+}
+
+.FixedTable {
+    padding: 0;
+}

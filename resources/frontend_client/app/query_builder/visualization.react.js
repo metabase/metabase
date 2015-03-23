@@ -28,63 +28,31 @@ var QueryVisualization = React.createClass({
         this.props.setDisplay(type);
     },
     render: function () {
-        // for table rendering
-        var tableRows,
-            tableHeaders,
-            table;
-        // for chart rendering
-        var titleId,
-            innerId;
+        var viz;
 
         if(this.props.result && this.props.result.data) {
-            if(this.state.type === 'table') {
-                tableRows = this.props.result.data.rows.map(function (row) {
-                    var rowCols = row.map(function (data) {
-                        return (<td>{data.toString()}</td>)
-                    });
-
-                    return (<tr>{rowCols}</tr>);
-                });
-
-                tableHeaders = this.props.result.data.columns.map(function (column) {
-                    return (
-                        <th>{column.toString()}</th>
-                    );
-                });
-
-                table = (
-                    <table className="QueryTable Table">
-                        <thead>
-                            <tr>
-                                {tableHeaders}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableRows}
-                        </tbody>
-                    </table>
+            if(this.state.type != 'table') {
+                // TODO - we should be able to render a chart without this :( 
+                var titleId = 'card-title--'+this.state.chartId;
+                var innerId = 'card-inner--'+this.state.chartId;
+                viz = (
+                    <div class="Card--{this.state.type} Card-outer px1" id={this.state.chartId}>
+                        <div id={titleId} class="text-centered"></div>
+                        <div id={innerId} class="card-inner"></div>
+                    </div>
                 );
             } else {
-                titleId = 'card-title--'+this.state.chartId;
-                innerId = 'card-inner--'+this.state.chartId;
+                viz = (
+                    <div className="Table-wrapper">
+                        <FixedTable
+                            columns={this.props.result.data.columns}
+                            rows={this.props.result.data.rows}
+                        />
+                    </div>
+                );
             }
         }
 
-        var viz;
-        if(this.state.type != 'table') {
-            viz = (
-                <div class="Card--{this.state.type} Card-outer px1" id={this.state.chartId}>
-                    <div id={titleId} class="text-centered"></div>
-                    <div id={innerId} class="card-inner"></div>
-                </div>
-            );
-        } else {
-            viz = (
-                <div className="Table-wrapper">
-                    {table}
-                </div>
-            );
-        }
 
         var types = [
             'table',

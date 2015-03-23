@@ -290,16 +290,6 @@ body {
     padding-right: 3em;
 }
 
-.QueryTable td,
-.QueryTable th {
-    padding: 1em;
-}
-
-.QueryTable {
-    margin-top: 1em;
-    box-shadow: 0 1px 3px rgba(0,0,0, .12);
-}
-
 .Metric-sourceTable:after {
     content: '•';
     display: inline-block;
