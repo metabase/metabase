@@ -8,13 +8,13 @@
 var FixedTable = React.createClass({
     displayName: 'FixedTable',
     propTypes: {
-      rows: React.PropTypes.array,
-      columns: React.PropTypes.array
+        rows: React.PropTypes.array,
+        columns: React.PropTypes.array
     },
     _rows: function () {
         return this.props.rows.map(function (row) {
             var rowCols = row.map(function (data) {
-                return (<td>{data.toString()}</td>)
+                return (<td>{data.toString()}</td>);
             });
 
             return (<tr>{rowCols}</tr>);
