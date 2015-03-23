@@ -60,19 +60,27 @@
                                                              "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
               (jdbc-columns db name))))
 
-(defn sync-tables
+(defn sync-database
   [{:keys [id] :as database}]
   (with-jdbc-metadata database                                                                ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
-    (fn [_]                                                                                   ; by wrapping the entire sync operation in this we can reuse the same connection throughout
+    (fn [_]                                                                                    ; by wrapping the entire sync operation in this we can reuse the same connection throughout
       (->> (table-names database)
         (pmap (fn [table-name]
                 (binding [*entity-overrides* {:transforms [#(assoc % :db (delay database))]}] ; add a korma transform to Table that will assoc :db on results.
                   (let [table (or (sel :one Table :db_id id :name table-name)                 ; Table's post-select only sets :db if it's not already set.
-                                (ins Table                                                    ; This way, we can reuse a single `database` instead of creating
-                                  :db_id id                                                   ; a few dozen duplicate instances of it.
-                                  :name table-name                                            ; We can re-use one korma connection pool instead of
-                                  :active true))]                                             ; creating dozens of them, which was causing issues with too
+                                  (ins Table                                                  ; This way, we can reuse a single `database` instead of creating
+                                    :db_id id                                                 ; a few dozen duplicate instances of it.
+                                    :name table-name                                          ; We can re-use one korma connection pool instead of
+                                    :active true))]                                           ; creating dozens of them, which was causing issues with too
                     (update-table-row-count table)                                            ; many open connections.
                     (sync-fields table)
                     (log/debug "Synced" table-name)))))
         dorun))))
+
+(defn sync-table
+  [{:keys [db] :as table}]
+  (with-jdbc-metadata @db
+    (fn [_]
+      (update-table-row-count table)
+      (sync-fields table)
+      (log/debug "Synced" (:name table)))))

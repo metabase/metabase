@@ -10,7 +10,6 @@
                              [org-perm :refer [OrgPerm grant-org-perm]])
             [metabase.util :as util]))
 
-
 (defendpoint GET "/" []
   (if (:is_superuser @*current-user*)
     ;; superusers get all organizations
@@ -20,17 +19,13 @@
 
 
 (defendpoint POST "/" [:as {{:keys [name slug] :as body} :body}]
-  (require-params name slug)
-  ;; user must be a superuser to proceed
-  (check-403 (:is_superuser @*current-user*))
-  ;; create the new org
+  {name [Required NonEmptyString]
+   slug [Required NonEmptyString]} ; TODO - check logo_url ?
+  (check-superuser)
   (let-500 [{:keys [id] :as new-org} (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
-                                       (mapply ins Org))]
-    ;; now that the Org exists, add the creator as the first admin member
-    (grant-org-perm id *current-user-id* true)
-    ;; make sure the api response is still the newly created org
-    new-org))
-
+                                          (mapply ins Org))]
+    (grant-org-perm id *current-user-id* true) ; now that the Org exists, add the creator as the first admin member
+    new-org))                                  ; make sure the api response is still the newly created org
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Org :id id)
@@ -42,10 +37,13 @@
          read-check))
 
 
-(defendpoint PUT "/:id" [id :as {body :body}]
+(defendpoint PUT "/:id" [id :as {{:keys [name description logo_url]} :body}]
+  {name NonEmptyString}
   (write-check Org id)
-  (check-500 (->> (util/select-non-nil-keys body :name :description :logo_url)
-                  (mapply upd Org id)))
+  (check-500 (upd-non-nil-keys Org id
+                               :description description
+                               :logo_url logo_url
+                               :name name))
   (sel :one Org :id id))
 
 
@@ -57,9 +55,10 @@
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]
                                            :or {admin false}} :body}]
-  ; check our input
-  (check-400 (and first_name last_name email (util/is-email? email)))
-  ; user must have admin perms on org to proceed
+  {admin      Boolean
+   first_name [Required NonEmptyString]
+   last_name  [Required NonEmptyString]
+   email      [Required Email]}
   (write-check Org id)
   (let [user-id (:id (or (sel :one [User :id] :email email)                ; find user with existing email - if exists then grant perm
                          (ins User
@@ -73,25 +72,26 @@
 
 
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
+  {admin Boolean}
   (write-check Org id)
-  (check-404 (exists? User :id user-id))
-  (grant-org-perm id user-id (boolean admin))
+  (check-exists? User user-id)
+  (grant-org-perm id user-id admin)
   {:success true})
 
+;; TODO `POST` and `PUT` endpoints are exactly the same. Do we need both?
 
 (defendpoint PUT "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
+  {admin Boolean}
   (write-check Org id)
-  (check-404 (exists? User :id user-id))
-  (grant-org-perm id user-id (boolean admin))
+  (check-exists? User user-id)
+  (grant-org-perm id user-id admin)
   {:success true})
 
 
 (defendpoint DELETE "/:id/members/:user-id" [id user-id :as {body :body}]
-  ; user must have admin perms on org to proceed
-  (let-404 [{:keys [can_write] :as org} (sel :one Org :id id)]
-    (check-403 @can_write)
-    (let-404 [user (sel :one User :id user-id)]
-      (del OrgPerm :user_id user-id :organization_id id))))
+  (write-check Org id)
+  (check-exists? User user-id)
+  (del OrgPerm :user_id user-id :organization_id id))
 
 
 (define-routes)

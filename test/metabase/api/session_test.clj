@@ -23,7 +23,7 @@
   (client :post 400 "session" {}))
 
 (expect "'password' is a required param."
-  (client :post 400 "session" {:email "anything"}))
+  (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
 (expect "Invalid Request."
@@ -32,7 +32,7 @@
 ;; Test for password checking
 (expect "password mismatch"
   (client :post 400 "session" (-> (user->credentials :rasta)
-                                (assoc :password "something else"))))
+                                  (assoc :password "something else"))))
 
 
 ;; ## DELETE /api/session
@@ -46,16 +46,18 @@
 
 ;; ## POST /api/session/forgot_password
 ;; Test that we can initiate password reset
-(expect true
-  (do
-    (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
-      ;; make sure user is starting with no values
-      (assert (and (= nil reset_token) (= nil reset_triggered)))
-      ;; issue reset request (token & timestamp should be saved)
-      ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))}))
+(expect
+    true
+  (let [reset-fields-set? (fn []
+                            (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
+                              (boolean (and reset_token reset_triggered))))]
+    ;; make sure user is starting with no values
+    (upd User (user->id :rasta) :reset_token nil :reset_triggered nil)
+    (assert (not (reset-fields-set?)))
+    ;; issue reset request (token & timestamp should be saved)
+    ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
     ;; TODO - how can we test email sent here?
-    (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
-      (and (not (nil? reset_token)) (not (nil? reset_triggered))))))
+    (reset-fields-set?)))
 
 ;; Test that email is required
 (expect "'email' is a required param."
@@ -63,7 +65,7 @@
 
 ;; Test that email not found gives 404
 (expect "Not found."
-  (client :post 404 "session/forgot_password" {:email "not-found"}))
+  (client :post 404 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password

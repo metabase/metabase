@@ -21,22 +21,28 @@
 
 ;;; ## ROUTE TYPING / AUTO-PARSE SHARED FNS
 
+(defn parse-int [value]
+  (try (Integer/parseInt value)
+       (catch java.lang.NumberFormatException _
+         (throw (ApiException. (int 400) (format "Not a valid integer: '%s'" value))))))
+
 (def ^:dynamic *auto-parse-types*
   "Map of `param-type` -> map with the following keys:
 
      :route-param-regex Regex pattern that should be used for params in Compojure route forms
      :parser            Function that should be used to parse args"
   {:int {:route-param-regex #"[0-9]+"
-         :parser 'Integer/parseInt}
+         :parser 'metabase.api.common.internal/parse-int}
    :uuid {:route-param-regex #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
           :parser nil}})
 
 (def ^:dynamic *auto-parse-arg-name-patterns*
   "Sequence of `[param-pattern parse-type]` pairs.
    A param with name matching PARAM-PATTERN should be considered to be of AUTO-PARSE-TYPE."
-  [[#"^uuid$" :uuid]
-   [#"^[\w-_]*id$" :int]
-   [#"^org$" :int]])
+  [[#"^uuid$"       :uuid]
+   [#"^session_id$" :uuid]
+   [#"^[\w-_]*id$"  :int]
+   [#"^org$"        :int]])
 
 (defn arg-type
   "Return a key into `*auto-parse-types*` if ARG has a matching pattern in `*auto-parse-arg-name-patterns*`.
@@ -155,7 +161,7 @@
   [[annotation-kw arg-symb]] ; dispatch-fn passed as a param to avoid circular dependencies
   {:pre [(keyword? annotation-kw)
          (symbol? arg-symb)]}
-  `[~arg-symb ~((eval 'metabase.api.common/arg-annotation-fn) annotation-kw arg-symb)])
+  `[~arg-symb (~((eval 'metabase.api.common/-arg-annotation-fn) annotation-kw) '~arg-symb ~arg-symb)])
 
 (defn process-arg-annotations [annotations-map]
   {:pre [(or (nil? annotations-map)

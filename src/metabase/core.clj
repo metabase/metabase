@@ -23,11 +23,11 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (log-api-call :request)
+      (log-api-call :request :response)
       format-response         ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       (wrap-json-body         ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
+      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
       auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
@@ -53,37 +53,57 @@
           hostname (or (config/config-str :mb-jetty-host) "localhost")
           port (config/config-int :mb-jetty-port)
           setup-url (str "http://"
-                      (or hostname "localhost")
-                      (when-not (= 80 port) (str ":" port))
-                      "/setup/init/"
-                      setup-token)]
+                         (or hostname "localhost")
+                         (when-not (= 80 port) (str ":" port))
+                         "/setup/init/"
+                         setup-token)]
       (log/info (str "Please use the following url to setup your Metabase installation:\n\n"
-                  setup-url
-                  "\n\n"))))
+                     setup-url
+                     "\n\n"))))
 
   (log/info "Metabase Initialization COMPLETE")
   true)
+
+
+;; ## Jetty (Web) Server
+
+
+(def ^:private jetty-instance
+  (atom nil))
+
+(defn start-jetty
+  "Start the embedded Jetty web server."
+  []
+  (when-not @jetty-instance
+    (let [jetty-config (cond-> (medley/filter-vals identity {:port (config/config-int :mb-jetty-port)
+                                                             :host (config/config-str :mb-jetty-host)
+                                                             :max-threads (config/config-int :mb-jetty-maxthreads)
+                                                             :min-threads (config/config-int :mb-jetty-minthreads)
+                                                             :max-queued (config/config-int :mb-jetty-maxqueued)
+                                                             :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+                               (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
+                               (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
+      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
+      (->> (ring-jetty/run-jetty app jetty-config)
+           (reset! jetty-instance)))))
+
+(defn stop-jetty
+  "Stop the embedded Jetty web server."
+  []
+  (when @jetty-instance
+    (log/info "Shutting Down Embedded Jetty Webserver")
+    (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
+    (reset! jetty-instance nil)))
 
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& args]
   (log/info "Starting Metabase in STANDALONE mode")
-
-  ;; run application init and if there are no issues then continue on to launching the webserver
-  (when (try
-          (init)
-          (catch Exception e
-            (log/error "Metabase Initialization FAILED: " (.getMessage e))))
-    ;; startup webserver
-    (let [jetty-config (->> {:port (config/config-int :mb-jetty-port)
-                             :host (config/config-str :mb-jetty-host)
-                             :join? (config/config-bool :mb-jetty-join?)
-                             :daemon? (config/config-bool :mb-jetty-daemon?)
-                             :max-threads (config/config-int :mb-jetty-maxthreads)
-                             :min-threads (config/config-int :mb-jetty-minthreads)
-                             :max-queued (config/config-int :mb-jetty-maxqueued)
-                             :max-idle-time (config/config-int :mb-jetty-maxidletime)}
-                         (medley/filter-vals identity))]
-      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
-      (ring-jetty/run-jetty app jetty-config))))
+  (try
+    ;; run our initialization process
+    (init)
+    ;; launch embedded webserver
+    (start-jetty)
+    (catch Exception e
+      (log/error "Metabase Initialization FAILED: " (.getMessage e)))))

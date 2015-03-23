@@ -2,6 +2,18 @@
   (:require [metabase.api.common :refer [*current-user-id* check org-perms-case]]
             [metabase.util :refer :all]))
 
+(def timezones
+  ["GMT"
+   "UTC"
+   "US/Alaska"
+   "US/Arizona"
+   "US/Central"
+   "US/Eastern"
+   "US/Hawaii"
+   "US/Mountain"
+   "US/Pacific"
+   "America/Costa_Rica"])
+
 ;;; ALLEN'S PERMISSIONS IMPLEMENTATION
 
 (def perms-none 0)
@@ -61,15 +73,3 @@
           :user-permissions-set (delay (user-permissions <>))
           :can_read (delay (user-can? :read <>))
           :can_write (delay (user-can? :write <>))))
-
-(def timezones
-  ["GMT"
-   "UTC"
-   "US/Alaska"
-   "US/Arizona"
-   "US/Central"
-   "US/Eastern"
-   "US/Hawaii"
-   "US/Mountain"
-   "US/Pacific"
-   "America/Costa_Rica"])

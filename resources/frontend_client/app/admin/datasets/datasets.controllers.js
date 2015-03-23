@@ -5,12 +5,12 @@ var AdminDatasetsControllers = angular.module('corvusadmin.datasets.controllers'
 
 AdminDatasetsControllers.controller('AdminDatasetList', ['$scope', 'Metabase', function($scope, Metabase) {
 
-    $scope.syncDatabase = function (databaseId) {
+    $scope.syncDatabase = function(databaseId) {
         Metabase.db_sync_metadata({
             'dbId': databaseId
-        }, function (result) {
+        }, function(result) {
             // hmmm, what should we do here?
-        }, function (error) {
+        }, function(error) {
             console.log('error syncing database', error);
         });
     };
@@ -21,18 +21,20 @@ AdminDatasetsControllers.controller('AdminDatasetList', ['$scope', 'Metabase', f
 
             Metabase.db_list({
                 'orgId': org.id
-            }, function (dbs) {
+            }, function(dbs) {
                 _.map(dbs, function(db) {
                     $scope.databases.push(db);
                 });
 
                 _.map($scope.databases, function(db, index) {
                     var dbindex = index;
-                    Metabase.db_tables({'dbId': db.id}, function (tables) {
+                    Metabase.db_tables({
+                        'dbId': db.id
+                    }, function(tables) {
                         $scope.databases[dbindex].tables = tables;
                     });
                 });
-            }, function (error) {
+            }, function(error) {
                 console.log('error getting database list', error);
             });
         }
@@ -49,9 +51,14 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         containment: '.EntityGroup',
         orderChanged: function(event) {
             // Change order here
-            var new_order = _.map($scope.fields, function(field){return field.id;});
-            Metabase.table_reorder_fields({'tableId': $routeParams.tableId, 'new_order': new_order});
-        },
+            var new_order = _.map($scope.fields, function(field) {
+                return field.id;
+            });
+            Metabase.table_reorder_fields({
+                'tableId': $routeParams.tableId,
+                'new_order': new_order
+            });
+        }
     };
 
 
@@ -59,6 +66,7 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         'tableId': $routeParams.tableId
     }, function(result) {
         $scope.table = result;
+        $scope.fields = $scope.table.fields;
         $scope.getIdFields();
         $scope.decorateWithTargets();
     }, function(error) {
@@ -68,8 +76,8 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
         }
     });
 
-    $scope.getIdFields = function(){
-            // fetch the ID fields
+    $scope.getIdFields = function() {
+        // fetch the ID fields
         Metabase.db_idfields({
             'dbId': $scope.table.db.id
         }, function(result) {
@@ -85,49 +93,52 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
 
     };
 
-    $scope.decorateWithTargets = function(){
-        console.log($scope.table);
-        $scope.table.fields.forEach(function(field){
-            if (field.target){
+    $scope.decorateWithTargets = function() {
+        $scope.table.fields.forEach(function(field) {
+            if (field.target) {
                 field.target_id = field.target.id;
             }
         });
     };
 
-    $scope.syncMetadata = function () {
+    $scope.syncMetadata = function() {
         Metabase.table_sync_metadata({
             'tableId': $routeParams.tableId
-        }, function (result) {
+        }, function(result) {
             // nothing to do here really
-        }, function (error) {
+        }, function(error) {
             console.log('error doing metabase sync', error);
         });
     };
 
     $scope.inlineSave = function() {
         if ($scope.table) {
-            Metabase.table_update($scope.table, function(result) {
-                if (result && !result.error) {
-                    $scope.table = result;
-                } else {
-                    console.log(result);
-                }
+            Metabase.table_update($scope.table, function (result) {
+                // there is a difference between the output of table/:id and table/:id/query_metadata
+                // so we don't actually want to overwrite $scope.table with this data in this case
+                //$scope.table = result;
+            }, function (error) {
+                console.log('error updating table', error);
             });
         }
     };
 
-    $scope.inlineSpecialTypeChange = function(idx){
+    $scope.inlineSpecialTypeChange = function(idx) {
         // If we are changing the field from a FK to something else, we should delete any FKs present
         var field = $scope.table.fields[idx];
-        if (field.target_id && field.special_type != "fk"){
+        if (field.target_id && field.special_type != "fk") {
             // we have something that used to be an FK and is now not an FK
             // Let's delete its foreign keys
-            var fks = Metabase.field_foreignkeys({'fieldId': field.id}, function(result){
-                fks.forEach(function(fk){
+            var fks = Metabase.field_foreignkeys({
+                'fieldId': field.id
+            }, function(result) {
+                fks.forEach(function(fk) {
                     console.log("deleting ", fk);
-                    ForeignKey.delete({'fkID': fks[0].id}, function(result){
+                    ForeignKey.delete({
+                        'fkID': fks[0].id
+                    }, function(result) {
                         console.log("deleted fk");
-                    }, function(error){
+                    }, function(error) {
                         console.log("error deleting fk");
                     });
                 });
@@ -161,41 +172,41 @@ AdminDatasetsControllers.controller('AdminDatasetEdit', ['$scope', '$routeParams
             var field = $scope.table.fields[idx];
             var new_target_id = field.target_id;
 
-            var fks = Metabase.field_foreignkeys({'fieldId': field.id});
+            var fks = Metabase.field_foreignkeys({
+                'fieldId': field.id
+            });
 
-            if(fks.length > 0){
+            if (fks.length > 0) {
                 // delete this key
                 var relationship_id = 0;
-                 ForeignKey.delete({
-                     'fkID': fks[0].id
-                 }, function(result){
-                     console.log("Deleted FK");
-                     Metabase.field_addfk({"db": $scope.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
+                ForeignKey.delete({
+                    'fkID': fks[0].id
+                }, function(result) {
+                    console.log("Deleted FK");
+                    Metabase.field_addfk({
+                        "db": $scope.table.db.id,
+                        "fieldId": field.id,
+                        'target_field': new_target_id,
+                        "relationship": "Mt1"
+                    });
 
-                 }, function(error){
-                     console.log('Error deleting key ', error);
-                 });
-            }else{
-                Metabase.field_addfk({"db": $scope.table.db.id, "fieldId":field.id,'target_field': new_target_id, "relationship": "Mt1"});
+                }, function(error) {
+                    console.log('Error deleting key ', error);
+                });
+            } else {
+                Metabase.field_addfk({
+                    "db": $scope.table.db.id,
+                    "fieldId": field.id,
+                    'target_field': new_target_id,
+                    "relationship": "Mt1"
+                });
             }
         }
     };
 
-    $scope.deleteTarget = function(field, target){
+    $scope.deleteTarget = function(field, target) {
 
     };
-}]);
-
-
-AdminDatasetsControllers.controller('AdminTableDependents', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
-
- if ($routeParams.tableId) {
-        Metabase.table_dependents({
-            'tableId': $routeParams.tableId
-        }, function(result) {
-            $scope.dependents = result;
-        });
-    }
 }]);
 
 
@@ -215,30 +226,30 @@ AdminDatasetsControllers.controller('AdminFieldDetail', ['$scope', '$routeParams
             // grab where this field is foreign keyed to
             Metabase.field_foreignkeys({
                 'fieldId': $routeParams.fieldId
-            }, function (result) {
+            }, function(result) {
                 $scope.fks = result;
-            }, function (error) {
+            }, function(error) {
                 console.log('error getting fks for field', error);
             });
 
             // grab summary data about our field
             Metabase.field_summary({
                 'fieldId': $routeParams.fieldId
-            }, function (result){
+            }, function(result) {
                 $scope.field_summary = result;
-            }, function (error){
+            }, function(error) {
                 console.log('error gettting field summary', error);
             });
 
             // grab our field values
             Metabase.field_values({
                 'fieldId': $routeParams.fieldId
-            }, function (result){
+            }, function(result) {
                 $scope.field_values = result;
-            }, function (error){
+            }, function(error) {
                 console.log('error getting field values', error);
             });
-        }, function (error) {
+        }, function(error) {
             console.log(error);
             if (error.status == 404) {
                 $location.path('/');
@@ -259,13 +270,13 @@ AdminDatasetsControllers.controller('AdminFieldDetail', ['$scope', '$routeParams
         }
     };
 
-    $scope.updateMappedValues = function(){
+    $scope.updateMappedValues = function() {
         Metabase.field_value_map_update({
             'fieldId': $routeParams.fieldId,
             'values_map': $scope.field_values.human_readable_values
-        }, function (result){
+        }, function(result) {
             // nothing to do
-        }, function (error){
+        }, function(error) {
             console.log('Error');
         });
     };
@@ -281,12 +292,16 @@ AdminDatasetsControllers.controller('AdminFieldDetail', ['$scope', '$routeParams
         $scope.fks = $scope.fks.slice(0);
         $scope.fks.push(relationship);
     };
-     $scope.deleteRelationship = function(relationship_id) {
+    $scope.deleteRelationship = function(relationship_id) {
         // this is here to clone the original array so that we can modify it
         // by default the deserialized data from an api response is immutable
-        ForeignKey.delete({'fkID': relationship_id}, function(result){
-            $scope.fks = _.reject($scope.fks, function(fk){return fk.id == relationship_id;});
-        }, function(error){
+        ForeignKey.delete({
+            'fkID': relationship_id
+        }, function(result) {
+            $scope.fks = _.reject($scope.fks, function(fk) {
+                return fk.id == relationship_id;
+            });
+        }, function(error) {
             console.log('Error deleting key ', error);
         });
     };

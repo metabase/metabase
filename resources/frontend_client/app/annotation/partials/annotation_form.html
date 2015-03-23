@@ -14,7 +14,7 @@
                         <span class="text-grey-3"> added an annotation for </span>
                         <span class="text-brand">{{getAnnotationTimeframe(annotation)}}</span>
                     </p>
-
+                    <p class="text-grey-5">{{annotation.title}}</p>
                     <p class="text-grey-4">{{annotation.body}}</p>
                 </div>
             </li>
@@ -30,7 +30,7 @@
 
         	<div class="mt3 clearfix">
         		<div class="float-right">
-        			<button class="Button Button--primary" ng-click="create()">Save</button>
+        			<button class="Button Button--primary" ng-disabled="!new_annotation.body || new_annotation.body.length === 0" ng-click="create()">Save</button>
         			<button class="Button" ng-click="toggleEditMode()">Cancel</button>
         		</div>
         		<div>

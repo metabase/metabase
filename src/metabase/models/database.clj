@@ -8,7 +8,9 @@
 
 
 (defentity Database
-  (table :metabase_database))
+  (table :metabase_database)
+  (assoc :hydration-keys #{:database
+                           :db}))
 
 (defmethod post-select Database [_ {:keys [organization_id] :as db}]
   (-> db
@@ -25,9 +27,10 @@
          :details (json/write-str details)
          :engine (name engine)))
 
-(defmethod pre-update Database [_ {:keys [details] :as database}]
+(defmethod pre-update Database [_ {:keys [details engine] :as database}]
   (cond-> (assoc database :updated_at (util/new-sql-timestamp))
-    details (assoc :details (json/write-str details))))
+    details (assoc :details (json/write-str details))
+    engine  (assoc :engine  (name engine))))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id]}]
   (cascade-delete 'metabase.models.table/Table :db_id id)

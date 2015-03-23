@@ -2,13 +2,13 @@
   (:require [cemerick.friend.credentials :as creds]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [hydrate :refer :all]
-                             [org-perm :refer [OrgPerm]])
+            (metabase.models [org-perm :refer [OrgPerm]])
             [metabase.util :as util]))
 
 (defentity User
   (table :core_user)
-  (has-many OrgPerm {:fk :user_id}))
+  (has-many OrgPerm {:fk :user_id})
+  (assoc :hydration-keys #{:author :creator :user}))
 
 ;; fields to return for Users other `*than current-user*`
 (defmethod default-fields User [_]

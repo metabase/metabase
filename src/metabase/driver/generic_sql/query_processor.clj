@@ -14,23 +14,31 @@
 
 
 (declare apply-form
-         log-query)
+         log-query
+         post-process
+         query-is-cumulative-sum?
+         apply-cumulative-sum)
 
-;; ## Public Functions
+(def ^{:dynamic true, :private true} *query*
+  "Query dictionary that we're currently processing"
+  nil)
+
+;; # INTERFACE
 
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
   (when-not (zero? source_table)
-    (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
-                     (filter identity)
-                     (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                           [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
-                     doall)]
-      (when (config/config-bool :mb-db-logging)
-        (log-query query forms))
-      `(let [entity# (table-id->korma-entity ~source_table)]
-         (select entity# ~@forms)))))
+    (binding [*query* query]
+      (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
+                       (filter identity)
+                       (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
+                                             [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
+                       doall)]
+        (when (config/config-bool :mb-db-logging)
+          (log-query query forms))
+        `(let [entity# (table-id->korma-entity ~source_table)]
+           (select entity# ~@forms))))))
 
 
 (defn process-structured
@@ -40,8 +48,9 @@
          (map? (:query query))
          (= (name (:type query)) "query")]}
   (->> (process query)
-    eval
-    (annotate/annotate query)))
+       eval
+       (post-process query)
+       (annotate/annotate query)))
 
 
 (defn process-and-run
@@ -49,9 +58,11 @@
   [{:keys [type] :as query}]
   ;; we know how to handle :native and :query (structured) type queries
   (case (keyword type)
-    :native (native/process-and-run query)
-    :query (process-structured query)))
+      :native (native/process-and-run query)
+      :query  (process-structured query)))
 
+
+;; # IMPLEMENTATION
 
 ;; ## Query Clause Processors
 
@@ -81,8 +92,9 @@
                        :avg      `(aggregate (~'avg ~field) :avg)
                        :distinct `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
                        :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
-                       :sum      `(aggregate (~'sum ~field) :sum)))))
-                 ;; TODO - `:cum_sum` is not yet implemented (!)
+                       :sum      `(aggregate (~'sum ~field) :sum)
+                       :cum_sum  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
+                                   (group ~field)])))) ; cumulative sum happens in post-processing (see below)
 
 ;; ### `:breakout`
 ;; ex.
@@ -92,9 +104,17 @@
   (match field-ids
     []    nil ; empty clause
     [nil] nil ; empty clause
-    _     (let [field-names (map field-id->kw field-ids)]
+    _     (let [field-names (map field-id->kw field-ids)
+                order-by-field-names (some->> (:order_by *query*) ; get set of names of all fields specified in `order_by`
+                                              (map first)
+                                              (map field-id->kw)
+                                              set)]
             `[(group  ~@field-names)
-              (fields ~@field-names)])))
+              (fields ~@field-names)
+              ~@(->> field-names                                                    ; Add an implicit `order :ASC` clause for every field specified in `breakout`
+                     (filter (complement (partial contains? order-by-field-names))) ; that is *not* specified *explicitly* in `order_by`.
+                     (map (fn [field-name]
+                            `(order ~field-name :ASC))))])))
 
 ;; ### `:fields`
 ;; ex.
@@ -178,6 +198,38 @@
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
+
+
+;; ## Post Processing
+
+(defn- post-process
+  "Post-processing stage for query results."
+  [{query :query} results]
+  (cond
+    (query-is-cumulative-sum? query) (apply-cumulative-sum query results)
+    :else                            (do results)))
+
+;; ### Cumulative sum
+;; Cumulative sum is a special case. We can't do it in the DB because it's not a SQL function; thus we do it as a post-processing step.
+
+(defn- query-is-cumulative-sum?
+  "Is this a cumulative sum query?"
+  [query]
+  (some->> (:aggregation query)
+           first
+           (= "cum_sum")))
+
+(defn- apply-cumulative-sum
+  "Cumulative sum the values of the aggregate `Field` in RESULTS."
+  {:arglists '([query results])}
+  [{[_ field-id] :aggregation} results]
+  (let [field (field-id->kw field-id)
+        values (->> results          ; make a sequence of cumulative sum values for each row
+                    (map field)
+                    (reductions +))]
+    (map (fn [row value]              ; replace the value for each row with the cumulative sum value
+           (assoc row field value))
+         results values)))
 
 
 ;; ## Debugging Functions (Internal)

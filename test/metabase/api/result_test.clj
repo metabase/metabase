@@ -13,7 +13,7 @@
   []
   (let [{query-id :id} (create-query)
         query-execution ((user->client :rasta) :post 200 (format "query/%d" query-id))]
-    (Thread/sleep 50) ; Give it 50ms to finish
+    (Thread/sleep 100) ; Give it 100ms to finish
     query-execution))
 
 ;; ## GET /result/:id

@@ -5,7 +5,7 @@
             [metabase.api.org-test :refer [create-org]]
             [metabase.test-data :refer :all]
             [metabase.test-data.create :refer [create-user]]
-            metabase.test-utils
+            metabase.test-setup
             [metabase.test.util :refer :all]
             [metabase.util :refer [regex= regex?]])
   (:import com.metabase.corvus.api.ApiException))
@@ -99,34 +99,6 @@
             (- 100))))
 
 
-;;; TESTS FOR REQUIRE-PARAMS
-
-(expect :ok
-  (catch-api-exceptions
-    (let [org 1]
-      (require-params org)
-      :ok)))
-
-(expect {:status 400 :body "'org' is a required param."}
-  (catch-api-exceptions
-    (let [org nil]
-      (require-params org)
-      :ok)))
-
-(expect :ok
-  (catch-api-exceptions
-    (let [org 100
-          fish 2]
-      (require-params org fish)
-      :ok)))
-
-(expect {:status 400 :body "'fish' is a required param."}
-  (catch-api-exceptions
-    (let [org 100
-          fish nil]
-      (require-params org fish))))
-
-
 (defmacro expect-expansion
   "Helper to test that a macro expands the way we expect;
    Automatically calls `macroexpand-1` on MACRO."
@@ -141,16 +113,16 @@
 
 ;; when auto-parse gets an args form where arg is present in *autoparse-types*
 ;; the appropriate let binding should be generated
-(expect-expansion (clojure.core/let [id (clojure.core/when id (Integer/parseInt id))] 'body)
+(expect-expansion (clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
                   (auto-parse [id] 'body))
 
 ;; params not in *autoparse-types* should be ignored
-(expect-expansion (clojure.core/let [id (clojure.core/when id (Integer/parseInt id))] 'body)
+(expect-expansion (clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
                   (auto-parse [id some-other-param] 'body))
 
 ;; make sure multiple autoparse params work correctly
-(expect-expansion (clojure.core/let [id (clojure.core/when id (Integer/parseInt id))
-                                     org_id (clojure.core/when org_id (Integer/parseInt org_id))] 'body)
+(expect-expansion (clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))
+                                     org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))] 'body)
                   (auto-parse [id org_id] 'body))
 
 ;; make sure it still works if no autoparse params are passed
@@ -162,7 +134,7 @@
                   (auto-parse [] 'body))
 
 ;; should work with some wacky binding form
-(expect-expansion (clojure.core/let [id (clojure.core/when id (Integer/parseInt id))] 'body)
+(expect-expansion (clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
                   (auto-parse [id :as {body :body}] 'body))
 
 ;;; TESTS FOR DEFENDPOINT
@@ -173,8 +145,8 @@
    (do
      (def GET_:id
        (GET ["/:id" :id "#[0-9]+"] [id]
-         (metabase.api.common.internal/auto-parse [id]
-           (metabase.api.common.internal/catch-api-exceptions
+         (metabase.api.common.internal/catch-api-exceptions
+           (metabase.api.common.internal/auto-parse [id]
              (metabase.api.common.internal/let-annotated-args
               {id Required}
               (clojure.core/-> (do (->404 (sel :one Card :id id)))

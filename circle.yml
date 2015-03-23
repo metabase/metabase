@@ -3,6 +3,9 @@ machine:
     version: 2.7.6
   node:
     version: 0.10.25
+  java:
+    version:
+      oraclejdk8
   # Add AWS deploy-only creds
   environment:
     AWS_ACCESS_KEY_ID: AKIAJHJESLS47NJJF6VQ
@@ -17,8 +20,8 @@ dependencies:
     - pip install awscli==1.7.3
 test:
   override:
-    - lein eastwood
-    - lein expectations
+    - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; esac:
+        parallel: true
 deployment:
   production:
     branch: prd

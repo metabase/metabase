@@ -56,7 +56,7 @@ Run the linter with
 
 Run unit tests with
 
-    lein expectations
+    lein test
 
 
 ## Documentation
@@ -117,8 +117,7 @@ You can make API calls from the REPL using `metabase.http-client`:
     lein ancient                   # list all out-of-date dependencies
     lein ancient latest lein-ring  # list latest version of artifact lein-ring
 
-Will give you a list of out-of-date dependencies. This requires leiningen version 2.4.0 or higher so run `lein upgrade` first if needed.
-This doesn't seem to check plugins, so you'll have to do that manually using `lein ancient latest`.
+Will give you a list of out-of-date dependencies.
 
 Once's this repo is made public, this Clojars badge will work and show the status as well:
 

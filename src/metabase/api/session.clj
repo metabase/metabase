@@ -15,9 +15,11 @@
 
 ;; login
 (defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
-  (require-params email password)
+  {email    [Required Email]
+   password [Required NonEmptyString]}
   (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
-    (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user)) [400 "password mismatch"])
+    (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user))
+      [400 "password mismatch"])
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session
         :id session-id
@@ -26,9 +28,9 @@
 
 
 ;; logout
-(defendpoint DELETE "/" [:as {{:keys [session_id]} :params}]
-  (check-400 session_id)
-  (check-400 (exists? Session :id session_id))
+(defendpoint DELETE "/" [session_id]
+  {session_id [Required NonEmptyString]}
+  (check-exists? Session session_id)
   (del Session :id session_id))
 
 
@@ -40,7 +42,7 @@
   ;; This is a bit sketchy. Someone malicious could send a bad origin header and hit this endpoint to send
   ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
   ;; what you could phish from them since they already forgot their password.
-  (require-params email)
+  {email [Required Email]}
   (let [{user-id :id user-name :common_name} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
@@ -55,8 +57,8 @@
 
 ;; set password from reset token
 (defendpoint POST "/reset_password" [:as {{:keys [token password] :as body} :body}]
-  (require-params token password)
-  (check (password/is-complex? password) [400 "Insufficient password strength"])
+  {token    Required
+   password [Required ComplexPassword]}
   (let-404 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
     ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
     (check-404 (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0))))

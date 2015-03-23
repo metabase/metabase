@@ -97,21 +97,7 @@
               :organization_id @org-id
               :description nil})
        :name "CATEGORIES"
-       :fields [(match-$ (sel :one Field :id (field->id :categories :name))
-                  {:description nil
-                   :table_id (table->id :categories)
-                   :special_type nil
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})
-                (match-$ (sel :one Field :id (field->id :categories :id))
+       :fields [(match-$ (sel :one Field :id (field->id :categories :id))
                   {:description nil
                    :table_id (table->id :categories)
                    :special_type "id"
@@ -124,7 +110,21 @@
                    :target nil
                    :preview_display true
                    :created_at $
-                   :base_type "BigIntegerField"})]
+                   :base_type "BigIntegerField"})
+                (match-$ (sel :one Field :id (field->id :categories :name))
+                  {:description nil
+                   :table_id (table->id :categories)
+                   :special_type nil
+                   :name "NAME"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})]
        :rows 75
        :updated_at $
        :entity_name nil
@@ -137,34 +137,34 @@
 
 ;; ## PUT /api/meta/table/:id
 (expect-eval-actual-first
-    [(match-$ (sel :one Table :id (table->id :users))
-       {:description "What a nice table!"
-        :entity_type "person"
-        :db (match-$ @test-db
-              {:description nil
-               :organization_id $
-               :name "Test Database"
-               :updated_at $
-               :details $
-               :id $
-               :engine "h2"
-               :created_at $})
-        :name "USERS"
-        :rows 15
-        :updated_at $
-        :entity_name "Userz"
-        :active true
-        :pk_field (deref $pk_field)
-        :id $
-        :db_id @db-id
-        :created_at $})
-     true]
-  [(do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
-                                                                                        :entity_type "person"
-                                                                                        :description "What a nice table!"})
-       ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users))))
-   ;; Now reset the Table to it's original state
-   (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)])
+    (match-$ (let [table (sel :one Table :id (table->id :users))]
+               ;; reset Table back to its original state
+               (upd Table (table->id :users) :entity_name nil :entity_type nil :description nil)
+               table)
+      {:description "What a nice table!"
+       :entity_type "person"
+       :db (match-$ @test-db
+             {:description nil
+              :organization_id $
+              :name "Test Database"
+              :updated_at $
+              :details $
+              :id $
+              :engine "h2"
+              :created_at $})
+       :name "USERS"
+       :rows 15
+       :updated_at $
+       :entity_name "Userz"
+       :active true
+       :pk_field (deref $pk_field)
+       :id $
+       :db_id @db-id
+       :created_at $})
+  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (table->id :users)) {:entity_name "Userz"
+                                                                                       :entity_type "person"
+                                                                                       :description "What a nice table!"})
+      ((user->client :crowberto) :get 200 (format "meta/table/%d" (table->id :users)))))
 
 
 ;; ## GET /api/meta/table/:id/fks
@@ -228,3 +228,19 @@
                                 :created_at $})})})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (table->id :users))))
 
+
+;; ## POST /api/meta/table/:id/reorder
+(expect-eval-actual-first
+  {:result "success"}
+  (let [categories-id-field (sel :one Field :table_id (table->id :categories) :name "ID")
+        categories-name-field (sel :one Field :table_id (table->id :categories) :name "NAME")
+        api-response ((user->client :rasta) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
+                       {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
+    ;; check the modified values (have to do it here because the api response tells us nothing)
+    (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
+    (assert (= 1 (:position (sel :one :fields [Field :position] :id (:id categories-id-field)))))
+    ;; put the values back to their previous state
+    (upd Field (:id categories-name-field) :position 0)
+    (upd Field (:id categories-id-field) :position 0)
+    ;; return our origin api response for validation
+    api-response))

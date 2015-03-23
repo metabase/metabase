@@ -12,14 +12,15 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [org :refer [Org]]
-                             [org-perm :refer [OrgPerm]])))
+                             [org-perm :refer [OrgPerm]])
+            [metabase.util :as u]))
 
-(declare create-and-populate-tables add-metadata)
+(declare create-and-populate-tables add-metadata!)
 
 (def ^:private db-name "Test Database")
 (def ^:private org-name "Test Organization")
 (def ^:private test-db-filename
-  (delay (format "%s/t.db" (System/getProperty "user.dir"))))
+  (delay (format "%s/target/test-data" (System/getProperty "user.dir"))))
 (def ^:private test-db-connection-string
   (delay (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" @test-db-filename)))
 
@@ -40,20 +41,20 @@
   []
   {:post [(map? %)]}
   (or (sel :one Database :name db-name)
-    (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
-          (create-and-populate-tables))
-        (log/info "Creating new metabase Database object...")
-        (let [db (ins Database
-                   :organization_id (:id (test-org))
-                   :name db-name
-                   :engine :h2
-                   :details {:conn_str @test-db-connection-string})]
-          (log/info "Syncing Tables...")
-          (driver/sync-tables db)
-          (log/info "Adding Schema Metadata...")
-          (add-metadata)
-          (log/info "Finished. Enjoy your test data <3")
-          db))))
+      (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
+            (create-and-populate-tables))
+          (log/info "Creating new metabase Database object...")
+          (let [db (ins Database
+                     :organization_id (:id (test-org))
+                     :name db-name
+                     :engine :h2
+                     :details {:conn_str @test-db-connection-string})]
+            (log/info "Syncing Tables...")
+            (driver/sync-database db)
+            (log/info "Adding Schema Metadata...")
+            (add-metadata!)
+            (log/info "Finished. Enjoy your test data <3")
+            db))))
 
 
 ;; ## Debugging/Interactive Development Functions
@@ -76,11 +77,11 @@
   "Binds `*test-db*` if not already bound to a Korma DB entity and executes BODY."
   [& body]
   `(if *test-db* (do ~@body)
-       (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
-                                           :naming {:keys s/lower-case
-                                                    :fields s/upper-case}}))]
-         (log/info "CREATING H2 TEST DATABASE...")
-         ~@body)))
+                 (binding [*test-db* (create-db (h2 {:db @test-db-connection-string
+                                                     :naming {:keys s/lower-case
+                                                              :fields s/upper-case}}))]
+                   (log/info "CREATING H2 TEST DATABASE...")
+                   ~@body)))
 
 (defn- exec-sql
   "Execute raw SQL STATEMENTS against the test database."
@@ -95,7 +96,7 @@
   "Convert a sequence of pairs `[field-name-kw field-sql-type]` FIELDS into a string suitable for use in a SQL \"CREATE TABLE\" statement."
   [fields]
   (->> fields
-       (map (fn [[field-name field-type]]
+       (map (fn [{field-name :name field-type :type}]
               {:pre [(keyword? field-name)
                      (string? field-type)]}
               (let [field-name (-> field-name name s/upper-case)]
@@ -111,7 +112,7 @@
          (sequential? rows)]}
   (with-test-db
     (let [table-name (-> table-name name s/upper-case)
-          fields-for-insert (->> fields (map first))]               ; get ordered field names of data e.g. (:name :last_login)
+          fields-for-insert (->> fields (map :name))]              ; get ordered field names of data e.g. (:name :last_login)
       (log/info (format "CREATING TABLE \"%s\"..." table-name))
       (exec-sql (format "DROP TABLE IF EXISTS \"%s\";" table-name)
                 (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" table-name (format-fields fields)))
@@ -126,42 +127,35 @@
     (dorun (map create-and-populate-table
                 data/test-data))))
 
-(defn- add-metadata []
-  (let [user-table (sel :one Table :name "USERS")
-        user-id-field (sel :one Field :name "ID" :table_id (:id user-table))
-        categories-table (sel :one Table :name "CATEGORIES")
-        categories-id-field (sel :one Field :name "ID" :table_id (:id categories-table))
-        venues-table (sel :one Table :name "VENUES")
-        venues-id-field (sel :one Field :name "ID" :table_id (:id venues-table))
-        venues-cat-field (sel :one Field :name "CATEGORY_ID" :table_id (:id venues-table))
-        venues-lat-field (sel :one Field :name "LATITUDE" :table_id (:id venues-table))
-        venues-long-field (sel :one Field :name "LONGITUDE" :table_id (:id venues-table))
-        checkins-table (sel :one Table :name "CHECKINS")
-        checkins-id-field (sel :one Field :name "ID" :table_id (:id checkins-table))
-        checkins-user-field (sel :one Field :name "USER_ID" :table_id (:id checkins-table))
-        checkins-venues-field (sel :one Field :name "VENUE_ID" :table_id (:id checkins-table))]
-    ;; setup USERS table metadata
-    (upd Field (:id user-id-field) :special_type "id")
-    ;; setup CATEGORIES table metadata
-    (upd Field (:id categories-id-field) :special_type "id")
-    ;; setup VENUES table metadata
-    (upd Field (:id venues-id-field) :special_type "id")
-    (upd Field (:id venues-cat-field) :special_type "fk")
-    (upd Field (:id venues-lat-field) :special_type "latitude")
-    (upd Field (:id venues-long-field) :special_type "longitude")
-    (ins ForeignKey
-      :origin_id (:id venues-cat-field)
-      :destination_id (:id categories-id-field)
-      :relationship "Mt1")
-    ;; setup CHECKINS table metadata
-    (upd Field (:id checkins-id-field) :special_type "id")
-    (upd Field (:id checkins-user-field) :special_type "fk")
-    (upd Field (:id checkins-venues-field) :special_type "fk")
-    (ins ForeignKey
-      :origin_id (:id checkins-user-field)
-      :destination_id (:id user-id-field)
-      :relationship "Mt1")
-    (ins ForeignKey
-      :origin_id (:id checkins-venues-field)
-      :destination_id (:id venues-id-field)
-      :relationship "Mt1")))
+;; ### add-metadata! and related functions
+
+;; metabase.test-data :requires this namespace so create functions that load + call
+;; table->id and field->id at runtime to avoid circular dependencies
+(def ^:private table->id (u/runtime-resolved-fn 'metabase.test-data 'table->id))
+(def ^:private field->id (u/runtime-resolved-fn 'metabase.test-data 'field->id))
+
+(defn- set-special-type! [table-kw {field-kw :name special-type :special-type}]
+  {:post [(true? %)]}
+  (if-not special-type true
+          (do (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
+              (upd Field (field->id table-kw field-kw) :special_type (name special-type)))))
+
+(defn- add-foreign-key! [table-kw {field-kw :name [fk-table-kw fk-type :as fk] :fk}]
+  {:post [(:id %)]}
+  (if-not fk {:id true}
+          (do (log/info "SET FOREIGN KEY" table-kw field-kw "->" fk-table-kw fk-type)
+              (ins ForeignKey
+                :origin_id (field->id table-kw field-kw)
+                :destination_id (field->id fk-table-kw :id)
+                :relationship (name fk-type)))))
+
+(defn- add-metadata! []
+  (dorun
+   (map (fn [[table-kw {:keys [fields]}]]
+          (let [fields (conj fields {:name :id
+                                     :special-type :id})]
+            (dorun (map (partial set-special-type! table-kw)
+                        fields))
+            (dorun (map (partial add-foreign-key! table-kw)
+                        fields))))
+        data/test-data)))

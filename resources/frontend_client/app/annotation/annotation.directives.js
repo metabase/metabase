@@ -3,7 +3,7 @@
 var AnnotationDirectives = angular.module('corvus.annotation.directives', ['corvus.annotation.services', 'corvus.services']);
 
 AnnotationDirectives.directive('cvAnnotationForm', ['$filter', 'Annotation', 'AppState',
-    function ($filter, Annotation, AppState) {
+    function($filter, Annotation, AppState) {
         function link(scope, element, attr) {
 
             scope.DATE_FORMAT = "MMM dd, yyyy";
@@ -87,18 +87,23 @@ AnnotationDirectives.directive('cvAnnotationForm', ['$filter', 'Annotation', 'Ap
                     // we need to set the orgId before we save
                     scope.new_annotation.organization = AppState.model.currentOrg.id;
 
+                    // If title string is empty then remove it
+                    if (!scope.new_annotation.title || scope.new_annotation.title.length === 0) {
+                        delete scope.new_annotation.title;
+                    }
+
                     // make sure we handle start/end date formatting properly
                     scope.new_annotation.start = scope.startPicker.date.toISOString();
                     scope.new_annotation.end = scope.endPicker.date.toISOString();
 
-                    Annotation.create(scope.new_annotation, function (annotation) {
+                    Annotation.create(scope.new_annotation, function(annotation) {
                         scope.annotations.unshift(annotation);
                         // TODO: user confirmation
 
                         updateVisibleAnnotations();
 
                         prepNewAnnotation();
-                    }, function (error) {
+                    }, function(error) {
                         console.log('error creating annotation', error);
                     });
                 } else {
@@ -115,7 +120,7 @@ AnnotationDirectives.directive('cvAnnotationForm', ['$filter', 'Annotation', 'Ap
 
                 scope.new_annotation = {
                     'object_model': scope.objectModel,
-                    'object_id': scope.objectId
+                    'object_id': (scope.objectId ? Number.parseInt(scope.objectId) : null) // convert objectId to an int since @bindings are always strings
                 };
             };
 
@@ -125,17 +130,17 @@ AnnotationDirectives.directive('cvAnnotationForm', ['$filter', 'Annotation', 'Ap
                         'org': org.id,
                         'object_model': scope.objectModel,
                         'object_id': scope.objectId
-                    }, function (annotations) {
+                    }, function(annotations) {
                         scope.annotations = annotations;
 
                         updateVisibleAnnotations();
-                    }, function (error) {
+                    }, function(error) {
                         console.log('error getting annotations list', error);
                     });
                 }
             };
 
-            scope.$on('appstate:organization', function (event, org) {
+            scope.$on('appstate:organization', function(event, org) {
                 loadAnnotations(org);
             });
 
