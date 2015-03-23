@@ -1591,7 +1591,7 @@ CardControllers.controller('CardDetailNew', [
                         public_perms: 0,
                         can_read: true,
                         can_write: true,
-                        display: 'none',
+                        display: 'table',
                         dataset_query: {
                             type: "query",
                             query: {

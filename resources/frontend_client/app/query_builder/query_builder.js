@@ -8,11 +8,6 @@ var QueryBuilder = React.createClass({
     propTypes: {
         model: React.PropTypes.object.isRequired
     },
-    getInitialState: function () {
-        return {
-           visualizationType: 'table'
-        }
-    },
     _getFilterFields: function () {
         var filterFieldList = [];
         if(this.props.model.selected_table_fields) {
@@ -21,12 +16,6 @@ var QueryBuilder = React.createClass({
             }
         }
         return filterFieldList;
-    },
-    _changeVisualization: function (type) {
-        this.setState({
-            visualizationType: type
-        });
-        this.props.model.setDisplay(type);
     },
     _getFilterWidget: function (filter, index) {
         var operator = filter[0], // name of the operator
@@ -141,7 +130,7 @@ var QueryBuilder = React.createClass({
             );
             result = (
                 <QueryVisualization
-                    visualization={this.state.visualizationType}
+                    visualization={this.props.model.card.display}
                     card={this.props.model.card}
                     result={this.props.model.result}
                 />
@@ -202,7 +191,7 @@ var QueryBuilder = React.createClass({
 
                     <div className="ActionBar">
                         {saver}
-                        <VisualizationOptionList action={this._changeVisualization} />
+                        <VisualizationOptionList action={this.props.model.setDisplay.bind(this.props.model)} />
                         {download}
                     </div>
             </div>
