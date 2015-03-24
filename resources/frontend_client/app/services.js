@@ -82,6 +82,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                         });
                     };
 
+                    // apply a convenience variable indicating if the user is a member of multiple orgs
+                    service.model.currentUser.is_multi_org = (service.model.currentUser.memberOf().length > 1);
+
                     $rootScope.$broadcast('appstate:user', result);
 
                     deferred.resolve(result);
