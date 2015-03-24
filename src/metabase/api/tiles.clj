@@ -86,9 +86,9 @@
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     {:status  200
      :headers {"Content-Type" "image/png"}
-     :body    (java.io.ByteArrayInputStream.
-                (.toByteArray
-                  (com.metabase.corvus.api.tiles.GoogleMapPinsOverlay. zoom lat-lon-points)))}))
+     :body    (-> (com.metabase.corvus.api.tiles.GoogleMapPinsOverlay. zoom lat-lon-points)
+                  (.toByteArray)
+                  (java.io.ByteArrayInputStream.))}))
 
 
 (define-routes)
