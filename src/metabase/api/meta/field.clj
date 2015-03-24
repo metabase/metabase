@@ -74,7 +74,7 @@
   (let-404 [{:keys [special_type] :as field} (sel :one Field :id id)]
     (read-check field)
     (if-not (= special_type "category")
-      {:values {} :human_readable_values {}} ; only categories get to have values
+      {:values {} :human_readable_values {}}   ; only categories get to have values
       (or (sel :one FieldValues :field_id id)
           (create-field-values field nil)))))
 

@@ -17,7 +17,10 @@
 ;; *  :human_readable_values  (JSON-encoded map like {:table "Table" :scalar "Scalar"}
 
 (defmethod post-select FieldValues [_ {:keys [values human_readable_values] :as field-values}]
-  (realize-json field-values :values :human_readable_values))
+  (-> field-values
+      (realize-json :values :human_readable_values)
+      (update-in [:human_readable_values] (fn [hr-values]          ; return an empty map for :human_readable_values in cases where it is nil
+                                            (or hr-values {})))))
 
 (defmethod pre-insert FieldValues [_ {:keys [values human_readable_values] :as field-values}]
   (when values

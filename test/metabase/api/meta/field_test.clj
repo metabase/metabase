@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             (metabase.models [field :refer [Field]]
+                             [field-values :refer [FieldValues]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
@@ -76,6 +77,69 @@
        :base_type "FloatField"})
   ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
 
+(defn- field->field-values
+  "Fetch the `FieldValues` object that corresponds to a given `Field`."
+  [table-kw field-kw]
+  (sel :one FieldValues :field_id (field->id table-kw field-kw)))
+
 ;; ## GET /api/meta/field/:id/values
+;; Should return something useful for a field that has special_type :category
+(expect (match-$ (field->field-values :venues :price)
+          {:field_id (field->id :venues :price)
+           :human_readable_values {}
+           :values [1 2 3 4]
+           :updated_at $
+           :created_at $
+           :id $})
+  (do (upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values nil)       ; clear out existing human_readable_values in case they're set
+      ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))))
+
+;; Should return nothing for a field whose special_type is *not* :category
+(expect
+    {:values {}
+     :human_readable_values {}}
+  ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :id))))
+
 
 ;; ## POST /api/meta/field/:id/value_map_update
+(expect
+    [;; (1)
+     {:status "success"}
+     ;; (2)
+     (match-$ (sel :one FieldValues :field_id (field->id :venues :price))
+       {:field_id (field->id :venues :price)
+        :human_readable_values {}
+        :values [1 2 3 4]
+        :updated_at $
+        :created_at $
+        :id $})
+     ;; (3)
+     {:status "success"}
+     ;; (4)
+     (match-$ (sel :one FieldValues :field_id (field->id :venues :price))
+       {:field_id (field->id :venues :price)
+        :human_readable_values {:1 "$"
+                                :2 "$$"
+                                :3 "$$$"
+                                :4 "$$$$"}
+        :values [1 2 3 4]
+        :updated_at $
+        :created_at $
+        :id $})]
+  [;; (1) Check that we can unset values
+   (do (upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values {:1 "$"      ; make sure they're set
+                                                                                           :2 "$$"
+                                                                                           :3 "$$$"
+                                                                                           :4 "$$$$"})
+       ((user->client :rasta) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price))
+        {:values_map {}}))
+   ;; (2) Check the unset values
+   ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))
+   ;; (3) Check that we can set values
+   ((user->client :rasta) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price))
+    {:values_map {:1 "$"
+                  :2 "$$"
+                  :3 "$$$"
+                  :4 "$$$$"}})
+   ;; (4) Check the set values
+   ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))])

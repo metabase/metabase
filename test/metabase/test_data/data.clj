@@ -1230,7 +1230,8 @@
                       :type "DOUBLE"
                       :special-type :longitude}
                      {:name :price
-                      :type "INTEGER"}
+                      :type "INTEGER"
+                      :special-type :category}
                      {:name :category_id
                       :type "INTEGER"
                       :special-type :fk
