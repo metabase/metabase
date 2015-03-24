@@ -44,12 +44,11 @@
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
   {host Required
    port Required}
-  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
+  ((let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
     (cond
-      (not (u/host-port-up? host port)) 
-        (cond (not (u/host-up? host)) (response-invalid "Host not reachable")
-              :else (response-invalid "Invalid port"))
-      :else {:valid true})))
+      (u/host-port-up? host port) {:valid true}
+      (u/host-up? host)           (response-invalid "Invalid port")
+      :else                       "Host not reachable"))))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
