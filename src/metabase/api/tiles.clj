@@ -35,16 +35,11 @@
   (let [{top-lt-lat :lat top-lt-lon :lon} (tile-lat-lon x y zoom)
         {bot-rt-lat :lat bot-rt-lon :lon} (tile-lat-lon (+ x 1) (+ y 1) zoom)
         inside-filter ["INSIDE", lat-field-id, lon-field-id, top-lt-lat, top-lt-lon, bot-rt-lat, bot-rt-lon]]
-    (if (or (not (:filter details))
-            (not (get (:filter details) 0)))
-      ;; there is no valid 'filter' clause right now, so just apply ours as the only filter
-      (assoc details :filter inside-filter)
-      ;; nested if.  maybe there's a better way?
-      (if (= "AND" (get (:filter details) 0))
-        ;; there are multiple existing filters already, so just append ours to the end of the list
-        (assoc details :filter (conj (:filter details) inside-filter))
-        ;; final scenario.  looks like there is a single existing filter, so create the AND syntax and combine them
-        (assoc details :filter (conj ["AND"] (:filter details) inside-filter))))))
+    (update-in details [:filter]
+      #(clojure.core.match/match %
+        nil         inside-filter
+        ["AND" & _] (conj % inside-filter)
+        [& _]       (conj ["AND"] % inside-filter)))))
 
 
 (defn- extract-points
