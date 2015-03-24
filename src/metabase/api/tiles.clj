@@ -10,10 +10,10 @@
 (def tile-size 256)
 (def pixel-origin (float (/ tile-size 2)))
 (def pixel-per-lon-degree (float (/ tile-size 360.0)))
-(def pixel-per-lon-radian (float (/ tile-size (* 2 (java.lang.Math/PI)))))
+(def pixel-per-lon-radian (float (/ tile-size (* 2 java.lang.Math/PI))))
 
 (defn- radians->degrees [rad]
-  (float (/ rad (float (/ (java.lang.Math/PI) 180)))))
+  (float (/ rad (float (/ java.lang.Math/PI 180)))))
 
 (defn- tile-lat-lon
   "Get the Latitude & Longitude of the upper left corner of a given tile"
@@ -24,7 +24,7 @@
         lon (float (/ (- corner-x pixel-origin) pixel-per-lon-degree))
         lat-radians (/ (- corner-y pixel-origin) (* pixel-per-lon-radian -1))
         lat (radians->degrees (- (* 2 (java.lang.Math/atan (java.lang.Math/exp lat-radians)))
-                                   (/ (java.lang.Math/PI) 2)))]
+                                   (/ java.lang.Math/PI 2)))]
     {:lat lat
      :lon lon}))
 
