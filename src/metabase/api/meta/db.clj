@@ -48,7 +48,7 @@
     (cond
       (u/host-port-up? host port) {:valid true}
       (u/host-up? host)           (response-invalid "Invalid port")
-      :else                       "Host not reachable"))))
+      :else                       (response-invalid "Host not reachable")))))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
