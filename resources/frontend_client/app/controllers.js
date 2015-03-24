@@ -133,15 +133,11 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'App
     }
 
     var setNavContext = function(context) {
-        if(context === 'org-admin') {
-            $scope.nav = 'admin';
-        } else if (context === 'setup') {
-            $scope.nav = 'setup';
-        } else if (context === 'site-admin') {
-            $scope.nav = 'superadmin';
-        } else {
-            // this covers 'org', 'auth', and 'unknown' contexts
-            $scope.nav = 'main';
+        switch(context) {
+            case "site-admin": $scope.nav = 'superadmin'; break;
+            case "setup":      $scope.nav = 'setup'; break;
+            case "org-admin":  $scope.nav = 'admin'; break;
+            default:           $scope.nav = 'main';
         }
     }
 
