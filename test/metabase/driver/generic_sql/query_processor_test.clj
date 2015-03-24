@@ -66,7 +66,7 @@
 ;; TODO - try this with an integer field. (Should the average of an integer field be a float or an int?)
 (expect {:status :completed,
          :row_count 1,
-         :data {:rows [[35.745891999999984]]
+         :data {:rows [[35.50589199999998]]
                 :columns ["avg"]
                 :cols [{:base_type "FloatField"
                         ;; TODO - this should not be a latitude column
@@ -86,7 +86,7 @@
 ;; ## "STDDEV" AGGREGATION
 (expect {:status :completed
          :row_count 1
-         :data {:rows [[2.2851266195132554]]
+         :data {:rows [[3.43467255295115]]
                 :columns ["stddev"]
                 :cols [{:base_type "FloatField"
                         ;; TODO - this should not be a latitude column
@@ -108,7 +108,7 @@
 (expect {:status :completed,
          :row_count 10,
          :data
-         {:rows [[1 4 3 -118.374 34.0646 "Red Medicine"]
+         {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
                  [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
                  [3 11 2 -118.428 34.0406 "The Apple Pan"]
                  [4 29 2 -118.465 33.9997 "Wurstküche"]
@@ -297,7 +297,7 @@
 (expect
     {:status :completed,
      :row_count 4,
-     :data {:rows [[1 4 3 -118.374 34.0646 "Red Medicine"]
+     :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
                    [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
                    [3 11 2 -118.428 34.0406 "The Apple Pan"]
                    [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
@@ -317,6 +317,27 @@
 ;; *  NOT_NULL
 ;; *  NULL
 
+;; ### FILTER -- "INSIDE"
+;; TODO - add "NEAR"
+(expect
+  {:status :completed,
+   :row_count 1,
+   :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
+          :columns @venues-columns
+          :cols @venues-cols}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :venues)
+                            :filter ["INSIDE"
+                                     (field->id :venues :latitude)
+                                     (field->id :venues :longitude)
+                                     10.0649
+                                     -165.379
+                                     10.0641
+                                     -165.371]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
 
 ;; ## "BREAKOUT"
 ;; ### "BREAKOUT" - SINGLE COLUMN

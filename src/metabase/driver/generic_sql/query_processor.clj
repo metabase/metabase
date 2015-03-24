@@ -134,18 +134,25 @@
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
 
     (filter-subclause->predicate [\">\" 1413 1]) -> {:field_name [> 1]} "
-  [[_ field-id :as subclause]]
-  {(field-id->kw field-id)
-   (match subclause
-     [">"  _ value]        ['>    value]
-     ["<"  _ value]        ['<    value]
-     [">=" _ value]        ['>=   value]
-     ["<=" _ value]        ['<=   value]
-     ["="  _ value]        ['=    value]
-     ["!=" _ value]        ['not= value]
-     ["NOT_NULL" _]        ['not= nil]
-     ["IS_NULL" _]         ['=    nil]
-     ["BETWEEN" _ min max] ['between [min max]])})
+  [subclause]
+  (match subclause
+    ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max] (let [lat-kw (field-id->kw lat-field)
+                                                                         lon-kw (field-id->kw lon-field)]
+                                                                     `(~'and ~@[{lat-kw ['< lat-max]}
+                                                                                {lat-kw ['> lat-min]}
+                                                                                {lon-kw ['< lon-max]}
+                                                                                {lon-kw ['> lon-min]}]))
+    [_ field-id & _] {(field-id->kw field-id)
+                      (match subclause
+                        [">"  _ value]        ['>    value]
+                        ["<"  _ value]        ['<    value]
+                        [">=" _ value]        ['>=   value]
+                        ["<=" _ value]        ['<=   value]
+                        ["="  _ value]        ['=    value]
+                        ["!=" _ value]        ['not= value]
+                        ["NOT_NULL" _]        ['not= nil]
+                        ["IS_NULL" _]         ['=    nil]
+                        ["BETWEEN" _ min max] ['between [min max]])}))
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
