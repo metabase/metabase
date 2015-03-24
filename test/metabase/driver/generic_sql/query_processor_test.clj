@@ -5,6 +5,17 @@
             [metabase.test-data :refer [db-id table->id field->id]]
             metabase.test-setup))
 
+(def venues-columns
+  (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
+
+(def venues-cols
+  (delay [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
+          {:special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
+          {:special_type "category" :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
+          {:special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
+          {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
+          {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
+
 ;; ## "COUNT" AGGREGATION
 (expect {:status :completed
          :row_count 1
@@ -30,7 +41,7 @@
          :data {:rows [[203]]
                 :columns ["sum"]
                 :cols [{:base_type "IntegerField"
-                        :special_type nil
+                        :special_type "category"
                         :name "sum"
                         :id nil
                         :table_id nil
@@ -118,13 +129,8 @@
                  [8 11 2 -118.342 34.1015 "25°"]
                  [9 71 1 -118.301 34.1018 "Krua Siri"]
                  [10 20 2 -118.292 34.1046 "Fred 62"]],
-          :columns ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"],
-          :cols [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-                 {:special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-                 {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-                 {:special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-                 {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-                 {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
+          :columns @venues-columns
+          :cols @venues-cols}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
@@ -226,17 +232,6 @@
 
 ;; ## "FILTER" CLAUSE
 
-(def venues-columns
-  (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
-
-(def venues-cols
-  (delay [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-          {:special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-          {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-          {:special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-          {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-          {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
-
 ;; ### FILTER -- "AND", ">", ">="
 (expect {:status :completed,
          :row_count 5,
@@ -320,8 +315,8 @@
 ;; ### FILTER -- "INSIDE"
 ;; TODO - add "NEAR"
 (expect
-  {:status :completed,
-   :row_count 1,
+  {:status :completed
+   :row_count 1
    :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
           :columns @venues-columns
           :cols @venues-cols}}
