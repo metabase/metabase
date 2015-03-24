@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [compojure.core :refer [defroutes]]
+  (:require [clojure.data.json :as json]
+            [compojure.core :refer [defroutes]]
             [korma.core :refer :all :exclude [update]]
             [medley.core :refer :all]
             [metabase.api.common.internal :refer :all]
@@ -311,6 +312,11 @@
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
          (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
+
+(defannotation String->Dict [symb value :nillable]
+  (try (clojure.walk/keywordize-keys (json/read-str value))
+       (catch java.lang.Exception _
+         (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
 
 (defannotation Integer
   "Check that a param is an integer (this does *not* cast the param!)"

@@ -76,11 +76,10 @@
    lat-field String->Integer
    lon-field String->Integer
    lat-col-idx String->Integer
-   lon-col-idx String->Integer}
+   lon-col-idx String->Integer
+   query String->Dict}
   ;; TODO - tried to use `query String->Dict` above, but got errors with json parsing for some reason
-  (let [query-dict (clojure.walk/keywordize-keys (json/read-str (get-in request [:params :query])))
-        updated-query (assoc query-dict
-                             :query (query-with-inside-filter (:query query-dict) lat-field lon-field x y zoom))
+  (let [updated-query (assoc query :query (query-with-inside-filter (:query query) lat-field lon-field x y zoom))
         result (driver/dataset-query updated-query {:executed_by *current-user-id*
                                                     :synchronously true})
         lat-lon-points (extract-points result)]
