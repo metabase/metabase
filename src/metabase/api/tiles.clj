@@ -12,7 +12,7 @@
 (def pixel-per-lon-degree (float (/ tile-size 360.0)))
 (def pixel-per-lon-radian (float (/ tile-size (* 2 (java.lang.Math/PI)))))
 
-(defn- radians-to-degrees [rad]
+(defn- radians->degrees [rad]
   (float (/ rad (float (/ (java.lang.Math/PI) 180)))))
 
 (defn- tile-lat-lon
@@ -23,7 +23,7 @@
         corner-y (float (/ (* y tile-size) num-tiles))
         lon (float (/ (- corner-x pixel-origin) pixel-per-lon-degree))
         lat-radians (/ (- corner-y pixel-origin) (* pixel-per-lon-radian -1))
-        lat (radians-to-degrees (- (* 2 (java.lang.Math/atan (java.lang.Math/exp lat-radians)))
+        lat (radians->degrees (- (* 2 (java.lang.Math/atan (java.lang.Math/exp lat-radians)))
                                    (/ (java.lang.Math/PI) 2)))]
     {:lat lat
      :lon lon}))
