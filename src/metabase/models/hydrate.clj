@@ -1,7 +1,7 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
-  (:require [clojure.data.json :as json]
-            [clojure.walk :as walk]
+  (:require [clojure.walk :as walk]
+            [cheshire.core :as cheshire]
             [metabase.db :refer [sel]]
             [metabase.util :as u]))
 
@@ -25,13 +25,14 @@
 (defn- read-json-str-or-clob
   "If STR is a JDBC Clob, convert to a String. Then call `json/read-str`."
   [str]
-  (when-let [str (if-not (= (type str) org.h2.jdbc.JdbcClob) str
-                         (u/jdbc-clob->str str))]
-    (json/read-str str)))
+  (some-> (if-not (= (type str) org.h2.jdbc.JdbcClob) str
+                  (u/jdbc-clob->str str))
+          cheshire/parse-string))
 
 (defn realize-json
   "Deserialize JSON strings keyed by JSON-KEYS.
    RESULT may either be a single result or a sequence of results. "
+  {:arglists '([result-or-results & ks])}
   [result & [first-key & rest-keys]]
   (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result) ;  map ourself recursively if RESULT is a sequence
       (let [result (cond-> result

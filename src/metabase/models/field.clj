@@ -100,4 +100,5 @@
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
   (cascade-delete ForeignKey (where (or (= :origin_id id)
-                                        (= :destination_id id)))))
+                                        (= :destination_id id))))
+  (cascade-delete 'metabase.models.field-values/FieldValues :field_id id))
