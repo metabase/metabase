@@ -54,19 +54,6 @@
   "Return a korma connection to DATABASE."
   (db-dispatch-fn "connection"))
 
-(defn- field-dispatch-fn
-  "Dispatch function that keys of of `(:engine @(:db field))`."
-  [{:keys [db]}]
-  ((db-dispatch-fn "metadata") @db))
-
-(defmulti field-count
-  "Return number of rows for FIELD."
-  field-dispatch-fn)
-
-(defmulti field-distinct-count
-  "Return number of distinct rows for FIELD."
-  field-dispatch-fn)
-
 (defmulti sync-database
   "Update the metadata for ALL `Tables` within a given DATABASE, creating new `Tables` if they don't already exist.
   (This is executed in parallel.)"
