@@ -134,30 +134,25 @@
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
 
     (filter-subclause->predicate [\">\" 1413 1]) -> {:field_name [> 1]} "
-  [[_ field-id :as subclause]]
-  (if-not (> (count subclause) 4)
-    ;; most filter clauses have 4 or fewer args and only 1 field-id, so handle those here
-    {(field-id->kw field-id)
-     (match subclause
-       [">"  _ value]        ['>    value]
-       ["<"  _ value]        ['<    value]
-       [">=" _ value]        ['>=   value]
-       ["<=" _ value]        ['<=   value]
-       ["="  _ value]        ['=    value]
-       ["!=" _ value]        ['not= value]
-       ["NOT_NULL" _]        ['not= nil]
-       ["IS_NULL" _]         ['=    nil]
-       ["BETWEEN" _ min max] ['between [min max]])}
-    ;; for the more obscure filtering cases we have another approach
-    (let [[operation lat-field-id lon-field-id lat-max lon-min lat-min lon-max] subclause
-          lat-kw (field-id->kw lat-field-id)
-          lon-kw (field-id->kw lon-field-id)]
-      (case (keyword operation)
-        :INSIDE `(~'and
-                   {~lat-kw [~'< ~lat-max]}
-                   {~lat-kw [~'> ~lat-min]}
-                   {~lon-kw [~'< ~lon-max]}
-                   {~lon-kw [~'> ~lon-min]})))))
+  [subclause]
+  (match subclause
+    ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max] (let [lat-kw (field-id->kw lat-field)
+                                                                         lon-kw (field-id->kw lon-field)]
+                                                                     `(~'and ~@[{lat-kw ['< lat-max]}
+                                                                                {lat-kw ['> lat-min]}
+                                                                                {lon-kw ['< lon-max]}
+                                                                                {lon-kw ['> lon-min]}]))
+    [_ field-id & _] {(field-id->kw field-id)
+                      (match subclause
+                        [">"  _ value]        ['>    value]
+                        ["<"  _ value]        ['<    value]
+                        [">=" _ value]        ['>=   value]
+                        ["<=" _ value]        ['<=   value]
+                        ["="  _ value]        ['=    value]
+                        ["!=" _ value]        ['not= value]
+                        ["NOT_NULL" _]        ['not= nil]
+                        ["IS_NULL" _]         ['=    nil]
+                        ["BETWEEN" _ min max] ['between [min max]])}))
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
