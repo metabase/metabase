@@ -4,7 +4,6 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.db.metadata-queries :as metadata]
-            [metabase.driver :as driver]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
                              [field-values :refer [FieldValues]]
