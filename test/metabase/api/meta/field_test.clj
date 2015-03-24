@@ -75,3 +75,7 @@
        :created_at $
        :base_type "FloatField"})
   ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
+
+;; ## GET /api/meta/field/:id/values
+
+;; ## POST /api/meta/field/:id/value_map_update

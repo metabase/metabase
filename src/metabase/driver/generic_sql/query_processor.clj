@@ -84,17 +84,17 @@
 ;;     ["distinct" 1412]
 (defmethod apply-form :aggregation [[_ value]]
   (match value
-    ["rows"]  nil                                  ; don't need to do anything special for `rows` - `select` selects all rows by default
-    ["count"] `(aggregate (~'count :*) :count)     ; TODO - implement other types of aggregation (?)
-    [_ _]     (let [[ag-type field-id] value       ; valid values to `korma.core/aggregate`: count, sum, avg, min, max, first, last
-                    field (field-id->kw field-id)]
-                (match (keyword ag-type)
-                       :avg      `(aggregate (~'avg ~field) :avg)
-                       :distinct `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
-                       :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
-                       :sum      `(aggregate (~'sum ~field) :sum)
-                       :cum_sum  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
-                                   (group ~field)])))) ; cumulative sum happens in post-processing (see below)
+    ["rows"]           nil ; don't need to do anything special for `rows` - `select` selects all rows by default
+    ["count"]          `(aggregate (~'count :*) :count)
+    [ag-type field-id] (let [field (field-id->kw field-id)]
+                         (match ag-type
+                           "avg"      `(aggregate (~'avg ~field) :avg)
+                           "count"    `(aggregate (~'count ~field) :count)
+                           "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
+                           "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
+                           "sum"      `(aggregate (~'sum ~field) :sum)
+                           "cum_sum"  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
+                                        (group ~field)])))) ; cumulative sum happens in post-processing (see below)
 
 ;; ### `:breakout`
 ;; ex.

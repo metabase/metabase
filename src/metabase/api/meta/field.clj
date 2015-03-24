@@ -3,8 +3,8 @@
             [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.db.metadata-queries :as metadata]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.metadata :as driver-metadata] ; NOCOMMIT THIS SHOULDN'T LIVE HERE
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
                              [field-values :refer [FieldValues]]
@@ -39,8 +39,8 @@
 (defendpoint GET "/:id/summary" [id]
   (let-404 [field (sel :one Field :id id)]
     (read-check field)
-    [[:count (driver/field-count field)]
-     [:distincts (driver/field-distinct-count field)]]))
+    [[:count     (metadata/field-count field)]
+     [:distincts (metadata/field-distinct-count field)]]))
 
 
 (defendpoint GET "/:id/foreignkeys" [id]
@@ -66,7 +66,7 @@
   [{:keys [id] :as field} human-readable-values]
   (ins FieldValues
     :field_id id
-    :values (driver-metadata/field-distinct-values field)
+    :values (metadata/field-distinct-values field)
     :human_readable_values human-readable-values))
 
 
