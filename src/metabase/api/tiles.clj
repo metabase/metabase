@@ -13,7 +13,7 @@
 (def pixel-per-lon-radian (float (/ tile-size (* 2 java.lang.Math/PI))))
 
 (defn- radians->degrees [rad]
-  (float (/ rad (float (/ java.lang.Math/PI 180)))))
+  (/ rad (float (/ java.lang.Math/PI 180))))
 
 (defn- tile-lat-lon
   "Get the Latitude & Longitude of the upper left corner of a given tile"
