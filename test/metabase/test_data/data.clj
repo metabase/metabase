@@ -108,7 +108,7 @@
 
 ;; [name lat lon price category_id]
 (defonce ^:private venues
-  [["Red Medicine" 34.0646 -118.374 3 4]
+  [["Red Medicine" 10.0646 -165.374 3 4]
    ["Stout Burgers & Beers" 34.0996 -118.329 2 11]
    ["The Apple Pan" 34.0406 -118.428 2 11]
    ["Wurstküche" 33.9997 -118.465 2 29]
