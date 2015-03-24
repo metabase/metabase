@@ -46,8 +46,9 @@
    port Required}
   (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
     (cond
-      (not (u/host-up? host)) (response-invalid "Host not reachable")
-      (not (u/host-port-up? host port)) (response-invalid "Invalid port")
+      (not (u/host-port-up? host port)) 
+        (cond (not (u/host-up? host)) (response-invalid "Host not reachable")
+              :else (response-invalid "Invalid port"))
       :else {:valid true})))
 
 (defendpoint GET "/:id" [id]
