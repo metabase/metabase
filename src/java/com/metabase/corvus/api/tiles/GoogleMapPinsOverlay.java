@@ -63,7 +63,7 @@ public class GoogleMapPinsOverlay {
                         mapPixel.getY() % TILE_SIZE);
 
                 // now draw a "pin" at the given tile pixel location
-                g.fillOval(tilePixel.getX(), tilePixel.getY(), 3, 3);
+                g.fillOval(tilePixel.getX(), tilePixel.getY(), 5, 5);
             }
         } catch (Throwable t) {
             t.printStackTrace();
