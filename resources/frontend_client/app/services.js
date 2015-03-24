@@ -19,7 +19,8 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 currentUserPromise: null,
                 currentUser: null,
                 currentOrgSlug: null,
-                currentOrg: null
+                currentOrg: null,
+                appContext: 'unknown'
             },
 
             init: function() {
@@ -125,6 +126,32 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             },
 
             routeChanged: function(event) {
+                // establish our application context based on the route (URI)
+                // valid app contexts are: 'setup', 'auth', 'org', 'org-admin', 'site-admin', 'other', or 'unknown'
+                var routeContext;
+                if ($location.path().indexOf('/auth/') === 0) {
+                    routeContext = 'auth';
+                } else if ($location.path().indexOf('/setup/') === 0) {
+                    routeContext = 'setup';
+                } else if ($location.path().indexOf('/superadmin/') === 0) {
+                    routeContext = 'site-admin';
+                } else if ($routeParams.orgSlug) {
+                    // couple of options when within an org
+                    if ($location.path().indexOf('/'+$routeParams.orgSlug+'/admin/') === 0) {
+                        routeContext = 'org-admin';
+                    } else {
+                        routeContext = 'org';
+                    }
+                } else {
+                    routeContext = 'other';
+                }
+
+                // if the context of the app has changed due to this route change then send out an event
+                if (service.model.appContext !== routeContext) {
+                    service.model.appContext = routeContext;
+                    $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
+                }
+
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
                 console.log('routeChanged - ' + $location.path());
