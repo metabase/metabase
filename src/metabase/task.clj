@@ -118,14 +118,14 @@
 
    This is the number of milliseconds until the top of the next hour; e.g., if the test runner is started
    with `(start-task-runner!)` at 8:23 PM, this function will return the number of milliseconds until 9:00 PM,
-   which will be first time we'd want
+   which will be first time we'd want to run the `hourly-task-hook` functions.
 
    (This is provided here so the unit tests can replace this fn so we can test the scheduling mechanism.)"
   []
   (* 1000 60 (minutes-until-next-hour)))
 
 (defn- run-hourly-tasks
-  "Run the `hourly-tasks-hook` in parallel, then sleep for an hour."
+  "Sleep until the top of the next hour, then run the `hourly-tasks-hook` in parallel."
   []
   ;; Sleep first, that way we're not trying to run a ton of tasks as soon as Metabase spins up
   (Thread/sleep (hourly-task-delay))
