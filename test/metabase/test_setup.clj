@@ -5,6 +5,7 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
+                      [task :as task]
                       [test-data :refer :all])))
 
 (declare clear-test-db)
@@ -29,13 +30,16 @@
   ;; this causes the test data to be loaded
   @test-db
   ;; startup test web server
-  (core/start-jetty))
+  (core/start-jetty)
+  ;; start the task runner
+  (task/start-task-runner!))
 
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
+  (task/stop-task-runner!)
   (core/stop-jetty))
 
 
