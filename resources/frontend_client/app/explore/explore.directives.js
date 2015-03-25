@@ -262,7 +262,7 @@ ExploreDirectives.directive('cvDataGrid', ['Metabase', 'TableSegment', 'CorvusCo
             }
 
             if (coldef.special_type === 'fk' && coldef.target) {
-                return '/explore/table/' + coldef.target.table.id + '/' + encodeURIComponent(value);
+                return '/explore/table/' + coldef.target.table_id + '/' + encodeURIComponent(value);
             }
 
             return null;
