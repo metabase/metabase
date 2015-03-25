@@ -124,7 +124,6 @@
   []
   (* 1000 60 (minutes-until-next-hour)))
 
-;; TODO: Does it matter whether we run at the top of each hour or just once per hour?
 (defn- run-hourly-tasks
   "Run the `hourly-tasks-hook` in parallel, then sleep for an hour."
   []
@@ -161,8 +160,3 @@
     (log/info "Stopping task runner...")
     (future-cancel @task-runner)
     (reset! task-runner nil)))
-
-;; Now start up the task runner
-
-
-;; TODO -
