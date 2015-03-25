@@ -98,19 +98,40 @@
   "Tasks to run nightly at midnight (according to the system calendar).
    Functions will be passed no arguments.")
 
-(def ^:private hourly-task-delay
-  "Number of milliseconds to wait before running hourly tasks a second time around.
-   (Provided here so the unit tests can replace this value so we can actually test the scheduling mechanism)."
-  (* 1000 60 60))
+(defn- hour
+  "Current hour (0 - 23) according to the system calendar."
+  []
+  (.get (Calendar/getInstance) Calendar/HOUR))
+
+(defn- minute
+  "Current minute (0 - 59) according to the system calendar."
+  []
+  (.get (Calendar/getInstance) Calendar/MINUTE))
+
+(defn- minutes-until-next-hour
+  "Number of minutes (1 - 60) until the top of the *next* hour."
+  []
+  (- 60 (minute)))
+
+(defn- hourly-task-delay
+  "Number of milliseconds to wait before running hourly tasks the next time around.
+
+   This is the number of milliseconds until the top of the next hour; e.g., if the test runner is started
+   with `(start-task-runner!)` at 8:23 PM, this function will return the number of milliseconds until 9:00 PM,
+   which will be first time we'd want
+
+   (This is provided here so the unit tests can replace this fn so we can test the scheduling mechanism.)"
+  []
+  (* 1000 60 (minutes-until-next-hour)))
 
 ;; TODO: Does it matter whether we run at the top of each hour or just once per hour?
 (defn- run-hourly-tasks
   "Run the `hourly-tasks-hook` in parallel, then sleep for an hour."
   []
   ;; Sleep first, that way we're not trying to run a ton of tasks as soon as Metabase spins up
-  (Thread/sleep hourly-task-delay)
+  (Thread/sleep (hourly-task-delay))
   (log/info "Running hourly tasks...")
-  (run-hook #'hourly-tasks-hook :parallel (.get (Calendar/getInstance) Calendar/HOUR))
+  (run-hook #'hourly-tasks-hook :parallel (hour))
   (recur))
 
 (defn- run-nightly-tasks
