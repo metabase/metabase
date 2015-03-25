@@ -123,8 +123,8 @@ CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($s
 }]);
 
 
-CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', function($scope, $routeParams, $location) {
-    $scope.nav = 'main';
+CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'AppState', function($scope, $routeParams, $location, AppState) {
+
     $scope.activeClass = 'is--selected';
 
     $scope.isActive = function (location) {
@@ -132,15 +132,19 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', func
         return active;
     }
 
-    $scope.$on('$routeChangeSuccess', function () {
-        if($routeParams.orgSlug && $location.path().indexOf('admin') > 0) {
-            $scope.nav = 'admin';
-        } else if ($location.path().indexOf('setup') > 0) {
-            $scope.nav = 'setup';
-        } else if ($location.path().indexOf('superadmin') > 0) {
-            $scope.nav = 'superadmin';
-        } else {
-            $scope.nav = 'main';
+    var setNavContext = function(context) {
+        switch(context) {
+            case "site-admin": $scope.nav = 'superadmin'; break;
+            case "setup":      $scope.nav = 'setup'; break;
+            case "org-admin":  $scope.nav = 'admin'; break;
+            default:           $scope.nav = 'main';
         }
+    }
+
+    $scope.$on('appstate:context-changed', function (event, newAppContext) {
+        setNavContext(newAppContext);
     });
+
+    // initialize our state from the current AppState model, which we expect to have resolved already
+    setNavContext(AppState.model.appContext);
 }]);

@@ -197,3 +197,18 @@
                            (ns-resolve orig-namespace orig-fn-name))]
     (fn [& args]
       (apply @resolved-fn args))))
+
+(defmacro deref->
+  "Threads OBJ through FORMS, calling `deref` after each.
+   Now you can write:
+
+    (deref-> (sel :one Field :id 12) :table :db :organization)
+
+   Instead of:
+
+    @(:organization @(:db @(:table (sel :one Field :id 12))))"
+  {:arglists '([obj & forms])}
+  [obj & forms]
+  `(-> ~obj
+       ~@(interpose 'deref forms)
+       deref))

@@ -5,6 +5,17 @@
             [metabase.test-data :refer [db-id table->id field->id]]
             metabase.test-setup))
 
+(def venues-columns
+  (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
+
+(def venues-cols
+  (delay [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
+          {:extra_info {:target_table_id (table->id :categories)} :special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
+          {:extra_info {} :special_type "category", :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
+          {:extra_info {} :special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
+          {:extra_info {} :special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
+          {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
+
 ;; ## "COUNT" AGGREGATION
 (expect {:status :completed
          :row_count 1
@@ -30,7 +41,7 @@
          :data {:rows [[203]]
                 :columns ["sum"]
                 :cols [{:base_type "IntegerField"
-                        :special_type nil
+                        :special_type "category"
                         :name "sum"
                         :id nil
                         :table_id nil
@@ -66,7 +77,7 @@
 ;; TODO - try this with an integer field. (Should the average of an integer field be a float or an int?)
 (expect {:status :completed,
          :row_count 1,
-         :data {:rows [[35.745891999999984]]
+         :data {:rows [[35.50589199999998]]
                 :columns ["avg"]
                 :cols [{:base_type "FloatField"
                         ;; TODO - this should not be a latitude column
@@ -86,7 +97,7 @@
 ;; ## "STDDEV" AGGREGATION
 (expect {:status :completed
          :row_count 1
-         :data {:rows [[2.2851266195132554]]
+         :data {:rows [[3.43467255295115]]
                 :columns ["stddev"]
                 :cols [{:base_type "FloatField"
                         ;; TODO - this should not be a latitude column
@@ -108,7 +119,7 @@
 (expect {:status :completed,
          :row_count 10,
          :data
-         {:rows [[1 4 3 -118.374 34.0646 "Red Medicine"]
+         {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
                  [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
                  [3 11 2 -118.428 34.0406 "The Apple Pan"]
                  [4 29 2 -118.465 33.9997 "Wurstküche"]
@@ -117,14 +128,9 @@
                  [7 44 2 -118.305 34.0689 "Don Day Korean Restaurant"]
                  [8 11 2 -118.342 34.1015 "25°"]
                  [9 71 1 -118.301 34.1018 "Krua Siri"]
-                 [10 20 2 -118.292 34.1046 "Fred 62"]],
-          :columns ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"],
-          :cols [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-                 {:extra_info {:target_table_id (table->id :categories)} :special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-                 {:extra_info {} :special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-                 {:extra_info {} :special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-                 {:extra_info {} :special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-                 {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
+                 [10 20 2 -118.292 34.1046 "Fred 62"]]
+          :columns @venues-columns
+          :cols @venues-cols}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
@@ -226,16 +232,6 @@
 
 ;; ## "FILTER" CLAUSE
 
-(def venues-columns
-  (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
-
-(def venues-cols
-  (delay [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-          {:extra_info {:target_table_id (table->id :categories)} :special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-          {:extra_info {} :special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-          {:extra_info {} :special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-          {:extra_info {} :special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-          {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
 
 ;; ### FILTER -- "AND", ">", ">="
 (expect {:status :completed,
@@ -297,7 +293,7 @@
 (expect
     {:status :completed,
      :row_count 4,
-     :data {:rows [[1 4 3 -118.374 34.0646 "Red Medicine"]
+     :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
                    [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
                    [3 11 2 -118.428 34.0406 "The Apple Pan"]
                    [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
@@ -317,6 +313,27 @@
 ;; *  NOT_NULL
 ;; *  NULL
 
+;; ### FILTER -- "INSIDE"
+;; TODO - add "NEAR"
+(expect
+  {:status :completed
+   :row_count 1
+   :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
+          :columns @venues-columns
+          :cols @venues-cols}}
+  (process-and-run {:type :query
+                    :database @db-id
+                    :query {:source_table (table->id :venues)
+                            :filter ["INSIDE"
+                                     (field->id :venues :latitude)
+                                     (field->id :venues :longitude)
+                                     10.0649
+                                     -165.379
+                                     10.0641
+                                     -165.371]
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
 
 ;; ## "BREAKOUT"
 ;; ### "BREAKOUT" - SINGLE COLUMN
