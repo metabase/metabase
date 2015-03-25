@@ -1,7 +1,7 @@
 (ns metabase.driver.generic-sql.query-processor.annotate
   "Functions related to annotating results returned by the Query Processor."
   (:require [metabase.db :refer :all]
-            [metabase.models.field :refer [Field]]))
+            [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare get-column-names
          get-column-info
@@ -60,8 +60,11 @@
         column-names (map uncastify column-names)
         columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
                           :table_id table-id :name [in (set column-names)])
-                     (map (fn [{:keys [name] :as column}]                                          ; build map of column-name -> column
-                            {name (select-keys column [:id :table_id :name :description :base_type :special_type])}))
+                     (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
+                            {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
+                                      (assoc :extra_info (if-let [fk-table (field->fk-table column)]
+                                                           {:target_table_id (:id fk-table)}
+                                                           {})))}))
                      (into {}))]
     (->> column-names
          (map (fn [column-name]
