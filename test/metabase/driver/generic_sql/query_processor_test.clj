@@ -119,12 +119,12 @@
                  [9 71 1 -118.301 34.1018 "Krua Siri"]
                  [10 20 2 -118.292 34.1046 "Fred 62"]],
           :columns ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"],
-          :cols [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-                 {:special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-                 {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-                 {:special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-                 {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-                 {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
+          :cols [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
+                 {:extra_info {:target_table_id (table->id :categories)} :special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
+                 {:extra_info {} :special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
+                 {:extra_info {} :special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
+                 {:extra_info {} :special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
+                 {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
@@ -146,8 +146,8 @@
                        [4 "Asian"]
                        [5 "BBQ"]]
                 :columns ["ID", "NAME"]
-                :cols [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
-                       {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
+                :cols [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
+                       {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
   (process-and-run {:type :query
                     :database @db-id
                     :query {:source_table (table->id :categories)
@@ -165,8 +165,8 @@
                        [9 "Breakfast / Brunch"]
                        [10 "Brewery"]]
                 :columns ["ID", "NAME"]
-                :cols [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
-                       {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
+                :cols [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :categories), :id (field->id :categories :id)}
+                       {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :categories), :id (field->id :categories :name)}]}}
   (process-and-run {:type :query
                     :database @db-id
                     :query {:source_table (table->id :categories)
@@ -190,8 +190,8 @@
                        ["Krua Siri" 9]
                        ["Fred 62" 10]],
                 :columns ["NAME" "ID"],
-                :cols [{:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}
-                       {:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}]}}
+                :cols [{:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}
+                       {:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}]}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :venues)
@@ -209,9 +209,9 @@
          :row_count 10,
          :data {:rows [[1 12 375] [1 9 139] [1 1 72] [2 15 129] [2 12 471] [2 11 325] [2 9 590] [2 9 833] [2 8 380] [2 5 719]],
                 :columns ["VENUE_ID" "USER_ID" "ID"],
-                :cols [{:special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
-                       {:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :checkins), :id (field->id :checkins :id)}]}}
+                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:extra_info {:target_table_id (table->id :users)} :special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :checkins), :id (field->id :checkins :id)}]}}
         (process-and-run {:type :query
                           :database @db-id
                           :query {:source_table (table->id :checkins)
@@ -230,12 +230,12 @@
   (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))
 
 (def venues-cols
-  (delay [{:special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
-          {:special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
-          {:special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
-          {:special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
-          {:special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
-          {:special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
+  (delay [{:extra_info {} :special_type "id", :base_type "BigIntegerField", :description nil, :name "ID", :table_id (table->id :venues), :id (field->id :venues :id)}
+          {:extra_info {:target_table_id (table->id :categories)} :special_type "fk", :base_type "IntegerField", :description nil, :name "CATEGORY_ID", :table_id (table->id :venues), :id (field->id :venues :category_id)}
+          {:extra_info {} :special_type nil, :base_type "IntegerField", :description nil, :name "PRICE", :table_id (table->id :venues), :id (field->id :venues :price)}
+          {:extra_info {} :special_type "longitude", :base_type "FloatField", :description nil, :name "LONGITUDE", :table_id (table->id :venues), :id (field->id :venues :longitude)}
+          {:extra_info {} :special_type "latitude", :base_type "FloatField", :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
+          {:extra_info {} :special_type nil, :base_type "TextField", :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
 
 ;; ### FILTER -- "AND", ">", ">="
 (expect {:status :completed,
@@ -324,7 +324,7 @@
          :row_count 15,
          :data {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
                 :columns ["USER_ID" "count"],
-                :cols [{:special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins) :id (field->id :checkins :user_id)}
+                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins) :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database @db-id
@@ -341,8 +341,8 @@
          :row_count 10,
          :data {:rows [[1 1 1] [5 1 1] [7 1 1] [10 1 1] [13 1 1] [16 1 1] [26 1 1] [31 1 1] [35 1 1] [36 1 1]],
                 :columns ["VENUE_ID" "USER_ID" "count"],
-                :cols [{:special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:extra_info {:target_table_id (table->id :users)} :special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database @db-id
@@ -358,8 +358,8 @@
          :row_count 10,
          :data {:rows [[2 15 1] [3 15 1] [7 15 1] [14 15 1] [16 15 1] [18 15 1] [22 15 1] [23 15 2] [24 15 1] [27 15 1]],
                 :columns ["VENUE_ID" "USER_ID" "count"],
-                :cols [{:special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type "fk", :base_type "IntegerField", :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                       {:extra_info {:target_table_id (table->id :users)} :special_type "fk", :base_type "IntegerField", :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
                        {:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database @db-id
@@ -393,7 +393,7 @@
          :row_count 15
          :data {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
                 :columns ["ID"]
-                :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
+                :cols [{:extra_info {} :special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
   (process-and-run {:type :query
                     :database @db-id
                     :query {:limit nil
@@ -407,8 +407,8 @@
          :row_count 15
          :data {:rows [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120]
                 :columns ["ID" "CAST(LAST_LOGIN AS DATE)"]
-                :cols [{:special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
-                       {:special_type nil, :base_type "DateTimeField", :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}}
+                :cols [{:extra_info {} :special_type "id", :base_type "IntegerField", :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
+                       {:extra_info {} :special_type nil, :base_type "DateTimeField", :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}}
   (-> (process-and-run {:type :query
                         :database @db-id
                         :query {:limit nil
