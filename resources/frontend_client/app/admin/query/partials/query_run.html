@@ -1,5 +1,10 @@
 <section class="wrapper">
-    <h2 class="py2">Run Query</h2>
+    <div class="py2 clearfix">
+        <div class="float-right">
+            <a class="Button Button--primary" cv-org-href="/admin/query/">Saved Queries</a>
+        </div>
+        <h2>SQL Query</h2>
+    </div>
     <form novalidate>
         <input type="hidden" name="q" value="{{queryResultData.uuid}}" ng-if="queryResultData"/>
 
