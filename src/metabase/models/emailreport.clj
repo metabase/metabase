@@ -56,6 +56,20 @@
 (defentity EmailReport
   (table :report_emailreport))
 
+(def execution-details-fields [EmailReport
+                               :id
+                               :organization_id
+                               :creator_id
+                               :name
+                               :description
+                               :mode
+                               :public_perms
+                               :version
+                               :dataset_query
+                               :schedule
+                               :created_at
+                               :updated_at
+                               :email_addresses])
 
 (defmethod pre-insert EmailReport [_ {:keys [dataset_query schedule] :as report}]
   (let [defaults {:public_perms perms-none
