@@ -86,8 +86,7 @@
   [query {:keys [executed_by synchronously saved_query]
           :or {synchronously true}
           :as caller-options}]
-  {:pre [(integer? executed_by)
-         (map? saved_query)]}
+  {:pre [(integer? executed_by)]}
   (let [options (merge {:cache_result false} caller-options)
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          :executor_id executed_by

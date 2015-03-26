@@ -181,8 +181,7 @@
          results    (map (fn [{dest-obj dest-key :as result}]   ; if there are realized delays for `dest-key`
                            (if (and (delay? dest-obj)          ; in any of the objects replace delay with its value
                                     (realized? dest-obj))
-                             (do (println "HERE!" @dest-obj)
-                                 (assoc result dest-key @dest-obj))
+                             (assoc result dest-key @dest-obj)
                              result))
                          results)
          ids        (->> results
