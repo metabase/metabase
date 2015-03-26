@@ -13,6 +13,7 @@
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
+                          [tiles :as tiles]
                           [user :as user])
             (metabase.api.meta [dataset :as dataset]
                                [db :as db]
@@ -45,6 +46,7 @@
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)
+  (context "/tiles"        [] (+auth tiles/routes))
   (context "/user"         [] (+auth user/routes))
   (route/not-found (fn [{:keys [request-method uri]}]
                         {:status 404

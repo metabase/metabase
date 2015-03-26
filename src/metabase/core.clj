@@ -10,6 +10,7 @@
             [metabase.models.user :refer [User]]
             [metabase.routes :as routes]
             [metabase.setup :as setup]
+            [metabase.task :as task]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -61,9 +62,13 @@
                      setup-url
                      "\n\n"))))
 
+  ;; Now start the task runner
+  (task/start-task-runner!)
+
   (log/info "Metabase Initialization COMPLETE")
   true)
 
+;; TODO - uh, when do we *stop* the task runner ?
 
 ;; ## Jetty (Web) Server
 

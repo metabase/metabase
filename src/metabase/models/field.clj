@@ -3,6 +3,7 @@
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [database :refer [Database]]
+                             [hydrate :refer [hydrate]]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
@@ -70,13 +71,30 @@
                            :field
                            :origin}))
 
-(defmethod post-select Field [_ {:keys [id special_type table_id] :as field}]
+(defn field->fk-field
+  "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
+
+   Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
+  [{:keys [id special_type] :as field}]
+  (when (= "fk" special_type)
+    (let [dest-id (:destination_id (sel :one :fields [ForeignKey :destination_id] :origin_id id))]
+      (sel :one Field :id dest-id))))
+
+(defn field->fk-table
+  "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Table`.
+   This is a simple convenience for calling `field->fk-field` then hydrating :table
+
+   Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
+  [field]
+  (-> (field->fk-field field)
+      (hydrate :table)
+      (:table)))
+
+(defmethod post-select Field [_ {:keys [table_id] :as field}]
   (u/assoc* field
             :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
             :db        (delay @(:db @(:table <>)))
-            :target    (delay (when (= "fk" special_type)
-                                   (let [dest-id (:destination_id (sel :one :fields [ForeignKey :destination_id] :origin_id id))]
-                                     (sel :one Field :id dest-id))))
+            :target    (delay (field->fk-field field))
             :can_read  (delay @(:can_read @(:table <>)))
             :can_write (delay @(:can_write @(:table <>)))))
 
@@ -100,4 +118,5 @@
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
   (cascade-delete ForeignKey (where (or (= :origin_id id)
-                                        (= :destination_id id)))))
+                                        (= :destination_id id))))
+  (cascade-delete 'metabase.models.field-values/FieldValues :field_id id))
