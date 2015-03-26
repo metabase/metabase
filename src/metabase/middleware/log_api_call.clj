@@ -56,8 +56,10 @@
   (and (>= (count uri) 4)
        (= (.substring uri 0 4) "/api")))
 
-(defn- log-request [{:keys [uri request-method body]}]
-  (log/debug (color/blue (format "%s %s " (.toUpperCase (name request-method)) uri)
+(defn- log-request [{:keys [uri request-method body query-string]}]
+  (log/debug (color/blue (format "%s %s " (.toUpperCase (name request-method)) (str uri
+                                                                                    (when-not (empty? query-string)
+                                                                                      (str "?" query-string))))
                          (when (or (string? body) (coll? body))
                            (str "\n" (with-out-str (pprint (scrub-sensitive-fields body))))))))
 
