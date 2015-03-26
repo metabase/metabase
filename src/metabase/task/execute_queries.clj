@@ -4,8 +4,9 @@
                       [task :refer :all])
             [metabase.models.query :refer [Query]]))
 
-(defn execute-queries []
+(defn execute-queries
   "Execute all `Querys` in the database, one-at-a-time."
+  []
   (->> (sel :many Query)
        (map (fn [{database-id :database_id
                  creator-id :creator_id
