@@ -4,10 +4,10 @@
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-              [hydrate :refer [realize-json]]
-              [user :refer [User]]
-              [database :refer [Database]]
-              [query :refer [Query]])
+                             [hydrate :refer [realize-json]]
+                             [user :refer [User]]
+                             [database :refer [Database]]
+                             [query :refer [Query]])
             [metabase.util :refer :all]))
 
 
@@ -49,14 +49,13 @@
   (assoc query-execution :json_query (if (string? json_query) json_query
                                         (json/write-str json_query))))
 
-(defmethod post-select QueryExecution [_ {:keys [query_id] :as query-execution}]
+(defmethod post-select QueryExecution [_ {:keys [query_id result_rows] :as query-execution}]
   (-> query-execution
-    (assoc :row_count (get query-execution :result_rows 0))  ;; sadly we have 2 ways to reference the row count :(
-    (realize-json :json_query)
-    (realize-json :result_data)
-    (assoc* :query (delay
-                     (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
-                     (sel :one Query :id query_id)))))
+    (realize-json :json_query :result_data)
+    (assoc* :row_count (or result_rows 0) ; sadly we have 2 ways to reference the row count :(
+            :query (delay
+                    (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
+                    (sel :one Query :id query_id)))))
 
 
 (defn build-response

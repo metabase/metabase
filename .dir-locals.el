@@ -7,6 +7,7 @@
                               (catch-api-exceptions 0)
                               (check 1)
                               (context 2)
+                              (execute-query 1)
                               (expect 1)
                               (expect-eval-actual-first 1)
                               (expect-let 1)
