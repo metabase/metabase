@@ -76,7 +76,8 @@
                             (into {}))
         matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
                              (filter (fn [^String table-name]
-                                       (= prefix (.substring table-name 0 prefix-len))))
+                                       (and (>= (count table-name) prefix-len)
+                                            (= prefix (.substring table-name 0 prefix-len)))))
                              (map (fn [table-name]                                                               ; return them in the format [table_name "Table"]
                                     [table-name "Table"])))
         fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
