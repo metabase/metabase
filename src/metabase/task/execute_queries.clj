@@ -1,8 +1,8 @@
 (ns metabase.task.execute-queries
-  (require (metabase [db :refer :all]
-                     [driver :as driver]
-                     [task :refer :all])
-           [metabase.models.query :refer [Query]]))
+  (:require (metabase [db :refer :all]
+                      [driver :as driver]
+                      [task :refer :all])
+            [metabase.models.query :refer [Query]]))
 
 (defn execute-queries []
   "Execute all `Querys` in the database, one-at-a-time."
