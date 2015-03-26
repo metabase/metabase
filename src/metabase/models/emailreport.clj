@@ -50,6 +50,12 @@
    {:id "evening" :name "Evening" :realhour 20},
    {:id "midnight" :name "Midnight" :realhour 0}])
 
+(defn time-of-day->realhour
+  "Time-of-day to realhour"
+  [time-of-day]
+  (-> (filter (fn [tod] (= time-of-day (:id tod))) times-of-day)
+      (first)
+      (:realhour)))
 
 ;; ## Entity
 
