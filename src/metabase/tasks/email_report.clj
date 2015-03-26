@@ -27,18 +27,20 @@
                                                  (where {:id [in (subselect EmailReportRecipients
                                                                    (fields :user_id)
                                                                    (where {:emailreport_id report-id}))]}))))
-        query-execution (ins EmailReportExecutions
-                          :report_id report-id
-                          :organization_id (:organization_id email-report)
-                          :details email-report
-                          :status "running"
-                          :created_at (u/new-sql-timestamp)
-                          :started_at (u/new-sql-timestamp)
-                          :error ""
-                          :sent_email "")]
-    (log/debug (format "Starting EmailReport Execution: %d" (:id query-execution)))
-    (execute query-execution)
-    (log/debug (format "Finished EmailReport Execution: %d" (:id query-execution)))))
+        report-execution (ins EmailReportExecutions
+                           :report_id report-id
+                           :organization_id (:organization_id email-report)
+                           :details email-report
+                           :status "running"
+                           :created_at (u/new-sql-timestamp)
+                           :started_at (u/new-sql-timestamp)
+                           :error ""
+                           :sent_email "")]
+    (log/debug (format "Starting EmailReport Execution: %d" (:id report-execution)))
+    (execute report-execution)
+    (log/debug (format "Finished EmailReport Execution: %d" (:id report-execution)))
+    ;; return the id of the report-execution
+    (:id report-execution)))
 
 
 (defn- execute
