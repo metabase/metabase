@@ -1,18 +1,62 @@
 (ns metabase.tasks.email-report
   "Tasks related to running `EmailReports`."
   (:require [clojure.tools.logging :as log]
+            [clj-time.core :as time]
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.email.messages :refer [send-email-report]]
-            (metabase.models [emailreport :refer [EmailReport execution-details-fields]]
+            (metabase.models [emailreport :refer [EmailReport execution-details-fields mode->id time-of-day->realhour]]
                              [emailreport-executions :refer [EmailReportExecutions]]
                              [emailreport-recipients :refer [EmailReportRecipients]]
                              [hydrate :refer :all])
+            [metabase.task :as task]
             [metabase.util :as u]))
 
+;; order is important here!!  these indexes match the values from clj-times (day-of-week) function
+;; 0 = Sunday, 6 = Saturday
+(def days-of-week ["sun"
+                   "mon"
+                   "tue"
+                   "wed"
+                   "thu"
+                   "fri"
+                   "sat"])
 
-(declare execute report-fail report-complete)
+(declare execute-all-reports
+         execute-if-scheduled
+         execute-and-send
+         execute
+         report-fail
+         report-complete)
+
+(defn execute-all-reports
+  "Execute and Send all `EmailReports` in the system.
+   This function checks the schedule on all :active email reports and runs them if appropriate."
+  []
+  (log/debug "Executing ALL EmailReports")
+  (->> (sel :many :fields [EmailReport :id :schedule] :mode (mode->id :active))
+       (map execute-if-scheduled)))
+
+;; this adds our funtion below onto the hourly task runner
+;; TODO - maybe we should put these in a unified place for all scheduled tasks?
+(task/add-hook! #'task/hourly-tasks-hook execute-all-reports)
+
+(defn- execute-if-scheduled
+  "Test if a given report is scheduled to run at the current time and if so execute it."
+  [{{:keys [days_of_week time_of_day timezone]} :schedule id :id}]
+  (log/debug "Processing: " id days_of_week time_of_day timezone)
+  (let [now (time/to-time-zone (time/now) (time/time-zone-for-id (or timezone "UTC"))) ; NOTE this is in LOCAL timezone
+        curr-hour (time/hour now)
+        curr-weekday (get days-of-week (time/day-of-week now))]
+    ;; report schedule should look like:
+    ;;   `{:days_of_week {:mon true :tue true :wed false ...} :time_of_day "morning" :timezone "US/Pacific"}`
+    (when (and (get days_of_week (keyword curr-weekday))   ; scheduled weekdays include curr-weekday
+               (= curr-hour (time-of-day->realhour time_of_day)))  ; scheduled hour matches curr-hour
+      (try
+        (execute-and-send id)
+        (catch Throwable t
+          (log/error (format "Error executing email report: %d" id) t))))))
 
 (defn execute-and-send
   "Execute and Send an `EmailReport`.  This includes running the data query behind the report, formatting the email,
