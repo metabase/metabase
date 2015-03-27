@@ -23,10 +23,10 @@
 ;; ## REALIZE-JSON
 
 (defn- read-json-str-or-clob
-  "If STR is a JDBC Clob, convert to a String. Then call `json/read-str`."
-  [str]
-  (some-> (if-not (= (type str) org.h2.jdbc.JdbcClob) str
-                  (u/jdbc-clob->str str))
+  "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
+  [json-str]
+  (some-> (if-not (= (type json-str) org.h2.jdbc.JdbcClob) json-str
+                  (u/jdbc-clob->str json-str))
           cheshire/parse-string))
 
 (defn realize-json

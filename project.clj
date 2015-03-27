@@ -38,7 +38,7 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.5.5"]                                     ; lightweight lib of useful functions
                  [org.liquibase/liquibase-core "3.3.2"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.10"]
+                 [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [ring/ring-jetty-adapter "1.3.2"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
@@ -56,13 +56,14 @@
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test]}                       ; korma macros generate some formats with if statements that are always logically true or false
-  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.8"]   ; REPL <3
+  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]  ; REPL <3
                                   [expectations "2.1.0"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.2.0"]]
                    :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]     ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
                              [lein-ancient "0.6.5"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+                             [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.0.0"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]]               ; generate documentation with 'lein marg'
