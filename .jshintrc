@@ -1,7 +1,8 @@
 {
   "globalstrict": true,
   "globals": {
-    "angular": false,
-    "console": false
+      "angular": false,
+      "console": false,
+      "Set": false
   }
 }
