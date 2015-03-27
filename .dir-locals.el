@@ -17,6 +17,7 @@
                               (execute-query 1)
                               (expect 1)
                               (expect-eval-actual-first 1)
+                              (expect-expansion 0)
                               (expect-let 1)
                               (ins 1)
                               (let-400 1)

@@ -377,7 +377,8 @@
    -  executes BODY inside a `try-catch` block that handles `ApiExceptions`
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
-      will automatically include the function in the generated `defroutes` form."
+      will automatically include the function in the generated `defroutes` form.
+   -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args annotations-map? & body])}
   [method route & more]
   {:pre [(or (string? route)
