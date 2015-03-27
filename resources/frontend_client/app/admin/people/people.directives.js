@@ -49,7 +49,7 @@ AdminPeopleDirectives.directive('cvAdminCreateUser', ['$modal', function ($modal
             });
         };
 
-        element.click(openCreateUserAdminModal);
+        element.bind('click', openCreateUserAdminModal);
 
     }
 

@@ -108,6 +108,11 @@
   []
   (time/unparse (time/formatters :date-time) (coerce/from-long (System/currentTimeMillis))))
 
+(defn now-with-format
+  "format the current time using a custom format."
+  [format]
+  (time/unparse (time/formatter format) (coerce/from-long (System/currentTimeMillis))))
+
 (defn jdbc-clob->str
   "Convert a `JdbcClob` to a `String`."
   (^String

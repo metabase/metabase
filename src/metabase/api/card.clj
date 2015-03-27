@@ -48,7 +48,7 @@
          (hydrate :can_read :can_write :organization)))
 
 (defendpoint PUT "/:id" [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name         NonEmptyString, public_perms PublicPerms}
+  {name NonEmptyString, public_perms PublicPerms}
   (write-check Card id)
   (check-500 (upd-non-nil-keys Card id
                                :dataset_query dataset_query
@@ -67,10 +67,14 @@
   {:favorite (boolean (some->> *current-user-id*
                                (exists? CardFavorite :card_id id :owner_id)))})
 
-(defendpoint POST "/:card-id/favorite" [card-id]
+(defendpoint POST "/:card-id/favorite"
+  "Favorite a Card."
+  [card-id]
   (ins CardFavorite :card_id card-id :owner_id *current-user-id*))
 
-(defendpoint DELETE "/:card-id/favorite" [card-id]
+(defendpoint DELETE "/:card-id/favorite"
+  "Unfavorite a Card."
+  [card-id]
   (let-404 [{:keys [id] :as card-favorite} (sel :one CardFavorite :card_id card-id :owner_id *current-user-id*)]
     (del CardFavorite :id id)))
 

@@ -44,11 +44,11 @@
 (defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
   {host Required
    port Required}
-  ((let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
+  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
     (cond
       (u/host-port-up? host port) {:valid true}
       (u/host-up? host)           (response-invalid "Invalid port")
-      :else                       (response-invalid "Host not reachable")))))
+      :else                       (response-invalid "Host not reachable"))))
 
 (defendpoint GET "/:id" [id]
   (->404 (sel :one Database :id id)
@@ -76,7 +76,8 @@
                             (into {}))
         matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
                              (filter (fn [^String table-name]
-                                       (= prefix (.substring table-name 0 prefix-len))))
+                                       (and (>= (count table-name) prefix-len)
+                                            (= prefix (.substring table-name 0 prefix-len)))))
                              (map (fn [table-name]                                                               ; return them in the format [table_name "Table"]
                                     [table-name "Table"])))
         fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX

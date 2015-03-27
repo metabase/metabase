@@ -93,8 +93,10 @@ Will give you a list of all tables + fields in the Metabase DB.
 To quickly get your dev environment set up, use the `bootstrap` function to create a new User and Organization.
 Open a REPL in Emacs or with `lein repl` and enter the following:
 
-    (use 'metabase.bootstrap)
-    (bootstrap)
+```clojure
+(use 'metabase.bootstrap)
+(bootstrap)
+```
 
 You'll be walked through the steps to get started.
 
@@ -102,15 +104,31 @@ You'll be walked through the steps to get started.
 
 You can make API calls from the REPL using `metabase.http-client`:
 
-    (use 'metabase.http-client)
-    (defn cl [& args]
-      (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
-          clojure.pprint/pprint))
-    (cl :get "user/current")
-    ;; -> {:email "crowbetro@metabase.com",
-    ;;     :first_name "Crowbero",
-    ;;     :last_login #inst "2015-03-13T22:55:05.390000000-00:00",
-    ;;     ...}
+```clojure
+(use 'metabase.http-client)
+(defn cl [& args]
+  (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
+      clojure.pprint/pprint))
+(cl :get "user/current")
+;; -> {:email "crowbetro@metabase.com",
+;;     :first_name "Crowbero",
+;;     :last_login #inst "2015-03-13T22:55:05.390000000-00:00",
+;;     ...}
+```
+
+## Developing with Emacs
+
+`.dir-locals.el` contains some Emacs Lisp that tells `clojure-mode` how to indent Metabase macros and which arguments are docstrings. Whenever this file is updated,
+Emacs will ask you if the code is safe to load. You can answer `!` to save it as safe.
+
+By default, Emacs will insert this code as a customization at the bottom of your `init.el`.
+You'll probably want to tell Emacs to store customizations in a different file. Add the following to your `init.el`:
+
+```emacs-lisp
+(setq custom-file (concat user-emacs-directory ".custom.el")) ; tell Customize to save customizations to ~/.emacs.d/.custom.el
+(ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
+  (load-file custom-file))
+```
 
 ## Checking for Out-of-Date Dependencies
 

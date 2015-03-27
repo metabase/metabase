@@ -15,6 +15,7 @@
                 <a class="link" cv-org-href="/admin/people/{{perm.user.id}}/modify">{{perm.user.common_name}}</a>
             </h4>
             <span class="User-perms inline-block" ng-if="perm.admin">Admin</span>
+            <span class="User-perms inline-block" ng-if="!perm.admin">Member</span>
         </li>
     </ul>
 </div>

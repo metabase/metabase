@@ -47,10 +47,17 @@
   {:pre [(integer? (:database query)) ; double check that the query being passed is valid
          (map? (:query query))
          (= (name (:type query)) "query")]}
-  (->> (process query)
-       eval
-       (post-process query)
-       (annotate/annotate query)))
+  (try
+    (->> (process query)
+         eval
+         (post-process query)
+         (annotate/annotate query))
+    (catch java.sql.SQLException e
+      {:status :failed
+       :error (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
+                       (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
+                       second)
+                  (.getMessage e))})))                       ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
 
 
 (defn process-and-run

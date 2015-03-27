@@ -165,6 +165,12 @@
                    (assoc result k @v)))) ; don't barf on nil; just no-op
        results))
 
+(defn- already-hydrated?
+  "Is `(obj k)` a non-nil value that is not a delay?"
+  [obj k]
+  (let [{v k} obj]
+    (and v (not (delay? v)))))
+
 (defn- batched-hydrate
   "Hydrate keyword DEST-KEY across all RESULTS by aggregating corresponding source keys (`DEST-KEY_id`),
    doing a single `sel`, and mapping corresponding objects to DEST-KEY."
@@ -172,15 +178,24 @@
    {:pre [(keyword? dest-key)]}
    (let [entity     (@hydration-key->entity dest-key)
          source-key (k->k_id dest-key)
-         ids        (set (map source-key results))
+         results    (map (fn [{dest-obj dest-key :as result}]   ; if there are realized delays for `dest-key`
+                           (if (and (delay? dest-obj)          ; in any of the objects replace delay with its value
+                                    (realized? dest-obj))
+                             (assoc result dest-key @dest-obj)
+                             result))
+                         results)
+         ids        (->> results
+                         (filter (u/rpartial (complement already-hydrated?) dest-key)) ; filter out results that are already hydrated
+                         (map source-key)
+                         set)
          objs       (->> (sel :many entity :id [in ids])
                          (map (fn [obj]
                                 {(:id obj) obj}))
                          (into {}))]
-     (map (fn [result]
-            (let [source-id (result source-key)
-                  obj       (objs source-id)]
-              (assoc result dest-key obj)))
+     (map (fn [{source-id source-key :as result}]
+            (if (already-hydrated? result dest-key) result
+                (let [obj (objs source-id)]
+                  (assoc result dest-key obj))))
           results))))
 
 ;; #### Possible Improvements

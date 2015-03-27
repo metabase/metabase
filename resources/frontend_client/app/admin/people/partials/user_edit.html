@@ -4,7 +4,7 @@
     </div>
 
     <div class="bg-white bordered rounded shadowed">
-        <form name="editUserAdmin" novalidate ng-submit="submit()">
+        <form name="editUserAdmin" novalidate ng-submit="submit()" cv-form="uer">
             <div class="p4">
                 <div class="py2">
                     <label class="block mb1" for="first_name">First name:</label>
@@ -19,10 +19,10 @@
                     <input class="input block" ng-model="user.email" type="email" name="email" placeholder="Email address" required>
                 </div>
                 <div class="py2">
-                    <a class="Button" ng-if="user.is_superuser" ng-click="revokeAdmin()">Revoke Admin</a>
-                    <a class="Button" ng-if="!user.is_superuser" ng-click="grantAdmin()">Grant Admin</a>
-                    <a class="Button" cv-org-href="/admin/people/{{perm.user.id}}/change_password" >Change password</a>
-                    <a class="Button" ng-click="removeMember(perm.user.id)" delete-confirm>Delete user</a>
+                    <a class="Button" ng-if="perm.admin" ng-click="revokeAdmin()">Revoke Admin</a>
+                    <a class="Button" ng-if="!perm.admin" ng-click="grantAdmin()">Grant Admin</a>
+                    <a class="Button" cv-org-href="/admin/people/{{user.id}}/change_password" >Change Password</a>
+                    <a class="Button" ng-click="removeMember(user.id)" delete-confirm>Delete User</a>
                 </div>
             </div>
             <div ng-cloak>

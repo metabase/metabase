@@ -12,6 +12,7 @@
                              [emailreport-executions :refer [EmailReportExecutions]]
                              [org :refer [Org]]
                              [user :refer [users-for-org]])
+            [metabase.task.email-report :as report]
             [metabase.util :as util]))
 
 (defannotation EmailReportFilterOption [symb value :nillable]
@@ -100,9 +101,10 @@
   (del EmailReport :id id))
 
 
-;; TODO
-;; (defendpoint POST "/:id" [id]
-;;   {:TODO "TODO"})
+(defendpoint POST "/:id" [id]
+  (read-check EmailReport id)
+  (->> (report/execute-and-send id)
+       (sel :one EmailReportExecutions :id)))
 
 
 (defendpoint GET "/:id/executions" [id]

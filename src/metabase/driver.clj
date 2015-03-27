@@ -69,22 +69,25 @@
 (defn dataset-query
   "Process and run a json based dataset query and return results.
 
-   Takes 2 arguments:
-   1.  the json query as a dictionary
-   2.  query execution options specified in a dictionary
+  Takes 2 arguments:
 
-   Depending on the database specified in the query this function will delegate to a driver specific implementation.
-   For the purposes of tracking we record each call to this function as a QueryExecution in the database.
+  1.  the json query as a dictionary
+  2.  query execution options specified in a dictionary
 
-   Possible caller-options include:
-     :executed_by [int]               (user_id of caller)
-     :saved_query [{}]                (dictionary representing Query model)
-     :synchronously [true|false]      (default true)
-     :cache_result [true|false]       (default false)
-  "
+  Depending on the database specified in the query this function will delegate to a driver specific implementation.
+  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
+
+  Possible caller-options include:
+
+    :executed_by [int]               (user_id of caller)
+    :saved_query [{}]                (dictionary representing Query model)
+    :synchronously [true|false]      (default true)
+    :cache_result [true|false]       (default false)"
+  {:arglists '([query caller-options])}
   [query {:keys [executed_by synchronously saved_query]
           :or {synchronously true}
           :as caller-options}]
+  {:pre [(integer? executed_by)]}
   (let [options (merge {:cache_result false} caller-options)
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          :executor_id executed_by
@@ -113,16 +116,17 @@
         ;; this ensures the currently saved query-execution is what gets returned
         query-execution))))
 
-
 (defn -dataset-query
   "Execute a query and record the outcome.  Entire execution is wrapped in a try-catch to prevent Exceptions
-   from leaking outside the function call."
+  from leaking outside the function call."
   [query options query-execution]
   (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
     (try
       (let [query-result (execute-query query)]
-        (when-not (contains? query-result :status) (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result)) (throw (Exception. ^String (get query-result :error "general error"))))
+        (when-not (contains? query-result :status)
+          (throw (Exception. "invalid response from database driver. no :status provided")))
+        (when (= :failed (:status query-result))
+          (throw (Exception. ^String (get query-result :error "general error"))))
         (query-complete query-execution query-result (:cache_result options)))
       (catch Exception ex
         (log/warn ex)
@@ -131,21 +135,22 @@
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"
-  [query-execution msg]
-  (let [updates {:status "failed"
-                 :error msg
+  [query-execution error-message]
+  (let [updates {:status :failed
+                 :error error-message
                  :finished_at (util/new-sql-timestamp)
                  :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
-      (dissoc :start_time_millis)
-      (merge updates)
-      (save-query-execution)
-      ;; this is just for the response for clien
-      (assoc :row_count 0
-             :data {:rows []
-                    :cols []
-                    :columns []}))))
+        (dissoc :start_time_millis)
+        (merge updates)
+        (save-query-execution)
+        ;; this is just for the response for clien
+        (assoc :error error-message
+               :row_count 0
+               :data {:rows []
+                      :cols []
+                      :columns []}))))
 
 (defn query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
