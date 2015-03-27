@@ -49,7 +49,8 @@
 
 (defn create-field-values
   "Create `FieldValues` for a `Field`."
-  {:arglists '([field human-readable-values?])}
+  {:arglists '([field]
+               [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
          (:table field)]}                                              ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
@@ -61,7 +62,8 @@
 
 (defn create-field-values-if-needed
   "Create `FieldValues` for a `Field` if they don't already exist."
-  {:arglists '([field human-readable-values?])}
+  {:arglists '([field]
+               [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
          (:table field)]}
