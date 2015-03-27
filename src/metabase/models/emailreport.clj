@@ -35,6 +35,10 @@
    {:id (mode->id :disabled), :name (mode->name :disabled)}])
 
 (def days-of-week
+  "Simple `vector` of the days in the week used for reference and lookups.
+
+   NOTE: order is important here!!
+         these indexes match the values from clj-time `day-of-week` function (0 = Sunday, 6 = Saturday)"
   [{:id "sun" :name "Sun"},
    {:id "mon" :name "Mon"},
    {:id "tue" :name "Tue"},
@@ -50,12 +54,32 @@
    {:id "evening" :name "Evening" :realhour 20},
    {:id "midnight" :name "Midnight" :realhour 0}])
 
+(defn time-of-day->realhour
+  "Time-of-day to realhour"
+  [time-of-day]
+  (-> (filter (fn [tod] (= time-of-day (:id tod))) times-of-day)
+      (first)
+      (:realhour)))
 
 ;; ## Entity
 
 (defentity EmailReport
   (table :report_emailreport))
 
+(def execution-details-fields [EmailReport
+                               :id
+                               :organization_id
+                               :creator_id
+                               :name
+                               :description
+                               :mode
+                               :public_perms
+                               :version
+                               :dataset_query
+                               :schedule
+                               :created_at
+                               :updated_at
+                               :email_addresses])
 
 (defmethod pre-insert EmailReport [_ {:keys [dataset_query schedule] :as report}]
   (let [defaults {:public_perms perms-none

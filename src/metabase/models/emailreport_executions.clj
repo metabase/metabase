@@ -1,5 +1,5 @@
 (ns metabase.models.emailreport-executions
-  (:require [clojure.data.json :as json]
+  (:require [cheshire.core :as json]
             [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
@@ -21,3 +21,7 @@
     (util/assoc*
       :organization (delay
                       (sel :one Org :id organization_id)))))
+
+(defmethod pre-insert EmailReportExecutions [_ {:keys [details] :as execution}]
+  (assoc execution :details (if (string? details) details
+                                                  (json/encode details))))
