@@ -44,7 +44,7 @@
   A hook is simply an atom storing a set of functions that you can run at any time with `run-hook`."
   [hook-name & [docstr?]]
   {:arglists '([hook-name docstr?])}
-  `(defonce ~(vary-meta hook-name
+  `(defonce ~(vary-meta hook-name assoc
                         :doc docstr?
                         :type ::hook)
      (atom #{})))
