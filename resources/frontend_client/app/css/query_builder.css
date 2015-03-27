@@ -1,10 +1,15 @@
-html {
-    height: 100%;
+body {
+    min-height: 100vh;
+}
+/* this section should take up all the avaliable height it can */
+.QueryMain {
+    flex: 1;
 }
 
-body {
-    height: 100%;
-    background: #FBFCFD;
+.QueryContainer {
+    display: flex;
+    flex-direction: column;
+    min-height: 90vh;
 }
 
 .SearchBar:focus {
@@ -14,18 +19,6 @@ body {
 .SaveModal {
     background: #fff;
     border-radius: 4px;
-    position: absolute;
-    bottom: 0.5em;
-    right: 1.5em;
-    width: 400px;
-}
-
-.QueryBuilder .dc-chart {
-    padding: 2em;
-}
-
-.QueryBuilder .dc-chart .pie-slice {
-    font-size: 1em;
 }
 
 .QueryWrapper {
@@ -236,14 +229,6 @@ body {
     display: inline-block;
 }
 
-.ActionBar {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    padding: 1em;
-    z-index: 100;
-}
-
 .ActionBar .SettingsButtons {
     float: right;
 }
@@ -255,11 +240,6 @@ body {
 
 .FilterGroupWrapper .FilterGroup {
     margin-top: 1em;
-}
-
-.QueryPicker-group {
-    border-bottom: 1px solid #ddd;
-    background: #fff;
 }
 
 .QueryBar .Button {
@@ -314,16 +294,6 @@ body {
     padding-right: 3em;
 }
 
-.QueryTable td,
-.QueryTable th {
-    padding: 1em;
-}
-
-.QueryTable {
-    margin-top: 1em;
-    box-shadow: 0 1px 3px rgba(0,0,0, .12);
-}
-
 .Metric-sourceTable:after {
     content: '•';
     display: inline-block;
@@ -335,45 +305,6 @@ body {
     position: absolute;
     top: 12px;
     right: 14px;
-}
-
-/* breakpoints */
-
-@media screen and (min-width: 60em) {
-    .SelectionTitle {
-        padding: 0.75em 1.25em;
-    }
-}
-
-@media screen and (min-width: 120em) {
-    body {
-        font-size: 1em;
-    }
-    .Button,
-    .QueryBar .Button {
-        padding: 1em 2em;
-    }
-    .Table-wrapper {
-        margin-top: 3em;
-    }
-    .SelectionItems.open {
-        top: 3em;
-    }
-    .DimensionList .RemoveTrigger {
-        top: 15px;
-        right: 17px;
-    }
-
-    .QueryName {
-        margin-bottom: 1em;
-    }
-
-    .ActionBar {
-        padding: 1em 0;
-    }
-    .QueryBar .SelectionTitle {
-        padding: 1em 2em;
-    }
 }
 
 .FilterTrigger {
@@ -389,29 +320,16 @@ body {
     color: #fff;
 }
 
-
-
 .FilterTrigger .icon {
     display: flex;
-}
-
-.QueryHeader {
-    background: #fff;
-}
-
-.TypeControls {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    z-index: 100;
-    left: 0;
-    right: 0;
-    text-align: center;
-    margin: 1em 0;
 }
 
 .TypeControls .Button {
     display: inline-block;
     font-size: 0.85em;
     margin: 0 0.5em;
+}
+
+.VisualizationOptionList {
+    display: inline-block;
 }

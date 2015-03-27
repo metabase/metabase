@@ -11,7 +11,14 @@ var QueryHeader = React.createClass({
     render: function () {
         var name = this.props.name || "What would you like to know?";
         return (
-            <h1 className="QueryName">{name}</h1>
+            <div className="QueryHeader">
+                <div className="QueryWrapper">
+                    <div className="inline-block">
+                        <h1 className="QueryName">{name}</h1>
+                    </div>
+                    {this.props.children}
+                </div>
+            </div>
         )
     }
 });

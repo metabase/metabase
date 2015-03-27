@@ -99,7 +99,7 @@ var QueryBuilder = React.createClass({
             )
 
             filterHtml = (
-                <div className="clearfix">
+                <div className="clearfix inline-block">
                     <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.props.model.addFilter.bind(this.props.model)}>
                         <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                             <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
@@ -130,9 +130,9 @@ var QueryBuilder = React.createClass({
             );
             result = (
                 <QueryVisualization
+                    visualization={this.props.model.card.display}
                     card={this.props.model.card}
                     result={this.props.model.result}
-                    setDisplay={this.props.model.setDisplay.bind(this.props.model)}
                 />
             );
             download = (
@@ -143,56 +143,51 @@ var QueryBuilder = React.createClass({
 
 
         return (
-            <div className="full-height">
-                    <div className="QueryHeader">
-                        <div className="QueryWrapper">
-                            <div className="inline-block">
-                                <QueryHeader
-                                    name={this.props.model.card.name}
-                                    user={this.props.model.user}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className={queryPickerClasses}>
-                        <div>
-                            <div className="QueryWrapper">
-                                <div className="clearfix">
-                                    {runButton}
-                                    <QueryPicker
-                                        dbList={this.props.model.database_list}
-                                        setDatabase={this.props.model.setDatabase.bind(this.props.model)}
-                                        db={this.props.model.card.dataset_query.database}
-                                        options={this.props.model.selected_table_fields}
-                                        tables={this.props.model.table_list}
-                                        aggregationFieldList={this.props.model.aggregation_field_list}
-                                        query={this.props.model.card.dataset_query.query}
-                                        setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
-                                        setAggregation={this.props.model.setAggregation.bind(this.props.model)}
-                                        setAggregationTarget={this.props.model.setAggregationTarget.bind(this.props.model)}
-                                        addDimension={this.props.model.addDimension.bind(this.props.model)}
-                                        removeDimension={this.props.model.removeDimension.bind(this.props.model)}
-                                        updateDimension={this.props.model.updateDimension.bind(this.props.model)}
-                                        aggregationComplete={this.props.model.aggregationComplete.bind(this.props.model)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="QueryWrapper my2">
-                                {filterHtml}
-                            </div>
-                        </div>
-                    </div>
+            <div className="QueryContainer">
+                <QueryHeader
+                    name={this.props.model.card.name}
+                    user={this.props.model.user}
+                >
+                    {saver}
+                </QueryHeader>
 
-                    <div className="QueryWrapper mb4">
+                <div className={queryPickerClasses}>
+                    <div className="QueryWrapper">
+                        <div className="clearfix">
+                            {runButton}
+                            <QueryPicker
+                                dbList={this.props.model.database_list}
+                                setDatabase={this.props.model.setDatabase.bind(this.props.model)}
+                                db={this.props.model.card.dataset_query.database}
+                                options={this.props.model.selected_table_fields}
+                                tables={this.props.model.table_list}
+                                aggregationFieldList={this.props.model.aggregation_field_list}
+                                query={this.props.model.card.dataset_query.query}
+                                setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
+                                setAggregation={this.props.model.setAggregation.bind(this.props.model)}
+                                setAggregationTarget={this.props.model.setAggregationTarget.bind(this.props.model)}
+                                addDimension={this.props.model.addDimension.bind(this.props.model)}
+                                removeDimension={this.props.model.removeDimension.bind(this.props.model)}
+                                updateDimension={this.props.model.updateDimension.bind(this.props.model)}
+                                aggregationComplete={this.props.model.aggregationComplete.bind(this.props.model)}
+                            />
+                            {filterHtml}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="QueryMain">
+                    <div className="QueryWrapper">
                         {result}
                     </div>
+                </div>
 
-                    <div className="ActionBar">
-                        {saver}
-                        {download}
+                <div className="ActionBar">
+                    <div className="QueryWrapper">
+                        <VisualizationOptionList action={this.props.model.setDisplay.bind(this.props.model)} />
+                        <div></div>
                     </div>
+                </div>
             </div>
         )
     }
