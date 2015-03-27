@@ -126,7 +126,7 @@
             <div ng-show="canvas_focus == 'data'">
                 <div class="clearfix py1">
                     <div class="float-right">
-                        <a class="Button" ng-href="/api/meta/dataset/csv/?query={{getEncodedQuery(card.dataset_query)}}" target="_self" ng-if="cardData">Download Data</a>
+                        <a class="Button" ng-href="/api/meta/dataset/csv?query={{getEncodedQuery(card.dataset_query)}}" target="_self" ng-if="cardData">Download Data</a>
                     </div>
                     <h3>Results</h3>
                 </div>
