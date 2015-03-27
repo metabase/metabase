@@ -1,6 +1,10 @@
 ;; -*- comment-column: 60; -*-
 (ns metabase.task
-  (:require [clojure.tools.logging :as log]
+  "Function hooks; background task runner and related hooks.
+   Namespaces under `metabase.task.*` will be automatically loaded when the background task runner is started."
+  (:require clojure.java.classpath
+            [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             [metabase.util :as u])
   (:import java.util.Calendar))
 
@@ -98,6 +102,8 @@
   "Tasks to run nightly at midnight (according to the system calendar).
    Functions will be passed no arguments.")
 
+;; ## RUN-HOURLY-TASKS / RUN-NIGHTLY-TASKS
+
 (defn- hour
   "Current hour (0 - 23) according to the system calendar."
   []
@@ -143,13 +149,33 @@
     (run-hook #'nightly-tasks-hook :parallel)))
 (add-hook! #'hourly-tasks-hook run-nightly-tasks)
 
+
+;; ## COLLECT TASKS IN METABASE.TASK.* NAMESPACES
+
+(defn- find-and-load-tasks
+  "Search JARs + files in the classpath for Clojure namespaces that start with `metabase.task.`, then `require` them so tasks will be loaded as needed."
+  []
+  (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
+       (filter (fn [ns-symb]
+                 (re-find #"^metabase\.task\." (name ns-symb))))
+       set
+       (map (fn [task-ns]
+              (log/info "Loading tasks from namespace" task-ns "...")
+              (require task-ns)))
+       dorun))
+
+
+;; ## START/STOP TASK RUNNER
+
 (defonce ^:private task-runner
   (atom nil))
 
 (defn start-task-runner!
-  "Start a background thread that will run tasks on the `hourly-tasks-hook` and `nightly-tasks-hook` every hour / every night, respectively. "
+  "Start a background thread that will run tasks on the `hourly-tasks-hook` and `nightly-tasks-hook` every hour / every night, respectively.
+   This also loads all namespaces under `metabase.task.*`, so tasks can defined in them without needing to load them elsewhere."
   []
   (when-not @task-runner
+    (find-and-load-tasks)
     (log/info "Starting task runner...")
     (reset! task-runner (future (run-hourly-tasks)))))
 

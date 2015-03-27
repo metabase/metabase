@@ -1,6 +1,10 @@
 (ns metabase.models.hydrate-test
   (:require [expectations :refer :all]
-            [metabase.models.hydrate :refer :all]))
+            [medley.core :as m]
+            [metabase.models.hydrate :refer :all]
+            [metabase.test-data :refer :all]
+            metabase.test-setup
+            [metabase.test.util :refer :all]))
 
 (def d1 (delay 1))
 (def d2 (delay 2))
@@ -90,11 +94,11 @@
                :f))
 
 (expect [:atom nil :nil :atom]
-    (counts-of [{:h {:i d1}}
-                {}
-                {:h nil}
-                {:h {:i d3}}]
-               :h))
+  (counts-of [{:h {:i d1}}
+              {}
+              {:h nil}
+              {:h {:i d3}}]
+             :h))
 
 ;; ### counts-flatten
 (def counts-flatten (ns-resolve 'metabase.models.hydrate 'counts-flatten))
@@ -426,8 +430,40 @@
 (expect {:f [:a 100]}
   (hydrate {:f [:a 100]} :x))
 
+;;; ## BATCHED HYDRATION TESTS
 
-;;; TESTS FOR REALIZE-JSON
+;; Just double-check that batched hydration can hydrate fields with no delays
+(expect (match-$ (fetch-user :rasta)
+          {:email "rasta@metabase.com"
+           :first_name "Rasta"
+           :last_login $
+           :is_superuser false
+           :id $
+           :last_name "Toucan"
+           :date_joined $
+           :common_name "Rasta Toucan"})
+  (->> (hydrate {:user_id (user->id :rasta)} :user)
+       :user
+       (m/filter-vals #(not (or (fn? %) (delay? %))))))
+
+;; Check that batched hydration doesn't try to hydrate fields that already exist and are not delays
+(expect {:user_id (user->id :rasta)
+         :user "OK <3"}
+  (hydrate {:user_id (user->id :rasta)
+            :user "OK <3"}
+           :user))
+
+;; Check that batched hydration just re-uses values of delays that have been realized
+(expect {:user_id (user->id :rasta)
+         :user "OK <3"}
+  (let [user-delay (delay "OK <3")]
+    @user-delay
+    (hydrate {:user_id (user->id :rasta)
+              :user user-delay}
+             :user)))
+
+
+;;; ## TESTS FOR REALIZE-JSON
 
 ;; test a single result
 (def card

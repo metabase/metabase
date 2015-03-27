@@ -82,9 +82,11 @@
      :synchronously [true|false]      (default true)
      :cache_result [true|false]       (default false)
   "
+  {:arglists '([query caller-options])}
   [query {:keys [executed_by synchronously saved_query]
           :or {synchronously true}
           :as caller-options}]
+  {:pre [(integer? executed_by)]}
   (let [options (merge {:cache_result false} caller-options)
         query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          :executor_id executed_by
