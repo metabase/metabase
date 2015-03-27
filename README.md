@@ -12,7 +12,7 @@
 Install clojure + npm/bower requirements with
 
     lein deps
-    npm install
+    lein npm
 
 Build the application JS and CSS with
 
@@ -35,11 +35,13 @@ Then run the HTTP server with
 
 Check that the project can compile successfully with
 
-    lein check
+    lein uberjar
 
-Run the linter with
+Run the linters with
 
-    lein eastwood
+    lein eastwood                        # Clojure linters
+    lein bikeshed --max-line-length 240
+    ./lint_js.sh                         # JavaScript linter
 
 Run unit tests with
 
@@ -61,11 +63,11 @@ Available at http://metabase.github.io/metabase-init/.
 You can generate and view documentation with
 
     lein marg
-	open ./docs/uberdoc.html
+    open ./docs/uberdoc.html
 
 You can update the GitHub pages documentation using
 
-	make dox
+    make dox
 
 You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
 
@@ -81,6 +83,8 @@ To quickly get your dev environment set up, use the `bootstrap` function to crea
 Open a REPL in Emacs or with `lein repl` and enter the following:
 
 ```clojure
+(use 'metabase.db)
+(setup-db)
 (use 'metabase.bootstrap)
 (bootstrap)
 ```
