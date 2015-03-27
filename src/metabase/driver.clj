@@ -79,10 +79,10 @@
 
   Possible caller-options include:
 
-  :executed_by [int]               (user_id of caller)
-  :saved_query [{}]                (dictionary representing Query model)
-  :synchronously [true|false]      (default true)
-  :cache_result [true|false]       (default false)"
+    :executed_by [int]               (user_id of caller)
+    :saved_query [{}]                (dictionary representing Query model)
+    :synchronously [true|false]      (default true)
+    :cache_result [true|false]       (default false)"
   {:arglists '([query caller-options])}
   [query {:keys [executed_by synchronously saved_query]
           :or {synchronously true}
