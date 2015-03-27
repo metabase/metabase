@@ -6,13 +6,15 @@
             [metabase.driver :as driver]
             [metabase.util :as u]))
 
-(defendpoint POST "/" [:as {:keys [body]}]
+(defendpoint POST "/"
+  "Execute an MQL query and retrieve the results as JSON."
+  [:as {:keys [body]}]
   (let [{:keys [status] :as response} (driver/dataset-query body {:executed_by *current-user-id*})]
     {:status (if (= status :completed) 200 400)
      :body response}))
 
-(defendpoint GET "/csv/"
-  "Execute an MQL query and download the results as a CSV file."
+(defendpoint GET "/csv"
+  "Execute an MQL query and download the result data as a CSV file."
   [query]
   {query [Required String->Dict]}
   (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})]
