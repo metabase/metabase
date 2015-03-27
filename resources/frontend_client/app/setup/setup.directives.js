@@ -1,20 +1,22 @@
-var SetupDirectives = angular.module('corvus.setup.directives', [])
+'use strict';
 
-var setupPartialsDir = '/app/setup/partials'
+var SetupDirectives = angular.module('corvus.setup.directives', []);
+
+var setupPartialsDir = '/app/setup/partials';
 
 SetupDirectives
-    .directive('cvSetupHeader', function () {
+    .directive('cvSetupHeader', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_header.html',
             scope: {
                 text: '@'
             }
-        }
-    })
+        };
+    });
 
 SetupDirectives
-    .directive('cvConnectionList', function () {
+    .directive('cvConnectionList', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_connection_list.html',
@@ -22,11 +24,11 @@ SetupDirectives
                 connections: '=',
                 loading: '='
             }
-        }
-    })
+        };
+    });
 
 SetupDirectives
-    .directive('cvStepButton', function () {
+    .directive('cvStepButton', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_step_button.html',
@@ -35,7 +37,7 @@ SetupDirectives
                 text: '@'
             },
             compile: function(element, attrs) {
-                attrs.text = attrs.text || "Next"
+                attrs.text = attrs.text || "Next";
             }
-        }
-    })
+        };
+    });

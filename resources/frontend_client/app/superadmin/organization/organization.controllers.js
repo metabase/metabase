@@ -1,10 +1,13 @@
 'use strict';
 /*global _*/
 
-var OrganizationControllers = angular.module('superadmin.organization.controllers', ['corvus.services']);
+var OrganizationControllers = angular.module('superadmin.organization.controllers', ['corvus.services',
+    'superadmin.index.services'
+]);
 
-OrganizationControllers.controller('OrganizationListController', ['$scope', 'Organization',
-    function($scope, Organization) {
+OrganizationControllers.controller('OrganizationListController', ['$scope', 'Organization', 'SettingsAdminServices',
+
+    function($scope, Organization, SettingsAdminServices) {
         $scope.organizations = [];
 
         $scope.saveSetting = function(setting) {
@@ -29,9 +32,9 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
         };
 
         // initialize on load
-        Organization.list(function (orgs) {
+        Organization.list(function(orgs) {
             $scope.organizations = orgs;
-        }, function (error) {
+        }, function(error) {
             console.log("Error getting organizations: ", error);
         });
     }
@@ -42,26 +45,28 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
         $scope.organization = undefined;
 
         // initialize on load
-        if($routeParams.orgId) {
+        if ($routeParams.orgId) {
             // editing an existing organization
             Organization.get({
-                'orgId': $routeParams.orgId
-            },
-            function (org) {
-                $scope.organization = org;
-            }, function (error) {
-                console.log("Error getting organization: ", error);
-                // TODO - should be a 404 response
-            });
+                    'orgId': $routeParams.orgId
+                },
+                function(org) {
+                    $scope.organization = org;
+                },
+                function(error) {
+                    console.log("Error getting organization: ", error);
+                    // TODO - should be a 404 response
+                });
 
             // provide a relevant save() function
             $scope.save = function(organization) {
                 Organization.update(organization,
-                function (org) {
-                    $scope.organization = org;
-                }, function (error) {
-                    console.log(error);
-                });
+                    function(org) {
+                        $scope.organization = org;
+                    },
+                    function(error) {
+                        console.log(error);
+                    });
             };
         } else {
             // assume we are creating a new org
@@ -72,11 +77,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
                 // TODO - some simple validation checks
 
                 Organization.create(organization,
-                function (org) {
-                    $location.path('/superadmin/organization/'+org.id);
-                }, function (error) {
-                    console.log(error);
-                });
+                    function(org) {
+                        $location.path('/superadmin/organization/' + org.id);
+                    },
+                    function(error) {
+                        console.log(error);
+                    });
             };
         }
     }

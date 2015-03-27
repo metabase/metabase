@@ -23,3 +23,4 @@ profiles.clj
 /resources/frontend_client/app/bower_components
 /resources/frontend_client/app/dist/
 /node_modules/
+/.js_hint_output/
