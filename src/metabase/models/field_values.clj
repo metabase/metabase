@@ -47,6 +47,13 @@
 
 ;; ## `FieldValues` Helper Functions
 
+(defn field-should-have-field-values?
+  "Should this `Field` be backed by a corresponding `FieldValues` object?"
+  {:arglists '([field])}
+  [{:keys [base_type special_type]}]
+  (or (contains? #{:category :city :state :country} (keyword special_type))
+      (= (keyword base_type) :BooleanField)))
+
 (defn create-field-values
   "Create `FieldValues` for a `Field`."
   {:arglists '([field]
@@ -61,11 +68,13 @@
     :human_readable_values human-readable-values))
 
 (defn create-field-values-if-needed
-  "Create `FieldValues` for a `Field` if they don't already exist."
+  "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
+   Returns the existing or newly created `FieldValues` for `Field`."
   {:arglists '([field]
                [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
          (:table field)]}
-  (when-not (exists? FieldValues :field_id field-id)
-    (create-field-values field human-readable-values)))
+  (when (field-should-have-field-values? field)
+    (or (sel :one FieldValues :field_id field-id)
+        (create-field-values field human-readable-values))))

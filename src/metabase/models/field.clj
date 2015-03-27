@@ -3,7 +3,7 @@
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [database :refer [Database]]
-                             [field-values :refer [create-field-values-if-needed]]
+                             [field-values :refer [field-should-have-field-values? create-field-values-if-needed]]
                              [hydrate :refer [hydrate]]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -112,16 +112,23 @@
              :special_type (when special_type (name special_type))
              :field_type   (name field_type)))))
 
+(defmethod post-insert Field [_ field]
+  (when (field-should-have-field-values? field)
+    (future (create-field-values-if-needed field)))
+  field)
+
 (defmethod pre-update Field [_ {:keys [field_type special_type] :as field}]
   (cond-> (assoc field :updated_at (u/new-sql-timestamp))
     field_type   (assoc :field_type   (name field_type))
     special_type (assoc :special_type (name special_type))))
 
-(defmethod post-update Field [_ {:keys [special_type id] :as field}]
+(defmethod post-update Field [_ {:keys [id] :as field}]
   ;; When `Field.special_type` is set to `:category` asynchronously create a corresponding `FieldValues`
   ;; object if one doesn't already exist
-  (when (= special_type "category")
-    (future (create-field-values-if-needed (sel :one Field :id id)))))
+  (future
+    (let [field (sel :one Field :id id)]
+      (when (field-should-have-field-values? field)
+        (create-field-values-if-needed field)))))
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
   (cascade-delete ForeignKey (where (or (= :origin_id id)

@@ -290,17 +290,27 @@
 (defmethod pre-insert :default [_ obj]
   obj)   ; default impl returns object as is
 
+(defmulti post-insert
+  "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
+   A good place to do asynchronous tasks such as creating related objects.
+   Implementations should return the newly created object."
+  (fn [entity _] entity))
+
+;; Default implementation returns object as-is
+(defmethod post-insert :default [_ obj]
+  obj)
+
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
 
    Returns newly created object by calling `sel`."
   [entity & {:as kwargs}]
-  (let [vals (->> kwargs
-                  (pre-insert entity))]
-    (let [{:keys [id]} (-> (insert entity (values vals))
-                           (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
-      (sel :one entity :id id))))
+  (let [vals (pre-insert entity kwargs)
+        {:keys [id]} (-> (insert entity (values vals))
+                         (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
+    (->> (sel :one entity :id id)
+         (post-insert entity))))
 
 
 ;; ## EXISTS?

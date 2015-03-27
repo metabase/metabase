@@ -6,7 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values]]
+                             [field-values :refer [FieldValues create-field-values create-field-values-if-needed field-should-have-field-values?]]
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
@@ -61,20 +61,19 @@
 
 
 (defendpoint GET "/:id/values" [id]
-  (let-404 [{:keys [special_type] :as field} (sel :one Field :id id)]
+  (let-404 [field (sel :one Field :id id)]
     (read-check field)
-    (if-not (= special_type "category")
+    (if-not (field-should-have-field-values? field)
       {:values {} :human_readable_values {}}   ; only categories get to have values
-      (or (sel :one FieldValues :field_id id)
-          (create-field-values field nil)))))
+      (create-field-values-if-needed field))))
 
 
 (defendpoint POST "/:id/value_map_update" [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
-  (let-404 [{:keys [special_type]  :as field} (sel :one Field :id id)]
+  (let-404 [field (sel :one Field :id id)]
     (write-check field)
-    (check (= special_type "category")
-      [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'."])
+    (check (field-should-have-field-values? field)
+      [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
     (if-let [field-values-id (sel :one :id FieldValues :field_id id)]
       (check-500 (upd FieldValues field-values-id
                    :human_readable_values values_map))
