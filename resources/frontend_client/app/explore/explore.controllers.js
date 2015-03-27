@@ -123,6 +123,13 @@ ExploreControllers.controller('ExploreTableMetadata', ['$scope', '$routeParams',
 
 ExploreControllers.controller('ExploreEntityDetail', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
 
+    $scope.NUMERIC_FIELD_TYPES = [
+        "IntegerField",
+        "BigIntegerField",
+        "DecimalField",
+        "FloatField"
+    ];
+
     // $scope.table
     // $scope.entityKey
     // $scope.entity
@@ -137,34 +144,48 @@ ExploreControllers.controller('ExploreEntityDetail', ['$scope', '$routeParams', 
             $scope.table = table;
             $scope.entityKey = $routeParams.entityKey;
 
-            // query for entity
-            Metabase.dataset({
-                'database': table.db.id,
-                'type': "query",
-                'query': {
-                    'source_table': table.id,
-                    'filter': ["=", table.pk_field, $routeParams.entityKey],
-                    'aggregation': ['rows'],
-                    'breakout': [null],
-                    'limit': null
+            // we need to know the type of the PK Field so we can cast it if needed. Fetch the Field
+            Metabase.field_get({
+                'fieldId': $scope.table.pk_field
+            }, function(field) {
+                // if the PK field is a numeric type we need to convert the string value we got from $routeParams
+                if (_.contains($scope.NUMERIC_FIELD_TYPES, field.base_type)) {
+                    $scope.entityKey = Number($scope.entityKey);
                 }
-            }, function(data) {
-                $scope.entity = data;
-            }, function(error) {
-                console.log('error getting entity data', error);
-            });
 
-            // get fks
-            Metabase.table_fks({
-                'tableId': table.id
-            }, function(fks) {
-                $scope.fks = fks;
-            }, function(error) {
-                console.log('error getting fks for table', error);
+                // query for entity
+                Metabase.dataset({
+                    'database': table.db.id,
+                    'type': "query",
+                    'query': {
+                        'source_table': table.id,
+                        'filter': ["=", table.pk_field, $scope.entityKey],
+                        'aggregation': ['rows'],
+                        'breakout': [null],
+                        'limit': null
+                    }
+                }, function(data) {
+                    $scope.entity = data;
+                }, function(error) {
+                    console.log('error getting entity data', error);
+                });
+
+                // get fks
+                Metabase.table_fks({
+                    'tableId': table.id
+                }, function(fks) {
+                    $scope.fks = fks;
+                }, function(error) {
+                    console.log('error getting fks for table', error);
+                });
+            }, function(getFieldError) {
+                if (getFieldError.status === 404) {
+                    $location.path('/');
+                }
             });
-        }, function(error) {
-            console.log(error);
-            if (error.status == 404) {
+        }, function(getTableError) {
+            console.log(getTableError);
+            if (getTableError.status === 404) {
                 $location.path('/');
             }
         });
