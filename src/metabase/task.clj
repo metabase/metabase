@@ -44,10 +44,10 @@
   A hook is simply an atom storing a set of functions that you can run at any time with `run-hook`."
   [hook-name & [docstr?]]
   {:arglists '([hook-name docstr?])}
-  `(do (def ~hook-name
-            (atom #{}))
-       (alter-meta! #'~hook-name merge {:doc ~docstr?
-                                        :type ::hook})))
+  `(defonce ~(vary-meta hook-name assoc
+                        :doc docstr?
+                        :type ::hook)
+     (atom #{})))
 
 ;; TODO Should we require that F be a var so as to avoid duplicate lambdas being added ?
 (defn add-hook!
