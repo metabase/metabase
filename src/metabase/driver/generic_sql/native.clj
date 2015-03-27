@@ -47,6 +47,7 @@
                             columns first-row)}})
        (catch java.sql.SQLException e
          {:status :failed
-          :error (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]
-                      (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                      second)})))         ; so just return the part of the exception that is relevant
+          :error (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+                          (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
+                          second)             ; so just return the part of the exception that is relevant
+                     (.getMessage e))})))

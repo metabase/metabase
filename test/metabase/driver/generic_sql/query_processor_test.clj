@@ -436,3 +436,18 @@
       ;; Rows come back like `[value timestamp]` but it is hard to compare timestamps directly since the values that come back are casted
       ;; to Dates and the exact value depends on the locale of the machine running the tests. So just drop the timestamps from the results.
       (update-in [:data :rows] (partial map first))))
+
+
+;; # ERROR RESPONSES
+
+;; Check that we get an error response formatted the way we'd expect
+(expect
+    {:status :failed
+     :error "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".* FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?)"}
+  (process-and-run {:database @db-id
+                    :type :query
+                    :query {:source_table (table->id :checkins)
+                            :filter ["=" (field->id :venues :name) 1] ; wrong Field
+                            :aggregation ["rows"]
+                            :breakout [nil]
+                            :limit nil}}))
