@@ -1,10 +1,97 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
   (:require [clojure.tools.logging :as log]
+            [medley.core :as m]
+            [swiss.arrows :refer :all]
             [metabase.util :as u])
   (:import com.metabase.corvus.api.ApiException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
+
+;;; ## DOCUMENTATION GENERATION
+
+(defn- full-route-string
+  "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
+  [method route]
+  (let [route (if (vector? route) (first route) route)
+        ns-str (-<>> (.getName *ns*)                 ; 'metabase.api.card
+                     name                            ; "metabase.api.card"
+                     (clojure.string/split <> #"\.") ; ["metabase" "api" "card"]
+                     rest                            ; ["api" "card"]
+                     (interpose "/")                 ; ["api" "/" "card"]
+                     (apply str))]                   ; "api/card"
+    (format "%s /%s%s" (name method) ns-str route))) ; "GET /api/card:id"
+
+(defn- dox-for-annotation
+  "Look up the docstr for annotation."
+  [annotation]
+  {:pre [(symbol? annotation)]}
+  (let [annotation-name (name annotation)]
+    {annotation-name (->> (str "annotation:" annotation-name)
+                          symbol
+                          (ns-resolve *ns*)
+                          meta
+                          :doc)}))
+
+(defn- args-form-flatten
+  "A version of `flatten` that will actually flatten a form such as:
+
+    [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]"
+  [form]
+  (cond
+    (map? form) (args-form-flatten (mapcat (fn [[k v]]
+                                          [(args-form-flatten k) (args-form-flatten v)])
+                                        form))
+    (sequential? form) (mapcat args-form-flatten form)
+    :else       [form]))
+
+(defn- args-form-symbols
+  [form]
+  (->> (args-form-flatten form)
+       (filter symbol?)
+       (map #(vector % nil))
+       (into {})))
+
+(defn- get-annotation-dox
+  "Produce a map of `annotation -> documentation` for ANNOTATIONS, which may be either a symbol or sequence of symbols."
+  [annotations]
+  (->> annotations
+       (m/map-vals (fn [annotations]
+                     (if (sequential? annotations) annotations
+                         [annotations])))
+       (map (fn [[param annotations]]
+              {param (->> annotations
+                          (map dox-for-annotation)
+                          (into {}))}))
+       (into {})))
+
+(defn- format-route-dox
+  "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
+  [route-str docstr params-map]
+  (str (format "`%s`" route-str)
+       (when docstr
+         (str "\n\n" docstr))
+       (when params-map
+         (str "\n\n##### PARAMS:\n\n"
+              (->> params-map
+                   (map (fn [[param annotations-map]]
+                          (apply str (format "*  `%s`\n" (name param))
+                                 (map (fn [[annotation annotation-dox]]
+                                        (format "   *  *%s* %s\n"
+                                                (name annotation)
+                                                (or annotation-dox
+                                                    "*[undocumented annotation]*")))
+                                      annotations-map))))
+                   (apply str))))))
+
+(defn route-dox
+  "Generate a documentation string for a `defendpoint` route."
+  [method route docstr args annotations]
+  (format-route-dox (full-route-string method route)
+                    docstr
+                    (merge (args-form-symbols args)
+                           (get-annotation-dox annotations))))
+
 
 ;;; ## ROUTE NAME
 

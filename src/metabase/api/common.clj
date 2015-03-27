@@ -306,7 +306,8 @@
   value)
 
 (defannotation Date
-  "try to parse 'date' string as an ISO-8601 date"
+  "Parse param string as an [ISO 8601 date](http://en.wikipedia.org/wiki/ISO_8601), e.g.
+   `2015-03-24T06:57:23+00:00`"
   [symb value :nillable]
   (try (u/parse-iso8601 value)
           (catch Throwable _
@@ -377,22 +378,23 @@
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form."
-  {:arglists '([method route args annotations-map? & body])}
-  [method route args & more]
+  {:arglists '([method route docstr? args annotations-map? & body])}
+  [method route & more]
   {:pre [(or (string? route)
-             (vector? route))
-         (vector? args)]}
+             (vector? route))]}
   (let [name (route-fn-name method route)
         route (typify-route route)
+        [docstr [args & more]] (u/optional string? more)
         [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
-    `(do (def ~name
-           (~method ~route ~args
-                    (catch-api-exceptions
-                      (auto-parse ~args
-                        (let-annotated-args ~arg-annotations
-                                            (-> (do ~@body)
-                                                wrap-response-if-needed))))))
-         (alter-meta! #'~name assoc :is-endpoint? true))))
+    `(def ~(vary-meta name assoc
+                      :doc (route-dox method route docstr args arg-annotations)
+                      :is-endpoint? true)
+       (~method ~route ~args
+                (catch-api-exceptions
+                  (auto-parse ~args
+                    (let-annotated-args ~arg-annotations
+                                        (-> (do ~@body)
+                                            wrap-response-if-needed))))))))
 
 (defmacro define-routes
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with

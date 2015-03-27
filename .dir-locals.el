@@ -1,6 +1,8 @@
 ((clojure-mode . ((eval . (progn
                             ;; Specify which arg is the docstring for certain macros
                             ;; (Add more as needed)
+                            (put 'defannotation 'clojure-doc-string-elt 2)
+                            (put 'defendpoint 'clojure-doc-string-elt 3)
                             (put 'defhook 'clojure-doc-string-elt 2)
                             (put 'defsetting 'clojure-doc-string-elt 2)
 
