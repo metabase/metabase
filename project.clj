@@ -13,9 +13,11 @@
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.2"]                       ; CSV parsing / generation
                  [org.clojure/data.json "0.2.6"]                      ; JSON parsing / generation
+                 [org.clojure/java.classpath "0.2.2"]
                  [org.clojure/java.jdbc "0.3.6"]                      ; basic jdbc access from clojure
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
+                 [org.clojure/tools.namespace "0.2.10"]
                  [org.clojure/tools.trace "0.7.8"]                    ; "tracing macros/fns to help you see what your code is doing"
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
