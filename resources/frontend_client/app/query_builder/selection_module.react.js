@@ -1,4 +1,5 @@
 'use strict';
+/*global cx, OnClickOutside, SearchBar*/
 
 var SelectionModule = React.createClass({
     displayName:'SelectionModule',
@@ -23,7 +24,7 @@ var SelectionModule = React.createClass({
             searchThreshold: 20,
             searchEnabled: false,
             filterTerm: null
-        }
+        };
     },
     handleClickOutside: function () {
         this.setState({
@@ -84,9 +85,9 @@ var SelectionModule = React.createClass({
     _select: function (item) {
         var index = this.props.index;
         // send back the item with the specified action
-        if(this.props.action) {
-            if(index != undefined) {
-                if(this.props.parentIndex) {
+        if (this.props.action) {
+            if (index !== undefined) {
+                if (this.props.parentIndex) {
                     this.props.action(item[this.props.selectedKey], index, this.props.parentIndex);
                 } else {
                     this.props.action(item[this.props.selectedKey], index);
@@ -127,13 +128,13 @@ var SelectionModule = React.createClass({
         });
 
         if(this._enableSearch()) {
-            searchBar = <SearchBar onFilter={this._filterSelections} />
+            searchBar = <SearchBar onFilter={this._filterSelections} />;
         }
 
         if(this.props.remove) {
             var style = {
                 fill: '#ddd'
-            }
+            };
             remove = (
                 <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
                     <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={style} width="16px" height="16px">

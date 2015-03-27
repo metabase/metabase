@@ -1,4 +1,5 @@
 'use strict';
+/*global cx, CardRenderer*/
 
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
@@ -40,7 +41,7 @@ var QueryVisualization = React.createClass({
             if(this.state.type === 'table') {
                 tableRows = this.props.result.data.rows.map(function (row) {
                     var rowCols = row.map(function (data) {
-                        return (<td>{data.toString()}</td>)
+                        return (<td>{data.toString()}</td>);
                     });
 
                     return (<tr>{rowCols}</tr>);
@@ -98,7 +99,7 @@ var QueryVisualization = React.createClass({
                 var buttonClasses = cx({
                     'Button': true,
                     'Button--primary' : (type == this.state.type)
-                })
+                });
                 return (
                     <a className={buttonClasses} href="#" onClick={this._changeType.bind(null, type)}>{type}</a>
                 );

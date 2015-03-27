@@ -33,21 +33,21 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
 
     $scope.alerts = CorvusAlert.alerts;
 
-    $scope.$on("appstate:user", function (event, user) {
+    $scope.$on("appstate:user", function(event, user) {
         // change in current user
         $scope.user = user;
         $scope.userMemberOf = user.memberOf();
         $scope.userAdminOf = user.adminOf();
     });
 
-    $scope.$on("appstate:organization", function (event, org) {
+    $scope.$on("appstate:organization", function(event, org) {
         // change in current organization
         $scope.currentOrgSlug = org.slug;
         $scope.currentOrg = org;
         $scope.userIsAdmin = $scope.user.isAdmin(org.slug);
     });
 
-    $scope.$on("appstate:logout", function (event, user) {
+    $scope.$on("appstate:logout", function(event, user) {
         clearState();
     });
 
@@ -64,7 +64,7 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     };
 
     $scope.changeCurrOrg = function(orgSlug) {
-        $location.path('/'+orgSlug+'/');
+        $location.path('/' + orgSlug + '/');
     };
 
     $scope.refreshCurrentUser = function() {
@@ -78,23 +78,23 @@ CorvusControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', 'Ap
 
         // At this point in time we don't actually have any kind of content to show for a homepage, so we just use this
         // as a simple routing controller which sends users somewhere relevant
-        if(AppState.model.currentUser) {
+        if (AppState.model.currentUser) {
             var currentUser = AppState.model.currentUser;
 
             // We have a logged-in user, so send them somewhere sensible
             var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
 
-            if(AppState.model.currentOrgSlug) {
+            if (AppState.model.currentOrgSlug) {
                 // we know their current org
-                $location.path('/'+AppState.model.currentOrgSlug+'/');
+                $location.path('/' + AppState.model.currentOrgSlug + '/');
 
-            } else if(currentOrgFromCookie && currentUser.isMember(currentOrgFromCookie)) {
+            } else if (currentOrgFromCookie && currentUser.isMember(currentOrgFromCookie)) {
                 // cookie is telling us their last current org
-                $location.path('/'+currentOrgFromCookie+'/');
+                $location.path('/' + currentOrgFromCookie + '/');
 
-            } else if(currentUser.memberOf().length > 0) {
+            } else if (currentUser.memberOf().length > 0) {
                 // no other indicator, so simply take the first org they have permissions on
-                $location.path('/'+currentUser.memberOf()[0].slug+'/');
+                $location.path('/' + currentUser.memberOf()[0].slug + '/');
 
             } else {
                 // user doesn't have perms on any orgs, so they go somewhere neutral
@@ -111,8 +111,10 @@ CorvusControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', 'Ap
 
 CorvusControllers.controller('SearchBox', ['$scope', '$location', function($scope, $location) {
 
-    $scope.submit = function () {
-        $location.path('/' + $scope.currentOrgSlug + '/search').search({q: $scope.searchText});
+    $scope.submit = function() {
+        $location.path('/' + $scope.currentOrgSlug + '/search').search({
+            q: $scope.searchText
+        });
     };
 
 }]);
@@ -127,21 +129,28 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'App
 
     $scope.activeClass = 'is--selected';
 
-    $scope.isActive = function (location) {
+    $scope.isActive = function(location) {
         var active = ($location.path().indexOf(location) > 0);
         return active;
-    }
+    };
 
     var setNavContext = function(context) {
-        switch(context) {
-            case "site-admin": $scope.nav = 'superadmin'; break;
-            case "setup":      $scope.nav = 'setup'; break;
-            case "org-admin":  $scope.nav = 'admin'; break;
-            default:           $scope.nav = 'main';
+        switch (context) {
+            case "site-admin":
+                $scope.nav = 'superadmin';
+                break;
+            case "setup":
+                $scope.nav = 'setup';
+                break;
+            case "org-admin":
+                $scope.nav = 'admin';
+                break;
+            default:
+                $scope.nav = 'main';
         }
-    }
+    };
 
-    $scope.$on('appstate:context-changed', function (event, newAppContext) {
+    $scope.$on('appstate:context-changed', function(event, newAppContext) {
         setNavContext(newAppContext);
     });
 

@@ -50,7 +50,7 @@
   (let-404 [field-ids (sel :many :id Field :table_id id)]
     (-> (sel :many ForeignKey :destination_id [in field-ids])
         ;; TODO - it's a little silly to hydrate both of these table objects
-        (hydrate [:origin :table] [:destination :table]))))
+        (hydrate [:origin [:table :db]] [:destination :table]))))
 
 (defendpoint POST "/:id/sync" [id]
   (let-404 [table (sel :one Table :id id)]

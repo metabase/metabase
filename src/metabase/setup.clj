@@ -1,6 +1,5 @@
 (ns metabase.setup)
 
-
 (def ^:private setup-token
   (atom nil))
 
@@ -21,5 +20,3 @@
   "Clear the `@setup-token` if it exists and reset it to nil."
   []
   (reset! setup-token nil))
-
-

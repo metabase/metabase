@@ -1,0 +1,9 @@
+{
+  "globalstrict": true,
+  "globals": {
+      "angular": false,
+      "console": false,
+      "React": false,
+      "Set": false
+  }
+}

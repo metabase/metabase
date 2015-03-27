@@ -201,7 +201,16 @@
                            :active true
                            :id $
                            :db_id $
-                           :created_at $})})
+                           :created_at $
+                           :db (match-$ @test-db
+                                 {:description nil,
+                                  :organization_id 1,
+                                  :name "Test Database",
+                                  :updated_at $,
+                                  :id $,
+                                  :engine "h2",
+                                  :created_at $
+                                  :details $})})})
       :destination (match-$ users-id-field
                      {:id $
                       :table_id $

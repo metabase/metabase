@@ -20,7 +20,7 @@ dependencies:
     - pip install awscli==1.7.3
 test:
   override:
-    - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) lein eastwood ;; 1) lein test ;; 2) lein uberjar ;; 3) ./lint_js.sh && lein bikeshed --max-line-length 240 ;; esac:
         parallel: true
 deployment:
   production:

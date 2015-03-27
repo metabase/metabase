@@ -1,7 +1,9 @@
 (ns metabase.models.field-values
-  (:require [cheshire.core :as cheshire]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as cheshire]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [realize-json]])
             [metabase.util :as u]))
 
@@ -41,3 +43,38 @@
   (cond-> (assoc field-values :updated_at (u/new-sql-timestamp))
     values (assoc :values (cheshire/generate-string values))
     human_readable_values (assoc :human_readable_values (cheshire/generate-string human_readable_values))))
+
+
+;; ## `FieldValues` Helper Functions
+
+(defn field-should-have-field-values?
+  "Should this `Field` be backed by a corresponding `FieldValues` object?"
+  {:arglists '([field])}
+  [{:keys [base_type special_type]}]
+  (or (contains? #{:category :city :state :country} (keyword special_type))
+      (= (keyword base_type) :BooleanField)))
+
+(defn create-field-values
+  "Create `FieldValues` for a `Field`."
+  {:arglists '([field]
+               [field human-readable-values])}
+  [{field-id :id :as field} & [human-readable-values]]
+  {:pre [(integer? field-id)
+         (:table field)]}                                              ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
+  (log/debug (format "Creating FieldValues for Field %d..." field-id))
+  (ins FieldValues
+    :field_id field-id
+    :values (metadata/field-distinct-values field)
+    :human_readable_values human-readable-values))
+
+(defn create-field-values-if-needed
+  "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
+   Returns the existing or newly created `FieldValues` for `Field`."
+  {:arglists '([field]
+               [field human-readable-values])}
+  [{field-id :id :as field} & [human-readable-values]]
+  {:pre [(integer? field-id)
+         (:table field)]}
+  (when (field-should-have-field-values? field)
+    (or (sel :one FieldValues :field_id field-id)
+        (create-field-values field human-readable-values))))
