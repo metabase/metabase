@@ -11,11 +11,8 @@
                              [org :refer [Org]])
             [metabase.util :as u]))
 
-(defannotation DashFilterOption [symb value :nillable]
-  (checkp-contains? #{:all :mine} symb (keyword value)))
-
 (defendpoint GET "/" [org f]
-  {org Required, f DashFilterOption}
+  {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
   (-> (case (or f :all) ; default value for f is `all`
         :all  (sel :many Dashboard :organization_id org)
