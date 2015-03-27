@@ -209,7 +209,8 @@
                                   :updated_at $,
                                   :id $,
                                   :engine "h2",
-                                  :created_at $})})})
+                                  :created_at $
+                                  :details $})})})
       :destination (match-$ users-id-field
                      {:id $
                       :table_id $
