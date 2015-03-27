@@ -6,7 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues]]
+                             [field-values :refer [FieldValues create-field-values]]
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
@@ -58,15 +58,6 @@
         :destination_id target_field
         :relationship relationship)
       (hydrate [:origin :table] [:destination :table])))
-
-
-(defn- create-field-values
-  "Create `FieldValues` for a `Field`."
-  [{:keys [id] :as field} human-readable-values]
-  (ins FieldValues
-    :field_id id
-    :values (metadata/field-distinct-values field)
-    :human_readable_values human-readable-values))
 
 
 (defendpoint GET "/:id/values" [id]

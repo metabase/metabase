@@ -134,6 +134,19 @@
 (defmethod pre-update :default [_ obj]
   obj) ; default impl does no modifications to OBJ
 
+(defmulti post-update
+  "Multimethod that is called by `upd` after a SQL `UPDATE` *succeeds*.
+   (This gets called with whatever the output of `pre-update` was).
+
+   A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
+   when it is marked with `special_type` `:category`.
+
+   The output of this function is ignored."
+  (fn [entity _] entity))
+
+(defmethod post-update :default [_ _] ; default impl does nothing and returns nil
+  nil)
+
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
@@ -142,10 +155,12 @@
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
-  (let [kwargs (->> kwargs
-                    (pre-update entity))]
-    (-> (update entity (set-fields kwargs) (where {:id entity-id}))
-        (> 0))))
+  (let [obj (pre-update entity kwargs)
+        result (-> (update entity (set-fields obj) (where {:id entity-id}))
+                   (> 0))]
+    (when result
+      (post-update entity (assoc obj :id entity-id)))
+    result))
 
 (defn upd-non-nil-keys
   "Calls `upd`, but filters out KWARGS with `nil` values."
