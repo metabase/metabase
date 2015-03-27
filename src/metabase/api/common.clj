@@ -365,6 +365,11 @@
   [symb value]
   (checkp-with password/is-complex? symb value "Insufficient password strength"))
 
+(defannotation FilterOptionAllOrMine
+  "Option must be either 'all' or 'mine'."
+  [symb value :nillable]
+  (checkp-contains? #{:all :mine} symb (keyword value)))
+
 ;;; ### defendpoint
 
 (defmacro defendpoint

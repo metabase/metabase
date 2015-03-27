@@ -15,9 +15,6 @@
             [metabase.task.email-report :as report]
             [metabase.util :as util]))
 
-(defannotation EmailReportFilterOption [symb value :nillable]
-  (checkp-contains? #{:all :mine} symb (keyword value)))
-
 (defannotation EmailReportMode
   "Check that param is a value int ID for an email report mode."
   [symb value :nillable]
@@ -41,7 +38,7 @@
 (defendpoint GET "/" [org f]
   ;; TODO - filter by f == "mine"
   ;; TODO - filter by creator == self OR public_perms > 0
-  {org Required, f EmailReportFilterOption}
+  {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
   (-> (sel :many EmailReport
         (where {:organization_id org})
