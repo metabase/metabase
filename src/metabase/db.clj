@@ -134,6 +134,19 @@
 (defmethod pre-update :default [_ obj]
   obj) ; default impl does no modifications to OBJ
 
+(defmulti post-update
+  "Multimethod that is called by `upd` after a SQL `UPDATE` *succeeds*.
+   (This gets called with whatever the output of `pre-update` was).
+
+   A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
+   when it is marked with `special_type` `:category`.
+
+   The output of this function is ignored."
+  (fn [entity _] entity))
+
+(defmethod post-update :default [_ _] ; default impl does nothing and returns nil
+  nil)
+
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
@@ -142,10 +155,12 @@
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
-  (let [kwargs (->> kwargs
-                    (pre-update entity))]
-    (-> (update entity (set-fields kwargs) (where {:id entity-id}))
-        (> 0))))
+  (let [obj (pre-update entity kwargs)
+        result (-> (update entity (set-fields obj) (where {:id entity-id}))
+                   (> 0))]
+    (when result
+      (post-update entity (assoc obj :id entity-id)))
+    result))
 
 (defn upd-non-nil-keys
   "Calls `upd`, but filters out KWARGS with `nil` values."
@@ -275,17 +290,27 @@
 (defmethod pre-insert :default [_ obj]
   obj)   ; default impl returns object as is
 
+(defmulti post-insert
+  "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
+   A good place to do asynchronous tasks such as creating related objects.
+   Implementations should return the newly created object."
+  (fn [entity _] entity))
+
+;; Default implementation returns object as-is
+(defmethod post-insert :default [_ obj]
+  obj)
+
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
 
    Returns newly created object by calling `sel`."
   [entity & {:as kwargs}]
-  (let [vals (->> kwargs
-                  (pre-insert entity))]
-    (let [{:keys [id]} (-> (insert entity (values vals))
-                           (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
-      (sel :one entity :id id))))
+  (let [vals (pre-insert entity kwargs)
+        {:keys [id]} (-> (insert entity (values vals))
+                         (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
+    (->> (sel :one entity :id id)
+         (post-insert entity))))
 
 
 ;; ## EXISTS?

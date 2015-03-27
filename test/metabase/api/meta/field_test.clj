@@ -143,7 +143,7 @@
    ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
-(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'."
+(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
   ((user->client :rasta) :post 400 (format "meta/field/%d/value_map_update" (field->id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"
