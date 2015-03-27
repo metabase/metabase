@@ -25,17 +25,17 @@ PeopleControllers.controller('PeopleList', ['$scope', '$routeParams', 'Organizat
 }]);
 
 
-PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', 'User', 'CorvusAlert', function($scope, $routeParams, User, CorvusAlert) {
+PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', '$location', 'User', 'Organization', 'CorvusAlert',
+    function($scope, $routeParams, $location, User, Organization, CorvusAlert) {
 
         $scope.grantAdmin = function() {
             if ($scope.user) {
-                console.log('grant');
                 Organization.member_update({
-                    'orgId': $scope.currentOrg.id,
-                    'userId': $scope.people[index].user.id,
-                    'admin': true
+                    orgId: $scope.currentOrg.id,
+                    userId: $scope.user.id,
+                    admin: true
                 }, function (result) {
-                    $scope.people[index].admin = true;
+                    $scope.perm.admin = true;
                 }, function (error) {
                     console.log('error', error);
                     $scope.alertError('failed to grant admin to user');
@@ -46,11 +46,11 @@ PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', 'User', 'C
         $scope.revokeAdmin = function() {
             if ($scope.user) {
                 Organization.member_update({
-                    'orgId': $scope.currentOrg.id,
-                    'userId': $scope.people[index].user.id,
-                    'admin': false
-                }, function(result) {
-                    $scope.people[index].admin = false;
+                    orgId: $scope.currentOrg.id,
+                    userId: $scope.user.id,
+                    admin: false
+                }, function (result) {
+                    $scope.perm.admin = false;
                 }, function (error) {
                     console.log('error', error);
                     $scope.alertError('failed to revoke admin from user');
@@ -61,12 +61,10 @@ PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', 'User', 'C
         $scope.removeMember = function() {
             if ($scope.user) {
                 Organization.member_remove({
-                    'orgId': $scope.currentOrg.id,
-                    'userId': userId
+                    orgId: $scope.currentOrg.id,
+                    userId: $scope.user.id
                 }, function(result) {
-                    $scope.people = _.filter($scope.people, function(perm){
-                        return perm.user.id != userId;
-                    });
+                    $location.path('/'+$scope.currentOrg.slug+'/admin/people/');
                 }, function (error) {
                     console.log('error', error);
                     $scope.alertError('failed to remove user from org');
@@ -83,16 +81,23 @@ PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', 'User', 'C
             });
         };
 
-    if ($routeParams.userId) {
-        User.get({
-            userId: $routeParams.userId
-        }, function (user) {
-            $scope.user = user;
-        }, function (error) {
-            console.log('error getting user', error);
+        $scope.$watch('currentOrg', function (org) {
+            if(!org) return;
+
+            if ($routeParams.userId) {
+                Organization.member_get({
+                    orgId: $scope.currentOrg.id,
+                    userId: $routeParams.userId
+                }, function (perm) {
+                    $scope.perm = perm;
+                    $scope.user = perm.user;
+                }, function (error) {
+                    console.log('error getting user', error);
+                });
+            }
         });
     }
-}]);
+]);
 
 
 PeopleControllers.controller('PeopleChangePassword', ['$scope', '$routeParams', 'User', 'CorvusAlert', function($scope, $routeParams, User, CorvusAlert) {

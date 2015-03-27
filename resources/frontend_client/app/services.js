@@ -814,6 +814,14 @@ CoreServices.factory('Organization', ['$resource', '$cookies', function($resourc
                 }
             }
         },
+        member_get: {
+            url: '/api/org/:orgId/members/:userId',
+            method: 'GET',
+            params: {
+                orgId: '@orgId',
+                userId: '@userId'
+            }
+        },
         member_add: {
             url: '/api/org/:orgId/members/:userId',
             method: 'POST',
