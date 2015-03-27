@@ -357,6 +357,51 @@
                                                        :email "anything@anything.com"}))
 
 
+;; ## GET /api/org/:id/members/:user-id
+;; Check that we can get an OrgPerm between existing User + Org
+(expect
+  (match-$ (user->org-perm :lucky)
+    {:id $
+     :admin false
+     :user_id (user->id :lucky)
+     :organization_id @org-id
+     :user (match-$ (fetch-user :lucky)
+             {:common_name "Lucky Pigeon"
+              :date_joined $
+              :last_name "Pigeon"
+              :id $
+              :is_superuser false
+              :last_login $
+              :first_name "Lucky"
+              :email "lucky@metabase.com"})
+     :organization (match-$ (sel :one Org :id @org-id)
+                     {:id $,
+                      :slug "test",
+                      :name "Test Organization",
+                      :description nil,
+                      :logo_url nil,
+                      :inherits true})})
+  ((user->client :crowberto) :get 200 (format "org/%d/members/%d" @org-id (user->id :lucky))))
+
+;; Check that users without any org perms cannot get members
+(expect "You don't have permissions to do that."
+  (let [{:keys [id]} (create-org (random-name))]
+    ((user->client :rasta) :get 403 (format "org/%d/members/1000" id) {})))
+
+;; Test that invalid org id returns 404
+(expect "Not found."
+  ((user->client :rasta) :get 404 "org/1000/members/1000"))
+
+;; Test that invalid user id returns 404
+(expect "Not found."
+  (let [{user-id :id, email :email, password :first_name} (create-user)
+        {org-id :id} (create-org (random-name))
+        my-perm (create-org-perm org-id user-id :admin true)
+        session-id (http/authenticate {:email email
+                                       :password password})]
+    (http/client session-id :get 404 (format "org/%d/members/1000" org-id) {})))
+
+
 ;; ## POST /api/org/:id/members/:user-id
 ;; Check that we can create an OrgPerm between existing User + Org
 (expect [false
