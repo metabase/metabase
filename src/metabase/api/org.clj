@@ -71,6 +71,13 @@
         (hydrate :user :organization))))
 
 
+(defendpoint GET "/:id/members/:user-id" [id user-id]
+  (read-check Org id)
+  (check-exists? User user-id)
+  (-> (sel :one OrgPerm :user_id user-id :organization_id id)
+      (hydrate :user :organization)))
+
+
 (defendpoint POST "/:id/members/:user-id" [id user-id :as {{:keys [admin]} :body}]
   {admin Boolean}
   (write-check Org id)
