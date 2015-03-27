@@ -10,8 +10,6 @@
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
-(declare execute-query)
-
 (defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
   {database [Required Integer]
    sql      [Required NonEmptyString]} ; TODO - check timezone

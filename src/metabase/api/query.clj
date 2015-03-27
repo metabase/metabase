@@ -108,7 +108,7 @@
   (let-404 [{database-id :database_id
              {:keys [sql timezone]} :details :as query} (sel :one Query :id id)]
     (read-check query)
-    (let [dataset-query {:type "native"
+    (let [dataset-query {:type :native
                          :database database-id
                          :native {:query sql
                                   :timezone timezone}}
