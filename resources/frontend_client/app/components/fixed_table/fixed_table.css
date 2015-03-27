@@ -1,6 +1,7 @@
 .FixedTable {
     padding-top: 2em;
     position: relative;
+    background-color: #fff;
 }
 
 .FixedTable-headerBackground {
@@ -10,7 +11,7 @@
     right: 0;
     height: 2em;
     background-color: #fff;
-    border-bottom: 1px solid #ddd;
+    border: 1px solid rgba(213, 213, 213, .3);
 }
 
 .FixedTable-headerInner {
@@ -18,10 +19,11 @@
     top: 0;
     padding: 0.5em;
     line-height: 1.5em;
+    border-left: 1px solid rgba(213, 213, 213, .3);
 }
 
 .FixedTable-inner {
-    max-height: 200px;
+    max-height: 600px;
     overflow-x: hidden;
 }
 

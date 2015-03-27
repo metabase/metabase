@@ -1,6 +1,15 @@
 body {
-    height: 100%;
-    background: #FBFCFD;
+    min-height: 100vh;
+}
+/* this section should take up all the avaliable height it can */
+.QueryMain {
+    flex: 1;
+}
+
+.QueryContainer {
+    display: flex;
+    flex-direction: column;
+    min-height: 90vh;
 }
 
 .SearchBar:focus {
@@ -233,11 +242,6 @@ body {
     margin-top: 1em;
 }
 
-.QueryPicker-group {
-    border-bottom: 1px solid #ddd;
-    background: #fff;
-}
-
 .QueryBar .Button {
     font-size: 0.85em;
 }
@@ -320,12 +324,12 @@ body {
     display: flex;
 }
 
-.QueryHeader {
-    background: #fff;
-}
-
 .TypeControls .Button {
     display: inline-block;
     font-size: 0.85em;
     margin: 0 0.5em;
+}
+
+.VisualizationOptionList {
+    display: inline-block;
 }
