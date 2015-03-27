@@ -35,6 +35,10 @@
    {:id (mode->id :disabled), :name (mode->name :disabled)}])
 
 (def days-of-week
+  "Simple `vector` of the days in the week used for reference and lookups.
+
+   NOTE: order is important here!!
+         these indexes match the values from clj-time `day-of-week` function (0 = Sunday, 6 = Saturday)"
   [{:id "sun" :name "Sun"},
    {:id "mon" :name "Mon"},
    {:id "tue" :name "Tue"},

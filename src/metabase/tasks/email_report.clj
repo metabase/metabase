@@ -6,22 +6,17 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.email.messages :refer [send-email-report]]
-            (metabase.models [emailreport :refer [EmailReport execution-details-fields mode->id time-of-day->realhour]]
+            (metabase.models [emailreport :refer [EmailReport
+                                                  days-of-week
+                                                  execution-details-fields
+                                                  mode->id
+                                                  time-of-day->realhour]]
                              [emailreport-executions :refer [EmailReportExecutions]]
                              [emailreport-recipients :refer [EmailReportRecipients]]
                              [hydrate :refer :all])
             [metabase.task :as task]
             [metabase.util :as u]))
 
-;; order is important here!!  these indexes match the values from clj-times (day-of-week) function
-;; 0 = Sunday, 6 = Saturday
-(def days-of-week ["sun"
-                   "mon"
-                   "tue"
-                   "wed"
-                   "thu"
-                   "fri"
-                   "sat"])
 
 (declare execute-all-reports
          execute-if-scheduled
@@ -48,7 +43,7 @@
   (log/debug "Processing: " id days_of_week time_of_day timezone)
   (let [now (time/to-time-zone (time/now) (time/time-zone-for-id (or timezone "UTC"))) ; NOTE this is in LOCAL timezone
         curr-hour (time/hour now)
-        curr-weekday (get days-of-week (time/day-of-week now))]
+        curr-weekday (:id (get days-of-week (time/day-of-week now)))]
     ;; report schedule should look like:
     ;;   `{:days_of_week {:mon true :tue true :wed false ...} :time_of_day "morning" :timezone "US/Pacific"}`
     (when (and (get days_of_week (keyword curr-weekday))   ; scheduled weekdays include curr-weekday
