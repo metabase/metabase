@@ -71,7 +71,9 @@
     (hydrate annotation :author)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [start end title body]} :body}]
+(defendpoint PUT "/:id"
+  "Update an existing `Annotation`."
+  [id :as {{:keys [start end title body]} :body}]
   {start [Required Date]
    end   [Required Date]
    title [Required NonEmptyString]

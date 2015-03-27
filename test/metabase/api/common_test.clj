@@ -142,16 +142,14 @@
 ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
 (binding [*auto-parse-types* (update-in *auto-parse-types* [:int :route-param-regex] (partial str "#"))]
   (expect-expansion
-   (do
-     (def GET_:id
-       (GET ["/:id" :id "#[0-9]+"] [id]
-         (metabase.api.common.internal/catch-api-exceptions
-           (metabase.api.common.internal/auto-parse [id]
-             (metabase.api.common.internal/let-annotated-args
-              {id Required}
-              (clojure.core/-> (do (->404 (sel :one Card :id id)))
-                               metabase.api.common.internal/wrap-response-if-needed))))))
-     (clojure.core/alter-meta! #'GET_:id clojure.core/assoc :is-endpoint? true))
-   (defendpoint GET "/:id" [id]
-     {id Required}
-     (->404 (sel :one Card :id id)))))
+    (def GET_:id
+      (GET ["/:id" :id "#[0-9]+"] [id]
+        (metabase.api.common.internal/catch-api-exceptions
+          (metabase.api.common.internal/auto-parse [id]
+            (metabase.api.common.internal/let-annotated-args
+             {id Required}
+             (clojure.core/-> (do (->404 (sel :one Card :id id)))
+                              metabase.api.common.internal/wrap-response-if-needed))))))
+    (defendpoint GET "/:id" [id]
+      {id Required}
+      (->404 (sel :one Card :id id)))))
