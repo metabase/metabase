@@ -1,4 +1,5 @@
 'use strict';
+/*global moment, DatePicker*/
 
 var DateFilter = React.createClass({
     displayName: 'DateFilter',

@@ -1,3 +1,6 @@
+'use strict';
+/*global cx, OnClickOutside, SelectionModule*/
+
 var Saver = React.createClass({
     displayName: 'Saver',
     propTypes: {
@@ -16,7 +19,7 @@ var Saver = React.createClass({
         };
     },
     handleClickOutside: function () {
-        this.replaceState(this.getInitialState())
+        this.replaceState(this.getInitialState());
     },
     _openModal: function () {
         this.setState({
@@ -24,22 +27,22 @@ var Saver = React.createClass({
             triggerAction: this._save
         }, function () {
             // focus the name field
-            this.refs.name.getDOMNode().focus()
-        })
+            this.refs.name.getDOMNode().focus();
+        });
     },
     _save: function () {
         var name = this.refs.name.getDOMNode().value,
-            description = this.refs.description.getDOMNode().value
+            description = this.refs.description.getDOMNode().value;
 
         this.props.save({
             name: name,
             description: description
-        })
+        });
         // reset the modal
         this.setState({
             modalOpen: false,
             triggerAction: this._openModal
-        })
+        });
     },
     render: function () {
         var buttonClasses = cx({
@@ -47,19 +50,19 @@ var Saver = React.createClass({
             'Button': true,
             'block': true,
             'Button--primary': this.state.modalOpen
-        })
+        });
         var modalClasses = cx({
             'SaveModal': true,
             'Modal--showing': this.state.modalOpen
-        })
+        });
 
         var buttonText;
 
         // if the query has changed or the modal has been opened
-        if(this.props.hasChanged == true || this.state.modalOpen == true) {
-            buttonText = "Save"
+        if (this.props.hasChanged === true || this.state.modalOpen === true) {
+            buttonText = "Save";
         } else {
-            buttonText = "Edit"
+            buttonText = "Edit";
         }
 
         var privacyOptions = [
@@ -102,6 +105,6 @@ var Saver = React.createClass({
                     {buttonText}
                 </a>
             </div>
-        )
+        );
     }
 });

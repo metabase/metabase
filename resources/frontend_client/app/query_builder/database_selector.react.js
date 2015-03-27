@@ -1,4 +1,5 @@
 'use strict';
+/*global SelectionModule*/
 
 var DatabaseSelector = React.createClass({
     displayName: 'DatabaseSelector',

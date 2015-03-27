@@ -97,15 +97,15 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 return deferred.promise;
             },
 
-            switchOrg: function (org_slug) {
+            switchOrg: function(org_slug) {
                 console.log('changing org to ...', org_slug);
                 Organization.get_by_slug({
-                    'slug':  org_slug
-                }, function (org) {
+                    'slug': org_slug
+                }, function(org) {
                     service.model.currentOrgSlug = org.slug;
                     service.model.currentOrg = org;
                     $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                }, function (error) {
+                }, function(error) {
                     console.log('error getting current org', error);
                 });
             },
@@ -137,7 +137,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     routeContext = 'site-admin';
                 } else if ($routeParams.orgSlug) {
                     // couple of options when within an org
-                    if ($location.path().indexOf('/'+$routeParams.orgSlug+'/admin/') === 0) {
+                    if ($location.path().indexOf('/' + $routeParams.orgSlug + '/admin/') === 0) {
                         routeContext = 'org-admin';
                     } else {
                         routeContext = 'org';
@@ -224,7 +224,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     if (service.model.currentOrgSlug != $routeParams.orgSlug) {
                         // we just navigated to a new organization
-                        this.switchOrg($routeParams.orgSlug)
+                        this.switchOrg($routeParams.orgSlug);
                         service.model.currentOrgSlug = $routeParams.orgSlug;
                         service.setCurrentOrgCookie(service.model.currentOrgSlug);
                     }
