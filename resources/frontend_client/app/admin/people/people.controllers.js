@@ -73,7 +73,7 @@ PeopleControllers.controller('PeopleEdit', ['$scope', '$routeParams', '$location
         };
 
         $scope.submit = function() {
-            User.update($scope.user, function(result) {
+            User.update($scope.user, function (result) {
                 CorvusAlert.alertInfo("Successfully updated!");
             }, function(errorResponse) {
                 console.log(errorResponse);
