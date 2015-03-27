@@ -13,12 +13,12 @@ Organization.config(['$routeProvider', function ($routeProvider) {
     });
     $routeProvider.when('/:orgSlug/admin/people/:userId/modify', {
         templateUrl: '/app/admin/people/partials/user_edit.html',
-        controller: 'PeopleView'
+        controller: 'PeopleEdit'
     });
 
     $routeProvider.when('/:orgSlug/admin/people/:userId/change_password', {
         templateUrl: '/app/admin/people/partials/user_password_edit.html',
-        controller: 'PeopleView'
+        controller: 'PeopleChangePassword'
     });
 
 }]);
