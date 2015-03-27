@@ -1,4 +1,4 @@
-(ns metabase.tasks.email-report
+(ns metabase.task.email-report
   "Tasks related to running `EmailReports`."
   (:require [clojure.tools.logging :as log]
             [clj-time.core :as time]

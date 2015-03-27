@@ -12,7 +12,7 @@
                              [emailreport-executions :refer [EmailReportExecutions]]
                              [org :refer [Org]]
                              [user :refer [users-for-org]])
-            [metabase.tasks.email-report :as report]
+            [metabase.task.email-report :as report]
             [metabase.util :as util]))
 
 (defannotation EmailReportFilterOption [symb value :nillable]
