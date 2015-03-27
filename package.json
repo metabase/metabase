@@ -18,7 +18,7 @@
     },
     "devDependencies": {
         "http-server": "^0.6.1",
-        "jshint": "2.6.3",
+        "jsxhint": "0.13.3",
         "karma": "~0.10",
         "karma-junit-reporter": "^0.2.2",
         "protractor": "~0.20.1",

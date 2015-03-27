@@ -1,4 +1,5 @@
 'use strict';
+/*global SelectionModule, DatabaseSelector*/
 
 var QueryPicker = React.createClass({
     displayName: 'QueryPicker',
@@ -43,7 +44,7 @@ var QueryPicker = React.createClass({
 
         if(this.props.aggregationComplete() && this.props.options.breakout_options.fields.length > 0) {
 
-            (this.props.query.breakout.length < 1) ? addDimensionButtonText = "Grouped by" : addDimensionButtonText = "and";
+            addDimensionButtonText = (this.props.query.breakout.length < 1) ? "Grouped by" : "and";
 
             if(this.props.query.breakout.length < 2) {
                 addDimensionButton = (
@@ -104,7 +105,7 @@ var QueryPicker = React.createClass({
             // if there's a value in the second aggregation slot
             if(this.props.query.aggregation.length > 1) {
                 if(this.props.query.aggregation[1] !== null) {
-                    aggregationTargetListOpen = false
+                    aggregationTargetListOpen = false;
                 }
                 aggregationTargetHtml = (
                     <SelectionModule

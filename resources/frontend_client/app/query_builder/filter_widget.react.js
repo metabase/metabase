@@ -1,4 +1,5 @@
 'use strict';
+/*global DateFilter, SelectionModule*/
 
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
@@ -18,7 +19,7 @@ var FilterWidget = React.createClass({
         this.props.updateFilter(value, 2, index);
     },
     _isOpen: function (value) {
-        if(value != undefined) {
+        if (value !== undefined) {
             return true;
         } else {
             return false;
@@ -56,7 +57,7 @@ var FilterWidget = React.createClass({
                     parentIndex={this.props.index}
                 />
             </div>
-        )
+        );
     },
     _getSafeValues: function () {
         return this.props.valueFields.values.map(function(value) {
@@ -106,7 +107,7 @@ var FilterWidget = React.createClass({
                                             date.format('YYYY-MM-DD'),
                                             2,
                                             this.props.index
-                                        )
+                                        );
                                     }.bind(this)
                                 }
                             />
