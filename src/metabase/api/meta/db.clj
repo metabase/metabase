@@ -15,16 +15,22 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
-(defannotation DBEngine [symb value :nillable]
+(defannotation DBEngine
+  "Param must be a valid database engine type, e.g. `h2` or `postgres`."
+  [symb value :nillable]
   (checkp-contains? (set (map first driver/available-drivers)) symb value))
 
-(defendpoint GET "/" [org]
+(defendpoint GET "/"
+  "Fetch all `Databases` for an `Org`."
+  [org]
   {org Required}
   (read-check Org org)
   (-> (sel :many Database :organization_id org (order :name))
       (hydrate :organization)))
 
-(defendpoint POST "/" [:as {{:keys [org name engine details] :as body} :body}]
+(defendpoint POST "/"
+  "Add a new `Database` for `Org`."
+  [:as {{:keys [org name engine details] :as body} :body}]
   {org     Required
    name    [Required NonEmptyString]
    engine  [Required DBEngine]
@@ -41,7 +47,9 @@
    :engines driver/available-drivers})
 
 ;; Stub function that will eventually validate a connection string
-(defendpoint POST "/validate" [:as {{:keys [host port]} :body}]
+(defendpoint POST "/validate"
+  "Validate that we can connect to a `Database`."
+  [:as {{:keys [host port]} :body}]
   {host Required
    port Required}
   (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
@@ -50,11 +58,15 @@
       (u/host-up? host)           (response-invalid "Invalid port")
       :else                       (response-invalid "Host not reachable"))))
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Get `Database` with ID."
+  [id]
   (->404 (sel :one Database :id id)
          (hydrate :organization)))
 
-(defendpoint PUT "/:id" [id :as {{:keys [name engine details]} :body}]
+(defendpoint PUT "/:id"
+  "Update a `Database`."
+  [id :as {{:keys [name engine details]} :body}]
   {name NonEmptyString, details Dict} ; TODO - check that engine is a valid choice
   (write-check Database id)
   (check-500 (upd-non-nil-keys Database id
@@ -63,11 +75,17 @@
                                :details details))
   (sel :one Database :id id))
 
-(defendpoint DELETE "/:id" [id]
+(defendpoint DELETE "/:id"
+  "Delete a `Database`."
+  [id]
   (write-check Database id)
   (del Database :id id))
 
-(defendpoint GET "/:id/autocomplete_suggestions" [id prefix]
+(defendpoint GET "/:id/autocomplete_suggestions"
+  "Return a list of autocomplete suggestions for a given PREFIX.
+   This is intened for use with the ACE Editor when the User is typing raw SQL.
+   Suggestions include matching `Tables` and `Fields` in this `Database`."
+  [id prefix] ; TODO - should prefix be Required/NonEmptyString ?
   (read-check Database id)
   (let [prefix-len (count prefix)
         table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
@@ -88,16 +106,22 @@
                                                                                 (str " " special_type)))])))]
     (concat matching-tables fields)))                                                                           ; return combined seq of Fields + Tables
 
-(defendpoint GET "/:id/tables" [id]
+(defendpoint GET "/:id/tables"
+  "Get a list of all `Tables` in `Database`."
+  [id]
   (sel :many Table :db_id id (order :name)))
 
-(defendpoint GET "/:id/idfields" [id]
+(defendpoint GET "/:id/idfields"
+  "Get a list of all primary key `Fields` for `Database`."
+  [id]
   (read-check Database id)
   (let [table_ids (sel :many :id Table :db_id id)]
     (-> (sel :many Field :table_id [in table_ids] :special_type "id")
         (hydrate :table))))
 
-(defendpoint POST "/:id/sync" [id]
+(defendpoint POST "/:id/sync"
+  "Update the metadata for this `Database`."
+  [id]
   (let-404 [db (sel :one Database :id id)]
     (future (driver/sync-database db))) ; run sync-tables asynchronously
   {:status :ok})

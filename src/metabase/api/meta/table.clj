@@ -14,23 +14,30 @@
             [metabase.util :as u]
             [metabase.driver :as driver]))
 
-(defannotation TableEntityType [symb value :nillable]
+(defannotation TableEntityType
+  "Param must be one of `person`, `event`, `photo`, or `place`."
+  [symb value :nillable]
   (checkp-contains? table/entity-types symb (keyword value)))
 
-(defendpoint GET "/" [org]
+(defendpoint GET "/"
+  "Get all `Tables` for an `Org`."
+  [org]
   {org Required}
   (let [db-ids (sel :many :id Database :organization_id org)]
     (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
         (hydrate :db))))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Get `Table` with ID."
+  [id]
   (->404 (sel :one Table :id id)
          (hydrate :db :pk_field)))
 
-(defendpoint PUT "/:id" [id :as {{:keys [entity_name entity_type description]} :body}]
-  {entity_name NonEmptyString
-   entity_type TableEntityType}
+(defendpoint PUT "/:id"
+  "Update `Table` with ID."
+  [id :as {{:keys [entity_name entity_type description]} :body}]
+  {entity_name NonEmptyString, entity_type TableEntityType}
   (write-check Table id)
   (check-500 (upd-non-nil-keys Table id
                                :entity_name entity_name
@@ -38,28 +45,36 @@
                                :description description))
   (sel :one Table :id id))
 
-(defendpoint GET "/:id/fields" [id]
+(defendpoint GET "/:id/fields"
+  "Get all `Fields` for `Table` with ID."
+  [id]
   (sel :many Field :table_id id))
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)
          (hydrate :db [:fields [:target]])))
 
-(defendpoint GET "/:id/fks" [id]
+(defendpoint GET "/:id/fks"
+  "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
+  [id]
   (read-check Table id)
   (let-404 [field-ids (sel :many :id Field :table_id id)]
     (-> (sel :many ForeignKey :destination_id [in field-ids])
         ;; TODO - it's a little silly to hydrate both of these table objects
         (hydrate [:origin [:table :db]] [:destination :table]))))
 
-(defendpoint POST "/:id/sync" [id]
+(defendpoint POST "/:id/sync"
+  "Re-sync the metadata for this `Table`."
+  [id]
   (let-404 [table (sel :one Table :id id)]
     (write-check table)
     ;; run the task asynchronously
     (future (driver/sync-table table)))
   {:status :ok})
 
-(defendpoint POST "/:id/reorder" [id :as {{:keys [new_order]} :body}]
+(defendpoint POST "/:id/reorder"
+  "Re-order the `Fields` belonging to this `Table`."
+  [id :as {{:keys [new_order]} :body}]
   {new_order [Required ArrayOfIntegers]}
   (write-check Table id)
   (let [table-fields (sel :many Field :table_id id)]

@@ -12,10 +12,18 @@
                              [user :refer [User]])
             [metabase.util :as util]))
 
-(defannotation CardFilterOption [symb value :nillable]
+(defannotation CardFilterOption
+  "Option must be one of `all`, `mine`, or `fav`."
+  [symb value :nillable]
   (checkp-contains? #{:all :mine :fav} symb (keyword value)))
 
-(defendpoint GET "/" [org f]
+(defendpoint GET "/"
+  "Get all the `Cards` for an `Org`. With param `f` (default is `all`), restrict cards as follows:
+
+   *  `all` Return all `Cards` for `Org`
+   *  `mine` Return all `Cards` created by current user for `Org`
+   *  `fav` Return all `Cards` favorited by the current user"
+  [org f]
   {org Required, f CardFilterOption}
   (read-check Org org)
   (-> (case (or f :all) ; default value for `f` is `:all`
@@ -27,7 +35,9 @@
                    (sort-by :name)))
       (hydrate :creator)))
 
-(defendpoint POST "/" [:as {{:keys [dataset_query description display name organization public_perms visualization_settings]} :body}]
+(defendpoint POST "/"
+  "Create a new `Card`."
+  [:as {{:keys [dataset_query description display name organization public_perms visualization_settings]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
   ;; TODO - which other params are required?
@@ -42,12 +52,16 @@
     :public_perms public_perms
     :visualization_settings visualization_settings))
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Get `Card` with ID."
+  [id]
   (->404 (sel :one Card :id id)
          read-check
          (hydrate :can_read :can_write :organization)))
 
-(defendpoint PUT "/:id" [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
+(defendpoint PUT "/:id"
+  "Update a `Card`."
+  [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
   {name NonEmptyString, public_perms PublicPerms}
   (write-check Card id)
   (check-500 (upd-non-nil-keys Card id
@@ -59,11 +73,15 @@
                                :visualization_settings visualization_settings))
   (sel :one Card :id id))
 
-(defendpoint DELETE "/:id" [id]
+(defendpoint DELETE "/:id"
+  "Delete a `Card`."
+  [id]
   (write-check Card id)
   (del Card :id id))
 
-(defendpoint GET "/:id/favorite" [id]
+(defendpoint GET "/:id/favorite"
+  "Has current user favorited this `Card`?"
+  [id]
   {:favorite (boolean (some->> *current-user-id*
                                (exists? CardFavorite :card_id id :owner_id)))})
 
