@@ -13,8 +13,9 @@
             [metabase.util.password :as password]))
 
 
-;; login
-(defendpoint POST "/" [:as {{:keys [email password] :as body} :body}]
+(defendpoint POST "/"
+  "Login."
+  [:as {{:keys [email password] :as body} :body}]
   {email    [Required Email]
    password [Required NonEmptyString]}
   (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
@@ -27,15 +28,17 @@
       {:id session-id})))
 
 
-;; logout
-(defendpoint DELETE "/" [session_id]
+(defendpoint DELETE "/"
+  "Logout."
+  [session_id]
   {session_id [Required NonEmptyString]}
   (check-exists? Session session_id)
   (del Session :id session_id))
 
 
-;; forgotten password reset email
-(defendpoint POST "/forgot_password" [:as {{:keys [email]} :body, {:strs [origin]} :headers}]
+(defendpoint POST "/forgot_password"
+  "Send a reset email when user has forgotten their password."
+  [:as {{:keys [email]} :body, {:strs [origin]} :headers}]
   ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
   ;; (Currently, there's no other way to get this info)
   ;;
@@ -55,8 +58,9 @@
     (log/info password-reset-url)))
 
 
-;; set password from reset token
-(defendpoint POST "/reset_password" [:as {{:keys [token password] :as body} :body}]
+(defendpoint POST "/reset_password"
+  "Reset password with a reset token."
+  [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
   (let-404 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]

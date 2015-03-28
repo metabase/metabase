@@ -22,10 +22,13 @@
    :databases   (databases-for-org org)})
 
 
-(defendpoint GET "/" [org f]
+(defendpoint GET "/"
+  "Fetch all `Querys` for an `Org`. With filter option F (default `all`), return all queries;
+   with `mine`, only return queries created by the current user."
+  [org f]
   {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
-  (-> (case (or f :all) ; default value for `f` is `:all`
+  (-> (case (or f :all)
         :all (sel :many Query
                   (where (or (= :creator_id *current-user-id*) (> :public_perms common/perms-none)))
                (where {:database_id [in (subselect Database (fields :id) (where {:organization_id org}))]})
@@ -68,20 +71,26 @@
     :database_id database))
 
 
-(defendpoint POST "/" [:as {{:keys [clone] :as body} :body}]
+(defendpoint POST "/"
+  "Clone or create a `Query` (`clone`, if passed, should be the ID of the `Query` to clone)."
+  [:as {{:keys [clone] :as body} :body}]
   {clone Integer}
   (if clone
     (query-clone clone)
     (query-create body)))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Fetch a `Query`."
+  [id]
   (->404 (sel :one Query :id id)
          read-check
          (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [name public_perms details timezone database] :as body} :body}]
+(defendpoint PUT "/:id"
+  "Update a `Query`."
+  [id :as {{:keys [name public_perms details timezone database] :as body} :body}]
   {database     [Required Dict]
    name         NonEmptyString
    public_perms PublicPerms}
@@ -96,12 +105,16 @@
         (hydrate :creator :database))))
 
 
-(defendpoint DELETE "/:id" [id]
+(defendpoint DELETE "/:id"
+  "Delete a `Query`."
+  [id]
   (write-check Query id)
   (del Query :id id))
 
 
-(defendpoint POST "/:id" [id]
+(defendpoint POST "/:id"
+  "Execute a `Query` asynchronously."
+  [id]
   (let-404 [{database-id :database_id
              {:keys [sql timezone]} :details :as query} (sel :one Query :id id)]
     (read-check query)
@@ -116,11 +129,15 @@
       (driver/dataset-query dataset-query options))))
 
 
-(defendpoint GET "/:id/results" [id]
+(defendpoint GET "/:id/results"
+  "Fetch the most recent results of a `Query`."
+  [id]
   (read-check Query id)
   (sel :many QueryExecution :query_id id (order :finished_at :DESC) (limit 10)))
 
-(defendpoint GET "/:id/csv" [id]
+(defendpoint GET "/:id/csv"
+  "Fetch the most recent results of a `Query` as CSV."
+  [id]
   (let-404 [{{:keys [columns rows]} :result_data :as query-execution} (sel :one all-fields, :query_id id, (order :started_at :DESC))]
     (let-404 [{{:keys [can_read name]} :query} (hydrate query-execution :query)]
       (check-403 @can_read)

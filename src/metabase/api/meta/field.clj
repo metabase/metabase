@@ -10,24 +10,33 @@
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
-(defannotation FieldSpecialType [symb value :nillable]
+(defannotation FieldSpecialType
+  "Param must be a valid `Field` special type."
+  [symb value :nillable]
   (checkp-contains? field/special-types symb (keyword value)))
 
-(defannotation FieldType [symb value :nillable]
+(defannotation FieldType
+  "Param must be a valid `Field` base type."
+  [symb value :nillable]
   (checkp-contains? field/field-types symb (keyword value)))
 
-(defannotation ForeignKeyRelationship [symb value :nillable]
+(defannotation ForeignKeyRelationship
+  "Param must be a valid `ForeignKey` relationship: one of `1t1` (one-to-one)m
+   `Mt1` (many-to-one), or `MtM` (many-to-many)."
+  [symb value :nillable]
   (checkp-contains? fk/relationships symb (keyword value)))
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Get `Field` with ID."
+  [id]
   (->404 (sel :one Field :id id)
          read-check
          (hydrate [:table :db])))
 
-(defendpoint PUT "/:id" [id :as {{:keys [special_type preview_display description]} :body}]
-  {special_type FieldSpecialType
-   ;; TODO - base_type ??
-   }
+(defendpoint PUT "/:id"
+  "Update `Field` with ID."
+  [id :as {{:keys [special_type preview_display description]} :body}]
+  {special_type FieldSpecialType}
   (write-check Field id)
   (check-500 (upd-non-nil-keys Field id
                :special_type    special_type
@@ -35,22 +44,27 @@
                :description     description))
   (sel :one Field :id id))
 
-(defendpoint GET "/:id/summary" [id]
+(defendpoint GET "/:id/summary"
+  "Get the count and distinct count of `Field` with ID."
+  [id]
   (let-404 [field (sel :one Field :id id)]
     (read-check field)
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
 
 
-(defendpoint GET "/:id/foreignkeys" [id]
+(defendpoint GET "/:id/foreignkeys"
+  "Get `ForeignKeys` whose origin is `Field` with ID."
+  [id]
   (read-check Field id)
   (-> (sel :many ForeignKey :origin_id id)
       (hydrate [:origin :table] [:destination :table])))
 
 
-(defendpoint POST "/:id/foreignkeys" [id :as {{:keys [target_field relationship]} :body}]
-  {target_field Required
-   relationship [Required ForeignKeyRelationship]}
+(defendpoint POST "/:id/foreignkeys"
+  "Create a new `ForeignKey` relationgship with `Field` with ID as the origin."
+  [id :as {{:keys [target_field relationship]} :body}]
+  {target_field Required, relationship [Required ForeignKeyRelationship]}
   (write-check Field id)
   (write-check Field target_field)
   (-> (ins ForeignKey
@@ -60,15 +74,21 @@
       (hydrate [:origin :table] [:destination :table])))
 
 
-(defendpoint GET "/:id/values" [id]
+(defendpoint GET "/:id/values"
+  "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `BooleanField`, return
+   all distinct values of the field, and a map of human-readable values defined by the user."
+  [id]
   (let-404 [field (sel :one Field :id id)]
     (read-check field)
     (if-not (field-should-have-field-values? field)
-      {:values {} :human_readable_values {}}   ; only categories get to have values
+      {:values {} :human_readable_values {}}
       (create-field-values-if-needed field))))
 
 
-(defendpoint POST "/:id/value_map_update" [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
+(defendpoint POST "/:id/value_map_update"
+  "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
+   or whose base type is `BooleanField`."
+  [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
   (let-404 [field (sel :one Field :id id)]
     (write-check field)
