@@ -6,9 +6,10 @@
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
             (metabase.models [org :refer [Org]]
-                             [user :refer [User]]
+                             [user :refer [User create-user]]
                              [org-perm :refer [OrgPerm grant-org-perm]])
-            [metabase.util :as util]))
+            [metabase.util :as util]
+            [ring.util.request :as req]))
 
 (defendpoint GET "/" []
   (if (:is_superuser @*current-user*)
@@ -54,18 +55,15 @@
 
 
 (defendpoint POST "/:id/members" [id :as {{:keys [first_name last_name email admin]
-                                           :or {admin false}} :body}]
+                                           :or {admin false}} :body :as request}]
   {admin      Boolean
    first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (write-check Org id)
-  (let [user-id (:id (or (sel :one [User :id] :email email)                ; find user with existing email - if exists then grant perm
-                         (ins User
-                           :email email
-                           :first_name first_name
-                           :last_name last_name
-                           :password (str (java.util.UUID/randomUUID)))))] ; TODO - send welcome email
+  (let [password-reset-url (str (java.net.URL. (java.net.URL. (req/request-url request)) "/auth/forgot_password"))
+        user-id (:id (or (sel :one [User :id] :email email)                ; find user with existing email - if exists then grant perm
+                         (create-user first_name last_name email :send-welcome true :reset-url password-reset-url)))]
     (grant-org-perm id user-id admin)
     (-> (sel :one OrgPerm :user_id user-id :organization_id id)
         (hydrate :user :organization))))
