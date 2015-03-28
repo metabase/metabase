@@ -1,6 +1,6 @@
 (ns metabase.models.common
   (:require [metabase.api.common :refer [*current-user-id* check org-perms-case]]
-            [metabase.util :refer :all]))
+            [metabase.util :as u]))
 
 (def timezones
   ["GMT"
@@ -68,8 +68,8 @@
   fields in OBJ. `organization_id` may be a delay in case a DB call is neccesary to determine it (e.g.
   determining the `organization_id` of a `Query` requires fetching the corresponding `Database`."
   [obj]
-  (assoc* obj
-          :public-permissions-set (delay (public-permissions <>))
-          :user-permissions-set (delay (user-permissions <>))
-          :can_read (delay (user-can? :read <>))
-          :can_write (delay (user-can? :write <>))))
+  (u/assoc* obj
+            :public-permissions-set (delay (public-permissions <>))
+            :user-permissions-set (delay (user-permissions <>))
+            :can_read (delay (user-can? :read <>))
+            :can_write (delay (user-can? :write <>))))
