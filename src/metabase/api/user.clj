@@ -15,22 +15,30 @@
   (check-403 (or (= user-id *current-user-id*)
                  (:is_superuser @*current-user*))))
 
-(defendpoint GET "/" []
-  (check-superuser) ; user must be a superuser to proceed
+(defendpoint GET "/"
+  "Fetch a list of all `Users`. You must be a superuser to do this."
+  []
+  (check-superuser)
   (sel :many User))
 
 
-(defendpoint GET "/current" []
+(defendpoint GET "/current"
+  "Fetch the current user, their `OrgPerms`, and associated `Orgs`."
+  []
   (->404 @*current-user*
          (hydrate [:org_perms :organization])))
 
 
-(defendpoint GET "/:id" [id]
-  (check-self-or-superuser id)        ; user must be getting their own details OR they must be a superuser to proceed
+(defendpoint GET "/:id"
+  "Fetch a `User`. You must be fetching yourself *or* be a superuser."
+  [id]
+  (check-self-or-superuser id)
   (check-404 (sel :one User :id id)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [email first_name last_name] :as body} :body}]
+(defendpoint PUT "/:id"
+  "Update a `User`."
+  [id :as {{:keys [email first_name last_name] :as body} :body}]
   {email      [Required Email]
    first_name NonEmptyString
    last_name  NonEmptyString}
@@ -43,7 +51,9 @@
   (sel :one User :id id))
 
 
-(defendpoint PUT "/:id/password" [id :as {{:keys [password old_password]} :body}]
+(defendpoint PUT "/:id/password"
+  "Update a user's password."
+  [id :as {{:keys [password old_password]} :body}]
   {password     [Required ComplexPassword]
    old_password Required}
   (check-self-or-superuser id)

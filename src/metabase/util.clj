@@ -8,8 +8,10 @@
                      InetSocketAddress
                      InetAddress)))
 
-(defn contains-many? [m & ks]
-  (every? true? (map #(contains? m %) ks)))
+(defn contains-many?
+  "Does M contain every key in KS?"
+  [m & ks]
+  (every? (partial contains? m) ks))
 
 (defn select-non-nil-keys
   "Like `select-keys` but filters out key-value pairs whose value is nil.
@@ -67,8 +69,13 @@
 ;; looking for `apply-kwargs`?
 ;; turns out `medley.core/mapply` does the same thingx
 
+(defmacro -assoc*
+  "Internal. Don't use this directly; use `assoc*` instead."
+  [k v & more]
+ `(let [~'<> (assoc ~'<> ~k ~v)]
+    ~(if (empty? more) `~'<>
+         `(-assoc* ~@more))))
 
-(declare -assoc*)
 (defmacro assoc*
   "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
    upon the result of the previous one using `<>`.
@@ -77,14 +84,9 @@
             :a 100
             :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
   [object & kvs]
-  `((fn [~'<>]          ; wrap in a `fn` so this can be used in `->`/`->>` forms
+  `((fn [~'<>] ; wrap in a `fn` so this can be used in `->`/`->>` forms
       (-assoc* ~@kvs))
     ~object))
-
-(defmacro -assoc* [k v & more]
-  `(let [~'<> (assoc ~'<> ~k ~v)]
-        ~(if (empty? more) `~'<>
-             `(-assoc* ~@more))))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
@@ -217,3 +219,14 @@
   `(-> ~obj
        ~@(interpose 'deref forms)
        deref))
+
+(defn require-dox-in-this-namespace
+  "Throw an exception if any public interned symbol in this namespace is missing a docstring."
+  []
+  (->> (ns-publics *ns*)
+       (map (fn [[symb varr]]
+              (when-not (:doc (meta varr))
+                (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
+       dorun))
+
+(require-dox-in-this-namespace)

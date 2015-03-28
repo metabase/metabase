@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [clojure.data.json :as json]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
             [korma.core :refer :all :exclude [update]]
             [medley.core :refer :all]
@@ -249,7 +250,9 @@
 (defmacro defannotation
   "Convenience for defining a new `defendpoint` arg annotation.
 
-    (defannotation Required [symb value]
+    (defannotation Required
+      \"Param must be non-nil.\"
+      [symb value]
       (when-not value
         (throw (ApiException. 400 (format \"'%s' is a required param.\" symb))))
       value)
@@ -275,7 +278,10 @@
 
     (defannotation PublicPerm [symb value :nillable]
       (annotation:Integer symb value]
-      (checkp-contains? #{0 1 2} symb value))"
+      (checkp-contains? #{0 1 2} symb value))
+
+   Try to add a docstr for all annotations. When they exist, they'll be included in the API documentation for
+   all parameters that use them. A good annotation docstr should explain what the valid values for the param are."
   {:arglists '([annotation-name docstr? [symbol-binding value-binding nillable?] & body])}
   [annotation-name & args]
   {:pre [(symbol? annotation-name)]}
@@ -284,6 +290,8 @@
     (assert (symbol? value-binding))
     (assert (or (nil? nillable?)
                 (= nillable? :nillable)))
+    (when-not docstr
+      (log/warn (format "Warning: annotation %s/%s does not have a docstring." (.getName *ns*) annotation-name)))
     (let [fn-name (symbol (str "annotation:" annotation-name))]
       `(do
          (defn ~fn-name ~@(when docstr [docstr]) [~symbol-binding ~value-binding]
@@ -299,7 +307,7 @@
 ;; ### common annotation definitions
 
 (defannotation Required
-  "Throw a 400 if param is `nil`."
+  "Param may not be `nil`."
   [symb value]
   (when-not value
     (throw (ApiException. (int 400) (format "'%s' is a required param." symb))))
@@ -313,57 +321,66 @@
           (catch Throwable _
             (throw (ApiException. (int 400) (format "'%s' is not a valid date." symb))))))
 
-(defannotation String->Integer [symb value :nillable]
+(defannotation String->Integer
+  "Param is converted from a string to an integer."
+  [symb value :nillable]
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
          (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
 
-(defannotation String->Dict [symb value :nillable]
+(defannotation String->Dict
+  "Param is converted from a JSON string to a dictionary."
+  [symb value :nillable]
   (try (clojure.walk/keywordize-keys (json/read-str value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
 
 (defannotation Integer
-  "Check that a param is an integer (this does *not* cast the param!)"
+  "Param must be an integer (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with integer? symb value "value must be an integer."))
 
 (defannotation Boolean
-  "Check that param is a boolean (this does *not* cast the param!)"
+  "Param must be a boolean (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with boolean? symb value "value must be a boolean."))
 
 (defannotation Dict
-  "Check that param is a dictionary (this does *not* cast the param!)"
+  "Param must be a dictionary (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with map? symb value "value must be a dictionary."))
 
 (defannotation ArrayOfIntegers
-  "Check that param is an array or Integers (this does *not* cast the param!)"
+  "Param must be an array of integers (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with vector? symb value "value must be an array.")
   (map (fn [v] (checkp-with integer? symb v "array value must be an integer.")) value))
 
 (defannotation NonEmptyString
-  "Check that param is a non-empty string (strings that only contain whitespace are considered empty)."
+  "Param must be a non-empty string (strings that only contain whitespace are considered empty)."
   [symb value :nillable]
   (checkp-with (complement clojure.string/blank?) symb value "value must be a non-empty string."))
 
 (defannotation PublicPerms
-  "check that perms is `int` in `#{0 1 2}`"
+  "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."
   [symb value :nillable]
   (annotation:Integer symb value)
   (checkp-contains? #{0 1 2} symb value))
 
 (defannotation Email
-  "Check that param is a valid email address."
+  "Param must be a valid email address."
   [symb value :nillable]
   (checkp-with u/is-email? symb value "Not a valid email address."))
 
 (defannotation ComplexPassword
-  "Check that a password is complex enough."
+  "Param must be a complex password (*what does this mean?*)"
   [symb value]
   (checkp-with password/is-complex? symb value "Insufficient password strength"))
+
+(defannotation FilterOptionAllOrMine
+  "Param must be either `all` or `mine`."
+  [symb value :nillable]
+  (checkp-contains? #{:all :mine} symb (keyword value)))
 
 ;;; ### defendpoint
 
@@ -383,11 +400,13 @@
   [method route & more]
   {:pre [(or (string? route)
              (vector? route))]}
-  (let [name (route-fn-name method route)
-        route (typify-route route)
+  (let [fn-name               (route-fn-name method route)
+        route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
+        _                      (when-not docstr
+                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (.getName *ns*) fn-name)))
         [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
-    `(def ~(vary-meta name assoc
+    `(def ~(vary-meta fn-name assoc
                       :doc (route-dox method route docstr args arg-annotations)
                       :is-endpoint? true)
        (~method ~route ~args

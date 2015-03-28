@@ -4,25 +4,29 @@
             [metabase.api.common :refer :all]
             (metabase.models [setting :as setting])))
 
-;; ## Get all settings + values
-(defendpoint GET "/" []
+(defendpoint GET "/"
+  "Get all `Settings` and their values. You must be a superuser to do this."
+  []
   (check-superuser)
   (setting/all-with-descriptions))
 
-;; ## Get a single setting
-(defendpoint GET "/:key" [key]
+(defendpoint GET "/:key"
+  "Fetch a single `Setting`. You must be a superuser to do this."
+  [key]
   {key Required}
   (check-superuser)
   (setting/get (keyword key)))
 
-;; ## Create/update a setting
-(defendpoint PUT "/:key" [key  :as {{:keys [value]} :body}]
+(defendpoint PUT "/:key"
+  "Create/update a `Setting`. You must be a superuser to do this."
+  [key  :as {{:keys [value]} :body}]
   {key Required, value Required}
   (check-superuser)
   (setting/set (keyword key) value))
 
-;; ## Delete a setting
-(defendpoint DELETE "/:key" [key]
+(defendpoint DELETE "/:key"
+  "Delete a `Setting`. You must be a superuser to do this."
+  [key]
   {key Required}
   (check-superuser)
   (setting/delete (keyword key)))
