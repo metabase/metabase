@@ -55,10 +55,12 @@
   (mapcat (partial get-search-results query)
           models))
 
-;; primary search endpoint
-(defendpoint POST "/" [:as {{:keys [page results_per_page q models]
-                             :or {page 1
-                                  results_per_page 10}} :body}]
+(defendpoint POST "/"
+  "The primary search endpoint. Get `Cards`, `Dashboards`, `Databases`, `Fields`, and `Tables`
+   whose name match all or part of Q."
+  [:as {{:keys [page results_per_page q models]
+         :or {page 1
+              results_per_page 10}} :body}]
   {page             Integer
    results_per_page Integer
    q                [Required NonEmptyString]}
@@ -83,8 +85,10 @@
             :start_index (+ 1 offset)
             :end_index (+ offset (count page-results))}}))
 
-;; return map of available search choices -> plural name like `{:table "Tables"}`
-(defendpoint GET "/model_choices" []
+
+(defendpoint GET "/model_choices"
+  "Return a map of available search choices -> plural name like `{:table \"Tables\"}`"
+  []
   {:choices {:metabase (->> search-choices
                             (map (fn [[choice {:keys [plural-name]}]]
                                    {choice plural-name}))

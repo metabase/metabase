@@ -29,7 +29,7 @@
   [:as {{:keys [organization name public_perms] :as body} :body}]
   {name         Required
    organization Required
-   public_perms Required}
+   public_perms [Required PublicPerms]}
   (read-check Org organization) ; any user who has permissions for this Org can make a dashboard
   (ins Dashboard
     :organization_id organization
