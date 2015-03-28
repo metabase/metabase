@@ -35,10 +35,12 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type preview_display description]} :body}]
-  {special_type FieldSpecialType}
+  [id :as {{:keys [field_type special_type preview_display description]} :body}]
+  {field_type FieldType
+   special_type FieldSpecialType}
   (write-check Field id)
   (check-500 (upd-non-nil-keys Field id
+               :field_type      field_type
                :special_type    special_type
                :preview_display preview_display
                :description     description))
