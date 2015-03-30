@@ -44,7 +44,7 @@
         (where {:organization_id org})
         (where {:public_perms [> common/perms-none]})
         (order :name :ASC))
-    (hydrate :creator :organization :can_read :can_write)))
+    (hydrate :creator :organization :can_read :can_write :recipients)))
 
 
 (defendpoint POST "/" [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
