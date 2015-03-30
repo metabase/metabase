@@ -57,8 +57,10 @@
                     </ul>
                 </td>
                 <td>
-                    <button class="Button" ng-click="executeReport(report.id)">Send Now</button>
-                    <button class="mx2 Button" ng-click="deleteReport($index)" delete-confirm>Delete</button>
+                    <div class="float-right">
+                        <button class="Button" ng-click="executeReport(report.id)">Send Now</button>
+                        <button class="mx2 Button" ng-click="deleteReport($index)" delete-confirm>Delete</button>
+                    </div>
                 </td>
             </tr>
         </table>
