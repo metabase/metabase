@@ -121,8 +121,8 @@
                         </div>
                     </div>
                     <section class="mt1 wrapper">
-                        <a class="NavItem NavItem--large" href="/superadmin/">Global Settings</a>
-                        <a class="NavItem NavItem--large" href="/superadmin/organization/">Organizations</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/') && !isActive('/superadmin/organization')}" href="/superadmin/">Global Settings</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">Organizations</a>
                     </section>
                 </div>
             </nav>

@@ -133,8 +133,7 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'App
     $scope.activeClass = 'is--selected';
 
     $scope.isActive = function(location) {
-        var active = ($location.path().indexOf(location) > 0);
-        return active;
+        return $location.path().indexOf(location) >= 0;
     };
 
     var setNavContext = function(context) {
