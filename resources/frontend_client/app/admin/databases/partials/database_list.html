@@ -6,18 +6,24 @@
         <h2>Databases</h2>
     </div>
 
-    <div>
-        <div ng-if="!databases">
-                <h3 class="text-normal text-centered">Loading ...</h3>
-        </div>
-
-        <ul class="bordered rounded bg-white shadowed">
-            <li class="p2 clearfix" ng-repeat="database in databases">
-                <h4 class="inline-block">
-                    <a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
-                </h4>
-                <span class="inline-block">{{database.engine}}</span>
-            </li>
-        </ul>
+    <div ng-if="!databases">
+        <h3 class="text-normal text-centered">Loading ...</h3>
     </div>
+
+    <table class="Table">
+        <tr>
+            <th>Name</th>
+            <th>Engine</th>
+        </tr>
+        <tr ng-repeat="database in databases">
+            <td>
+                <a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
+            </td>
+            <td>
+                {{database.engine}}
+            </td>
+            <td>
+                <button class="Button Button--remove float-right" ng-click="delete(database.id)" delete-confirm>Delete</button>
+            </td>
+    </table>
 </section>
