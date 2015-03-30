@@ -2,6 +2,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.email.messages :as email]
             (metabase.models [org-perm :refer [OrgPerm]])
             [metabase.util :as util]))
 
@@ -69,6 +70,23 @@
   (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
   (cascade-delete 'metabase.models.session/Session :user_id id))
 
+
+(defn create-user
+  "Convenience function for creating a new `User` and sending out the welcome email."
+  [first-name last-name email-address & {:keys [send-welcome reset-url]
+                                         :or {send-welcome false}}]
+  {:pre [(string? first-name)
+         (string? last-name)
+         (string? email-address)]}
+  (when-let [new-user (ins User
+                        :email email-address
+                        :first_name first-name
+                        :last_name last-name
+                        :password (str (java.util.UUID/randomUUID)))]
+    (if send-welcome
+      (email/send-new-user-email first-name email-address reset-url))
+    ;; return the newly created user
+    new-user))
 
 (defn set-user-password
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
