@@ -39,8 +39,5 @@
     "resolutions": {
         "react-onclickoutside": "~0.2.2",
         "moment": "2.8.2"
-    },
-    "scripts": {
-        "postinstall": "./node_modules/gulp/bin/gulp.js build"
     }
 }
