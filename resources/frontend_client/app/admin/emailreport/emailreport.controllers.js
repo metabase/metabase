@@ -12,7 +12,7 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
         $scope.filter = function(mode) {
             $scope.filterMode = mode;
 
-            $scope.$watch('currentOrg', function (org) {
+            $scope.$watch('currentOrg', function(org) {
                 if (!org) return;
 
                 EmailReport.list({
@@ -51,10 +51,10 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
         $scope.executeReport = function(reportId) {
             EmailReport.execute({
                 'reportId': reportId
-            }, function (result) {
+            }, function(result) {
                 $scope.success_message = 'EmailReport has been sent!';
                 // TODO: better user feedback
-            }, function (error) {
+            }, function(error) {
                 $scope.error_message = 'Failed sending EmailReport!';
                 console.log('error executing email report', error);
             });
@@ -65,26 +65,26 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
                 var removeReport = $scope.reports[index];
                 EmailReport.delete({
                     'reportId': removeReport.id
-                }, function (result) {
+                }, function(result) {
                     $scope.reports.splice(index, 1);
-                }, function (error) {
+                }, function(error) {
                     $scope.alertError('failed to remove job');
                     console.log('error deleting report', error);
                 });
             }
         };
 
-        $scope.recipientList = function (report) {
-            if (!report) return '';
-
+        $scope.recipientList = function(report) {
             var addrs = [];
-            report.recipients.forEach(function (recipient) {
-                addrs.push(recipient.email);
-            });
 
-            addrs = addrs.concat(report.email_addresses);
+            if (report) {
+                report.recipients.forEach(function(recipient) {
+                    addrs.push(recipient.email);
+                });
+                addrs = addrs.concat(report.email_addresses).sort();
+            }
 
-            return addrs.join(",");
+            return addrs;
         };
 
         // start by showing all
@@ -105,21 +105,23 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
-            $scope.form_input.users.forEach(function (user) {
+            $scope.form_input.users.forEach(function(user) {
                 if (user.incl) {
-                    recipients.push({'id': user.id});
+                    recipients.push({
+                        'id': user.id
+                    });
                 }
             });
             reportDetail.recipients = recipients;
 
             if ($scope.report.id) {
                 // if there is already an ID associated with the report then we are updating
-                EmailReport.update(reportDetail, function (result) {
+                EmailReport.update(reportDetail, function(result) {
                     $scope.report = result;
 
                     // alert
                     $scope.success_message = 'EmailReport saved successfully!';
-                }, function (error) {
+                }, function(error) {
                     $scope.error_message = 'Failed saving EmailReport!';
                     console.log('error updating email report', error);
                 });
@@ -127,12 +129,12 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                 // otherwise we are creating a new report
                 reportDetail.organization = $scope.currentOrg.id;
 
-                EmailReport.create(reportDetail, function (result) {
+                EmailReport.create(reportDetail, function(result) {
                     $scope.report = result;
 
                     // move the user over the the actual page for the new report
-                    $location.path('/' + $scope.currentOrg.slug +'/admin/emailreport/' + result.id);
-                }, function (error) {
+                    $location.path('/' + $scope.currentOrg.slug + '/admin/emailreport/' + result.id);
+                }, function(error) {
                     $scope.error_message = 'Failed saving EmailReport!';
                     console.log('error creating email report', error);
                 });
@@ -145,9 +147,9 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
             EmailReport.execute({
                 'reportId': reportId
-            }, function (result) {
+            }, function(result) {
                 $scope.success_message = 'EmailReport has been sent!';
-            }, function (error) {
+            }, function(error) {
                 $scope.error_message = 'Failed sending EmailReport!';
                 console.log('error executing email report', error);
             });
@@ -158,42 +160,42 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
             $scope.error_message = undefined;
         };
 
-        $scope.refreshTableList = function (dbId) {
+        $scope.refreshTableList = function(dbId) {
             Metabase.db_tables({
                 'dbId': dbId
-            }, function (tables) {
+            }, function(tables) {
                 $scope.tables = tables;
-            }, function (error) {
+            }, function(error) {
                 console.log('error getting tables', error);
             });
         };
 
-        $scope.$watch('report.schedule', function (schedule) {
+        $scope.$watch('report.schedule', function(schedule) {
             if (!schedule) return;
 
             $scope.human_readable_schedule = EmailReportUtils.humanReadableSchedule(schedule);
         }, true);
 
-        $scope.$watch('currentOrg', function (org) {
+        $scope.$watch('currentOrg', function(org) {
             if (!org) return;
 
             EmailReport.form_input({
                 'orgId': org.id
-            }, function (form_input) {
+            }, function(form_input) {
                 $scope.form_input = form_input;
 
                 if ($routeParams.reportId) {
                     // fetch the Job data
                     EmailReport.get({
                         'reportId': $routeParams.reportId
-                    }, function (result) {
+                    }, function(result) {
                         // Short term hack.  need to convert dataset_query into string
                         $scope.report = result;
 
                         // initialize our recipients controls
                         // TODO: this is a little annoying, but I didn't see an easier way to do this
-                        $scope.form_input.users.forEach(function (user) {
-                            result.recipients.forEach(function (recipient) {
+                        $scope.form_input.users.forEach(function(user) {
+                            result.recipients.forEach(function(recipient) {
                                 if (recipient.id === user.id) {
                                     user.incl = true;
                                 }
@@ -203,7 +205,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                         // we also need our table list at this point
                         $scope.refreshTableList(result.dataset_query.database);
 
-                    }, function (error) {
+                    }, function(error) {
                         console.log(error);
                         if (error.status == 404) {
                             $location.path('/');
@@ -243,11 +245,11 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                     };
 
                     // initialize all of our possible team members as not being recipients right now
-                    $scope.form_input.users.forEach(function (user) {
+                    $scope.form_input.users.forEach(function(user) {
                         user.incl = false;
                     });
                 }
-            }, function (error) {
+            }, function(error) {
                 console.log('error getting EmailReport form_input', error);
             });
         });
