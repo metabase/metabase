@@ -16,8 +16,10 @@
     </head>
 
     <body ng-controller="Corvus">
+
+        <!-- MAIN NAV -->
         <div ng-controller="Nav" ng-if="user" ng-cloak>
-            <nav class="CoreNav clearfix" ng-show="nav == 'main'">
+            <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
                     <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
                         <span class="NavItem-text" ng-bind="currentOrg.name"></span>
@@ -74,58 +76,59 @@
                             <ul class="Dropdown-content right">
                                 <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
                                 <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
-                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/superadmin/">Super Admin</a></li>
+                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/superadmin/">Site Administration</a></li>
                                 <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
                             </ul>
                         </li>
                     </ul>
                 </div>
             </nav>
-            <nav class="AdminNav" ng-show="nav == 'admin'">
-                    <div class="bg-white border-bottom">
-                        <div class="py2 wrapper">
-                            <label class="Select" ng-if="user.is_multi_org">
-                                <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-                            </label>
-                            <a class="AdminTitle link" cv-org-href="/admin/">
-                                <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-                            </a>
-                            <div class="mx1 float-right">
-                                <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
-                            </div>
-                        </div>
-                        <section class="mt1 wrapper">
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases">Databases</a>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets">Datasets</a>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">Email Reports</a>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">People</a>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" cv-org-href="/admin">Settings</a>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}"cv-org-href="/admin/query/run">SQL Query</a>
-                        </section>
-                    </div>
-            </nav>
 
-            <nav ng-show="nav == 'superadmin'">
-                <div class="border-bottom bg-white py1">
-                    <div class="wrapper clearfix">
-                        <div class="mx1 my2 float-right">
-                            <a class="inline-block" href="/">Exit</a>
+            <!-- ADMIN NAV -->
+            <nav class="AdminNav" ng-show="nav === 'admin'">
+                <div class="bg-white border-bottom">
+                    <div class="py2 wrapper">
+                        <label class="Select" ng-if="user.is_multi_org">
+                            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
+                        </label>
+                        <a class="AdminTitle link" cv-org-href="/admin/">
+                            <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
+                        </a>
+                        <div class="mx1 float-right">
+                            <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
                         </div>
-                        <h3 class="AdminPageTitle my2">Site Administration</h3>
                     </div>
+                    <section class="mt1 wrapper">
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases">Databases</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets">Datasets</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">Email Reports</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">People</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" cv-org-href="/admin">Settings</a>
+                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}"cv-org-href="/admin/query/run">SQL Query</a>
+                    </section>
                 </div>
             </nav>
-            <nav class="my4 col col-sm-3" ng-show="nav == 'superadmin'">
-                <ul class="CoreNav">
-                    <li>
+
+            <!-- SITE ADMINISTRATION (SUPER ADMIN) NAV -->
+            <nav class="AdminNav" ng-show="nav === 'superadmin'">
+                <div class="bg-white border-bottom">
+                    <div class="py2 wrapper">
+                        <a class="AdminTitle link" href="/superadmin/">
+                            Site Administration
+                        </a>
+                        <div class="mx1 float-right">
+                            <a class="AdminExit-trigger link" href="/">Exit Site Administration</a>
+                        </div>
+                    </div>
+                    <section class="mt1 wrapper">
                         <a class="NavItem NavItem--large" href="/superadmin/">Global Settings</a>
-                    </li>
-                    <li>
                         <a class="NavItem NavItem--large" href="/superadmin/organization/">Organizations</a>
-                    </li>
-                </ul>
+                    </section>
+                </div>
             </nav>
-            <nav class="SetupNav" ng-show="nav == 'setup'">
+
+            <!-- SETUP NAV -->
+            <nav class="SetupNav" ng-show="nav === 'setup'">
                 <div class="SetupWrapper py4">
                     <span class="SetupOrg">
                         {{currentOrg.name}}
