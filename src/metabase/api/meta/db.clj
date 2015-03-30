@@ -79,7 +79,7 @@
   "Delete a `Database`."
   [id]
   (write-check Database id)
-  (del Database :id id))
+  (cascade-delete Database :id id))
 
 (defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given PREFIX.

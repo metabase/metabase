@@ -327,16 +327,31 @@
 
 ;; ## CASADE-DELETE
 
-(defmulti pre-cascade-delete (fn [entity _]
-                               entity))
+(defmulti pre-cascade-delete
+  "Called by `cascade-delete` for each matching object that is about to be deleted.
+   Implementations should delete any objects related to this object by recursively
+   calling `cascade-delete`.
+
+    (defmethod pre-cascade-delete Database [_ {database-id :id :as database}]
+      (cascade-delete Card :database_id database-id)
+      ...)"
+  (fn [entity _]
+    entity))
 
 (defmethod pre-cascade-delete :default [_ instance]
   instance)
 
-(defmacro cascade-delete [entity & kwargs]
+;; TODO - does this *really* need to be a macro?
+(defmacro cascade-delete
+  "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
+   which should delete any objects related the object about to be deleted.
+
+   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
+  [entity & kwargs]
   `(let [entity# (entity->korma ~entity)
          instances# (sel :many entity# ~@kwargs)]
      (dorun (map (fn [instance#]
                    (pre-cascade-delete entity# instance#)
                    (del entity# :id (:id instance#)))
-                 instances#))))
+                 instances#))
+     {:status 204, :body nil}))
