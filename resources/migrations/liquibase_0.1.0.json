@@ -108,6 +108,14 @@
                 },
                 {
                   "column": {
+                    "name": "password_salt",
+                    "type": "varchar(254)",
+                    "defaultValue": "default",
+                    "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
                     "name": "date_joined",
                     "type": "DATETIME",
                     "constraints": {"nullable": false}
@@ -139,6 +147,18 @@
                     "name": "is_active",
                     "type": "boolean",
                     "constraints": {"nullable": false}
+                  }
+                },
+                {
+                  "column": {
+                    "name": "reset_token",
+                    "type": "varchar(254)"
+                  }
+                },
+                {
+                  "column": {
+                    "name": "reset_triggered",
+                    "type": "BIGINT"
                   }
                 }
               ]
