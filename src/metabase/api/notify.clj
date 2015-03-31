@@ -14,11 +14,12 @@
   [id :as {{:keys [table_id table_name] :as body} :body}]
   (let-404 [database (sel :one Database :id id)]
     (cond
-      table_id (when-let [table (sel :one Table :database_id id :id (int table_id))]
+      table_id (when-let [table (sel :one Table :db_id id :id (int table_id))]
                  (future (driver/sync-table table)))
-      table_name (when-let [table (sel :one Table :database_id id :name table_name)]
+      table_name (when-let [table (sel :one Table :db_id id :name table_name)]
                    (future (driver/sync-table table)))
-      :else (future (driver/sync-database database)))))
+      :else (future (driver/sync-database database))))
+  {:success true})
 
 
 (define-routes)
