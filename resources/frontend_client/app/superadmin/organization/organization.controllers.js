@@ -37,6 +37,18 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
         }, function(error) {
             console.log("Error getting organizations: ", error);
         });
+
+        $scope.deleteOrganization = function(organization) {
+            Organization.delete({
+                orgId: organization.id
+            }, function() {
+                $scope.organizations = _.filter($scope.organizations, function(org) {
+                    return org.id !== organization.id;
+                });
+            }, function(err) {
+                console.log("Error deleting Org:", err);
+            });
+        };
     }
 ]);
 
@@ -60,14 +72,13 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                Organization.update(organization,
-                    function(org) {
-                        $scope.organization = org;
-                    },
-                    function(error) {
-                        console.log(error);
-                    });
+                Organization.update(organization, function(org) {
+                    $scope.organization = org;
+                }, function(error) {
+                    console.log(error);
+                });
             };
+
         } else {
             // assume we are creating a new org
             $scope.organization = {};

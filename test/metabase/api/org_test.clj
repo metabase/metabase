@@ -189,6 +189,20 @@
 (expect "Not found."
   ((user->client :rasta) :put 404 "org/1000" {}))
 
+;; ## DELETE /api/org/:id
+(expect
+    [true
+     false]
+    (let [org-name (random-name)
+          {org-id :id} (ins Org :name org-name :slug org-name)]
+      [(exists? Org :name org-name)
+       (do ((user->client :crowberto) :delete 204 (format "org/%d" org-id))
+           (exists? Org :name org-name))]))
+
+;; Check that an admin for Org (non-superuser) can't delete it
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :delete 403 (format "org/%d" (:id @test-org))))
+
 
 ;; # MEMBERS ENDPOINTS
 
