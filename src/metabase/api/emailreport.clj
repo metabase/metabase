@@ -34,20 +34,27 @@
      :databases dbs
      :users users}))
 
+(defendpoint GET "/"
+  "Fetch `EmailReports` for ORG. With filter option F (default: `:all`):
 
-(defendpoint GET "/" [org f]
-  ;; TODO - filter by f == "mine"
-  ;; TODO - filter by creator == self OR public_perms > 0
+   *  `all`  - return reports created by current user + any other publicly visible reports
+   *  `mine` - return reports created by current user"
+  [org f]
   {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
-  (-> (sel :many EmailReport
-        (where {:organization_id org})
-        (where {:public_perms [> common/perms-none]})
-        (order :name :ASC))
-    (hydrate :creator :organization :can_read :can_write :recipients)))
+  (let [all? (= (or (keyword f) :all) :all)]
+    (-> (sel :many EmailReport
+             (where {:organization_id org})
+             (where (or {:creator_id *current-user-id*}
+                        (when all?
+                          {:public_perms [> common/perms-none]})))
+             (order :name :ASC))
+        (hydrate :creator :organization :can_read :can_write :recipients))))
 
 
-(defendpoint POST "/" [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
+(defendpoint POST "/"
+  "Create a new `EmailReport`."
+  [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
   {dataset_query  Required
    name           Required
    organization   Required

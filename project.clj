@@ -65,7 +65,7 @@
                              [lein-ancient "0.6.5"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.1.0"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-instant-cheatsheet "2.1.1"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]]               ; generate documentation with 'lein marg'
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
