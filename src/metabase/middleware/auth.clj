@@ -10,8 +10,10 @@
 
 (def metabase-session-cookie "metabase.SESSION_ID")
 (def metabase-session-header "x-metabase-session")
+(def metabase-apikey-header "x-metabase-apikey")
 
 (def response-unauthentic {:status 401 :body "Unauthenticated"})
+(def response-forbidden {:status 403 :body "Forbidden"})
 
 
 (defn wrap-sessionid
@@ -68,3 +70,30 @@
                 *current-user* (if-not current-user-id (atom nil)
                                                        (delay (sel-current-user current-user-id)))]
         (handler request)))))
+
+
+(defn wrap-apikey
+  "Middleware that sets the :metabase-apikey keyword on the request if a valid API Key can be found.
+
+   We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
+  [handler]
+  (fn [{:keys [headers] :as request}]
+    (if-let [api-key (headers metabase-apikey-header)]
+      (handler (assoc request :metabase-apikey api-key))
+      (handler request))))
+
+
+(defn enforce-apikey
+  "Middleware that enforces validation of the client via API Key, cancelling the request processing if the check fails.
+
+   Validation is handled by first checking for the presence of the :metabase-apikey on the request.  If the api key
+   is available then we validate it by checking it against the configured :mb-api-key value set in our global config.
+
+   If the request :metabase-apikey matches the configured :mb-api-key value then the request continues, otherwise we
+   reject the request and return a 403 Forbidden response."
+  [handler]
+  (fn [{:keys [metabase-apikey] :as request}]
+    (if (= (config/config-str :mb-api-key) metabase-apikey)
+      (handler request)
+      ;; default response is 403
+      response-forbidden)))

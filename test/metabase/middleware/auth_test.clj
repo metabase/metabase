@@ -8,7 +8,7 @@
             [metabase.util :as util]
             [ring.mock.request :as mock]))
 
-;;;;  ===========================  TEST wrap-sessionid middleware  ===========================
+;;  ===========================  TEST wrap-sessionid middleware  ===========================
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
 ;; this works in this case because the only impact our middleware has is on the request
@@ -20,32 +20,32 @@
 (expect
   {}
   (-> (wrapped-handler (mock/request :get "/anyurl") )
-    (select-keys [:metabase-sessionid])))
+      (select-keys [:metabase-sessionid])))
 
 
 ;; extract sessionid from header
 (expect
   {:metabase-sessionid "foobar"}
   (-> (wrapped-handler (mock/header (mock/request :get "/anyurl") metabase-session-header "foobar"))
-    (select-keys [:metabase-sessionid])))
+      (select-keys [:metabase-sessionid])))
 
 
 ;; extract sessionid from cookie
 (expect
   {:metabase-sessionid "cookie-session"}
   (-> (wrapped-handler (assoc (mock/request :get "/anyurl") :cookies {metabase-session-cookie {:value "cookie-session"}}))
-    (select-keys [:metabase-sessionid])))
+      (select-keys [:metabase-sessionid])))
 
 
 ;; if both header and cookie sessionids exist, then we expect the cookie to take precedence
 (expect
   {:metabase-sessionid "cookie-session"}
   (-> (wrapped-handler (-> (mock/header (mock/request :get "/anyurl") metabase-session-header "foobar")
-                         (assoc :cookies {metabase-session-cookie {:value "cookie-session"}})))
-    (select-keys [:metabase-sessionid])))
+                           (assoc :cookies {metabase-session-cookie {:value "cookie-session"}})))
+      (select-keys [:metabase-sessionid])))
 
 
-;;;;  ===========================  TEST enforce-authentication middleware  ===========================
+;;  ===========================  TEST enforce-authentication middleware  ===========================
 
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
@@ -57,7 +57,7 @@
   "Creates a mock Ring request with the given sessionid applied"
   [sessionid]
   (-> (mock/request :get "/anyurl")
-    (assoc :metabase-sessionid sessionid)))
+      (assoc :metabase-sessionid sessionid)))
 
 
 ;; no sessionid in the request
@@ -74,7 +74,7 @@
   (expect-let [res (korma/insert Session (korma/values {:id sessionid :user_id (user->id :rasta) :created_at (util/new-sql-timestamp)}))]
     {:metabase-userid (user->id :rasta)}
     (-> (auth-enforced-handler (request-with-sessionid sessionid))
-      (select-keys [:metabase-userid]))))
+        (select-keys [:metabase-userid]))))
 
 
 ;; expired sessionid
@@ -100,7 +100,7 @@
     (auth-enforced-handler (request-with-sessionid sessionid))))
 
 
-;;;;  ===========================  TEST bind-current-user middleware  ===========================
+;;  ===========================  TEST bind-current-user middleware  ===========================
 
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
@@ -113,7 +113,7 @@
   "Creates a mock Ring request with the given userid applied"
   [userid]
   (-> (mock/request :get "/anyurl")
-    (assoc :metabase-userid userid)))
+      (assoc :metabase-userid userid)))
 
 
 ;; with valid user-id
@@ -128,3 +128,60 @@
   {:userid 0
    :user {}}
   (user-bound-handler (request-with-userid 0)))
+
+
+;;  ===========================  TEST wrap-apikey middleware  ===========================
+
+;; create a simple example of our middleware wrapped around a handler that simply returns the request
+;; this works in this case because the only impact our middleware has is on the request
+(def wrapped-apikey-handler
+  (wrap-apikey (fn [req] req)))
+
+
+;; no apikey in the request
+(expect
+  {}
+  (-> (wrapped-apikey-handler (mock/request :get "/anyurl") )
+      (select-keys [:metabase-sessionid])))
+
+
+;; extract apikey from header
+(expect
+  {:metabase-apikey "foobar"}
+  (-> (wrapped-apikey-handler (mock/header (mock/request :get "/anyurl") metabase-apikey-header "foobar"))
+      (select-keys [:metabase-apikey])))
+
+
+;;  ===========================  TEST enforce-apikey middleware  ===========================
+
+
+;; create a simple example of our middleware wrapped around a handler that simply returns the request
+(def apikey-enforced-handler
+  (enforce-apikey (fn [req] {:success true})))
+
+
+(defn request-with-apikey
+  "Creates a mock Ring request with the given apikey applied"
+  [apikey]
+  (-> (mock/request :get "/anyurl")
+      (assoc :metabase-apikey apikey)))
+
+
+;; no apikey in the request, expect 403
+(expect
+  {:status (:status response-forbidden)
+   :body (:body response-forbidden)}
+  (apikey-enforced-handler (mock/request :get "/anyurl")))
+
+
+;; valid apikey, expect 200
+(expect
+  {:success true}
+  (apikey-enforced-handler (request-with-apikey "test-api-key")))
+
+
+;; invalid apikey, expect 403
+(expect
+  {:status (:status response-forbidden)
+   :body (:body response-forbidden)}
+  (apikey-enforced-handler (request-with-apikey "foobar")))
