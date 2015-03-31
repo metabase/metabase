@@ -794,6 +794,18 @@ CoreServices.factory('Organization', ['$resource', '$cookies', function($resourc
                 }
             }
         },
+        delete: {
+            url: '/api/org/:orgId',
+            method: 'DELETE',
+            params: {
+                orgId: '@id'
+            },
+            headers: {
+                'X-CSRFToken': function() {
+                    return $cookies.csrftoken;
+                }
+            }
+        },
         members: {
             url: '/api/org/:orgId/members',
             method: 'GET',
