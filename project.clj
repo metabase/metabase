@@ -75,6 +75,7 @@
              :expectations {:resource-paths ["test_resources"]
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
-                                       "-Dmb.jetty.port=3001"]}
+                                       "-Dmb.jetty.port=3001"
+                                       "-Dmb.api.key=test-api-key"]}
              :uberjar {:aot :all
                        :prep-tasks ["npm" "gulp" "javac" "compile"]}})

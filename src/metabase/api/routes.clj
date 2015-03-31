@@ -5,6 +5,7 @@
                           [card :as card]
                           [dash :as dash]
                           [emailreport :as emailreport]
+                          [notify :as notify]
                           [org :as org]
                           [qs :as qs]
                           [query :as query]
@@ -20,6 +21,12 @@
                                [field :as field]
                                [table :as table])
             [metabase.middleware.auth :as auth]))
+
+(defn- +apikey
+  "Wrap API-ROUTES so they may only be accessed with proper apikey credentials."
+  [api-routes]
+  (-> api-routes
+      auth/enforce-apikey))
 
 (defn- +auth
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
@@ -38,6 +45,7 @@
   (context "/meta/db"      [] (+auth db/routes))
   (context "/meta/field"   [] (+auth field/routes))
   (context "/meta/table"   [] (+auth table/routes))
+  (context "/notify"       [] (+apikey notify/routes))
   (context "/org"          [] (+auth org/routes))
   (context "/qs"           [] (+auth qs/routes))
   (context "/query"        [] (+auth query/routes))
