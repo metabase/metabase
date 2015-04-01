@@ -82,7 +82,7 @@
    then delete it via `cascade-delete`.
 
    Our unit tests rely a heavily on the test data and make some assumptions about the
-   DB staying in the same *clean* state. This allows us to write very conscise tests.
+   DB staying in the same *clean* state. This allows us to write very concise tests.
    Generally this means tests should \"clean up after themselves\" and leave things the
    way they found them.
 
