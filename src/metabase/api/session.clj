@@ -7,7 +7,7 @@
             [korma.core :as korma]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.email :as email]
+            [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password]]
                              [session :refer [Session]])
             [metabase.util.password :as password]))
@@ -38,7 +38,7 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {{:keys [email]} :body, {:strs [origin]} :headers}]
+  [:as {:keys [server-name] {:keys [email]} :body, {:strs [origin]} :headers}]
   ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
   ;; (Currently, there's no other way to get this info)
   ;;
@@ -46,15 +46,12 @@
   ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
   ;; what you could phish from them since they already forgot their password.
   {email [Required Email]}
-  (let [{user-id :id user-name :common_name} (sel :one User :email email)
+  (let [{user-id :id} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
     (check-404 user-id)
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-    (email/send-message "Metabase Password Reset" {email user-name}
-                        :html (html [:p "Hey, " user-name ", sorry you forgot your password :'(."]
-                                    [:p [:a {:href password-reset-url} "Click here to reset it!"]]
-                                    [:p "<3"]))
+    (email/send-password-reset-email email server-name password-reset-url)
     (log/info password-reset-url)))
 
 
