@@ -24,9 +24,12 @@
   "Fetch all `Databases` for an `Org`."
   [org]
   {org Required}
-  (read-check Org org)
-  (-> (sel :many Database :organization_id org (order :name))
-      (hydrate :organization)))
+  (let-404 [{:keys [id inherits] :as org} (sel :one Org :id org)]
+    (read-check org)
+    (-> (sel :many Database (order :name) (where (if inherits
+                                                   {}
+                                                   {:organization_id id})))
+        (hydrate :organization))))
 
 (defendpoint POST "/"
   "Add a new `Database` for `Org`."
