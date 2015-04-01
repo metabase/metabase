@@ -21,7 +21,7 @@
 (defendpoint GET "/"
   "Get all the `Cards` for an `Org`. With param `f` (default is `all`), restrict cards as follows:
 
-   *  `all`  Return all `Cards` for `Org` which were create by current user or are publicly visible
+   *  `all`  Return all `Cards` for `Org` which were created by current user or are publicly visible
    *  `mine` Return all `Cards` for `Org` created by current user
    *  `fav`  Return all `Cards` favorited by the current user"
   [org f]
