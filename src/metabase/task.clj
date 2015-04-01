@@ -79,9 +79,14 @@
   {:pre [(var? hook)
          (= (:type (meta hook)) ::hook)]}
   (let [[parallel args] (u/optional (partial = :parallel) args)
-        map-fn (if parallel pmap #(dorun (map %1 %2)))]
-    (map-fn (u/rpartial apply args)
-            @(var-get hook))))
+        map-fn (if parallel pmap map)]
+    (dorun
+     (map-fn (fn [f]
+               (try (apply f args)
+                    (catch Throwable e
+                      (log/error (format "Caught exception when running %s function %s with args %s : %s"
+                                         (:name (meta hook)) f args e)))))
+             @(var-get hook)))))
 
 
 ;; # TASK RUNNER
@@ -96,7 +101,7 @@
 
     (defn some-task [hour]
         do-something ...)
-    (add-hook! #'hourly-tasks-hook some-task) ; now some-task will be called on a background thread every hour")
+    (add-hook! #'hourly-tasks-hook some-task) ; some-task will be called on a background thread every hour")
 
 (defhook nightly-tasks-hook
   "Tasks to run nightly at midnight (according to the system calendar).
