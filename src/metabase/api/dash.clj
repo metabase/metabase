@@ -1,5 +1,5 @@
 (ns metabase.api.dash
-  "/api/meta/dash endpoints."
+  "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
             [medley.core :as medley]

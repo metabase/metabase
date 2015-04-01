@@ -6,11 +6,13 @@
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
+                             [common :as common]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [user :refer [User]])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test-data :refer :all]
+            metabase.test-setup))
 
 ;; # DASHBOARD LIFECYCLE
 
@@ -56,6 +58,21 @@
       :public_perms 0
       :created_at $})}
   ((user->client :rasta) :get 200 (format "dash/%d" (:id dash))))
+
+;; Check that only the creator of a Dashboard sees it when it isn't public
+(expect [true
+         false]
+  (with-temp Dashboard [{:keys [id]} {:name (random-name)
+                                      :public_perms common/perms-none
+                                      :organization_id @org-id
+                                      :creator_id (user->id :crowberto)}]
+    (let [can-see-dash? (fn [user]
+                          (contains? (->> ((user->client user) :get 200 "dash" :org @org-id :f :all)
+                                          (map :id)
+                                          set)
+                                     id))]
+      [(can-see-dash? :crowberto)
+       (can-see-dash? :rasta)])))
 
 ;; ## PUT /api/dash/:id
 ;; Test that we can change a Dashboard
