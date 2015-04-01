@@ -8,6 +8,7 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
+                             [common :as common]
                              [org :refer [Org]]
                              [user :refer [User]])
             [metabase.util :as util]))
@@ -20,14 +21,15 @@
 (defendpoint GET "/"
   "Get all the `Cards` for an `Org`. With param `f` (default is `all`), restrict cards as follows:
 
-   *  `all` Return all `Cards` for `Org`
+   *  `all`  Return all `Cards` for `Org`
    *  `mine` Return all `Cards` created by current user for `Org`
-   *  `fav` Return all `Cards` favorited by the current user"
+   *  `fav`  Return all `Cards` favorited by the current user"
   [org f]
   {org Required, f CardFilterOption}
   (read-check Org org)
   (-> (case (or f :all) ; default value for `f` is `:all`
-        :all  (sel :many Card :organization_id org (order :name :ASC))
+        :all  (sel :many Card :organization_id org (order :name :ASC) (where (or {:creator_id *current-user-id*}
+                                                                                 {:public_perms [> common/perms-none]})))
         :mine (sel :many Card :organization_id org :creator_id *current-user-id* (order :name :ASC))
         :fav  (->> (-> (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
                        (hydrate :card))
