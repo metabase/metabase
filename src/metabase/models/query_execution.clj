@@ -50,10 +50,11 @@
                                                  (json/write-str json_query)))
     status (assoc :status (name status))))
 
-(defmethod post-select QueryExecution [_ {:keys [query_id result_rows] :as query-execution}]
+(defmethod post-select QueryExecution [_ {:keys [query_id result_rows status] :as query-execution}]
   (-> query-execution
       (realize-json :json_query :result_data)
-      (assoc* :row_count (or result_rows 0) ; sadly we have 2 ways to reference the row count :(
+      (assoc* :status (keyword status)
+              :row_count (or result_rows 0) ; sadly we have 2 ways to reference the row count :(
               :query (delay
                       (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
                       (sel :one Query :id query_id)))))
@@ -65,8 +66,7 @@
        :or {cols []
             columns []}} :result_data :as query-execution}]
     (let [rows (or rows data [])]
-        (->
-            (select-keys query-execution [:id :uuid :status])
+        (-> (select-keys query-execution [:id :uuid :status])
             (assoc :data {:rows rows
                           :cols cols
                           :columns columns}
