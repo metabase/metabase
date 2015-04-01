@@ -26,8 +26,9 @@
   {org Required}
   (let-404 [{:keys [id inherits] :as org} (sel :one Org :id org)]
     (read-check org)
-    (-> (sel :many Database (order :name) (where (if inherits {}
-                                                              {:organization_id id})))
+    (-> (sel :many Database (order :name) (where (if inherits
+                                                   {}
+                                                   {:organization_id id})))
         (hydrate :organization))))
 
 (defendpoint POST "/"
