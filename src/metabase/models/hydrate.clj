@@ -25,8 +25,10 @@
 (defn- read-json-str-or-clob
   "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
   [json-str]
-  (some-> (if-not (= (type json-str) org.h2.jdbc.JdbcClob) json-str
-                  (u/jdbc-clob->str json-str))
+  (some-> (cond
+            (= (type json-str) org.h2.jdbc.JdbcClob) (u/jdbc-clob->str json-str)
+            (= (type json-str) org.postgresql.util.PGobject) (.getValue json-str)
+            :else json-str)
           cheshire/parse-string))
 
 (defn realize-json
