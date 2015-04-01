@@ -27,7 +27,7 @@
 
 (def ^:private only-display-output-on-error
   "Set this to `false` to see all API responses."
-  false)
+  true)
 
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
