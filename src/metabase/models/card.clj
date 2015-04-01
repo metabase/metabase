@@ -9,18 +9,34 @@
                              [user :refer [User]])
             [metabase.util :as util]))
 
+(def ^:const display-types
+  "Valid values of `Card.display_type`."
+  #{:area
+    :bar
+    :country
+    :line
+    :pie
+    :pin_map
+    :scalar
+    :state
+    :table
+    :timeseries})
+
 (defentity Card
   (table :report_card)
   (assoc :hydration-keys #{:card}))
 
-(defmethod pre-insert Card [_ {:keys [dataset_query visualization_settings] :as card}]
+(defmethod pre-insert Card [_ {:keys [dataset_query visualization_settings display] :as card}]
+  (assert (contains? display-types (keyword display)))
   (let [defaults {:created_at (util/new-sql-timestamp)
                   :updated_at (util/new-sql-timestamp)}]
     (-> (merge defaults card)
         (assoc :dataset_query (json/write-str dataset_query)
                :visualization_settings (json/write-str visualization_settings)))))
 
-(defmethod pre-update Card [_ {:keys [dataset_query visualization_settings] :as card}]
+(defmethod pre-update Card [_ {:keys [dataset_query visualization_settings display] :as card}]
+  (when display
+    (assert (contains? display-types (keyword display))))
   (assoc card
          :updated_at (util/new-sql-timestamp)
          :dataset_query (json/write-str dataset_query)

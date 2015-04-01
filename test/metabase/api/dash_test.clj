@@ -74,6 +74,7 @@
       [(can-see-dash? :crowberto)
        (can-see-dash? :rasta)])))
 
+
 ;; ## PUT /api/dash/:id
 ;; Test that we can change a Dashboard
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
