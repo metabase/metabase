@@ -209,13 +209,14 @@
   OPTION, if specified, is one of `:field`, `:fields`, or `:id`.
 
     ;; Only return IDs of objects.
-    (sel :one :id User :email \"cam@metabase.com\")  -> 120
+    (sel :one :id User :email \"cam@metabase.com\") -> 120
 
     ;; Only return the specified field.
-    (sel :many :field [User :first_name])            -> (\"Cam\" \"Sameer\" ...)
+    (sel :many :field [User :first_name]) -> (\"Cam\" \"Sameer\" ...)
 
     ;; Return map(s) that only contain the specified fields.
-    (sel :one :fields [User :id :first_name])        -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
+    (sel :one :fields [User :id :first_name])
+      -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
@@ -223,20 +224,21 @@
 
     (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
-  ENTITY may optionally be a fully-qualified string name of an entity; in this case, the symbol's namespace
+  ENTITY may optionally be a fully-qualified symbol name of an entity; in this case, the symbol's namespace
   will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
   dependencies. This is slower, however, due to added runtime overhead.
 
-    (sel :one \"metabase.models.table/Table\" :id 1) ; require/resolve metabase.models.table/Table. then sel Table 1
+    ;; require/resolve metabase.models.table/Table. Then sel Table 1
+    (sel :one 'metabase.models.table/Table :id 1)
 
-  FORMS may be either keyword args, which will be added to a korma `where` clause, or other korma
-   clauses such as `order`, which are passed directly.
+  FORMS may be either keyword args, which will be added to a korma `where` clause, or [other korma
+  clauses](http://www.sqlkorma.com/docs#select) such as `order`, which are passed directly.
 
     (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
+  {:arglists '([one-or-many option? entity & forms])}
   [one-or-many & args]
-  {:arglists ([one-or-many option? entity & forms])
-   :pre [(contains? #{:one :many} one-or-many)]}
+  {:pre [(contains? #{:one :many} one-or-many)]}
   (if (= one-or-many :one)
     `(first (sel :many ~@args (limit 1)))
     (let [[option [entity & forms]] (u/optional keyword? args)]
@@ -327,16 +329,31 @@
 
 ;; ## CASADE-DELETE
 
-(defmulti pre-cascade-delete (fn [entity _]
-                               entity))
+(defmulti pre-cascade-delete
+  "Called by `cascade-delete` for each matching object that is about to be deleted.
+   Implementations should delete any objects related to this object by recursively
+   calling `cascade-delete`.
+
+    (defmethod pre-cascade-delete Database [_ {database-id :id :as database}]
+      (cascade-delete Card :database_id database-id)
+      ...)"
+  (fn [entity _]
+    entity))
 
 (defmethod pre-cascade-delete :default [_ instance]
   instance)
 
-(defmacro cascade-delete [entity & kwargs]
+;; TODO - does this *really* need to be a macro?
+(defmacro cascade-delete
+  "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
+   which should delete any objects related the object about to be deleted.
+
+   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
+  [entity & kwargs]
   `(let [entity# (entity->korma ~entity)
          instances# (sel :many entity# ~@kwargs)]
      (dorun (map (fn [instance#]
                    (pre-cascade-delete entity# instance#)
                    (del entity# :id (:id instance#)))
-                 instances#))))
+                 instances#))
+     {:status 204, :body nil}))

@@ -11,6 +11,8 @@
             [metabase.util :as util]
             [ring.util.request :as req]))
 
+;; ## /api/org Endpoints
+
 (defendpoint GET "/"
   "Fetch a list of all `Orgs`. Superusers get all organizations; normal users simpliy see the orgs they are members of."
   []
@@ -29,6 +31,9 @@
                                           (mapply ins Org))]
     (grant-org-perm id *current-user-id* true) ; now that the Org exists, add the creator as the first admin member
     new-org))                                  ; make sure the api response is still the newly created org
+
+
+;; ## /api/org/:id Endpoints
 
 (defendpoint GET "/:id"
   "Fetch `Org` with ID."
@@ -55,6 +60,14 @@
                                :name name))
   (sel :one Org :id id))
 
+(defendpoint DELETE "/:id"
+  "Delete an `Org`. You must be a superuser to do this."
+  [id]
+  (check-superuser)
+  (cascade-delete Org :id id))
+
+
+;; ## /api/org/:id/members Endpoints
 
 (defendpoint GET "/:id/members"
   "Get a list of `Users` who are members of (i.e., have `OrgPerms` for) `Org`."

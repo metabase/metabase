@@ -31,6 +31,7 @@
       wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params     ; converts string keys in :params to keyword keys
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
+      auth/wrap-apikey        ; looks for a Metabase API Key on the request and assocs as :metabase-apikey
       auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
       wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key

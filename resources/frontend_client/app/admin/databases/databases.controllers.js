@@ -46,7 +46,7 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
 
 DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
 
-    $scope.databaseTypes = {
+    $scope.ENGINES = {
         postgres: {
             name: "Postgres",
             example: "host=[ip address] port=5432 dbname=examples user=corvus password=******"
