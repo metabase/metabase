@@ -40,8 +40,8 @@
                  :updated_at             (util/new-sql-timestamp)
                  :dataset_query          (cheshire/generate-string dataset_query)
                  :visualization_settings (cheshire/generate-string visualization_settings))
-    display (do (assert (contains? display-types (keyword display)))
-                (assoc :display (name display)))))
+    display #(do (assert (contains? display-types (keyword display)))
+                 (assoc % :display (name display)))))
 
 (defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
   (-> card
