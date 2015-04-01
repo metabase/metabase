@@ -6,7 +6,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card]]
+                             [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
                              [org :refer [Org]]
@@ -17,6 +17,11 @@
   "Option must be one of `all`, `mine`, or `fav`."
   [symb value :nillable]
   (checkp-contains? #{:all :mine :fav} symb (keyword value)))
+
+(defannotation CardDisplayType
+  "Option must be a valid `display_type`."
+  [symb value :nillable]
+  (checkp-contains? card/display-types symb (keyword value)))
 
 (defendpoint GET "/"
   "Get all the `Cards` for an `Org`. With param `f` (default is `all`), restrict cards as follows:
@@ -41,7 +46,8 @@
   "Create a new `Card`."
   [:as {{:keys [dataset_query description display name organization public_perms visualization_settings]} :body}]
   {name         [Required NonEmptyString]
-   public_perms [Required PublicPerms]}
+   public_perms [Required PublicPerms]
+   display      [Required CardDisplayType]}
   ;; TODO - which other params are required?
   (read-check Org organization)
   (ins Card
@@ -64,7 +70,9 @@
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name NonEmptyString, public_perms PublicPerms}
+  {name         NonEmptyString
+   public_perms PublicPerms
+   display      CardDisplayType}
   (write-check Card id)
   (check-500 (upd-non-nil-keys Card id
                                :dataset_query dataset_query
