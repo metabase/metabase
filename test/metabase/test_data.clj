@@ -123,6 +123,14 @@
      {:pre [(contains? usernames username)]}
      (:id (fetch-user username)))))
 
+(def id->user
+  "Reverse of `user->id`.
+
+    (id->user 4) -> :rasta"
+  (let [m (delay (zipmap (map user->id usernames) usernames))]
+    (fn [id]
+      (@m id))))
+
 (let [tokens (atom {})
       user->token (fn [user]
                     (or (@tokens user)

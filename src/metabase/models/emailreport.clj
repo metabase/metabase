@@ -1,5 +1,6 @@
 (ns metabase.models.emailreport
   (:require [clojure.data.json :as json]
+            [clojure.set :as set]
             [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
@@ -91,14 +92,11 @@
         (assoc :dataset_query (json/write-str dataset_query)
                :schedule (json/write-str schedule)))))
 
-(defmethod pre-update EmailReport [_ {:keys [version dataset_query schedule id] :as report}]
-  (let [version (or version
-                    (sel :one :field [EmailReport :version] :id id))]
-    (assoc report
-           :updated_at    (util/new-sql-timestamp)
-           :dataset_query (json/write-str dataset_query)
-           :schedule      (json/write-str schedule)
-           :version       (inc version))))
+(defmethod pre-update EmailReport [_ {:keys [dataset_query schedule id] :as report}]
+  (assoc report                                        ; don't increment `version` here.
+         :updated_at    (util/new-sql-timestamp)       ; we do that in the API endpoint
+         :dataset_query (json/write-str dataset_query)
+         :schedule      (json/write-str schedule)))
 
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
@@ -112,3 +110,34 @@
       :recipients   (delay (sel :many User
                                 (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
     assoc-permissions-sets))
+
+(defmethod pre-cascade-delete EmailReport [_ {:keys [id]}]
+  (cascade-delete EmailReportRecipients :emailreport_id id))
+
+
+;; ## Related Functions
+
+(defn update-recipients
+  "Update the `EmailReportRecipients` for EMAIL-REPORT.
+   USER-IDS should be a definitive collection of *all* IDs of users who should receive the report.
+
+   *  If an ID in USER-IDS has no corresponding existing `EmailReportRecipients` object, one will be created.
+   *  If an existing `EmailReportRecipients` has no corresponding ID in USER-IDs, it will be deleted."
+  {:arglists '([email-report user-ids])}
+  [{:keys [id]} user-ids]
+  {:pre [(integer? id)
+         (coll? user-ids)
+         (every? integer? user-ids)]}
+  (let [recipients-old (set (sel :many :field [EmailReportRecipients :user_id] :emailreport_id id))
+        recipients-new (set user-ids)
+        recipients+    (set/difference recipients-new recipients-old)
+        recipients-    (set/difference recipients-old recipients-new)]
+    (when (seq recipients+)
+      (let [vs (map #(assoc {:emailreport_id id} :user_id %)
+                    recipients+)]
+        (insert EmailReportRecipients
+                (values vs))))
+    (when (seq recipients-)
+      (delete EmailReportRecipients
+              (where {:emailreport_id id
+                      :user_id [in recipients-]})))))

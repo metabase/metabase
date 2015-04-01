@@ -106,11 +106,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
             $scope.form_input.users.forEach(function(user) {
-                if (user.incl) {
-                    recipients.push({
-                        'id': user.id
-                    });
-                }
+                if (user.incl) recipients.push(user.id);
             });
             reportDetail.recipients = recipients;
 

@@ -54,38 +54,48 @@
 
 (defendpoint POST "/"
   "Create a new `EmailReport`."
-  [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
+  [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule recipients] :as body} :body}]
   {dataset_query  Required
    name           Required
    organization   Required
    schedule       Required
    mode           EmailReportMode
-   public_perms   PublicPerms}
+   public_perms   PublicPerms
+   recipients     ArrayOfIntegers}
   (read-check Org organization)
-  (check-500 (ins EmailReport
-               :creator_id *current-user-id*
-               :dataset_query dataset_query
-               :description description
-               :email_addresses email_addresses
-               :mode mode
-               :name name
-               :organization_id organization
-               :public_perms public_perms
-               :schedule schedule))) ; TODO - deal with recipients
+  (let-500 [report (ins EmailReport
+                     :creator_id *current-user-id*
+                     :dataset_query dataset_query
+                     :description description
+                     :email_addresses email_addresses
+                     :mode mode
+                     :name name
+                     :organization_id organization
+                     :public_perms public_perms
+                     :schedule schedule)]
+    (model/update-recipients report recipients)
+    (hydrate report :recipients)))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Fetch `EmailReport` with ID."
+  [id]
   (->404 (sel :one EmailReport :id id)
          read-check
-         (hydrate :creator :organization :can_read :can_write)))
+         (hydrate :creator :organization :can_read :can_write :recipients)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [dataset_query description email_addresses mode name public_perms schedule] :as body} :body}]
+(defendpoint PUT "/:id"
+  "Update an `EmailReport`."
+  [id :as {{:keys [dataset_query description email_addresses mode name public_perms schedule recipients] :as body} :body}]
   {name         NonEmptyString
    mode         EmailReportMode
-   public_perms PublicPerms}
+   public_perms PublicPerms
+   recipients   ArrayOfIntegers}
+  (clojure.pprint/pprint recipients)
   (let-404 [report (sel :one EmailReport :id id)]
     (write-check report)
+    (model/update-recipients report recipients)
     (check-500 (upd-non-nil-keys EmailReport id
                                  :dataset_query   dataset_query
                                  :description     description
@@ -102,7 +112,7 @@
 
 (defendpoint DELETE "/:id" [id]
   (write-check EmailReport id)
-  (del EmailReport :id id))
+  (cascade-delete EmailReport :id id))
 
 
 (defendpoint POST "/:id" [id]
