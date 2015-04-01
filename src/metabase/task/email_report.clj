@@ -18,24 +18,29 @@
             [metabase.util :as u]))
 
 
-(declare execute-all-reports
+(declare execute-scheduled-reports
          execute-if-scheduled
          execute-and-send
          execute
          report-fail
          report-complete)
 
-(defn execute-all-reports
+(defn execute-reports-hourly-job
+  "Simple wrapper for `execute-scheduled-reports` function which we can place on a `task/hourly-tasks-hook`"
+  [_]
+  (log/debug "Executing EmailReports hourly job")
+  (execute-scheduled-reports))
+
+;; this adds our email report executions to our hourly task runner
+(task/add-hook! #'task/hourly-tasks-hook execute-reports-hourly-job)
+
+(defn execute-scheduled-reports
   "Execute and Send all `EmailReports` in the system.
    This function checks the schedule on all :active email reports and runs them if appropriate."
   []
-  (log/debug "Executing ALL EmailReports")
+  (log/debug "Executing ALL scheduled EmailReports")
   (->> (sel :many :fields [EmailReport :id :schedule] :mode (mode->id :active))
        (map execute-if-scheduled)))
-
-;; this adds our funtion below onto the hourly task runner
-;; TODO - maybe we should put these in a unified place for all scheduled tasks?
-(task/add-hook! #'task/hourly-tasks-hook execute-all-reports)
 
 (defn- execute-if-scheduled
   "Test if a given report is scheduled to run at the current time and if so execute it."
