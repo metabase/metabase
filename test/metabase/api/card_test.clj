@@ -3,9 +3,11 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
-            [metabase.test-data :refer :all]))
+            (metabase.models [card :refer [Card]]
+                             [common :as common])
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test-data :refer :all]
+            metabase.test-setup))
 
 ;; # CARD LIFECYCLE
 
@@ -25,6 +27,24 @@
                                                                    :limit nil}
                                                            :database (:id @test-db)}
                                            :visualization_settings {:global {:title nil}}}))
+
+;; ## GET /api/card
+;; Check that only the creator of a private Card can see it
+(expect [true
+         false]
+  (with-temp Card [{:keys [id]} {:name (random-name)
+                                 :public_perms common/perms-none
+                                 :organization_id @org-id
+                                 :creator_id (user->id :crowberto)
+                                 :display "table"}]
+    (let [can-see-card? (fn [user]
+                          (contains? (->> ((user->client user) :get 200 "card" :org @org-id :f :all)
+                                          (map :id)
+                                          set)
+                                     id))]
+      [(can-see-card? :crowberto)
+       (can-see-card? :rasta)])))
+
 
 ;; ## POST /api/card
 ;; Test that we can make a card

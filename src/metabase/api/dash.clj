@@ -1,11 +1,13 @@
 (ns metabase.api.dash
-  "/api/meta/dash endpoints."
+  "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
+            [korma.core :refer :all]
             [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
+                             [common :as common]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [org :refer [Org]])
@@ -20,7 +22,8 @@
   {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
   (-> (case (or f :all)
-        :all  (sel :many Dashboard :organization_id org)
+        :all  (sel :many Dashboard :organization_id org (where (or {:creator_id *current-user-id*}
+                                                                   {:public_perms [> common/perms-none]})))
         :mine (sel :many Dashboard :organization_id org :creator_id *current-user-id*))
       (hydrate :creator :organization)))
 

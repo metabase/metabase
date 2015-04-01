@@ -6,6 +6,8 @@
             (metabase.models [org-perm :refer [OrgPerm]])
             [metabase.util :as util]))
 
+;; ## Enity + DB Multimethods
+
 (defentity User
   (table :core_user)
   (has-many OrgPerm {:fk :user_id})
@@ -68,8 +70,11 @@
 
 (defmethod pre-cascade-delete User [_ {:keys [id]}]
   (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
-  (cascade-delete 'metabase.models.session/Session :user_id id))
+  (cascade-delete 'metabase.models.session/Session :user_id id)
+  (cascade-delete 'metabase.models.emailreport-recipients/EmailReportRecipients :user_id id))
 
+
+;; ## Related Functions
 
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."

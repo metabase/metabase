@@ -34,51 +34,68 @@
      :databases dbs
      :users users}))
 
+(defendpoint GET "/"
+  "Fetch `EmailReports` for ORG. With filter option F (default: `:all`):
 
-(defendpoint GET "/" [org f]
-  ;; TODO - filter by f == "mine"
-  ;; TODO - filter by creator == self OR public_perms > 0
+   *  `all`  - return reports created by current user + any other publicly visible reports
+   *  `mine` - return reports created by current user"
+  [org f]
   {org Required, f FilterOptionAllOrMine}
   (read-check Org org)
-  (-> (sel :many EmailReport
-        (where {:organization_id org})
-        (where {:public_perms [> common/perms-none]})
-        (order :name :ASC))
-    (hydrate :creator :organization :can_read :can_write :recipients)))
+  (let [all? (= (or (keyword f) :all) :all)]
+    (-> (sel :many EmailReport
+             (where {:organization_id org})
+             (where (or {:creator_id *current-user-id*}
+                        (when all?
+                          {:public_perms [> common/perms-none]})))
+             (order :name :ASC))
+        (hydrate :creator :organization :can_read :can_write :recipients))))
 
 
-(defendpoint POST "/" [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule] :as body} :body}]
+(defendpoint POST "/"
+  "Create a new `EmailReport`."
+  [:as {{:keys [dataset_query description email_addresses mode name organization public_perms schedule recipients] :as body} :body}]
   {dataset_query  Required
    name           Required
    organization   Required
    schedule       Required
    mode           EmailReportMode
-   public_perms   PublicPerms}
+   public_perms   PublicPerms
+   recipients     ArrayOfIntegers}
   (read-check Org organization)
-  (check-500 (ins EmailReport
-               :creator_id *current-user-id*
-               :dataset_query dataset_query
-               :description description
-               :email_addresses email_addresses
-               :mode mode
-               :name name
-               :organization_id organization
-               :public_perms public_perms
-               :schedule schedule))) ; TODO - deal with recipients
+  (let-500 [report (ins EmailReport
+                     :creator_id *current-user-id*
+                     :dataset_query dataset_query
+                     :description description
+                     :email_addresses email_addresses
+                     :mode mode
+                     :name name
+                     :organization_id organization
+                     :public_perms public_perms
+                     :schedule schedule)]
+    (model/update-recipients report recipients)
+    (hydrate report :recipients)))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Fetch `EmailReport` with ID."
+  [id]
   (->404 (sel :one EmailReport :id id)
          read-check
-         (hydrate :creator :organization :can_read :can_write)))
+         (hydrate :creator :organization :can_read :can_write :recipients)))
 
 
-(defendpoint PUT "/:id" [id :as {{:keys [dataset_query description email_addresses mode name public_perms schedule] :as body} :body}]
+(defendpoint PUT "/:id"
+  "Update an `EmailReport`."
+  [id :as {{:keys [dataset_query description email_addresses mode name public_perms schedule recipients] :as body} :body}]
   {name         NonEmptyString
    mode         EmailReportMode
-   public_perms PublicPerms}
+   public_perms PublicPerms
+   recipients   ArrayOfIntegers}
+  (clojure.pprint/pprint recipients)
   (let-404 [report (sel :one EmailReport :id id)]
     (write-check report)
+    (model/update-recipients report recipients)
     (check-500 (upd-non-nil-keys EmailReport id
                                  :dataset_query   dataset_query
                                  :description     description
@@ -95,7 +112,7 @@
 
 (defendpoint DELETE "/:id" [id]
   (write-check EmailReport id)
-  (del EmailReport :id id))
+  (cascade-delete EmailReport :id id))
 
 
 (defendpoint POST "/:id" [id]

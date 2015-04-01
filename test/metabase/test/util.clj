@@ -1,7 +1,9 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [expectations :refer :all]
-            [metabase.util :as u]))
+            [medley.core :as m]
+            (metabase [db :refer :all]
+                      [util :as u])))
 
 (declare $->prop)
 
@@ -64,9 +66,40 @@
     `(def ~(vary-meta fn-name assoc :expectation true)
        (fn [] (-doexpect ~expected ~actual)))))
 
+
 ;; ## random-name
 (defn random-name
   "Generate a random string of 20 uppercase letters."
   []
   (->> (repeatedly 20 #(-> (rand-int 26) (+ (int \A)) char))
        (apply str)))
+
+
+;; ## with-temp
+;;
+(defmacro with-temp
+  "Create a temporary instance of ENTITY bound to BINDING-FORM, execute BODY,
+   then delete it via `cascade-delete`.
+
+   Our unit tests rely a heavily on the test data and make some assumptions about the
+   DB staying in the same *clean* state. This allows us to write very concise tests.
+   Generally this means tests should \"clean up after themselves\" and leave things the
+   way they found them.
+
+   `with-temp` should be preferrable going forward over creating random objects *without*
+   deleting them afterward.
+
+    (with-temp EmailReport [report {:creator_id      (user->id :rasta)
+                                    :name            (random-name)
+                                    :organization_id @org-id}]
+      ...)"
+  [entity [binding-form & [options-map]] & body]
+  `(let [object# (m/mapply ins ~entity ~options-map)
+         ~binding-form object#
+         delete-fn# (fn [] (cascade-delete ~entity :id (:id object#)))]
+     (let [result# (try (do ~@body)
+                        (catch Throwable e#
+                          (delete-fn#)
+                          (throw e#)))]
+       (delete-fn#)
+       result#)))
