@@ -155,6 +155,7 @@
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
+  {:pre [(integer? entity-id)]}
   (let [obj (-> (pre-update entity (assoc kwargs :id entity-id))
                 (dissoc :id))
         result (-> (update entity (set-fields obj) (where {:id entity-id}))
