@@ -81,11 +81,10 @@
   (let [[parallel args] (u/optional (partial = :parallel) args)
         map-fn (if parallel pmap map)]
     (dorun
-     (map-fn (fn [f]
-               (try (apply f args)
-                    (catch Throwable e
-                      (log/error (format "Caught exception when running %s function %s with args %s : %s"
-                                         (:name (meta hook)) f args e)))))
+     (map-fn #(try (apply % args)
+                   (catch Throwable e
+                     (log/error (format "Caught exception when running %s function %s with args %s : %s"
+                                        (:name (meta hook)) % args e))))
              @(var-get hook)))))
 
 
