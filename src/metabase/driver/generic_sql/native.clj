@@ -11,19 +11,23 @@
 
 (def class->base-type
   "Map of classes returned from DB call to metabase.models.field/base-types"
-  {java.lang.Boolean :BooleanField
-   java.lang.Double :FloatField
-   java.lang.Integer :IntegerField
-   java.lang.Long :IntegerField
-   java.lang.String :TextField
-   java.sql.Timestamp :DateTimeField})
+  {java.lang.Boolean    :BooleanField
+   java.lang.Double     :FloatField
+   java.lang.Float      :FloatField
+   java.lang.Integer    :IntegerField
+   java.lang.Long       :IntegerField
+   java.lang.String     :TextField
+   java.math.BigDecimal :DecimalField
+   java.math.BigInteger :BigIntegerField
+   java.sql.Date        :DateField
+   java.sql.Timestamp   :DateTimeField})
 
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
   (if-not v :UnknownField
           (or (class->base-type (type v))
-              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in metabase.driver.native/class->base-type. Please add an entry."
+              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in metabase.driver.generic-sql.native/class->base-type. Please add an entry."
                                                       (str (type v))))))))
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
