@@ -24,9 +24,14 @@
   "Fetch all `Databases` for an `Org`."
   [org]
   {org Required}
-  (read-check Org org)
-  (-> (sel :many Database :organization_id org (order :name))
-      (hydrate :organization)))
+  (let-404 [{:keys [id inherits] :as org} (sel :one Org :id org)]
+    (read-check org)
+    (-> (if inherits
+          ;; orgs which `inherit` get access to ALL databases
+          (sel :many Database (order :name))
+          ;; otherwise we filter to just databases attached to the org
+          (sel :many Database :organization_id id (order :name)))
+      (hydrate :organization))))
 
 (defendpoint POST "/"
   "Add a new `Database` for `Org`."
