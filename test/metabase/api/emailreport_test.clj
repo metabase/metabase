@@ -1,13 +1,15 @@
 (ns metabase.api.emailreport-test
   "Tests for /api/emailreport endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.tools.macro :refer [symbol-macrolet]]
+            [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
                              [emailreport :refer [EmailReport] :as emailreport])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test-data :refer :all]
+            metabase.test-setup))
 
 ;; ## Helper Fns
 
@@ -17,7 +19,7 @@
            :mode (emailreport/mode->id :active)
            :public_perms common/perms-readwrite
            :email_addresses ""
-           :recipients [{:id (user->id :lucky)}]
+           :recipients [(user->id :lucky)]
            :dataset_query {:type "query"
                            :query {:source_table (table->id :venues)
                                    :filter [nil nil]
@@ -92,6 +94,15 @@
                                  :sun true}
                   :timezone ""
                   :time_of_day "morning"}
+       :recipients [(match-$ (fetch-user :lucky)
+                      {:email "lucky@metabase.com"
+                       :first_name "Lucky"
+                       :last_login $
+                       :is_superuser false
+                       :id $
+                       :last_name "Pigeon"
+                       :date_joined $
+                       :common_name "Lucky Pigeon"})]
        :organization_id @org-id
        :name "My Cool Email Report"
        :mode (emailreport/mode->id :active)
@@ -134,6 +145,15 @@
                    :last_login $
                    :first_name "Rasta"
                    :email "rasta@metabase.com"})
+       :recipients [(match-$ (fetch-user :lucky)
+                      {:email "lucky@metabase.com"
+                       :first_name "Lucky"
+                       :last_login $
+                       :is_superuser false
+                       :id $
+                       :last_name "Pigeon"
+                       :date_joined $
+                       :common_name "Lucky Pigeon"})]
        :can_write true
        :organization_id @org-id
        :name "My Cool Email Report"
@@ -173,3 +193,28 @@
      (let [{id :id} (sel :one EmailReport :name er-name)]
        ((user->client :rasta) :delete 204 (format "emailreport/%d" id))
        (er-exists?))]))
+
+
+;; ## RECPIENTS-RELATED TESTS
+;; *  Check that recipients are returned by GET /api/emailreport/:id
+;; *  Check that we can set them via PUT /api/emailreport/:id
+(expect
+    [#{}
+     #{:rasta}
+     #{:crowberto :lucky}
+     #{}]
+  (with-temp EmailReport [{:keys [id]} {:creator_id      (user->id :rasta)
+                                        :name            (random-name)
+                                        :organization_id @org-id}]
+    (symbol-macrolet [get-recipients (->> ((user->client :rasta) :get 200 (format "emailreport/%d" id))
+                                          :recipients
+                                          (map :id)
+                                          (map id->user)
+                                          set)]
+      (let [put-recipients (fn [& user-kws]
+                             ((user->client :rasta) :put 200 (format "emailreport/%d" id) {:recipients (map user->id user-kws)})
+                             get-recipients)]
+        [get-recipients
+         (put-recipients :rasta)
+         (put-recipients :lucky :crowberto)
+         (put-recipients)]))))

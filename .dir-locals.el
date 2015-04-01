@@ -27,5 +27,6 @@
                               (match-$ 1)
                               (macrolet 1)
                               (org-perms-case 1)
+                              (symbol-macrolet 1)
                               (upd 2)
                               (with-credentials 1)))))))
