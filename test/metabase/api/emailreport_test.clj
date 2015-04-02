@@ -205,7 +205,9 @@
      #{}]
   (with-temp EmailReport [{:keys [id]} {:creator_id      (user->id :rasta)
                                         :name            (random-name)
-                                        :organization_id @org-id}]
+                                        :organization_id @org-id
+                                        :dataset_query   {}
+                                        :schedule        {}}]
     (symbol-macrolet [get-recipients (->> ((user->client :rasta) :get 200 (format "emailreport/%d" id))
                                           :recipients
                                           (map :id)

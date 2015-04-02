@@ -2,7 +2,6 @@
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [hydrate :refer [realize-json]]
                              [org :refer [Org]]
                              [user :refer [User]])
             [metabase.util :as util]))
@@ -27,7 +26,7 @@
 
 
 (defmethod post-select Annotation [_ {:keys [organization_id author_id] :as annotation}]
-  (-> annotation
-      ;; TODO - would probably be nice to associate a function which pulls the object the annotation points to
-      (assoc :author (delay (sel :one User :id author_id))
-             :organization (delay (sel :one Org :id organization_id)))))
+  (assoc annotation
+         :author       (delay (sel :one User :id author_id))
+         :organization (delay (sel :one Org :id organization_id))))
+;; TODO - would probably be nice to associate a function which pulls the object the annotation points to
