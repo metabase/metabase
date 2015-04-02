@@ -172,9 +172,6 @@
 ;; TODO - It would be good to allow custom types by just inserting the `{:in fn :out fn}` inline with the
 ;; entity definition
 
-;; TODO - It would be nice to be able to say an entity is "timestamped" and have created_at / updated_at taken
-;; care of automatically
-
 ;; TODO - hydration-keys should be an entity function for the sake of prettiness
 
 
