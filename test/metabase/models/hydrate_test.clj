@@ -3,7 +3,6 @@
             [medley.core :as m]
             [metabase.models.hydrate :refer :all]
             [metabase.test-data :refer :all]
-            metabase.test-setup
             [metabase.test.util :refer :all]))
 
 (def d1 (delay 1))

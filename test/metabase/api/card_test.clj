@@ -6,8 +6,7 @@
             (metabase.models [card :refer [Card]]
                              [common :as common])
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test-data :refer :all]
-            metabase.test-setup))
+            [metabase.test-data :refer :all]))
 
 ;; # CARD LIFECYCLE
 

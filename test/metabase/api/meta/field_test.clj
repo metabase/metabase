@@ -5,7 +5,6 @@
                              [field-values :refer [FieldValues]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
-            metabase.test-setup
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 

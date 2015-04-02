@@ -9,6 +9,7 @@
 
 (defentity FieldValues
   (table :metabase_fieldvalues)
+  timestamped
   (types {:human_readable_values :json
           :values                :json}))
 
@@ -22,11 +23,6 @@
 
 (defmethod post-select FieldValues [_ field-values]
   (update-in field-values [:human_readable_values] #(or % {}))) ; return an empty map for :human_readable_values in cases where it is nil
-
-(defmethod pre-insert FieldValues [_ {:keys [values human_readable_values] :as field-values}]
-  (assoc field-values
-         :created_at            (u/new-sql-timestamp)
-         :updated_at            (u/new-sql-timestamp)))
 
 
 ;; ## `FieldValues` Helper Functions

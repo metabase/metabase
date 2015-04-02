@@ -9,6 +9,7 @@
   (table :metabase_database)
   (types {:details :json
           :engine  :keyword})
+  timestamped
   (assoc :hydration-keys #{:database
                            :db}))
 
@@ -17,14 +18,6 @@
          :organization (delay (sel :one Org :id organization_id))
          :can_read     (delay (org-can-read organization_id))
          :can_write    (delay (org-can-write organization_id))))
-
-(defmethod pre-insert Database [_ {:keys [details engine] :as database}]
-  (assoc database
-         :created_at (u/new-sql-timestamp)
-         :updated_at (u/new-sql-timestamp)))
-
-(defmethod pre-update Database [_ database]
-  (assoc database :updated_at (u/new-sql-timestamp)))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id]}]
   (cascade-delete 'metabase.models.table/Table :db_id id)

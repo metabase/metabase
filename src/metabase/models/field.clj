@@ -68,6 +68,7 @@
 
 (defentity Field
   (table :metabase_field)
+  timestamped
   (types {:base_type    :keyword
           :field_type   :keyword
           :special_type :keyword})
@@ -103,9 +104,7 @@
             :can_write (delay @(:can_write @(:table <>)))))
 
 (defmethod pre-insert Field [_ field]
-  (let [defaults {:created_at      (u/new-sql-timestamp)
-                  :updated_at      (u/new-sql-timestamp)
-                  :active          true
+  (let [defaults {:active          true
                   :preview_display true
                   :field_type      :info
                   :position        0}]

@@ -6,7 +6,6 @@
             (metabase.models [emailreport :refer :all]
                              [emailreport-recipients :refer :all])
             [metabase.test-data :refer :all]
-            metabase.test-setup
             [metabase.test.util :as tu]))
 
 ;; ## UPDATE-RECIPIENTS

@@ -8,16 +8,8 @@
             [metabase.util :as util]))
 
 (defentity Dashboard
-  (table :report_dashboard))
-
-(defmethod pre-insert Dashboard [_ dashboard]
-  (let [defaults {:created_at (util/new-sql-timestamp)
-                  :updated_at (util/new-sql-timestamp)}]
-    (merge defaults dashboard)))
-
-(defmethod pre-update Dashboard [_ dashboard]
-  (assoc dashboard
-         :updated_at (util/new-sql-timestamp)))
+  (table :report_dashboard)
+  timestamped)
 
 (defmethod post-select Dashboard [_ {:keys [id creator_id organization_id description] :as dash}]
   (-> dash
@@ -26,5 +18,3 @@
              :organization  (delay (sel :one Org :id organization_id))
              :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
       assoc-permissions-sets))
-
-; TODO - ordered_cards
