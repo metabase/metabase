@@ -51,15 +51,13 @@
          :query     (delay (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
                            (sel :one Query :id query_id))))
 
-
 (defn build-response
     "Build a query response from a QueryExecution record."
     [{{:keys [cols columns rows data]
        :or {cols []
             columns []}} :result_data :as query-execution}]
     (let [rows (or rows data [])]
-        (->
-            (select-keys query-execution [:id :uuid :status])
+        (-> (select-keys query-execution [:id :uuid :status])
             (assoc :data {:rows rows
                           :cols cols
                           :columns columns}

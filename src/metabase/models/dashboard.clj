@@ -24,7 +24,7 @@
       (assoc :creator       (delay (sel :one User :id creator_id))
              :description   (util/jdbc-clob->str description)
              :organization  (delay (sel :one Org :id organization_id))
-             :ordered_cards (delay (sel :many DashboardCard :dashboard_id id)))
+             :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
       assoc-permissions-sets))
 
 ; TODO - ordered_cards

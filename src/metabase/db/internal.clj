@@ -62,8 +62,7 @@
 (defn- read-json-str-or-clob
   "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
   [json-str]
-  (some-> (if-not (= (type json-str) org.h2.jdbc.JdbcClob) json-str
-                  (u/jdbc-clob->str json-str))
+  (some-> (u/jdbc-clob->str json-str)
           cheshire/parse-string))
 
 (defn read-json
