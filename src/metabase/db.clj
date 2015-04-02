@@ -211,9 +211,9 @@
   [entity entity-id & {:as kwargs}]
   {:pre [(integer? entity-id)]}
   (let [obj (->> (assoc kwargs :id entity-id)
-                 (apply-type-fns :in (seq (::types entity)))
                  (pre-update entity)
-                 (#(dissoc % :id)))
+                 (#(dissoc % :id))
+                 (apply-type-fns :in (seq (::types entity))))
         result (-> (update entity (set-fields obj) (where {:id entity-id}))
                    (> 0))]
     (when result
@@ -368,8 +368,8 @@
    Returns newly created object by calling `sel`."
   [entity & {:as kwargs}]
   (let [vals (->> kwargs
-                  (apply-type-fns :in (seq (::types entity)))
-                  (pre-insert entity))
+                  (pre-insert entity)
+                  (apply-type-fns :in (seq (::types entity))))
         {:keys [id]} (-> (insert entity (values vals))
                          (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
     (->> (sel :one entity :id id)
