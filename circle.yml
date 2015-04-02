@@ -4,11 +4,5 @@ machine:
       oraclejdk8
 test:
   override:
-    - |
-      case $CIRCLE_NODE_INDEX in
-        0) lein eastwood ;;
-        1) ./lint_js.sh && lein bikeshed --max-line-length 240 ;;
-        2) lein test ;;
-        3) lein uberjar ;;
-      esac:
+    - case $CIRCLE_NODE_INDEX in 0) lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; esac:
         parallel: true
