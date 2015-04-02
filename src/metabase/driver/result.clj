@@ -11,5 +11,5 @@
   (log/debug "RESULT QUERY: " query)
   (if-let [query-execution (sel :one all-fields :query_id (:query_id result) (korma/order :started_at :DESC))]
     (build-response query-execution)
-    {:status "failed"
+    {:status :failed
      :error (str "Failed to looked result for query: " (:query_id result))}))

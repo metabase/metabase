@@ -95,7 +95,7 @@
                          :json_query query
                          :query_id (:id saved_query)
                          :version (get saved_query :version 0)
-                         :status "starting"
+                         :status :starting
                          :error ""
                          :started_at (util/new-sql-timestamp)
                          :finished_at (util/new-sql-timestamp)
@@ -158,7 +158,7 @@
   [query-execution query-result cache-result]
   ;; record our query execution and format response
   (-> (util/assoc* query-execution
-                   :status "completed"
+                   :status :completed
                    :finished_at (util/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
