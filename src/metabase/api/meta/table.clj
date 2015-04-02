@@ -48,7 +48,8 @@
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
-  (sel :many Field :table_id id))
+  ;; TODO: READ CHECK ?
+  (sel :many Field :table_id id (order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)

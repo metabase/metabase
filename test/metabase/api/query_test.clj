@@ -187,7 +187,7 @@
 ;; ## GET /api/query
 ;; Fetch Queries for the current Org
 (expect-eval-actual-first
-    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :id :ASC))
+    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :name :ASC))
           rasta (match-$ (fetch-user :rasta)
                   {:common_name "Rasta Toucan"
                    :date_joined $
@@ -206,38 +206,38 @@
                 :name "Test Database"
                 :organization_id @org-id
                 :description nil})]
-      #{(match-$ query-1
-          {:creator rasta
-           :database_id (:id @test-db)
-           :name $
-           :type "rawsql"
-           :creator_id (user->id :rasta)
-           :updated_at $
-           :details {:timezone nil
-                     :sql "SELECT COUNT(*) FROM VENUES;"}
-           :id $
-           :database db
-           :version 1
-           :public_perms 0
-           :created_at $})
-        (match-$ query-2
-          {:creator rasta
-           :database_id (:id @test-db)
-           :name $
-           :type "rawsql"
-           :creator_id (user->id :rasta)
-           :updated_at $
-           :details {:timezone nil
-                     :sql "SELECT COUNT(*) FROM VENUES;"}
-           :id $
-           :database db
-           :version 1
-           :public_perms 0
-           :created_at $})})
+      [(match-$ query-1
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})
+       (match-$ query-2
+         {:creator rasta
+          :database_id (:id @test-db)
+          :name $
+          :type "rawsql"
+          :creator_id (user->id :rasta)
+          :updated_at $
+          :details {:timezone nil
+                    :sql "SELECT COUNT(*) FROM VENUES;"}
+          :id $
+          :database db
+          :version 1
+          :public_perms 0
+          :created_at $})])
   (do (cascade-delete Query :database_id (:id @test-db))
       (create-query)
       (create-query)
-      (set ((user->client :rasta) :get 200 "query" :org @org-id))))
+      ((user->client :rasta) :get 200 "query" :org @org-id)))
 
 
 ;; ## POST /api/query/:id/csv
