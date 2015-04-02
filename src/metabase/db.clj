@@ -373,7 +373,6 @@
         {:keys [id]} (-> (insert entity (values vals))
                          (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
     (->> (sel :one entity :id id)
-
          (post-insert entity))))
 
 
