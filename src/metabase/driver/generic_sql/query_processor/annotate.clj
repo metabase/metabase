@@ -78,11 +78,10 @@
           :id nil
           :table_id nil
           :description nil}
-         (let [aggregation-type (keyword column-name)                                 ; For aggregations of a specific Field (e.g. `sum`)
-               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)]  ; lookup the field we're aggregating and return its
-           (if field-aggregation? (-> (sel :one [Field :base_type :special_type]      ; type info. (The type info of the aggregate result
-                                           :id (-> query :query :aggregation second)) ; will be the same.)
-                                      (select-keys [:base_type :special_type]))
-               (case aggregation-type                                                 ; Otherwise for general aggregations such as `count`
-                 :count {:base_type "IntegerField"                                    ; just return hardcoded type info
-                         :special_type "number"})))))
+         (let [aggregation-type (keyword column-name)                                ; For aggregations of a specific Field (e.g. `sum`)
+               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
+           (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
+                                       :id (-> query :query :aggregation second))    ; will be the same.)
+               (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
+                 :count {:base_type :IntegerField                                    ; just return hardcoded type info
+                         :special_type :number})))))

@@ -64,17 +64,16 @@
 
 
 (defn castify-field
-  "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `DateTimeField`).
+  "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `:DateTimeField`).
 
-    (castify :name \"TextField\")                      -> :name
-    (castify :date \"DateTimeField\")                  -> (raw \"CAST(\"date\" AS DATE)"
+    (castify :name :TextField)     -> :name
+    (castify :date :DateTimeField) -> (raw \"CAST(\"date\" AS DATE)"
   [field-name field-base-type]
   {:pre [(string? field-name)
-         (string? field-base-type)]}
-  (if (or (= field-base-type "DateField")              ; do we need to cast DateFields ?
-        (= field-base-type "DateTimeField"))         ; or just DateTimeFields ?
-    `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
-    (keyword field-name)))
+         (keyword? field-base-type)]}
+  ;; do we need to cast DateFields ? or just DateTimeFields ?
+  (if (contains? #{:DateField :DateTimeField} field-base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+      (keyword field-name)))
 
 ;; TODO - should we memoize this?
 (defn field-id->kw

@@ -1,11 +1,7 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
-  (:require [clojure.walk :as walk]
-            [cheshire.core :as cheshire]
-            [metabase.db :refer [sel]]
+  (:require [metabase.db :refer [sel]]
             [metabase.util :as u]))
-
-
 
 (declare batched-hydrate
          can-batched-hydrate?
@@ -19,31 +15,6 @@
          k->k_id
          simple-hydrate
          valid-hydration-form?)
-
-;; ## REALIZE-JSON
-
-(defn- read-json-str-or-clob
-  "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
-  [json-str]
-  (some-> (cond
-            (= (type json-str) org.h2.jdbc.JdbcClob) (u/jdbc-clob->str json-str)
-            (= (type json-str) org.postgresql.util.PGobject) (.getValue json-str)
-            :else json-str)
-          cheshire/parse-string))
-
-(defn realize-json
-  "Deserialize JSON strings keyed by JSON-KEYS.
-   RESULT may either be a single result or a sequence of results. "
-  {:arglists '([result-or-results & ks])}
-  [result & [first-key & rest-keys]]
-  (if (sequential? result) (map #(apply realize-json % first-key rest-keys) result) ;  map ourself recursively if RESULT is a sequence
-      (let [result (cond-> result
-                     (first-key result) (->> first-key
-                                             read-json-str-or-clob
-                                             walk/keywordize-keys
-                                             (assoc result first-key)))]
-        (if (empty? rest-keys) result                                               ; if there are remaining keys recurse to realize those
-            (recur result rest-keys)))))
 
 
 ;; ## HYDRATE 2.0

@@ -68,6 +68,9 @@
 
 (defentity Field
   (table :metabase_field)
+  (types {:base_type    :keyword
+          :field_type   :keyword
+          :special_type :keyword})
   (assoc :hydration-keys #{:destination
                            :field
                            :origin}))
@@ -77,8 +80,8 @@
 
    Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
   [{:keys [id special_type] :as field}]
-  (when (= "fk" special_type)
-    (let [dest-id (:destination_id (sel :one :fields [ForeignKey :destination_id] :origin_id id))]
+  (when (= :fk special_type)
+    (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (sel :one Field :id dest-id))))
 
 (defn field->fk-table
@@ -89,7 +92,7 @@
   [field]
   (-> (field->fk-field field)
       (hydrate :table)
-      (:table)))
+      :table))
 
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (u/assoc* field
@@ -106,25 +109,14 @@
                   :preview_display true
                   :field_type      :info
                   :position        0}]
-    (let [{:keys [field_type base_type special_type] :as field} (merge defaults field)]
-      (assoc field
-             :base_type    (name base_type)
-             :special_type (when special_type (name special_type))
-             :field_type   (name field_type)))))
+    (merge defaults field)))
 
 (defmethod post-insert Field [_ field]
   (when (field-should-have-field-values? field)
     (future (create-field-values field)))
   field)
 
-(defmethod pre-update Field [_ {:keys [field_type special_type] :as field}]
-  (cond-> (assoc field :updated_at (u/new-sql-timestamp))
-    field_type   (assoc :field_type   (name field_type))
-    special_type (assoc :special_type (name special_type))))
-
 (defmethod post-update Field [_ {:keys [id] :as field}]
-  ;; When `Field.special_type` is set to `:category` asynchronously create a corresponding `FieldValues`
-  ;; object if one doesn't already exist
   (future
     (create-field-values-if-needed (sel :one Field :id id))))
 

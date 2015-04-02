@@ -1,15 +1,13 @@
 (ns metabase.models.emailreport
-  (:require [clojure.data.json :as json]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer [assoc-permissions-sets perms-none]]
-                             [hydrate :refer [realize-json]]
                              [emailreport-recipients :refer [EmailReportRecipients]]
                              [org :refer [Org org-can-read org-can-write]]
                              [user :refer [User]])
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
 
 ;; ## Static Definitions
@@ -58,14 +56,16 @@
 (defn time-of-day->realhour
   "Time-of-day to realhour"
   [time-of-day]
-  (-> (filter (fn [tod] (= time-of-day (:id tod))) times-of-day)
-      (first)
-      (:realhour)))
+  (-> (filter #(= time-of-day (:id %)) times-of-day)
+      first
+      :realhour))
 
 ;; ## Entity
 
 (defentity EmailReport
-  (table :report_emailreport))
+  (table :report_emailreport)
+  (types {:dataset_query :json
+          :schedule      :json}))
 
 (def execution-details-fields [EmailReport
                                :id
@@ -82,34 +82,27 @@
                                :updated_at
                                :email_addresses])
 
-(defmethod pre-insert EmailReport [_ {:keys [dataset_query schedule] :as report}]
+(defmethod pre-insert EmailReport [_ report]
   (let [defaults {:public_perms perms-none
-                  :mode (mode->id :active)
-                  :version 1
-                  :created_at (util/new-sql-timestamp)
-                  :updated_at (util/new-sql-timestamp)}]
-    (-> (merge defaults report)
-        (assoc :dataset_query (json/write-str dataset_query)
-               :schedule (json/write-str schedule)))))
+                  :mode         (mode->id :active)
+                  :version      1
+                  :created_at   (u/new-sql-timestamp)
+                  :updated_at   (u/new-sql-timestamp)}]
+    (merge defaults report)))
 
-(defmethod pre-update EmailReport [_ {:keys [dataset_query schedule id] :as report}]
-  (assoc report                                        ; don't increment `version` here.
-         :updated_at    (util/new-sql-timestamp)       ; we do that in the API endpoint
-         :dataset_query (json/write-str dataset_query)
-         :schedule      (json/write-str schedule)))
+(defmethod pre-update EmailReport [_ report]
+  (assoc report :updated_at (u/new-sql-timestamp))) ; don't increment "version" here, we do that in API endpoint (?)
 
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
-  (-> report
-    (realize-json :dataset_query :schedule)
-    (util/assoc*
-      :creator      (delay (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
-                           (sel :one User :id creator_id))
-      :organization (delay (check organization_id 500 "Can't get database: Query doesn't have a :database_id.")
-                           (sel :one Org :id organization_id))
-      :recipients   (delay (sel :many User
-                                (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
-    assoc-permissions-sets))
+  (-> (u/assoc* report
+                :creator      (delay (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
+                                     (sel :one User :id creator_id))
+                :organization (delay (check organization_id 500 "Can't get database: Query doesn't have a :database_id.")
+                                     (sel :one Org :id organization_id))
+                :recipients   (delay (sel :many User
+                                          (where {:id [in (subselect EmailReportRecipients (fields :user_id) (where {:emailreport_id id}))]}))))
+      assoc-permissions-sets))
 
 (defmethod pre-cascade-delete EmailReport [_ {:keys [id]}]
   (cascade-delete EmailReportRecipients :emailreport_id id))

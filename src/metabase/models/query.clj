@@ -1,10 +1,8 @@
 (ns metabase.models.query
-  (:require [clojure.data.json :as json]
-            [korma.core :refer :all]
+  (:require [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [hydrate :refer [realize-json]]
                              [user :refer [User]]
                              [database :refer [Database]])
             [metabase.util :refer :all]))
@@ -12,6 +10,7 @@
 
 (defentity Query
   (table :query_query)
+  (types {:details :json})
   (assoc :hydration-keys #{:query}))
 
 
@@ -28,31 +27,26 @@
    :creator_id
    :database_id])
 
-(defmethod pre-insert Query [_ {:keys [details] :as query}]
+(defmethod pre-insert Query [_ query]
   (let [defaults {:created_at (new-sql-timestamp)
                   :updated_at (new-sql-timestamp)
                   :version 1}]
-    (-> (merge defaults query)
-        (assoc :details (json/write-str details)))))
+    (merge defaults query)))
 
-(defmethod pre-update Query [_ {:keys [details version] :as query}]
+(defmethod pre-update Query [_ {:keys [version] :as query}]
   (-> query
       (select-non-nil-keys :name :database_id :public_perms)
-      (assoc :details (json/write-str details)
-             :updated_at (new-sql-timestamp)
+      (assoc :updated_at (new-sql-timestamp)
              :version (+ 1 version))))
 
 (defmethod post-select Query [_ {:keys [creator_id database_id] :as query}]
   (-> query
-      (realize-json :details)
-      (assoc* :creator (delay
-                        (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
-                        (sel :one User :id creator_id))
-              :database (delay
-                         (check database_id 500 "Can't get database: Query doesn't have a :database_id.")
-                         (sel :one Database :id database_id))
+      (assoc* :creator         (delay (check creator_id 500 "Can't get creator: Query doesn't have a :creator_id.")
+                                      (sel :one User :id creator_id))
+              :database        (delay (check database_id 500 "Can't get database: Query doesn't have a :database_id.")
+                                      (sel :one Database :id database_id))
               :organization_id (delay (:organization_id @(:database <>))))
       assoc-permissions-sets))
 
-(defmethod pre-cascade-delete Query [_ {:keys [id] :as query}]
+(defmethod pre-cascade-delete Query [_ {:keys [id]}]
   (cascade-delete 'metabase.models.query-execution/QueryExecution :query_id id))

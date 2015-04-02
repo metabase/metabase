@@ -21,7 +21,9 @@
      #{:rasta}]
   (tu/with-temp EmailReport [report {:creator_id      (user->id :rasta)
                                      :name            (tu/random-name)
-                                     :organization_id @org-id}]
+                                     :organization_id @org-id
+                                     :dataset_query   {}
+                                     :schedule        {}}]
     (symbol-macrolet [recipients (->> (sel :many :field [EmailReportRecipients :user_id] :emailreport_id (:id report))
                                       (map id->user)
                                       set)]
