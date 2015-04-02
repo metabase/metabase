@@ -65,7 +65,8 @@
 (defentity EmailReport
   (table :report_emailreport)
   (types {:dataset_query :json
-          :schedule      :json}))
+          :schedule      :json})
+  timestamped)
 
 (def execution-details-fields [EmailReport
                                :id
@@ -85,14 +86,8 @@
 (defmethod pre-insert EmailReport [_ report]
   (let [defaults {:public_perms perms-none
                   :mode         (mode->id :active)
-                  :version      1
-                  :created_at   (u/new-sql-timestamp)
-                  :updated_at   (u/new-sql-timestamp)}]
+                  :version      1}]
     (merge defaults report)))
-
-(defmethod pre-update EmailReport [_ report]
-  (assoc report :updated_at (u/new-sql-timestamp))) ; don't increment "version" here, we do that in API endpoint (?)
-
 
 (defmethod post-select EmailReport [_ {:keys [id creator_id organization_id] :as report}]
   (-> (u/assoc* report

@@ -11,6 +11,8 @@
 
 (defentity Table
   (table :metabase_table)
+  timestamped
+  (types {:entity_type :keyword})
   (assoc :hydration-keys #{:table}))
 
 
@@ -23,15 +25,6 @@
                :can_read    (delay @(:can_read @(:db <>)))
                :can_write   (delay @(:can_write @(:db <>)))))
 
-(defmethod pre-insert Table [_ {:keys [entity_type] :as table}]
-  (assoc table
-         :entity_type (when entity_type (name entity_type))
-         :created_at  (u/new-sql-timestamp)
-         :updated_at  (u/new-sql-timestamp)))
-
-(defmethod pre-update Table [_ {:keys [entity_type] :as table}]
-  (cond-> (assoc table :updated_at (u/new-sql-timestamp))
-    entity_type (assoc :entity_type (name entity_type))))
 
 (defmethod pre-cascade-delete Table [_ {:keys [id] :as table}]
   (cascade-delete Field :table_id id))

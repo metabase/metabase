@@ -172,10 +172,21 @@
 ;; TODO - It would be good to allow custom types by just inserting the `{:in fn :out fn}` inline with the
 ;; entity definition
 
-;; TODO - It would be nice to be able to say an entity is "timestamped" and have created_at / updated_at taken
-;; care of automatically
-
 ;; TODO - hydration-keys should be an entity function for the sake of prettiness
+
+
+;; ## TIMESTAMPED
+
+(defn timestamped
+  "Mark ENTITY as having `:created_at` *and* `:updated_at` fields.
+
+    (defentity Card
+      timestamped)
+
+   *  When a new object is created via `ins`, values for both fields will be generated.
+   *  When an object is updated via `upd`, `:updated_at` will be updated."
+  [entity]
+  (assoc entity ::timestamped true))
 
 
 ;; ## UPD
@@ -214,6 +225,8 @@
                  (pre-update entity)
                  (#(dissoc % :id))
                  (apply-type-fns :in (seq (::types entity))))
+        obj (cond-> obj
+              (::timestamped entity) (assoc :updated_at (u/new-sql-timestamp)))
         result (-> (update entity (set-fields obj) (where {:id entity-id}))
                    (> 0))]
     (when result
@@ -370,6 +383,9 @@
   (let [vals (->> kwargs
                   (pre-insert entity)
                   (apply-type-fns :in (seq (::types entity))))
+        vals (cond-> vals
+               (::timestamped entity) (assoc :created_at (u/new-sql-timestamp)
+                                             :updated_at (u/new-sql-timestamp)))
         {:keys [id]} (-> (insert entity (values vals))
                          (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
     (->> (sel :one entity :id id)

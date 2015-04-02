@@ -3,8 +3,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [org :refer [Org]]
-                             [user :refer [User]])
-            [metabase.util :as util]))
+                             [user :refer [User]])))
 
 
 (def annotation-general 0)
@@ -12,18 +11,8 @@
 
 
 (defentity Annotation
-  (table :annotation_annotation))
-
-
-(defmethod pre-insert Annotation [_ annotation]
-  (let [defaults {:created_at (util/new-sql-timestamp)
-                  :updated_at (util/new-sql-timestamp)}]
-    (merge defaults annotation)))
-
-
-(defmethod pre-update Annotation [_ annotation]
-  (assoc annotation :updated_at (util/new-sql-timestamp)))
-
+  (table :annotation_annotation)
+  timestamped)
 
 (defmethod post-select Annotation [_ {:keys [organization_id author_id] :as annotation}]
   (assoc annotation

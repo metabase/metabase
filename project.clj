@@ -72,7 +72,8 @@
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
-             :expectations {:resource-paths ["test_resources"]
+             :expectations {:injections [(require 'metabase.test-setup)]
+                            :resource-paths ["test_resources"]
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"

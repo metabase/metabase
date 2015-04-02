@@ -2,8 +2,7 @@
   (:require [clojure.math.numeric-tower :as math]
             [expectations :refer :all]
             [metabase.driver.generic-sql.query-processor :refer :all]
-            [metabase.test-data :refer [db-id table->id field->id]]
-            metabase.test-setup))
+            [metabase.test-data :refer [db-id table->id field->id]]))
 
 (def venues-columns
   (delay ["ID" "CATEGORY_ID" "PRICE" "LONGITUDE" "LATITUDE" "NAME"]))

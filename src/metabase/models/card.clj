@@ -5,8 +5,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [org :refer [Org]]
-                             [user :refer [User]])
-            [metabase.util :as util]))
+                             [user :refer [User]])))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -26,16 +25,8 @@
   (types {:dataset_query          :json
           :display                :keyword
           :visualization_settings :json})
+  timestamped
   (assoc :hydration-keys #{:card}))
-
-(defmethod pre-insert Card [_ {:keys [display] :as card}]
-  (assert (contains? display-types (keyword display)))
-  (let [defaults {:created_at (util/new-sql-timestamp)
-                  :updated_at (util/new-sql-timestamp)}]
-    (merge defaults card)))
-
-(defmethod pre-update Card [_ {:keys [dataset_query visualization_settings display] :as card}]
-  (assoc card :updated_at (util/new-sql-timestamp)))
 
 (defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
   (-> (assoc card

@@ -5,7 +5,6 @@
             [metabase.api.org-test :refer [create-org]]
             [metabase.test-data :refer :all]
             [metabase.test-data.create :refer [create-user]]
-            metabase.test-setup
             [metabase.test.util :refer :all]
             [metabase.util :refer [regex= regex?]])
   (:import com.metabase.corvus.api.ApiException))
