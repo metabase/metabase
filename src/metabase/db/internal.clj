@@ -1,6 +1,9 @@
 (ns metabase.db.internal
   "Internal functions and macros used by the public-facing functions in `metabase.db`."
-  (:require [korma.core :refer [where]]))
+  (:require [clojure.walk :as walk]
+            [cheshire.core :as cheshire]
+            [korma.core :refer [where]]
+            [metabase.util :as u]))
 
 (declare entity->korma)
 
@@ -52,3 +55,24 @@
                                        require)
                                    (eval entity)))
            :else entity))))
+
+
+;; ## READ-JSON
+
+(defn- read-json-str-or-clob
+  "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
+  [json-str]
+  (some-> (u/jdbc-clob->str json-str)
+          cheshire/parse-string))
+
+(defn read-json
+  "Read JSON-STRING (or JDBC Clob) as JSON and keywordize keys."
+  [json-string]
+  (->> (read-json-str-or-clob json-string)
+       walk/keywordize-keys))
+
+(defn write-json
+  "If OBJ is not already a string, encode it as JSON."
+  [obj]
+  (if (string? obj) obj
+      (cheshire/generate-string obj)))

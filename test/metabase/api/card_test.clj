@@ -6,8 +6,7 @@
             (metabase.models [card :refer [Card]]
                              [common :as common])
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test-data :refer :all]
-            metabase.test-setup))
+            [metabase.test-data :refer :all]))
 
 ;; # CARD LIFECYCLE
 
@@ -32,11 +31,13 @@
 ;; Check that only the creator of a private Card can see it
 (expect [true
          false]
-  (with-temp Card [{:keys [id]} {:name (random-name)
-                                 :public_perms common/perms-none
-                                 :organization_id @org-id
-                                 :creator_id (user->id :crowberto)
-                                 :display "table"}]
+  (with-temp Card [{:keys [id]} {:name                   (random-name)
+                                 :public_perms           common/perms-none
+                                 :organization_id        @org-id
+                                 :creator_id             (user->id :crowberto)
+                                 :display                :table
+                                 :dataset_query          {}
+                                 :visualization_settings {}}]
     (let [can-see-card? (fn [user]
                           (contains? (->> ((user->client user) :get 200 "card" :org @org-id :f :all)
                                           (map :id)

@@ -1,8 +1,7 @@
 (ns metabase.driver.generic-sql.native-test
   (:require [expectations :refer :all]
             [metabase.driver.generic-sql.native :refer :all]
-            [metabase.test-data :refer :all]
-            metabase.test-setup))
+            [metabase.test-data :refer :all]))
 
 ;; Just check that a basic query works
 (expect {:status :completed

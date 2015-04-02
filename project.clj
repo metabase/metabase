@@ -27,7 +27,7 @@
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.h2database/h2 "1.4.186"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
-                 [compojure "1.3.2"]                                  ; HTTP Routing library built on Ring
+                 [compojure "1.3.3"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [korma "0.4.0"]                                      ; SQL lib
@@ -72,7 +72,8 @@
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
-             :expectations {:resource-paths ["test_resources"]
+             :expectations {:injections [(require 'metabase.test-setup)]
+                            :resource-paths ["test_resources"]
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"

@@ -11,10 +11,11 @@
 
 (def available-drivers
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
-  [["h2" "H2"]                 ; TODO it would be very nice if we could just look for files in this namespace at runtime and load them
-   ["postgres" "PostgreSQL"]]) ; then the driver dispatch functions wouldn't have to call `require`
+  [["h2" "H2"]
+   ["postgres" "PostgreSQL"]])
 
-
+;; TODO dynamically requiring every dispatch this way is wonky
+;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does
 (defn db-dispatch-fn
   "Returns a dispatch fn for multi-methods that keys off of a `Database's` `:engine`.
 
@@ -27,7 +28,7 @@
   [impl-namespace]
   (fn [{:keys [engine]}]
     {:pre [engine]}
-    (require (symbol (str "metabase.driver." engine "." impl-namespace)))
+    (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
     (keyword engine)))
 
 

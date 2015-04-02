@@ -59,7 +59,7 @@
   (expect-eval-actual-first
       (match-$ (sel :one Database :name db-name)
         {:created_at $
-         :engine "postgres"
+         :engine "postgres" ; string because it's coming back from API instead of DB
          :id $
          :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
          :updated_at $
@@ -85,13 +85,13 @@
              {db-id :id} (create-db old-name)
              sel-db (fn [] (sel :one :fields [Database :name :engine :details] :id db-id))]
   [{:details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-    :engine "postgres"
+    :engine :postgres
     :name old-name}
    {:details {:conn_str "host=localhost port=5432 dbname=fakedb user=rastacan"}
-    :engine "h2"
+    :engine :h2
     :name new-name}
    {:details {:conn_str "host=localhost port=5432 dbname=fakedb user=rastacan"}
-    :engine "h2"
+    :engine :h2
     :name old-name}]
   [(sel-db)
    ;; Check that we can update all the fields

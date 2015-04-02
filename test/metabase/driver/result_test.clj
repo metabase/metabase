@@ -16,7 +16,7 @@
     (match-$ (sel :one QueryExecution :additional_info addtl-info)
       {:id $
        :uuid $
-       :status "completed"
+       :status :completed
        :row_count 1
        :data {:rows [[100]]
               :columns ["count"]

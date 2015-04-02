@@ -5,8 +5,7 @@
             [metabase.db :refer :all]
             (metabase.models [query-execution :refer [QueryExecution]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]
-            metabase.test-setup))
+            [metabase.test-data :refer :all]))
 
 ;; ## Helper Fns
 (defn create-query []

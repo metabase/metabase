@@ -1,18 +1,17 @@
 (ns metabase.models.query-execution
-  (:require [clojure.data.json :as json]
-            [korma.core :refer :all]
+  (:require [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [hydrate :refer [realize-json]]
-                             [user :refer [User]]
                              [database :refer [Database]]
-                             [query :refer [Query]])
-            [metabase.util :refer :all]))
+                             [query :refer [Query]])))
 
 
 (defentity QueryExecution
-  (table :query_queryexecution))
+  (table :query_queryexecution)
+  (types {:json_query  :json
+          :result_data :json
+          :status      :keyword}))
 
 (def all-fields [QueryExecution
                  :id
@@ -45,19 +44,11 @@
    :result_rows
    :query_id])
 
-(defmethod pre-insert QueryExecution [_ {:keys [status json_query] :as query-execution}]
-  (cond-> (assoc query-execution :json_query (if (string? json_query) json_query
-                                                 (json/write-str json_query)))
-    status (assoc :status (name status))))
-
 (defmethod post-select QueryExecution [_ {:keys [query_id result_rows] :as query-execution}]
-  (-> query-execution
-      (realize-json :json_query :result_data)
-      (assoc* :row_count (or result_rows 0) ; sadly we have 2 ways to reference the row count :(
-              :query (delay
-                      (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
-                      (sel :one Query :id query_id)))))
-
+  (assoc query-execution
+         :row_count (or result_rows 0) ; sadly we have 2 ways to reference the row count :(
+         :query     (delay (check query_id 500 "Can't get execution: QueryExecution doesn't have a :query_id.")
+                           (sel :one Query :id query_id))))
 
 (defn build-response
     "Build a query response from a QueryExecution record."
@@ -65,8 +56,7 @@
        :or {cols []
             columns []}} :result_data :as query-execution}]
     (let [rows (or rows data [])]
-        (->
-            (select-keys query-execution [:id :uuid :status])
+        (-> (select-keys query-execution [:id :uuid :status])
             (assoc :data {:rows rows
                           :cols cols
                           :columns columns}

@@ -116,14 +116,16 @@
   (time/unparse (time/formatter format-string) (coerce/from-long (System/currentTimeMillis))))
 
 (defn jdbc-clob->str
-  "Convert a `JdbcClob` to a `String`."
+  "Convert a `JdbcClob` or `PGobject` to a `String`."
   (^String
    [clob]
    (when clob
-     (if (string? clob) clob
-         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
-              (interpose "\n")
-              (apply str)))))
+     (condp = (type clob)
+       java.lang.String             clob
+       org.postgresql.util.PGobject (.getValue ^org.postgresql.util.PGobject clob)
+       org.h2.jdbc.JdbcClob         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
+                                         (interpose "\n")
+                                         (apply str)))))
   ([^java.io.BufferedReader reader acc]
    (if-let [line (.readLine reader)]
      (recur reader (conj acc line))

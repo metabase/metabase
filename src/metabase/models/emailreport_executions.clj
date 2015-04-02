@@ -1,27 +1,14 @@
 (ns metabase.models.emailreport-executions
-  (:require [cheshire.core :as json]
-            [korma.core :refer :all]
-            [metabase.api.common :refer [check]]
+  (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [common :refer [assoc-permissions-sets perms-none]]
-              [hydrate :refer [realize-json]]
-              [emailreport-recipients :refer [EmailReportRecipients]]
-              [org :refer [Org org-can-read org-can-write]]
-              [user :refer [User]])
-            [metabase.util :as util]))
+            (metabase.models [emailreport-recipients :refer [EmailReportRecipients]]
+                             [org :refer [Org]])))
 
 
 (defentity EmailReportExecutions
-  (table :report_emailreportexecutions))
+  (table :report_emailreportexecutions)
+  (types {:details :json}))
 
 
 (defmethod post-select EmailReportExecutions [_ {:keys [organization_id] :as execution}]
-  (-> execution
-    (realize-json :details)
-    (util/assoc*
-      :organization (delay
-                      (sel :one Org :id organization_id)))))
-
-(defmethod pre-insert EmailReportExecutions [_ {:keys [details] :as execution}]
-  (assoc execution :details (if (string? details) details
-                                                  (json/encode details))))
+  (assoc execution :organization (delay (sel :one Org :id organization_id))))

@@ -8,8 +8,7 @@
                              [database :refer [Database]]
                              [emailreport :refer [EmailReport] :as emailreport])
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test-data :refer :all]
-            metabase.test-setup))
+            [metabase.test-data :refer :all]))
 
 ;; ## Helper Fns
 
@@ -205,7 +204,9 @@
      #{}]
   (with-temp EmailReport [{:keys [id]} {:creator_id      (user->id :rasta)
                                         :name            (random-name)
-                                        :organization_id @org-id}]
+                                        :organization_id @org-id
+                                        :dataset_query   {}
+                                        :schedule        {}}]
     (symbol-macrolet [get-recipients (->> ((user->client :rasta) :get 200 (format "emailreport/%d" id))
                                           :recipients
                                           (map :id)

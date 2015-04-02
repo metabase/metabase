@@ -3,13 +3,12 @@
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [user :refer [User]])
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
 (defentity Session
   (table :core_session)
   (belongs-to User {:fk :user_id}))
 
-
 (defmethod pre-insert Session [_ session]
-  (let [defaults {:created_at (util/new-sql-timestamp)}]
+  (let [defaults {:created_at (u/new-sql-timestamp)}]
     (merge defaults session)))
