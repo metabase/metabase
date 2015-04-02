@@ -132,6 +132,23 @@
      (do (.close reader)
          acc))))
 
+(defn value-to-json-pgobject
+  "Create a :postgres `PGObject` representing a json column with the specified value."
+  [value]
+  (doto (org.postgresql.util.PGobject.)
+    (.setType "json")
+    (.setValue value)))
+
+(defn str->jdbc-clob
+  "Convert a `String` to a db driver specific clob such as `PGobject`."
+  [str db-type]
+  {:pre [(string? str)
+         (keyword? db-type)]}
+  (when str
+    (condp = db-type
+      :postgres             (value-to-json-pgobject str)
+      str)))
+
 (defn
   ^{:arglists ([pred? args]
                [pred? args default])}
