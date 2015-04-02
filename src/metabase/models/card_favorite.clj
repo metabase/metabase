@@ -2,8 +2,7 @@
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
-                             [user :refer [User]])
-            [metabase.util :refer [new-sql-timestamp]]))
+                             [user :refer [User]])))
 
 (defentity CardFavorite
   (table :report_cardfavorite)

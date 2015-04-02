@@ -4,7 +4,7 @@
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             (metabase.models [org-perm :refer [OrgPerm]])
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
 
@@ -48,14 +48,14 @@
              :common_name   (str (:first_name user) " " (:last_name user)))))
 
 (defmethod pre-insert User [_ {:keys [email password] :as user}]
-  (assert (util/is-email? email))
+  (assert (u/is-email? email))
   (assert (and (string? password)
                (not (clojure.string/blank? password))))
   (assert (not (:password_salt user))
           "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
   (let [salt (.toString (java.util.UUID/randomUUID))
-        defaults {:date_joined (util/new-sql-timestamp)
-                  :last_login (util/new-sql-timestamp)
+        defaults {:date_joined (u/new-sql-timestamp)
+                  :last_login (u/new-sql-timestamp)
                   :is_staff true
                   :is_active true
                   :is_superuser false}]
@@ -65,7 +65,7 @@
 
 (defmethod pre-update User [_ {:keys [email] :as user}]
   (when email
-    (assert (util/is-email? email)))
+    (assert (u/is-email? email)))
   user)
 
 (defmethod pre-cascade-delete User [_ {:keys [id]}]

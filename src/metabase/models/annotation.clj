@@ -3,8 +3,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [org :refer [Org]]
-                             [user :refer [User]])
-            [metabase.util :as util]))
+                             [user :refer [User]])))
 
 
 (def annotation-general 0)

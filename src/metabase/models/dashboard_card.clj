@@ -1,8 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            (metabase.models [card :refer [Card]])
-            [metabase.util :as util]))
+            (metabase.models [card :refer [Card]])))
 
 (defentity DashboardCard
   (table :report_dashboardcard)

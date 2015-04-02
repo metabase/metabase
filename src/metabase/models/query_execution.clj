@@ -3,7 +3,6 @@
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [user :refer [User]]
                              [database :refer [Database]]
                              [query :refer [Query]])))
 

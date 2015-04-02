@@ -5,8 +5,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [org :refer [Org]]
-                             [user :refer [User]])
-            [metabase.util :as u]))
+                             [user :refer [User]])))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."

@@ -1,8 +1,7 @@
 (ns metabase.models.database
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.models.org :refer [Org org-can-read org-can-write]]
-            [metabase.util :as u]))
+            [metabase.models.org :refer [Org org-can-read org-can-write]]))
 
 
 (defentity Database
