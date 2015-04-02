@@ -141,12 +141,12 @@
 
 (defn str->jdbc-clob
   "Convert a `String` to a db driver specific clob such as `PGobject`."
-  [str db-type]
-  {:pre [(string? str)
+  [value db-type]
+  {:pre [(string? value)
          (keyword? db-type)]}
-  (when str
+  (when value
     (condp = db-type
-      :postgres             (value-to-json-pgobject str)
+      :postgres             (value-to-json-pgobject value)
       str)))
 
 (defn
