@@ -98,7 +98,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             },
 
             switchOrg: function(org_slug) {
-                console.log('changing org to ...', org_slug);
                 Organization.get_by_slug({
                     'slug': org_slug
                 }, function(org) {
@@ -113,7 +112,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
-                console.log(message);
                 service.model.currentOrgSlug = null;
                 service.model.currentOrg = null;
 
@@ -154,20 +152,16 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                console.log('routeChanged - ' + $location.path());
                 if (service.model.currentUserPromise) {
-                    console.log('routeChanged-withPromise');
                     // we have an outstanding promise for getting current user, so wait for that first
                     service.model.currentUserPromise.then(function(user) {
                         service.model.currentUserPromise = null;
                         service.routeChangedImpl(event);
                     }, function(error) {
-                        console.log('routeChanged-withPromise-NOUSER', error);
                         service.model.currentUserPromise = null;
                         service.routeChangedImpl(event);
                     });
                 } else {
-                    console.log('routeChanged-noPromise');
                     // we must already have the user, so carry on
                     service.routeChangedImpl(event);
                 }
@@ -178,7 +172,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // if we don't have a current user then the only sensible destination is the login page
                 if (!service.model.currentUser) {
-                    console.log('routeChangedImpl-noUser');
                     // make sure we clear out any current state just to be safe
                     service.clearState();
 
@@ -190,7 +183,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     return;
                 }
-                console.log('routeChangedImpl-withUser');
 
                 var onSuperadminPage = $location.path().indexOf('/superadmin/') === 0;
 
@@ -206,7 +198,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 } else if ($routeParams.orgSlug) {
                     // the url is telling us what Organization we are working in
-                    console.log('routeChangedImpl-withUser-orgSlug', $routeParams.orgSlug);
                     // PERMISSIONS CHECK!!  user must be member of this org to proceed
                     // Making convenience vars so it's easier to scan conditions for correctness
                     var isSuperuser = service.model.currentUser.is_superuser;
@@ -233,7 +224,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 } else if (!service.model.currentOrgSlug) {
                     // the url doesn't tell us what Organization this is, so lets try a different approach
-                    console.log('routeChangedImpl-withUser-noOrg');
                     // Check to see if the user has a current org cookie var set
                     var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
                     if (currentOrgFromCookie) {
@@ -268,13 +258,11 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
         // login just took place, so lets force a refresh of the current user
         $rootScope.$on("appstate:login", function(event, session_id) {
-            console.log('loginCompleted', session_id);
             service.model.currentUserPromise = service.refreshCurrentUser();
         });
 
         // logout just took place, do some cleanup
         $rootScope.$on("appstate:logout", function(event, session_id) {
-            console.log('logoutCompleted', session_id);
 
             // clear out any current state
             service.clearState();
@@ -303,7 +291,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
         // $http interceptor received a 403 response
         $rootScope.$on("event:auth-forbidden", function() {
-            console.log('someone got a 403');
             $location.path("/unauthorized");
         });
 
