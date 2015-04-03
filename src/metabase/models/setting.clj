@@ -87,19 +87,23 @@
      (mandrill-api-key )          ; get the value
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value"
-  [nm description]
+  {:arglists '([setting-name description]
+               [setting-name description default-value])}
+  [nm description & [default-value]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)]
     `(do
        (defn ~nm ~description
+         {::is-setting? true}
          ([]
           (get ~setting-key))
          ([value#]
           (if-not value#
             (delete ~setting-key)
             (set ~setting-key value#))))
-       (alter-meta! #'~nm assoc :is-setting? true))))
+       ~(when default-value
+          `(~nm ~default-value)))))
 
 
 ;; ## ALL SETTINGS (ETC)
@@ -145,7 +149,7 @@
        (mapcat ns-interns)
        vals
        (map meta)
-       (filter :is-setting?)
+       (filter ::is-setting?)
        (map (fn [{k :name desc :doc}]
               {:key (keyword k)
                :description desc}))))
