@@ -93,17 +93,16 @@
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)]
-    `(do
-       (defn ~nm ~description
-         {::is-setting? true}
-         ([]
-          (get ~setting-key))
-         ([value#]
-          (if-not value#
-            (delete ~setting-key)
-            (set ~setting-key value#))))
-       ~(when default-value
-          `(~nm ~default-value)))))
+    `(defn ~nm ~description
+       {::is-setting? true
+        ::default-value ~default-value}
+       ([]
+        (or (get ~setting-key)
+            ~default-value))
+       ([value#]
+        (if-not value#
+          (delete ~setting-key)
+          (set ~setting-key value#))))))
 
 
 ;; ## ALL SETTINGS (ETC)
@@ -150,6 +149,7 @@
        vals
        (map meta)
        (filter ::is-setting?)
-       (map (fn [{k :name desc :doc}]
+       (map (fn [{k :name desc :doc default ::default-value}]
               {:key (keyword k)
-               :description desc}))))
+               :description desc
+               :default default}))))
