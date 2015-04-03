@@ -42,7 +42,7 @@
 ;; ## ACCESSORS
 
 (defn get
-  "Fetch value of `Setting`.
+  "Fetch value of `Setting`, or return default value if none is set.
    Cached lookup time is ~60µs, compared to ~1800µs for DB lookup."
   [k]
   {:pre [(keyword? k)]}
