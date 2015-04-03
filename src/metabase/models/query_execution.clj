@@ -62,6 +62,5 @@
                           :columns columns}
                    :row_count (count rows))
             (cond->
-                (= "failed" (:status query-execution)) (assoc :error (:error query-execution)
-                                                              ;; TODO - sql error formatting FN
-                                                              :sql_error (:error query-execution))))))
+                (= :failed (:status query-execution)) (assoc :error (:error query-execution)
+                                                             :sql_error (:error query-execution))))))

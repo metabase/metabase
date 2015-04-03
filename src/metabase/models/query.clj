@@ -34,7 +34,7 @@
 
 (defmethod pre-update Query [_ {:keys [version] :as query}]
   (-> query
-      (u/select-non-nil-keys :name :database_id :public_perms)
+      (u/select-non-nil-keys :name :database_id :public_perms :details)
       (assoc :version (+ 1 version))))
 
 (defmethod post-select Query [_ {:keys [creator_id database_id] :as query}]
