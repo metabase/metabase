@@ -187,7 +187,7 @@
 ;; ## GET /api/query
 ;; Fetch Queries for the current Org
 (expect-eval-actual-first
-    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :id :ASC))
+    (let [[query-1 query-2] (sel :many Query :database_id (:id @test-db) (order :name :ASC))
           rasta (match-$ (fetch-user :rasta)
                   {:common_name "Rasta Toucan"
                    :date_joined $

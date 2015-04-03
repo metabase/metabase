@@ -54,20 +54,7 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d" (table->id :venues))))
 
 ;; ## GET /api/meta/table/:id/fields
-(expect [(match-$ (sel :one Field :id (field->id :categories :name))
-           {:description nil
-            :table_id (table->id :categories)
-            :special_type nil
-            :name "NAME"
-            :updated_at $
-            :active true
-            :id (field->id :categories :name)
-            :field_type "info"
-            :position 0
-            :preview_display true
-            :created_at $
-            :base_type "TextField"})
-         (match-$ (sel :one Field :id (field->id :categories :id))
+(expect [(match-$ (sel :one Field :id (field->id :categories :id))
            {:description nil
             :table_id (table->id :categories)
             :special_type "id"
@@ -79,7 +66,20 @@
             :position 0
             :preview_display true
             :created_at $
-            :base_type "BigIntegerField"})]
+            :base_type "BigIntegerField"})
+         (match-$ (sel :one Field :id (field->id :categories :name))
+           {:description nil
+            :table_id (table->id :categories)
+            :special_type nil
+            :name "NAME"
+            :updated_at $
+            :active true
+            :id (field->id :categories :name)
+            :field_type "info"
+            :position 0
+            :preview_display true
+            :created_at $
+            :base_type "TextField"})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
