@@ -13,7 +13,7 @@
 
 (defsetting mandrill-api-key "API key for Mandrill.")
 (defsetting email-from-address "Email address used as the sender of system notifications." "notifications@metabase.com")
-(defsetting email-from-name "Name used as the sender of the system notifications. (optional)" "Metabase")
+(defsetting email-from-name "Name used as the sender of the system notifications." "Metabase")
 
 
 ;; ## PUBLIC INTERFACE
