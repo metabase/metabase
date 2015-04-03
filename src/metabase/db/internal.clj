@@ -75,5 +75,4 @@
   "If OBJ is not already a string, encode it as JSON."
   [obj]
   (if (string? obj) obj
-    (-> (cheshire/generate-string obj)
-        (u/str->jdbc-clob (metabase.config/config-kw :mb-db-type)))))
+      (cheshire/generate-string obj)))
