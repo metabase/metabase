@@ -1,7 +1,5 @@
 (ns metabase.api.tiles
   (:require [clojure.core.match :refer [match]]
-            [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
