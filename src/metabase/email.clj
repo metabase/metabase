@@ -12,11 +12,9 @@
 ;; ## CONFIG
 
 (defsetting mandrill-api-key "API key for Mandrill.")
+(defsetting email-from-address "Email address used as the sender of system notifications.")
+(defsetting email-from-name "Name used as the sender of the system notifications. (optional)")
 
-(def ^:private message-sender
-  "The `from` field for messages sent by the Mandrill API."
-  {:email "mailman@metabase.com"
-   :name "Metabase MetaMailMan"})
 
 ;; ## PUBLIC INTERFACE
 
@@ -56,8 +54,8 @@
 (defn- api-post-messages-send
   "Make a `POST messages/send` call to the Mandrill API."
   [& {:as kwargs}]
-  (let [defaults {:from_email (message-sender :email)
-                  :from_name (message-sender :name)}]
+  (let [defaults {:from_email (email-from-address)
+                  :from_name (email-from-name)}]
     (= (:status (api-post "messages/send"
                           :body {:message (merge defaults kwargs)}))
        200)))
