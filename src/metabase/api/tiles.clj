@@ -46,22 +46,13 @@
 (defn- extract-points
   "Takes in a dataset query result object and pulls out the Latitude/Longitude pairs into nested `java.util.ArrayLists`.
    This is specific to the way we plan to feed data into `com.metabase.corvus.api.tiles.GoogleMapPinsOverlay`."
-  [{{:keys [rows cols]} :data}]
-  (try
-    (if-not (> (count rows) 0)
-      ;; if we have no rows then return an empty list of points
-      (java.util.ArrayList. [])
-      ;; otherwise we go over the data, pull out the lat/lon columns, and convert them to ArrayLists
-      (let [find-col-idx (fn [special-type]
-                           (->> (map-indexed (fn [idx itm] (when (= special-type (:special_type itm)) idx)) cols)
-                                (filter identity)
-                                first))
-            lat-col-idx (find-col-idx "latitude")
-            lon-col-idx (find-col-idx "longitude")]
-        (->> (map (fn [row] (java.util.ArrayList. [(nth row lat-col-idx) (nth row lon-col-idx)])) rows)
-             (java.util.ArrayList.))))
-    (catch Throwable e
-      (log/debug "CAUGHT EXCEPTION IN EXTRACT-POINTS (WHY?): " e))))
+  [lat-col-idx lon-col-idx {{:keys [rows cols]} :data}]
+  (if-not (> (count rows) 0)
+    ;; if we have no rows then return an empty list of points
+    (java.util.ArrayList. [])
+    ;; otherwise we go over the data, pull out the lat/lon columns, and convert them to ArrayLists
+    (->> (map (fn [row] (java.util.ArrayList. [(nth row lat-col-idx) (nth row lon-col-idx)])) rows)
+         (java.util.ArrayList.))))
 
 
 (defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
@@ -80,7 +71,7 @@
   (let [updated-query (assoc query :query (query-with-inside-filter (:query query) lat-field lon-field x y zoom))
         result (driver/dataset-query updated-query {:executed_by *current-user-id*
                                                     :synchronously true})
-        lat-lon-points (extract-points result)]
+        lat-lon-points (extract-points lat-col-idx lon-col-idx result)]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     {:status  200
      :headers {"Content-Type" "image/png"}
