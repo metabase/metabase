@@ -22,7 +22,7 @@
          (set-field-special-type nil)
          (sel-field-values-count))
      (do (set-field-special-type :category)
-         (Thread/sleep 200)                 ; wait 200ms for the FieldValues object to get asynchronously created
+         (Thread/sleep 250)                 ; wait 250ms for the FieldValues object to get asynchronously created
          (sel-field-values-count))
      (do (del-field-values)                 ; put things back how we found them
          (set-field-special-type nil)

@@ -12,7 +12,8 @@
 ;; these tests will fail. FIXME
 
 (defsetting test-setting-1 "Test setting - this only shows up in dev (1)")
-(defsetting test-setting-2 "Test setting - this only shows up in dev (2)")
+(defsetting test-setting-2 "Test setting - this only shows up in dev (2)"
+  "[Default Value]")
 
 
 ;; ## HELPER FUNCTIONS
@@ -39,7 +40,12 @@
 ;; Test `get` function
 (expect nil
   (do (set-settings nil nil)
-    (setting/get :test-setting-1)))
+      (setting/get :test-setting-1)))
+
+;; Test getting a default value
+(expect "[Default Value]"
+  (do (set-settings nil nil)
+      (test-setting-2)))
 
 
 ;; ## SETTERS
@@ -61,12 +67,25 @@
 
 
 ;; ## DELETE
-;; Test defsetting delete
+;; Test defsetting delete w/o default value
 (expect-eval-actual-first
     ["COOL"
      true
      nil
      false]
+  [(do (test-setting-1 "COOL")
+       (test-setting-1))
+   (setting-exists? :test-setting-1)
+   (do (test-setting-1 nil)
+       (test-setting-1))
+   (setting-exists? :test-setting-1)])
+
+;; Test defsetting delete w/ default value
+(expect-eval-actual-first
+    ["COOL"
+     true
+     "[Default Value]"                  ; default value should get returned if none is set
+     false]                             ; setting still shouldn't exist in the DB
   [(do (test-setting-2 "COOL")
        (test-setting-2))
    (setting-exists? :test-setting-2)
@@ -80,12 +99,12 @@
      true
      nil
      false]
-  [(do (test-setting-2 "VERY NICE!")
-       (test-setting-2))
-   (setting-exists? :test-setting-2)
-   (do (test-setting-2 nil)
-       (test-setting-2))
-   (setting-exists? :test-setting-2)])
+  [(do (test-setting-1 "VERY NICE!")
+       (test-setting-1))
+   (setting-exists? :test-setting-1)
+   (do (test-setting-1 nil)
+       (test-setting-1))
+   (setting-exists? :test-setting-1)])
 
 ;; ## ALL SETTINGS FUNCTIONS
 
@@ -98,8 +117,8 @@
 
 ;; all-with-descriptions
 (expect-eval-actual-first
-    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)"}
-     {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)"}]
+    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default nil}
+     {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
   (do (set-settings nil "S2")
       (filter (fn [{k :key}]
                 (re-find #"^test-setting-\d$" (name k)))
