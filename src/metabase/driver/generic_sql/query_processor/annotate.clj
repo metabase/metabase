@@ -5,7 +5,8 @@
 
 (declare get-column-names
          get-column-info
-         get-special-column-info)
+         get-special-column-info
+         uncastify)
 
 (defn annotate
   "Take raw RESULTS from running QUERY and convert them to the format expected by the front-end.
@@ -24,6 +25,14 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
+(defn order-columns
+  [{{:keys [source_table breakout]} :query} ks]
+  (let [field-map (->> (map (fn [k] {(sel :one :field [Field :id] :name (uncastify (name k)) :table_id source_table) k}) ks)
+                       (apply merge))
+        dimensions (map #(get field-map %) breakout)]
+    (->> (concat dimensions (filter #(not (contains? (set dimensions) %)) ks))
+         (filter identity))))
+
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
    If a `fields` clause was specified in the Query Dict, we want to return results in the same order."
@@ -39,7 +48,8 @@
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
                           keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
-                          (filter #(not (contains? (set fields-clause-fields) %))))]
+                          (filter #(not (contains? (set fields-clause-fields) %)))
+                          (order-columns query))]
     (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
          (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
