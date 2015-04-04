@@ -2,7 +2,8 @@
   (:require [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [database :as db]
-                             [field :refer [Field]])
+                             [field :refer [Field]]
+                             [field-values :refer [FieldValues]])
             [metabase.util :as u]))
 
 (def entity-types
@@ -16,14 +17,24 @@
   (assoc :hydration-keys #{:table}))
 
 
+; also missing :active and :pk_field
 (defmethod post-select Table [_ {:keys [id db db_id description] :as table}]
   (u/assoc* table
-               :db          (or db (delay (sel :one db/Database :id db_id)))
-               :fields      (delay (sel :many Field :table_id id :active true (order :position :ASC) (order :name :ASC)))
-               :description (u/jdbc-clob->str description)
-               :pk_field    (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"}))))
-               :can_read    (delay @(:can_read @(:db <>)))
-               :can_write   (delay @(:can_write @(:db <>)))))
+               :db           (or db (delay (sel :one db/Database :id db_id)))
+               :fields       (delay (sel :many Field :table_id id :active true (order :position :ASC) (order :name :ASC)))
+               :field_values (delay
+                               (let [field-ids (sel :many :field [Field :id]
+                                                    :table_id id
+                                                    :active true
+                                                    (order :position :asc)
+                                                    (order :name :asc))]
+                                 (->> (sel :many FieldValues :field_id [in field-ids])
+                                      (map (fn [{:keys [field_id values]}] {field_id values}))
+                                      (apply merge))))
+               :description  (u/jdbc-clob->str description)
+               :pk_field     (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"}))))
+               :can_read     (delay @(:can_read @(:db <>)))
+               :can_write    (delay @(:can_write @(:db <>)))))
 
 
 (defmethod pre-cascade-delete Table [_ {:keys [id] :as table}]
