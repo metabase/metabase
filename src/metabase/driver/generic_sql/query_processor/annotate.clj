@@ -5,7 +5,8 @@
 
 (declare get-column-names
          get-column-info
-         get-special-column-info)
+         get-special-column-info
+         uncastify)
 
 (defn annotate
   "Take raw RESULTS from running QUERY and convert them to the format expected by the front-end.
@@ -24,33 +25,32 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
+(defn order-columns
+  [{{:keys [source_table breakout]} :query} ks]
+  (let [field-map (->> (map (fn [k] {(sel :one :field [Field :id] :name (uncastify (name k)) :table_id source_table) k}) ks)
+                       (apply merge))
+        dimensions (map #(get field-map %) breakout)]
+    (->> (concat dimensions (filter #(not (contains? (set dimensions) %)) ks))
+         (filter identity))))
+
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
    If a `fields` clause was specified in the Query Dict, we want to return results in the same order."
   [query results]
-  (let [ids->names (fn [field-ids]
-                     (when-not (or (empty? field-ids)
-                                 (= field-ids [nil]))
-                       (let [field-id->name (->> (sel :many [Field :id :name :base_type]
-                                                   :id [in field-ids])     ; Fetch names of fields from `fields` clause
-                                              (map (fn [{:keys [id name base_type]}]  ; build map of field-id -> field-name
-                                                     ;; this feels hacky, but we can't reuse `(castify)` because we don't want a korma form here :(
-                                                     (if (contains? #{:DateField :DateTimeField} base_type)
-                                                       {id (keyword (format "CAST(%s AS DATE)" name))}
-                                                       {id (keyword name)})))
-                                              (into {}))]
-                         (map field-id->name field-ids))))                  ; now get names in same order as the IDs
-        field-ids (-> query :query :fields)
-        fields-clause-fields (ids->names field-ids)
-        ;; note that we are protecting against the possibility that a dimension already exists in :fields
-        dimension-ids (filter #(not (contains? (set field-ids) %)) (-> query :query :breakout))
-        dimensions-clause-fields (ids->names dimension-ids)
+  (let [field-ids (-> query :query :fields)
+        fields-clause-fields (when-not (or (empty? field-ids)
+                                           (= field-ids [nil]))
+                               (let [field-id->name (->> (sel :many [Field :id :name]
+                                                              :id [in field-ids])     ; Fetch names of fields from `fields` clause
+                                                         (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
+                                                                {id (keyword name)}))
+                                                         (into {}))]
+                                 (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
                           keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
-                          (filter #(not (contains? (clojure.set/union
-                                                     (set fields-clause-fields)
-                                                     (set dimensions-clause-fields)) %))))]
-    (->> (concat fields-clause-fields dimensions-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
+                          (filter #(not (contains? (set fields-clause-fields) %)))
+                          (order-columns query))]
+    (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
          (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
 (defn- uncastify
