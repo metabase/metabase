@@ -30,18 +30,18 @@
   [query results]
   (let [field-ids (-> query :query :fields)
         fields-clause-fields (when-not (or (empty? field-ids)
-                                         (= field-ids [nil]))
+                                           (= field-ids [nil]))
                                (let [field-id->name (->> (sel :many [Field :id :name]
-                                                           :id [in field-ids])     ; Fetch names of fields from `fields` clause
-                                                      (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
-                                                             {id (keyword name)}))
-                                                      (into {}))]
+                                                              :id [in field-ids])     ; Fetch names of fields from `fields` clause
+                                                         (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
+                                                                {id (keyword name)}))
+                                                         (into {}))]
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
-                       keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
-                       (filter #(not (contains? (set fields-clause-fields) %))))]
+                          keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
+                          (filter #(not (contains? (set fields-clause-fields) %))))]
     (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
-      (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
+         (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
 (defn- uncastify
   "Remove CAST statements from a column name if needed.
