@@ -53,7 +53,7 @@
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)
-         (hydrate :db [:fields [:target]])))
+         (hydrate :db [:fields [:target]] :field_values)))
 
 (defendpoint GET "/:id/fks"
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
