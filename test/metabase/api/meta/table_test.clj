@@ -83,6 +83,7 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
+; TODO - create test which includes :field_values
 (expect
     (match-$ (sel :one Table :id (table->id :categories))
       {:description nil
@@ -125,6 +126,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "TextField"})]
+       :field_values nil
        :rows 75
        :updated_at $
        :entity_name nil
