@@ -1,17 +1,15 @@
 (ns metabase.api.meta.table
   "/api/meta/table endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
             [korma.core :refer :all]
-            [medley.core :as m]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
-              [database :refer [Database]]
-              [field :refer [Field]]
-              [foreign-key :refer [ForeignKey]]
-              [table :refer [Table] :as table])
-            [metabase.util :as u]
+                             [database :refer [Database]]
+                             [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
+                             [org :refer [Org]]
+                             [table :refer [Table] :as table])
             [metabase.driver :as driver]))
 
 (defannotation TableEntityType
@@ -23,6 +21,7 @@
   "Get all `Tables` for an `Org`."
   [org]
   {org Required}
+  (read-check Org org)
   (let [db-ids (sel :many :id Database :organization_id org)]
     (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
         (hydrate :db))))
@@ -32,6 +31,7 @@
   "Get `Table` with ID."
   [id]
   (->404 (sel :one Table :id id)
+         read-check
          (hydrate :db :pk_field)))
 
 (defendpoint PUT "/:id"
@@ -48,11 +48,12 @@
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
-  ;; TODO: READ CHECK ?
+  (read-check Table id)
   (sel :many Field :table_id id (order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)
+         read-check
          (hydrate :db [:fields [:target]] :field_values)))
 
 (defendpoint GET "/:id/fks"
