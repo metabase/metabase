@@ -107,7 +107,6 @@
                                  :version         (inc (:version report)))))
   (-> (sel :one EmailReport :id id)
       (hydrate :creator :database :can_read :can_write)))
-    ;; TODO - deal with recipients
 
 
 (defendpoint DELETE "/:id" [id]
