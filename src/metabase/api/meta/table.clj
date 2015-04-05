@@ -24,7 +24,7 @@
   [org]
   {org Required}
   (let [db-ids (sel :many :id Database :organization_id org)]
-    (-> (sel :many Table :db_id [in db-ids] (order :name :ASC))
+    (-> (sel :many Table :active true :db_id [in db-ids] (order :name :ASC))
         (hydrate :db))))
 
 
@@ -49,7 +49,7 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   ;; TODO: READ CHECK ?
-  (sel :many Field :table_id id (order :name :ASC)))
+  (sel :many Field :table_id id :active true (order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata" [id]
   (->404 (sel :one Table :id id)
@@ -59,7 +59,7 @@
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
   [id]
   (read-check Table id)
-  (let-404 [field-ids (sel :many :id Field :table_id id)]
+  (let-404 [field-ids (sel :many :id Field :table_id id :active true)]
     (-> (sel :many ForeignKey :destination_id [in field-ids])
         ;; TODO - it's a little silly to hydrate both of these table objects
         (hydrate [:origin [:table :db]] [:destination :table]))))
