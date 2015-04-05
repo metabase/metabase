@@ -112,6 +112,7 @@
 (defendpoint GET "/:id/tables"
   "Get a list of all `Tables` in `Database`."
   [id]
+  (read-check Database id)
   (sel :many Table :db_id id :active true (order :name)))
 
 (defendpoint GET "/:id/idfields"
@@ -126,6 +127,7 @@
   "Update the metadata for this `Database`."
   [id]
   (let-404 [db (sel :one Database :id id)]
+    (write-check db)
     (future (driver/sync-database db))) ; run sync-tables asynchronously
   {:status :ok})
 
