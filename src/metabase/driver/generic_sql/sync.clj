@@ -8,57 +8,11 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])))
 
+(declare sync-fields
+         table-names
+         update-table-row-count)
 
-(defn table-names
-  "Fetch a list of table names for DATABASE."
-  [database]
-  (with-jdbc-metadata database
-    (fn [md] (->> (-> md
-                    (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
-                    jdbc/result-set-seq)
-               (mapv :table_name)))))
-
-(defn jdbc-columns
-  "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
-  [database table-name]
-  (with-jdbc-metadata database
-    (fn [md] (->> (-> md
-                    (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
-                    jdbc/result-set-seq)
-               (mapv #(select-keys % [:column_name :type_name]))))))
-
-
-(defn get-table-row-count
-  "Get the number of rows in TABLE."
-  [table]
-  (-> (korma-entity table)
-      (select (aggregate (count :*) :count))
-      first
-      :count))
-
-(defn update-table-row-count
-  "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
-  [{:keys [id] :as table}]
-  {:pre [(integer? id)]}
-  (let [new-count (get-table-row-count table)]
-    (upd Table id :rows new-count)))
-
-(def ^:dynamic *column->base-type*
-  "COLUMN->BASE-TYPE should be a map of column types returned by the DB to Field base types."
-  {})
-
-(defn sync-fields
-  "Sync `Fields` for TABLE. "
-  [{:keys [id name db] :as table}]
-  (dorun (map (fn [{:keys [type_name column_name]}]
-                (or (exists? Field :table_id id :name column_name)
-                    (ins Field
-                      :table_id id
-                      :name column_name
-                      :base_type (or (*column->base-type* (keyword type_name))
-                                     (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
-                                                             "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
-              (jdbc-columns db name))))
+;; # PUBLIC FUNCTIONS
 
 (defn sync-database
   [{:keys [id] :as database}]
@@ -84,3 +38,70 @@
       (update-table-row-count table)
       (sync-fields table)
       (log/debug "Synced" (:name table)))))
+
+
+;; # IMPLEMENTATION
+
+;; ## Variables
+
+(def ^:const ^:private low-cardinality-threshold
+  "Fields with less than this many distinct values should automatically be marked with `special_type` `:category`."
+  40)
+
+(def ^:dynamic *column->base-type*
+  "COLUMN->BASE-TYPE should be a map of column types returned by the DB to Field base types."
+  {})
+
+
+;; ## Fetch Tables/Columns
+
+(defn table-names
+  "Fetch a list of table names for DATABASE."
+  [database]
+  (with-jdbc-metadata database
+    (fn [md] (->> (-> md
+                    (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
+                    jdbc/result-set-seq)
+               (mapv :table_name)))))
+
+(defn jdbc-columns
+  "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
+  [database table-name]
+  (with-jdbc-metadata database
+    (fn [md] (->> (-> md
+                    (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+                    jdbc/result-set-seq)
+                 (mapv #(select-keys % [:column_name :type_name]))))))
+
+;; ## Table Info
+
+(defn get-table-row-count
+  "Get the number of rows in TABLE."
+  [table]
+  (-> (korma-entity table)
+      (select (aggregate (count :*) :count))
+      first
+      :count))
+
+(defn update-table-row-count
+  "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
+  [{:keys [id] :as table}]
+  {:pre [(integer? id)]}
+  (let [new-count (get-table-row-count table)]
+    (upd Table id :rows new-count)))
+
+
+;; ## Field Info
+
+(defn sync-fields
+  "Sync `Fields` for TABLE. "
+  [{:keys [id name db] :as table}]
+  (dorun (map (fn [{:keys [type_name column_name]}]
+                (or (exists? Field :table_id id :name column_name)
+                    (ins Field
+                      :table_id id
+                      :name column_name
+                      :base_type (or (*column->base-type* (keyword type_name))
+                                     (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
+                                                             "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
+              (jdbc-columns db name))))
