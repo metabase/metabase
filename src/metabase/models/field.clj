@@ -8,7 +8,7 @@
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
-(def special-types
+(def ^:const special-types
   "Possible values for `Field` `:special_type`."
   #{:avatar
     :category
@@ -27,7 +27,7 @@
     :url
     :zip_code})
 
-(def special-type->name
+(def ^:const special-type->name
   "User-facing names for the `Field` special types."
   {:avatar "Avatar Image URL"
    :category "Category"
@@ -46,7 +46,7 @@
    :url "URL"
    :zip_code "Zip Code"})
 
-(def base-types
+(def ^:const base-types
   "Possible values for `Field` `:base_type`."
   #{:BigIntegerField
     :BooleanField
@@ -60,7 +60,7 @@
     :TimeField
     :UnknownField})
 
-(def field-types
+(def ^:const field-types
   "Not sure what this is for"
   #{:metric
     :dimension

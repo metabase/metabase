@@ -1,6 +1,7 @@
 (ns metabase.test-data
   "Functions relating to using the test data, Database, Organization, and Users."
   (:require [cemerick.friend.credentials :as creds]
+            [korma.core :as k]
             [medley.core :as medley]
             (metabase [db :refer :all]
                       [http-client :as http])
@@ -161,6 +162,38 @@
   [username]
   {:pre [(contains? usernames username)]}
   (sel :one OrgPerm :organization_id @org-id :user_id (user->id username)))
+
+
+;; ## Temporary Tables / Etc.
+
+(defmacro with-temp-table
+  "Execute BODY with a temporary Table that will be dropped afterward.
+   The korma entity representing the Table is bound to TABLE-BINDING.
+   FIELDS-MAP should be a map of FIELD-NAME -> SQL-TYPE.
+
+    (with-temp-table [table {:name \"VARCHAR(254)\"}]
+      (insert table (values [{:name \"A\"}
+                             {:name \"B\"}]))
+      (select table values (where {:name \"A\"})))"
+  [[table-binding fields-map] & body]
+  {:pre [(map? fields-map)]}
+  (let [table-name (name (gensym "TABLE__"))
+        formatted-fields (->> fields-map
+                              (map (fn [[field-name field-type]]
+                                     (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
+                              (interpose ", ")
+                              (reduce str))]
+    `(load/with-test-db
+       (k/exec-raw load/*test-db* (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
+       (k/exec-raw load/*test-db* (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
+       (let [~table-binding (-> (k/create-entity ~table-name)
+                                (k/database load/*test-db*))]
+         (try
+           ~@body
+           (catch Throwable e#
+             (println "E: " e#))
+           (finally
+             (k/exec-raw load/*test-db* (format "DROP TABLE \"%s\";" ~table-name))))))))
 
 
 ;; # INTERNAL

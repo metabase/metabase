@@ -36,6 +36,7 @@
    This will reuse `*jdbc-metadata*` if it's already set (to avoid opening extra connections).
    Otherwise it will open a new metadata connection and bind `*jdbc-metadata*` so it's available in subsequent calls to `with-jdbc-metadata` within F."
   [database f]
+  {:pre [(map? database)]}
   (if *jdbc-metadata* (f *jdbc-metadata*)
                       (jdbc/with-db-metadata [md (driver/connection database)]
                         (binding [*jdbc-metadata* md]
@@ -48,6 +49,7 @@
         korma-entity
         (select (aggregate (count :*) :count)))"
   [{:keys [name db] :as table}]
+  {:pre [(delay? db)]}
   {:table name
    :pk    :id
    :db    (korma-db @db)})
