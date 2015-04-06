@@ -2,8 +2,7 @@
   "Generic implementations of `metabase.driver` `(sync-tables [db]) function that should work across any SQL database supported by Korma."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            (clojure.tools [logging :as log]
-                           [macro :refer [macrolet]])
+            [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.util :refer :all]
