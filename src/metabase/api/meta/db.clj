@@ -113,13 +113,13 @@
   "Get a list of all `Tables` in `Database`."
   [id]
   (read-check Database id)
-  (sel :many Table :db_id id (order :name)))
+  (sel :many Table :db_id id :active true (order :name)))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (let [table_ids (sel :many :id Table :db_id id)]
+  (let [table_ids (sel :many :id Table :db_id id :active true)]
     (-> (sel :many Field :table_id [in table_ids] :special_type "id")
         (hydrate :table))))
 
