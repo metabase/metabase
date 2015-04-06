@@ -1,6 +1,6 @@
 (ns metabase.driver
-  (:require [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [result :as result])
@@ -163,7 +163,7 @@
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
                    :result_data (if cache-result
-                                  (json/write-str (:data query-result))
+                                  (cheshire/generate-string (:data query-result))
                                   "{}"))
       (dissoc :start_time_millis)
       (save-query-execution)
