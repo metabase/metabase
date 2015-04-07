@@ -28,7 +28,8 @@
 (defn order-columns
   "Return a sequence of column names in the order we should return results from the QP."
   [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
-  (let [breakout-field-id->name (sel :many :id->field [Field :name] :table_id source-table :id [in (set breakout-field-ids)])
+  (let [breakout-field-ids (filter identity breakout-field-ids)
+        breakout-field-id->name (sel :many :id->field [Field :name] :table_id source-table :id [in (set breakout-field-ids)])
         breakout-fields (map breakout-field-id->name breakout-field-ids)]
     (concat breakout-fields (filter #(not (contains? (set breakout-fields)
                                                      (uncastify (name %))))
