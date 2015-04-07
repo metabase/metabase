@@ -122,7 +122,7 @@
   (let [decimal-type? #(or (float? %) (decimal? %))]
     (cond
       ;; looks like this is a decimal number, format with precision of 2
-      (and (decimal-type? number) (not= 0 (mod number 1))) (format "%,.2f" number)
+      (and (decimal-type? number) (not (zero? (mod number 1)))) (format "%,.2f" number)
       ;; this is a decimal type number with no actual decimal value, so treat it as a whole number
       (decimal-type? number) (format "%,d" (long number))
       ;; otherwise this is a whole number
