@@ -24,3 +24,26 @@
                                                            :filter [nil nil]
                                                            :limit nil
                                                            :source_table (table->id :checkins)}}))
+
+;; Even if a query fails we still expect a 200 response from the api
+(expect-eval-actual-first
+  (match-$ (sel :one QueryExecution (order :id :desc))
+    {:data {:rows []
+            :cols []
+            :columns []}
+     :error "Syntax error in SQL statement \"FOOBAR[*] \"; expected \"FROM, {\""
+     :raw_query ""
+     :row_count 0
+     :result_rows 0
+     :status "failed"
+     :query_id nil
+     :version 0
+     :json_query $
+     :started_at $
+     :finished_at $
+     :running_time $
+     :id $
+     :uuid $})
+  ((user->client :rasta) :post 200 "meta/dataset" {:database (:id @test-db)
+                                                   :type "native"
+                                                   :native {:query "foobar"}}))
