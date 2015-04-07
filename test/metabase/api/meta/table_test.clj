@@ -218,7 +218,7 @@
                       :table_id $
                       :name "ID"
                       :description nil
-                      :base_type "IntegerField"
+                      :base_type "BigIntegerField"
                       :preview_display $
                       :position $
                       :field_type "info"

@@ -97,7 +97,7 @@
                          (match ag-type
                            "avg"      `(aggregate (~'avg ~field) :avg)
                            "count"    `(aggregate (~'count ~field) :count)
-                           "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
+                           "distinct" `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
                            "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
                            "sum"      `(aggregate (~'sum ~field) :sum)
                            "cum_sum"  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY

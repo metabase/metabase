@@ -68,10 +68,15 @@
    :YEAR                  :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
+(def ^:const ^:private sql-string-length-fn
+  :LENGTH)
+
 (defmethod sync-database :h2 [database]
-  (binding [generic/*column->base-type* column->base-type]
+  (binding [generic/*column->base-type* column->base-type
+            generic/*sql-string-length-fn* sql-string-length-fn]
     (generic/sync-database database)))
 
 (defmethod sync-table :h2 [table]
-  (binding [generic/*column->base-type* column->base-type]
+  (binding [generic/*column->base-type* column->base-type
+            generic/*sql-string-length-fn* sql-string-length-fn]
     (generic/sync-table table)))

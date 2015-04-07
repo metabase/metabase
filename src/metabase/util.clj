@@ -155,12 +155,21 @@
 
 
 (defn is-email?
-  "Returns true if v is an email address"
-  [v]
-  (if (nil? v)
-    false
-    (boolean (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (clojure.string/lower-case v)))))
+  "Is STRING a valid email address?"
+  [string]
+  (boolean (when string
+             (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+                         (clojure.string/lower-case string)))))
+
+(defn is-url?
+  "Is STRING a valid HTTP/HTTPS URL?"
+  [^String string]
+  (boolean (when string
+             (when-let [url (try (java.net.URL. string)
+                                 (catch java.net.MalformedURLException _
+                                   nil))]
+               (and (re-matches #"^https?$" (.getProtocol url))          ; these are both automatically downcased
+                    (re-matches #"^.+\..{2,}$" (.getAuthority url))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
 (defn host-port-up?
   "Returns true if the port is active on a given host, false otherwise"
