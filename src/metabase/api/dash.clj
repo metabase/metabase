@@ -44,6 +44,7 @@
   "Get `Dashboard` with ID."
   [id]
   (let-404 [db (-> (sel :one Dashboard :id id)
+                   read-check
                    (hydrate :creator :organization [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 

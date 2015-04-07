@@ -17,11 +17,11 @@
 
 (declare create-and-populate-tables add-metadata!)
 
-(def ^:private db-name "Test Database")
-(def ^:private org-name "Test Organization")
+(def ^:const ^:private db-name "Test Database")
+(def ^:const ^:private org-name "Test Organization")
 (def ^:private test-db-filename
   (delay (format "%s/target/test-data" (System/getProperty "user.dir"))))
-(def ^:private test-db-connection-string
+(def test-db-connection-string
   (delay (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" @test-db-filename)))
 
 ;; # PUBLIC INTERFACE
@@ -87,10 +87,10 @@
   "Execute raw SQL STATEMENTS against the test database."
   [& statements]
   (with-test-db
-    (mapv (fn [sql]
-            {:pre [(string? sql)]}
-            (exec-raw *test-db* sql))
-          statements)))
+    (dorun (map (fn [sql]
+                  {:pre [(string? sql)]}
+                  (exec-raw *test-db* sql))
+                statements))))
 
 (defn- format-fields
   "Convert a sequence of pairs `[field-name-kw field-sql-type]` FIELDS into a string suitable for use in a SQL \"CREATE TABLE\" statement."
