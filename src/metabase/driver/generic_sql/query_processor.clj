@@ -155,7 +155,7 @@
                         ["IS_NULL" _]         ['=    nil]
                         ["BETWEEN" _ min max] ['between [min max]]
                         [_ _ value]           (let [value (if (date-field-id? field-id) `(raw ~(format "CAST('%s' AS DATE)" value)) ; cast YYYY-MM-DD string from UI
-                                                              value)]                                                              ; to SQL date if applicable
+                                                              value)]                                                               ; to SQL date if applicable
                                                 (match subclause
                                                   [">"  _ _] ['>    value]
                                                   ["<"  _ _] ['<    value]
