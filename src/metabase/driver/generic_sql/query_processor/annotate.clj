@@ -26,12 +26,13 @@
             :cols (get-column-info query column-names)}}))
 
 (defn order-columns
-  [{{:keys [source_table breakout]} :query} ks]
-  (let [field-map (->> (map (fn [k] {(sel :one :field [Field :id] :name (uncastify (name k)) :table_id source_table) k}) ks)
-                       (apply merge))
-        dimensions (map #(get field-map %) breakout)]
-    (->> (concat dimensions (filter #(not (contains? (set dimensions) %)) ks))
-         (filter identity))))
+  "Return a sequence of column names in the order we should return results from the QP."
+  [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
+  (let [breakout-field-id->name (sel :many :id->field [Field :name] :table_id source-table :id [in (set breakout-field-ids)])
+        breakout-fields (map breakout-field-id->name breakout-field-ids)]
+    (concat breakout-fields (filter #(not (contains? (set breakout-fields)
+                                                     (uncastify (name %))))
+                                    field-names))))
 
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.

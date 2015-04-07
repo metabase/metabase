@@ -277,7 +277,7 @@
     (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
     (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
-  OPTION, if specified, is one of `:field`, `:fields`, or `:id`.
+  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, or `:id->fields`.
 
     ;; Only return IDs of objects.
     (sel :one :id User :email \"cam@metabase.com\") -> 120
@@ -288,6 +288,19 @@
     ;; Return map(s) that only contain the specified fields.
     (sel :one :fields [User :id :first_name])
       -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
+
+    ;; Return a map of ID -> field value
+    (sel :many :id->field [User :first_name])
+      -> {1 \"Cam\", 2 \"Sameer\", ...}
+
+    ;; Return a map of field value -> ID. Duplicates will be discarded!
+    (sel :many :field->id [User :first_name])
+      -> {\"Cam\" 1, \"Sameer\" 2}
+
+    ;; Return a map of ID -> specified fields
+    (sel :many :id->fields [User :first_name :last_name])
+      -> {1 {:first_name \"Cam\", :last_name \"Saul\"},
+          2 {:first_Name \"Sameer\", :last_name ...}}
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
@@ -318,6 +331,20 @@
                    (map field#
                         (sel :many [entity# field#] ~@forms)))
         :id     `(sel :many :field [~entity :id] ~@forms)
+        :id->fields `(->> (sel :many :fields [~@entity :id] ~@forms)
+                          (map (fn [{id# :id :as obj#}]
+                                 {id# obj#}))
+                          (into {}))
+        :id->field `(let [[entity# field#] ~entity]
+                      (->> (sel :many :fields [entity# field# :id] ~@forms)
+                           (map (fn [{id# :id field-val# field#}]
+                                  {id# field-val#}))
+                           (into {})))
+        :field->id `(let [[entity# field#] ~entity]
+                      (->> (sel :many :fields [entity# field# :id] ~@forms)
+                           (map (fn [{id# :id field-val# field#}]
+                                  {field-val# id#}))
+                           (into {})))
         :fields `(let [[~'_ & fields# :as entity#] ~entity]
                    (map #(select-keys % fields#)
                         (sel :many entity# ~@forms)))
