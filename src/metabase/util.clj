@@ -119,12 +119,14 @@
   "format a number into a more human readable form."
   [number]
   {:pre [(number? number)]}
-  (if (or (float? number)
-          (decimal? number))
-    ;; looks like this is a decimal number, format with precision of 2
-    (format "%,.2f" number)
-    ;; otherwise expect this is a whole number
-    (format "%,d" number)))
+  (let [decimal-type? #(or (float? %) (decimal? %))]
+    (cond
+      ;; looks like this is a decimal number, format with precision of 2
+      (and (decimal-type? number) (not= 0 (mod number 1))) (format "%,.2f" number)
+      ;; this is a decimal type number with no actual decimal value, so treat it as a whole number
+      (decimal-type? number) (format "%,d" (long number))
+      ;; otherwise this is a whole number
+      :else (format "%,d" number))))
 
 (defn jdbc-clob->str
   "Convert a `JdbcClob` or `PGobject` to a `String`."

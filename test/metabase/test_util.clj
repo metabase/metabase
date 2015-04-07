@@ -46,6 +46,26 @@
   (host-port-up? "nosuchhost" 8005))
 
 
+;; ## tests for `(format-num)`
+
+(expect "1" (format-num 1))
+(expect "1" (format-num (float 1)))
+(expect "1" (format-num (double 1)))
+(expect "1" (format-num (bigdec 1)))
+(expect "1" (format-num (long 1)))
+(expect "1.23" (format-num (float 1.23444)))
+(expect "1.23" (format-num (double 1.23444)))
+(expect "1.23" (format-num (bigdec 1.23444)))
+(expect "1,234" (format-num 1234))
+(expect "1,234" (format-num (float 1234)))
+(expect "1,234" (format-num (double 1234)))
+(expect "1,234" (format-num (bigdec 1234)))
+(expect "1,234" (format-num (long 1234)))
+(expect "1,234.56" (format-num (float 1234.5678)))
+(expect "1,234.56" (format-num (double 1234.5678)))
+(expect "1,234.56" (format-num (bigdec 1234.5678)))
+
+
 ;;; ## tests for IS-URL?
 
 (expect true (is-url? "http://google.com"))
