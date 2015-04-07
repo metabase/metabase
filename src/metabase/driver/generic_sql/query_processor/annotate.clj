@@ -25,15 +25,19 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
-(defn order-columns
-  "Return a sequence of column names in the order we should return results from the QP."
-  [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
-  (let [breakout-field-ids (filter identity breakout-field-ids)
-        breakout-field-id->name (sel :many :id->field [Field :name] :table_id source-table :id [in (set breakout-field-ids)])
-        breakout-fields (map breakout-field-id->name breakout-field-ids)]
-    (concat breakout-fields (filter #(not (contains? (set breakout-fields)
-                                                     (uncastify (name %))))
-                                    field-names))))
+ (defn order-columns
+   [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
+   (let [uncastified->field-name (->> field-names
+                                      (map (fn [field-name]
+                                             {(uncastify (name field-name)) field-name}))
+                                      (into {}))
+         field-id->uncastified (sel :many :id->field [Field :name] :name [in (set (keys uncastified->field-name))])
+         breakout-field-names (->> breakout-field-ids
+                                   (filter identity)
+                                   (map field-id->uncastified)
+                                   (map uncastified->field-name))]
+     (concat breakout-field-names (filter #(not (contains? (set breakout-field-names) %))
+                                          field-names))))
 
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
