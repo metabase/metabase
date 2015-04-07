@@ -375,7 +375,8 @@
 (defannotation ComplexPassword
   "Param must be a complex password (*what does this mean?*)"
   [symb value]
-  (checkp-with password/is-complex? symb value "Insufficient password strength"))
+  (check (password/is-complex? value)
+    [400 (format "Invalid value for '%s': Insufficient password strength" symb)]))
 
 (defannotation FilterOptionAllOrMine
   "Param must be either `all` or `mine`."

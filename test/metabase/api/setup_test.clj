@@ -56,7 +56,7 @@
                                        :email "anything"
                                        :password "anything"}))
 
-(expect "Invalid value 'anything' for 'password': Insufficient password strength"
+(expect "Invalid value for 'password': Insufficient password strength"
   (http/client :post 400 "setup/user" {:token "anything"
                                        :first_name "anything"
                                        :last_name "anything"
