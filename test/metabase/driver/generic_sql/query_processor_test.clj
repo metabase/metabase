@@ -440,7 +440,7 @@
 ;; Check that we get an error response formatted the way we'd expect
 (expect
     {:status :failed
-     :error "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".* FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?)"}
+     :error "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".* FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?) LIMIT 65536"}
   (process-and-run {:database @db-id
                     :type :query
                     :query {:source_table (table->id :checkins)

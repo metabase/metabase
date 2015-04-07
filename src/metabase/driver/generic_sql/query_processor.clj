@@ -180,8 +180,8 @@
 ;;
 ;;     10
 (defmethod apply-form :limit [[_ value]]
-  (when value
-    `(limit ~value)))
+  `(limit ~(if value value
+               (* 1024 64))))
 
 ;; ### `:order_by`
 ;; ex.
