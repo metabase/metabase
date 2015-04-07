@@ -52,16 +52,19 @@
   {:pre [(string? subject)
          (vector? recipients)
          (map? query-result)]}
-  (let [html-header-row (fn [cols]
+  (let [format-cell (fn [cell]
+                      (cond
+                        (nil? cell) "N/A"
+                        (number? cell) (u/format-num cell)
+                        :else (str cell)))
+        html-header-row (fn [cols]
                           (into [:tr {:style "background-color: #f4f4f4;"}]
                             (map (fn [col]
                                    [:td {:style "text-align: left; padding: 0.5em; border: 1px solid #ddd; font-size: 12px;"} col]) cols)))
         html-data-row (fn [row]
                         (into [:tr]
                           (map (fn [cell]
-                                 ;; TODO - format cell
-                                 ;; {{ cell|default_if_none:"N/A"|floatformat:"-2"|default:cell  }}
-                                 [:td {:style "border: 1px solid #ddd; padding: 0.5em;"} cell]) row)))
+                                 [:td {:style "border: 1px solid #ddd; padding: 0.5em;"} (format-cell cell)]) row)))
         message-body (html [:html
                             [:head]
                             [:body {:style "font-family: Helvetica Neue, Helvetica, sans-serif; width: 100%; margin: 0 auto; max-width: 800px; font-size: 12px;"}

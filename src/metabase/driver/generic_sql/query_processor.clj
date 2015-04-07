@@ -97,7 +97,7 @@
                          (match ag-type
                            "avg"      `(aggregate (~'avg ~field) :avg)
                            "count"    `(aggregate (~'count ~field) :count)
-                           "distinct" `(aggregate (~'count (raw ~(format "DISTINCT(\"%s\")" (name field)))) :count)
+                           "distinct" `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
                            "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
                            "sum"      `(aggregate (~'sum ~field) :sum)
                            "cum_sum"  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
@@ -151,15 +151,18 @@
                                                                                 {lon-kw ['> lon-min]}]))
     [_ field-id & _] {(field-id->kw field-id)
                       (match subclause
-                        [">"  _ value]        ['>    value]
-                        ["<"  _ value]        ['<    value]
-                        [">=" _ value]        ['>=   value]
-                        ["<=" _ value]        ['<=   value]
-                        ["="  _ value]        ['=    value]
-                        ["!=" _ value]        ['not= value]
                         ["NOT_NULL" _]        ['not= nil]
                         ["IS_NULL" _]         ['=    nil]
-                        ["BETWEEN" _ min max] ['between [min max]])}))
+                        ["BETWEEN" _ min max] ['between [min max]]
+                        [_ _ value]           (let [value (if (date-field-id? field-id) `(raw ~(format "CAST('%s' AS DATE)" value)) ; cast YYYY-MM-DD string from UI
+                                                              value)]                                                               ; to SQL date if applicable
+                                                (match subclause
+                                                  [">"  _ _] ['>    value]
+                                                  ["<"  _ _] ['<    value]
+                                                  [">=" _ _] ['>=   value]
+                                                  ["<=" _ _] ['<=   value]
+                                                  ["="  _ _] ['=    value]
+                                                  ["!=" _ _] ['not= value])))}))
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause

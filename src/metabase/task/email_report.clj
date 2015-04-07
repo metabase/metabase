@@ -40,7 +40,8 @@
   []
   (log/debug "Executing ALL scheduled EmailReports")
   (->> (sel :many :fields [EmailReport :id :schedule] :mode (mode->id :active))
-       (map execute-if-scheduled)))
+       (map execute-if-scheduled)
+       dorun))
 
 (defn- execute-if-scheduled
   "Test if a given report is scheduled to run at the current time and if so execute it."

@@ -5,7 +5,8 @@
 
 (declare get-column-names
          get-column-info
-         get-special-column-info)
+         get-special-column-info
+         uncastify)
 
 (defn annotate
   "Take raw RESULTS from running QUERY and convert them to the format expected by the front-end.
@@ -24,6 +25,20 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
+ (defn order-columns
+   [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
+   (let [uncastified->field-name (->> field-names
+                                      (map (fn [field-name]
+                                             {(uncastify (name field-name)) field-name}))
+                                      (into {}))
+         field-id->uncastified (sel :many :id->field [Field :name] :name [in (set (keys uncastified->field-name))])
+         breakout-field-names (->> breakout-field-ids
+                                   (filter identity)
+                                   (map field-id->uncastified)
+                                   (map uncastified->field-name))]
+     (concat breakout-field-names (filter #(not (contains? (set breakout-field-names) %))
+                                          field-names))))
+
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
    If a `fields` clause was specified in the Query Dict, we want to return results in the same order."
@@ -39,7 +54,8 @@
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
                           keys                                                        ; Get the names of any other fields that were returned (i.e., `sum`)
-                          (filter #(not (contains? (set fields-clause-fields) %))))]
+                          (filter #(not (contains? (set fields-clause-fields) %)))
+                          (order-columns query))]
     (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
          (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 

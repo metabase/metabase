@@ -1,6 +1,6 @@
 (ns metabase.driver
-  (:require [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [result :as result])
@@ -14,10 +14,10 @@
   [["h2" "H2"]
    ["postgres" "PostgreSQL"]])
 
-;; TODO dynamically requiring every dispatch this way is wonky
+;; TODO lazily requiring this way is a bit wonky.
 ;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does
 (defn db-dispatch-fn
-  "Returns a dispatch fn for multi-methods that keys off of a `Database's` `:engine`.
+  "Returns a dispatch fn for multi-methods that keys off of a database's `:engine`.
 
    The correct driver implementation is loaded dynamically to avoid having to require the files elsewhere in the codebase.
    IMPL-NAMESPACE is the namespace we should load relative to the driver, e.g.
@@ -26,10 +26,12 @@
 
    Would load `metabase.driver.postgres.metadata` for a `Database` whose `:engine` was `:postgres`."
   [impl-namespace]
-  (fn [{:keys [engine]}]
-    {:pre [engine]}
-    (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
-    (keyword engine)))
+  (let [memoized-dispatch (memoize (fn [engine] ; memoize this so we don't need to call require every single dispatch
+                                     (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
+                                     (keyword engine)))]
+    (fn [{:keys [engine]}]
+      {:pre [engine]}
+      (memoized-dispatch engine))))
 
 
 (defmulti process-and-run
@@ -95,7 +97,7 @@
                          :json_query query
                          :query_id (:id saved_query)
                          :version (get saved_query :version 0)
-                         :status "starting"
+                         :status :starting
                          :error ""
                          :started_at (util/new-sql-timestamp)
                          :finished_at (util/new-sql-timestamp)
@@ -158,12 +160,12 @@
   [query-execution query-result cache-result]
   ;; record our query execution and format response
   (-> (util/assoc* query-execution
-                   :status "completed"
+                   :status :completed
                    :finished_at (util/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
                    :result_data (if cache-result
-                                  (json/write-str (:data query-result))
+                                  (cheshire/generate-string (:data query-result))
                                   "{}"))
       (dissoc :start_time_millis)
       (save-query-execution)

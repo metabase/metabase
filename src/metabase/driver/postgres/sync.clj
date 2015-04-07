@@ -64,10 +64,15 @@
    (keyword "timestamp with timezone")    :DateTimeField
    (keyword "timestamp without timezone") :DateTimeField})
 
+(def ^:const ^:private sql-string-length-fn
+  :CHAR_LENGTH)
+
 (defmethod sync-database :postgres [database]
-  (binding [generic/*column->base-type* column->base-type]
+  (binding [generic/*column->base-type* column->base-type
+            generic/*sql-string-length-fn* sql-string-length-fn]
     (generic/sync-database database)))
 
 (defmethod sync-table :postgres [table]
-  (binding [generic/*column->base-type* column->base-type]
+  (binding [generic/*column->base-type* column->base-type
+            generic/*sql-string-length-fn* sql-string-length-fn]
     (generic/sync-table table)))

@@ -353,10 +353,10 @@
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
 (expect {:status :completed,
          :row_count 10,
-         :data {:rows [[1 1 1] [5 1 1] [7 1 1] [10 1 1] [13 1 1] [16 1 1] [26 1 1] [31 1 1] [35 1 1] [36 1 1]],
-                :columns ["VENUE_ID" "USER_ID" "count"],
-                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+         :data {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
+                :columns ["USER_ID" "VENUE_ID" "count"],
+                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
                        {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database @db-id
@@ -370,10 +370,10 @@
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
 (expect {:status :completed,
          :row_count 10,
-         :data {:rows [[2 15 1] [3 15 1] [7 15 1] [14 15 1] [16 15 1] [18 15 1] [22 15 1] [23 15 2] [24 15 1] [27 15 1]],
-                :columns ["VENUE_ID" "USER_ID" "count"],
-                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+         :data {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]],
+                :columns ["USER_ID" "VENUE_ID" "count"],
+                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
                        {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}}
         (process-and-run {:type :query
                           :database @db-id
@@ -407,7 +407,7 @@
          :row_count 15
          :data {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
                 :columns ["ID"]
-                :cols [{:extra_info {} :special_type :id, :base_type :IntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
+                :cols [{:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
   (process-and-run {:type :query
                     :database @db-id
                     :query {:limit nil
@@ -420,9 +420,9 @@
 (expect {:status :completed
          :row_count 15
          :data {:rows [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120]
-                :columns ["ID" "CAST(LAST_LOGIN AS DATE)"]
-                :cols [{:extra_info {} :special_type :id, :base_type :IntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
-                       {:extra_info {} :special_type nil, :base_type :DateTimeField, :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}]}}
+                :columns ["CAST(LAST_LOGIN AS DATE)" "ID"]
+                :cols [{:extra_info {} :special_type :category :base_type :DateTimeField, :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}
+                       {:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
   (-> (process-and-run {:type :query
                         :database @db-id
                         :query {:limit nil
@@ -432,7 +432,7 @@
                                 :aggregation ["cum_sum" (field->id :users :id)]}})
       ;; Rows come back like `[value timestamp]` but it is hard to compare timestamps directly since the values that come back are casted
       ;; to Dates and the exact value depends on the locale of the machine running the tests. So just drop the timestamps from the results.
-      (update-in [:data :rows] (partial map first))))
+      (update-in [:data :rows] (partial map last))))
 
 
 ;; # ERROR RESPONSES

@@ -42,7 +42,7 @@
 ;; ## ACCESSORS
 
 (defn get
-  "Fetch value of `Setting`.
+  "Fetch value of `Setting`, or return default value if none is set.
    Cached lookup time is ~60µs, compared to ~1800µs for DB lookup."
   [k]
   {:pre [(keyword? k)]}
@@ -87,19 +87,22 @@
      (mandrill-api-key )          ; get the value
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value"
-  [nm description]
+  {:arglists '([setting-name description]
+               [setting-name description default-value])}
+  [nm description & [default-value]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)]
-    `(do
-       (defn ~nm ~description
-         ([]
-          (get ~setting-key))
-         ([value#]
-          (if-not value#
-            (delete ~setting-key)
-            (set ~setting-key value#))))
-       (alter-meta! #'~nm assoc :is-setting? true))))
+    `(defn ~nm ~description
+       {::is-setting? true
+        ::default-value ~default-value}
+       ([]
+        (or (get ~setting-key)
+            ~default-value))
+       ([value#]
+        (if-not value#
+          (delete ~setting-key)
+          (set ~setting-key value#))))))
 
 
 ;; ## ALL SETTINGS (ETC)
@@ -145,7 +148,8 @@
        (mapcat ns-interns)
        vals
        (map meta)
-       (filter :is-setting?)
-       (map (fn [{k :name desc :doc}]
+       (filter ::is-setting?)
+       (map (fn [{k :name desc :doc default ::default-value}]
               {:key (keyword k)
-               :description desc}))))
+               :description desc
+               :default default}))))
