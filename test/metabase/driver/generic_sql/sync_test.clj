@@ -6,14 +6,8 @@
                                          [util :refer [korma-entity]])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test-data :refer :all]))
-
-
-;; TODO  - This is fairly useful, should probably move to metabase.test.util
-(defmacro resolve-private-fns [namespc fn-name & more]
-  `(do (def ~fn-name (ns-resolve '~namespc '~fn-name))
-       ~(when (seq more)
-          `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))
+            [metabase.test-data :refer :all]
+            [metabase.test.util :refer [resolve-private-fns]]))
 
 (resolve-private-fns metabase.driver.generic-sql.sync field-avg-length field-percent-urls)
 
