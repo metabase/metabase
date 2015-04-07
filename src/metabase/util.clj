@@ -115,6 +115,17 @@
   [format-string]
   (time/unparse (time/formatter format-string) (coerce/from-long (System/currentTimeMillis))))
 
+(defn format-num
+  "format a number into a more human readable form."
+  [number]
+  {:pre [(number? number)]}
+  (if (or (float? number)
+          (decimal? number))
+    ;; looks like this is a decimal number, format with precision of 2
+    (format "%,.2f" number)
+    ;; otherwise expect this is a whole number
+    (format "%,d" number)))
+
 (defn jdbc-clob->str
   "Convert a `JdbcClob` or `PGobject` to a `String`."
   (^String
