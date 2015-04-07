@@ -165,12 +165,13 @@
     ;; Otherwise we'll have to select *all* values of the Field and sum their counts in Clojure-land
     (do (log/warn (format "WARNING: *sql-string-length-fn* is not bound for the %s driver. We cannot efficiently determine the average length of text fields."
                           (-> korma-table :db :options :subprotocol)))
-        (let [values (select korma-table (fields [(keyword field-name) :value]))
-              length-sum (->> values
-                              (map :value)
-                              (map count)
-                              (reduce +))]
-          (int (math/round (/ length-sum (count values))))))))
+        (let [values (select korma-table (fields [(keyword field-name) :value]))]
+          (if-not (seq values) 0
+                  (let [length-sum (->> values
+                                        (map :value)
+                                        (map count)
+                                        (reduce +))]
+                    (int (math/round (/ length-sum (count values))))))))))
 
 (defn- check-for-large-average-length
   "Check a Field to see if it has a large average length and should be marked as `preview_display = false`.
@@ -195,11 +196,12 @@
   [korma-table {field-name :name}]
   (let [total-non-null-count (-> (select korma-table
                                          (aggregate (count :*) :count)
-                                         (where {(keyword field-name) [not= nil]})) first :count)
-        url-count (-> (select korma-table
-                              (aggregate (count :*) :count)
-                              (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; simple SQL equivalent of regex #"^https?://.+\..{2,}$"
-    (float (/ url-count total-non-null-count))))
+                                         (where {(keyword field-name) [not= nil]})) first :count)]
+    (if (= total-non-null-count 0) 0
+        (let [url-count (-> (select korma-table
+                                    (aggregate (count :*) :count)
+                                    (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)]
+          (float (/ url-count total-non-null-count))))))
 
 (defn- check-for-urls
   "Check a Field to see if the majority of its *NON-NULL* values are URLs; if so, mark it as `special_type = :url`.
