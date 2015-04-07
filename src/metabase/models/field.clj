@@ -116,8 +116,11 @@
   field)
 
 (defmethod post-update Field [_ {:keys [id] :as field}]
-  (future
-    (create-field-values-if-needed (sel :one Field :id id))))
+  ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
+  (when (or (contains? field :base_type)
+            (contains? field :special_type))
+    (future
+      (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type] :id id)))))
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
   (cascade-delete ForeignKey (where (or (= :origin_id id)
