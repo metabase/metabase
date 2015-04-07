@@ -407,7 +407,7 @@
          :row_count 15
          :data {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
                 :columns ["ID"]
-                :cols [{:extra_info {} :special_type :id, :base_type :IntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
+                :cols [{:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
   (process-and-run {:type :query
                     :database @db-id
                     :query {:limit nil
@@ -421,8 +421,8 @@
          :row_count 15
          :data {:rows [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120]
                 :columns ["CAST(LAST_LOGIN AS DATE)" "ID"]
-                :cols [{:extra_info {} :special_type nil, :base_type :DateTimeField, :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}
-                       {:extra_info {} :special_type :id, :base_type :IntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
+                :cols [{:extra_info {} :special_type :category :base_type :DateTimeField, :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}
+                       {:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
   (-> (process-and-run {:type :query
                         :database @db-id
                         :query {:limit nil

@@ -11,9 +11,8 @@
 
 ;; ## GET /api/meta/field/:id
 (expect
-    (match-$ (let [field-id (field->id :users :name)] ; !!! field->id causes lazy loading of the test data and Metabase DB
-               (sel :one Field :id field-id))         ; If it's not evaluated before sel then the Metabase DB won't exist when sel
-      {:description nil                               ; is executed
+    (match-$ (sel :one Field :id (field->id :users :name))
+      {:description nil
        :table_id (table->id :users)
        :table (match-$ (sel :one Table :id (table->id :users))
                 {:description nil
@@ -35,7 +34,7 @@
                  :id (table->id :users)
                  :db_id (:id @test-db)
                  :created_at $})
-       :special_type nil
+       :special_type "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
        :name "NAME"
        :updated_at $
        :active true
