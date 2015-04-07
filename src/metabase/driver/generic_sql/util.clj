@@ -85,3 +85,10 @@
      (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
        (castify-field field-name field-type)
        (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))))
+
+(def date-field-id?
+  "Does FIELD-ID correspond to a field that is a Date?"
+  (memoize        ; memoize since the base_type of a Field isn't going to change
+   (fn [field-id]
+     (contains? #{:DateField :DateTimeField}
+                (sel :one :field [Field :base_type] :id field-id)))))
