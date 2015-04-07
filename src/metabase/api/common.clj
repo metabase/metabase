@@ -1,7 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
             [korma.core :refer :all :exclude [update]]
             [medley.core :refer :all]
@@ -331,7 +331,7 @@
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
   [symb value :nillable]
-  (try (clojure.walk/keywordize-keys (json/read-str value))
+  (try (clojure.walk/keywordize-keys (json/parse-string value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
 

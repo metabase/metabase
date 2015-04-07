@@ -1,6 +1,5 @@
 (ns metabase.api.card
-  (:require [clojure.data.json :as json]
-            [compojure.core :refer [GET POST DELETE PUT]]
+  (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :refer :all]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
@@ -10,8 +9,7 @@
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
                              [org :refer [Org]]
-                             [user :refer [User]])
-            [metabase.util :as util]))
+                             [user :refer [User]])))
 
 (defannotation CardFilterOption
   "Option must be one of `all`, `mine`, or `fav`."
