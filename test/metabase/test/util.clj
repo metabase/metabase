@@ -103,3 +103,17 @@
                           (throw e#)))]
        (delete-fn#)
        result#)))
+
+
+;; ## resolve-private-fns
+
+(defmacro resolve-private-fns
+  "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
+
+    (resolve-private-fns metabase.driver.generic-sql.sync
+      field-avg-length field-percent-urls)"
+  {:arglists '([namespace-symb & fn-symbs])}
+  [namespc fn-name & more]
+  `(do (def ~fn-name (ns-resolve '~namespc '~fn-name))
+       ~(when (seq more)
+          `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))

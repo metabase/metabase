@@ -30,7 +30,9 @@
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type]}]
+  [{:keys [base_type special_type] :as field}]
+  {:pre [(contains? field :base_type)
+         (contains? field :special_type)]}
   (or (contains? #{:category :city :state :country} (keyword special_type))
       (= (keyword base_type) :BooleanField)))
 

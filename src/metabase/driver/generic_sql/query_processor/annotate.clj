@@ -25,19 +25,46 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
- (defn order-columns
-   [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
-   (let [uncastified->field-name (->> field-names
-                                      (map (fn [field-name]
-                                             {(uncastify (name field-name)) field-name}))
-                                      (into {}))
-         field-id->uncastified (sel :many :id->field [Field :name] :name [in (set (keys uncastified->field-name))])
-         breakout-field-names (->> breakout-field-ids
-                                   (filter identity)
-                                   (map field-id->uncastified)
-                                   (map uncastified->field-name))]
-     (concat breakout-field-names (filter #(not (contains? (set breakout-field-names) %))
-                                          field-names))))
+(defn- -order-columns
+  "Don't use this directly; use `order-columns`.
+
+   This broken out for testability -- it doesn't depend on data from the DB."
+  [fields breakout-field-ids castified-field-names]
+  ;; Basically we want to convert both BREAKOUT-FIELD-IDS and CASTIFIED-FIELD-NAMES to maps like:
+  ;;   {:name      "updated_at"
+  ;;    :id        224
+  ;;    :castified (keyword "CAST(updated_at AS DATE)")
+  ;;    :position  21}
+  ;; Then we can order things appropriately and return the castified names.
+  (let [uncastified->castified (zipmap (map #(uncastify (name %)) castified-field-names) castified-field-names)
+        fields                 (map #(assoc % :castified (uncastified->castified (:name %)))
+                                    fields)
+        id->field              (zipmap (map :id fields) fields)
+        castified->field       (zipmap (map :castified fields) fields)
+        breakout-fields        (->> breakout-field-ids
+                                    (map id->field))
+        other-fields           (->> castified-field-names
+                                    (map (fn [castified-name]
+                                           (or (castified->field castified-name)
+                                               {:castified castified-name             ; for aggregate fields like 'count' create a fake map
+                                                :position 0})))                       ; with position 0 so it is returned ahead of the other fields
+                                    (filter #(not (contains? (set breakout-field-ids)
+                                                             (:id %))))
+                                    (sort-by :position))]
+    (->> (concat breakout-fields other-fields)
+         (map :castified))))
+
+(defn- order-columns
+  "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
+   They should be ordered as follows:
+
+   1.  All breakout fields, in the same order as BREAKOUT-FIELD-IDS
+   2.  Any aggregate fields like `count`
+   3.  All other columns in the same order as `Field.position`."
+  [{{source-table :source_table breakout-field-ids :breakout} :query} castified-field-names]
+  (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
+                  (filter identity breakout-field-ids)                                   ; handle empty breakout clauses like [nil]
+                  castified-field-names))
 
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
