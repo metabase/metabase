@@ -38,19 +38,19 @@
                     <span ng-show="reverseSort">v</span>
                 </span>
               </th>
-              <th ng-click="orderByField='time_newmessage_server'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'time_newmessage_server'">Last message:
-                <span ng-if="orderByField == 'time_newmessage_server'">
+              <th ng-click="orderByField='ts_newmsg'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'ts_newmsg'">Last message:
+                <span ng-if="orderByField == 'ts_newmsg'">
                     <span ng-show="!reverseSort">^</span>
                     <span ng-show="reverseSort">v</span>
                 </span>
               </th>
-              <th ng-click="orderByField='num_messages'; reverseSort = !reverseSort" >Total messages:
-                <span ng-if="orderByField == 'num_messages'">
+              <th ng-click="orderByField='total_channel_msgs'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'total_channel_msgs'">Total messages:
+                <span ng-if="orderByField == 'total_channel_msgs'">
                     <span ng-show="!reverseSort">^</span>
                     <span ng-show="reverseSort">v</span>
                 </span>
               </th>
-              <th ng-click="orderByField='avg_response_time_secs'; reverseSort = !reverseSort">Avg Response Time (s)
+              <th ng-click="orderByField='avg_response_time_secs'; reverseSort = !reverseSort" ng-class="'ColumnSelected' : orderByField == 'average_response_time_secs'">Avg Response Time (s)
                 <span ng-if="orderByField == 'average_response_time_secs'">
                     <span ng-show="!reverseSort">^</span>
                     <span ng-show="reverseSort">v</span>
