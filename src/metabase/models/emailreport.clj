@@ -13,9 +13,9 @@
 ;; ## Static Definitions
 
 (def modes
-  {:active   {:id 0
+  {:active   {:id 1
               :name "Active"}
-   :disabled {:id 1
+   :disabled {:id 2
               :name "Disabled"}})
 
 (def mode-kws

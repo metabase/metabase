@@ -70,8 +70,8 @@
                   {:id "thu", :name "Thu"}
                   {:id "fri", :name "Fri"}
                   {:id "sat", :name "Sat"}]
-   :modes [{:name "Active", :id 0}
-           {:name "Disabled", :id 1}]
+   :modes [{:name "Active", :id 1}
+           {:name "Disabled", :id 2}]
    :permissions [{:name "None",         :id 0}
                  {:name "Read Only",    :id 1}
                  {:name "Read & Write", :id 2}]}
