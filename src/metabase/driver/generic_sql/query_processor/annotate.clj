@@ -25,13 +25,19 @@
             :columns column-names
             :cols (get-column-info query column-names)}}))
 
-(defn order-columns
-  [{{:keys [source_table breakout]} :query} ks]
-  (let [field-map (->> (map (fn [k] {(sel :one :field [Field :id] :name (uncastify (name k)) :table_id source_table) k}) ks)
-                       (apply merge))
-        dimensions (map #(get field-map %) breakout)]
-    (->> (concat dimensions (filter #(not (contains? (set dimensions) %)) ks))
-         (filter identity))))
+ (defn order-columns
+   [{{source-table :source_table breakout-field-ids :breakout} :query} field-names]
+   (let [uncastified->field-name (->> field-names
+                                      (map (fn [field-name]
+                                             {(uncastify (name field-name)) field-name}))
+                                      (into {}))
+         field-id->uncastified (sel :many :id->field [Field :name] :name [in (set (keys uncastified->field-name))])
+         breakout-field-names (->> breakout-field-ids
+                                   (filter identity)
+                                   (map field-id->uncastified)
+                                   (map uncastified->field-name))]
+     (concat breakout-field-names (filter #(not (contains? (set breakout-field-names) %))
+                                          field-names))))
 
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
