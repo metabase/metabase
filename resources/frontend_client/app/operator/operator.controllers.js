@@ -96,7 +96,7 @@ OperatorControllers.controller('SpecialistDetail', ['$scope', '$routeParams', 'M
                             'source_table': queryInfo.specialist_table,
                             'aggregation': ['rows'],
                             'breakout': [null],
-                            'filter':['=', queryInfo.specialist_id_field, $routeParams.specialistId],
+                            'filter':['=', queryInfo.specialist_id_field, parseInt($routeParams.specialistId, 10)],
                             'limit': null
                         }
                     }, function (queryResponse) {
@@ -110,7 +110,7 @@ OperatorControllers.controller('SpecialistDetail', ['$scope', '$routeParams', 'M
                                 'source_table': queryInfo.conversations_table,
                                 'aggregation': ['rows'],
                                 'breakout': [null],
-                                'filter':['=', queryInfo.conversations_specialist_fk, $routeParams.specialistId],
+                                'filter':['=', queryInfo.conversations_specialist_fk, parseInt($routeParams.specialistId, 10)],
                                 'limit': null
                             }
                         }, function (response) {
