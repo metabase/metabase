@@ -77,11 +77,18 @@
   (if (contains? #{:DateField :DateTimeField} field-base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
       (keyword field-name)))
 
-;; TODO - should we memoize this?
-(defn field-id->kw
+(def field-id->kw
   "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
-  [field-id]
-  {:pre [(integer? field-id)]}
-  (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
-    (castify-field field-name field-type)
-    (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
+  (memoize                         ; This can be memozied since the names and base_types of Fields never change
+   (fn [field-id]                   ; *  if a field is renamed the old field will just be marked as `inactive` and a new Field will be created
+     {:pre [(integer? field-id)]}  ; *  if a field's type *actually* changes we have no logic in driver.generic-sql.sync to handle that case any way (TODO - fix issue?)
+     (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
+       (castify-field field-name field-type)
+       (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))))
+
+(def date-field-id?
+  "Does FIELD-ID correspond to a field that is a Date?"
+  (memoize        ; memoize since the base_type of a Field isn't going to change
+   (fn [field-id]
+     (contains? #{:DateField :DateTimeField}
+                (sel :one :field [Field :base_type] :id field-id)))))
