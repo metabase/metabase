@@ -11,7 +11,9 @@
   "Execute an MQL query and retrieve the results as JSON."
   [:as {{:keys [database] :as body} :body}]
   (read-check Database database)
-  (driver/dataset-query body {:executed_by *current-user-id*}))
+  (let [{:keys [status] :as response} (driver/dataset-query body {:executed_by *current-user-id*})]
+    {:status (if (= status :completed) 200 500)
+     :body response}))
 
 (defendpoint GET "/csv"
   "Execute an MQL query and download the result data as a CSV file."
