@@ -68,9 +68,10 @@
   [database]
   (with-jdbc-metadata database
     (fn [md] (->> (-> md
-                    (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
-                    jdbc/result-set-seq)
-               (mapv :table_name)))))
+                     (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
+                     jdbc/result-set-seq)
+                 (map :table_name)
+                 doall))))
 
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
@@ -110,20 +111,21 @@
   "Sync `Fields` for TABLE."
   [korma-table {table-id :id, table-name :name, db :db}]
   (->> (jdbc-columns db table-name)
-       (map (fn [{:keys [type_name column_name]}]
-              (or (sel :one Field :table_id table-id :name column_name)
-                  (ins Field
-                    :table_id table-id
-                    :name column_name
-                    :base_type (or (*column->base-type* (keyword type_name))
-                                   (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
-                                                           "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))))))))
-       (map (fn [field]
-              (try
-                (check-for-low-cardinality korma-table field)
-                (check-for-large-average-length korma-table field)
-                (check-for-urls korma-table field)
-                (catch Throwable _))))
+       (pmap (fn [{:keys [type_name column_name]}]
+               (or (sel :one Field :table_id table-id :name column_name)
+                   (ins Field
+                     :table_id table-id
+                     :name column_name
+                     :base_type (or (*column->base-type* (keyword type_name))
+                                    (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
+                                                            "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))))))))
+       (pmap (fn [field]
+               (try
+                 (check-for-low-cardinality korma-table field)
+                 (check-for-large-average-length korma-table field)
+                 (check-for-urls korma-table field)
+                 (catch Throwable e
+                   (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
        dorun))
 
 
@@ -165,12 +167,13 @@
     ;; Otherwise we'll have to select *all* values of the Field and sum their counts in Clojure-land
     (do (log/warn (format "WARNING: *sql-string-length-fn* is not bound for the %s driver. We cannot efficiently determine the average length of text fields."
                           (-> korma-table :db :options :subprotocol)))
-        (let [values (select korma-table (fields [(keyword field-name) :value]))
-              length-sum (->> values
-                              (map :value)
-                              (map count)
-                              (reduce +))]
-          (int (math/round (/ length-sum (count values))))))))
+        (let [values (select korma-table (fields [(keyword field-name) :value]))]
+          (if-not (seq values) 0
+                  (let [length-sum (->> values
+                                        (map :value)
+                                        (map count)
+                                        (reduce +))]
+                    (int (math/round (/ length-sum (count values))))))))))
 
 (defn- check-for-large-average-length
   "Check a Field to see if it has a large average length and should be marked as `preview_display = false`.
@@ -195,16 +198,17 @@
   [korma-table {field-name :name}]
   (let [total-non-null-count (-> (select korma-table
                                          (aggregate (count :*) :count)
-                                         (where {(keyword field-name) [not= nil]})) first :count)
-        url-count (-> (select korma-table
-                              (aggregate (count :*) :count)
-                              (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; simple SQL equivalent of regex #"^https?://.+\..{2,}$"
-    (float (/ url-count total-non-null-count))))
+                                         (where {(keyword field-name) [not= nil]})) first :count)]
+    (if (= total-non-null-count 0) 0
+        (let [url-count (-> (select korma-table
+                                    (aggregate (count :*) :count)
+                                    (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
+          (float (/ url-count total-non-null-count))))))                                                   ; "www.zagat.com". Is this what we want?
 
 (defn- check-for-urls
   "Check a Field to see if the majority of its *NON-NULL* values are URLs; if so, mark it as `special_type = :url`.
    This only applies to textual fields that *do not* already have a `special_type.`"
-  [korma-table {special-type :special_type, base-type :base_type, field-name :name, field-id :id}]
+  [korma-table {special-type :special_type, base-type :base_type, field-name :name, field-id :id, :as field}]
   (when (and (not special-type)
              (contains? #{:CharField :TextField} base-type))
     (let [percent-urls (field-percent-urls korma-table field)]
