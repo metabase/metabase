@@ -14,7 +14,7 @@ pom.xml.asc
 .hgignore
 .hg/
 .idea/
-/docs
+/docs/uberdoc.html
 profiles.clj
 /*.h2.db
 /*.mv.db
