@@ -1,32 +1,27 @@
 (ns metabase.util.password
   (:require [metabase.config :as config]))
 
+
 (defn- count-occurrences
   "Takes in a Character predicate function which is applied to all characters in the supplied string and uses
    map/reduce to count the number of characters which return `true` for the given predicate function."
-  [f ^String s]
+  [f s]
   {:pre [(fn? f)
          (string? s)]}
-  (reduce + (map #(if (f %) 1 0) s)))
-
-(def ^:private ^:const complexity->min-counts
-  {:weak   {:lower 1, :upper 1, :digit 1, :special 0}
-   :normal {:lower 1, :upper 1, :digit 1, :special 1}
-   :strong {:lower 2, :upper 1, :digit 2, :special 1}})
-
-(def ^:private ^:const char-type->pred-fn
-  {:lower   #(Character/isLowerCase ^java.lang.Character %)
-   :upper   #(Character/isUpperCase ^java.lang.Character %)
-   :digit   #(Character/isDigit ^java.lang.Character %)
-   :special #(not (Character/isLetterOrDigit ^java.lang.Character %))})
+  (reduce + (map #(if (true? (f %)) 1 0) s)))
 
 (defn is-complex?
   "Check if a given password meets complexity standards for the application."
-  [^String password]
+  [password]
   {:pre [(string? password)]}
-  (when (>= (count password) (config/config-int :mb-password-length))
-    (->> (complexity->min-counts (config/config-kw :mb-password-complexity))
-         (map (fn [[char-type min-count]]
-                (>= (count-occurrences (char-type->pred-fn char-type) password)
-                    min-count)))
-         (reduce #(and %1 %2)))))
+  (let [complexity (config/config-kw :mb-password-complexity)
+        length     (config/config-int :mb-password-length)
+        lowers     (count-occurrences #(Character/isLowerCase ^Character %) password)
+        uppers     (count-occurrences #(Character/isUpperCase ^Character %) password)
+        digits     (count-occurrences #(Character/isDigit ^Character %) password)
+        specials   (count-occurrences #(not (Character/isLetterOrDigit ^Character %)) password)]
+    (if-not (>= (count password) length) false
+      (case complexity
+        :weak   (and (> lowers 0) (> digits 0) (> uppers 0))                    ; weak = 1 lower, 1 digit, 1 uppercase
+        :normal (and (> lowers 0) (> digits 0) (> uppers 0) (> specials 0))     ; normal = 1 lower, 1 digit, 1 uppercase, 1 special
+        :strong (and (> lowers 1) (> digits 0) (> uppers 1) (> specials 0)))))) ; strong = 2 lower, 1 digit, 2 uppercase, 1 special
