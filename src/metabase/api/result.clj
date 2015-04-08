@@ -12,8 +12,9 @@
                              [query-execution :refer [QueryExecution all-fields build-response]])))
 
 
-;; Returns the basic information about a given query result
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Returns the basic information about a given query result."
+  [id]
   (let-404 [{:keys [query_id] :as query-execution} (sel :one QueryExecution :id id)]
     ;; NOTE - this endpoint requires there to be a saved query associated with this execution
     (check-404 query_id)
@@ -22,8 +23,9 @@
       query-execution)))
 
 
-;; Returns the actual data response for a given query result (as if the query was just executed)
-(defendpoint GET "/:id/response" [id]
+(defendpoint GET "/:id/response"
+  "Returns the actual data response for a given query result (as if the query was just executed)."
+  [id]
   (let-404 [{:keys [query_id] :as query-execution} (sel :one all-fields :id id)]
     ;; NOTE - this endpoint requires there to be a saved query associated with this execution
     (check-404 query_id)
@@ -32,8 +34,9 @@
       (build-response query-execution))))
 
 
-;; Returns the data response for a given query result as a CSV file
-(defendpoint GET "/:id/csv" [id]
+(defendpoint GET "/:id/csv"
+  "Returns the data response for a given query result as a CSV file."
+  [id]
   (let-404 [{:keys [result_data query_id] :as query-execution} (sel :one all-fields :id id)]
     ;; NOTE - this endpoint requires there to be a saved query associated with this execution
     (check-404 query_id)

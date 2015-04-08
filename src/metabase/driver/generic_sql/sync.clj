@@ -67,22 +67,24 @@
   "Fetch a list of table names for DATABASE."
   [database]
   (with-jdbc-metadata database
-    (fn [md] (->> (-> md
-                     (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
-                     jdbc/result-set-seq)
-                 (map :table_name)
-                 doall))))
+    (fn [^java.sql.DatabaseMetaData md]
+      (->> (-> md
+               (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
+               jdbc/result-set-seq)
+           (map :table_name)
+           doall))))
 
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
   [database table-name]
   (with-jdbc-metadata database
-    (fn [md] (->> (-> md
-                    (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
-                    jdbc/result-set-seq)
-                 (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal DB columns. This works for H2; does it work for *other*
-                 (map #(select-keys % [:column_name :type_name]))       ; databases?
-                 doall))))
+    (fn [^java.sql.DatabaseMetaData md]
+      (->> (-> md
+               (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+               jdbc/result-set-seq)
+           (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal DB columns. This works for H2; does it work for *other*
+           (map #(select-keys % [:column_name :type_name])) ; databases?
+           doall))))
 
 
 ;; # IMPLEMENTATION

@@ -27,7 +27,7 @@
   (connection->korma-db (driver/connection database)))
 
 
-(def ^:dynamic *jdbc-metadata*
+(def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
   nil)
 

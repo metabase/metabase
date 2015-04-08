@@ -22,25 +22,30 @@
   (-> (checkp-contains? (set (keys object-models)) symb (keyword value))
       object-models))
 
-(defannotation AnnotationType [symb value :nillable]
+(defannotation AnnotationType
+  "Param must be either `0` (`general`) or `1` (`description`)."
+  [symb value :nillable]
   (annotation:Integer symb value)
   (checkp-contains? (set [annotation-description annotation-general]) symb value))
 
 
-(defendpoint GET "/" [org object_model object_id]
+(defendpoint GET "/"
+  "Fetch `Annotations` for an org. When `object_model` and `object_id` are specified, only return annotations for that object."
+  [org object_model object_id]
   {org Required, object_model AnnotationObjectModel->ID}
   (read-check Org org)
-  (-> (if (and object_model object_id)
-        ;; caller wants annotations about a specific entity
-        (sel :many Annotation :organization_id org :object_type_id object_model :object_id object_id (korma/order :start :DESC))
-        ;; default is to return all annotations
-        (sel :many Annotation :organization_id org (korma/order :start :DESC)))
+  (-> (sel :many Annotation :organization_id org (korma/order :start :DESC) (korma/where (and {:organization_id org}
+                                                                                              (when (and object_model object_id)
+                                                                                                {:object_type_id object_model
+                                                                                                 :object_id object_id}))))
       (hydrate :author)))
 
 
-(defendpoint POST "/" [:as {{:keys [organization start end title body annotation_type object_model object_id]
-                             :or {annotation_type annotation-general}
-                             :as request-body} :body}]
+(defendpoint POST "/"
+  "Create a new `Annotation`."
+  [:as {{:keys [organization start end title body annotation_type object_model object_id]
+         :or {annotation_type annotation-general}
+         :as request-body} :body}]
   {organization    [Required Integer]
    start           [Required Date]
    end             [Required Date]
@@ -65,7 +70,9 @@
     (hydrate :author)))
 
 
-(defendpoint GET "/:id" [id]
+(defendpoint GET "/:id"
+  "Fetch `Annotation` with ID."
+  [id]
   (let-404 [annotation (sel :one Annotation :id id)]
     (read-check Org (:organization_id annotation))
     (hydrate annotation :author)))
@@ -89,7 +96,9 @@
     (sel :one Annotation :id id)))
 
 
-(defendpoint DELETE "/:id" [id]
+(defendpoint DELETE "/:id"
+  "Delete `Annotation` with ID."
+  [id]
   (let-404 [annotation (sel :one Annotation :id id)]
     (read-check Org (:organization_id annotation))
     (del Annotation :id id)))
