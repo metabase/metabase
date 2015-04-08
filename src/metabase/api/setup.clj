@@ -12,9 +12,11 @@
   [symb value]
   (checkp-with setup/token-match? symb value [403 "Token does not match the setup token."]))
 
-;; special endpoint for creating the first user during setup
-;; this endpoint both creates the user AND logs them in and returns a session id
-(defendpoint POST "/user" [:as {{:keys [token first_name last_name email password] :as body} :body}]
+
+(defendpoint POST "/user"
+  "Special endpoint for creating the first user during setup.
+   This endpoint both creates the user AND logs them in and returns a session ID."
+  [:as {{:keys [token first_name last_name email password] :as body} :body}]
   {first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]

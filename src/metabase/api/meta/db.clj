@@ -45,7 +45,9 @@
     ;; make sure we return the newly created db object
     new-db))
 
-(defendpoint GET "/form_input" []
+(defendpoint GET "/form_input"
+  "Values of options for the create/edit `Database` UI."
+  []
   {:timezones metabase.models.common/timezones
    :engines driver/available-drivers})
 

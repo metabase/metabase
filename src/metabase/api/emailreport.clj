@@ -21,7 +21,9 @@
   (annotation:Integer symb value)
   (checkp-contains? (set (map :id (vals model/modes))) symb value))
 
-(defendpoint GET "/form_input" [org]
+(defendpoint GET "/form_input"
+  "Values of options for the create/edit `EmailReport` UI."
+  [org]
   {org Required}
   (read-check Org org)
   (let [dbs (databases-for-org org)
@@ -109,18 +111,24 @@
       (hydrate :creator :database :can_read :can_write)))
 
 
-(defendpoint DELETE "/:id" [id]
+(defendpoint DELETE "/:id"
+  "Delete an `EmailReport`."
+  [id]
   (write-check EmailReport id)
   (cascade-delete EmailReport :id id))
 
 
-(defendpoint POST "/:id" [id]
+(defendpoint POST "/:id"
+  "Execute and send an `EmailReport`."
+  [id]
   (read-check EmailReport id)
   (->> (report/execute-and-send id)
        (sel :one EmailReportExecutions :id)))
 
 
-(defendpoint GET "/:id/executions" [id]
+(defendpoint GET "/:id/executions"
+  "Get the `EmailReportExecutions` for an `EmailReport`."
+  [id]
   (read-check EmailReport id)
   (-> (sel :many EmailReportExecutions :report_id id (order :created_at :DESC) (limit 25))
       (hydrate :organization)))

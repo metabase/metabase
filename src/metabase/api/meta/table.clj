@@ -51,7 +51,10 @@
   (read-check Table id)
   (sel :many Field :table_id id :active true (order :name :ASC)))
 
-(defendpoint GET "/:id/query_metadata" [id]
+(defendpoint GET "/:id/query_metadata"
+  "Get metadata about a `Table` useful for running queries.
+   Returns DB, fields, field FKs, and field values."
+  [id]
   (->404 (sel :one Table :id id)
          read-check
          (hydrate :db [:fields [:target]] :field_values)))
