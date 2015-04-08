@@ -22,6 +22,6 @@
         specials   (count-occurrences #(not (Character/isLetterOrDigit ^Character %)) password)]
     (if-not (>= (count password) length) false
       (case complexity
-        :weak   (and (> lowers 0) (> digits 0) (> uppers 0))                    ; weak = 1 lower, 1 digit, 1 uppercase
+        :weak   (and (> lowers 0) (> digits 0) (> uppers 0))                    ; weak   = 1 lower, 1 digit, 1 uppercase
         :normal (and (> lowers 0) (> digits 0) (> uppers 0) (> specials 0))     ; normal = 1 lower, 1 digit, 1 uppercase, 1 special
         :strong (and (> lowers 1) (> digits 0) (> uppers 1) (> specials 0)))))) ; strong = 2 lower, 1 digit, 2 uppercase, 1 special
