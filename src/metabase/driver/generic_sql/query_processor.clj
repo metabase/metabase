@@ -19,7 +19,7 @@
          query-is-cumulative-sum?
          apply-cumulative-sum)
 
-(def ^{:dynamic true, :private true} *query*
+(def ^:dynamic ^:private *query*
   "Query dictionary that we're currently processing"
   nil)
 
