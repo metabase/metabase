@@ -84,7 +84,7 @@
     (table-pk-names @test-db \"VENUES\") -> [\"ID\"]"
   [database table-name]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (jdbc/result-set-seq (.getPrimaryKeys md nil nil table-name)) ; ResultSet getPrimaryKeys
+    (->> (jdbc/result-set-seq (.getPrimaryKeys md nil nil table-name)) ; ResultSet getPrimaryKeys(String catalog, String schema, String table)
          (map :column_name)
          doall
          set)))
@@ -113,7 +113,7 @@
 ;; ## SET TABLE PK
 
 (defn- set-table-pks-if-needed!
-  "If TABLE does not already "
+  "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
   {:arglists '([table])}
   [{table-name :name table-id :id :keys [db pk_field]}]
   (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
