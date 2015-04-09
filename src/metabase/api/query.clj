@@ -15,7 +15,9 @@
                              [query-execution :refer [QueryExecution all-fields]])
             [metabase.util :as util]))
 
-(defendpoint GET "/form_input" [org]
+(defendpoint GET "/form_input"
+  "Values of options for the create/edit `Query` UI."
+  [org]
   {org Required}
   (read-check Org org)
   {:permissions common/permissions

@@ -1,4 +1,5 @@
 (ns metabase.api.qs
+  "/api/qs endpoints."
   (:require [clojure.data.csv :as csv]
             [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
@@ -10,7 +11,9 @@
             [metabase.util :refer [contains-many? now-iso8601]]))
 
 
-(defendpoint POST "/" [:as {{:keys [timezone database sql] :as body} :body}]
+(defendpoint POST "/"
+  "Create a new `Query`, and start it asynchronously."
+  [:as {{:keys [timezone database sql] :as body} :body}]
   {database [Required Integer]
    sql      [Required NonEmptyString]} ; TODO - check timezone
   (read-check Database database)
@@ -24,12 +27,16 @@
     (driver/dataset-query dataset-query options)))
 
 
-(defendpoint GET "/:uuid" [uuid]
+(defendpoint GET "/:uuid"
+  "Fetch the results of a `Query` with UUID."
+  [uuid]
   (let-404 [query-execution (sel :one all-fields :uuid uuid)]
     (build-response query-execution)))
 
 
-(defendpoint GET "/:uuid/csv" [uuid]
+(defendpoint GET "/:uuid/csv"
+  "Fetch the results of a `Query` with UUID as CSV."
+  [uuid]
   (let-404 [{{:keys [columns rows]} :result_data} (sel :one all-fields :uuid uuid)]
     {:status 200
      :body (with-out-str
