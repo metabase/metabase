@@ -9,7 +9,8 @@
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [resolve-private-fns]]))
 
-(resolve-private-fns metabase.driver.generic-sql.sync field-avg-length field-percent-urls)
+
+(resolve-private-fns metabase.driver.generic-sql.sync field-avg-length field-percent-urls set-table-pks-if-needed!)
 
 (def users-table
   (delay (sel :one Table :name "USERS")))
@@ -20,6 +21,35 @@
 (def users-name-field
   (delay (sel :one Field :id (field->id :users :name))))
 
+
+;; ## TEST TABLE-PK-NAMES
+;; Pretty straightforward
+(expect #{"ID"}
+  (table-pk-names @test-db "VENUES"))
+
+;; ## TEST SET-TABLE-PK-IF-NEEDED!
+(expect [:id
+         nil
+         :id
+         :latitude
+         :id]
+  (let [table (sel :one Table :id (table->id :venues))
+        get-special-type (fn [] (sel :one :field [Field :special_type] :id (field->id :venues :id)))]
+    [;; Special type should be :id to begin with
+     (get-special-type)
+     ;; Clear out the special type
+     (do (upd Field (field->id :venues :id) :special_type nil)
+         (get-special-type))
+     ;; Calling set-table-pks-if-needed! Should set the special type again
+     (do (set-table-pks-if-needed! table)
+         (get-special-type))
+     ;; set-table-pks-if-needed! should *not* change the special type of fields that are marked with a different type
+     (do (upd Field (field->id :venues :id) :special_type :latitude)
+         (get-special-type))
+     ;; Make sure that sync-table runs set-table-pks-if-needed!
+     (do (upd Field (field->id :venues :id) :special_type nil)
+         (sync-table table)
+         (get-special-type))]))
 
 
 ;; ## TEST FIELD-AVG-LENGTH
