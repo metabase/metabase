@@ -24,5 +24,4 @@
 ;; Things that you can connect to, but are not DBs, should fail
 (expect false
   (can-connect? {:engine :postgres
-                 :details {:conn_str "host=google.com port=80"}})
-  )
+                 :details {:conn_str "host=google.com port=80"}}))

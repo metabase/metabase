@@ -9,8 +9,7 @@
   [database]
   (try (= (-> (k/exec-raw (connection database)
                           "SELECT 1 AS ONE"
-                          :results)
-              first
-              :one) 1)
+                          :results) first :one)
+          1)
        (catch Throwable _
          false)))
