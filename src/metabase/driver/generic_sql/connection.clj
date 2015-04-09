@@ -8,8 +8,10 @@
 
     (can-connect? (sel :one Database ....)) -> true"
   [database]
-  (try (= 1 (let [[result] (k/exec-raw (driver/connection database) "SELECT 1 AS one" :results)]
-              (:one result)))
+  (try (= 1 (-> (k/exec-raw (driver/connection database) "SELECT 1" :results)
+                first
+                vals
+                first))
        (catch Throwable e
          (log/error "Failed to connect to database:" (.getMessage e))
          false)))
