@@ -81,6 +81,7 @@
          :organization_id @org-id
          :name card-name
          :organization {:inherits true
+                        :report_timezone nil
                         :logo_url nil
                         :description nil
                         :name "Test Organization"

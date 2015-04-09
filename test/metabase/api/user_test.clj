@@ -86,6 +86,7 @@
            :is_superuser false
            :id $
            :org_perms [{:organization {:inherits true
+                                       :report_timezone nil
                                        :logo_url nil
                                        :description nil
                                        :name "Test Organization"

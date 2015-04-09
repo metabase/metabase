@@ -47,6 +47,7 @@
                       :name "Test Organization"
                       :description nil
                       :logo_url nil
+                      :report_timezone nil
                       :inherits true}
        :name "Test Database"
        :organization_id @org-id
@@ -120,6 +121,7 @@
                          :name "Test Organization"
                          :description nil
                          :logo_url nil
+                         :report_timezone nil
                          :inherits true}
           :name $
           :organization_id @org-id
@@ -135,6 +137,7 @@
                          :name "Test Organization"
                          :description nil
                          :logo_url nil
+                         :report_timezone nil
                          :inherits true}
           :name "Test Database"
           :organization_id @org-id
