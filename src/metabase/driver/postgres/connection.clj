@@ -1,10 +1,11 @@
 (ns metabase.driver.postgres.connection
   (:require [clojure.set :refer [rename-keys]]
             [clojure.string :as s]
-            [korma.db]
+            korma.db
             [swiss.arrows :refer :all]
             [metabase.config :as config]
-            [metabase.driver :refer [connection connection-details]]))
+            [metabase.driver :refer [can-connect? connection connection-details]]
+            [metabase.driver.generic-sql.connection :as generic]))
 
 (defmethod connection-details :postgres [database]
   (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
@@ -26,3 +27,6 @@
   (-> (connection-details database)
       (dissoc :db-type)
       korma.db/postgres))
+
+(defmethod can-connect? :postgres [database]
+  (generic/can-connect? database))

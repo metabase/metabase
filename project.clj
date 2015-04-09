@@ -67,6 +67,7 @@
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.1"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
+                             [lein-vanity "LATEST"]
                              [refactor-nrepl "1.0.1"]]                ; support for advanced refactoring in Emacs/LightTable
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
