@@ -9,12 +9,11 @@
 
 ;; Check that we can connect to the Test DB
 (expect true
-  (can-connect? (sel :one Database :id @db-id)))
+  (can-connect? @test-db))
 
 ;; Lie and say Test DB is Postgres. CAN-CONNECT? should fail
 (expect false
-  (can-connect? (assoc (sel :one Database :id @db-id)
-                       :engine :postgres)))
+  (can-connect? (assoc @test-db :engine :postgres)))
 
 ;; Random made-up DBs should fail
 (expect false
