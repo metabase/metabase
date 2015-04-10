@@ -15,7 +15,9 @@
                              [org-perm :refer [OrgPerm]])
             [metabase.util :as u]))
 
-(declare create-and-populate-tables add-metadata!)
+(declare add-foreign-key-constraints!
+         add-metadata!
+         create-and-populate-tables!)
 
 (def ^:const ^:private db-name "Test Database")
 (def ^:const ^:private org-name "Test Organization")
@@ -42,14 +44,16 @@
   {:post [(map? %)]}
   (or (sel :one Database :name db-name)
       (do (when-not (.exists (clojure.java.io/file (str @test-db-filename ".mv.db"))) ; only create + populate the test DB file if needed
-            (create-and-populate-tables))
+            (create-and-populate-tables!))
           (log/info "Creating new metabase Database object...")
           (let [db (ins Database
                      :organization_id (:id (test-org))
                      :name db-name
                      :engine :h2
                      :details {:conn_str @test-db-connection-string})]
-            (log/info "Syncing Tables...")
+            (log/info "Adding foreign key constraints...")
+            (add-foreign-key-constraints!)
+            (log/info "Syncing database...")
             (driver/sync-database db)
             (log/info "Adding Schema Metadata...")
             (add-metadata!)
@@ -122,10 +126,30 @@
                                rows))))                           ; need to convert to {:name name :last_login last-login} for insert
       (log/info (format "Inserted %d rows." (count rows))))))
 
-(defn- create-and-populate-tables []
+(defn- create-and-populate-tables! []
   (with-test-db
     (dorun (map create-and-populate-table
                 data/test-data))))
+
+;; ### add-foreign-key-constraints!
+
+(defn- add-foreign-key-constraints! []
+  (with-test-db
+    (->> data/test-data
+         (map (fn [[table-kw {:keys [fields]}]]
+                (let [table-name (-> table-kw name s/upper-case)]
+                  (->> fields
+                       (filter :fk)
+                       (map (fn [{dest-table-name :fk field-name :name}]
+                              (let [dest-table-name (-> dest-table-name name s/upper-case)
+                                    field-name (-> field-name name s/upper-case)]
+                                (exec-raw *test-db* (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
+                                                            table-name
+                                                            field-name dest-table-name
+                                                            field-name
+                                                            dest-table-name)))))
+                       dorun))))
+         dorun)))
 
 ;; ### add-metadata! and related functions
 
@@ -140,22 +164,11 @@
           (do (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
               (upd Field (field->id table-kw field-kw) :special_type (name special-type)))))
 
-(defn- add-foreign-key! [table-kw {field-kw :name [fk-table-kw fk-type :as fk] :fk}]
-  {:post [(:id %)]}
-  (if-not fk {:id true}
-          (do (log/info "SET FOREIGN KEY" table-kw field-kw "->" fk-table-kw fk-type)
-              (ins ForeignKey
-                :origin_id (field->id table-kw field-kw)
-                :destination_id (field->id fk-table-kw :id)
-                :relationship (name fk-type)))))
-
 (defn- add-metadata! []
   (dorun
    (map (fn [[table-kw {:keys [fields]}]]
           (let [fields (conj fields {:name :id
                                      :special-type :id})]
             (dorun (map (partial set-special-type! table-kw)
-                        fields))
-            (dorun (map (partial add-foreign-key! table-kw)
                         fields))))
         data/test-data)))

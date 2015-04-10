@@ -58,8 +58,8 @@
       ;; Mark any existing `Table` objects not returned by `table-names` as inactive
       (dorun (map (fn [[table-name table-id]]
                     (when-not (contains? table-names table-name)
-                      (upd Table table-id :active false))
-                    table-name->id)))
+                      (upd Table table-id :active false)))
+                  table-name->id))
       ;; Create `Table` objects for any new tables returned by `table-names`
       (dorun (map (fn [table-name]
                     (when-not (table-name->id table-name)
@@ -70,7 +70,7 @@
                   table-names))
       ;; Now sync the active Tables
       (let [tables (->> (sel :many Table :active true :db_id database-id)
-                        (map #(assoc :db (delay database))))]                         ; reuse DATABASE for all Tables. That way we don't end up creating multiple
+                        (map #(assoc % :db (delay database))))]                         ; reuse DATABASE for all Tables. That way we don't end up creating multiple
         (dorun (pmap #(sync-table % :skip-sync-fks)                                   ; korma connection pools to the same DB
                      tables))
         (dorun (pmap #(set-table-fks-if-needed! (korma-entity %) %)                   ; Sync the FKs after we finish the rest of the Table syncing. This has to happen
@@ -85,7 +85,8 @@
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
     (->> (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE"]))) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
          (map :table_name)
-         doall)))
+         doall
+         set)))
 
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
