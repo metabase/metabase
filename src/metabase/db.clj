@@ -350,11 +350,6 @@
                         (sel :many entity# ~@forms)))
         nil     `(-sel-select ~entity ~@forms)))))
 
-(def ^:dynamic *entity-overrides*
-  "The entity passed to `-sel-select` gets merged with this dictionary right before `select` gets called. This lets you override some of the korma
-   entity fields like `:transforms` or `:table`, if need be."
-  {})
-
 (defmacro -sel-select
   "Internal macro used by `sel` (don't call this directly).
    Generates the korma `select` form."
@@ -364,8 +359,7 @@
            entity# (entity->korma entity#)                                       ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
            entity-select-form# (-> entity#                                       ; entity-select-form# is the tweaked version we'll pass to korma `select`
                                    (assoc :fields (or field-keys#
-                                                      (default-fields entity#))) ; tell korma which fields to grab. If `field-keys` weren't passed in vector
-                                   (merge *entity-overrides*))]                  ; then do a `default-fields` lookup at runtime
+                                                      (default-fields entity#))))] ; tell korma which fields to grab. If `field-keys` weren't passed in vector do lookup at runtime
        (when (config/config-bool :mb-db-logging)
          (log/debug "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")
