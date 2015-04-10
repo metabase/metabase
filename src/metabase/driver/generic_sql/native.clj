@@ -51,12 +51,14 @@
          (integer? database-id)]}
   (log/debug "QUERY: \n"
              (with-out-str (clojure.pprint/pprint query)))
-  (try (let [db (-> (sel :one Database :id database-id)
+  (try (let [database (sel :one Database :id database-id)
+             db (-> database
                     korma-db
                     korma.db/get-connection)
              [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
                                                 ;; If timezone is specified in the Query and the driver supports setting the timezone then execute SQL to set it
-                                                (when-let [timezone (-> query :native :timezone)]
+                                                (when-let [timezone (or (-> query :native :timezone)
+                                                                        (-> @(:organization database) :report_timezone))]
                                                   (when-let [set-timezone-sql (*timezone->set-timezone-sql* timezone)]
                                                     (log/debug "Setting timezone to:" timezone)
                                                     (jdbc/db-do-prepared conn set-timezone-sql)))
