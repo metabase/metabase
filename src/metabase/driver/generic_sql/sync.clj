@@ -7,11 +7,13 @@
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.util :refer :all]
             (metabase.models [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])))
 
 (declare check-for-large-average-length korma-table field
          check-for-low-cardinality
          check-for-urls
+         set-table-fks-if-needed!
          set-table-pks-if-needed!
          sync-fields
          table-names
@@ -33,41 +35,57 @@
   nil)
 
 (defn sync-table
-  "Sync a single `Table` and its `Fields`."
-  {:arglists '([table])}
-  [{db :db table-name :name :as table}]
-  (with-jdbc-metadata [_ @db]
-    (let [korma-table (korma-entity table)]
+  "Sync a single `Table` and its `Fields`.
+   By default, this will also sync the Table's foreign keys; you can optionally skip this,
+   which is useful when syncing an entire DB, since we need to wait for *all* Fields to be created before creating ForeignKeys."
+  {:arglists '([table] [table skip-sync-fks?])}
+  [{db :db table-name :name :as table} & [skip-sync-fks?]]
+  (let [korma-table (korma-entity table)]
+    (with-jdbc-metadata [_ @db]
       (update-table-row-count! korma-table table)
-      (sync-fields korma-table table))
-    (set-table-pks-if-needed! table)
-    (log/debug "Synced" table-name)))
+      (sync-fields korma-table table)
+      (set-table-pks-if-needed! table)
+      (when-not skip-sync-fks?
+        (set-table-fks-if-needed! korma-table table))
+      (log/debug "Synced" table-name))))
 
 (defn sync-database
   "Sync all `Tables` + `Fields` in DATABASE."
-  [{:keys [id] :as database}]
-  (with-jdbc-metadata [_ database]                                                             ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside its body
-    (->> (table-names database)                                                                ; by wrapping the entire sync operation in this we can reuse the same connection throughout
-         (pmap (fn [table-name]
-                 (binding [*entity-overrides* {:transforms [#(assoc % :db (delay database))]}] ; add a korma transform to Table that will assoc :db on results.
-                   (sync-table (or (sel :one Table :db_id id :name table-name)                 ; Table's post-select only sets :db if it's not already set.
-                                   (ins Table                                                  ; This way, we can reuse a single `database` instead of creating
-                                     :db_id id                                                 ; a few dozen duplicate instances of it.
-                                     :name table-name                                          ; We can re-use one korma connection pool instead of creating a new one for each
-                                     :active true))))))                                        ; Table, which collapses when we open too many connections
-         dorun)))
+  [{database-id :id :as database}]
+  (with-jdbc-metadata [_ database]                                                    ; do a top-level connection to with-jdbc-metadata because it reuses connection
+    (let [table-names (table-names database)                                          ; for all subsequent calls within its body
+          table-name->id (sel :many :field->id [Table :name] :name [in table-names])]
+      ;; Mark any existing `Table` objects not returned by `table-names` as inactive
+      (dorun (map (fn [[table-name table-id]]
+                    (when-not (contains? table-names table-name)
+                      (upd Table table-id :active false))
+                    table-name->id)))
+      ;; Create `Table` objects for any new tables returned by `table-names`
+      (dorun (map (fn [table-name]
+                    (when-not (table-name->id table-name)
+                      (ins Table
+                        :db_id database-id
+                        :name table-name
+                        :active true)))
+                  table-names))
+      ;; Now sync the active Tables
+      (let [tables (->> (sel :many Table :active true :db_id database-id)
+                        (map #(assoc :db (delay database))))]                         ; reuse DATABASE for all Tables. That way we don't end up creating multiple
+        (dorun (pmap #(sync-table % :skip-sync-fks)                                   ; korma connection pools to the same DB
+                     tables))
+        (dorun (pmap #(set-table-fks-if-needed! (korma-entity %) %)                   ; Sync the FKs after we finish the rest of the Table syncing. This has to happen
+                     tables))))))                                                     ; last so we're sure all relevant Fields have been created.
 
 
-;; ## Fetch Tables/Columns/PKs from DB
+;; ## Metadata -- Fetch Tables/Columns/PKs/FKs from DB
 
 (defn table-names
-  "Fetch a list of table names for DATABASE."
+  "Fetch a set of table names for DATABASE."
   [database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
     (->> (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE"]))) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
          (map :table_name)
          doall)))
-
 
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
@@ -89,12 +107,28 @@
          doall
          set)))
 
+(defn table-fks
+  "Return a sequence of maps containing info about FK columns for TABLE-NAME.
+   Each map contains the following keys:
+
+   *  fk-column-name
+   *  dest-table-name
+   *  dest-column-name"
+  [database table-name]
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+    (->> (jdbc/result-set-seq (.getImportedKeys md nil nil table-name)) ; ResultSet getImportedKeys(String catalog, String schema, String table)
+         (map (fn [result]
+                {:fk-column-name   (:fkcolumn_name result)
+                 :dest-table-name  (:pktable_name result)
+                 :dest-column-name (:pkcolumn_name result)}))
+         doall)))
+
 
 ;; # IMPLEMENTATION
 
 ;; ## TABLE ROW COUNT
 
-(defn- get-table-row-count
+(defn- table-row-count
   "Get the number of rows in KORMA-TABLE."
   [korma-table]
   (-> korma-table
@@ -103,14 +137,15 @@
       :count))
 
 (defn- update-table-row-count!
-  "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
+  "Update the `:rows` column for TABLE with the count from `table-row-count`."
+  {:arglists '([korma-table table])}
   [korma-table {:keys [id]}]
   {:pre [(integer? id)]}
-  (let [new-count (get-table-row-count korma-table)]
+  (let [new-count (table-row-count korma-table)]
     (upd Table id :rows new-count)))
 
 
-;; ## SET TABLE PK
+;; ## SET TABLE PKS
 
 (defn- set-table-pks-if-needed!
   "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
@@ -123,10 +158,47 @@
        dorun))
 
 
+;; ## SET TABLE FKS
+
+(defn- determine-fk-type
+  "Determine whether `Field` named FIELD-NAME is a `1t1` or `Mt1` `ForeignKey` relationship.
+   Do this by getting the count and distinct counts of this `Field`.
+
+   *  If count and distinct count are equal, we have a one-to-one foreign key relationship.
+   *  If count is > distinct count, we have a many-to-one foreign key relationship."
+  [korma-table field-name]
+  (let [{:keys [distinct-cnt cnt]} (first (select korma-table
+                                                  (aggregate (count (sqlfn :DISTINCT (keyword field-name))) :distinct-cnt)
+                                                  (aggregate (count (keyword field-name)) :cnt)))]
+    (if (= cnt distinct-cnt) :1t1
+        :Mt1)))
+
+(defn- set-table-fks-if-needed!
+  "Mark foreign-key `Fields` for TABLE as `special_type = fk` if they don't already have a `special_type`."
+  {:arglists '([korma-table table])}
+  [korma-table {database :db table-name :name table-id :id}]
+  (let [fks            (table-fks @database table-name)
+        fk-name->id    (sel :many :field->id [Field :name] :table_id table-id :special_type nil :name [in (map :fk-column-name fks)])
+        table-name->id (sel :many :field->id [Table :name] :name [in (map :dest-table-name fks)])]
+    (->> fks
+         (map (fn [{:keys [fk-column-name dest-column-name dest-table-name]}]
+                (when-let [fk-column-id (fk-name->id fk-column-name)]
+                  (when-let [dest-table-id (table-name->id dest-table-name)]
+                    (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
+                      (println (format "Marking foreign key '%s.%s' -> '%s.%s'." table-name fk-column-name dest-table-name dest-column-name))
+                      (upd Field fk-column-id :special_type :fk)
+                      (ins ForeignKey
+                        :origin_id fk-column-id
+                        :destination_id dest-column-id
+                        :relationship (determine-fk-type korma-table fk-column-name)))))))
+         dorun)))
+
+
 ;; ## SYNC-FIELDS
 
 (defn- sync-fields
   "Sync `Fields` for TABLE (in parallel)."
+  {:arglists '([korma-table table])}
   [korma-table {table-id :id, table-name :name, db :db}]
   (->> (jdbc-columns db table-name)
        (pmap (fn [{:keys [type_name column_name]}]
@@ -154,8 +226,9 @@
   40)
 
 (defn- check-for-low-cardinality
-  "Check a Field to see if it is low cardinality and should automatically be marked as `special_type = :category`.
+  "Check FIELD to see if it is low cardinality and should automatically be marked as `special_type = :category`.
    This is only done for Fields that do not already have a `special_type`."
+  {:arglists '([korma-table field])}
   [korma-table {field-name :name field-id :id special-type :special_type}]
   (when-not special-type
     (let [cardinality (-> korma-table
@@ -175,6 +248,7 @@
 
 (defn- field-avg-length
   "Return the average length of FIELD."
+  {:arglists '([korma-table field])}
   [korma-table {field-name :name}]
   (if *sql-string-length-fn*
     ;; If *sql-string-length-fn* is bound we can use just return AVG(LENGTH-FN(field))
@@ -196,6 +270,7 @@
 (defn- check-for-large-average-length
   "Check a Field to see if it has a large average length and should be marked as `preview_display = false`.
    This is only done for textual fields, i.e. ones with `special_type` of `:CharField` or `:TextField`."
+  {:arglists '([korma-table field])}
   [korma-table {base-type :base_type, field-id :id, preview-display :preview_display, :as field}]
   (when (and preview-display                                 ; if field is already preview_display = false, no need to check again since there is no case
              (contains? #{:CharField :TextField} base-type)) ; where we'd end up changing it.
@@ -213,6 +288,7 @@
 
 (defn- field-percent-urls
   "Return the percentage of non-null values of FIELD that are valid URLS."
+  {:arglists '([korma-table field])}
   [korma-table {field-name :name}]
   (let [total-non-null-count (-> (select korma-table
                                          (aggregate (count :*) :count)
@@ -226,6 +302,7 @@
 (defn- check-for-urls
   "Check a Field to see if the majority of its *NON-NULL* values are URLs; if so, mark it as `special_type = :url`.
    This only applies to textual fields that *do not* already have a `special_type.`"
+  {:arglists '([korma-table field])}
   [korma-table {special-type :special_type, base-type :base_type, field-name :name, field-id :id, :as field}]
   (when (and (not special-type)
              (contains? #{:CharField :TextField} base-type))
