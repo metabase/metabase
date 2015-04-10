@@ -11,7 +11,7 @@
             [metabase.test.util :refer [resolve-private-fns]]))
 
 
-(resolve-private-fns metabase.driver.generic-sql.sync field-avg-length field-percent-urls set-table-pks-if-needed!)
+(resolve-private-fns metabase.driver.generic-sql.sync determine-fk-type field-avg-length field-percent-urls set-table-pks-if-needed!)
 
 (def users-table
   (delay (sel :one Table :name "USERS")))
@@ -106,6 +106,16 @@
      (let [table (sel :one Table :id (table->id :checkins))]
        (sync-table table)
        (get-special-type-and-fk-exists?))]))
+
+;; ## Tests for DETERMINE-FK-TYPE
+;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
+(expect :Mt1
+  (determine-fk-type (korma-entity (sel :one Table :id (table->id :venues))) "CATEGORY_ID"))
+
+;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
+;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
+(expect :1t1
+  (determine-fk-type (korma-entity (sel :one Table :id (table->id :venues))) "ID"))
 
 
 ;; ## TEST FIELD-AVG-LENGTH
