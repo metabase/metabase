@@ -167,8 +167,6 @@
 (defn- add-metadata! []
   (dorun
    (map (fn [[table-kw {:keys [fields]}]]
-          (let [fields (conj fields {:name :id
-                                     :special-type :id})]
-            (dorun (map (partial set-special-type! table-kw)
-                        fields))))
+          (dorun (map (partial set-special-type! table-kw)
+                      fields)))
         data/test-data)))
