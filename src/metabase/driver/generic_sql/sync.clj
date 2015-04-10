@@ -12,9 +12,10 @@
 (declare check-for-large-average-length korma-table field
          check-for-low-cardinality
          check-for-urls
+         set-table-pks-if-needed!
          sync-fields
          table-names
-         update-table-row-count)
+         update-table-row-count!)
 
 ;; # PUBLIC INTERFACE
 
@@ -31,60 +32,62 @@
       ...)"
   nil)
 
+(defn sync-table
+  "Sync a single `Table` and its `Fields`."
+  {:arglists '([table])}
+  [{db :db table-name :name :as table}]
+  (with-jdbc-metadata [_ @db]
+    (let [korma-table (korma-entity table)]
+      (update-table-row-count! korma-table table)
+      (sync-fields korma-table table))
+    (set-table-pks-if-needed! table)
+    (log/debug "Synced" table-name)))
+
 (defn sync-database
   "Sync all `Tables` + `Fields` in DATABASE."
   [{:keys [id] :as database}]
-  (with-jdbc-metadata database                                                                ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside the fn passed to it
-    (fn [_]                                                                                    ; by wrapping the entire sync operation in this we can reuse the same connection throughout
-      (->> (table-names database)
-        (pmap (fn [table-name]
-                (binding [*entity-overrides* {:transforms [#(assoc % :db (delay database))]}] ; add a korma transform to Table that will assoc :db on results.
-                  (let [table (or (sel :one Table :db_id id :name table-name)                 ; Table's post-select only sets :db if it's not already set.
-                                  (ins Table                                                  ; This way, we can reuse a single `database` instead of creating
-                                    :db_id id                                                 ; a few dozen duplicate instances of it.
-                                    :name table-name                                          ; We can re-use one korma connection pool instead of
-                                    :active true))                                            ; creating dozens of them, which was causing issues with too
-                        korma-table (korma-entity table)]                                     ; many open connections.
-                    (update-table-row-count korma-table table)
-                    (sync-fields korma-table table)
-                    (log/debug "Synced" table-name)))))
-        dorun))))
-
-(defn sync-table
-  "Sync a single `Table` and its `Fields`."
-  [{:keys [db] :as table}]
-  (with-jdbc-metadata @db
-    (fn [_]
-      (let [korma-table (korma-entity table)]
-        (update-table-row-count korma-table table)
-        (sync-fields korma-table table))
-      (log/debug "Synced" (:name table)))))
+  (with-jdbc-metadata [_ database]                                                             ; with-jdbc-metadata reuses *jdbc-metadata* in any call to it inside its body
+    (->> (table-names database)                                                                ; by wrapping the entire sync operation in this we can reuse the same connection throughout
+         (pmap (fn [table-name]
+                 (binding [*entity-overrides* {:transforms [#(assoc % :db (delay database))]}] ; add a korma transform to Table that will assoc :db on results.
+                   (sync-table (or (sel :one Table :db_id id :name table-name)                 ; Table's post-select only sets :db if it's not already set.
+                                   (ins Table                                                  ; This way, we can reuse a single `database` instead of creating
+                                     :db_id id                                                 ; a few dozen duplicate instances of it.
+                                     :name table-name                                          ; We can re-use one korma connection pool instead of creating a new one for each
+                                     :active true))))))                                        ; Table, which collapses when we open too many connections
+         dorun)))
 
 
-;; ## Fetch Tables/Columns from DB
+;; ## Fetch Tables/Columns/PKs from DB
 
 (defn table-names
   "Fetch a list of table names for DATABASE."
   [database]
-  (with-jdbc-metadata database
-    (fn [^java.sql.DatabaseMetaData md]
-      (->> (-> md
-               (.getTables nil nil nil (into-array String ["TABLE"])) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
-               jdbc/result-set-seq)
-           (map :table_name)
-           doall))))
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+    (->> (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE"]))) ; ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
+         (map :table_name)
+         doall)))
+
 
 (defn jdbc-columns
   "Fetch information about the various columns for Table with TABLE-NAME by getting JDBC metadata for DATABASE."
   [database table-name]
-  (with-jdbc-metadata database
-    (fn [^java.sql.DatabaseMetaData md]
-      (->> (-> md
-               (.getColumns nil nil table-name nil) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
-               jdbc/result-set-seq)
-           (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal DB columns. This works for H2; does it work for *other*
-           (map #(select-keys % [:column_name :type_name])) ; databases?
-           doall))))
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+    (->> (jdbc/result-set-seq (.getColumns md nil nil table-name nil)) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+         (filter #(not= (:table_schem %) "INFORMATION_SCHEMA"))        ; filter out internal DB columns. This works for H2; does it work for *other*
+         (map #(select-keys % [:column_name :type_name]))              ; databases?
+         doall)))
+
+(defn table-pk-names
+  "Return a set of name(s) of column(s) that are primary keys for TABLE-NAME.
+
+    (table-pk-names @test-db \"VENUES\") -> [\"ID\"]"
+  [database table-name]
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+    (->> (jdbc/result-set-seq (.getPrimaryKeys md nil nil table-name)) ; ResultSet getPrimaryKeys(String catalog, String schema, String table)
+         (map :column_name)
+         doall
+         set)))
 
 
 ;; # IMPLEMENTATION
@@ -99,7 +102,7 @@
       first
       :count))
 
-(defn- update-table-row-count
+(defn- update-table-row-count!
   "Update the `:rows` column for TABLE with the count from `get-table-row-count`."
   [korma-table {:keys [id]}]
   {:pre [(integer? id)]}
@@ -107,10 +110,23 @@
     (upd Table id :rows new-count)))
 
 
+;; ## SET TABLE PK
+
+(defn- set-table-pks-if-needed!
+  "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
+  {:arglists '([table])}
+  [{table-name :name table-id :id :keys [db pk_field]}]
+  (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
+       (map (fn [{field-name :name field-id :id}]
+              (println (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
+              (upd Field field-id :special_type :id)))
+       dorun))
+
+
 ;; ## SYNC-FIELDS
 
 (defn- sync-fields
-  "Sync `Fields` for TABLE."
+  "Sync `Fields` for TABLE (in parallel)."
   [korma-table {table-id :id, table-name :name, db :db}]
   (->> (jdbc-columns db table-name)
        (pmap (fn [{:keys [type_name column_name]}]

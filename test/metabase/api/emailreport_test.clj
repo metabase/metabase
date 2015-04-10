@@ -162,6 +162,7 @@
                       :name "Test Organization"
                       :description nil
                       :logo_url nil
+                      :report_timezone nil
                       :inherits true}
        :creator_id (user->id :rasta)
        :updated_at $

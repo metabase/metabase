@@ -41,21 +41,22 @@
 (expect-let [dash (create-dash (random-name))]
   {:dashboard
    (match-$ dash
-     {:description nil
-      :can_read true
-      :ordered_cards []
-      :creator (-> (sel :one User :id (user->id :rasta))
-                   (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
-      :can_write true
+     {:description     nil
+      :can_read        true
+      :ordered_cards   []
+      :creator         (-> (sel :one User :id (user->id :rasta))
+                         (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
+      :can_write       true
       :organization_id @org-id
-      :name $
-      :organization (-> @test-org
-                        (select-keys [:inherits :logo_url :description :name :slug :id]))
-      :creator_id (user->id :rasta)
-      :updated_at $
-      :id $
-      :public_perms 0
-      :created_at $})}
+      :name            $
+      :organization    (-> @test-org
+                         (select-keys [:inherits :report_timezone :logo_url :description :name :slug :id
+                                       ]))
+      :creator_id      (user->id :rasta)
+      :updated_at      $
+      :id              $
+      :public_perms    0
+      :created_at      $})}
   ((user->client :rasta) :get 200 (format "dash/%d" (:id dash))))
 
 ;; Check that only the creator of a Dashboard sees it when it isn't public

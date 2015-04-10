@@ -96,5 +96,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
                     });
             };
         }
+
+        // always get our form input
+        Organization.form_input(function (result) {
+            $scope.form_input = result;
+        }, function (error) {
+            console.log('error getting form input', error);
+        });
     }
 ]);

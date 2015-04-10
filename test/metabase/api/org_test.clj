@@ -35,6 +35,21 @@
 
 ;; # GENERAL ORG ENDPOINTS
 
+;; ## GET /api/org/form_input
+;; this endpoint is available to any user that is authentic, so no security check here
+(expect-eval-actual-first
+  {:timezones ["GMT"
+               "UTC"
+               "US/Alaska"
+               "US/Arizona"
+               "US/Central"
+               "US/Eastern"
+               "US/Hawaii"
+               "US/Mountain"
+               "US/Pacific"
+               "America/Costa_Rica"]}
+  ((user->client :rasta) :get 200 "org/form_input"))
+
 ;; ## GET /api/org
 ;; Non-superusers should only be able to see Orgs they are members of
 (let [org-name (random-name)]
@@ -44,6 +59,7 @@
       :name "Test Organization"
       :description nil
       :logo_url nil
+      :report_timezone nil
       :inherits true}]
     (do
       ;; Delete all the random test Orgs we've created
@@ -61,6 +77,7 @@
         :name "Test Organization"
         :description nil
         :logo_url nil
+        :report_timezone nil
         :inherits true}
        (match-$ (sel :one Org :name org-name)
          {:id $
@@ -68,6 +85,7 @@
           :name $
           :description nil
           :logo_url nil
+          :report_timezone nil
           :inherits false})]
     (do
       ;; Delete all the random test Orgs we've created
@@ -94,6 +112,7 @@
        :name org-name
        :description nil
        :logo_url nil
+       :report_timezone nil
        :inherits false})
     (let [new-org (create-org org-name)
           org-perm (sel :one OrgPerm :organization_id (:id new-org))]
@@ -118,6 +137,7 @@
      :name "Test Organization"
      :description nil
      :logo_url nil
+     :report_timezone nil
      :inherits true}
   ((user->client :rasta) :get 200 (format "org/%d" @org-id)))
 
@@ -138,6 +158,7 @@
      :name "Test Organization"
      :description nil
      :logo_url nil
+     :report_timezone nil
      :inherits true}
   ((user->client :rasta) :get 200 (format "org/slug/%s" (:slug @test-org))))
 
@@ -162,12 +183,14 @@
    :name upd-name
    :description upd-name
    :logo_url upd-name
+   :report_timezone "US/Eastern"
    :inherits false}
   ;; we try setting `slug` & `inherits` which should both remain unmodified
   ((user->client :crowberto) :put 200 (format "org/%d" id) {:slug upd-name
                                                             :name upd-name
                                                             :description upd-name
                                                             :logo_url upd-name
+                                                            :report_timezone "US/Eastern"
                                                             :inherits true}))
 
 ;; Check that non-superusers can't modify orgs they don't have permissions to
@@ -293,6 +316,7 @@
                         :name test-org-name
                         :description nil
                         :logo_url nil
+                        :report_timezone nil
                         :inherits false}
          :user {:common_name (:common_name my-user)
                 :date_joined (:date_joined my-user)
@@ -389,11 +413,12 @@
               :first_name "Lucky"
               :email "lucky@metabase.com"})
      :organization (match-$ (sel :one Org :id @org-id)
-                     {:id $,
-                      :slug "test",
-                      :name "Test Organization",
-                      :description nil,
-                      :logo_url nil,
+                     {:id $
+                      :slug "test"
+                      :name "Test Organization"
+                      :description nil
+                      :logo_url nil
+                      :report_timezone nil
                       :inherits true})})
   ((user->client :crowberto) :get 200 (format "org/%d/members/%d" @org-id (user->id :lucky))))
 

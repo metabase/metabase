@@ -50,11 +50,15 @@
 
 
 (defmulti connection-details
-  "Return a map of connection details (in format usable by korma) for DATABASE."
+  "Return a map of connection details (in format usable by korma or equivalent) for DATABASE."
   (db-dispatch-fn "connection"))
 
 (defmulti connection
-  "Return a korma connection to DATABASE."
+  "Return a [korma or equivalent] connection to DATABASE."
+  (db-dispatch-fn "connection"))
+
+(defmulti can-connect?
+  "Check whether we can connect to DATABASE and perform a simple query."
   (db-dispatch-fn "connection"))
 
 (defmulti sync-database
