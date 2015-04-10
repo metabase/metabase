@@ -35,6 +35,21 @@
 
 ;; # GENERAL ORG ENDPOINTS
 
+;; ## GET /api/org/form_input
+;; this endpoint is available to any user that is authentic, so no security check here
+(expect-eval-actual-first
+  {:timezones ["GMT"
+               "UTC"
+               "US/Alaska"
+               "US/Arizona"
+               "US/Central"
+               "US/Eastern"
+               "US/Hawaii"
+               "US/Mountain"
+               "US/Pacific"
+               "America/Costa_Rica"]}
+  ((user->client :rasta) :get 200 "org/form_input"))
+
 ;; ## GET /api/org
 ;; Non-superusers should only be able to see Orgs they are members of
 (let [org-name (random-name)]
@@ -168,13 +183,14 @@
    :name upd-name
    :description upd-name
    :logo_url upd-name
-   :report_timezone nil
+   :report_timezone "US/Eastern"
    :inherits false}
   ;; we try setting `slug` & `inherits` which should both remain unmodified
   ((user->client :crowberto) :put 200 (format "org/%d" id) {:slug upd-name
                                                             :name upd-name
                                                             :description upd-name
                                                             :logo_url upd-name
+                                                            :report_timezone "US/Eastern"
                                                             :inherits true}))
 
 ;; Check that non-superusers can't modify orgs they don't have permissions to
