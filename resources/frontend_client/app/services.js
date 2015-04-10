@@ -741,6 +741,10 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
 
 CoreServices.factory('Organization', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/org/:orgId', {}, {
+        form_input: {
+            url:'/api/org/form_input',
+            method:'GET'
+        },
         list: {
             url: '/api/org/',
             method: 'GET',

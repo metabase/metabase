@@ -21,6 +21,11 @@ AdminControllers.controller('AdminHome', ['$scope', 'Organization', function($sc
         });
     };
 
+    Organization.form_input(function (result) {
+        $scope.form_input = result;
+    }, function (error) {
+        console.log('error getting form input', error);
+    });
 }]);
 
 AdminControllers.controller('TestLoginForm', ['$scope', function($scope) {
