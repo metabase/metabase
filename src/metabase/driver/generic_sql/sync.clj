@@ -15,7 +15,9 @@
          check-for-urls
          set-table-fks-if-needed!
          set-table-pks-if-needed!
-         sync-fields
+         sync-fields-create
+         sync-fields-metadata
+         sync-table
          table-names
          update-table-row-count!)
 
@@ -33,21 +35,6 @@
     (binding [*sql-string-length-fn* :LENGTH] ; for H2
       ...)"
   nil)
-
-(defn sync-table
-  "Sync a single `Table` and its `Fields`.
-   By default, this will also sync the Table's foreign keys; you can optionally skip this,
-   which is useful when syncing an entire DB, since we need to wait for *all* Fields to be created before creating ForeignKeys."
-  {:arglists '([table] [table skip-sync-fks?])}
-  [{db :db table-name :name :as table} & [skip-sync-fks?]]
-  (let [korma-table (korma-entity table)]
-    (with-jdbc-metadata [_ @db]
-      (update-table-row-count! korma-table table)
-      (sync-fields korma-table table)
-      (set-table-pks-if-needed! table)
-      (when-not skip-sync-fks?
-        (set-table-fks-if-needed! korma-table table))
-      (log/debug "Synced" table-name))))
 
 (defn sync-database
   "Sync all `Tables` + `Fields` in DATABASE."
@@ -70,11 +57,71 @@
                   table-names))
       ;; Now sync the active Tables
       (let [tables (->> (sel :many Table :active true :db_id database-id)
-                        (map #(assoc % :db (delay database))))]                         ; reuse DATABASE for all Tables. That way we don't end up creating multiple
-        (dorun (pmap #(sync-table % :skip-sync-fks)                                   ; korma connection pools to the same DB
+                        (map #(assoc % :db (delay database))))]                       ; reuse DATABASE, that way we don't end up creating multiple connection pools
+        ;; First, we need to make sure Active Fields are all up-to-date,
+        ;; since other steps like set-table-fks-if-needed! depend on them existing
+        (dorun (pmap (fn [table]
+                       (sync-fields-create (korma-entity table) table))
                      tables))
-        (dorun (pmap #(set-table-fks-if-needed! (korma-entity %) %)                   ; Sync the FKs after we finish the rest of the Table syncing. This has to happen
-                     tables))))))                                                     ; last so we're sure all relevant Fields have been created.
+        ;; Once those are g2g we can do the rest of the syncing for the Table
+        (dorun (pmap (fn [table]
+                       (let [korma-table (korma-entity table)]
+                         (update-table-row-count! korma-table table)
+                         (set-table-pks-if-needed! table)
+                         (set-table-fks-if-needed! korma-table table)
+                         (sync-fields-metadata korma-table table)))
+                     tables))))))
+
+(defn sync-table
+  "Sync a single `Table` and its `Fields`."
+  {:arglists '([table])}
+  [{db :db table-name :name :as table}]
+  (let [korma-table (korma-entity table)]          ; implementation is a little simpler here than SYNC-DATABASE
+    (with-jdbc-metadata [_ @db]                    ; since we don't need to wait for *every* table to finish `sync-fields-create` before
+      (sync-fields-create korma-table table)
+      (update-table-row-count! korma-table table)
+      (set-table-pks-if-needed! table)
+      (set-table-fks-if-needed! korma-table table)
+      (sync-fields-metadata korma-table table)
+      (log/debug "Synced" table-name))))
+
+
+(defn- sync-fields-create
+  "Create new Fields for any that don't exist; mark ones that no longer exist as `inactive`."
+  {:arglists '([korma-table table])}
+  [korma-table {table-id :id, table-name :name, db :db}]
+  (let [fields (jdbc-columns db table-name)
+        field-names (set (map :column_name fields))
+        field-name->id (sel :many :field->id [Field :name] :table_id table-id :name [in field-names])]
+    ;; Mark any existing `Field` objects not returned by jdbc-columns as inactive
+    (dorun (map (fn [[field-name field-id]]
+                  (when-not (contains? field-names field-name)
+                    (upd Field field-id :active false)))
+                field-name->id))
+    ;; Create `Field` objects for any new Fields returned by jdbc-columns
+    (dorun (map (fn [{field-name :column_name type-name :type_name}]
+                  (when-not (field-name->id field-name)
+                    (ins Field
+                      :table_id table-id
+                      :name field-name
+                      :base_type (or (*column->base-type* (keyword type-name))
+                                     (throw (Exception. (str "Column '" field-name "' has an unknown type: '" type-name
+                                                             "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
+                fields))))
+
+(defn- sync-fields-metadata
+  "Sync the metadata of all active fields for TABLE (in parallel)."
+  {:arglists '([korma-table table])}
+  [korma-table {table-id :id table-name :name}]
+  (->> (sel :many Field :table_id table-id :active true)
+       (pmap (fn [field]
+               (try
+                 (check-for-low-cardinality korma-table field)
+                 (check-for-large-average-length korma-table field)
+                 (check-for-urls korma-table field)
+                 (catch Throwable e
+                   (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
+       dorun))
 
 
 ;; ## Metadata -- Fetch Tables/Columns/PKs/FKs from DB
@@ -95,7 +142,8 @@
     (->> (jdbc/result-set-seq (.getColumns md nil nil table-name nil)) ; ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
          (filter #(not= (:table_schem %) "INFORMATION_SCHEMA"))        ; filter out internal DB columns. This works for H2; does it work for *other*
          (map #(select-keys % [:column_name :type_name]))              ; databases?
-         doall)))
+         doall
+         set)))
 
 (defn table-pk-names
   "Return a set of name(s) of column(s) that are primary keys for TABLE-NAME.
@@ -109,7 +157,7 @@
          set)))
 
 (defn table-fks
-  "Return a sequence of maps containing info about FK columns for TABLE-NAME.
+  "Return a set of maps containing info about FK columns for TABLE-NAME.
    Each map contains the following keys:
 
    *  fk-column-name
@@ -122,7 +170,8 @@
                 {:fk-column-name   (:fkcolumn_name result)
                  :dest-table-name  (:pktable_name result)
                  :dest-column-name (:pkcolumn_name result)}))
-         doall)))
+         doall
+         set)))
 
 
 ;; # IMPLEMENTATION
@@ -154,7 +203,7 @@
   [{table-name :name table-id :id :keys [db pk_field]}]
   (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
        (map (fn [{field-name :name field-id :id}]
-              (println (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
+              (log/info (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
               (upd Field field-id :special_type :id)))
        dorun))
 
@@ -186,38 +235,13 @@
                 (when-let [fk-column-id (fk-name->id fk-column-name)]
                   (when-let [dest-table-id (table-name->id dest-table-name)]
                     (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
-                      (println (format "Marking foreign key '%s.%s' -> '%s.%s'." table-name fk-column-name dest-table-name dest-column-name))
-                      (upd Field fk-column-id :special_type :fk)
+                      (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." table-name fk-column-name dest-table-name dest-column-name))
                       (ins ForeignKey
                         :origin_id fk-column-id
                         :destination_id dest-column-id
-                        :relationship (determine-fk-type korma-table fk-column-name)))))))
+                        :relationship (determine-fk-type korma-table fk-column-name))
+                      (upd Field fk-column-id :special_type :fk))))))
          dorun)))
-
-
-;; ## SYNC-FIELDS
-
-(defn- sync-fields
-  "Sync `Fields` for TABLE (in parallel)."
-  {:arglists '([korma-table table])}
-  [korma-table {table-id :id, table-name :name, db :db}]
-  (->> (jdbc-columns db table-name)
-       (pmap (fn [{:keys [type_name column_name]}]
-               (or (sel :one Field :table_id table-id :name column_name)
-                   (ins Field
-                     :table_id table-id
-                     :name column_name
-                     :base_type (or (*column->base-type* (keyword type_name))
-                                    (throw (Exception. (str "Column '" column_name "' has an unknown type: '" type_name
-                                                            "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))))))))
-       (pmap (fn [field]
-               (try
-                 (check-for-low-cardinality korma-table field)
-                 (check-for-large-average-length korma-table field)
-                 (check-for-urls korma-table field)
-                 (catch Throwable e
-                   (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
-       dorun))
 
 
 ;; ### Check for Low Cardinality

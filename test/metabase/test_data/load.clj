@@ -143,7 +143,7 @@
                        (map (fn [{dest-table-name :fk field-name :name}]
                               (let [dest-table-name (-> dest-table-name name s/upper-case)
                                     field-name (-> field-name name s/upper-case)]
-                                (exec-raw *test-db* (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
+                                (exec-raw *test-db* (format "ALTER TABLE \"%s\" ADD CONSTRAINT IF NOT EXISTS \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
                                                             table-name
                                                             field-name dest-table-name
                                                             field-name

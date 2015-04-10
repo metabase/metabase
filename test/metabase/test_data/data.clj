@@ -1234,16 +1234,13 @@
                       :special-type :category}
                      {:name :category_id
                       :type "INTEGER"
-                      :special-type :fk
                       :fk :categories}]
             :rows venues}
    :checkins {:fields [{:name :user_id
                         :type "INTEGER"
-                        :special-type :fk
                         :fk :users}
                        {:name :venue_id
                         :type "INTEGER"
-                        :special-type :fk
                         :fk :venues}
                        {:name :date
                         :type "DATE"}]
