@@ -13,6 +13,7 @@
 (declare check-for-large-average-length korma-table field
          check-for-low-cardinality
          check-for-urls
+         jdbc-columns
          set-table-fks-if-needed!
          set-table-pks-if-needed!
          sync-fields-create
