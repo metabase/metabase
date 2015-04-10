@@ -24,6 +24,15 @@
                     <label for="id_logo">Logo Url:</label>
                     <input class="input block full" id="id_logo" type="text" ng-model="currentOrg.logo_url"/>
                 </div>
+
+                <div class="py1">
+                    <label>Report Timezone:</label>
+                    <label class="Select">
+                        <select ng-model="currentOrg.report_timezone" ng-options="tz for tz in form_input['timezones']">
+                            <option value="">Select a Timezone</option>
+                        </select>
+                    </label>
+                </div>
             </div>
             <div class="py3 px4 border-top clearfix">
                 <input class="Button Button--primary float-right" type="button" value="Save" ng-click="updateOrg(currentOrg)"/>
