@@ -17,8 +17,8 @@
 
     <body ng-controller="Corvus">
 
-        <!-- MAIN NAV -->
         <div ng-controller="Nav" ng-if="user" ng-cloak>
+            <!-- MAIN NAV -->
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
                     <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
@@ -86,26 +86,62 @@
 
             <!-- ADMIN NAV -->
             <nav class="AdminNav" ng-show="nav === 'admin'">
-                <div class="bg-white border-bottom">
-                    <div class="py2 wrapper">
-                        <label class="Select" ng-if="user.is_multi_org">
-                            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-                        </label>
-                        <a class="AdminTitle link" cv-org-href="/admin/">
-                            <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-                        </a>
-                        <div class="mx1 float-right">
-                            <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
-                        </div>
+                <!-- TODO: dropdown component -->
+                <div class="col col-sm-12">
+                    <!-- org title -->
+                    <div class="NavItem float-left" ng-if="!user.is_multi_org">
+                        <!-- TODO: gear icon -->
+                        <span class="NavItem-text">{{currentOrg.name}} Admin</span>
                     </div>
-                    <section class="mt1 wrapper">
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases">Databases</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets">Datasets</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">Email Reports</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">People</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" cv-org-href="/admin">Settings</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}"cv-org-href="/admin/query/run">SQL Query</a>
-                    </section>
+                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
+                        <!-- TODO: gear icon -->
+                        <span dropdown-toggle>
+                            <span class="NavItem-text">{{currentOrg.name}} Admin</span>
+                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                        </span>
+                        <ul class="Dropdown-content">
+                            <li ng-repeat="organization in userMemberOf">
+                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- admin sections -->
+                    <ul class="float-left ml4">
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/org')}" cv-org-href="/admin/org/">
+                                <span class="NavItem-text">Organization</span>
+                            </a>
+                        </li>
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">
+                                <span class="NavItem-text">People</span>
+                            </a>
+                        </li>
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases/">
+                                <span class="NavItem-text">Databases</span>
+                            </a>
+                        </li>
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets/">
+                                <span class="NavItem-text">Datasets</span>
+                            </a>
+                        </li>
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">
+                                <span class="NavItem-text">Email Reports</span>
+                            </a>
+                        </li>
+                        <li class="inline-block">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}" cv-org-href="/admin/query/run">
+                                <span class="NavItem-text">SQL Query</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- user profile dropdown -->
+                    <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
             </nav>
 

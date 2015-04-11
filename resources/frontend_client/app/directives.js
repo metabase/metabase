@@ -96,6 +96,65 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
+
+var NavbarDirectives = angular.module('corvus.navbar.directives', []);
+
+NavbarDirectives.directive('mbProfileLink', [function () {
+
+    function link($scope, element, attr) {
+
+        $scope.userIsAdmin = false;
+        $scope.userIsSuperuser = false;
+
+        $scope.$watch('user', function (user) {
+            if (!user) return;
+
+            // extract a couple informational pieces about user
+            $scope.userIsAdmin = user.adminOf();
+            $scope.userIsSuperuser = user.is_superuser;
+
+            // determine initials for profile logo
+            var initials = '??';
+            if (user.first_name !== 'undefined') {
+                initials = user.first_name.substring(0, 1);
+            }
+
+            if (user.last_name !== 'undefined') {
+                initials = initials + user.last_name.substring(0, 1);
+            }
+
+            $scope.initials = initials;
+            console.log($scope.context);
+        });
+    }
+
+    return {
+        restrict: 'E',
+        replace: true,
+        template:   '<ul class="float-right">' +
+                        '<li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
+                            '<a class="NavItem" selectable-nav-item="settings" dropdown-toggle>' +
+                                '<span class="NavItem-text">{{initials}}</span> ' +
+                                '<cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>' +
+                            '</a>' +
+                            '<ul class="Dropdown-content right">' +
+                                '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
+                                '<li><a class="link" ng-if="userIsAdmin && context == \'main\'" cv-org-href="/admin/">Admin</a></li>' +
+                                '<li><a class="link" ng-if="userIsAdmin && context == \'admin\'" cv-org-href="/">Exit Admin</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context != \'superadmin\'" href="/superadmin/">Site Administration</a></li>' +
+                                '<li><a class="link" href="/auth/logout">Logout</a></li>' +
+                            '</ul>' +
+                        '</li>' +
+                    '</ul>',
+        scope: {
+            context: '=',
+            user: '='
+        },
+        link: link
+    };
+}]);
+
+
 var CorvusFormsDirectives = angular.module('corvus.forms.directives', []);
 
 CorvusFormsDirectives.directive('cvForm', ['CorvusFormService', function(CorvusFormService) {

@@ -5,7 +5,7 @@
 /*global $*/
 
 // Global Controllers
-var CorvusControllers = angular.module('corvus.controllers', ['corvus.services']);
+var CorvusControllers = angular.module('corvus.controllers', ['corvus.services', 'corvus.navbar.directives']);
 
 CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, CorvusCore, CorvusAlert, AppState) {
 
