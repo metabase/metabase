@@ -27,6 +27,7 @@ var Corvus = angular.module('corvus', [
     'corvus.user',
     'corvus.setup',
     'corvusadmin.index.controllers',
+    'corvusadmin.organization',
     'corvusadmin.databases',
     'corvusadmin.datasets',
     'corvusadmin.emailreport',
@@ -70,11 +71,6 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     });
 
     // admin routes
-    $routeProvider.when('/:orgSlug/admin/', {
-        templateUrl: '/app/admin/home.html',
-        controller: 'AdminHome'
-    });
-
     $routeProvider.when('/:orgSlug/admin/test_login_form', {
         templateUrl: '/app/admin/test_login_form.html',
         controller: 'TestLoginForm'
