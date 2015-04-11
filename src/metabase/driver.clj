@@ -10,9 +10,14 @@
 
 
 (def available-drivers
-  "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
-  [["h2" "H2"]
-   ["postgres" "PostgreSQL"]])
+  "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
+  ex: `:h2 {:id \"h2\" :name \"H2\"}`"
+  {:h2       {:id   "h2"
+              :name "H2"
+              :example "file:[filename]"}
+   :postgres {:id "postgres"
+              :name "Postgres"
+              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}})
 
 ;; TODO lazily requiring this way is a bit wonky.
 ;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does

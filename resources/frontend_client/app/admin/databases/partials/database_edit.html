@@ -12,7 +12,7 @@
           <tr>
               <th>Type</th>
               <td>
-                  <select class="Select my2" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in ENGINES"></select>
+                  <select class="Select my2" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
               </td>
           </tr>
           <tr>
@@ -26,7 +26,7 @@
           <tr>
               <th>Connection String</th>
               <td>
-                  <input class="input block full" type="text" placeholder="{{ENGINES[database.engine].example}}" ng-model="database.details.conn_str">
+                  <input class="input block full" type="text" placeholder="{{form_input.engines[database.engine].example}}" ng-model="database.details.conn_str">
               </td>
           </tr>
       </table>

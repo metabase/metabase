@@ -46,44 +46,6 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
 
 DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
 
-    $scope.ENGINES = {
-        postgres: {
-            name: "Postgres",
-            example: "host=[ip address] port=5432 dbname=examples user=corvus password=******"
-        },
-        h2: {
-            name: "H2",
-            example: "file:[filename]"
-        }
-    };
-
-    Metabase.db_form_input(function(form_input) {
-        $scope.form_input = form_input;
-    }, function(error) {
-        console.log('error getting database form_input', error);
-    });
-
-    if ($routeParams.databaseId) {
-        // load existing database for editing
-        Metabase.db_get({
-            'dbId': $routeParams.databaseId
-        }, function(database) {
-            $scope.database = database;
-        }, function(error) {
-            console.log('error loading database', error);
-            if (error.status == 404) {
-                $location.path('/admin/databases/');
-            }
-        });
-    } else {
-        // prepare an empty database for creation
-        $scope.database = {
-            "name": "",
-            "engine": 'postgres',
-            "details": {}
-        };
-    }
-
     $scope.save = function(database) {
         if ($routeParams.databaseId) {
             // updating existing database
@@ -105,4 +67,32 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             });
         }
     };
+
+    // load our form input data
+    Metabase.db_form_input(function (form_input) {
+        $scope.form_input = form_input;
+    }, function (error) {
+        console.log('error getting database form_input', error);
+    });
+
+    if ($routeParams.databaseId) {
+        // load existing database for editing
+        Metabase.db_get({
+            'dbId': $routeParams.databaseId
+        }, function (database) {
+            $scope.database = database;
+        }, function (error) {
+            console.log('error loading database', error);
+            if (error.status == 404) {
+                $location.path('/admin/databases/');
+            }
+        });
+    } else {
+        // prepare an empty database for creation
+        $scope.database = {
+            "name": "",
+            "engine": 'postgres',
+            "details": {}
+        };
+    }
 }]);
