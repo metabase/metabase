@@ -12,6 +12,16 @@ server {
 }
 
 server {
+  server_name data-staging.expa.com;
+  return 301 $scheme://metabase-staging.expa.com$request_uri;
+}
+
+server {
+  server_name data.expa.com;
+  return 301 $scheme://metabase.expa.com$request_uri;
+}
+
+server {
   listen      [::]:80; #IPv6 compatibility
   listen      80;
   server_name ${SERVER_NAME};
