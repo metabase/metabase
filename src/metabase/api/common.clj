@@ -10,7 +10,8 @@
             [metabase.db.internal :refer [entity->korma]]
             [metabase.util :as u]
             [metabase.util.password :as password])
-  (:import com.metabase.corvus.api.ApiException))
+  (:import com.metabase.corvus.api.ApiException
+           com.metabase.corvus.api.ApiFieldValidationException))
 
 (declare check-403
          check-404)
@@ -108,6 +109,19 @@
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw ApiExceptions w/ relevant error messages.
 
+(defn checkp
+  "Assertion mechanism for use inside API functions that validates individual input params.
+   Checks that TEST is true, or throws an `ApiFieldValidationException` with FIELD-NAME and MESSAGE.
+
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+
+  `checkp` can be called with the form
+
+      (checkp test field-name message)"
+  ([tst field-name message]
+   (when-not tst
+     (throw (ApiFieldValidationException. (format "%s" field-name) message)))))
+
 (defmacro checkp-with
   "Check (TEST-FN VALUE), or throw an exception with STATUS-CODE (default is 400).
    SYMB is passed in order to give the user a relevant error message about which parameter was bad.
@@ -123,13 +137,11 @@
    this will be used in place of the \"test failed: ...\" message.
 
    MESSAGE may be either a string or a pair like `[status-code message]`."
-  ([test-fn symb value message-or-status+message-pair]
+  ([test-fn symb value message]
    {:pre [(symbol? symb)]}
-   `(let [[status-code# message#] (if (string? ~message-or-status+message-pair) [400 ~message-or-status+message-pair]
-                                      ~message-or-status+message-pair)
+   `(let [message# ~message
           value# ~value]
-      (check (~test-fn value#)
-        [status-code# (format "Invalid value '%s' for '%s': %s" (str value#) ~symb message#)])
+      (checkp (~test-fn value#) ~symb (format "Invalid value '%s' for '%s': %s" (str value#) ~symb message#))
       value#))
   ([test-fn symb value]
    `(checkp-with ~test-fn ~symb ~value ~(str "test failed: " test-fn))))

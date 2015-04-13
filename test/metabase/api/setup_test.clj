@@ -65,7 +65,7 @@
 
 ;; token match
 (expect "Invalid value 'anything' for 'token': Token does not match the setup token."
-  (http/client :post 403 "setup/user" {:token "anything"
+  (http/client :post 400 "setup/user" {:token "anything"
                                        :first_name "anything"
                                        :last_name "anything"
                                        :email "anything@email.com"
