@@ -19,10 +19,10 @@
       (client :post 200 "session" (user->credentials :rasta))))
 
 ;; Test for required params
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   (client :post 400 "session" {}))
 
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
@@ -60,7 +60,7 @@
     (reset-fields-set?)))
 
 ;; Test that email is required
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   (client :post 400 "session/forgot_password" {}))
 
 ;; Test that email not found gives 404
@@ -96,10 +96,10 @@
     (sel :one :fields [User :reset_token :reset_triggered] :id id)))
 
 ;; Test that token and password are required
-(expect "'token' is a required param."
+(expect {:errors {:token "field is a required param."}}
   (client :post 400 "session/reset_password" {}))
 
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that invalid token returns 404

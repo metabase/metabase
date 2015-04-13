@@ -322,7 +322,7 @@
   "Param may not be `nil`."
   [symb value]
   (when-not value
-    (throw (ApiException. (int 400) (format "'%s' is a required param." symb))))
+    (throw (ApiFieldValidationException. (format "%s" symb) "field is a required param.")))
   value)
 
 (defannotation Date
@@ -331,7 +331,7 @@
   [symb value :nillable]
   (try (u/parse-iso8601 value)
           (catch Throwable _
-            (throw (ApiException. (int 400) (format "'%s' is not a valid date." symb))))))
+            (throw (ApiFieldValidationException. (format "%s" symb) (format "'%s' is not a valid date." value))))))
 
 (defannotation String->Integer
   "Param is converted from a string to an integer."
@@ -387,8 +387,7 @@
 (defannotation ComplexPassword
   "Param must be a complex password (*what does this mean?*)"
   [symb value]
-  (check (password/is-complex? value)
-    [400 (format "Invalid value for '%s': Insufficient password strength" symb)])
+  (checkp (password/is-complex? value) symb "Insufficient password strength")
   value)
 
 (defannotation FilterOptionAllOrMine

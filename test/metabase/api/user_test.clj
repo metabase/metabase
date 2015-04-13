@@ -183,7 +183,7 @@
                                                                                      :old_password "whatever"}))
 
 ;; Test input validations on password change
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
 
 ;; Make sure that if current password doesn't match we get a 400
