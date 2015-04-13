@@ -260,7 +260,8 @@
     (let [cardinality (-> korma-table
                           (select (aggregate (count (sqlfn :DISTINCT (keyword field-name))) :count))
                           first
-                          :count)]
+                          :count
+                          int)]
       (when (< cardinality low-cardinality-threshold)
         (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:table korma-table) field-name cardinality))
         (upd Field field-id :special_type :category)))))
@@ -276,22 +277,23 @@
   "Return the average length of FIELD."
   {:arglists '([korma-table field])}
   [korma-table {field-name :name}]
-  (if *sql-string-length-fn*
-    ;; If *sql-string-length-fn* is bound we can use just return AVG(LENGTH-FN(field))
-    (-> korma-table
-        (select (aggregate (avg (sqlfn* *sql-string-length-fn* (keyword field-name))) :len))
-        first
-        :len)
-    ;; Otherwise we'll have to select *all* values of the Field and sum their counts in Clojure-land
-    (do (log/warn (format "WARNING: *sql-string-length-fn* is not bound for the %s driver. We cannot efficiently determine the average length of text fields."
-                          (-> korma-table :db :options :subprotocol)))
-        (let [values (select korma-table (fields [(keyword field-name) :value]))]
-          (if-not (seq values) 0
-                  (let [length-sum (->> values
-                                        (map :value)
-                                        (map count)
-                                        (reduce +))]
-                    (int (math/round (/ length-sum (count values))))))))))
+  {:post [(integer? %)]}
+  (int (if *sql-string-length-fn*
+         ;; If *sql-string-length-fn* is bound we can use just return AVG(LENGTH-FN(field))
+         (-> korma-table
+             (select (aggregate (avg (sqlfn* *sql-string-length-fn* (keyword field-name))) :len))
+             first
+             :len)
+         ;; Otherwise we'll have to select *all* values of the Field and sum their counts in Clojure-land
+         (do (log/warn (format "WARNING: *sql-string-length-fn* is not bound for the %s driver. We cannot efficiently determine the average length of text fields."
+                               (-> korma-table :db :options :subprotocol)))
+             (let [values (select korma-table (fields [(keyword field-name) :value]))]
+               (if-not (seq values) 0
+                       (let [length-sum (->> values
+                                             (map :value)
+                                             (map count)
+                                             (reduce +))]
+                         (math/round (/ length-sum (count values))))))))))
 
 (defn- check-for-large-average-length
   "Check a Field to see if it has a large average length and should be marked as `preview_display = false`.
