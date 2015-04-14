@@ -2,12 +2,25 @@
 /*global btoa*/
 /*global $*/
 
-var OrganizationAdminControllers = angular.module('corvusadmin.organization.controllers', ['corvus.services']);
+var OrganizationAdminControllers = angular.module('corvusadmin.organization.controllers', [
+	'corvus.services',
+	'metabase.forms.services'
+]);
 
-OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Organization',
-	function($scope, Organization) {
+OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Organization', 'MetabaseForm',
+	function($scope, Organization, MetabaseForm) {
 
-	    $scope.updateOrg = function(organization) {
+		var formFields = {
+            name: 'name',
+            description: 'description',
+            logo_url: 'logo_url'
+        };
+
+	    $scope.save = function(organization) {
+	    	MetabaseForm.clearFormErrors($scope.form, formFields);
+	    	$scope.form.$setPristine();
+	    	//$scope.form.$setUntouched();
+
 	        Organization.update(organization, function (org) {
 	            $scope.currentOrg = org;
 	            $scope.alertInfo('Organization settings updated!');
@@ -16,8 +29,7 @@ OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Orga
 	            $scope.refreshCurrentUser();
 
 	        }, function (error) {
-	            console.log('error', error);
-	            $scope.alertError('Update failed!');
+	        	MetabaseForm.parseFormErrors($scope.form, formFields, error);
 	        });
 	    };
 

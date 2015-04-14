@@ -1,43 +1,40 @@
-<section class="wrapper">
-    <div class="py2">
-        <h2>Settings</h2>
+<!-- breadcrumb / page title -->
+<section>
+    <h2 class="PageTitle">Organization</h2>
+</section>
+
+<section>
+    <!-- form -->
+    <div class="p4 bordered">
+        <form name="form" novalidate>
+            <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
+
+            <div ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
+                <label>Slug: <span ng-show="form.slug.$error.message">{{form.slug.$error.message}}</span></label>
+                <input class="input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
+            </div>
+
+            <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                <label>Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
+                <input class="input full" name="name" ng-model="currentOrg.name" required />
+            </div>
+
+            <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                <label>Description: <span ng-show="form.description.$error.message">{{form.description.$error.message}}</span></label>
+                <input class="input full" name="description" ng-model="currentOrg.description" />
+            </div>
+
+            <div ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
+                <label>Logo url: <span ng-show="form.logo_url.$error.message">{{form.logo_url.$error.message}}</span></label>
+                <input class="input full" name="logo_url" ng-model="currentOrg.logo_url" />
+            </div>
+
+            <!-- SAVE BUTTON -->
+            <div>
+                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
+                    Save
+                </button>
+            </div>
+        </form>
     </div>
-    <form id="settings_form" novalidate>
-        <div class="bg-white bordered rounded shadowed">
-            <div class="p4">
-                <div class="py1">
-                    <label>Slug:</label>
-                    <input class="input block full" type="text" ng-model="currentOrg.slug" ng-disabled="true"/>
-                </div>
-
-                <div class="py1">
-                    <label for="id_name">Name:</label>
-                    <input class="input block full" id="id_name" type="text" ng-model="currentOrg.name"/>
-                </div>
-
-                <div class="py1">
-                    <label for="id_desc">Description:</label>
-                    <textarea class="input block full" id="id_desc" rows="5" ng-model="currentOrg.description"></textarea>
-                </div>
-
-                <div class="py1">
-                    <label for="id_logo">Logo Url:</label>
-                    <input class="input block full" id="id_logo" type="text" ng-model="currentOrg.logo_url"/>
-                </div>
-
-                <div class="py1">
-                    <label>Reporting Timezone:</label>
-                    <label class="Select">
-                        <select ng-model="currentOrg.report_timezone" ng-options="tz for tz in form_input['timezones']">
-                            <option value="">Select a Timezone</option>
-                        </select>
-                    </label>
-                </div>
-            </div>
-            <div class="py3 px4 border-top clearfix">
-                <input class="Button Button--primary float-right" type="button" value="Save" ng-click="updateOrg(currentOrg)"/>
-            </div>
-        </div>
-
-    </form>
 </section>
