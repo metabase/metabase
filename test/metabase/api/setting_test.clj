@@ -20,7 +20,7 @@
 ;; ## GET /api/setting
 ;; Check that we can fetch all Settings for Org
 (expect-eval-actual-first
-    [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)", :default "ABCDEFG"}
+    [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
      {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
     (do (set-settings nil "FANCY")
         (fetch-all-settings)))

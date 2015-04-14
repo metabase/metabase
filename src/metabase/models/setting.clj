@@ -1,6 +1,7 @@
 (ns metabase.models.setting
   (:refer-clojure :exclude [get set])
   (:require [clojure.core.match :refer [match]]
+            [clojure.string :as s]
             [environ.core :as env]
             [korma.core :refer :all :exclude [delete]]
             [metabase.db :refer [sel del]]))
@@ -169,5 +170,8 @@
        (map (fn [{k :name desc :doc default ::default-value}]
               {:key (keyword k)
                :description desc
-               :default (or (get-from-env-var k)
+               :default (or (when (get-from-env-var k)
+                              (format "Using $MB_%s" (-> (name k)
+                                                         (s/replace "-" "_")
+                                                         s/upper-case)))
                             default)}))))

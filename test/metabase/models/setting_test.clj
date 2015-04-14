@@ -126,7 +126,7 @@
 
 ;; all-with-descriptions
 (expect-eval-actual-first
-    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default "ABCDEFG"} ; should return env-var value as default
+    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
      {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
   (do (set-settings nil "S2")
       (filter (fn [{k :key}]
