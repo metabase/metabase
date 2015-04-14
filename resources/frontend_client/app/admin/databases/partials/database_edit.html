@@ -1,40 +1,75 @@
-<section class="wrapper">
-      <h2 class="py2" ng-if="!database.id">Add Database</h2>
-      <h2 class="py2" ng-if="database.id">{{database.name}}</h2>
+<!-- breadcrumb -->
+<section>
+    <h2 class="BreadcrumbPath">Databases &gt;</h2>
+    <h2 class="BreadcrumbPage" ng-if="!database.id">Add Database</h2>
+    <h2 class="BreadcrumbPage" ng-if="database.id">{{database.name}}</h2>
+</section>
 
-      <table class="Table">
-          <tr>
-              <th>Name</th>
-              <td class="half">
-                  <input class="input block full" type="text" ng-model="database.name" />
-              </td>
-          </tr>
-          <tr>
-              <th>Type</th>
-              <td>
-                  <select class="Select my2" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
-              </td>
-          </tr>
-          <tr>
-              <th>Timezone</th>
-              <td>
-                  <select class="Select my2" ng-model="database.details.timezone" ng-options="tz for tz in form_input['timezones']">
-                      <option value="">Select a timezone...</option>
-                  </select>
-              </td>
-          </tr>
-          <tr>
-              <th>Connection String</th>
-              <td>
-                  <input class="input block full" type="text" placeholder="{{form_input.engines[database.engine].example}}" ng-model="database.details.conn_str">
-              </td>
-          </tr>
-      </table>
+<section class="clearfix">
+    <!-- actions -->
+    <div class="p4 bordered">
+        <h3>Actions</h3>
+        <button class="Button" ng-click="save(database)">Sync</button>
 
-      <!-- SAVE BUTTON -->
-      <div class="py3 px4 border-top clearfix">
-          <button class="Button Button--primary float-right" ng-click="save(database)" ng-disabled="!database.name || !database.details.conn_str">
-              Save
-          </button>
-      </div>
+        <div>
+            <label>Danger Zone:</label>
+            <button class="Button" ng-click="save(database)">Remove this database</button>
+        </div>
+    </div>
+
+    <!-- form -->
+    <div class="p4 bordered">
+        <form name="form" novalidate>
+            <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
+
+            <div ng-init="" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                <label>Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
+                <input class="input full" name="name" ng-model="database.name" required />
+            </div>
+
+            <div>
+                <label>Database Type:</label>
+                <select class="Select" name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
+            </div>
+
+            <!-- TODO: database type dependent inputs -->
+            <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
+                <div ng-class="{'FormFieldError': form.host.$error.message == undefined}">
+                    <label>Host: <span ng-show="form.host.$error.message">{{form.host.$error.message}}</span></label>
+                    <input class="input full" name="host" ng-model="details.host" required />
+                </div>
+
+                <div ng-class="{'FormFieldError': form.port.$error.message == undefined}">
+                    <label>Port: <span ng-show="form.port.$error.message">{{form.port.$error.message}}</span></label>
+                    <input class="input full" name="port" ng-model="details.port" required />
+                </div>
+
+                <div ng-class="{'FormFieldError': form.dbname.$error.message == undefined}">
+                    <label>Database name: <span ng-show="form.dbname.$error.message">{{form.dbname.$error.message}}</span></label>
+                    <input class="input full" name="dbname" ng-model="details.dbname" required />
+                </div>
+
+                <div ng-class="{'FormFieldError': form.user.$error.message == undefined}">
+                    <label>Database username: <span ng-show="form.user.$error.message">{{form.user.$error.message}}</span></label>
+                    <input class="input full" name="user" ng-model="details.user" required />
+                </div>
+
+                <div ng-class="{'FormFieldError': form.pass.$error.message == undefined}">
+                    <label>Database password: <span ng-show="form.pass.$error.message">{{form.pass.$error.message}}</span></label>
+                    <input class="input full" name="pass" ng-model="details.pass" />
+                </div>
+            </div>
+
+            <!-- SAVE BUTTON -->
+            <div>
+                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
+                    Save
+                </button>
+
+                <button class="Button" ng-click="foo()">
+                    Status
+                </button>
+            </div>
+        </form>
+    </div>
 </section>

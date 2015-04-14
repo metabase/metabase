@@ -38,6 +38,7 @@
    name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
+  ;; TODO - we should validate the contents of `details` here based on the engine
   (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
