@@ -91,38 +91,44 @@
   "Create new Fields for any that don't exist; mark ones that no longer exist as `inactive`."
   {:arglists '([korma-table table])}
   [korma-table {table-id :id, table-name :name, db :db}]
-  (let [fields (jdbc-columns db table-name)
-        field-names (set (map :column_name fields))
-        field-name->id (sel :many :field->id [Field :name] :table_id table-id :name [in field-names])]
-    ;; Mark any existing `Field` objects not returned by jdbc-columns as inactive
-    (dorun (map (fn [[field-name field-id]]
-                  (when-not (contains? field-names field-name)
-                    (upd Field field-id :active false)))
-                field-name->id))
-    ;; Create `Field` objects for any new Fields returned by jdbc-columns
-    (dorun (map (fn [{field-name :column_name type-name :type_name}]
-                  (when-not (field-name->id field-name)
-                    (ins Field
-                      :table_id table-id
-                      :name field-name
-                      :base_type (or (*column->base-type* (keyword type-name))
-                                     (throw (Exception. (str "Column '" field-name "' has an unknown type: '" type-name
-                                                             "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
-                fields))))
+  (try
+    (let [fields (jdbc-columns db table-name)
+          field-names (set (map :column_name fields))
+          field-name->id (sel :many :field->id [Field :name] :table_id table-id :name [in field-names])]
+      ;; Mark any existing `Field` objects not returned by jdbc-columns as inactive
+      (dorun (map (fn [[field-name field-id]]
+                    (when-not (contains? field-names field-name)
+                      (upd Field field-id :active false)))
+                  field-name->id))
+      ;; Create `Field` objects for any new Fields returned by jdbc-columns
+      (dorun (map (fn [{field-name :column_name type-name :type_name}]
+                    (when-not (field-name->id field-name)
+                      (ins Field
+                        :table_id table-id
+                        :name field-name
+                        :base_type (or (*column->base-type* (keyword type-name))
+                                       (throw (Exception. (str "Column '" field-name "' has an unknown type: '" type-name
+                                                               "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
+                  fields)))
+    (catch Throwable e
+      (log/error "Caught exception in sync-fields-create:" e))))
 
 (defn- sync-fields-metadata
   "Sync the metadata of all active fields for TABLE (in parallel)."
   {:arglists '([korma-table table])}
   [korma-table {table-id :id table-name :name}]
-  (->> (sel :many Field :table_id table-id :active true)
-       (pmap (fn [field]
-               (try
-                 (check-for-low-cardinality korma-table field)
-                 (check-for-large-average-length korma-table field)
-                 (check-for-urls korma-table field)
-                 (catch Throwable e
-                   (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
-       dorun))
+  (try
+    (->> (sel :many Field :table_id table-id :active true)
+         (pmap (fn [field]
+                 (try
+                   (check-for-urls korma-table field)
+                   (check-for-low-cardinality korma-table field)
+                   (check-for-large-average-length korma-table field)
+                   (catch Throwable e
+                     (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
+         dorun)
+    (catch Throwable e
+      (log/error "Caught exception in sync-fields-metadata:" e))))
 
 
 ;; ## Metadata -- Fetch Tables/Columns/PKs/FKs from DB
@@ -331,6 +337,9 @@
   "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
   0.95)
 
+;; TODO - this fails for postgres tables that we consider TextFields but don't work for char_length, such as UUID fields
+;; This is not a big deal since we wouldn't want to mark those as URLs any way, but we should do casting here to avoid
+;; that issue in the first place
 (defn- field-percent-urls
   "Return the percentage of non-null values of FIELD that are valid URLS."
   {:arglists '([korma-table field])}
