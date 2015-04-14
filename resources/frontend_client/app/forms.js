@@ -3,9 +3,9 @@
 /*global _*/
 /* Services */
 
-var MetabaseFormsService = angular.module('metabase.forms.services', []);
+var MetabaseForms = angular.module('metabase.forms', []);
 
-MetabaseFormsService.service('MetabaseForm', function() {
+MetabaseForms.service('MetabaseForm', function() {
 
 	// accepts an instance of angular form.FormController and a map of expected form fields and will simply
 	// clear any of our error messages from the form instance
@@ -41,7 +41,7 @@ MetabaseFormsService.service('MetabaseForm', function() {
     };
 });
 
-MetabaseFormsService.directive('mbFormLabel', [function () {
+MetabaseForms.directive('mbFormLabel', [function () {
 
     return {
         restrict: 'E',

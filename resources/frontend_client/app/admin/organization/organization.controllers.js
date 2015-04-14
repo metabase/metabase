@@ -4,7 +4,7 @@
 
 var OrganizationAdminControllers = angular.module('corvusadmin.organization.controllers', [
 	'corvus.services',
-	'metabase.forms.services'
+	'metabase.forms'
 ]);
 
 OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Organization', 'MetabaseForm',
