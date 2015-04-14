@@ -322,7 +322,7 @@
   "Param may not be `nil`."
   [symb value]
   (when-not value
-    (throw (ApiFieldValidationException. (format "%s" symb) "field is a required param.")))
+    (throw (ApiFieldValidationException. (name symb) "field is a required param.")))
   value)
 
 (defannotation Date
@@ -331,7 +331,7 @@
   [symb value :nillable]
   (try (u/parse-iso8601 value)
           (catch Throwable _
-            (throw (ApiFieldValidationException. (format "%s" symb) (format "'%s' is not a valid date." value))))))
+            (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid date." value))))))
 
 (defannotation String->Integer
   "Param is converted from a string to an integer."
