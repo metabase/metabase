@@ -192,8 +192,11 @@
   {:arglists '([korma-table table])}
   [korma-table {:keys [id]}]
   {:pre [(integer? id)]}
-  (let [new-count (table-row-count korma-table)]
-    (upd Table id :rows new-count)))
+  (try
+    (let [new-count (table-row-count korma-table)]
+      (upd Table id :rows new-count))
+    (catch Throwable e
+      (log/error "Caught exception in update-table-row-count!:" e))))
 
 
 ;; ## SET TABLE PKS
@@ -202,11 +205,14 @@
   "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
   {:arglists '([table])}
   [{table-name :name table-id :id :keys [db pk_field]}]
-  (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
-       (map (fn [{field-name :name field-id :id}]
-              (log/info (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
-              (upd Field field-id :special_type :id)))
-       dorun))
+  (try
+    (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
+         (map (fn [{field-name :name field-id :id}]
+                (log/info (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
+                (upd Field field-id :special_type :id)))
+         dorun)
+    (catch Throwable e
+      (log/error "Caught exception in set-table-pks-if-needed!:" e))))
 
 
 ;; ## SET TABLE FKS
@@ -228,21 +234,24 @@
   "Mark foreign-key `Fields` for TABLE as `special_type = fk` if they don't already have a `special_type`."
   {:arglists '([korma-table table])}
   [korma-table {database :db table-name :name table-id :id}]
-  (let [fks            (table-fks @database table-name)
-        fk-name->id    (sel :many :field->id [Field :name] :table_id table-id :special_type nil :name [in (map :fk-column-name fks)])
-        table-name->id (sel :many :field->id [Table :name] :name [in (map :dest-table-name fks)])]
-    (->> fks
-         (map (fn [{:keys [fk-column-name dest-column-name dest-table-name]}]
-                (when-let [fk-column-id (fk-name->id fk-column-name)]
-                  (when-let [dest-table-id (table-name->id dest-table-name)]
-                    (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
-                      (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." table-name fk-column-name dest-table-name dest-column-name))
-                      (ins ForeignKey
-                        :origin_id fk-column-id
-                        :destination_id dest-column-id
-                        :relationship (determine-fk-type korma-table fk-column-name))
-                      (upd Field fk-column-id :special_type :fk))))))
-         dorun)))
+  (try
+    (let [fks            (table-fks @database table-name)
+          fk-name->id    (sel :many :field->id [Field :name] :table_id table-id :special_type nil :name [in (map :fk-column-name fks)])
+          table-name->id (sel :many :field->id [Table :name] :name [in (map :dest-table-name fks)])]
+      (->> fks
+           (map (fn [{:keys [fk-column-name dest-column-name dest-table-name]}]
+                  (when-let [fk-column-id (fk-name->id fk-column-name)]
+                    (when-let [dest-table-id (table-name->id dest-table-name)]
+                      (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
+                        (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." table-name fk-column-name dest-table-name dest-column-name))
+                        (ins ForeignKey
+                          :origin_id fk-column-id
+                          :destination_id dest-column-id
+                          :relationship (determine-fk-type korma-table fk-column-name))
+                        (upd Field fk-column-id :special_type :fk))))))
+           dorun))
+    (catch Throwable e
+      (log/error "Caught exception in set-table-fks-if-needed!:" e))))
 
 
 ;; ### Check for Low Cardinality
@@ -256,15 +265,18 @@
    This is only done for Fields that do not already have a `special_type`."
   {:arglists '([korma-table field])}
   [korma-table {field-name :name field-id :id special-type :special_type}]
-  (when-not special-type
-    (let [cardinality (-> korma-table
-                          (select (aggregate (count (sqlfn :DISTINCT (keyword field-name))) :count))
-                          first
-                          :count
-                          int)]
-      (when (< cardinality low-cardinality-threshold)
-        (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:table korma-table) field-name cardinality))
-        (upd Field field-id :special_type :category)))))
+  (try
+    (when-not special-type
+      (let [cardinality (-> korma-table
+                            (select (aggregate (count (sqlfn :DISTINCT (keyword field-name))) :count))
+                            first
+                            :count
+                            int)]
+        (when (< cardinality low-cardinality-threshold)
+          (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:table korma-table) field-name cardinality))
+          (upd Field field-id :special_type :category))))
+    (catch Throwable e
+      (log/error "Caught exception in check-for-low-cardinality:" e))))
 
 
 ;; ### Check For Large Avg Length
@@ -281,7 +293,9 @@
   (int (if *sql-string-length-fn*
          ;; If *sql-string-length-fn* is bound we can use just return AVG(LENGTH-FN(field))
          (-> korma-table
-             (select (aggregate (avg (sqlfn* *sql-string-length-fn* (keyword field-name))) :len))
+             (select (aggregate (avg (sqlfn* *sql-string-length-fn*
+                                             (raw (format "CAST(\"%s\" AS TEXT)" (name field-name)))))
+                                :len))
              first
              :len)
          ;; Otherwise we'll have to select *all* values of the Field and sum their counts in Clojure-land
@@ -300,12 +314,15 @@
    This is only done for textual fields, i.e. ones with `special_type` of `:CharField` or `:TextField`."
   {:arglists '([korma-table field])}
   [korma-table {base-type :base_type, field-id :id, preview-display :preview_display, :as field}]
-  (when (and preview-display                                 ; if field is already preview_display = false, no need to check again since there is no case
-             (contains? #{:CharField :TextField} base-type)) ; where we'd end up changing it.
-    (let [avg-len (field-avg-length korma-table field)]
-      (when (> avg-len average-length-no-preview-threshold)
-        (log/info (format "Field '%s.%s' has an average length of %d. Not displaying it in previews." (:table korma-table) (:name field) avg-len))
-        (upd Field field-id :preview_display false)))))
+  (try
+    (when (and preview-display                                 ; if field is already preview_display = false, no need to check again since there is no case
+               (contains? #{:CharField :TextField} base-type)) ; where we'd end up changing it.
+      (let [avg-len (field-avg-length korma-table field)]
+        (when (> avg-len average-length-no-preview-threshold)
+          (log/info (format "Field '%s.%s' has an average length of %d. Not displaying it in previews." (:table korma-table) (:name field) avg-len))
+          (upd Field field-id :preview_display false))))
+    (catch Throwable e
+      (log/error "Caught exception in check-for-large-average-length:" e))))
 
 
 ;; ### Check for URLs
@@ -332,9 +349,12 @@
    This only applies to textual fields that *do not* already have a `special_type.`"
   {:arglists '([korma-table field])}
   [korma-table {special-type :special_type, base-type :base_type, field-name :name, field-id :id, :as field}]
-  (when (and (not special-type)
-             (contains? #{:CharField :TextField} base-type))
-    (let [percent-urls (field-percent-urls korma-table field)]
-      (when (> percent-urls percent-valid-url-threshold)
-        (log/info (format "Field '%s.%s' is %d%% URLs. Marking it as a URL." (:table korma-table) field-name (int (math/round (* 100 percent-urls)))))
-        (upd Field field-id :special_type :url)))))
+  (try
+    (when (and (not special-type)
+               (contains? #{:CharField :TextField} base-type))
+      (let [percent-urls (field-percent-urls korma-table field)]
+        (when (> percent-urls percent-valid-url-threshold)
+          (log/info (format "Field '%s.%s' is %d%% URLs. Marking it as a URL." (:table korma-table) field-name (int (math/round (* 100 percent-urls)))))
+          (upd Field field-id :special_type :url))))
+    (catch Throwable e
+      (log/error "Caught exception in check-for-urls:" e))))
