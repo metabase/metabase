@@ -131,11 +131,10 @@ NavbarDirectives.directive('mbProfileLink', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template:   '<ul class="float-right">' +
+        template:   '<ul class="UserNick">' +
                         '<li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
-                            '<a class="NavItem" selectable-nav-item="settings" dropdown-toggle>' +
+                            '<a class="UserInitials" selectable-nav-item="settings" dropdown-toggle>' +
                                 '<span class="NavItem-text">{{initials}}</span> ' +
-                                '<cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>' +
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
                                 '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +

@@ -8,6 +8,7 @@
         'Cards',
         'Close',
         'ChevronDown',
+        'ChevronRight',
         'Dashboards',
         'Explore',
         'Grid',

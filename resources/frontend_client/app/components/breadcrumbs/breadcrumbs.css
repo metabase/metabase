@@ -1,0 +1,35 @@
+:root {
+    --breadcrumbs-color: #BFC1C2;
+    --breadcrumbs-padding: 2.375em;
+    --breadcrumb-page-color: #636060;
+    --breadcrumb-divider-spacing: 0.75em;
+}
+
+.Breadcrumbs {
+    display: flex;
+    align-items: center;
+    padding-top: var(--breadcrumbs-padding);
+    padding-bottom: var(--breadcrumbs-padding);
+    color: var(--breadcrumbs-color);
+}
+
+.Breadcrumb {
+    font-weight: bold;
+    font-size: 0.85em;
+    text-transform: uppercase;
+}
+
+.Breadcrumb-divider {
+    margin-left: var(--breadcrumb-divider-spacing);
+    margin-right: var(--breadcrumb-divider-spacing);
+}
+
+/* the breadcrumb path will always inherit the color of the breadcrumbs object */
+.Breadcrumb.Breadcrumb--path {
+    color: currentColor;
+}
+
+/* the breadcrumb page (current page) should be a different contrasting color  */
+.Breadcrumb.Breadcrumb--page {
+    color: var(--breadcrumb-page-color);
+}
