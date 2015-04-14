@@ -347,7 +347,7 @@
     (if (= total-non-null-count 0) 0
         (let [url-count (-> (select korma-table
                                     (aggregate (count :*) :count)
-                                    (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
+                                    (where {(raw (format "CAST(\"%s\" AS TEXT)" (name field-name))) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
           (float (/ url-count total-non-null-count))))))                                                   ; "www.zagat.com". Is this what we want?
 
 (defn- check-for-urls
