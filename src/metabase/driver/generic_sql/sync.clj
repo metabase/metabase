@@ -337,6 +337,9 @@
   "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
   0.95)
 
+;; TODO - this fails for postgres tables that we consider TextFields but don't work for char_length, such as UUID fields
+;; This is not a big deal since we wouldn't want to mark those as URLs any way, but we should do casting here to avoid
+;; that issue in the first place
 (defn- field-percent-urls
   "Return the percentage of non-null values of FIELD that are valid URLS."
   {:arglists '([korma-table field])}
@@ -347,7 +350,7 @@
     (if (= total-non-null-count 0) 0
         (let [url-count (-> (select korma-table
                                     (aggregate (count :*) :count)
-                                    (where {(raw (format "CAST(\"%s\" AS TEXT)" (name field-name))) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
+                                    (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
           (float (/ url-count total-non-null-count))))))                                                   ; "www.zagat.com". Is this what we want?
 
 (defn- check-for-urls
