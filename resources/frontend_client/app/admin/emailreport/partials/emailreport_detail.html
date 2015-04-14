@@ -1,9 +1,10 @@
 <div class="wrapper">
     <!-- breadcrumb -->
-    <section>
-        <h2 class="BreadcrumbPath">Email Reports &gt;</h2>
-        <h2 class="BreadcrumbPage" ng-if="!report.id">Create A Report</h2>
-        <h2 class="BreadcrumbPage" ng-if="report.id">{{report.name}}</h2>
+    <section class="Breadcrumbs">
+        <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/emailreport/">Email Reports</a>
+        <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="!report.id">Create a report</h2>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="report.id">{{report.name}}</h2>
     </section>
 
     <section>
@@ -72,7 +73,7 @@
                 </div>
 
                 <div>
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid || report.dataset_query.query.source_table == ''">
                         Save
                     </button>
                     <span class="FormError" ng-show="form.$error.message">{{form.$error.message}}</span>
