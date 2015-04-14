@@ -48,6 +48,10 @@
     background-color: rgba(255, 255, 255, 0.3);
 }
 
+.AdminNav .Dropdown-chevron {
+    color: #fff;
+}
+
 .UserInitials,
 .UserInitials:hover {
     font-size: 1rem;
