@@ -1,0 +1,34 @@
+<!-- breadcrumb -->
+<section>
+    <h2 class="BreadcrumbPath">People &gt;</h2>
+    <h2 class="BreadcrumbPage">Add person</h2>
+</section>
+
+<section>
+    <div class="p4 bordered">
+        <form name="form" novalidate>
+            <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
+
+            <div ng-class="{'FormFieldError': form.first_name.$error.message == undefined}">
+                <mb-form-label form="form" display-name="First name" field-name="first_name"></mb-form-label>
+                <input class="input full" name="first_name" ng-model="newUser.first_name" required />
+            </div>
+
+            <div ng-class="{'FormFieldError': form.last_name.$error.message == undefined}">
+                <mb-form-label form="form" display-name="Last name" field-name="last_name"></mb-form-label>
+                <input class="input full" name="last_name" ng-model="newUser.last_name" required />
+            </div>
+
+            <div ng-class="{'FormFieldError': form.email.$error.message == undefined}">
+                <mb-form-label form="form" display-name="Email" field-name="email"></mb-form-label>
+                <input class="input full" name="email" ng-model="newUser.email" required />
+            </div>
+
+            <div>
+                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(newUser)" ng-disabled="!form.$valid">
+                    Create
+                </button>
+            </div>
+        </form>
+    </div>
+</section>

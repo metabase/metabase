@@ -2,7 +2,8 @@
 /*global _*/
 
 var PeopleControllers = angular.module('corvusadmin.people.controllers', [
-    'corvus.services'
+    'corvus.services',
+    'metabase.forms'
 ]);
 
 PeopleControllers.controller('PeopleList', ['$scope', 'Organization',
@@ -64,24 +65,15 @@ PeopleControllers.controller('PeopleList', ['$scope', 'Organization',
                 userId: userId
             }, function(result) {
                 for (var i = 0; i < $scope.people.length; i++) {
-                    console.log(i, '=', $scope.people[i]);
                     if($scope.people[i].user.id === userId) {
-                        console.log('matched');
                         $scope.people.splice(i, 1);
                         break;
                     }
                 }
-
-                console.log($scope.people);
             }, function (error) {
                 console.log('error', error);
                 $scope.alertError('failed to remove user from org');
             });
-        };
-
-        // callback function when a new user is created and added to this org
-        $scope.createdUser = function(newUser) {
-            $scope.people.unshift(newUser);
         };
 
         $scope.$watch('currentOrg', function (org) {
@@ -96,5 +88,30 @@ PeopleControllers.controller('PeopleList', ['$scope', 'Organization',
             });
 
         });
+    }
+]);
+
+
+PeopleControllers.controller('PeopleAdd', ['$scope', '$location', 'Organization', 'MetabaseForm',
+    function($scope, $location, Organization, MetabaseForm) {
+
+        var formFields = {
+            first_name: 'first_name',
+            last_name: 'last_name',
+            email: 'email'
+        };
+
+        $scope.save = function(newUser) {
+            MetabaseForm.clearFormErrors($scope.form, formFields);
+
+            newUser.orgId = $scope.currentOrg.id;
+            newUser.admin = false;
+            Organization.member_create(newUser, function (result) {
+                // just go back to people listing page for now
+                $location.path('/'+$scope.currentOrg.slug+'/admin/people/');
+            }, function (error) {
+                MetabaseForm.parseFormErrors($scope.form, formFields, error);
+            });
+        };
     }
 ]);
