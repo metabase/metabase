@@ -68,9 +68,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     }
                 });
             } else if (engine === 'h2') {
-                conn_str = "file:"+details.file;
-            } else {
-                conn_str = "";
+                map.file = details.conn_str.substring(5);
             }
 
             return map;
@@ -89,7 +87,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
             return {
                 'conn_str': conn_str
-            }
+            };
         };
 
         var parseFormErrors = function(error) {
