@@ -107,8 +107,9 @@
                         :table_id table-id
                         :name field-name
                         :base_type (or (*column->base-type* (keyword type-name))
-                                       (throw (Exception. (str "Column '" field-name "' has an unknown type: '" type-name
-                                                               "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync).")))))))
+                                       (do (log/warn (str "Column '" field-name "' has an unknown type: '" type-name
+                                                          "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))
+                                           :UnknownField)))))
                   fields)))
     (catch Throwable e
       (log/error "Caught exception in sync-fields-create:" e))))
