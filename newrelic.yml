@@ -1,0 +1,275 @@
+# This file configures the New Relic Agent.  New Relic monitors
+# Java applications with deep visibility and low overhead.  For more details and additional
+# configuration options visit https://docs.newrelic.com/docs/java/java-agent-configuration.
+#
+# <%= generated_for_user %>
+#
+# This section is for settings common to all environments.
+# Do not add anything above this next line.
+common: &default_settings
+
+  # ============================== LICENSE KEY ===============================
+  # You must specify the license key associated with your New Relic
+  # account. For example, if your license key is 12345 use this:
+  # license_key: '12345'
+  # The key binds your Agent's data to your account in the New Relic service.
+  # license_key: '<%= license_key %>'
+
+  # Agent Enabled
+  # Use this setting to disable the agent instead of removing it from the startup command.
+  # Default is true.
+  agent_enabled: true
+
+  # To enable high security, set this property to true. When in high
+  # security mode, the agent will use SSL and obfuscated SQL. Additionally,
+  # request parameters and message parameters will not be sent to New Relic.
+  high_security: true
+
+  # Set to true to enable support for auto app naming.
+  # The name of each web app is detected automatically
+  # and the agent reports data separately for each one.
+  # This provides a finer-grained performance breakdown for
+  # web apps in New Relic.
+  # Default is false.
+  enable_auto_app_naming: false
+
+  # Set to true to enable component-based transaction naming.
+  # Set to false to use the URI of a web request as the name of the transaction.
+  # Default is true.
+  enable_auto_transaction_naming: true
+
+  # The agent uses its own log file to keep its logging
+  # separate from that of your application.  Specify the log level here.
+  # This setting is dynamic, so changes do not require restarting your application.
+  # The levels in increasing order of verboseness are:
+  #   off, severe, warning, info, fine, finer, finest
+  # Default is info.
+  log_level: info
+
+  # Log all data sent to and from New Relic in plain text.
+  # This setting is dynamic, so changes do not require restarting your application.
+  # Default is false.
+  audit_mode: false
+
+  # The number of backup log files to save.
+  # Default is 1.
+  log_file_count: 1
+
+  # The maximum number of kbytes to write to any one log file.
+  # The log_file_count must be set greater than 1.
+  # Default is 0 (no limit).
+  log_limit_in_kbytes: 0
+
+  # Override other log rolling configuration and roll the logs daily.
+  # Default is false.
+  log_daily: false
+
+  # The name of the log file.
+  # Default is newrelic_agent.log.
+  log_file_name: newrelic_agent.log
+
+  # The log file directory.
+  # Default is the logs directory in the newrelic.jar parent directory.
+  #log_file_path:
+
+  # The agent communicates with New Relic via https by
+  # default.  If you want to communicate with newrelic via http,
+  # then turn off SSL by setting this value to false.
+  # This work is done asynchronously to the threads that process your
+  # application code, so response times will not be directly affected
+  # by this change.
+  # Default is true.
+  ssl: true
+
+  # Proxy settings for connecting to the New Relic server:
+  # If a proxy is used, the host setting is required.  Other settings
+  # are optional.  Default port is 8080.  The username and password
+  # settings will be used to authenticate to Basic Auth challenges
+  # from a proxy server.
+  #proxy_host: hostname
+  #proxy_port: 8080
+  #proxy_user: username
+  #proxy_password: password
+
+  # Limits the number of lines to capture for each stack trace.
+  # Default is 30
+  max_stack_trace_lines: 30
+
+  # Provides the ability to configure the attributes sent to New Relic. These
+  # attributes can be found in transaction traces, traced errors, Insight's
+  # transaction events, and Insight's page views.
+  attributes:
+
+    # When true, attributes will be sent to New Relic. The default is true.
+    enabled: true
+
+    #A comma separated list of attribute keys whose values should
+    # be sent to New Relic.
+    #include:
+
+    # A comma separated list of attribute keys whose values should
+    # not be sent to New Relic.
+    #exclude:
+
+
+  # Transaction tracer captures deep information about slow
+  # transactions and sends this to the New Relic service once a
+  # minute. Included in the transaction is the exact call sequence of
+  # the transactions including any SQL statements issued.
+  transaction_tracer:
+
+    # Transaction tracer is enabled by default. Set this to false to turn it off.
+    # This feature is not available to Lite accounts and is automatically disabled.
+    # Default is true.
+    enabled: true
+
+    # Threshold in seconds for when to collect a transaction
+    # trace. When the response time of a controller action exceeds
+    # this threshold, a transaction trace will be recorded and sent to
+    # New Relic. Valid values are any float value, or (default) "apdex_f",
+    # which will use the threshold for the "Frustrated" Apdex level
+    # (greater than four times the apdex_t value).
+    # Default is apdex_f.
+    transaction_threshold: apdex_f
+
+    # When transaction tracer is on, SQL statements can optionally be
+    # recorded. The recorder has three modes, "off" which sends no
+    # SQL, "raw" which sends the SQL statement in its original form,
+    # and "obfuscated", which strips out numeric and string literals.
+    # Default is obfuscated.
+    record_sql: obfuscated
+
+    # Set this to true to log SQL statements instead of recording them.
+    # SQL is logged using the record_sql mode.
+    # Default is false.
+    log_sql: false
+
+    # Threshold in seconds for when to collect stack trace for a SQL
+    # call. In other words, when SQL statements exceed this threshold,
+    # then capture and send to New Relic the current stack trace. This is
+    # helpful for pinpointing where long SQL calls originate from.
+    # Default is 0.5 seconds.
+    stack_trace_threshold: 0.5
+
+    # Determines whether the agent will capture query plans for slow
+    # SQL queries. Only supported for MySQL and PostgreSQL.
+    # Default is true.
+    explain_enabled: true
+
+    # Threshold for query execution time below which query plans will not
+    # not be captured.  Relevant only when `explain_enabled` is true.
+    # Default is 0.5 seconds.
+    explain_threshold: 0.5
+
+    # Use this setting to control the variety of transaction traces.
+    # The higher the setting, the greater the variety.
+    # Set this to 0 to always report the slowest transaction trace.
+    # Default is 20.
+    top_n: 20
+
+  # Error collector captures information about uncaught exceptions and
+  # sends them to New Relic for viewing.
+  error_collector:
+
+    # This property enables the collection of errors. If the property is not
+    # set or the property is set to false, then errors will not be collected.
+    # Default is true.
+    enabled: true
+
+    # Use this property to exclude specific exceptions from being reported as errors
+    # by providing a comma separated list of full class names.
+    # The default is to exclude akka.actor.ActorKilledException. If you want to override
+    # this, you must provide any new value as an empty list is ignored.
+    ignore_errors: akka.actor.ActorKilledException
+
+    # Use this property to exclude specific http status codes from being reported as errors
+    # by providing a comma separated list of status codes.
+    # The default is to exclude 404s. If you want to override
+    # this, you must provide any new value as an empty list is ignored.
+    ignore_status_codes: 404
+
+  # Transaction Events are used for Histograms and Percentiles. Unaggregated data is collected
+  # for each web transaction and sent to the server on harvest.
+  transaction_events:
+
+    # Set to false to disable transaction events.
+    # Default is true.
+    enabled: true
+
+    # Events are collected up to the configured amount. Afterwards, events are sampled to
+    # maintain an even distribution across the harvest cycle. Largest value accepted is 10000.
+    # Default is 2000.  Setting to 0 will disable.
+    max_samples_stored: 2000
+
+  # Cross Application Tracing adds request and response headers to
+  # external calls using supported HTTP libraries to provide better
+  # performance data when calling applications monitored by other New Relic Agents.
+  cross_application_tracer:
+
+    # Set to false to disable cross application tracing.
+    # Default is true.
+    enabled: true
+
+  # Thread profiler measures wall clock time, CPU time, and method call counts
+  # in your application's threads as they run.
+  # This feature is not available to Lite accounts and is automatically disabled.
+  thread_profiler:
+
+    # Set to false to disable the thread profiler.
+    # Default is true.
+    enabled: true
+
+  # New Relic Real User Monitoring gives you insight into the performance real users are
+  # experiencing with your website. This is accomplished by measuring the time it takes for
+  # your users' browsers to download and render your web pages by injecting a small amount
+  # of JavaScript code into the header and footer of each page.
+  browser_monitoring:
+
+    # By default the agent automatically inserts API calls in compiled JSPs to
+    # inject the monitoring JavaScript into web pages. Not all rendering engines are supported.
+    # See https://docs.newrelic.com/docs/java/real-user-monitoring-in-java#manual_instrumentation
+    # for instructions to add these manually to your pages.
+    # Set this attribute to false to turn off this behavior.
+    auto_instrument: true
+
+  class_transformer:
+    # This instrumentation reports the name of the user principal returned from
+    # HttpServletRequest.getUserPrincipal() when servlets and filters are invoked.
+    com.newrelic.instrumentation.servlet-user:
+      enabled: false
+
+  # User-configurable custom labels for this agent.  Labels are name-value pairs.
+  # There is a maximum of 64 labels per agent.  Names and values are limited to 255 characters.
+  # Names and values may not contain colons (:) or semicolons (;).
+  labels:
+
+    # An example label
+    #label_name: label_value
+
+
+# Application Environments
+# ------------------------------------------
+# Environment specific settings are in this section.
+# You can use the environment to override the default settings.
+# For example, to change the app_name setting.
+# Use -Dnewrelic.environment=<environment> on the Java startup command line
+# to set the environment.
+# The default environment is production.
+
+# NOTE if your application has other named environments, you should
+# provide configuration settings for these environments here.
+
+development:
+  <<: *default_settings
+  app_name: Metabase (Development)
+
+test:
+  <<: *default_settings
+  app_name: Metabase (Test)
+
+production:
+  <<: *default_settings
+
+staging:
+  <<: *default_settings
+  app_name: Metabase (Staging)
