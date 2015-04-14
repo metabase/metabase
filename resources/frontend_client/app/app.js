@@ -69,6 +69,12 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         }
     });
 
+    $routeProvider.when('/:orgSlug/admin/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/' + routeParams.orgSlug + '/admin/org/';
+        }
+    });
+
     // admin routes
     $routeProvider.when('/:orgSlug/admin/test_login_form', {
         templateUrl: '/app/admin/test_login_form.html',
