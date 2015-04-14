@@ -40,3 +40,17 @@ MetabaseFormsService.service('MetabaseForm', function() {
         }
     };
 });
+
+MetabaseFormsService.directive('mbFormLabel', [function () {
+
+    return {
+        restrict: 'E',
+        replace: true,
+        template: '<label>{{displayName}}: <span ng-show="form[fieldName].$error.message">{{form[fieldName].$error.message}}</span></label>',
+        scope: {
+            form: '=',
+            displayName: '@',
+            fieldName: '@'
+        }
+    };
+}]);

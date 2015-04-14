@@ -10,22 +10,22 @@
             <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
             <div ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
-                <label>Slug: <span ng-show="form.slug.$error.message">{{form.slug.$error.message}}</span></label>
+                <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
                 <input class="input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
             </div>
 
             <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
-                <label>Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
+                <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
                 <input class="input full" name="name" ng-model="currentOrg.name" required />
             </div>
 
             <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
-                <label>Description: <span ng-show="form.description.$error.message">{{form.description.$error.message}}</span></label>
+                <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
                 <input class="input full" name="description" ng-model="currentOrg.description" />
             </div>
 
             <div ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
-                <label>Logo url: <span ng-show="form.logo_url.$error.message">{{form.logo_url.$error.message}}</span></label>
+                <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
                 <input class="input full" name="logo_url" ng-model="currentOrg.logo_url" />
             </div>
 
