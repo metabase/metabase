@@ -5,13 +5,24 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.models.hydrate :refer :all]
-            (metabase.models [org :refer [Org]]
-                             [user :refer [User create-user]]
-                             [org-perm :refer [OrgPerm grant-org-perm]])
+            (metabase.models [common :as common]
+                             [org :refer [Org]]
+                             [org-perm :refer [OrgPerm grant-org-perm]]
+                             [user :refer [User create-user]])
             [metabase.util :as util]
             [ring.util.request :as req]))
 
+(defannotation TimezoneOption
+  "Param must be a valid option from `metabase.models.common/timezones`."
+  [symb value :nillable]
+  (checkp-contains? (set common/timezones) symb value))
+
 ;; ## /api/org Endpoints
+
+(defendpoint GET "/form_input"
+  "Values of options for the create/edit `Organization` UI."
+  []
+  {:timezones common/timezones})
 
 (defendpoint GET "/"
   "Fetch a list of all `Orgs`. Superusers get all organizations; normal users simpliy see the orgs they are members of."
@@ -23,11 +34,12 @@
 
 (defendpoint POST "/"
   "Create a new `Org`. You must be a superuser to do this."
-  [:as {{:keys [name slug] :as body} :body}]
+  [:as {{:keys [name slug report_timezone] :as body} :body}]
   {name [Required NonEmptyString]
-   slug [Required NonEmptyString]} ; TODO - check logo_url ?
+   slug [Required NonEmptyString]
+   report_timezone TimezoneOption} ; TODO - check logo_url ?
   (check-superuser)
-  (let-500 [{:keys [id] :as new-org} (->> (util/select-non-nil-keys body :slug :name :description :logo_url)
+  (let-500 [{:keys [id] :as new-org} (->> (util/select-non-nil-keys body :slug :name :description :logo_url :report_timezone)
                                           (mapply ins Org))]
     (grant-org-perm id *current-user-id* true) ; now that the Org exists, add the creator as the first admin member
     new-org))                                  ; make sure the api response is still the newly created org
@@ -51,12 +63,14 @@
 
 (defendpoint PUT "/:id"
   "Update an `Org`."
-  [id :as {{:keys [name description logo_url]} :body}]
-  {name NonEmptyString}
+  [id :as {{:keys [name description logo_url report_timezone]} :body}]
+  {name NonEmptyString
+   report_timezone TimezoneOption}
   (write-check Org id)
   (check-500 (upd-non-nil-keys Org id
                                :description description
                                :logo_url logo_url
+                               :report_timezone report_timezone
                                :name name))
   (sel :one Org :id id))
 

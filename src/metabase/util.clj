@@ -119,12 +119,14 @@
   "format a number into a more human readable form."
   [number]
   {:pre [(number? number)]}
-  (if (or (float? number)
-          (decimal? number))
-    ;; looks like this is a decimal number, format with precision of 2
-    (format "%,.2f" number)
-    ;; otherwise expect this is a whole number
-    (format "%,d" number)))
+  (let [decimal-type? #(or (float? %) (decimal? %))]
+    (cond
+      ;; looks like this is a decimal number, format with precision of 2
+      (and (decimal-type? number) (not (zero? (mod number 1)))) (format "%,.2f" number)
+      ;; this is a decimal type number with no actual decimal value, so treat it as a whole number
+      (decimal-type? number) (format "%,d" (long number))
+      ;; otherwise this is a whole number
+      :else (format "%,d" number))))
 
 (defn jdbc-clob->str
   "Convert a `JdbcClob` or `PGobject` to a `String`."
@@ -176,30 +178,32 @@
   "Is STRING a valid HTTP/HTTPS URL?"
   [^String string]
   (boolean (when string
-             (when-let [url (try (java.net.URL. string)
-                                 (catch java.net.MalformedURLException _
-                                   nil))]
+             (when-let [^java.net.URL url (try (java.net.URL. string)
+                                               (catch java.net.MalformedURLException _
+                                                 nil))]
                (and (re-matches #"^https?$" (.getProtocol url))          ; these are both automatically downcased
                     (re-matches #"^.+\..{2,}$" (.getAuthority url))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
+(def ^:private ^:const host-up-timeout
+  "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
+  5000)
+
 (defn host-port-up?
   "Returns true if the port is active on a given host, false otherwise"
-  [hostname port]
+  [^String hostname ^Integer port]
   (try
-    (let [sock-addr (InetSocketAddress. hostname port)
-          timeout 5000]
+    (let [sock-addr (InetSocketAddress. hostname port)]
       (with-open [sock (Socket.)]
-        (. sock connect sock-addr timeout)
+        (. sock connect sock-addr host-up-timeout)
         true))
     (catch Exception _ false)))
 
 (defn host-up?
   "Returns true if the host given by hostname is reachable, false otherwise "
-  [hostname]
+  [^String hostname]
   (try
-    (let [host-addr (. InetAddress getByName hostname)
-          timeout 5000]
-      (. host-addr isReachable timeout))
+    (let [host-addr (InetAddress/getByName hostname)]
+      (.isReachable host-addr host-up-timeout))
     (catch Exception _ false)))
 
 (defn rpartial

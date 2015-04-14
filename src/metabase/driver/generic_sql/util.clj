@@ -27,20 +27,38 @@
   (connection->korma-db (driver/connection database)))
 
 
-(def ^:dynamic *jdbc-metadata*
+(def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
   nil)
 
-(defn with-jdbc-metadata
-  "Call fn F with the JDBC Metadata for DATABASE.
-   This will reuse `*jdbc-metadata*` if it's already set (to avoid opening extra connections).
-   Otherwise it will open a new metadata connection and bind `*jdbc-metadata*` so it's available in subsequent calls to `with-jdbc-metadata` within F."
+(defn -with-jdbc-metadata
+  "Internal implementation. Don't use this directly; use `with-jdbc-metadata`."
   [database f]
-  ;; Does this work if DATABASE is a delay *or* a map ?
   (if *jdbc-metadata* (f *jdbc-metadata*)
                       (jdbc/with-db-metadata [md (driver/connection database)]
                         (binding [*jdbc-metadata* md]
                           (f *jdbc-metadata*)))))
+
+(defmacro with-jdbc-metadata
+  "Execute BODY with the jdbc metadata for DATABASE bound to BINDING.
+   This will reuse `*jdbc-metadata*` if it's already set (to avoid opening extra connections).
+   Otherwise it will open a new metadata connection and bind `*jdbc-metadata*` so it can be reused by subsequent calls to `with-jdbc-metadata` within BODY.
+
+    (with-jdbc-metadata [^java.sql.DatabaseMetaData md (sel :one Database :id 1)] ; (1)
+      (-> (.getPrimaryKeys md nil nil nil)
+          jdbc/result-set-seq                                                     ; (2)
+          doall))                                                                 ; (3)
+
+   NOTES
+
+   1.  You should tag BINDING to avoid reflection.
+   2.  Use `jdbc/result-set-seq` to convert JDBC `ResultSet` into something we can use in Clojure
+   3.  Make sure to realize the lazy sequence within the BODY before connection is closed."
+  [[binding database] & body]
+  {:pre [(symbol? binding)]}
+  `(-with-jdbc-metadata ~database
+     (fn [~binding]
+       ~@body)))
 
 (defn korma-entity
   "Return a Korma entity for TABLE.

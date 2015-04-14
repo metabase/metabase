@@ -2,6 +2,7 @@
   "databaseChangeLog": [
       {"include": {"file": "migrations/001_initial_schema.json"}},
       {"include": {"file": "migrations/002_add_session_table.json"}},
-      {"include": {"file": "migrations/004_add_setting_table.json"}}
+      {"include": {"file": "migrations/004_add_setting_table.json"}},
+      {"include": {"file": "migrations/005_add_org_report_tz_column.json"}}
   ]
 }

@@ -3,16 +3,18 @@
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver :as driver]))
+            [metabase.driver :as driver])
+  (:import (java.util ArrayList
+                      Collection)))
 
 
 (def ^:const tile-size 256)
 (def ^:const pixel-origin (float (/ tile-size 2)))
 (def ^:const pixel-per-lon-degree (float (/ tile-size 360.0)))
-(def ^:const pixel-per-lon-radian (float (/ tile-size (* 2 java.lang.Math/PI))))
+(def ^:const pixel-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
 
 (defn- radians->degrees [rad]
-  (/ rad (float (/ java.lang.Math/PI 180))))
+  (/ rad (float (/ Math/PI 180))))
 
 (defn- tile-lat-lon
   "Get the Latitude & Longitude of the upper left corner of a given tile"
@@ -22,8 +24,8 @@
         corner-y    (float (/ (* y tile-size) num-tiles))
         lon         (float (/ (- corner-x pixel-origin) pixel-per-lon-degree))
         lat-radians (/ (- corner-y pixel-origin) (* pixel-per-lon-radian -1))
-        lat          (radians->degrees (- (* 2 (java.lang.Math/atan (java.lang.Math/exp lat-radians)))
-                                          (/ java.lang.Math/PI 2)))]
+        lat         (radians->degrees (- (* 2 (Math/atan (Math/exp lat-radians)))
+                                         (/ Math/PI 2)))]
     {:lat lat
      :lon lon}))
 
@@ -47,10 +49,11 @@
   [lat-col-idx lon-col-idx {{:keys [rows cols]} :data}]
   (if-not (> (count rows) 0)
     ;; if we have no rows then return an empty list of points
-    (java.util.ArrayList. [])
+    (ArrayList. (ArrayList.))
     ;; otherwise we go over the data, pull out the lat/lon columns, and convert them to ArrayLists
-    (->> (map (fn [row] (java.util.ArrayList. [(nth row lat-col-idx) (nth row lon-col-idx)])) rows)
-         (java.util.ArrayList.))))
+    (ArrayList. ^Collection (map (fn [row]
+                                   (ArrayList. ^Collection (vector (nth row lat-col-idx) (nth row lon-col-idx))))
+                                 rows))))
 
 
 (defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
