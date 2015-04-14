@@ -54,14 +54,21 @@
 ;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate"
   "Validate that we can connect to a `Database`."
-  [:as {{:keys [host port]} :body}]
+  [:as {{:keys [host port engine] :as details} :body}]
   {host Required
    port Required}
-  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
-    (cond
-      (u/host-port-up? host port) {:valid true}
-      (u/host-up? host)           (response-invalid "Invalid port")
-      :else                       (response-invalid "Host not reachable"))))
+  (let [details (assoc details :engine (keyword engine))
+        response-invalid (fn [field m] {:status 400 :body {:valid false
+                                                          field m        ; work with the new {:field error-message} format
+                                                          :message m}})] ; but be backwards-compatible with the UI as it exists right now
+    (try
+      (cond
+        (driver/can-connect-with-details? details) {:valid true}
+        (u/host-port-up? host port)                (response-invalid :dbname "Invalid connection details")
+        (u/host-up? host)                          (response-invalid :port "Invalid port")
+        :else                                      (response-invalid :host "Host not reachable"))
+      (catch Throwable e
+        (response-invalid :dbname (.getMessage e))))))
 
 (defendpoint GET "/:id"
   "Get `Database` with ID."
