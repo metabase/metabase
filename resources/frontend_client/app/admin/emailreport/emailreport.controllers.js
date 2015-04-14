@@ -1,6 +1,9 @@
 'use strict';
 
-var EmailReportControllers = angular.module('corvusadmin.emailreport.controllers', ['corvus.metabase.services']);
+var EmailReportControllers = angular.module('corvusadmin.emailreport.controllers', [
+    'corvus.metabase.services',
+    'metabase.forms'
+]);
 
 EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', '$location', 'EmailReport',
     function($scope, $routeParams, $location, EmailReport) {
