@@ -58,7 +58,17 @@
   (db-dispatch-fn "connection"))
 
 (defmulti can-connect?
-  "Check whether we can connect to DATABASE and perform a simple query."
+  "Check whether we can connect to DATABASE and perform a simple query.
+   (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
+
+     (can-connect? (sel :one Database :id 1))"
+  (db-dispatch-fn "connection"))
+
+(defmulti can-connect-with-details?
+  "Check whether we can connect to a database and performa a simple query.
+   Returns true if we can, otherwise returns false or throws an Exception.
+
+     (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})"
   (db-dispatch-fn "connection"))
 
 (defmulti sync-database
