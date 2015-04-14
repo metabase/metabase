@@ -32,12 +32,12 @@
 
 
 ;; ## GETTERS
-;; Test defsetting getter fn
-(expect nil
+;; Test defsetting getter fn. Should return the value from env var MB_TEST_SETTING_1
+(expect "ABCDEFG"
   (do (set-settings nil nil)
-    (test-setting-1)))
+      (test-setting-1)))
 
-;; Test `get` function
+;; Test `get` function. Shouldn't return env var value
 (expect nil
   (do (set-settings nil nil)
       (setting/get :test-setting-1)))
@@ -46,6 +46,11 @@
 (expect "[Default Value]"
   (do (set-settings nil nil)
       (test-setting-2)))
+
+;; `get` shouldn't return default value
+(expect nil
+  (do (set-settings nil nil)
+      (setting/get :test-setting-2)))
 
 
 ;; ## SETTERS
@@ -71,6 +76,7 @@
 (expect-eval-actual-first
     ["COOL"
      true
+     "ABCDEFG"
      nil
      false]
   [(do (test-setting-1 "COOL")
@@ -78,6 +84,7 @@
    (setting-exists? :test-setting-1)
    (do (test-setting-1 nil)
        (test-setting-1))
+   (setting/get :test-setting-1)
    (setting-exists? :test-setting-1)])
 
 ;; Test defsetting delete w/ default value
@@ -97,6 +104,7 @@
 (expect-eval-actual-first
     ["VERY NICE!"
      true
+     "ABCDEFG"
      nil
      false]
   [(do (test-setting-1 "VERY NICE!")
@@ -104,6 +112,7 @@
    (setting-exists? :test-setting-1)
    (do (test-setting-1 nil)
        (test-setting-1))
+   (setting/get :test-setting-1)
    (setting-exists? :test-setting-1)])
 
 ;; ## ALL SETTINGS FUNCTIONS
@@ -117,7 +126,7 @@
 
 ;; all-with-descriptions
 (expect-eval-actual-first
-    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default nil}
+    [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
      {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
   (do (set-settings nil "S2")
       (filter (fn [{k :key}]
