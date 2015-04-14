@@ -121,9 +121,9 @@
     (->> (sel :many Field :table_id table-id :active true)
          (pmap (fn [field]
                  (try
+                   (check-for-urls korma-table field)
                    (check-for-low-cardinality korma-table field)
                    (check-for-large-average-length korma-table field)
-                   (check-for-urls korma-table field)
                    (catch Throwable e
                      (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
          dorun)
