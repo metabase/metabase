@@ -12,6 +12,7 @@
 (def available-drivers
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
   [["h2" "H2"]
+   ["mongo" "MongoDB"]
    ["postgres" "PostgreSQL"]])
 
 ;; TODO lazily requiring this way is a bit wonky.
