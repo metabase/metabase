@@ -17,44 +17,46 @@
             </div>
         </div>
 
-        <div class="p4 bordered">
+        <div class="bg-white rounded bordered">
             <form name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-                <div ng-init="" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
-                    <label>Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
-                    <input class="input full" name="name" ng-model="database.name" required />
+                <div class="Form-field" ng-init="" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                    <label class="Form-label">Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
+                    <input class="Form-input full" name="name" ng-model="database.name" required />
                 </div>
 
-                <div>
-                    <label>Database Type:</label>
-                    <select class="Select" name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
+                <div class="Form-field"">
+                    <label class="Form-label">Database Type:</label>
+                    <label class="Select">
+                        <select name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
+                    </label>
                 </div>
 
                 <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
-                    <div ng-class="{'FormFieldError': form.host.$error.message == undefined}">
-                        <label>Host: <span ng-show="form.host.$error.message">{{form.host.$error.message}}</span></label>
-                        <input class="input full" name="host" ng-model="details.host" required />
+                    <div class="Form-field" ng-class="{'FormFieldError': form.host.$error.message == undefined}">
+                        <label class="Form-label">Host: <span ng-show="form.host.$error.message">{{form.host.$error.message}}</span></label>
+                        <input class="Form-input full" name="host" ng-model="details.host" required />
                     </div>
 
-                    <div ng-class="{'FormFieldError': form.port.$error.message == undefined}">
-                        <label>Port: <span ng-show="form.port.$error.message">{{form.port.$error.message}}</span></label>
-                        <input class="input full" name="port" ng-model="details.port" required />
+                    <div class="Form-field" ng-class="{'Form--error': form.port.$error.message == undefined}">
+                        <label class="Form-label">Port: <span ng-show="form.port.$error.message">{{form.port.$error.message}}</span></label>
+                        <input class="Form-input full" name="port" ng-model="details.port" required />
                     </div>
 
-                    <div ng-class="{'FormFieldError': form.dbname.$error.message == undefined}">
-                        <label>Database name: <span ng-show="form.dbname.$error.message">{{form.dbname.$error.message}}</span></label>
-                        <input class="input full" name="dbname" ng-model="details.dbname" required />
+                    <div class="Form-field" ng-class="{'FormFieldError': form.dbname.$error.message == undefined}">
+                        <label class="Form-label">Database name: <span ng-show="form.dbname.$error.message">{{form.dbname.$error.message}}</span></label>
+                        <input class="Form-input full" name="dbname" ng-model="details.dbname" required />
                     </div>
 
-                    <div ng-class="{'FormFieldError': form.user.$error.message == undefined}">
-                        <label>Database username: <span ng-show="form.user.$error.message">{{form.user.$error.message}}</span></label>
-                        <input class="input full" name="user" ng-model="details.user" required />
+                    <div class="Form-field" ng-class="{'FormFieldError': form.user.$error.message == undefined}">
+                        <label class="Form-label">Database username: <span ng-show="form.user.$error.message">{{form.user.$error.message}}</span></l abel>
+                        <input class="Form-input full" name="user" ng-model="details.user" required />
                     </div>
 
-                    <div ng-class="{'FormFieldError': form.pass.$error.message == undefined}">
-                        <label>Database password: <span ng-show="form.pass.$error.message">{{form.pass.$error.message}}</span></label>
-                        <input class="input full" name="pass" ng-model="details.pass" />
+                    <div class="Form-field" ng-class="{'FormField--error': form.pass.$error.message == undefined}">
+                        <label class="Form-label">Database password: <span ng-show="form.pass.$error.message">{{form.pass.$error.message}}</span></label>
+                        <input class="Form-input full" name="pass" ng-model="details.pass" />
                     </div>
                 </div>
 
