@@ -165,8 +165,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 ]);
 
 
-DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', 'Metabase',
-    function($scope, $routeParams, Metabase) {
+DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$location', 'Metabase',
+    function($scope, $routeParams, $location, Metabase) {
 
         Metabase.db_get({
             'dbId': $routeParams.databaseId
