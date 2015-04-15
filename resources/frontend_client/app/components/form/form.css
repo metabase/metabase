@@ -2,6 +2,7 @@
   --form-padding: 1em;
 }
 
+/* TODO: deprecate this base object, it shouldn't be this specific */
 .Form {
   margin: 0 auto;
   max-width: 640px;
@@ -13,6 +14,35 @@
   font-size: 1.2rem;
 }
 
+.Form-field {
+   color: #ADADAD;
+   padding-left: 1em;
+   padding-right: 1em;
+   margin-bottom: 1em;
+}
+
+/* TODO: remove this scoping once we've converted non admin forms */
+/* form labels inherit the color of the parent, allowing for easy error changes */
+.Form-field .Form-label {
+    display: block;
+    font-size: 1em;
+    font-weight: bold;
+    color: currentColor;
+}
+
+.Form-input {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    font-size: 1.185em;
+    border: none;
+    background-color: transparent;
+}
+
+.Form-input:focus {
+    outline: none;
+}
+
+/* TODO: replace instances of Form-group with Form-field */
 .Form-group {
   padding: var(--form-padding);
   transition: opacity .3s linear;
