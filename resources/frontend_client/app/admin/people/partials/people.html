@@ -1,31 +1,33 @@
-<!-- breadcrumb / page title -->
-<section class="clearfix">
-    <a class="Button Button--primary float-right" cv-org-href="/admin/people/add">Add person</a>
-    <h2 class="PageTitle">People</h2>
-</section>
+<div class="wrapper">
+    <!-- breadcrumb / page title -->
+    <section class="clearfix">
+        <a class="Button Button--primary float-right" cv-org-href="/admin/people/add">Add person</a>
+        <h2 class="PageTitle">People</h2>
+    </section>
 
-<section>
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="perm in people">
-                <td>
-                    {{perm.user.common_name}} <span ng-show="perm.admin" class="AdminBadge">Admin</span>
-                </td>
-                <td>
-                    <button class="Button" ng-click="toggle(perm.user.id)">
-                        <span ng-show="perm.admin">Revoke</span>
-                        <span ng-show="!perm.admin">Grant</span>
-                        admin
-                    </button>
-                    <button class="Button Button--Danger" ng-click="delete(perm.user.id)" delete-confirm>Remove</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</section>
+    <section>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="perm in people">
+                    <td>
+                        {{perm.user.common_name}} <span ng-show="perm.admin" class="AdminBadge">Admin</span>
+                    </td>
+                    <td>
+                        <button class="Button" ng-click="toggle(perm.user.id)">
+                            <span ng-show="perm.admin">Revoke</span>
+                            <span ng-show="!perm.admin">Grant</span>
+                            admin
+                        </button>
+                        <button class="Button Button--Danger" ng-click="delete(perm.user.id)" delete-confirm>Remove</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</div>

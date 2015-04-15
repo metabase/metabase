@@ -1,40 +1,42 @@
-<!-- breadcrumb / page title -->
-<section>
-    <h2 class="PageTitle">Organization</h2>
-</section>
+<div class="wrapper">
+    <!-- breadcrumb / page title -->
+    <section>
+        <h2 class="PageTitle">Organization</h2>
+    </section>
 
-<section>
-    <!-- form -->
-    <div class="p4 bordered">
-        <form name="form" novalidate>
-            <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
+    <section>
+        <!-- form -->
+        <div class="p4 bordered">
+            <form name="form" novalidate>
+                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-            <div ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
-                <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
-                <input class="input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
-            </div>
+                <div ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
+                    <input class="input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
+                </div>
 
-            <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
-                <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                <input class="input full" name="name" ng-model="currentOrg.name" required />
-            </div>
+                <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                    <input class="input full" name="name" ng-model="currentOrg.name" required />
+                </div>
 
-            <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
-                <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                <input class="input full" name="description" ng-model="currentOrg.description" />
-            </div>
+                <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
+                    <input class="input full" name="description" ng-model="currentOrg.description" />
+                </div>
 
-            <div ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
-                <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
-                <input class="input full" name="logo_url" ng-model="currentOrg.logo_url" />
-            </div>
+                <div ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
+                    <input class="input full" name="logo_url" ng-model="currentOrg.logo_url" />
+                </div>
 
-            <!-- SAVE BUTTON -->
-            <div>
-                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
-                    Save
-                </button>
-            </div>
-        </form>
-    </div>
-</section>
+                <!-- SAVE BUTTON -->
+                <div>
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>

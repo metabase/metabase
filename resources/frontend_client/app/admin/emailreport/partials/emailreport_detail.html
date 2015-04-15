@@ -1,116 +1,84 @@
-<section class="wrapper">
-    <h2 class="py2">New Email Report</h2>
+<div class="wrapper">
+    <!-- breadcrumb -->
+    <section>
+        <h2 class="BreadcrumbPath">Email Reports &gt;</h2>
+        <h2 class="BreadcrumbPage" ng-if="!report.id">Create A Report</h2>
+        <h2 class="BreadcrumbPage" ng-if="report.id">{{report.name}}</h2>
+    </section>
 
-    <form novalidate class="bg-white bordered rounded shadowed">
-        <div class="p4 border-bottom">
-                <div class="py1">
-                    <label >Report Name:</label>
-                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.name"/>
+    <section>
+        <!-- form -->
+        <div class="p4 bordered">
+            <form name="form" novalidate>
+                <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                    <input class="input full" name="name" ng-model="report.name" required />
                 </div>
 
-                <div class="py1">
-                    <label >Description:</label>
-                    <input class="input block" size="80" maxlength="255" type="text" ng-model="report.description"/>
+                <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
+                    <input class="input full" name="description" ng-model="report.description" />
                 </div>
-              <div>
-                <label class="block">Mode:</label>
-                <div class="Button-group">
-                  <a class="Button" ng-repeat="mode in form_input.modes" ng-class="{ 'Button--selected' : report.mode == mode.id }" ng-model="report.mode" btn-radio="mode.id">{{mode.name}}</a>
-                </div>
-              </div>
 
-              <div class="py2">
-                <label class="block">Permissions:</label>
-                <div class="Select block">
-                    <select class="block" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions">
+                <div ng-class="{'FormFieldError': form.mode.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Mode" field-name="mode"></mb-form-label>
+                    <div class="Button-group">
+                        <button class="Button" ng-class="{ 'Button--active' : report.mode === 1 }" ng-click="report.mode = 1" ng-disabled>Active</button>
+                        <button class="Button" ng-class="{ 'Button--disabled' : report.mode === 2 }" ng-click="report.mode = 2">Disabled</button>
+                    </div>
+                </div>
+
+                <div ng-class="{'FormFieldError': form.public_perms.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Permissions" field-name="public_perms"></mb-form-label>
+                    <select class="Select" name="public_perms" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions" required ></select>
+                </div>
+
+                <div ng-class="{'FormFieldError': form.recipients.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Recipients" field-name="recipients"></mb-form-label>
+                    <ul class="Checkbox-group">
+                      <li ng-repeat="user in form_input.users">
+                        <input type="checkbox" ng-model="user.incl" /> {{user.name}}
+                      </li>
+                    </li>
+                </div>
+
+                <div ng-class="{'FormFieldError': form.email_addresses.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Email aliases" field-name="email_addresses"></mb-form-label>
+                    <textarea class="input full" name="email_addresses" ng-model="report.email_addresses" placeholder="Enter emails (separated by commas) of other recipients, who may need this email"></textarea>
+                </div>
+
+                <div ng-class="{'FormFieldError': form.dataset_query.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Email contents" field-name="dataset_query"></mb-form-label>
+                    <select class="Select" ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
+                        <option value="">Select a database</option>
+                    </select>
+                    <select class="Select" name="dataset_query" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables" ng-disabled="!report.dataset_query.database">
+                        <option value="">Select a table</option>
                     </select>
                 </div>
-              </div>
-        </div>
 
-        <div class="p4 border-bottom">
-            <h3>Recipients</h3>
+                <div ng-class="{'FormFieldError': form.schedule.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Schedule" field-name="schedule"></mb-form-label>
+                    <div class="Button-group">
+                        <button class="Button" ng-class="{ 'Button--active' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</button>
+                    </div>
+                    <select ng-model="report.schedule.time_of_day" ng-options="tod.id as tod.name for tod in form_input.times_of_day">
+                    </select>
+                    <select ng-model="report.schedule.timezone" ng-options="tz for tz in form_input['timezones']">
+                        <option value="">---  default timezone ---</option>
+                    </select>
 
-            <div class="py1">
-                <label >Team Members:</label>
-                <div class="Table-wrapper">
-                    <table class="Table bordered bg-white">
-                      <tr ng-repeat="user in form_input.users">
-                        <td><input type="checkbox" ng-model="user.incl" /></td>
-                        <td class="full">{{user.name}}</td>
-                      </tr>
-                    </table>
+                    <span class="py1">{{human_readable_schedule}}</span>
                 </div>
-            </div>
 
-            <div class="py1">
-                <label >Email Aliases:</label>
-                <input class="input block" size="80" maxlength="255" type="text" ng-model="report.email_addresses"/>
-            </div>
+                <div>
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                    <span class="FormError" ng-show="form.$error.message">{{form.$error.message}}</span>
+                    <!-- TODO: success message -->
+                </div>
+            </form>
         </div>
-
-        <div class="p4 border-bottom">
-            <h3>Data</h3>
-
-            <div class="py1 inline-block mr3">
-              <label class="block">Database:</label>
-              <div class="Select block">
-                <select class="block" ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
-                </select>
-              </div>
-            </div>
-
-            <div class="py1 inline-block">
-              <label class="block">Table:</label>
-              <div class="Select block">
-                <select class="block" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables">
-                </select>
-              </div>
-            </div>
-        </div>
-
-        <div class="p4">
-            <h3>Schedule</h3>
-
-            <div class="Button-group">
-                <label class="Button" ng-class="{ 'Button--selected' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</label>
-            </div>
-
-            <div class="py1">
-                <label class="Select">
-                  <select ng-model="report.schedule.time_of_day" ng-options="tod.id as tod.name for tod in form_input.times_of_day">
-                  </select>
-                </label>
-
-                <label class="Select">
-                  <select ng-model="report.schedule.timezone" ng-options="tz for tz in form_input['timezones']">
-                    <option value="">---  default timezone ---</option>
-                  </select>
-                </label>
-            </div>
-
-            <div class="py1">
-              {{human_readable_schedule}}
-            </div>
-        </div>
-
-        <div class="py3 px4 border-top">
-          <div class="clearfix">
-              <div class="float-left">
-                <input class="Button" type="button" value="Send Now" ng-if="report.id" ng-click="executeReport(report.id)"/>
-              </div>
-
-              <div class="float-right">
-                  <input class="Button Button--primary" type="button" value="Save" ng-click="save(report)"/>
-              </div>
-          </div>
-
-          <div class="inline-block" ng-cloak>
-              <span class="px2 text-success" ng-if="success_message" cv-delayed-call="clearStatus()">{{success_message}}</span>
-              <span class="px2 text-error" ng-if="error_message" cv-delayed-call="clearStatus()">{{error_message}}</span>
-
-              <alert class="alert" ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" ng-animate=" 'animate' " cv-delayed-call="closeAlert($index)">{{alert.msg}}</alert>
-          </div>
-        </div>
-    </form>
-</section>
+    </section>
+</div>

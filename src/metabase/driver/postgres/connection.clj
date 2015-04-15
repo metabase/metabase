@@ -1,10 +1,10 @@
 (ns metabase.driver.postgres.connection
   (:require [clojure.set :refer [rename-keys]]
             [clojure.string :as s]
-            korma.db
+            [korma.db :as kdb]
             [swiss.arrows :refer :all]
             [metabase.config :as config]
-            [metabase.driver :refer [can-connect? connection connection-details]]
+            [metabase.driver :refer [can-connect? can-connect-with-details? connection connection-details]]
             [metabase.driver.generic-sql.connection :as generic]))
 
 (defmethod connection-details :postgres [database]
@@ -26,7 +26,11 @@
 (defmethod connection :postgres [database]
   (-> (connection-details database)
       (dissoc :db-type)
-      korma.db/postgres))
+      kdb/postgres))
 
 (defmethod can-connect? :postgres [database]
   (generic/can-connect? database))
+
+(defmethod can-connect-with-details? :postgres [details-map]
+  (let [connection (kdb/postgres (rename-keys details-map {:dbname :db}))]
+    (generic/test-connection connection)))
