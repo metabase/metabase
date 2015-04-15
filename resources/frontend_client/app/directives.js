@@ -137,13 +137,14 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                                 '<span class="UserNick">' +
                                     '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
                                 '</span>' +
-                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' + 
+                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' +
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
                                 '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
                                 '<li><a class="link" ng-if="userIsAdmin && context == \'main\'" cv-org-href="/admin/">Admin</a></li>' +
                                 '<li><a class="link" ng-if="userIsAdmin && context == \'admin\'" cv-org-href="/">Exit Admin</a></li>' +
                                 '<li><a class="link" ng-if="userIsSuperuser && context != \'superadmin\'" href="/superadmin/">Site Administration</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context == \'superadmin\'" href="/">Exit Site Administration</a></li>' +
                                 '<li><a class="link" href="/auth/logout">Logout</a></li>' +
                             '</ul>' +
                         '</li>' +
