@@ -1,4 +1,3 @@
-<!-- breadcrumb -->
 <div class="wrapper">
     <section class="Breadcrumbs">
         <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/databases/">Databases</a>
@@ -8,7 +7,6 @@
     </section>
 
     <section>
-        <!-- actions -->
         <div class="p4 bordered">
             <h3>Actions</h3>
             <button class="Button" ng-click="save(database)">Sync</button>
@@ -19,7 +17,6 @@
             </div>
         </div>
 
-        <!-- form -->
         <div class="p4 bordered">
             <form name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
@@ -34,7 +31,6 @@
                     <select class="Select" name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
                 </div>
 
-                <!-- TODO: database type dependent inputs -->
                 <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
                     <div ng-class="{'FormFieldError': form.host.$error.message == undefined}">
                         <label>Host: <span ng-show="form.host.$error.message">{{form.host.$error.message}}</span></label>
@@ -62,7 +58,6 @@
                     </div>
                 </div>
 
-                <!-- SAVE BUTTON -->
                 <div>
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
                         Save
@@ -75,4 +70,4 @@
             </form>
         </div>
     </section>
-</div> <!-- wrapper -->
+</div>
