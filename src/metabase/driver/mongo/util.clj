@@ -16,7 +16,9 @@
   `(let [f# (fn [~binding]
               ~@body)]
      (if *db-connection* (f# *db-connection*)
-         (let [{conn# :conn db-connection# :db} (mg/connect-via-uri ~connection-string)]
+         (let [connection-string# ~connection-string
+               _ (assert connection-string# "with-db-connection failed: connection-string is nil.")
+               {conn# :conn db-connection# :db} (mg/connect-via-uri connection-string#)]
            (println "<< OPENED NEW MONGODB CONNECTION >>") ; TODO - log/debug
            (try
              (binding [*db-connection* db-connection#]
