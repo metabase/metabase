@@ -1,5 +1,6 @@
 :root {
   --form-padding: 1em;
+  --form-input-placeholder-color: #C1C1C1;
 }
 
 /* TODO: deprecate this base object, it shouldn't be this specific */
@@ -8,6 +9,7 @@
   max-width: 640px;
 }
 
+/* TODO: combine this and the scoped version */
 .Form-label {
   display: block;
   color: #777;
@@ -16,8 +18,6 @@
 
 .Form-field {
    color: #ADADAD;
-   padding-left: 1em;
-   padding-right: 1em;
    margin-bottom: 1em;
 }
 
@@ -25,21 +25,45 @@
 /* form labels inherit the color of the parent, allowing for easy error changes */
 .Form-field .Form-label {
     display: block;
-    font-size: 1em;
+    font-size: 0.85em;
     font-weight: bold;
     color: currentColor;
 }
 
+.Form-field.Form--fieldError {
+    color: var(--error-color);
+}
+
 .Form-input {
-    padding-top: 0.25em;
-    padding-bottom: 0.25em;
+    padding-top: 1em;
+    padding-bottom: 1em;
     font-size: 1.185em;
     border: none;
     background-color: transparent;
 }
 
+.Form-offset {
+    padding-left: 1em;
+}
+
 .Form-input:focus {
     outline: none;
+}
+
+.Form-field .Form-input:before {
+    content: '';
+    width: 0.25em;
+    height: 0.25em;
+    background-color: red;
+    display: block;
+}
+
+.Form-field:hover .Form-input {
+    color: red;
+}
+
+.Form-field:hover .Form-input {
+    background: rgba(0, 0, 0, 0.02);
 }
 
 /* TODO: replace instances of Form-group with Form-field */

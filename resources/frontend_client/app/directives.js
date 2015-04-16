@@ -137,7 +137,7 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                                 '<span class="UserNick">' +
                                     '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
                                 '</span>' +
-                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' + 
+                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' +
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
                                 '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
