@@ -1,6 +1,6 @@
 :root {
-    --shadow-color: rgba(0, 0, 0, .07);
+    --shadow-color: rgba(0, 0, 0, .08);
 }
 .shadowed {
-  box-shadow: 0 1px 1px var(--shadow-color);
+  box-shadow: 0 2px 2px var(--shadow-color);
 }
