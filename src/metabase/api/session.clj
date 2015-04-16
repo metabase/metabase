@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as korma]
@@ -10,7 +9,7 @@
             [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password]]
                              [session :refer [Session]])
-            [metabase.util.password :as password]))
+            [metabase.util.password :as pass]))
 
 
 (defendpoint POST "/"
@@ -18,9 +17,11 @@
   [:as {{:keys [email password] :as body} :body}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
-    (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user))
-      [400 "password mismatch"])
+  (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
+    (checkp (not (nil? user))
+      (symbol "email") "no account found for the given email")
+    (checkp (pass/verify-password password (:password_salt user) (:password user))
+      (symbol "password") "did not match stored password")
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session
         :id session-id

@@ -10,52 +10,59 @@ var AuthControllers = angular.module('corvus.auth.controllers', [
     'metabase.forms'
 ]);
 
-AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState', function($scope, $location, $timeout, ipCookie, Session, AppState) {
+AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState', 'MetabaseForm',
+    function($scope, $location, $timeout, ipCookie, Session, AppState, MetabaseForm) {
 
-    var validEmail = function(email) {
-        var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        return re.test(email);
-    };
+        var formFields = {
+            email: 'email',
+            password: 'password'
+        };
 
-    $scope.login = function(email, password, remember_me) {
-        if (!email || !password) {
-            $scope.error = "Email address and Password are required.";
-            return;
-        } else if (!validEmail(email)) {
-            $scope.error = "Please enter a valid formatted email address.";
-            return;
-        }
+        var validEmail = function(email) {
+            var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(email);
+        };
 
-        Session.create({
-            'email': email,
-            'password': password
-        }, function(new_session) {
-            // set a session cookie
-            var isSecure = ($location.protocol() === "https") ? true : false;
-            ipCookie('metabase.SESSION_ID', new_session.id, {
-                path: '/',
-                expires: 14,
-                secure: isSecure
+        $scope.login = function(email, password, remember_me) {
+            MetabaseForm.clearFormErrors($scope.form, formFields);
+            $scope.form.$setPristine();
+
+            if (!validEmail(email)) {
+                $scope.form.email.$error.message = "Please enter a valid formatted email address.";
+                return;
+            }
+
+            Session.create({
+                'email': email,
+                'password': password
+            }, function (new_session) {
+                // set a session cookie
+                var isSecure = ($location.protocol() === "https") ? true : false;
+                ipCookie('metabase.SESSION_ID', new_session.id, {
+                    path: '/',
+                    expires: 14,
+                    secure: isSecure
+                });
+
+                // send a login notification event
+                $scope.$emit('appstate:login', new_session.id);
+
+                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+                $timeout(function() {
+                    // we expect the homepage to handle the routing details about where the user should be going
+                    $location.path('/');
+                }, 300);
+            }, function (error) {
+                MetabaseForm.parseFormErrors($scope.form, formFields, error);
             });
+        };
 
-            // send a login notification event
-            $scope.$emit('appstate:login', new_session.id);
-
-            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-            $timeout(function() {
-                // we expect the homepage to handle the routing details about where the user should be going
-                $location.path('/');
-            }, 300);
-        }, function(error) {
-            $scope.error = "Invalid username/password combination specified.";
-        });
-    };
-
-    // do a quick check if the user is already logged in.  if so then send them somewhere better.
-    if (AppState.model.currentUser && AppState.model.currentUser.memberOf().length > 0) {
-        $location.path('/' + AppState.model.currentUser.memberOf()[0].slug + '/');
+        // do a quick check if the user is already logged in.  if so then send them somewhere better.
+        if (AppState.model.currentUser && AppState.model.currentUser.memberOf().length > 0) {
+            $location.path('/' + AppState.model.currentUser.memberOf()[0].slug + '/');
+        }
     }
-}]);
+]);
 
 
 AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', function($scope, $location, $timeout, ipCookie, Session) {
