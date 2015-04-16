@@ -6,20 +6,21 @@
         <h2 class="Breadcrumb Breadcrumb--page" ng-if="report.id">{{report.name}}</h2>
     </section>
 
-    <section>
-        <div class="p4 bordered">
+    <section class="Grid Grid--gutters">
+        <!-- form -->
+        <div class="Grid-cell p4 bordered rounded shadowed">
             <form name="form" novalidate>
-                <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="input full" name="name" ng-model="report.name" required />
+                    <input class="Form-input full" name="name" ng-model="report.name" required />
                 </div>
 
-                <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.description.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                    <input class="input full" name="description" ng-model="report.description" />
+                    <input class="Form-input full" name="description" ng-model="report.description" />
                 </div>
 
-                <div ng-class="{'FormFieldError': form.mode.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.mode.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Mode" field-name="mode"></mb-form-label>
                     <div class="Button-group">
                         <button class="Button" ng-class="{ 'Button--active' : report.mode === 1 }" ng-click="report.mode = 1" ng-disabled>Active</button>
@@ -27,12 +28,12 @@
                     </div>
                 </div>
 
-                <div ng-class="{'FormFieldError': form.public_perms.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.public_perms.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Permissions" field-name="public_perms"></mb-form-label>
                     <select class="Select" name="public_perms" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions" required ></select>
                 </div>
 
-                <div ng-class="{'FormFieldError': form.recipients.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.recipients.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Recipients" field-name="recipients"></mb-form-label>
                     <ul class="Checkbox-group">
                       <li ng-repeat="user in form_input.users">
@@ -41,12 +42,12 @@
                     </li>
                 </div>
 
-                <div ng-class="{'FormFieldError': form.email_addresses.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.email_addresses.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Email aliases" field-name="email_addresses"></mb-form-label>
-                    <textarea class="input full" name="email_addresses" ng-model="report.email_addresses" placeholder="Enter emails (separated by commas) of other recipients, who may need this email"></textarea>
+                    <textarea class="Form-input full" name="email_addresses" ng-model="report.email_addresses" placeholder="Enter emails (separated by commas) of other recipients, who may need this email"></textarea>
                 </div>
 
-                <div ng-class="{'FormFieldError': form.dataset_query.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.dataset_query.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Email contents" field-name="dataset_query"></mb-form-label>
                     <select class="Select" ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
                         <option value="">Select a database</option>
@@ -56,7 +57,7 @@
                     </select>
                 </div>
 
-                <div ng-class="{'FormFieldError': form.schedule.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'FormFieldError': form.schedule.$error.message == undefined}">
                     <mb-form-label form="form" display-name="Schedule" field-name="schedule"></mb-form-label>
                     <div class="Button-group">
                         <button class="Button" ng-class="{ 'Button--active' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</button>
@@ -78,6 +79,16 @@
                     <!-- TODO: success message -->
                 </div>
             </form>
+        </div>
+
+        <!-- actions -->
+        <div class="Grid-cell" ng-if="report.id">
+            <div class="Actions">
+                <h3>Actions</h3>
+                <div class="Actions-group">
+                    <button class="Button" ng-click="executeReport(report.id)">Send now</button>
+                </div>
+            </div>
         </div>
     </section>
 </div>

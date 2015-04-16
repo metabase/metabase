@@ -1,5 +1,4 @@
 <div class="wrapper">
-    <!-- breadcrumb -->
     <section class="Breadcrumbs">
         <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/databases/">Databases</a>
         <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
@@ -8,8 +7,8 @@
     </section>
 
     <section class="Grid Grid--gutters">
+        <!-- form -->
         <div class="Grid-cell">
-            <!-- form -->
             <form class="bg-white rounded bordered shadowed" name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
@@ -53,13 +52,8 @@
                     </div>
                 </div>
 
-                <!-- SAVE BUTTON -->
                 <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
                     Save
-                </button>
-                <!-- TODO: remove this fella -->
-                <button class="Button" ng-click="foo()">
-                    Status
                 </button>
             </form>
         </div>

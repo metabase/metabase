@@ -4,7 +4,6 @@
     </section>
 
     <section class="Grid Grid--1of2">
-        <!-- form -->
         <div class="Grid-cell p4 bordered rounded shadowed">
             <form name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
@@ -29,7 +28,6 @@
                     <input class="Form-input full" name="logo_url" ng-model="currentOrg.logo_url" placeholder="Link to an image of your logo"/>
                 </div>
 
-                <!-- SAVE BUTTON -->
                 <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
                     Save
                 </button>
