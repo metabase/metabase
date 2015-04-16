@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [find sort])
   (:require [clojure.core.match :refer [match]]
             [colorize.core :as color]
-            (monger [core :as mg]
+            (monger [collection :as mc]
+                    [core :as mg]
                     [db :as mdb]
                     [operators :refer :all]
                     [query :refer :all])
@@ -42,11 +43,23 @@
                       (annotate-results (:query query))))
         :native :TODO))))
 
-(defn process-structured [{:keys [source_table] :as query}]
+(defn process-structured [{:keys [source_table aggregation] :as query}]
   (binding [*query* query]
     (let [collection-name (sel :one :field [Table :name] :id source_table)]
-      `(doall (with-collection *db-connection* ~collection-name
-                ~@(doall (mapcat apply-clause query)))))))
+      (match aggregation
+        ["rows"] `(doall (with-collection *db-connection* ~collection-name
+                           ~@(doall (mapcat apply-clause query))))
+        ["count"] (let [[[_ & constraints]] (apply-clause [:filter (:filter query)])] ; since only :filter applies to count aggregation
+                    `[{:count (mc/count *db-connection* ~collection-name              ; just process filter clause which gives us a form like [(find {...})]
+                                        ~@constraints)}])                             ; and pass that directly to the count fn
+        [field-aggregation field-id] (let [field (field-id->kw field-id)]
+                                       (case field-aggregation ; (THESE ARE ALL TODO)
+                                         "avg" nil
+                                         "count" nil
+                                         "distinct" nil
+                                         "stddev" nil
+                                         "sum" nil
+                                         "cum_sum" nil))))))
 
 ;; ## ANNOTATION
 
@@ -76,10 +89,10 @@
                            :type "query",
                            :query
                            {:source_table 59,
-                            :aggregation ["rows"],
+                            :aggregation ["count"],
                             :breakout [nil],
                             :limit 10,
-                            :filter ["<" 307 4546]}}))
+                            :filter ["<" 307 1000]}}))
 
 (defn y []
   (driver/process-and-run {:database 44,
@@ -90,6 +103,16 @@
                             :aggregation ["rows"],
                             :breakout [nil],
                             :limit 25}}))
+
+(defn y2 []
+  (with-db-connection [db "mongodb://localhost/test"]
+    (doall (with-collection db "zips"
+             (limit 10)))))
+
+(defn z []
+  (with-db-connection [db "mongodb://localhost/test"]
+    (let [collection (.getCollection db "zips")]
+      (mc/count db "zips" {:pop {$lt 1000}}))))
 
 (defn field-id->kw [field-id]
   (keyword (sel :one :field [Field :name] :id field-id)))
@@ -111,19 +134,9 @@
 (defmethod apply-clause :default [[clause-kw value]]
   (println "TODO: Don't know how to apply-clause" clause-kw "with value:" value))
 
-;; ### aggregation (TODO)
+;; ### aggregation
 (defclause :aggregation [aggregation]
-  (match aggregation
-    ["rows"]  nil  ; nothing to do, this is basically the default
-    ["count"] nil ; TODO
-    [field-aggregation field-id] (let [field (field-id->kw field-id)]
-                                   (case field-aggregation ; (THESE ARE ALL TODO)
-                                     "avg" nil
-                                     "count" nil
-                                     "distinct" nil
-                                     "stddev" nil
-                                     "sum" nil
-                                     "cum_sum" nil))))
+  nil) ; nothing to do here since this is handled by process-structured above
 
 ;; ### breakout (TODO)
 (defclause :breakout [field-ids]
@@ -154,6 +167,7 @@
     nil                  nil
     []                   nil
     [nil nil]            nil
+    ["AND"]              nil
     ["AND" & subclauses] `[(find {$and ~(mapv apply-filter-subclause subclauses)})]
     ["OR"  & subclauses] `[(find {$or  ~(mapv apply-filter-subclause subclauses)})]
     subclause            `[(find ~(apply-filter-subclause subclause))]))
