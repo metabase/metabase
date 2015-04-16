@@ -89,8 +89,7 @@
                             :filter nil,
                             :aggregation ["rows"],
                             :breakout [nil],
-                            :limit nil,
-                            :page {:page 2, :items 20}}}))
+                            :limit 25}}))
 
 (defn field-id->kw [field-id]
   (keyword (sel :one :field [Field :name] :id field-id)))
@@ -131,18 +130,25 @@
   (when (seq field-ids)
     nil))
 
+(defn apply-filter-subclause [subclause]
+  (match subclause
+    [operator field-id value] {(field-id->kw field-id) (case operator
+                                                         "="  value
+                                                         "!=" {$ne value}
+                                                         "<"  {$lt value}
+                                                         ">"  {$gt value}
+                                                         "<=" {$lte value}
+                                                         ">=" {$gte value})}))
+
 ;; ### filter (TODO)
 (defclause :filter [filter-clause]
   (match filter-clause
-    nil                       nil       ; empty clause
-    [operator field-id value] (let [field-kw (field-id->kw field-id)]
-                                `[(find {~field-kw ~(case operator
-                                                      "="  value
-                                                      "!=" {$ne value}
-                                                      "<"  {$lt value}
-                                                      ">"  {$gt value}
-                                                      "<=" {$lte value}
-                                                      ">=" {$gte value})})])))
+    nil                  nil
+    []                   nil
+    [nil nil]            nil
+    ["AND" & subclauses] `[(find {$and ~(mapv apply-filter-subclause subclauses)})]
+    ["OR"  & subclauses] `[(find {$or  ~(mapv apply-filter-subclause subclauses)})]
+    subclause            `[(find ~(apply-filter-subclause subclause))]))
 
 ;; ### limit
 (defclause :limit [value]
