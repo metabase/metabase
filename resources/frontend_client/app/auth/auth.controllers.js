@@ -4,7 +4,11 @@
 /*global _*/
 /*global $*/
 
-var AuthControllers = angular.module('corvus.auth.controllers', ['ipCookie', 'corvus.services']);
+var AuthControllers = angular.module('corvus.auth.controllers', [
+    'ipCookie',
+    'corvus.services',
+    'metabase.forms'
+]);
 
 AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState', function($scope, $location, $timeout, ipCookie, Session, AppState) {
 
