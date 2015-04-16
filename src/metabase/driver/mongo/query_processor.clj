@@ -1,8 +1,10 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
-  (:require [colorize.core :as color]
+  (:require [clojure.core.match :refer [match]]
+            [colorize.core :as color]
             (monger [core :as mg]
                     [db :as mdb]
+                    [operators :refer :all]
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -44,7 +46,6 @@
   (binding [*query* query]
     (let [collection-name (sel :one :field [Table :name] :id source_table)]
       `(doall (with-collection *db-connection* ~collection-name
-                (find {})
                 ~@(doall (mapcat apply-clause query)))))))
 
 ;; ## ANNOTATION
@@ -75,13 +76,10 @@
                            :type "query",
                            :query
                            {:source_table 59,
-                            :filter nil,
                             :aggregation ["rows"],
                             :breakout [nil],
-                            :limit nil,
-                            :page {:page 2, :items 20}
-                            :order_by [[307 "ascending"]
-                                       [310 "ascending"]]}}))
+                            :limit 10,
+                            :filter ["<" 307 4546]}}))
 
 (defn y []
   (driver/process-and-run {:database 44,
@@ -108,23 +106,43 @@
      (try
        ~@body
        (catch Throwable e#
-         (println ~(format "Failed to apply clause '%s':" clause-kw) e#))))) ; TODO - log/error
+         (println (color/red ~(format "Failed to apply clause '%s': " clause-kw) (.getMessage e#))))))) ; TODO - log/error
 
 ;; TODO - this should throw an Exception once QP is finished
 (defmethod apply-clause :default [[clause-kw value]]
   (println "TODO: Don't know how to apply-clause" clause-kw "with value:" value))
 
 ;; ### aggregation (TODO)
-(defclause :aggregation [value]
-  nil)
+(defclause :aggregation [aggregation]
+  (match aggregation
+    ["rows"]  nil  ; nothing to do, this is basically the default
+    ["count"] nil ; TODO
+    [field-aggregation field-id] (let [field (field-id->kw field-id)]
+                                   (case field-aggregation ; (THESE ARE ALL TODO)
+                                     "avg" nil
+                                     "count" nil
+                                     "distinct" nil
+                                     "stddev" nil
+                                     "sum" nil
+                                     "cum_sum" nil))))
 
 ;; ### breakout (TODO)
-(defclause :breakout [value]
-  nil)
+(defclause :breakout [field-ids]
+  (when (seq field-ids)
+    nil))
 
 ;; ### filter (TODO)
-(defclause :filter [value]
-  nil)
+(defclause :filter [filter-clause]
+  (match filter-clause
+    nil                       nil       ; empty clause
+    [operator field-id value] (let [field-kw (field-id->kw field-id)]
+                                `[(find {~field-kw ~(case operator
+                                                      "="  value
+                                                      "!=" {$ne value}
+                                                      "<"  {$lt value}
+                                                      ">"  {$gt value}
+                                                      "<=" {$lte value}
+                                                      ">=" {$gte value})})])))
 
 ;; ### limit
 (defclause :limit [value]

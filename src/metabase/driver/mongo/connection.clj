@@ -11,6 +11,16 @@
 ;; mongod && mongoimport --db test --collection zips --file mongo_zips.json
 ;; Create a DB named "Mongo Test DB" with connection string "mongodb://localhost:27017/test"
 
+;; Give the Fields some base types:
+;; (let [field-name->id (sel :many :field->id [Field :name] :table_id 59)]
+;;   (dorun (map (fn [[field-name base-type]]
+;;                 (upd Field (field-name->id field-name) :base_type base-type))
+;;               {"_id"   :IntegerField
+;;                "pop"   :IntegerField
+;;                "city"  :TextField
+;;                "state" :TextField
+;;                "loc"   :UnknownField})))
+
 ;; ## METHOD IMPLS
 
 (defmethod driver/connection-details :mongo [database]
