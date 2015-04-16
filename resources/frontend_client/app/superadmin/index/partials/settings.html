@@ -28,7 +28,7 @@
                     </td>
                     <td>
                         <button class="Button Button--primary" ng-click="saveSetting(setting)" ng-disabled="!setting.value || setting.value === setting.originalValue">Save</button>
-                        <button class="mx2 Button Button--remove" ng-click="deleteSetting(setting)" ng-disabled="!setting.originalValue">Clear</button>
+                        <button class="mx2 Button Button--danger" ng-click="deleteSetting(setting)" ng-disabled="!setting.originalValue">Clear</button>
                     </td>
                 </tr>
             </tbody>

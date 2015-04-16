@@ -1,46 +1,42 @@
-
 <div class="wrapper">
-    <div class="border-bottom">
-        <h2 ng-if="!organization.id">Add Organization</h2>
-        <h2 ng-if="organization.id">{{organization.name}}</h2>
-    </div>
+    <section class="Breadcrumbs">
+        <a class="Breadcrumb Breadcrumb--path" href="/superadmin/organization/">Organizations</a>
+        <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="!organization.id">Add Organization</h2>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="organization.id">{{organization.name}}</h2>
+    </section>
 
-    <form novalidate>
-        <div class="py1">
-            <div class="py1">
-                <label>Slug:</label>
-                <input class="input block full" type="text" ng-model="organization.slug" ng-disabled="organization.id"/>
-            </div>
+    <section>
+        <div class="p4 bordered">
+            <form name="form" novalidate>
+                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-            <div class="py1">
-                <label for="id_name">Name:</label>
-                <input class="input block full" id="id_name" type="text" ng-model="organization.name"/>
-            </div>
+                <div ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
+                    <input class="input full" name="slug" ng-model="organization.slug" ng-disabled="organization.id" required />
+                </div>
 
-            <div class="py1">
-                <label for="id_desc">Description:</label>
-                <textarea class="input block full" id="id_desc" rows="5" ng-model="organization.description"></textarea>
-            </div>
+                <div ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                    <input class="input full" name="name" ng-model="organization.name" required />
+                </div>
 
-            <div class="py1">
-                <label for="id_logo">Logo Url:</label>
-                <input class="input block full" id="id_logo" type="text" ng-model="organization.logo_url"/>
-            </div>
+                <div ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
+                    <input class="input full" name="description" ng-model="organization.description" />
+                </div>
 
-            <div class="py1">
-                <label>Reporting Timezone:</label>
-                <label class="Select">
-                    <select ng-model="organization.report_timezone" ng-options="tz for tz in form_input['timezones']">
-                        <option value="">Select a Timezone</option>
-                    </select>
-                </label>
-            </div>
+                <div ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
+                    <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
+                    <input class="input full" name="logo_url" ng-model="organization.logo_url" />
+                </div>
+
+                <div>
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(organization)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <div class="py2 border-top">
-            <div class="inline-block">
-                <input class="Button Button--primary" type="button" value="Save" ng-click="save(organization)"/>
-            </div>
-        </div>
-    </form>
+    </section>
 </div>
