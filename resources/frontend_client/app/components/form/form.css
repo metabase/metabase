@@ -109,3 +109,7 @@
   pointer-events: none;
   transition: opacity .3s linear;
 }
+
+.Form-actions {
+    padding: 2em;
+}

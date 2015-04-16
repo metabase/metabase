@@ -66,6 +66,10 @@
   flex: 0 0 33.3333%;
 }
 
+.Grid--2of3 > .Grid-cell {
+  flex: 0 0 66.6666%;
+}
+
 .Grid--1of4 > .Grid-cell {
   flex: 0 0 25%;
 }

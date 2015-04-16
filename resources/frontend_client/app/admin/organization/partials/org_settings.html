@@ -3,7 +3,7 @@
         <h2 class="PageTitle">Organization</h2>
     </section>
 
-    <section class="Grid Grid--gutters Grid--full">
+    <section class="Grid Grid--gutters Grid--full Grid--2of3">
         <!-- form -->
         <div class="Grid-cell">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
@@ -32,9 +32,11 @@
                     <span class="Form-charm"></span>
                 </div>
 
-                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
-                    Save
-                </button>
+                <div class="Form-actions">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                </div>
             </form>
         </div>
     </section>
