@@ -22,7 +22,8 @@
   cursor: pointer;
   padding: 0.6rem 0.8rem;
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: 0.8em;
+  line-height: 1em;
 
   display: inline-block;
   box-sizing: border-box;
