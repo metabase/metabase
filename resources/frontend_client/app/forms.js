@@ -46,7 +46,7 @@ MetabaseForms.directive('mbFormLabel', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<label class="Form-label">{{displayName}}: <span ng-show="form[fieldName].$error.message">{{form[fieldName].$error.message}}</span></label>',
+        template: '<label class="Form-label Form-offset">{{displayName}}: <span ng-show="form[fieldName].$error.message">{{form[fieldName].$error.message}}</span></label>',
         scope: {
             form: '=',
             displayName: '@',
