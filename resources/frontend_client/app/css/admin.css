@@ -2,6 +2,7 @@
     --admin-nav-bg-color: #6F7A8B;
     --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
     --admin-nav-item-text-active-color: #fff;
+    --page-header-padding: 2.375rem;
 }
 
 .AdminNav {
@@ -101,7 +102,14 @@
     color: #fff;
     padding: 0.25em;
 }
+.PageHeader {
+    padding-top: var(--page-header-padding);
+    padding-bottom: var(--page-header-padding);
+}
 
+.PageTitle {
+    margin: 0;
+}
 
 .Table-actions {
     text-align: right;
