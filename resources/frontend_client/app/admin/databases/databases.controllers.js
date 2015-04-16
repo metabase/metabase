@@ -53,10 +53,6 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // details is handled manually
         };
 
-        $scope.foo = function() {
-            console.log($scope.form);
-        };
-
         // takes in our API form database details and parses them into a map of usable form field values
         var parseDetails = function(engine, details) {
             var map = {};
