@@ -9,6 +9,7 @@
 ;; ## LOADING TEST DATA
 ;; curl http://media.mongodb.org/zips.json > mongo_zips.json
 ;; mongod && mongoimport --db test --collection zips --file mongo_zips.json
+;; Create a DB named "Mongo Test DB" with connection string "mongodb://localhost:27017/test"
 
 ;; ## METHOD IMPLS
 
