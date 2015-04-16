@@ -1,42 +1,12 @@
 'use strict';
 /*global _*/
 
-var OrganizationControllers = angular.module('superadmin.organization.controllers', ['corvus.services',
-    'superadmin.index.services'
+var OrganizationControllers = angular.module('superadmin.organization.controllers', [
+    'corvus.services'
 ]);
 
-OrganizationControllers.controller('OrganizationListController', ['$scope', 'Organization', 'SettingsAdminServices',
-
-    function($scope, Organization, SettingsAdminServices) {
-        $scope.organizations = [];
-
-        $scope.saveSetting = function(setting) {
-            SettingsAdminServices.put({
-                key: setting.key
-            }, setting, function() {
-                setting.originalValue = setting.value;
-            }, function(error) {
-                console.log("Error saving setting: ", error);
-            });
-        };
-
-        $scope.deleteSetting = function(setting) {
-            SettingsAdminServices.delete({
-                key: setting.key
-            }, function() {
-                setting.value = null;
-                setting.originalValue = null;
-            }, function(error) {
-                console.log("Error deleting setting: ", error);
-            });
-        };
-
-        // initialize on load
-        Organization.list(function(orgs) {
-            $scope.organizations = orgs;
-        }, function(error) {
-            console.log("Error getting organizations: ", error);
-        });
+OrganizationControllers.controller('OrganizationListController', ['$scope', 'Organization',
+    function($scope, Organization) {
 
         $scope.deleteOrganization = function(organization) {
             Organization.delete({
@@ -49,6 +19,15 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
                 console.log("Error deleting Org:", err);
             });
         };
+
+        $scope.organizations = [];
+
+        // initialize on load
+        Organization.list(function(orgs) {
+            $scope.organizations = orgs;
+        }, function(error) {
+            console.log("Error getting organizations: ", error);
+        });
     }
 ]);
 
