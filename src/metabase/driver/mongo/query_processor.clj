@@ -37,7 +37,7 @@
                                          (with-out-str (clojure.pprint/pprint generated-query))
                                          "*****************************************************************\n"))
                  (->> (eval generated-query)
-                      (annotate-results query)))
+                      (annotate-results (:query query))))
         :native :TODO))))
 
 (defn process-structured [{:keys [source_table] :as query}]
@@ -50,6 +50,7 @@
 ;; ## ANNOTATION
 
 (defn annotate-results [{:keys [source_table] :as query} results]
+  {:pre [(integer? source_table)]}
   (let [field-name->id (sel :many :field->id [Field :name] :table_id source_table)
         column-names (keys (first results))]
     {:row_count (count results)
