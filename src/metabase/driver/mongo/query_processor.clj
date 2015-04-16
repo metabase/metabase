@@ -132,13 +132,21 @@
 
 (defn apply-filter-subclause [subclause]
   (match subclause
-    [operator field-id value] {(field-id->kw field-id) (case operator
-                                                         "="  value
-                                                         "!=" {$ne value}
-                                                         "<"  {$lt value}
-                                                         ">"  {$gt value}
-                                                         "<=" {$lte value}
-                                                         ">=" {$gte value})}))
+    ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max] (let [lat-field (field-id->kw lat-field-id)
+                                                                               lon-field (field-id->kw lon-field-id)]
+                                                                           {$and [{lat-field {$gte lat-min, $lte lat-max}}
+                                                                                  {lon-field {$gte lon-min, $lte lon-max}}]})
+    [_ field-id & _] {(field-id->kw field-id)
+                      (match subclause
+                        ["NOT_NULL" _]        {$exists true}
+                        ["IS_NULL"]           {$exists false}
+                        ["BETWEEN" _ min max] {$gt min, $lt max} ; TODO - is this supposed to be inclusive, or not ?
+                        ["="  _ value]        value
+                        ["!=" _ value]        {$ne value}
+                        ["<"  _ value]        {$lt value}
+                        [">"  _ value]        {$gt value}
+                        ["<=" _ value]        {$lte value}
+                        [">=" _ value]        {$gte value})}))
 
 ;; ### filter (TODO)
 (defclause :filter [filter-clause]
