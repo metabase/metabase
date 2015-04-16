@@ -26,11 +26,11 @@
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
-(expect "Invalid Request."
+(expect {:errors {:email "no account found for the given email"}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking
-(expect "password mismatch"
+(expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (-> (user->credentials :rasta)
                                   (assoc :password "something else"))))
 
@@ -89,7 +89,7 @@
                                                                      :password (:new password)})
     ;; Old creds should no longer work
     (assert (= (metabase.http-client/client :post 400 "session" (:old creds))
-              "password mismatch"))
+              {:errors {:password "did not match stored password"}}))
     ;; New creds *should* work
     (metabase.http-client/client :post 200 "session" (:new creds))
     ;; Double check that reset token was cleared
