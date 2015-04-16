@@ -8,14 +8,15 @@
     padding: 1em;
     background: var(--admin-nav-bg-color);
     color: #fff;
+    font-size: 0.85rem;
 }
 
 .AdminNav .NavItem {
     /* cancel out padding as .AdminNav + flex will allow for proper centering */
     padding-top: 0;
     padding-bottom: 0;
-    padding-left: 1em;
-    padding-right: 1em;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
     color: var(--admin-nav-item-text-color);
 }
 
@@ -61,21 +62,24 @@
 .Actions {
     background-color: rgba(243,243,243,0.46);
     border: 1px solid #E0E0E0;
-}
-
-.Actions-header {
-    padding: 1em;
+    padding: 2em;
 }
 
 .Actions-group {
-    padding: 1em;
+    margin-bottom: 2em;
+}
+
+.Actions-group:last-child {
+    margin-bottom: 0;
 }
 
 .Actions-group.Actions--dangerZone {
     color: var(--error-color);
 }
 
+
 .Actions-groupLabel {
+    font-size: 0.85em;
     margin-bottom: 1em;
 }
 

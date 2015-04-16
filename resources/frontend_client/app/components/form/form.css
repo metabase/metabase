@@ -1,12 +1,16 @@
 :root {
-  --form-padding: 1em;
-  --form-input-placeholder-color: #C1C1C1;
+    --form-padding: 1em;
+    --form-input-placeholder-color: #C1C1C1;
 }
 
 /* TODO: deprecate this base object, it shouldn't be this specific */
 .Form {
   margin: 0 auto;
   max-width: 640px;
+}
+
+.Form-new {
+    padding-top: 2em;
 }
 
 /* TODO: combine this and the scoped version */
@@ -17,8 +21,9 @@
 }
 
 .Form-field {
-   color: #ADADAD;
-   margin-bottom: 1em;
+    position: relative;
+    color: #929292;
+    margin-bottom: 1em;
 }
 
 /* TODO: remove this scoping once we've converted non admin forms */
@@ -35,36 +40,63 @@
 }
 
 .Form-input {
-    padding-top: 1em;
-    padding-bottom: 1em;
+    padding-top: 0.8em;
+    padding-bottom: 0.8em;
     font-size: 1.185em;
     border: none;
     background-color: transparent;
-}
-
-.Form-offset {
-    padding-left: 1em;
+    transition: color .3s linear;
 }
 
 .Form-input:focus {
     outline: none;
 }
 
-.Form-field .Form-input:before {
-    content: '';
-    width: 0.25em;
-    height: 0.25em;
-    background-color: red;
+.Form-offset {
+    padding-left: 2rem;
+}
+
+.Form-charm {
+    position: absolute;
     display: block;
+    top: 0;
+    left: 0;
+    width: 0.15em;
+    height: 100%;
+    background-color: #ddd;
+    box-sizing: border-box;
+    opacity: 0;
+    transition: background-color .3s linear;
+    transition: opacity .3s linear;
+}
+
+
+.Form-field.Form--fieldError .Form-charm {
+    background-color: var(--error-color);
+    opacity: 1;
+}
+
+.Form-input:focus + .Form-charm {
+    background-color: var(--brand-color);
+    opacity: 1;
 }
 
 .Form-field:hover .Form-input {
-    color: red;
-}
-
-.Form-field:hover .Form-input {
+    color: #ddd;
     background: rgba(0, 0, 0, 0.02);
 }
+
+.Form-field:hover .Form-charm {
+    opacity: 1;
+}
+
+.Form-field:hover .Form-input:focus {
+    transition: color .3s linear;
+    color: #444;
+    background-color: transparent;
+    transition: background .3s linear;
+}
+
 
 /* TODO: replace instances of Form-group with Form-field */
 .Form-group {
@@ -76,4 +108,8 @@
   opacity: 0.2;
   pointer-events: none;
   transition: opacity .3s linear;
+}
+
+.Form-actions {
+    padding: 2em;
 }

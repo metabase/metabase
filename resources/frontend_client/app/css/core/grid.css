@@ -207,3 +207,12 @@
     padding: 2em 0 0 2em;
   }
 }
+
+
+.Grid-cell.Cell--1of3 {
+    flex: 0 0 33.3333%;
+}
+
+.Grid-cell.Cell--2of3 {
+    flex: 0 0 66.6666%;
+}
