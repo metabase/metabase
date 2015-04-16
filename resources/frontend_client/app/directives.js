@@ -144,6 +144,7 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                                 '<li><a class="link" ng-if="userIsAdmin && context == \'main\'" cv-org-href="/admin/">Admin</a></li>' +
                                 '<li><a class="link" ng-if="userIsAdmin && context == \'admin\'" cv-org-href="/">Exit Admin</a></li>' +
                                 '<li><a class="link" ng-if="userIsSuperuser && context != \'superadmin\'" href="/superadmin/">Site Administration</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context == \'superadmin\'" href="/">Exit Site Administration</a></li>' +
                                 '<li><a class="link" href="/auth/logout">Logout</a></li>' +
                             '</ul>' +
                         '</li>' +

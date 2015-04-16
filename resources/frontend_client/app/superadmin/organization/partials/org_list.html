@@ -1,24 +1,37 @@
 <div class="wrapper">
-    <div class="py2 border-bottom">
-        <div class="float-right">
-            <a class="Button Button--primary" href="/superadmin/organization/create">Add Organization</a>
-        </div>
-        <h2>Organizations</h2>
-    </div>
+    <section class="clearfix">
+        <a class="Button Button--primary float-right" href="/superadmin/organization/create">Add Organization</a>
+        <h2 class="PageTitle">Organizations</h2>
+    </section>
 
-    <div>
-        <div ng-if="!organizations">
-            <h3 class="text-normal text-centered">Loading ...</h3>
-        </div>
-
-        <ul class="List">
-            <li class="List-item List-section py2 border-bottom" ng-repeat="org in organizations">
-                <button class="Button Button--remove float-right" ng-click="deleteOrganization(org)" delete-confirm>Delete</button>
-                <div>
-                    <h4><a class="link" href="/superadmin/organization/{{org.id}}">{{org.name}}</a></h4>
-                    <span>{{org.description}}</span>
-                </div>
-            </li>
-        </ul>
-    </div>
+    <section>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Slug</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-show="!organizations">
+                    <td colspan=4>
+                        <cv-loading-icon></cv-loading-icon>
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+                <tr ng-repeat="org in organizations">
+                    <td>
+                        <a class="link" href="/superadmin/organization/{{org.id}}">{{org.name}}</a>
+                    </td>
+                    <td>{{org.slug}}</td>
+                    <td>{{org.description}}</td>
+                    <td>
+                        <button class="Button Button--danger" ng-click="deleteOrganization(org)" delete-confirm>Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 </div>

@@ -1,68 +1,46 @@
-<section class="wrapper">
-    <div class="py2">
-        <a class="Button Button--primary float-right" cv-org-href="/admin/emailreport/create">Create Email Report</a>
-        <h2>Reports</h2>
-    </div>
-    <div class="List">
-        <!-- LOADING SPINNER -->
-        <div class="layout-centered" ng-if="!reports">
-            <cv-loading-icon></cv-loading-icon>
-            <h3>Loading ...</h3>
-        </div>
+<div class="wrapper">
+    <section class="clearfix">
+        <a class="Button Button--primary float-right" cv-org-href="/admin/emailreport/create">Add report</a>
+        <h2 class="PageTitle">Email Reports</h2>
+    </section>
 
-        <!-- SEARCH / FILTER / SORT BY -->
-        <div class="List-filters List-section clearfix" ng-show="reports.length > 0">
-            <!-- FILTER -->
-            <div class="float-left">
-                <span class="float-left List-filterLabel">Filter:</span>
-                <div class="Button-group">
-                    <a class="Button" ng-class="{ 'Button--selected' : filterMode === 'all' }" ng-click="filter('all')">all</a>
-                    <a class="Button" ng-class="{ 'Button--selected' : filterMode === 'mine' }" ng-click="filter('mine')">mine</a>
-                </div>
-            </div>
-            <!-- SORT BY -->
-            <div class="float-left">
-                <span class="ml2 List-filterLabel">Sort by:</span>
-                <label class="Select">
-                    <select ng-init="sortMode = 'name'" ng-model="sortMode" ng-change="sort()">
-                        <option value="name">Name (default)</option>
-                        <option value="owner">Owner</option>
-                        <option value="date">Last Updated</option>
-                    </select>
-                </label>
-            </div>
-            <!-- SEARCH -->
-            <input class="input float-right" type="text" ng-model="searchFilter" placeholder="Search...">
-        </div>
-
-        <!-- REPORTS TABLE -->
-        <table class="Table">
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Recipients</th>
-            </tr>
-            <tr ng-repeat="report in reports | filter:searchFilter">
-                <td>
-                    <a class="text-bold link" cv-org-href="/admin/emailreport/{{report.id}}">{{report.name}}</a>
-                </td>
-                <td>
-                    {{report.description}}
-                </td>
-                <td>
-                    <ul>
-                        <li class="my1" ng-repeat="recipient in recipientList(report)">
-                            {{recipient}}
-                        </li>
-                    </ul>
-                </td>
-                <td>
-                    <div class="float-right">
+    <section>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Recipients</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-show="!reports">
+                    <td colspan=4>
+                        <cv-loading-icon></cv-loading-icon>
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+                <tr ng-repeat="report in reports">
+                    <td>
+                        <a class="text-bold link" cv-org-href="/admin/emailreport/{{report.id}}">{{report.name}}</a>
+                    </td>
+                    <td>
+                        {{report.description}}
+                    </td>
+                    <td>
+                        <ul>
+                            <li class="my1" ng-repeat="recipient in recipientList(report)">
+                                {{recipient}}
+                            </li>
+                        </ul>
+                    </td>
+                    <td>
                         <button class="Button" ng-click="executeReport(report.id)">Send Now</button>
-                        <button class="mx2 Button" ng-click="deleteReport($index)" delete-confirm>Delete</button>
-                    </div>
-                </td>
-            </tr>
+                        <button class="Button Button--danger" ng-click="deleteReport($index)" delete-confirm>Delete</button>
+                    </td>
+                </tr>
+            </tbody>
         </table>
-    </div>
-</section>
+    </section>
+</div>

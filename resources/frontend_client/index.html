@@ -130,11 +130,6 @@
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets/">
-                                <span class="NavItem-text">Datasets</span>
-                            </a>
-                        </li>
-                        <li>
                             <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">
                                 <span class="NavItem-text">Email Reports</span>
                             </a>
@@ -153,19 +148,29 @@
 
             <!-- SITE ADMINISTRATION (SUPER ADMIN) NAV -->
             <nav class="AdminNav" ng-show="nav === 'superadmin'">
-                <div class="bg-white border-bottom">
-                    <div class="py2 wrapper">
-                        <a class="AdminTitle link" href="/superadmin/">
-                            Site Administration
-                        </a>
-                        <div class="mx1 float-right">
-                            <a class="AdminExit-trigger link" href="/">Exit Site Administration</a>
-                        </div>
+                <div class="wrapper flex align-center">
+                    <div class="NavTitle flex align-center">
+                        <svg id="cog" class="mr1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16px" height="16px" fill="currentcolor">
+                            <path d="M14 0 H18 L19 6 L20.707 6.707 L26 3.293 L28.707 6 L25.293 11.293 L26 13 L32 14 V18 L26 19 L25.293 20.707 L28.707 26 L26 28.707 L20.707 25.293 L19 26 L18 32 L14 32 L13 26 L11.293 25.293 L6 28.707 L3.293 26 L6.707 20.707 L6 19 L0 18 L0 14 L6 13 L6.707 11.293 L3.293 6 L6 3.293 L11.293 6.707 L13 6 L14 0 z M16 10 A6 6 0 0 0 16 22 A6 6 0 0 0 16 10 "></path>
+                        </svg>
+                        <span class="NavItem-text">Site Administration</span>
                     </div>
-                    <section class="mt1 wrapper">
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/') && !isActive('/superadmin/organization')}" href="/superadmin/">Global Settings</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">Organizations</a>
-                    </section>
+
+                    <ul class="ml4 flex flex-full">
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/settings')}" href="/superadmin/settings/">
+                                <span class="NavItem-text">Global Settings</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">
+                                <span class="NavItem-text">Organizations</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- user profile dropdown -->
+                    <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
             </nav>
 

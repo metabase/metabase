@@ -1,71 +1,10 @@
 <div class="wrapper">
-    <!-- breadcrumb / page title -->
     <section>
         <h2 class="PageTitle">Organization</h2>
     </section>
 
     <section class="Grid Grid--1of2">
         <!-- form -->
-        <div class="Grid-cell p4 bordered rounded shadowed">
-            <form name="form" novalidate>
-                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.slug.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
-                    <input class="Form-input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input full" name="name" ng-model="currentOrg.name" placeholder="What is the name of your organization?"/>
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                    <input class="Form-input full" name="description" ng-model="currentOrg.description" placeholder="What else should people know about this org?"/>
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.logo_url.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
-                    <input class="Form-input full" name="logo_url" ng-model="currentOrg.logo_url" placeholder="Link to an image of your logo"/>
-                </div>
-
-                <!-- SAVE BUTTON -->
-                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
-                    Save
-                </button>
-            </form>
-        </div>
-        <div class="Grid-cell p4 bordered rounded shadowed">
-            <form name="form" novalidate>
-                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.slug.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
-                    <input class="Form-input full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input full" name="name" ng-model="currentOrg.name" placeholder="What is the name of your organization?"/>
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                    <input class="Form-input full" name="description" ng-model="currentOrg.description" placeholder="What else should people know about this org?"/>
-                </div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.logo_url.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
-                    <input class="Form-input full" name="logo_url" ng-model="currentOrg.logo_url" placeholder="Link to an image of your logo"/>
-                </div>
-
-                <!-- SAVE BUTTON -->
-                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
-                    Save
-                </button>
-            </form>
-        </div>
         <div class="Grid-cell p4 bordered rounded shadowed">
             <form name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>

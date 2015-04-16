@@ -28,12 +28,11 @@ var Corvus = angular.module('corvus', [
     'corvus.setup',
     'corvusadmin.organization',
     'corvusadmin.databases',
-    'corvusadmin.datasets',
     'corvusadmin.emailreport',
     'corvusadmin.people',
     'corvusadmin.query',
     'corvusadmin.annotation',
-    'superadmin.index',
+    'superadmin.settings',
     'superadmin.organization'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
@@ -60,6 +59,12 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     $routeProvider.when('/setup/init/:setupToken', {
         template: '',
         controller: 'SetupInit'
+    });
+
+    $routeProvider.when('/superadmin/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/superadmin/settings/';
+        }
     });
 
     // TODO: we need actual homepages for orgs!
