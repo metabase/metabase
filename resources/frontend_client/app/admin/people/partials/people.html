@@ -5,7 +5,7 @@
     </section>
 
     <section>
-        <table>
+        <table class="ContentTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -17,7 +17,7 @@
                     <td>
                         {{perm.user.common_name}} <span ng-show="perm.admin" class="AdminBadge">Admin</span>
                     </td>
-                    <td>
+                    <td class="Table-actions">
                         <button class="Button" ng-click="toggle(perm.user.id)">
                             <span ng-show="perm.admin">Revoke</span>
                             <span ng-show="!perm.admin">Grant</span>

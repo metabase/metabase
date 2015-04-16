@@ -2,6 +2,7 @@
     --admin-nav-bg-color: #6F7A8B;
     --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
     --admin-nav-item-text-active-color: #fff;
+    --page-header-padding: 2.375rem;
 }
 
 .AdminNav {
@@ -82,6 +83,57 @@
     font-size: 0.85em;
     margin-bottom: 1em;
 }
+
+.ContentTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    text-align: left;
+}
+
+.ContentTable thead {
+    border-top: 1px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8;
+}
+
+.AdminBadge {
+    background-color: #A989C5;
+    border-radius: 4px;
+    color: #fff;
+    padding: 0.25em;
+}
+.PageHeader {
+    padding-top: var(--page-header-padding);
+    padding-bottom: var(--page-header-padding);
+}
+
+.PageTitle {
+    margin: 0;
+}
+
+.Table-actions {
+    text-align: right;
+}
+
+.ContentTable .Table-actions {
+    opacity: 0;
+    transition: opacity .3s linear;
+}
+
+.ContentTable td,
+.ContentTable th {
+    padding: 1em;
+}
+
+.ContentTable tr:hover {
+    background-color: rgba(74, 144, 226, 0.04);
+}
+
+.ContentTable tr:hover .Table-actions {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
 
 /* TODO: this is for the ace editor and should be handled without an ID */
 #id_sql {
