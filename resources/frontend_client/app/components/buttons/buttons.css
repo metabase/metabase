@@ -7,6 +7,8 @@
   --primary-button-bg-color: #4A90E2;
 
   --selected-button-bg-color: #F4F6F8;
+
+  --danger-button-bg-color: #EF8C8C;
 }
 
 .Button {
@@ -78,4 +80,10 @@
 .Button--selected:hover {
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
   background-color: var(--selected-button-bg-color);
+}
+
+.Button--danger {
+    background-color: var(--danger-button-bg-color);
+    border-color: var(--danger-button-bg-color);
+    color: #fff;
 }

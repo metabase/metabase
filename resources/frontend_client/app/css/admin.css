@@ -15,7 +15,7 @@
     padding-top: 0;
     padding-bottom: 0;
     padding-left: 1em;
-    padding-right: 1em; 
+    padding-right: 1em;
     color: var(--admin-nav-item-text-color);
 }
 
@@ -58,6 +58,26 @@
     color: currentColor;
 }
 
+.Actions {
+    background-color: rgba(243,243,243,0.46);
+    border: 1px solid #E0E0E0;
+}
+
+.Actions-header {
+    padding: 1em;
+}
+
+.Actions-group {
+    padding: 1em;
+}
+
+.Actions-group.Actions--dangerZone {
+    color: var(--error-color);
+}
+
+.Actions-groupLabel {
+    margin-bottom: 1em;
+}
 
 /* TODO: this is for the ace editor and should be handled without an ID */
 #id_sql {
