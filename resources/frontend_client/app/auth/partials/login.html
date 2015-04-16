@@ -17,19 +17,19 @@
 
                     <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-                    <div class="Form-group mb2" ng-class="{'Form-group--error': form.email.$error.message == undefined}">
+                    <div ng-class="{'Form-group--error': form.email.$error.message == undefined}">
                         <mb-form-label form="form" display-name="Email address" field-name="email"></mb-form-label>
                         <input class="Form-input py1" name="email" placeholder="youlooknicetoday@email.com" type="text" ng-model="email" autofocus>
                     </div>
 
-                    <div class="Form-group mb2" ng-class="{'Form-group--error': form.password.$error.message == undefined}">
+                    <div ng-class="{'Form-group--error': form.password.$error.message == undefined}">
                         <mb-form-label form="form" display-name="Password" field-name="password"></mb-form-label>
                         <input class="Form-input py1" name="password" placeholder="Shh..." type="password" ng-model="password">
                     </div>
 
-                    <div class="Form-group">
-                        <input id="id_remember" name="remember" type="checkbox" ng-init="remember_me = true" ng-model="remember_me" checked>
-                        <label class="Form-label inline-block">Remember Me:</label>
+                    <div>
+                        <input name="remember" type="checkbox" ng-init="remember_me = true" ng-model="remember_me" checked>
+                        <label class="inline-block">Remember Me:</label>
                     </div>
 
                     <div class="mt2">
