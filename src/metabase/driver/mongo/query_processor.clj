@@ -37,43 +37,76 @@
                         (annotate-results (:query query))))
           :native :TODO)))))
 
+(def ^:private aggregations (atom '()))
 
+(def ^:dynamic *collection-name* nil)
+(def ^:dynamic *constraints* nil)
+
+(defmacro defaggregation [match-binding & body]
+  `(swap! aggregations concat
+          (quote [~match-binding (try
+                                   ~@body
+                                   (catch Throwable e#
+                                     (println (color/red ~(format "Failed to apply aggregation %s: " match-binding)
+                                                         e#))))])))
+
+(defn aggregate [& forms]
+  `(mc/aggregate *db-connection* ~*collection-name* [~@(when *constraints*
+                                                         [{$match *constraints*}])
+                                                     ~@forms]))
+
+(defn field-id->$string [field-id]
+  (format "$%s" (name (field-id->kw field-id))))
+
+
+(defaggregation ["rows"]
+  `(doall (with-collection *db-connection* ~*collection-name*
+            ~@(when *constraints* [`(find ~*constraints*)])
+            ~@(mapcat apply-clause *query*))))
+
+(defaggregation ["count"]
+  `[{:count (mc/count *db-connection* ~*collection-name*
+                      ~*constraints*)}])
+
+(defaggregation ["avg" field-id]
+  (aggregate {$group {"_id" nil
+                      "avg" {$avg (field-id->$string field-id)}}}))
+
+(defaggregation ["count" field-id]
+  (aggregate {$match {(field-id->kw field-id) {$exists true}}}
+             {$group {"_id" nil
+                      "count" {$sum 1}}}
+             {$project {"_id" false, "count" true}}))
+
+(defaggregation ["distinct" field-id]
+  (aggregate {$group {"_id" (field-id->$string field-id)}}
+             {$group {"_id" nil
+                      "count" {$sum 1}}}
+             {$project {"_id" false, "count" true}}))
+
+(defaggregation ["stddev" field-id]
+  nil) ; TODO
+
+(defaggregation ["sum" field-id]
+  (aggregate {$group {"_id" nil ; TODO - I don't think this works for _id
+                      "sum" {$sum (field-id->$string field-id)}}}
+             {$project {"_id" false, "sum" true}}))
+
+(defaggregation ["cum_sum" field-id]
+  nil) ; TODO
+
+(defmacro match-aggregation [aggregation]
+  `(match ~aggregation
+     ~@@aggregations
+     ~'_ nil))
 
 (defn process-structured [{:keys [source_table aggregation] :as query}]
-  (let [collection-name (sel :one :field [Table :name] :id source_table)
-        constraints (when-let [filter-clause (:filter query)]
-                      (apply-clause [:filter filter-clause]))
-        query (dissoc query :filter)]
-    (match aggregation
-      ["rows"] `(doall (with-collection *db-connection* ~collection-name
-                         ~@(when constraints
-                             `[(find ~constraints)])
-                         ~@(doall (mapcat apply-clause query))))
-      ["count"] `[{:count (mc/count *db-connection* ~collection-name
-                                    ~constraints)}]
-      [field-aggregation field-id] (let [field-kw (field-id->kw field-id)
-                                         $field (format "$%s" (name field-kw))
-                                         aggregate (fn [& forms]
-                                                     `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
-                                                                                                           [{$match constraints}])
-                                                                                                       ~@forms]))]
-                                     (case field-aggregation
-                                       "avg"      (aggregate {$group {"_id" nil
-                                                                      "avg" {$avg $field}}}
-                                                             {$project {"_id" false, "avg" true}})
-                                       "count"    (aggregate {$match {field-kw {$exists true}}}
-                                                             {$group {"_id" nil
-                                                                      "count" {$sum 1}}}
-                                                             {$project {"_id" false, "count" true}})
-                                       "distinct" (aggregate {$group {"_id" $field}}
-                                                             {$group {"_id" nil
-                                                                      "count" {$sum 1}}}
-                                                             {$project {"_id" false, "count" true}})
-                                       "stddev"   nil ; TODO
-                                       "sum"      (aggregate {$group {"_id" nil ; TODO - I don't think this works for _id
-                                                                      "sum" {$sum $field}}}
-                                                             {$project {"_id" false, "sum" true}})
-                                       "cum_sum"  nil))))) ; TODO
+  (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
+            *constraints* (when-let [filter-clause (:filter query)]
+                            (apply-clause [:filter filter-clause]))
+            *query* (dissoc query :filter)]
+    (match-aggregation aggregation)))
+
 
 ;; ## ANNOTATION
 
@@ -102,70 +135,94 @@
      (keyword (sel :one :field [Field :name] :id field-id)))))
 
 
-;; ## CLAUSE APPLICATION
+;; ## CLAUSE APPLICATION 2.0
 
-(defmulti apply-clause (fn [[clause-kw _]]
-                         clause-kw))
+(def clauses (atom '()))
 
-(defmacro defclause [clause-kw [value-binding] & body]
-  `(defmethod apply-clause ~clause-kw [[_ ~value-binding]]
-     (try
-       ~@body
-       (catch Throwable e#
-         (println (color/red ~(format "Failed to apply clause '%s': " clause-kw) (.getMessage e#))))))) ; TODO - log/error
+(defmacro defclause [clause match-binding & body]
+  `(swap! clauses concat '[[~clause ~match-binding] (try
+                                                      ~@body
+                                                      (catch Throwable e#
+                                                        (println (color/red ~(format "Failed to process clause [%s %s]: " clause match-binding)
+                                                                            (.getMessage e#)))))]))
 
-;; TODO - this should throw an Exception once QP is finished
-(defmethod apply-clause :default [[clause-kw value]]
-  (println "TODO: Don't know how to apply-clause" clause-kw "with value:" value))
+;; ### CLAUSE DEFINITIONS
 
-;; ### aggregation
-(defclause :aggregation [aggregation]
-  nil) ; nothing to do here since this is handled by process-structured above
+;; ### DEV CODE FOR CLAUSE APPLICATION 2.0
+
+(def yq {:database 44,
+         :type "query",
+         :query
+         {:source_table 59,
+          :filter ["<" 307 1000]
+          :aggregation ["rows"],
+          :breakout [nil],
+          :limit 10}})
+
+(defn y []
+  (driver/process-and-run yq))
+
 
 ;; ### breakout (TODO)
-(defclause :breakout [field-ids]
-  (when (seq field-ids)
-    nil))
+(defclause :breakout field-ids
+  nil)
 
 ;; TODO - this still returns _id, even if we don't ask for it :/
-(defclause :fields [field-ids]
-  (when (seq field-ids)
-    `[(fields ~(mapv field-id->kw field-ids))]))
+(defclause :fields field-ids
+  `[(fields ~(mapv field-id->kw field-ids))])
 
-(defn apply-filter-subclause [subclause]
-  (match subclause
-    ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max] (let [lat-field (field-id->kw lat-field-id)
-                                                                               lon-field (field-id->kw lon-field-id)]
-                                                                           {$and [{lat-field {$gte lat-min, $lte lat-max}}
-                                                                                  {lon-field {$gte lon-min, $lte lon-max}}]})
-    [_ field-id & _] {(field-id->kw field-id)
-                      (match subclause
-                        ["NOT_NULL" _]        {$exists true}
-                        ["IS_NULL"]           {$exists false}
-                        ["BETWEEN" _ min max] {$gt min, $lt max} ; TODO - is this supposed to be inclusive, or not ?
-                        ["="  _ value]        value
-                        ["!=" _ value]        {$ne value}
-                        ["<"  _ value]        {$lt value}
-                        [">"  _ value]        {$gt value}
-                        ["<=" _ value]        {$lte value}
-                        [">=" _ value]        {$gte value})}))
 
 ;; ### filter
 ;; !!! SPECIAL CASE - since this is used in a different way by the different aggregation options
 ;; we just return a "constraints" map
-(defclause :filter [filter-clause]
-  (match filter-clause
-    ["AND"]              nil
-    ["AND" & subclauses] {$and (mapv apply-filter-subclause subclauses)}
-    ["OR"  & subclauses] {$or  (mapv apply-filter-subclause subclauses)}
-    subclause            (apply-filter-subclause subclause)))
+
+(defclause :filter ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max]
+  (let [lat-field (field-id->kw lat-field-id)
+        lon-field (field-id->kw lon-field-id)]
+    {$and [{lat-field {$gte lat-min, $lte lat-max}}
+           {lon-field {$gte lon-min, $lte lon-max}}]}))
+
+(defclause :filter ["IS_NULL" field-id]
+  {(field-id->kw field-id) {$exists false}})
+
+(defclause :filter ["NOT_NULL" field-id]
+  {(field-id->kw field-id) {$exists true}})
+
+(defclause :filter ["BETWEEN" field-id min max] ; is this supposed to be inclusive, or not ?
+  {(field-id->kw field-id) {$gt min
+                            $lt max}})
+(defclause :filter ["=" field-id value]
+  {(field-id->kw field-id) value})
+
+(defclause :filter ["!=" field-id value]
+  {(field-id->kw field-id) {$ne value}})
+
+(defclause :filter ["<" field-id value]
+  {(field-id->kw field-id) {$lt value}})
+
+(defclause :filter [">" field-id value]
+  {(field-id->kw field-id) {$gt value}})
+
+(defclause :filter ["<=" field-id value]
+  {(field-id->kw field-id) {$lte value}})
+
+(defclause :filter [">=" field-id value]
+  {(field-id->kw field-id) {$gte value}})
+
+(defclause :filter ["AND" & subclauses]
+  {$and (mapv #(apply-clause [:filter %]) subclauses)})
+
+(defclause :filter ["OR" & subclauses]
+  {$or (mapv #(apply-clause [:filter %]) subclauses)})
+
 
 ;; ### limit
-(defclause :limit [value]
+
+(defclause :limit value
   `[(limit ~value)])
 
 ;; ### order_by
-(defclause :order_by [field-dir-pairs]
+(defclause :order_by field-dir-pairs
   (let [sort-options (mapcat (fn [[field-id direction]]
                                [(field-id->kw field-id) (case (keyword direction)
                                                           :ascending 1
@@ -175,12 +232,19 @@
       `[(sort (array-map ~@sort-options))])))
 
 ;; ### page
-(defclause :page [{page-num :page items-per-page :items}]
-  (let [num-to-skip (* (dec page-num) items-per-page)]
+(defclause :page page-clause
+  (let [{page-num :page items-per-page :items} page-clause
+        num-to-skip (* (dec page-num) items-per-page)]
     `[(skip ~num-to-skip)
       (limit ~items-per-page)]))
 
-;; ### source_table
-;; Don't need to do anything here since `process-structured` takes care of the `with-collection` bit
-(defclause :source_table [value]
-  nil)
+
+;; ### APPLY-CLAUSE
+
+(defmacro match-clause [clause]
+  `(match ~clause
+     ~@@clauses
+     ~'_ nil))
+
+(defn apply-clause [clause]
+  (match-clause clause))
