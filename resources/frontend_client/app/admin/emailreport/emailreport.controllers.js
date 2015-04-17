@@ -117,7 +117,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                 // if there is already an ID associated with the report then we are updating
                 EmailReport.update(reportDetail, function (result) {
                     $scope.report = result;
-                    $scope.form.success = true;
+                    $scope.form.successMessage = "Successfully saved!";
                 }, function (error) {
                     MetabaseForm.parseFormErrors($scope.form, error);
                 });

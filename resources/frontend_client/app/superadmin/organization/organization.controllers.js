@@ -54,7 +54,7 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
                 MetabaseForm.clearFormErrors($scope.form);
                 Organization.update(organization, function (org) {
                     $scope.organization = org;
-                    $scope.form.success = true;
+                    $scope.form.successMessage = "Successfully saved!";
                 }, function (error) {
                     MetabaseForm.parseFormErrors($scope.form, error);
                 });
@@ -68,7 +68,7 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
             $scope.save = function(organization) {
                 MetabaseForm.clearFormErrors($scope.form);
                 Organization.create(organization, function (org) {
-                    $scope.form.success = true;
+                    $scope.form.successMessage = "Successfully saved!";
                     $location.path('/superadmin/organization/' + org.id);
                 }, function (error) {
                     MetabaseForm.parseFormErrors($scope.form, error);

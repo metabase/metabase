@@ -69,11 +69,45 @@ MetabaseForms.directive('mbFormMessage', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<span><span class="FormError" ng-show="form.$error.message">{{form.$error.message}}</span>' +
-                  '<span class="FormSuccess" ng-if="form.success" cv-delayed-call="form.success = undefined">{{successMessage}}</span></span>',
+        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-danger\': error === true}" ng-show="visible" cv-delayed-call="reset()">{{message}}</span>',
         scope: {
-            form: '=',
-            successMessage: '@'
+            form: '='
+        },
+        link: function(scope, element, attr) {
+
+            var setMessage = function (msg, isError) {
+                scope.visible = true;
+                scope.message = msg;
+                scope.error = isError;
+            };
+
+            scope.reset = function() {
+                console.log('resetting');
+                scope.visible = false;
+                scope.message = undefined;
+                scope.error = undefined;
+            };
+
+            scope.$watch('form.$error.message', function (msg) {
+                if (!msg) {
+                    scope.reset();
+                    return;
+                }
+
+                setMessage(msg, true);
+            });
+
+            scope.$watch('form.successMessage', function (msg) {
+                if (!msg) {
+                    scope.reset();
+                    return;
+                }
+
+                setMessage(msg, false);
+            });
+
+            // start from base state
+            scope.reset();
         }
     };
 }]);
