@@ -69,7 +69,7 @@ MetabaseForms.directive('mbFormMessage', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-danger\': error === true}" ng-show="visible" cv-delayed-call="reset()">{{message}}</span>',
+        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-show="visible" cv-delayed-call="reset()">{{message}}</span>',
         scope: {
             form: '='
         },
