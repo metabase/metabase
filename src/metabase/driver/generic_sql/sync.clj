@@ -22,7 +22,7 @@
          sync-table
          table-active-field-name->base-type
          table-names
-         update-table-row-count!)
+         table-row-count)
 
 ;; # PUBLIC INTERFACE
 
@@ -56,12 +56,13 @@
 
       ;; Once that's done we can do the rest of the syncing for Tables
       (fn [table]
+        (common/sync-table-metadata table :row-count-fn #(table-row-count (korma-entity %))))
+
+      (fn [table]
         (let [korma-table (korma-entity table)]
-          (update-table-row-count! korma-table table)
           (set-table-pks-if-needed! table)
           (set-table-fks-if-needed! korma-table table)
           (sync-fields-metadata korma-table table))))))
-
 
 (defn sync-table
   "Sync a single `Table` and its `Fields`."
@@ -69,7 +70,7 @@
   [{db :db table-name :name :as table}]
   (let [korma-table (korma-entity table)]          ; implementation is a little simpler here than SYNC-DATABASE
     (with-jdbc-metadata [_ @db]                    ; since we don't need to wait for *every* table to finish `sync-fields-create` before
-      (sync-fields-create korma-table table)
+      (common/sync-table-create-fields table (table-active-field-name->base-type table))
       (update-table-row-count! korma-table table)
       (set-table-pks-if-needed! table)
       (set-table-fks-if-needed! korma-table table)
@@ -178,17 +179,6 @@
       (select (aggregate (count :*) :count))
       first
       :count))
-
-(defn- update-table-row-count!
-  "Update the `:rows` column for TABLE with the count from `table-row-count`."
-  {:arglists '([korma-table table])}
-  [korma-table {:keys [id]}]
-  {:pre [(integer? id)]}
-  (try
-    (let [new-count (table-row-count korma-table)]
-      (upd Table id :rows new-count))
-    (catch Throwable e
-      (log/error "Caught exception in update-table-row-count!:" e))))
 
 
 ;; ## SET TABLE PKS

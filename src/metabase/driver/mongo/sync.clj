@@ -74,11 +74,11 @@
        (into {})))
 
 (defn- sync-collection [database {table-id :id table-name :name :as table}]
-  ;; Update # items in collection
-  (upd Table table-id :rows (get-num-items-in-collection database table-name))
-
   ;; Update Fields for the collection
-  (common/sync-table-create-fields table (table-active-field-name->base-type database table)))
+  (common/sync-table-create-fields table (table-active-field-name->base-type database table))
+
+  ;; Sync Metadata
+  (common/sync-table-metadata table :row-count-fn #(get-num-items-in-collection database (:name %))))
 
 (defmethod driver/sync-table :mongo [{database :db :as table}]
   (sync-collection @database table))

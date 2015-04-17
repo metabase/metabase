@@ -64,3 +64,12 @@
                       :name field-name
                       :base_type base-type)))
                 active-field-name->base-type))))
+
+(defn sync-table-metadata [{table-id :id table-name :name :as table} & {:keys [row-count-fn]}]
+  {:pre [(fn? row-count-fn)]}
+  ;; Update Table row count
+  (let [row-count (row-count-fn table)]
+    (assert (integer? row-count))
+    (if (= (:rows table) row-count) (log/debug (format "Table '%s' row count remains constant at %d." table-name row-count))
+        (do (upd Table table-id :rows row-count)
+            (log/debug (format "Updated row count for Table '%s': new value is %d." table-name row-count))))))
