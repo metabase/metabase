@@ -20,15 +20,8 @@
          process-structured
          process-and-run-structured)
 
-(def ^:dynamic *query* "The structured query we're currently processing (i.e. the `:query` part of the API call body)" nil)
-
-;; (defn fetch-results
-;;   {:arglists '([database collection-name])}
-;;   [{{connection-string :conn_str} :details} collection-name]
-;;   (with-db-connection [db connection-string]
-;;     (doall (with-collection db collection-name
-;;              (find {})
-;;              (limit 20)))))
+(def ^:dynamic *query* "The structured query we're currently processing (i.e. the `:query` part of the API call body)"
+  nil)
 
 
 (defmethod driver/process-and-run :mongo [{query-type :type database-id :database :as query}]
@@ -47,24 +40,28 @@
 (defn process-structured [{:keys [source_table aggregation] :as query}]
   (binding [*query* query]
     (let [collection-name (sel :one :field [Table :name] :id source_table)]
-      (match aggregation
-        ["rows"] `(doall (with-collection *db-connection* ~collection-name
-                           ~@(doall (mapcat apply-clause query))))
-        ["count"] (let [[[_ & constraints]] (apply-clause [:filter (:filter query)])] ; since only :filter applies to count aggregation
-                    `[{:count (mc/count *db-connection* ~collection-name              ; just process filter clause which gives us a form like [(find {...})]
-                                        ~@constraints)}])                             ; and pass that directly to the count fn
-        [field-aggregation field-id] (let [field (field-id->kw field-id)]
-                                       (case field-aggregation
-                                         ;; TODO - these ignore clauses like :filter
-                                         ;; (is that something we need anyway?)
-                                         "avg"      `(->> (mc/aggregate *db-connection* ~collection-name [{$group {"_id" nil
-                                                                                                                   "avg" {$avg ~(format "$%s" (name field))}}}])
-                                                          (map #(dissoc % :_id)))
-                                         "count"    nil ; (THE REST OF THESE ARE TODO)
-                                         "distinct" nil
-                                         "stddev"   nil
-                                         "sum"      nil
-                                         "cum_sum"  nil))))))
+      (let [constraints (apply-clause [:filter (:filter query)])
+            query (dissoc query :filter)]
+        (match aggregation
+          ["rows"] `(doall (with-collection *db-connection* ~collection-name
+                             ~@(when constraints
+                                 `[(find ~constraints)])
+                             ~@(doall (mapcat apply-clause query))))
+          ["count"] `[{:count (mc/count *db-connection* ~collection-name
+                                        ~constraints)}]
+          [field-aggregation field-id] (let [field (field-id->kw field-id)]
+                                         (case field-aggregation
+                                           "avg"      `(->> (mc/aggregate *db-connection* ~collection-name
+                                                                          [~@(when constraints
+                                                                               `[{$match ~constraints}])
+                                                                           {$group {"_id" nil
+                                                                                    "avg" {$avg ~(format "$%s" (name field))}}}])
+                                                            (map #(dissoc % :_id)))
+                                           "count"    nil ; (THE REST OF THESE ARE TODO)
+                                           "distinct" nil
+                                           "stddev"   nil
+                                           "sum"      nil
+                                           "cum_sum"  nil)))))))
 
 ;; ## ANNOTATION
 
@@ -104,7 +101,7 @@
                            :type "query",
                            :query
                            {:source_table 59,
-                            :filter nil,
+                            :filter ["<" 307 1000]
                             :aggregation ["rows"],
                             :breakout [nil],
                             :limit 25}}))
@@ -122,7 +119,7 @@
 
 (defn z2 []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$match {:pop {$lt 5000}}}
+    (mc/aggregate db "zips" [{$match (or nil {})}
                              {$group {"_id" nil
                                       "avg" {$avg "$pop"}}}])))
 
@@ -175,16 +172,18 @@
                         ["<=" _ value]        {$lte value}
                         [">=" _ value]        {$gte value})}))
 
-;; ### filter (TODO)
+;; ### filter
+;; !!! SPECIAL CASE - since this is used in a different way by the different aggregation options
+;; we just return a "constraints" map
 (defclause :filter [filter-clause]
   (match filter-clause
     nil                  nil
     []                   nil
     [nil nil]            nil
     ["AND"]              nil
-    ["AND" & subclauses] `[(find {$and ~(mapv apply-filter-subclause subclauses)})]
-    ["OR"  & subclauses] `[(find {$or  ~(mapv apply-filter-subclause subclauses)})]
-    subclause            `[(find ~(apply-filter-subclause subclause))]))
+    ["AND" & subclauses] {$and (mapv apply-filter-subclause subclauses)}
+    ["OR"  & subclauses] {$or  (mapv apply-filter-subclause subclauses)}
+    subclause            (apply-filter-subclause subclause)))
 
 ;; ### limit
 (defclause :limit [value]
