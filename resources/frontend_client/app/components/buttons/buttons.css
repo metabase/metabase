@@ -11,6 +11,8 @@
 }
 
 .Button {
+  display: inline-block;
+  box-sizing: border-box;
   text-decoration: none;
   padding: 0.5em 0.75em;
   background: #FBFCFD;
@@ -19,13 +21,9 @@
   border-radius: var(--default-button-border-radius);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  padding: 0.6rem 0.8rem;
   text-decoration: none;
   font-size: 0.8em;
-  line-height: 1em;
-
-  display: inline-block;
-  box-sizing: border-box;
+  line-height: 1;
 }
 
 .Button:hover {

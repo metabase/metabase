@@ -118,7 +118,6 @@
 
 .ContentTable .Table-actions {
     opacity: 0;
-    pointer-events: none; /* an extra precaution to ensure that actions cannot be clicked unless focused */
 }
 
 .ContentTable td,
@@ -128,12 +127,11 @@
 
 .ContentTable tbody tr:hover {
     background-color: rgba(74, 144, 226, 0.04);
-    pointer-events: all;
 }
 
 .ContentTable tr:hover .Table-actions {
     opacity: 1;
-    transition: opacity .3s linear;
+    transition: opacity .2s linear;
 }
 
 /* TODO: this is for the ace editor and should be handled without an ID */
