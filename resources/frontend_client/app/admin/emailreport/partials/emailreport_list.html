@@ -5,7 +5,7 @@
     </section>
 
     <section>
-        <table>
+        <table class="ContentTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -35,7 +35,7 @@
                             </li>
                         </ul>
                     </td>
-                    <td>
+                    <td class="Table-actions">
                         <button class="Button" ng-click="executeReport(report.id)">Send Now</button>
                         <button class="Button Button--danger" ng-click="deleteReport($index)" delete-confirm>Delete</button>
                     </td>

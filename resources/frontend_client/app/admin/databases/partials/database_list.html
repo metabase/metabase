@@ -5,7 +5,7 @@
     </section>
 
     <section>
-        <table>
+        <table class="ContentTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -27,7 +27,7 @@
                     <td>
                         {{database.engine}}
                     </td>
-                    <td>
+                    <td class="Table-actions">
                         <!-- TODO: sync now button? -->
                         <a class="Button" cv-org-href="/admin/databases/{{database.id}}/tables/">Tables</a>
                         <button class="Button Button--danger" ng-click="delete(database.id)" delete-confirm>Delete</button>
