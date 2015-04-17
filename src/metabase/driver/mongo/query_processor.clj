@@ -16,6 +16,7 @@
 
 (declare apply-clause
          annotate-results
+         field-id->kw
          process-structured
          process-and-run-structured)
 
@@ -53,13 +54,17 @@
                     `[{:count (mc/count *db-connection* ~collection-name              ; just process filter clause which gives us a form like [(find {...})]
                                         ~@constraints)}])                             ; and pass that directly to the count fn
         [field-aggregation field-id] (let [field (field-id->kw field-id)]
-                                       (case field-aggregation ; (THESE ARE ALL TODO)
-                                         "avg" nil
-                                         "count" nil
+                                       (case field-aggregation
+                                         ;; TODO - these ignore clauses like :filter
+                                         ;; (is that something we need anyway?)
+                                         "avg"      `(->> (mc/aggregate *db-connection* ~collection-name [{$group {"_id" nil
+                                                                                                                   "avg" {$avg ~(format "$%s" (name field))}}}])
+                                                          (map #(dissoc % :_id)))
+                                         "count"    nil ; (THE REST OF THESE ARE TODO)
                                          "distinct" nil
-                                         "stddev" nil
-                                         "sum" nil
-                                         "cum_sum" nil))))))
+                                         "stddev"   nil
+                                         "sum"      nil
+                                         "cum_sum"  nil))))))
 
 ;; ## ANNOTATION
 
@@ -109,10 +114,19 @@
     (doall (with-collection db "zips"
              (limit 10)))))
 
+;; Total count for each state
 (defn z []
   (with-db-connection [db "mongodb://localhost/test"]
-    (let [collection (.getCollection db "zips")]
-      (mc/count db "zips" {:pop {$lt 1000}}))))
+    (mc/aggregate db "zips" [{$group {"_id" "$state"
+                                      "sum" {$sum 1}}}])))
+
+(defn z2 []
+  (with-db-connection [db "mongodb://localhost/test"]
+    (mc/aggregate db "zips" [{$match {:pop {$lt 5000}}}
+                             {$group {"_id" nil
+                                      "avg" {$avg "$pop"}}}])))
+
+
 
 (defn field-id->kw [field-id]
   (keyword (sel :one :field [Field :name] :id field-id)))
