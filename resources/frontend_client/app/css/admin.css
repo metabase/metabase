@@ -118,7 +118,7 @@
 
 .ContentTable .Table-actions {
     opacity: 0;
-    transition: opacity .3s linear;
+    pointer-events: none; /* an extra precaution to ensure that actions cannot be clicked unless focused */
 }
 
 .ContentTable td,
@@ -128,6 +128,7 @@
 
 .ContentTable tbody tr:hover {
     background-color: rgba(74, 144, 226, 0.04);
+    pointer-events: all;
 }
 
 .ContentTable tr:hover .Table-actions {
