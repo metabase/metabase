@@ -9,6 +9,7 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.query-processor :refer [*query* preprocess]]
             [metabase.driver.mongo.util :refer [with-db-connection *db-connection*]]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
@@ -20,61 +21,61 @@
          process-structured
          process-and-run-structured)
 
-(def ^:dynamic *query* "The structured query we're currently processing (i.e. the `:query` part of the API call body)"
-  nil)
-
 
 (defmethod driver/process-and-run :mongo [{query-type :type database-id :database :as query}]
-  (let [{{connection-string :conn_str} :details} (sel :one Database :id database-id)]
-    (with-db-connection [db connection-string]
-      (case (keyword query-type)
-        :query (let [generated-query (process-structured (:query query))]
-                 ;; ; TODO - log/debug
-                 (println (color/magenta "\n******************** Generated Monger Query: ********************\n"
-                                         (with-out-str (clojure.pprint/pprint generated-query))
-                                         "*****************************************************************\n"))
-                 (->> (eval generated-query)
-                      (annotate-results (:query query))))
-        :native :TODO))))
+  (binding [*query* query]
+    (let [{{connection-string :conn_str} :details} (sel :one Database :id database-id)
+          query (preprocess query)]
+      (with-db-connection [db connection-string]
+        (case (keyword query-type)
+          :query (let [generated-query (process-structured (:query query))]
+                   ;; ; TODO - log/debug
+                   (println (color/magenta "\n******************** Generated Monger Query: ********************\n"
+                                           (with-out-str (clojure.pprint/pprint generated-query))
+                                           "*****************************************************************\n"))
+                   (->> (eval generated-query)
+                        (annotate-results (:query query))))
+          :native :TODO)))))
 
 
 
 (defn process-structured [{:keys [source_table aggregation] :as query}]
-  (binding [*query* query]
-    (let [collection-name (sel :one :field [Table :name] :id source_table)]
-      (let [constraints (apply-clause [:filter (:filter query)])
-            query (dissoc query :filter)]
-        (match aggregation
-          ["rows"] `(doall (with-collection *db-connection* ~collection-name
-                             ~@(when constraints
-                                 `[(find ~constraints)])
-                             ~@(doall (mapcat apply-clause query))))
-          ["count"] `[{:count (mc/count *db-connection* ~collection-name
-                                        ~constraints)}]
-          [field-aggregation field-id] (let [field-kw (field-id->kw field-id)
-                                             $field (format "$%s" (name field-kw))
-                                             aggregate (fn [& forms]
-                                                         `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
-                                                                                                               [{$match constraints}])
-                                                                                                           ~@forms
-                                                                                                           {$limit 1}]))]
-                                         (case field-aggregation
-                                           "avg"      (aggregate {$group {"_id" nil
-                                                                          "avg" {$avg $field}}}
-                                                                 {$project {"_id" false, "avg" true}})
-                                           "count"    (aggregate {$match {field-kw {$exists true}}}
-                                                                 {$group {"_id" nil
-                                                                          "count" {$sum 1}}}
-                                                                 {$project {"_id" false, "count" true}})
-                                           "distinct" (aggregate {$group {"_id" $field}}
-                                                                 {$group {"_id" nil
-                                                                          "count" {$sum 1}}}
-                                                                 {$project {"_id" false, "count" true}})
-                                           "stddev"   nil
-                                           "sum"      (aggregate {$group {"_id" nil                      ; TODO - I don't think this works for _id
-                                                                          "sum" {$sum $field}}}
-                                                                 {$project {"_id" false, "sum" true}})
-                                           "cum_sum"  nil)))))))
+  (let [collection-name (sel :one :field [Table :name] :id source_table)
+        constraints (when-let [filter-clause (:filter query)]
+                      (apply-clause [:filter filter-clause]))
+        query (dissoc query :filter)]
+    (match aggregation
+      ["rows"] `(doall (with-collection *db-connection* ~collection-name
+                         ~@(when constraints
+                             `[(find ~constraints)])
+                         ~@(doall (mapcat apply-clause query))))
+      ["count"] `[{:count (mc/count *db-connection* ~collection-name
+                                    ~constraints)}]
+      [field-aggregation field-id] (let [field-kw (field-id->kw field-id)
+                                         $field (format "$%s" (name field-kw))
+                                         aggregate (fn [& forms]
+                                                     `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
+                                                                                                           [{$match constraints}])
+                                                                                                       ~@forms
+                                                                                                       {$limit 1}]))]
+                                     (case field-aggregation
+                                       "avg"      (aggregate {$group {"_id" nil
+                                                                      "avg" {$avg $field}}}
+                                                             {$project {"_id" false, "avg" true}})
+                                       "count"    (aggregate {$match {field-kw {$exists true}}}
+                                                             {$group {"_id" nil
+                                                                      "count" {$sum 1}}}
+                                                             {$project {"_id" false, "count" true}})
+                                       "distinct" (aggregate {$group {"_id" $field}}
+                                                             {$group {"_id" nil
+                                                                      "count" {$sum 1}}}
+                                                             {$project {"_id" false, "count" true}})
+                                       "stddev"   nil           ; TODO
+                                       "sum"      (aggregate {$group {"_id" nil ; TODO - I don't think this works for _id
+                                                                      "sum" {$sum $field}}}
+                                                             {$project {"_id" false, "sum" true}})
+                                       "cum_sum"  nil           ; TODO
+                                       )))))
 
 ;; ## ANNOTATION
 
@@ -127,14 +128,18 @@
 ;; Total count for each state
 (defn z []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$group {"_id" nil
-                                      "sum" {$sum "$pop"}}}
-                             {$limit 10}])))
+    (doall
+     (with-collection db "zips"
+       (fields [:city])
+       (limit 10)
+       (sort (array-map :city -1))))))
 
 (defn z2 []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$project {"sum" {$sum "$_id"}}}
-                             {$limit 1}])))
+    (mc/aggregate db "zips" [{$match {:pop {$lt 100, $gt 50}}}
+                             {$group {"_id" nil
+                                      "pops" {$push "$pop" }}}
+                             {$project {"sum" "$sum(pops)"}}])))
 
 
 
@@ -167,6 +172,11 @@
   (when (seq field-ids)
     nil))
 
+;; TODO - this still returns _id, even if we don't ask for it :/
+(defclause :fields [field-ids]
+  (when (seq field-ids)
+    `[(fields ~(mapv field-id->kw field-ids))]))
+
 (defn apply-filter-subclause [subclause]
   (match subclause
     ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max] (let [lat-field (field-id->kw lat-field-id)
@@ -190,9 +200,6 @@
 ;; we just return a "constraints" map
 (defclause :filter [filter-clause]
   (match filter-clause
-    nil                  nil
-    []                   nil
-    [nil nil]            nil
     ["AND"]              nil
     ["AND" & subclauses] {$and (mapv apply-filter-subclause subclauses)}
     ["OR"  & subclauses] {$or  (mapv apply-filter-subclause subclauses)}
@@ -200,8 +207,7 @@
 
 ;; ### limit
 (defclause :limit [value]
-  (when value
-    `[(limit ~value)]))
+  `[(limit ~value)])
 
 ;; ### order_by
 (defclause :order_by [field-dir-pairs]
