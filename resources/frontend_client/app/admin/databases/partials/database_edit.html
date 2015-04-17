@@ -6,59 +6,68 @@
         <h2 class="Breadcrumb Breadcrumb--page" ng-if="database.id">{{database.name}}</h2>
     </section>
 
-    <section class="Grid Grid--gutters Grid--1of3">
+    <section class="Grid Grid--gutters Grid--full">
         <!-- form -->
         <div class="Grid-cell Cell--2of3">
-            <form class="bg-white rounded bordered shadowed" name="form" novalidate>
+            <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-                <div class="Form-field">
-                    <label class="Form-label">Database Type:</label>
-                    <label class="Select">
+                <div class="Form-field" ng-class="{'Form--fieldError': form.engine.$error.message !== undefined}">
+                    <mb-form-label form="form" display-name="Database type" field-name="engine"></mb-form-label>
+                    <label class="Select Form-input Form-offset">
                         <select name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
                     </label>
                 </div>
 
-                <div class="Form-field" ng-init="" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
-                    <label class="Form-label Form-offset">Name: <span ng-show="form.name.$error.message">{{form.name.$error.message}}</span></label>
-                    <input class="Form-input Form-offset full" name="name" ng-model="database.name" />
+                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
+                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required />
+                    <span class="Form-charm"></span>
                 </div>
 
                 <!-- TODO: database type dependent inputs -->
                 <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
-                    <div class="Form-field" ng-class="{'FormFieldError': form.host.$error.message != undefined}">
-                        <label class="Form-label Form-offset">Host: <span ng-show="form.host.$error.message">{{form.host.$error.message}}</span></label>
-                        <input class="Form-input Form-offset full" name="host" ng-model="details.host" required />
+                    <div class="Form-field" ng-class="{'Form--fieldError': form.host.$error.message !== undefined}">
+                        <mb-form-label form="form" display-name="Host" field-name="host"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="host" placeholder="localhost" ng-model="details.host" required />
+                        <span class="Form-charm"></span>
                     </div>
 
-                    <div class="Form-field" ng-class="{'Form--error': form.port.$error.message == undefined}">
-                        <label class="Form-label">Port: <span ng-show="form.port.$error.message">{{form.port.$error.message}}</span></label>
-                        <input class="Form-input full" name="port" ng-model="details.port" required />
+                    <div class="Form-field" ng-class="{'Form--fieldError': form.port.$error.message !== undefined}">
+                        <mb-form-label form="form" display-name="Port" field-name="port"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="port" placeholder="5432" ng-model="details.port" required />
+                        <span class="Form-charm"></span>
                     </div>
 
-                    <div class="Form-field" ng-class="{'FormFieldError': form.dbname.$error.message == undefined}">
-                        <label class="Form-label">Database name: <span ng-show="form.dbname.$error.message">{{form.dbname.$error.message}}</span></label>
-                        <input class="Form-input full" name="dbname" ng-model="details.dbname" />
+                    <div class="Form-field" ng-class="{'Form--fieldError': form.dbname.$error.message !== undefined}">
+                        <mb-form-label form="form" display-name="Database name" field-name="dbname"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="dbname" placeholder="What is the name of your database?" ng-model="details.dbname" />
+                        <span class="Form-charm"></span>
                     </div>
 
-                    <div class="Form-field" ng-class="{'FormFieldError': form.user.$error.message == undefined}">
-                        <label class="Form-label">Database username: <span ng-show="form.user.$error.message">{{form.user.$error.message}}</span></l abel>
-                        <input class="Form-input full" name="user" ng-model="details.user" required />
+                    <div class="Form-field" ng-class="{'Form--fieldError': form.user.$error.message !== undefined}">
+                        <mb-form-label form="form" display-name="Database username" field-name="user"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="user" placeholder="What username do you use to login to the database?" ng-model="details.user" required />
+                        <span class="Form-charm"></span>
                     </div>
 
-                    <div class="Form-field" ng-class="{'FormField--error': form.pass.$error.message == undefined}">
-                        <label class="Form-label">Database password: <span ng-show="form.pass.$error.message">{{form.pass.$error.message}}</span></label>
-                        <input class="Form-input full" name="pass" ng-model="details.pass" />
+                    <div class="Form-field" ng-class="{'Form--fieldError': form.pass.$error.message !== undefined}">
+                        <mb-form-label form="form" display-name="Database password" field-name="pass"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="pass" placeholder="*******" ng-model="details.pass" />
+                        <span class="Form-charm"></span>
                     </div>
                 </div>
 
-                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
-                    Save
-                </button>
+                <div class="Form-actions">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                </div>
             </form>
         </div>
+
         <!-- actions -->
-        <div class="Grid-cell">
+        <div class="Grid-cell Cell--1of3">
             <div class="Actions">
                 <h3>Actions</h3>
                 <div class="Actions-group">
