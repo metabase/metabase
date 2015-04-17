@@ -12,7 +12,7 @@
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <div class="Form-field" ng-class="{'Form--fieldError': form.engine.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Database type" field-name="engine"></mb-form-label>
-                    <label class="Select Form-input Form-offset">
+                    <label class="Select Form-offset">
                         <select name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
                     </label>
                 </div>
