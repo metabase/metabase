@@ -52,20 +52,20 @@
           ["count"] `[{:count (mc/count *db-connection* ~collection-name
                                         ~constraints)}]
           [field-aggregation field-id] (let [field (field-id->kw field-id)
-                                             $field (format "$%s" (name field))]
+                                             $field (format "$%s" (name field))
+                                             aggregate (fn [& forms]
+                                                         `(mc/aggregate *db-connection* ~collection-name [~@forms]))]
                                          (case field-aggregation
-                                           "avg"      `(mc/aggregate *db-connection* ~collection-name
-                                                                     [~@(when constraints
-                                                                          `[{$match ~constraints}])
-                                                                      {$group {"_id" nil
-                                                                               "avg" {$avg ~$field}}}
-                                                                      {$project {"_id" false, "avg" true}}])
+                                           "avg"      (aggregate (when constraints
+                                                                   {$match constraints})
+                                                                 {$group {"_id" nil
+                                                                          "avg" {$avg $field}}}
+                                                                 {$project {"_id" false, "avg" true}})
                                            "count"    nil
-                                           "distinct" `(mc/aggregate *db-connection* ~collection-name
-                                                                     [{$group {"_id" ~$field}}
-                                                                      {$group {"_id" nil
-                                                                               "sum" {$sum 1}}}
-                                                                      {$project {"_id" false, "sum" true}}])
+                                           "distinct" (aggregate {$group {"_id" $field}}
+                                                                 {$group {"_id" nil
+                                                                          "sum" {$sum 1}}}
+                                                                 {$project {"_id" false, "sum" true}})
                                            "stddev"   nil
                                            "sum"      nil
                                            "cum_sum"  nil)))))))
