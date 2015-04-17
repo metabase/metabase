@@ -56,8 +56,7 @@
                                          aggregate (fn [& forms]
                                                      `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
                                                                                                            [{$match constraints}])
-                                                                                                       ~@forms
-                                                                                                       {$limit 1}]))]
+                                                                                                       ~@forms]))]
                                      (case field-aggregation
                                        "avg"      (aggregate {$group {"_id" nil
                                                                       "avg" {$avg $field}}}
@@ -70,12 +69,11 @@
                                                              {$group {"_id" nil
                                                                       "count" {$sum 1}}}
                                                              {$project {"_id" false, "count" true}})
-                                       "stddev"   nil           ; TODO
+                                       "stddev"   nil ; TODO
                                        "sum"      (aggregate {$group {"_id" nil ; TODO - I don't think this works for _id
                                                                       "sum" {$sum $field}}}
                                                              {$project {"_id" false, "sum" true}})
-                                       "cum_sum"  nil           ; TODO
-                                       )))))
+                                       "cum_sum"  nil))))) ; TODO
 
 ;; ## ANNOTATION
 
@@ -98,53 +96,10 @@
             :rows (map #(map % column-names)
                        results)}}))
 
-;; ## TESTING
-
-(defn x []
-  (driver/process-and-run {:database 44,
-                           :type "query",
-                           :query
-                           {:source_table 59,
-                            :aggregation ["count"],
-                            :breakout [nil],
-                            :limit 10,
-                            :filter ["<" 307 1000]}}))
-
-(defn y []
-  (driver/process-and-run {:database 44,
-                           :type "query",
-                           :query
-                           {:source_table 59,
-                            :filter ["<" 307 1000]
-                            :aggregation ["count" 309],
-                            :breakout [nil],
-                            :limit 25}}))
-
-(defn y2 []
-  (with-db-connection [db "mongodb://localhost/test"]
-    (doall (with-collection db "zips"
-             (limit 10)))))
-
-;; Total count for each state
-(defn z []
-  (with-db-connection [db "mongodb://localhost/test"]
-    (doall
-     (with-collection db "zips"
-       (fields [:city])
-       (limit 10)
-       (sort (array-map :city -1))))))
-
-(defn z2 []
-  (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$match {:pop {$lt 100, $gt 50}}}
-                             {$group {"_id" nil
-                                      "pops" {$push "$pop" }}}
-                             {$project {"sum" "$sum(pops)"}}])))
-
-
-
-(defn field-id->kw [field-id]
-  (keyword (sel :one :field [Field :name] :id field-id)))
+(def field-id->kw
+  (memoize
+   (fn [field-id]
+     (keyword (sel :one :field [Field :name] :id field-id)))))
 
 
 ;; ## CLAUSE APPLICATION
