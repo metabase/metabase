@@ -2,7 +2,8 @@
 /*global _*/
 
 var OrganizationControllers = angular.module('superadmin.organization.controllers', [
-    'corvus.services'
+    'corvus.services',
+    'metabase.forms'
 ]);
 
 OrganizationControllers.controller('OrganizationListController', ['$scope', 'Organization',
@@ -31,30 +32,37 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
     }
 ]);
 
-OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$routeParams', '$location', 'Organization',
-    function($scope, $routeParams, $location, Organization) {
+OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$routeParams', '$location', 'Organization', 'MetabaseForm',
+    function($scope, $routeParams, $location, Organization, MetabaseForm) {
+        var formFields = {
+            slug: 'slug',
+            name: 'name',
+            description: 'description',
+            logo_url: 'logo_url'
+        };
+
         $scope.organization = undefined;
 
         // initialize on load
         if ($routeParams.orgId) {
             // editing an existing organization
             Organization.get({
-                    'orgId': $routeParams.orgId
-                },
-                function(org) {
-                    $scope.organization = org;
-                },
-                function(error) {
-                    console.log("Error getting organization: ", error);
-                    // TODO - should be a 404 response
-                });
+                'orgId': $routeParams.orgId
+            }, function (org) {
+                $scope.organization = org;
+            }, function (error) {
+                console.log("Error getting organization: ", error);
+                // TODO - should be a 404 response
+            });
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                Organization.update(organization, function(org) {
+                MetabaseForm.clearFormErrors($scope.form, formFields);
+                Organization.update(organization, function (org) {
                     $scope.organization = org;
-                }, function(error) {
-                    console.log(error);
+                    $scope.form.success = true;
+                }, function (error) {
+                    MetabaseForm.parseFormErrors($scope.form, formFields, error);
                 });
             };
 
@@ -64,15 +72,13 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                // TODO - some simple validation checks
-
-                Organization.create(organization,
-                    function(org) {
-                        $location.path('/superadmin/organization/' + org.id);
-                    },
-                    function(error) {
-                        console.log(error);
-                    });
+                MetabaseForm.clearFormErrors($scope.form, formFields);
+                Organization.create(organization, function (org) {
+                    $scope.form.success = true;
+                    $location.path('/superadmin/organization/' + org.id);
+                },function (error) {
+                    MetabaseForm.parseFormErrors($scope.form, formFields, error);
+                });
             };
         }
 
