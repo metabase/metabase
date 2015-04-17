@@ -82,7 +82,6 @@ MetabaseForms.directive('mbFormMessage', [function () {
             };
 
             scope.reset = function() {
-                console.log('resetting');
                 scope.visible = false;
                 scope.message = undefined;
                 scope.error = undefined;
