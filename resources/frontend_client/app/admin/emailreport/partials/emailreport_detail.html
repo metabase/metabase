@@ -28,7 +28,7 @@
                         <div class="Button-group">
                             <!-- TODO: hardcoding values :( -->
                             <button class="Button" ng-class="{'Button--active': report.mode === 1}" ng-click="report.mode = 1" ng-disabled>Active</button>
-                            <button class="Button" ng-class="{'Button--disabled': report.mode === 2}" ng-click="report.mode = 2">Disabled</button>
+                            <button class="Button" ng-class="{'Button--danger': report.mode === 2}" ng-click="report.mode = 2">Disabled</button>
                         </div>
                     </div>
                 </div>
@@ -44,7 +44,7 @@
                     <mb-form-label form="form" display-name="Recipients" field-name="recipients"></mb-form-label>
                     <ul class="Checkbox-group Form-offset">
                       <li ng-repeat="user in form_input.users">
-                        <input type="checkbox" ng-model="user.incl" /> {{user.name}}
+                        <input type="checkbox" id="{{user.id}}" ng-model="user.incl" /> <label for="{{user.id}}">{{user.name}}</label>
                       </li>
                     </li>
                 </div>
