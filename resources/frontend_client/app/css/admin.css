@@ -131,7 +131,7 @@
 
 .ContentTable tr:hover .Table-actions {
     opacity: 1;
-    transition: opacity .3s linear;
+    transition: opacity .2s linear;
 }
 
 /* TODO: this is for the ace editor and should be handled without an ID */
