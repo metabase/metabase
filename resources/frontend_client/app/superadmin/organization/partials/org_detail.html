@@ -6,32 +6,36 @@
         <h2 class="Breadcrumb Breadcrumb--page" ng-if="organization.id">{{organization.name}}</h2>
     </section>
 
-    <section class="Grid Grid--1of2">
-        <div class="Grid-cell p4 bordered rounded shadowed">
-            <form name="form" novalidate>
+    <section class="Grid Grid--gutters Grid--full Grid--2of3">
+        <!-- form -->
+        <div class="Grid-cell Cell--2of3">
+            <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
 
-                <div class="Form-field" ng-class="{'FormFieldError': form.slug.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'Form--fieldError': form.slug.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
-                    <input class="Form-input full" name="slug" placeholder="A short name to go in URLs" ng-model="organization.slug" ng-disabled="organization.id" required />
+                    <input class="Form-input Form-offset full" name="slug" placeholder="A short name to go in URLs" ng-model="organization.slug" required />
                 </div>
 
-                <div class="Form-field" ng-class="{'FormFieldError': form.name.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input full" name="name" placeholder="What is the name of your organization?" ng-model="organization.name" required />
+                    <input class="Form-input Form-offset full" name="name" ng-model="organization.name" placeholder="What is the name of your organization?" required />
+                    <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'FormFieldError': form.description.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                    <input class="Form-input full" name="description" placeholder="What else should people know about this org?" ng-model="organization.description" />
+                    <input class="Form-input Form-offset full" name="description" ng-model="organization.description" placeholder="What else should people know about this org?"/>
+                    <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'FormFieldError': form.logo_url.$error.message == undefined}">
+                <div class="Form-field" ng-class="{'Form--fieldError': form.logo_url.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
-                    <input class="Form-input full" name="logo_url" placeholder="Link to an image of your logo" ng-model="organization.logo_url" />
+                    <input class="Form-input Form-offset full" name="logo_url" ng-model="organization.logo_url" placeholder="Link to an image of your logo"/>
+                    <span class="Form-charm"></span>
                 </div>
 
-                <div>
+                <div class="Form-actions">
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(organization)" ng-disabled="!form.$valid">
                         Save
                     </button>

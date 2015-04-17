@@ -5,7 +5,7 @@
     </section>
 
     <section>
-        <table>
+        <table class="ContentTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -27,7 +27,7 @@
                     </td>
                     <td>{{org.slug}}</td>
                     <td>{{org.description}}</td>
-                    <td>
+                    <td class="Table-actions">
                         <button class="Button Button--danger" ng-click="deleteOrganization(org)" delete-confirm>Delete</button>
                     </td>
                 </tr>
