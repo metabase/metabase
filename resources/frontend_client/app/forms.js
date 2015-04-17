@@ -109,6 +109,6 @@ MetabaseForms.directive('autofocus', ['$timeout', function($timeout) {
         $element[0].focus();
       });
     }
-  }
+  };
 }]);
 
