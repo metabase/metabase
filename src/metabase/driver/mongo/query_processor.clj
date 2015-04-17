@@ -56,21 +56,24 @@
                                              aggregate (fn [& forms]
                                                          `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
                                                                                                                [{$match constraints}])
-                                                                                                           ~@forms]))]
+                                                                                                           ~@forms
+                                                                                                           {$limit 1}]))]
                                          (case field-aggregation
                                            "avg"      (aggregate {$group {"_id" nil
                                                                           "avg" {$avg $field}}}
                                                                  {$project {"_id" false, "avg" true}})
                                            "count"    (aggregate {$match {field-kw {$exists true}}}
                                                                  {$group {"_id" nil
-                                                                          "sum" {$sum 1}}}
-                                                                 {$project {"_id" false, "sum" true}})
+                                                                          "count" {$sum 1}}}
+                                                                 {$project {"_id" false, "count" true}})
                                            "distinct" (aggregate {$group {"_id" $field}}
                                                                  {$group {"_id" nil
-                                                                          "sum" {$sum 1}}}
-                                                                 {$project {"_id" false, "sum" true}})
+                                                                          "count" {$sum 1}}}
+                                                                 {$project {"_id" false, "count" true}})
                                            "stddev"   nil
-                                           "sum"      nil
+                                           "sum"      (aggregate {$group {"_id" nil                      ; TODO - I don't think this works for _id
+                                                                          "sum" {$sum $field}}}
+                                                                 {$project {"_id" false, "sum" true}})
                                            "cum_sum"  nil)))))))
 
 ;; ## ANNOTATION
@@ -124,15 +127,14 @@
 ;; Total count for each state
 (defn z []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$group {"_id" "$state"
-                                      "sum" {$sum 1}}}])))
+    (mc/aggregate db "zips" [{$group {"_id" nil
+                                      "sum" {$sum "$pop"}}}
+                             {$limit 10}])))
 
 (defn z2 []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$match {:state {$exists true}}}
-                             {$group {"_id" nil
-                                      "sum" {$sum 1}}}
-                             {$project {"_id" false, "sum" true}}])))
+    (mc/aggregate db "zips" [{$project {"sum" {$sum "$_id"}}}
+                             {$limit 1}])))
 
 
 
