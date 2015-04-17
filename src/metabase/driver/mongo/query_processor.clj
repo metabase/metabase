@@ -51,17 +51,20 @@
                              ~@(doall (mapcat apply-clause query))))
           ["count"] `[{:count (mc/count *db-connection* ~collection-name
                                         ~constraints)}]
-          [field-aggregation field-id] (let [field (field-id->kw field-id)
-                                             $field (format "$%s" (name field))
+          [field-aggregation field-id] (let [field-kw (field-id->kw field-id)
+                                             $field (format "$%s" (name field-kw))
                                              aggregate (fn [& forms]
-                                                         `(mc/aggregate *db-connection* ~collection-name [~@forms]))]
+                                                         `(mc/aggregate *db-connection* ~collection-name  [~@(when constraints
+                                                                                                               [{$match constraints}])
+                                                                                                           ~@forms]))]
                                          (case field-aggregation
-                                           "avg"      (aggregate (when constraints
-                                                                   {$match constraints})
-                                                                 {$group {"_id" nil
+                                           "avg"      (aggregate {$group {"_id" nil
                                                                           "avg" {$avg $field}}}
                                                                  {$project {"_id" false, "avg" true}})
-                                           "count"    nil
+                                           "count"    (aggregate {$match {field-kw {$exists true}}}
+                                                                 {$group {"_id" nil
+                                                                          "sum" {$sum 1}}}
+                                                                 {$project {"_id" false, "sum" true}})
                                            "distinct" (aggregate {$group {"_id" $field}}
                                                                  {$group {"_id" nil
                                                                           "sum" {$sum 1}}}
@@ -109,7 +112,7 @@
                            :query
                            {:source_table 59,
                             :filter ["<" 307 1000]
-                            :aggregation ["rows"],
+                            :aggregation ["count" 309],
                             :breakout [nil],
                             :limit 25}}))
 
@@ -126,7 +129,7 @@
 
 (defn z2 []
   (with-db-connection [db "mongodb://localhost/test"]
-    (mc/aggregate db "zips" [{$group {"_id" "$state"}}
+    (mc/aggregate db "zips" [{$match {:state {$exists true}}}
                              {$group {"_id" nil
                                       "sum" {$sum 1}}}
                              {$project {"_id" false, "sum" true}}])))
