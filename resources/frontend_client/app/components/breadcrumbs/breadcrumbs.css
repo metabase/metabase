@@ -1,6 +1,6 @@
 :root {
     --breadcrumbs-color: #BFC1C2;
-    --breadcrumbs-padding: 2.375em;
+    --breadcrumbs-padding: 2.075em;
     --breadcrumb-page-color: #636060;
     --breadcrumb-divider-spacing: 0.75em;
 }
@@ -14,8 +14,8 @@
 }
 
 .Breadcrumb {
+    font-size: 0.75rem;
     font-weight: bold;
-    font-size: 0.85em;
     text-transform: uppercase;
 }
 
@@ -27,6 +27,12 @@
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
 .Breadcrumb.Breadcrumb--path {
     color: currentColor;
+    transition: color .3s linear;
+}
+
+.Breadcrumb.Breadcrumb--path:hover {
+    color: var(--breadcrumb-page-color);
+    transition: color .3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */

@@ -12,7 +12,7 @@
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this report?" ng-model="report.name" required />
+                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this report?" ng-model="report.name" required autofocus/>
                     <span class="Form-charm"></span>
                 </div>
 
@@ -57,16 +57,20 @@
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.dataset_query.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Email contents" field-name="dataset_query"></mb-form-label>
-                    <label class="Select Form-offset">
-                        <select ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
-                            <option value="">Select a database</option>
-                        </select>
-                    </label>
-                    <label class="Select Form-offset">
-                        <select class="Select" name="dataset_query" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables" ng-disabled="!report.dataset_query.database">
-                            <option value="">Select a table</option>
-                        </select>
-                    </label>
+                    <div class="mb1">
+                        <label class="Select Form-offset block">
+                            <select ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
+                                <option value="">Select a database</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="mb1">
+                        <label class="Select Form-offset">
+                            <select class="Select" name="dataset_query" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables" ng-disabled="!report.dataset_query.database">
+                                <option value="">Select a table</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.schedule.$error.message !== undefined}">
@@ -76,16 +80,18 @@
                             <button class="Button" ng-class="{ 'Button--active' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</button>
                         </div>
                     </div>
-                    <label class="Select Form-offset">
-                        <select ng-model="report.schedule.time_of_day" ng-options="tod.id as tod.name for tod in form_input.times_of_day"></select>
-                    </label>
-                    <label class="Select Form-offset">
-                        <select ng-model="report.schedule.timezone" ng-options="tz for tz in form_input['timezones']">
-                            <option value="">---  default timezone ---</option>
-                        </select>
-                    </label>
+                    <div class="Form-offset mt1">
+                        <label class="Select">
+                            <select ng-model="report.schedule.time_of_day" ng-options="tod.id as tod.name for tod in form_input.times_of_day"></select>
+                        </label>
+                        <label class="Select">
+                            <select ng-model="report.schedule.timezone" ng-options="tz for tz in form_input['timezones']">
+                                <option value="">---  default timezone ---</option>
+                            </select>
+                        </label>
+                    </div>
 
-                    <span class="py1 Form-offset">{{human_readable_schedule}}</span>
+                    <span class="Form-offset block py1 ">{{human_readable_schedule}}</span>
                 </div>
 
                 <div class="Form-actions">
