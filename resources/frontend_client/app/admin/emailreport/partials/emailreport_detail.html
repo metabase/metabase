@@ -65,7 +65,7 @@
                         </label>
                     </div>
                     <div class="mb1">
-                        <label class="Select Form-offset">
+                        <label class="Select Form-offset" ng-class="{'Select--disabled': !report.dataset_query.hasOwnProperty('database')}">
                             <select class="Select" name="dataset_query" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables" ng-disabled="!report.dataset_query.database">
                                 <option value="">Select a table</option>
                             </select>
