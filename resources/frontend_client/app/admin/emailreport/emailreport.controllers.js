@@ -104,7 +104,6 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
         // $scope.error_message
 
         $scope.save = function(reportDetail) {
-            console.log('saving');
             MetabaseForm.clearFormErrors($scope.form);
 
             // we need to ensure our recipients list is properly set on the report
