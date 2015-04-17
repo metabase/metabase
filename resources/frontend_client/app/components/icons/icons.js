@@ -11,6 +11,7 @@
         'ChevronRight',
         'Dashboards',
         'Explore',
+        'Gear',
         'Grid',
         'List',
         'Loading',
