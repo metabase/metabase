@@ -34,12 +34,6 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
 
 OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$routeParams', '$location', 'Organization', 'MetabaseForm',
     function($scope, $routeParams, $location, Organization, MetabaseForm) {
-        var formFields = {
-            slug: 'slug',
-            name: 'name',
-            description: 'description',
-            logo_url: 'logo_url'
-        };
 
         $scope.organization = undefined;
 
@@ -57,12 +51,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                MetabaseForm.clearFormErrors($scope.form, formFields);
+                MetabaseForm.clearFormErrors($scope.form);
                 Organization.update(organization, function (org) {
                     $scope.organization = org;
                     $scope.form.success = true;
                 }, function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, formFields, error);
+                    MetabaseForm.parseFormErrors($scope.form, error);
                 });
             };
 
@@ -72,12 +66,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                MetabaseForm.clearFormErrors($scope.form, formFields);
+                MetabaseForm.clearFormErrors($scope.form);
                 Organization.create(organization, function (org) {
                     $scope.form.success = true;
                     $location.path('/superadmin/organization/' + org.id);
-                },function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, formFields, error);
+                }, function (error) {
+                    MetabaseForm.parseFormErrors($scope.form, error);
                 });
             };
         }

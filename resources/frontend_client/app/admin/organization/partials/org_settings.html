@@ -7,8 +7,6 @@
         <!-- form -->
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
-
                 <div class="Form-field" ng-class="{'Form--fieldError': form.slug.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
                     <input class="Form-input Form-offset full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
@@ -36,6 +34,7 @@
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
                         Save
                     </button>
+                    <mb-form-message form="form" success-message="Successfully saved"></mb-form-message>
                 </div>
             </form>
         </div>

@@ -10,8 +10,6 @@
         <!-- form -->
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
-
                 <div class="Form-field" ng-class="{'Form--fieldError': form.engine.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Database type" field-name="engine"></mb-form-label>
                     <label class="Select Form-input Form-offset">
@@ -59,9 +57,10 @@
                 </div>
 
                 <div class="Form-actions">
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database)" ng-disabled="!form.$valid">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details)" ng-disabled="!form.$valid">
                         Save
                     </button>
+                    <mb-form-message form="form" success-message="Successfully saved"></mb-form-message>
                 </div>
             </form>
         </div>

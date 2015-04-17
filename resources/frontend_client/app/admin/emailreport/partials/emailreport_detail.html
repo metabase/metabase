@@ -98,8 +98,7 @@
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid || report.dataset_query.query.source_table == ''">
                         Save
                     </button>
-                    <span class="FormError" ng-show="form.$error.message">{{form.$error.message}}</span>
-                    <!-- TODO: success message -->
+                    <mb-form-message form="form" success-message="Successfully saved"></mb-form-message>
                 </div>
             </form>
         </div>

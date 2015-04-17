@@ -96,15 +96,15 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
     }
 ]);
 
-EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams', '$location', 'EmailReport', 'EmailReportUtils', 'Metabase',
-    function($scope, $routeParams, $location, EmailReport, EmailReportUtils, Metabase) {
+EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams', '$location', 'EmailReport', 'EmailReportUtils', 'Metabase', 'MetabaseForm',
+    function($scope, $routeParams, $location, EmailReport, EmailReportUtils, Metabase, MetabaseForm) {
 
         // $scope.report
         // $scope.success_message
         // $scope.error_message
 
         $scope.save = function(reportDetail) {
-            $scope.clearStatus();
+            MetabaseForm.clearFormErrors(form);
 
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
@@ -115,14 +115,11 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
             if ($scope.report.id) {
                 // if there is already an ID associated with the report then we are updating
-                EmailReport.update(reportDetail, function(result) {
+                EmailReport.update(reportDetail, function (result) {
                     $scope.report = result;
-
-                    // alert
-                    $scope.success_message = 'EmailReport saved successfully!';
-                }, function(error) {
-                    $scope.error_message = 'Failed saving EmailReport!';
-                    console.log('error updating email report', error);
+                    $scope.form.success = true;
+                }, function (error) {
+                    MetabaseForm.parseFormErrors($scope.form, error);
                 });
             } else {
                 // otherwise we are creating a new report
@@ -133,17 +130,14 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
                     // move the user over the the actual page for the new report
                     $location.path('/' + $scope.currentOrg.slug + '/admin/emailreport/' + result.id);
-                }, function(error) {
-                    $scope.error_message = 'Failed saving EmailReport!';
-                    console.log('error creating email report', error);
+                }, function (error) {
+                    MetabaseForm.parseFormErrors($scope.form, error);
                 });
             }
 
         };
 
         $scope.executeReport = function(reportId) {
-            $scope.clearStatus();
-
             EmailReport.execute({
                 'reportId': reportId
             }, function(result) {
@@ -152,11 +146,6 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                 $scope.error_message = 'Failed sending EmailReport!';
                 console.log('error executing email report', error);
             });
-        };
-
-        $scope.clearStatus = function() {
-            $scope.success_message = undefined;
-            $scope.error_message = undefined;
         };
 
         $scope.refreshTableList = function(dbId) {

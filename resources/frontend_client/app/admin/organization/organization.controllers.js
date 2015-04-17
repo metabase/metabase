@@ -10,26 +10,20 @@ var OrganizationAdminControllers = angular.module('corvusadmin.organization.cont
 OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Organization', 'MetabaseForm',
 	function($scope, Organization, MetabaseForm) {
 
-		var formFields = {
-            name: 'name',
-            description: 'description',
-            logo_url: 'logo_url'
-        };
-
 	    $scope.save = function(organization) {
-	    	MetabaseForm.clearFormErrors($scope.form, formFields);
+	    	MetabaseForm.clearFormErrors($scope.form);
 	    	$scope.form.$setPristine();
 	    	//$scope.form.$setUntouched();
 
 	        Organization.update(organization, function (org) {
 	            $scope.currentOrg = org;
-	            $scope.alertInfo('Organization settings updated!');
+	            $scope.form.success = true;
 
 	            // we need to trigger a refresh of $scope.user so that these changes propogate the UI
 	            $scope.refreshCurrentUser();
 
 	        }, function (error) {
-	        	MetabaseForm.parseFormErrors($scope.form, formFields, error);
+	        	MetabaseForm.parseFormErrors($scope.form, error);
 	        });
 	    };
 

@@ -44,14 +44,8 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
-    function($scope, $routeParams, $location, Metabase) {
-
-        var formFields = {
-            name: 'name',
-            engine: 'engine'
-            // details is handled manually
-        };
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseForm',
+    function($scope, $routeParams, $location, Metabase, MetabaseForm) {
 
         // takes in our API form database details and parses them into a map of usable form field values
         var parseDetails = function(engine, details) {
@@ -86,38 +80,28 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             };
         };
 
-        var parseFormErrors = function(error) {
-            // client side validation error
-            if (error.data.errors) {
-                // field validation error(s)
-                Object.keys(error.data.errors).forEach(function (key) {
-                    if (formFields[key] !== 'undefined') {
-                        // this simply takes the error message from our api response and
-                        // applies it to the correct form field in our angular form object
-                        $scope.form[formFields[key]].$error.message = error.data.errors[key];
-                    }
-                });
-            } else if (error.data.message) {
-                // generic error not attributed to specific field
-                $scope.form.$error.message = error.data.message;
-            }
-        };
-
         // update an existing Database
         var update = function(database, details) {
+            MetabaseForm.clearFormErrors($scope.form);
             database.details = buildDetails(database.engine, details);
             Metabase.db_update(database, function (updated_database) {
                 $scope.database = updated_database;
-            }, parseFormErrors);
+                $scope.form.success = true;
+            }, function (error) {
+                MetabaseForm.parseFormErrors($scope.form, error);
+            });
         };
 
         // create a new Database
         var create = function(database, details) {
+            MetabaseForm.clearFormErrors($scope.form);
             database.org = $scope.currentOrg.id;
             database.details = buildDetails(database.engine, details);
             Metabase.db_create(database, function (new_database) {
                 $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
-            }, parseFormErrors);
+            }, function (error) {
+                MetabaseForm.parseFormErrors($scope.form, error);
+            });
         };
 
         $scope.save = function(database, details) {

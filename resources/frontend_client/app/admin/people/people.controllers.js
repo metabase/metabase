@@ -95,14 +95,8 @@ PeopleControllers.controller('PeopleList', ['$scope', 'Organization',
 PeopleControllers.controller('PeopleAdd', ['$scope', '$location', 'Organization', 'MetabaseForm',
     function($scope, $location, Organization, MetabaseForm) {
 
-        var formFields = {
-            first_name: 'first_name',
-            last_name: 'last_name',
-            email: 'email'
-        };
-
         $scope.save = function(newUser) {
-            MetabaseForm.clearFormErrors($scope.form, formFields);
+            MetabaseForm.clearFormErrors($scope.form);
 
             newUser.orgId = $scope.currentOrg.id;
             newUser.admin = false;
@@ -110,7 +104,7 @@ PeopleControllers.controller('PeopleAdd', ['$scope', '$location', 'Organization'
                 // just go back to people listing page for now
                 $location.path('/'+$scope.currentOrg.slug+'/admin/people/');
             }, function (error) {
-                MetabaseForm.parseFormErrors($scope.form, formFields, error);
+                MetabaseForm.parseFormErrors($scope.form, error);
             });
         };
     }
