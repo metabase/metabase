@@ -6,6 +6,7 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.generic-sql.util :refer :all]
+            [metabase.driver.sync :as common]
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])))
@@ -19,6 +20,7 @@
          sync-fields-create
          sync-fields-metadata
          sync-table
+         table-active-field-name->base-type
          table-names
          update-table-row-count!)
 
@@ -40,38 +42,26 @@
 (defn sync-database
   "Sync all `Tables` + `Fields` in DATABASE."
   [{database-id :id :as database}]
-  (with-jdbc-metadata [_ database]                                                    ; do a top-level connection to with-jdbc-metadata because it reuses connection
-    (let [table-names (table-names database)                                          ; for all subsequent calls within its body
-          table-name->id (sel :many :field->id [Table :name] :name [in table-names])]
-      ;; Mark any existing `Table` objects not returned by `table-names` as inactive
-      (dorun (map (fn [[table-name table-id]]
-                    (when-not (contains? table-names table-name)
-                      (upd Table table-id :active false)))
-                  table-name->id))
-      ;; Create `Table` objects for any new tables returned by `table-names`
-      (dorun (map (fn [table-name]
-                    (when-not (table-name->id table-name)
-                      (ins Table
-                        :db_id database-id
-                        :name table-name
-                        :active true)))
-                  table-names))
-      ;; Now sync the active Tables
-      (let [tables (->> (sel :many Table :active true :db_id database-id)
-                        (map #(assoc % :db (delay database))))]                       ; reuse DATABASE, that way we don't end up creating multiple connection pools
-        ;; First, we need to make sure Active Fields are all up-to-date,
-        ;; since other steps like set-table-fks-if-needed! depend on them existing
-        (dorun (pmap (fn [table]
-                       (sync-fields-create (korma-entity table) table))
-                     tables))
-        ;; Once those are g2g we can do the rest of the syncing for the Table
-        (dorun (pmap (fn [table]
-                       (let [korma-table (korma-entity table)]
-                         (update-table-row-count! korma-table table)
-                         (set-table-pks-if-needed! table)
-                         (set-table-fks-if-needed! korma-table table)
-                         (sync-fields-metadata korma-table table)))
-                     tables))))))
+  (with-jdbc-metadata [_ database]
+    ;; Create new Tables as needed, mark old ones inactive
+    (common/sync-database-create-tables database (table-names database))
+
+    ;; Now sync the active Tables
+    (common/sync-active-tables database
+
+      ;; First, we need to make sure Active Fields are all up-to-date,
+      ;; since other steps like set-table-fks-if-needed! depend on them existing
+      (fn [table]
+        (common/sync-table-create-fields table (table-active-field-name->base-type table)))
+
+      ;; Once that's done we can do the rest of the syncing for Tables
+      (fn [table]
+        (let [korma-table (korma-entity table)]
+          (update-table-row-count! korma-table table)
+          (set-table-pks-if-needed! table)
+          (set-table-fks-if-needed! korma-table table)
+          (sync-fields-metadata korma-table table))))))
+
 
 (defn sync-table
   "Sync a single `Table` and its `Fields`."
@@ -86,33 +76,28 @@
       (sync-fields-metadata korma-table table)
       (log/debug "Synced" table-name))))
 
+;; TODO - Fix this
+;; I'm not 100% sure how I got us into this mess
+;; But sometimes now a Table's :db is a delay and other times not
+(defn- deref-if-delay
+  "Helper to deref OBJ if it is delay, otherwise return as-is."
+  [obj]
+  (if (delay? obj) @obj
+      obj))
 
-(defn- sync-fields-create
-  "Create new Fields for any that don't exist; mark ones that no longer exist as `inactive`."
-  {:arglists '([korma-table table])}
-  [korma-table {table-id :id, table-name :name, db :db}]
-  (try
-    (let [fields (jdbc-columns db table-name)
-          field-names (set (map :column_name fields))
-          field-name->id (sel :many :field->id [Field :name] :table_id table-id :name [in field-names])]
-      ;; Mark any existing `Field` objects not returned by jdbc-columns as inactive
-      (dorun (map (fn [[field-name field-id]]
-                    (when-not (contains? field-names field-name)
-                      (upd Field field-id :active false)))
-                  field-name->id))
-      ;; Create `Field` objects for any new Fields returned by jdbc-columns
-      (dorun (map (fn [{field-name :column_name type-name :type_name}]
-                    (when-not (field-name->id field-name)
-                      (ins Field
-                        :table_id table-id
-                        :name field-name
-                        :base_type (or (*column->base-type* (keyword type-name))
-                                       (do (log/warn (str "Column '" field-name "' has an unknown type: '" type-name
-                                                          "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))
-                                           :UnknownField)))))
-                  fields)))
-    (catch Throwable e
-      (log/error "Caught exception in sync-fields-create:" e))))
+(defn- table-active-field-name->base-type
+  "Return a map of active `Field` names to their `base_type`, determined by passing its JDBC type to `*column->base-type*`."
+  {:arglists '([table])}
+  [{db :db table-name :name :as table}]
+  (let [korma-table (korma-entity table)]
+    (->> (jdbc-columns (deref-if-delay db) table-name)
+         (map (fn [{:keys [type_name column_name]}]
+                {column_name (or (*column->base-type* (keyword type_name))
+                                 (do (log/warn (str "Column '" column_name "' has an unknown type: '" type_name
+                                                    "'. Please add the type mapping to corresponding driver (e.g. metabase.driver.postgres.sync)."))
+                                     :UnknownField))}))
+         (into {}))))
+
 
 (defn- sync-fields-metadata
   "Sync the metadata of all active fields for TABLE (in parallel)."

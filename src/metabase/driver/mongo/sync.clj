@@ -10,6 +10,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.mongo.util :refer [with-db-connection]]
+            [metabase.driver.sync :as common]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
@@ -56,40 +57,28 @@
   [{{connection-string :conn_str} :details db-id :id :as database}]
   ;; Use top-level with-db-connection so subsequent calls will re-use same connection
   (with-db-connection [_ connection-string]
-    ;; Create Collections we need to create
-    ;; TODO: Need to mark inactive collections
-    ;; TODO: This is inefficient (1 DB call per collection name) -- do a single call the way we do w/ generic SQL
-    (->> (get-collection-names database)
-         (map (fn [collection-name]
-                (or (sel :one Table :db_id db-id :name collection-name)
-                    (ins Table :db_id db-id :name collection-name :active true))))
-         dorun)
-    ;; Now sync all the active tables
-    (->> (sel :many Table :db_id db-id :active true)
-         (pmap (partial sync-collection database))
-         dorun)))
+    ;; Create new Tables as needed + mark old ones as inactive
+    (common/sync-database-create-tables database (get-collection-names database))
 
-(defn- sync-collection [database {collection-name :name table-id :id :as table}]
+    ;; Now sync all the active tables
+    (common/sync-active-tables database
+      (fn [table]
+        (sync-collection database table)))))
+
+(defn- table-active-field-name->base-type
+  "Return a map of active Field names -> Field base types for TABLE."
+  [database {table-name :name}]
+  (->> (get-column-names database table-name)
+       (map (fn [column-name]
+              {(name column-name) :UnknownField})) ; TODO - obviously these aren't supposed to be :UnknownField
+       (into {})))
+
+(defn- sync-collection [database {table-id :id table-name :name :as table}]
   ;; Update # items in collection
-  (upd Table table-id :rows (get-num-items-in-collection database collection-name))
+  (upd Table table-id :rows (get-num-items-in-collection database table-name))
 
   ;; Update Fields for the collection
-  (let [column-names (get-column-names database collection-name)
-        existing-column-names (set (sel :many :field [Field :name] :table_id table-id))]
-    ;; Create new Fields as needed
-    (->> column-names
-         (map name)
-         (filter (partial (complement contains?) existing-column-names))
-         (map (fn [column-name]
-                (ins Field
-                  :name (name column-name)
-                  :table_id table-id
-                  :active true
-                  :base_type :UnknownField)
-                )) ; TODO - Obviously these aren't supposed to all be :UnknownField
-         dorun)
-    ;; TODO - need to mark inactive fields
-    ))
+  (common/sync-table-create-fields table (table-active-field-name->base-type database table)))
 
-(defmethod driver/sync-table :mongo [table]
-  "TODO")
+(defmethod driver/sync-table :mongo [{database :db :as table}]
+  (sync-collection @database table))
