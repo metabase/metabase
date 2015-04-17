@@ -67,6 +67,11 @@
   border-radius: 0;
 }
 
+.Button-group .Button--active {
+  background-color: var(--success-color);
+  color: #fff;
+}
+
 .Button-group .Button:first-child {
   border-left: none;
 }

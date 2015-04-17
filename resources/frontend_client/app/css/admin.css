@@ -6,7 +6,7 @@
 }
 
 .AdminNav {
-    padding: 1em;
+    padding: 1.825em;
     background: var(--admin-nav-bg-color);
     color: #fff;
     font-size: 0.85rem;
@@ -56,8 +56,9 @@
 
 .UserInitials,
 .UserInitials:hover {
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: currentColor;
+    cursor: pointer;
 }
 
 .Actions {
@@ -125,7 +126,7 @@
     padding: 1em;
 }
 
-.ContentTable tr:hover {
+.ContentTable tbody tr:hover {
     background-color: rgba(74, 144, 226, 0.04);
 }
 
@@ -133,7 +134,6 @@
     opacity: 1;
     transition: opacity .3s linear;
 }
-
 
 /* TODO: this is for the ace editor and should be handled without an ID */
 #id_sql {

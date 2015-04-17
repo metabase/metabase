@@ -23,7 +23,7 @@
 .Form-field {
     position: relative;
     color: #929292;
-    margin-bottom: 1em;
+    margin-bottom: 1.5em;
 }
 
 /* TODO: remove this scoping once we've converted non admin forms */
@@ -33,6 +33,7 @@
     font-size: 0.85em;
     font-weight: bold;
     color: currentColor;
+    margin-bottom: 1em;
 }
 
 .Form-field.Form--fieldError {
@@ -40,6 +41,7 @@
 }
 
 .Form-input {
+    border: 1px solid #e0e0e0;
     padding-top: 0.8em;
     padding-bottom: 0.8em;
     font-size: 1.185em;
@@ -112,4 +114,9 @@
 
 .Form-actions {
     padding: 2em;
+}
+
+/* TODO: - this is itchy CSS */
+.Form-field .Button-group .Button {
+
 }
