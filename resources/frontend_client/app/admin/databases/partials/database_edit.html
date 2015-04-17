@@ -19,7 +19,7 @@
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required />
+                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required autofocus />
                     <span class="Form-charm"></span>
                 </div>
 
