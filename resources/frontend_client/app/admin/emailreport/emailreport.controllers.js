@@ -224,8 +224,8 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                                 "wed": true,
                                 "thu": true,
                                 "fri": true,
-                                "sat": true,
-                                "sun": true
+                                "sat": false,
+                                "sun": false
                             },
                             "time_of_day": "morning",
                             "timezone": ""
