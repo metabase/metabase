@@ -13,20 +13,28 @@
             [metabase.driver.mongo.util :refer [with-db-connection *db-connection*]]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]]))
+  (:import (com.mongodb CommandResult
+                        DBApiLayer)
+           (clojure.lang PersistentArrayMap)))
+
+(set! *warn-on-reflection* true)
 
 (declare apply-clause
+         annotate-native-results
          annotate-results
+         eval-raw-command
          field-id->kw
          process-structured
          process-and-run-structured)
 
+;; # DRIVER QP INTERFACE
 
 (defmethod driver/process-and-run :mongo [{query-type :type database-id :database :as query}]
   (binding [*query* query]
     (let [{{connection-string :conn_str} :details} (sel :one Database :id database-id)
           query (preprocess query)]
-      (with-db-connection [db connection-string]
+      (with-db-connection [_ connection-string]
         (case (keyword query-type)
           :query (let [generated-query (process-structured (:query query))]
                    ;; ; TODO - log/debug
@@ -35,7 +43,40 @@
                                            "*****************************************************************\n"))
                    (->> (eval generated-query)
                         (annotate-results (:query query))))
-          :native :TODO)))))
+          :native (->> (eval-raw-command (:query (:native query)))
+                       annotate-native-results))))))
+
+
+;; # NATIVE QUERY PROCESSOR
+
+(defn eval-raw-command
+  "Evaluate raw MongoDB javascript code. This must be ran insided the body of a `with-db-connection`.
+
+    (with-db-connection [_ \"mongodb://localhost/test\"]
+      (eval-raw-command \"db.zips.findOne()\"))
+
+      -> {\"_id\" \"01001\", \"city\" \"AGAWAM\", ...}"
+  [^String command]
+  (assert *db-connection* "eval-raw-command must be ran inside the body of with-db-connection.")
+  (let [^CommandResult result (.doEval ^DBApiLayer *db-connection* command nil)]
+      (when-not (.ok result)
+        (throw (.getException result)))
+      (let [{result "retval"} (PersistentArrayMap/create (.toMap result))]
+        result)))
+
+(defn annotate-native-results
+  "Package up the results in the way the frontend expects."
+  [results]
+  (if-not (sequential? results) (annotate-native-results [results])
+          {:status :completed
+           :row_count (count results)
+           :data {:rows results
+                  :columns (keys (first results))}}))
+
+
+;; # STRUCTURED QUERY PROCESSOR
+
+;; ## AGGREGATION IMPLEMENTATIONS
 
 (def ^:private aggregations (atom '()))
 
@@ -129,13 +170,12 @@
             :rows (map #(map % column-names)
                        results)}}))
 
+;; ## CLAUSE APPLICATION 2.0
+
 (def field-id->kw
   (memoize
    (fn [field-id]
      (keyword (sel :one :field [Field :name] :id field-id)))))
-
-
-;; ## CLAUSE APPLICATION 2.0
 
 (def clauses (atom '()))
 
