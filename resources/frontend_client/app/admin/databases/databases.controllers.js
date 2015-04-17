@@ -86,7 +86,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             database.details = buildDetails(database.engine, details);
             Metabase.db_update(database, function (updated_database) {
                 $scope.database = updated_database;
-                $scope.form.successMessage = "Successfully saved!";
+                $scope.$broadcast("form:success", "Successfully saved!");
             }, function (error) {
                 MetabaseForm.parseFormErrors($scope.form, error);
             });

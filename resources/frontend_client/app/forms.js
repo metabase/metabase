@@ -69,7 +69,7 @@ MetabaseForms.directive('mbFormMessage', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-show="visible" cv-delayed-call="reset()">{{message}}</span>',
+        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-if="visible" cv-delayed-call="reset()">{{message}}</span>',
         scope: {
             form: '='
         },
@@ -87,22 +87,12 @@ MetabaseForms.directive('mbFormMessage', [function () {
                 scope.error = undefined;
             };
 
-            scope.$watch('form.$error.message', function (msg) {
-                if (!msg) {
-                    scope.reset();
-                    return;
-                }
-
-                setMessage(msg, true);
+            scope.$on("form:error", function (event, message) {
+                setMessage(message, true);
             });
 
-            scope.$watch('form.successMessage', function (msg) {
-                if (!msg) {
-                    scope.reset();
-                    return;
-                }
-
-                setMessage(msg, false);
+            scope.$on("form:success", function (event, message) {
+                setMessage(message, false);
             });
 
             // start from base state
