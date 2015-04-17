@@ -124,7 +124,6 @@ NavbarDirectives.directive('mbProfileLink', [function () {
             }
 
             $scope.initials = initials;
-            console.log($scope.context);
         });
     }
 

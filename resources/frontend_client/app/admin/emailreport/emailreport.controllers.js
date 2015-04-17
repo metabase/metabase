@@ -104,7 +104,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
         // $scope.error_message
 
         $scope.save = function(reportDetail) {
-            MetabaseForm.clearFormErrors(form);
+            MetabaseForm.clearFormErrors($scope.form);
 
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
@@ -117,7 +117,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                 // if there is already an ID associated with the report then we are updating
                 EmailReport.update(reportDetail, function (result) {
                     $scope.report = result;
-                    $scope.form.success = true;
+                    $scope.$broadcast("form:success", "Successfully saved!");
                 }, function (error) {
                     MetabaseForm.parseFormErrors($scope.form, error);
                 });
@@ -224,8 +224,8 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                                 "wed": true,
                                 "thu": true,
                                 "fri": true,
-                                "sat": true,
-                                "sun": true
+                                "sat": false,
+                                "sun": false
                             },
                             "time_of_day": "morning",
                             "timezone": ""

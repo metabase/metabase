@@ -12,14 +12,14 @@
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <div class="Form-field" ng-class="{'Form--fieldError': form.engine.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Database type" field-name="engine"></mb-form-label>
-                    <label class="Select Form-input Form-offset">
+                    <label class="Select Form-offset">
                         <select name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
                     </label>
                 </div>
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required />
+                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required autofocus />
                     <span class="Form-charm"></span>
                 </div>
 
@@ -60,13 +60,13 @@
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details)" ng-disabled="!form.$valid">
                         Save
                     </button>
-                    <mb-form-message form="form" success-message="Successfully saved"></mb-form-message>
+                    <mb-form-message form="form"></mb-form-message>
                 </div>
             </form>
         </div>
 
         <!-- actions -->
-        <div class="Grid-cell Cell--1of3">
+        <div class="Grid-cell Cell--1of3" ng-if="database.id">
             <div class="Actions">
                 <h3>Actions</h3>
                 <div class="Actions-group">

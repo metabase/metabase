@@ -14,19 +14,19 @@
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="name" ng-model="currentOrg.name" placeholder="What is the name of your organization?"/>
+                    <input class="Form-input Form-offset full" name="name" placeholder="What is the name of your organization?" ng-model="currentOrg.name" required autofocus/>
                     <span class="Form-charm"></span>
                 </div>
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="description" ng-model="currentOrg.description" placeholder="What else should people know about this org?"/>
+                    <input class="Form-input Form-offset full" name="description" placeholder="What else should people know about this org?" ng-model="currentOrg.description" />
                     <span class="Form-charm"></span>
                 </div>
 
                 <div class="Form-field" ng-class="{'Form--fieldError': form.logo_url.$error.message !== undefined}">
                     <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="logo_url" ng-model="currentOrg.logo_url" placeholder="Link to an image of your logo"/>
+                    <input class="Form-input Form-offset full" name="logo_url" placeholder="Link to an image of your logo" ng-model="currentOrg.logo_url" />
                     <span class="Form-charm"></span>
                 </div>
 
@@ -34,7 +34,7 @@
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(currentOrg)" ng-disabled="!form.$valid">
                         Save
                     </button>
-                    <mb-form-message form="form" success-message="Successfully saved"></mb-form-message>
+                    <mb-form-message form="form"></mb-form-message>
                 </div>
             </form>
         </div>

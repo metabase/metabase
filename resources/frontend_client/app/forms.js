@@ -69,11 +69,46 @@ MetabaseForms.directive('mbFormMessage', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<span><span class="FormError" ng-show="form.$error.message">{{form.$error.message}}</span>' +
-                  '<span class="FormSuccess" ng-if="form.success" cv-delayed-call="form.success = undefined">{{successMessage}}</span></span>',
+        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-if="visible" cv-delayed-call="reset()">{{message}}</span>',
         scope: {
-            form: '=',
-            successMessage: '@'
+            form: '='
+        },
+        link: function(scope, element, attr) {
+
+            var setMessage = function (msg, isError) {
+                scope.visible = true;
+                scope.message = msg;
+                scope.error = isError;
+            };
+
+            scope.reset = function() {
+                scope.visible = false;
+                scope.message = undefined;
+                scope.error = undefined;
+            };
+
+            scope.$on("form:error", function (event, message) {
+                setMessage(message, true);
+            });
+
+            scope.$on("form:success", function (event, message) {
+                setMessage(message, false);
+            });
+
+            // start from base state
+            scope.reset();
         }
     };
 }]);
+
+MetabaseForms.directive('autofocus', ['$timeout', function($timeout) {
+  return {
+    restrict: 'A',
+    link : function($scope, $element) {
+      $timeout(function() {
+        $element[0].focus();
+      });
+    }
+  };
+}]);
+

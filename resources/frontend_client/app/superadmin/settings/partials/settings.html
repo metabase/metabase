@@ -1,5 +1,5 @@
 <div class="wrapper">
-    <section>
+    <section class="PageHeader">
         <h2 class="PageTitle">Global Settings</h2>
     </section>
 
@@ -26,9 +26,9 @@
                     <td>
                         <input class="input block full" type="text" placeholder="{{setting.default}}" ng-model="setting.value"></input>
                     </td>
-                    <td>
+                    <td class="Table-actions">
                         <button class="Button Button--primary" ng-click="saveSetting(setting)" ng-disabled="!setting.value || setting.value === setting.originalValue">Save</button>
-                        <button class="mx2 Button" ng-class="{ 'Button--danger' : setting.value !== null}" ng-click="deleteSetting(setting)" ng-disabled="!setting.originalValue">Clear</button>
+                        <button class="mx2 Button" ng-class="{'Button--danger': setting.originalValue !== null}" ng-click="deleteSetting(setting)" ng-disabled="!setting.originalValue">Clear</button>
                     </td>
                 </tr>
             </tbody>

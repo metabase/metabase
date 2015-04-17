@@ -17,7 +17,7 @@ OrganizationAdminControllers.controller('OrganizationSettings', ['$scope', 'Orga
 
 	        Organization.update(organization, function (org) {
 	            $scope.currentOrg = org;
-	            $scope.form.success = true;
+	            $scope.$broadcast("form:success", "Successfully saved!");
 
 	            // we need to trigger a refresh of $scope.user so that these changes propogate the UI
 	            $scope.refreshCurrentUser();
