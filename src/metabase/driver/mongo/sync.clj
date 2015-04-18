@@ -1,11 +1,13 @@
 (ns metabase.driver.mongo.sync
   (:require [clojure.core.reducers :as r]
+            [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
                     [core :as mg]
                     [db :as mdb]
+                    [operators :refer :all]
                     [query :as q])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -15,7 +17,8 @@
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
-(declare sync-collection
+(declare field-avg-length
+         sync-collection
          sync-fields-metadata)
 
 (def -db (delay (sel :one Database :name "Mongo Test DB")))
@@ -72,12 +75,37 @@
 
   ;; Sync Table Metadata
   (common/sync-table-metadata table
-    :pks-fn       (constantly #{"_id"})) ; yay
+    :pks-fn (constantly #{"_id"})) ; yay
 
   ;; Sync Fields Metadata
   (common/sync-active-fields-metadata table
-    :avg-length-fn   nil
+    :avg-length-fn   field-avg-length
     :percent-urls-fn nil))
+
+;; ### Field metadata fns
+
+;; Could do text match w/ http://docs.mongodb.org/manual/reference/operator/aggregation/meta/#exp._S_meta ?
+
+(defmacro dofields
+  "Bind VALUES-BINDING to a lazy sequence of all values of FIELD, and execute BODY."
+  [[values-binding field] & body]
+  `(when-let [{field-name# :name, table# :table} ~field]
+     (let [{table-name# :name, db# :db} @table#
+           {{connection-string# :conn_str} :details} @db#]
+       (with-db-connection [db# connection-string#]
+         (let [~values-binding (->> (q/with-collection db# table-name#
+                                      (q/fields [field-name#]))
+                                    (map (keyword field-name#)))]
+           ~@body)))))
+
+(defn- field-avg-length
+  "Get the average length of textual FIELD. (This is done in Clojure-land because there's no way to do it *in* Mongo without complicated MapReduce fns)"
+  [field]
+  (dofields [values field]
+    (int (math/round (/ (->> values
+                             (map count)
+                             (reduce +))
+                        (count values))))))
 
 (defmethod driver/sync-table :mongo [{database :db :as table}]
   (sync-collection @database table))

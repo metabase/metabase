@@ -20,6 +20,7 @@
          sync-fields-metadata
          sync-table
          table-active-field-name->base-type
+         table-pk-names
          table-names)
 
 ;; # PUBLIC INTERFACE

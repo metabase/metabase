@@ -149,11 +149,11 @@
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
-
 (defn- mark-no-preview-display-field!
   "Check FIELD to see if it has a large average length and should be marked as `preview_display = false`.
    This is only done for textual fields, i.e. ones with `special_type` of `:CharField` or `:TextField`."
   [{base-type :base_type, field-id :id, preview-display :preview_display, :as field} avg-length-fn]
+  (println "BASE TYPE:" base-type)
   (when (and preview-display
              (contains? #{:CharField :TextField} base-type))
     (let [avg-len (avg-length-fn field)]
@@ -199,6 +199,7 @@
 (defn sync-active-fields-metadata
   "Run SYNC-FIELD-METADATA (in parallel) against all active `Fields` for TABLE."
   [{table-id :id :as table} & {:as metadata-fns}]
+  {:pre [(integer? table-id)]}
   (let [fields (->> (sel :many Field :active true :table_id table-id)
                     (map #(assoc % :table (delay table))))] ; reuse TABLE so we don't need to fetch from DB again
     (u/pdoseq [field fields]
