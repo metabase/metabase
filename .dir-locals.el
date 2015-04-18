@@ -15,6 +15,7 @@
                               (check 1)
                               (context 2)
                               (dofields 1)
+                              (dofields* 1)
                               (execute-query 1)
                               (expect 1)
                               (expect-eval-actual-first 1)

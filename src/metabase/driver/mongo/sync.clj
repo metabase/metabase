@@ -11,7 +11,7 @@
                     [query :as q])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.util :refer [with-db-connection]]
+            [metabase.driver.mongo.util :refer [with-db-connection *db-connection*]]
             [metabase.driver.sync :as common]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
@@ -23,6 +23,27 @@
 
 (def -db (delay (sel :one Database :name "Mongo Test DB")))
 (def -conn-str (delay (:conn_str (:details @-db))))
+
+(defmacro dofields*
+  "Like `dofields`, but can be used with the names of Field/Table instead of an actual Field object. "
+  [[values-binding field-name table-name] & body]
+  `(do (assert *db-connection* "dofields* must be ran inside the body of with-db-connection!")
+       (let [~values-binding (->> (q/with-collection *db-connection* ~table-name
+                                    (q/fields [~field-name]))
+                                  (map (keyword ~field-name)))]
+         ~@body)))
+
+(defmacro dofields
+  "Bind VALUES-BINDING to a lazy sequence of all values of FIELD, and execute BODY."
+  ([[values-binding field] & body]
+   `(when-let [{field-name# :name, table# :table} ~field]
+      (let [{table-name# :name, db# :db} @table#
+            {{connection-string# :conn_str} :details} @db#]
+        (with-db-connection [~'_ connection-string#]
+          (dofields* [~values-binding field-name# table-name#]
+                     ~@body))))))
+
+;; ## Fetch Metadata From Mongo
 
 (defn get-collection-names
   "Return a set of the string names of all collections in database specified by DETAILS-MAP."
@@ -61,12 +82,32 @@
 
 ;; ## SYNC TABLE (COLLECTION)
 
+(defn- field+table->base-type
+  "Determine the base type of FIELD in the most ghetto way possible.
+   This just gets counts the types of *every* value of FIELD and returns the class whose count was highest."
+  [field-name table-name]
+  {:pre [(string? field-name)
+         (string? table-name)]
+   :post [(keyword? %)]}
+  (or (dofields* [values field-name table-name]
+        (->> values
+             (filter identity)
+             (group-by type)
+             (map (fn [[type valus]]
+                    [type (count valus)]))
+             (sort-by second)
+             first
+             first
+             common/class->base-type))
+      :UnknownField))
+
 (defn- table-active-field-name->base-type
   "Return a map of active Field names -> Field base types for TABLE."
   [database {table-name :name}]
   (->> (get-column-names database table-name)
        (map (fn [column-name]
-              {(name column-name) :UnknownField})) ; TODO - obviously these aren't supposed to be :UnknownField
+              {(name column-name)
+               (field+table->base-type (name column-name) table-name)}))
        (into {})))
 
 (defn- sync-collection [database {table-id :id table-name :name :as table}]
@@ -86,17 +127,6 @@
 
 ;; Could do text match w/ http://docs.mongodb.org/manual/reference/operator/aggregation/meta/#exp._S_meta ?
 
-(defmacro dofields
-  "Bind VALUES-BINDING to a lazy sequence of all values of FIELD, and execute BODY."
-  [[values-binding field] & body]
-  `(when-let [{field-name# :name, table# :table} ~field]
-     (let [{table-name# :name, db# :db} @table#
-           {{connection-string# :conn_str} :details} @db#]
-       (with-db-connection [db# connection-string#]
-         (let [~values-binding (->> (q/with-collection db# table-name#
-                                      (q/fields [field-name#]))
-                                    (map (keyword field-name#)))]
-           ~@body)))))
 
 (defn- field-avg-length
   "Get the average length of textual FIELD. (This is done in Clojure-land because there's no way to do it *in* Mongo without complicated MapReduce fns)"

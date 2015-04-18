@@ -10,6 +10,21 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
+;; ## Constants
+
+(def ^:const class->base-type
+  "Map of classes returned from DB call to metabase.models.field/base-types"
+  {java.lang.Boolean    :BooleanField
+   java.lang.Double     :FloatField
+   java.lang.Float      :FloatField
+   java.lang.Integer    :IntegerField
+   java.lang.Long       :IntegerField
+   java.lang.String     :TextField
+   java.math.BigDecimal :DecimalField
+   java.math.BigInteger :BigIntegerField
+   java.sql.Date        :DateField
+   java.sql.Timestamp   :DateTimeField})
+
 ;; ## Generic QP Metadata Query
 
 (defn- qp-query [{table-id :id, db-id :db_id} query-dict]
