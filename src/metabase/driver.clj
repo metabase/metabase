@@ -30,8 +30,9 @@
   (let [memoized-dispatch (memoize (fn [engine] ; memoize this so we don't need to call require every single dispatch
                                      (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
                                      (keyword engine)))]
-    (fn [{:keys [engine]}]
-      {:pre [engine]}
+    (fn [{:keys [engine] :as database}]
+      {:pre [database
+             engine]}
       (memoized-dispatch engine))))
 
 

@@ -15,6 +15,9 @@
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
+(declare sync-collection
+         sync-fields-metadata)
+
 (def -db (delay (sel :one Database :name "Mongo Test DB")))
 (def -conn-str (delay (:conn_str (:details @-db))))
 
@@ -38,20 +41,7 @@
          (r/reduce set/union))))
 
 
-(defn get-num-items-in-collection
-  "Return the number of items (i.e., rows) in a collection.
-
-    (get-num-items-in-collection @-db \"zips\") -> 29353"
-  {:arglists '([database collection-name])}
-  [{{connection-string :conn_str} :details} collection-name]
-  (with-db-connection [db connection-string]
-    (-> (cmd/collection-stats db collection-name)
-        (conv/from-db-object :keywordize)
-        :count)))
-
-;; METHOD IMPLEMENTATIONS
-
-(declare sync-collection)
+;; ## SYNC DATABASE
 
 (defmethod driver/sync-database :mongo
   [{{connection-string :conn_str} :details db-id :id :as database}]
@@ -65,6 +55,9 @@
       (fn [table]
         (sync-collection database table)))))
 
+
+;; ## SYNC TABLE (COLLECTION)
+
 (defn- table-active-field-name->base-type
   "Return a map of active Field names -> Field base types for TABLE."
   [database {table-name :name}]
@@ -77,8 +70,14 @@
   ;; Update Fields for the collection
   (common/sync-table-create-fields table (table-active-field-name->base-type database table))
 
-  ;; Sync Metadata
-  (common/sync-table-metadata table :row-count-fn #(get-num-items-in-collection database (:name %))))
+  ;; Sync Table Metadata
+  (common/sync-table-metadata table
+    :pks-fn       (constantly #{"_id"})) ; yay
+
+  ;; Sync Fields Metadata
+  (common/sync-active-fields-metadata table
+    :avg-length-fn   nil
+    :percent-urls-fn nil))
 
 (defmethod driver/sync-table :mongo [{database :db :as table}]
   (sync-collection @database table))

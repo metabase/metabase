@@ -11,9 +11,8 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])))
 
-(declare check-for-large-average-length korma-table field
-         check-for-low-cardinality
-         check-for-urls
+(declare field-avg-length
+         field-percent-urls
          jdbc-columns
          set-table-fks-if-needed!
          set-table-pks-if-needed!
@@ -21,8 +20,7 @@
          sync-fields-metadata
          sync-table
          table-active-field-name->base-type
-         table-names
-         table-row-count)
+         table-names)
 
 ;; # PUBLIC INTERFACE
 
@@ -51,18 +49,15 @@
 
       ;; First, we need to make sure Active Fields are all up-to-date,
       ;; since other steps like set-table-fks-if-needed! depend on them existing
-      (fn [table]
-        (common/sync-table-create-fields table (table-active-field-name->base-type table)))
+      #(common/sync-table-create-fields % (table-active-field-name->base-type %))
 
       ;; Once that's done we can do the rest of the syncing for Tables
-      (fn [table]
-        (common/sync-table-metadata table :row-count-fn #(table-row-count (korma-entity %))))
+      #(common/sync-table-metadata %
+         :pks-fn       table-pk-names)
 
-      (fn [table]
-        (let [korma-table (korma-entity table)]
-          (set-table-pks-if-needed! table)
-          (set-table-fks-if-needed! korma-table table)
-          (sync-fields-metadata korma-table table))))))
+      #(set-table-fks-if-needed! (korma-entity %) %)
+
+      sync-fields-metadata)))
 
 (defn sync-table
   "Sync a single `Table` and its `Fields`."
@@ -70,11 +65,14 @@
   [{db :db table-name :name :as table}]
   (let [korma-table (korma-entity table)]          ; implementation is a little simpler here than SYNC-DATABASE
     (with-jdbc-metadata [_ @db]                    ; since we don't need to wait for *every* table to finish `sync-fields-create` before
+
       (common/sync-table-create-fields table (table-active-field-name->base-type table))
-      (update-table-row-count! korma-table table)
-      (set-table-pks-if-needed! table)
+
+      (common/sync-table-metadata table
+        :pks-fn       table-pk-names)
+
       (set-table-fks-if-needed! korma-table table)
-      (sync-fields-metadata korma-table table)
+      (sync-fields-metadata table)
       (log/debug "Synced" table-name))))
 
 ;; TODO - Fix this
@@ -99,23 +97,13 @@
                                      :UnknownField))}))
          (into {}))))
 
-
 (defn- sync-fields-metadata
-  "Sync the metadata of all active fields for TABLE (in parallel)."
-  {:arglists '([korma-table table])}
-  [korma-table {table-id :id table-name :name}]
-  (try
-    (->> (sel :many Field :table_id table-id :active true)
-         (pmap (fn [field]
-                 (try
-                   (check-for-urls korma-table field)
-                   (check-for-low-cardinality korma-table field)
-                   (check-for-large-average-length korma-table field)
-                   (catch Throwable e
-                     (log/warn (format "Caught exception when syncing field '%s.%s':" table-name (:name field)) e)))))
-         dorun)
-    (catch Throwable e
-      (log/error "Caught exception in sync-fields-metadata:" e))))
+  "Sync the metadata of all active fields for TABLE."
+  [table]
+  (let [korma-table (korma-entity table)]
+    (common/sync-active-fields-metadata table
+      :avg-length-fn   (partial field-avg-length korma-table)
+      :percent-urls-fn (partial field-percent-urls korma-table))))
 
 
 ;; ## Metadata -- Fetch Tables/Columns/PKs/FKs from DB
@@ -140,11 +128,11 @@
          set)))
 
 (defn table-pk-names
-  "Return a set of name(s) of column(s) that are primary keys for TABLE-NAME.
+  "Return a set of name(s) of column(s) that are primary keys for TABLE.
 
-    (table-pk-names @test-db \"VENUES\") -> [\"ID\"]"
-  [database table-name]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+    (table-pk-names (sel :one Table :name \"USERS\") -> #{\"ID\", ...}"
+  [{database :db table-name :name}]
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md (deref-if-delay database)]
     (->> (jdbc/result-set-seq (.getPrimaryKeys md nil nil table-name)) ; ResultSet getPrimaryKeys(String catalog, String schema, String table)
          (map :column_name)
          doall
@@ -169,32 +157,6 @@
 
 
 ;; # IMPLEMENTATION
-
-;; ## TABLE ROW COUNT
-
-(defn- table-row-count
-  "Get the number of rows in KORMA-TABLE."
-  [korma-table]
-  (-> korma-table
-      (select (aggregate (count :*) :count))
-      first
-      :count))
-
-
-;; ## SET TABLE PKS
-
-(defn- set-table-pks-if-needed!
-  "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
-  {:arglists '([table])}
-  [{table-name :name table-id :id :keys [db pk_field]}]
-  (try
-    (->> (sel :many :fields [Field :name :id] :table_id table-id :special_type nil :name [in (table-pk-names @db table-name)])
-         (map (fn [{field-name :name field-id :id}]
-                (log/info (format "Field '%s.%s' is a primary key. Marking it as such." table-name field-name))
-                (upd Field field-id :special_type :id)))
-         dorun)
-    (catch Throwable e
-      (log/error "Caught exception in set-table-pks-if-needed!:" e))))
 
 
 ;; ## SET TABLE FKS
@@ -235,41 +197,10 @@
     (catch Throwable e
       (log/error "Caught exception in set-table-fks-if-needed!:" e))))
 
-
-;; ### Check for Low Cardinality
-
-(def ^:const ^:private low-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
-  40)
-
-(defn- check-for-low-cardinality
-  "Check FIELD to see if it is low cardinality and should automatically be marked as `special_type = :category`.
-   This is only done for Fields that do not already have a `special_type`."
-  {:arglists '([korma-table field])}
-  [korma-table {field-name :name field-id :id special-type :special_type}]
-  (try
-    (when-not special-type
-      (let [cardinality (-> korma-table
-                            (select (aggregate (count (sqlfn :DISTINCT (keyword field-name))) :count))
-                            first
-                            :count
-                            int)]
-        (when (< cardinality low-cardinality-threshold)
-          (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:table korma-table) field-name cardinality))
-          (upd Field field-id :special_type :category))))
-    (catch Throwable e
-      (log/error "Caught exception in check-for-low-cardinality:" e))))
-
-
-;; ### Check For Large Avg Length
-
-(def ^:const ^:private average-length-no-preview-threshold
-  "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
-  50)
+;; ### Avg. Length, Percent URLs
 
 (defn- field-avg-length
   "Return the average length of FIELD."
-  {:arglists '([korma-table field])}
   [korma-table {field-name :name}]
   {:post [(integer? %)]}
   (int (if *sql-string-length-fn*
@@ -291,28 +222,6 @@
                                              (reduce +))]
                          (math/round (/ length-sum (count values))))))))))
 
-(defn- check-for-large-average-length
-  "Check a Field to see if it has a large average length and should be marked as `preview_display = false`.
-   This is only done for textual fields, i.e. ones with `special_type` of `:CharField` or `:TextField`."
-  {:arglists '([korma-table field])}
-  [korma-table {base-type :base_type, field-id :id, preview-display :preview_display, :as field}]
-  (try
-    (when (and preview-display                                 ; if field is already preview_display = false, no need to check again since there is no case
-               (contains? #{:CharField :TextField} base-type)) ; where we'd end up changing it.
-      (let [avg-len (field-avg-length korma-table field)]
-        (when (> avg-len average-length-no-preview-threshold)
-          (log/info (format "Field '%s.%s' has an average length of %d. Not displaying it in previews." (:table korma-table) (:name field) avg-len))
-          (upd Field field-id :preview_display false))))
-    (catch Throwable e
-      (log/error "Caught exception in check-for-large-average-length:" e))))
-
-
-;; ### Check for URLs
-
-(def ^:const ^:private percent-valid-url-threshold
-  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
-  0.95)
-
 ;; TODO - this fails for postgres tables that we consider TextFields but don't work for char_length, such as UUID fields
 ;; This is not a big deal since we wouldn't want to mark those as URLs any way, but we should do casting here to avoid
 ;; that issue in the first place
@@ -328,18 +237,3 @@
                                     (aggregate (count :*) :count)
                                     (where {(keyword field-name) [like "http%://_%.__%"]})) first :count)] ; This is how the old Django app worked. Didn't match URLs like
           (float (/ url-count total-non-null-count))))))                                                   ; "www.zagat.com". Is this what we want?
-
-(defn- check-for-urls
-  "Check a Field to see if the majority of its *NON-NULL* values are URLs; if so, mark it as `special_type = :url`.
-   This only applies to textual fields that *do not* already have a `special_type.`"
-  {:arglists '([korma-table field])}
-  [korma-table {special-type :special_type, base-type :base_type, field-name :name, field-id :id, :as field}]
-  (try
-    (when (and (not special-type)
-               (contains? #{:CharField :TextField} base-type))
-      (let [percent-urls (field-percent-urls korma-table field)]
-        (when (> percent-urls percent-valid-url-threshold)
-          (log/info (format "Field '%s.%s' is %d%% URLs. Marking it as a URL." (:table korma-table) field-name (int (math/round (* 100 percent-urls)))))
-          (upd Field field-id :special_type :url))))
-    (catch Throwable e
-      (log/error "Caught exception in check-for-urls:" e))))
