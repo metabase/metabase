@@ -5,9 +5,10 @@
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.db :refer :all]
-            [metabase.driver.generic-sql.native :as native]
+            [metabase.driver.query-processor :refer [preprocess *query*]]
+            (metabase.driver.generic-sql [native :as native]
+                                         [util :refer :all])
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
-            [metabase.driver.generic-sql.util :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
@@ -19,21 +20,18 @@
          query-is-cumulative-sum?
          apply-cumulative-sum)
 
-(def ^:dynamic ^:private *query*
-  "Query dictionary that we're currently processing"
-  nil)
-
 ;; # INTERFACE
 
 (defn process
   "Convert QUERY into a korma `select` form."
-  [{{:keys [source_table] :as query} :query}]
+  [{{:keys [source_table]} :query :as query}]
   (when-not (zero? source_table)
     (binding [*query* query]
-      (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
+      (let [{query :query} (preprocess query)
+            forms (->> (map apply-form query)
                        (filter identity)
-                       (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                             [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
+                       (mapcat (fn [form] (if (vector? form) form
+                                             [form])))
                        doall)]
         (when (config/config-bool :mb-db-logging)
           (log-query query forms))
@@ -108,20 +106,9 @@
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]]
-  (match field-ids
-    []    nil ; empty clause
-    [nil] nil ; empty clause
-    _     (let [field-names (map field-id->kw field-ids)
-                order-by-field-names (some->> (:order_by *query*) ; get set of names of all fields specified in `order_by`
-                                              (map first)
-                                              (map field-id->kw)
-                                              set)]
-            `[(group  ~@field-names)
-              (fields ~@field-names)
-              ~@(->> field-names                                                    ; Add an implicit `order :ASC` clause for every field specified in `breakout`
-                     (filter (complement (partial contains? order-by-field-names))) ; that is *not* specified *explicitly* in `order_by`.
-                     (map (fn [field-name]
-                            `(order ~field-name :ASC))))])))
+  (let [field-names (map field-id->kw field-ids)]
+    `[(group  ~@field-names)
+      (fields ~@field-names)]))
 
 ;; ### `:fields`
 ;; ex.
@@ -166,9 +153,6 @@
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
-    nil                  nil ; empty clause
-    [nil nil]            nil ; empty clause
-    []                   nil ; empty clause
     ["AND" & subclauses] `(where (~'and ~@(map filter-subclause->predicate
                                                subclauses)))
     ["OR" & subclauses]  `(where (~'or  ~@(map filter-subclause->predicate
@@ -180,8 +164,7 @@
 ;;
 ;;     10
 (defmethod apply-form :limit [[_ value]]
-  (when value
-    `(limit ~value)))
+  `(limit ~value))
 
 ;; ### `:order_by`
 ;; ex.

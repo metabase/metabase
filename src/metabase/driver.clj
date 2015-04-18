@@ -12,6 +12,7 @@
 (def available-drivers
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
   [["h2" "H2"]
+   ["mongo" "MongoDB"]
    ["postgres" "PostgreSQL"]])
 
 ;; TODO lazily requiring this way is a bit wonky.
@@ -29,15 +30,21 @@
   (let [memoized-dispatch (memoize (fn [engine] ; memoize this so we don't need to call require every single dispatch
                                      (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
                                      (keyword engine)))]
-    (fn [{:keys [engine]}]
-      {:pre [engine]}
+    (fn [{:keys [engine] :as database}]
+      {:pre [database
+             engine]}
       (memoized-dispatch engine))))
-
 
 (defmulti process-and-run
   "Process a query of type `query` (implemented by various DB drivers)."
-  (fn [{:keys [database] :as query}]
-    ((db-dispatch-fn "query-processor") (sel :one [Database :engine] :id database))))
+  (let [qp-dispatch-fn (db-dispatch-fn "query-processor")
+        dispatch-fn (memoize (fn [database-id]
+                               (qp-dispatch-fn (sel :one :fields [Database :engine] :id database-id))))]
+    (fn [{database-id :database}]
+      (dispatch-fn database-id))))
+
+(fn [{:keys [database] :as query}]
+    ((db-dispatch-fn "query-processor") ))
 
 
 (defn- execute-query

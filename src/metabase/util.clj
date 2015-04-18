@@ -1,6 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [medley.core :refer :all]
             [clj-time.format :as time]
             [clj-time.coerce :as coerce])
@@ -254,5 +255,22 @@
               (when-not (:doc (meta varr))
                 (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
        dorun))
+
+(defmacro pdoseq
+  "Just like `doseq` but runs in parallel."
+  [[binding collection] & body]
+  `(dorun (pmap (fn [~binding]
+                  ~@body)
+                ~collection)))
+
+(defmacro try-apply
+  "Call F with PARAMS inside a try-catch block and log exceptions caught."
+  [f & params]
+  `(try
+     (~f ~@params)
+     (catch Throwable e#
+       (log/error (color/red ~(format "Caught exception in %s:" f)
+                             (or (.getMessage e#) e#)
+                             (with-out-str (.printStackTrace e#)))))))
 
 (require-dox-in-this-namespace)

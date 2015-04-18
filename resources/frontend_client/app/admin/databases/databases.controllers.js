@@ -54,6 +54,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         h2: {
             name: "H2",
             example: "file:[filename]"
+        },
+        mongo: {
+            name: "MongoDB",
+            example: "mongodb://password:username@127.0.0.1:27017/db-name"
         }
     };
 
