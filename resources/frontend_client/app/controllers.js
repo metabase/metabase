@@ -66,8 +66,12 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
         CorvusAlert.alertError(message);
     };
 
-    $scope.changeCurrOrg = function(orgSlug) {
-        $location.path('/' + orgSlug + '/');
+    $scope.changeCurrOrg = function(orgSlug, admin) {
+        if (admin) {
+            $location.path('/' + orgSlug + '/admin/');
+        } else {
+            $location.path('/' + orgSlug + '/');
+        }
     };
 
     $scope.refreshCurrentUser = function() {
