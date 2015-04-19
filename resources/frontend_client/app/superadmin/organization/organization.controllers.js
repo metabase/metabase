@@ -32,8 +32,8 @@ OrganizationControllers.controller('OrganizationListController', ['$scope', 'Org
     }
 ]);
 
-OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$routeParams', '$location', 'Organization', 'MetabaseForm',
-    function($scope, $routeParams, $location, Organization, MetabaseForm) {
+OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$routeParams', '$location', 'Organization',
+    function($scope, $routeParams, $location, Organization) {
 
         $scope.organization = undefined;
 
@@ -51,12 +51,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                MetabaseForm.clearFormErrors($scope.form);
+                $scope.$broadcast("form:reset");
                 Organization.update(organization, function (org) {
                     $scope.organization = org;
-                    $scope.$broadcast("form:success", "Successfully saved!");
+                    $scope.$broadcast("form:api-success", "Successfully saved!");
                 }, function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, error);
+                    $scope.$broadcast("form:api-error", error);
                 });
             };
 
@@ -66,12 +66,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
 
             // provide a relevant save() function
             $scope.save = function(organization) {
-                MetabaseForm.clearFormErrors($scope.form);
+                $scope.$broadcast("form:reset");
                 Organization.create(organization, function (org) {
-                    $scope.$broadcast("form:success", "Successfully saved!");
+                    $scope.$broadcast("form:api-success", "Successfully saved!");
                     $location.path('/superadmin/organization/' + org.id);
                 }, function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, error);
+                    $scope.$broadcast("form:api-error", error);
                 });
             };
         }

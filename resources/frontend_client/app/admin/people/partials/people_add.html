@@ -8,22 +8,20 @@
     <section class="Grid Grid--gutters Grid--full Grid--2of3">
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="FormError" ng-show="form.$error.message">{{form.$error.message}}</div>
-
-                <div class="Form-field" ng-class="{'Form--fieldError': form.first_name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="First name" field-name="first_name"></mb-form-label>
+                <div class="Form-field" mb-form-field="first_name">
+                    <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
                     <input class="Form-input Form-offset full" name="first_name" placeholder="John" ng-model="newUser.first_name" required autofocus />
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.last_name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Last name" field-name="last_name"></mb-form-label>
+                <div class="Form-field" mb-form-field="last_name">
+                    <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
                     <input class="Form-input Form-offset full" name="last_name" placeholder="Doe" ng-model="newUser.last_name" required />
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.email.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Email" field-name="email"></mb-form-label>
+                <div class="Form-field" mb-form-field="email">
+                    <mb-form-label display-name="Email" field-name="email"></mb-form-label>
                     <input class="Form-input Form-offset full" name="email" placeholder="johndoe@mycompany.com" ng-model="newUser.email" required />
                     <span class="Form-charm"></span>
                 </div>

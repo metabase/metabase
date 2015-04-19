@@ -7,25 +7,25 @@
         <!-- form -->
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="Form-field" ng-class="{'Form--fieldError': form.slug.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Slug" field-name="slug"></mb-form-label>
+                <div class="Form-field" mb-form-field="slug">
+                    <mb-form-label display-name="Slug" field-name="slug"></mb-form-label>
                     <input class="Form-input Form-offset full" name="slug" ng-model="currentOrg.slug" ng-disabled="true" />
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                <div class="Form-field" mb-form-field="name">
+                    <mb-form-label display-name="Name" field-name="name"></mb-form-label>
                     <input class="Form-input Form-offset full" name="name" placeholder="What is the name of your organization?" ng-model="currentOrg.name" required autofocus/>
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
+                <div class="Form-field" mb-form-field="description">
+                    <mb-form-label display-name="Description" field-name="description"></mb-form-label>
                     <input class="Form-input Form-offset full" name="description" placeholder="What else should people know about this org?" ng-model="currentOrg.description" />
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.logo_url.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Logo url" field-name="logo_url"></mb-form-label>
+                <div class="Form-field" mb-form-field="logo_url">
+                    <mb-form-label display-name="Logo url" field-name="logo_url"></mb-form-label>
                     <input class="Form-input Form-offset full" name="logo_url" placeholder="Link to an image of your logo" ng-model="currentOrg.logo_url" />
                     <span class="Form-charm"></span>
                 </div>

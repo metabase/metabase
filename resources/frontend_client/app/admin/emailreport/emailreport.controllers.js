@@ -96,15 +96,15 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
     }
 ]);
 
-EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams', '$location', 'EmailReport', 'EmailReportUtils', 'Metabase', 'MetabaseForm',
-    function($scope, $routeParams, $location, EmailReport, EmailReportUtils, Metabase, MetabaseForm) {
+EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams', '$location', 'EmailReport', 'EmailReportUtils', 'Metabase',
+    function($scope, $routeParams, $location, EmailReport, EmailReportUtils, Metabase) {
 
         // $scope.report
         // $scope.success_message
         // $scope.error_message
 
         $scope.save = function(reportDetail) {
-            MetabaseForm.clearFormErrors($scope.form);
+            $scope.$broadcast("form:reset");
 
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
@@ -117,9 +117,9 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                 // if there is already an ID associated with the report then we are updating
                 EmailReport.update(reportDetail, function (result) {
                     $scope.report = result;
-                    $scope.$broadcast("form:success", "Successfully saved!");
+                    $scope.$broadcast("form:api-success", "Successfully saved!");
                 }, function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, error);
+                    $scope.$broadcast("form:api-error", error);
                 });
             } else {
                 // otherwise we are creating a new report
@@ -131,7 +131,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                     // move the user over the the actual page for the new report
                     $location.path('/' + $scope.currentOrg.slug + '/admin/emailreport/' + result.id);
                 }, function (error) {
-                    MetabaseForm.parseFormErrors($scope.form, error);
+                    $scope.$broadcast("form:api-error", error);
                 });
             }
 

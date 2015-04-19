@@ -44,8 +44,8 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseForm',
-    function($scope, $routeParams, $location, Metabase, MetabaseForm) {
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
+    function($scope, $routeParams, $location, Metabase) {
 
         // takes in our API form database details and parses them into a map of usable form field values
         var parseDetails = function(engine, details) {
@@ -82,25 +82,25 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
         // update an existing Database
         var update = function(database, details) {
-            MetabaseForm.clearFormErrors($scope.form);
+            $scope.$broadcast("form:reset");
             database.details = buildDetails(database.engine, details);
             Metabase.db_update(database, function (updated_database) {
                 $scope.database = updated_database;
-                $scope.$broadcast("form:success", "Successfully saved!");
+                $scope.$broadcast("form:api-success", "Successfully saved!");
             }, function (error) {
-                MetabaseForm.parseFormErrors($scope.form, error);
+                $scope.$broadcast("form:api-error", error);
             });
         };
 
         // create a new Database
         var create = function(database, details) {
-            MetabaseForm.clearFormErrors($scope.form);
+            $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
             database.details = buildDetails(database.engine, details);
             Metabase.db_create(database, function (new_database) {
                 $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
             }, function (error) {
-                MetabaseForm.parseFormErrors($scope.form, error);
+                $scope.$broadcast("form:api-error", error);
             });
         };
 

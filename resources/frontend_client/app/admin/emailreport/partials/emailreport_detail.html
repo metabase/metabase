@@ -10,20 +10,20 @@
         <!-- form -->
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="Form-field" ng-class="{'Form--fieldError': form.name.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Name" field-name="name"></mb-form-label>
+                <div class="Form-field" mb-form-field="name">
+                    <mb-form-label display-name="Name" field-name="name"></mb-form-label>
                     <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this report?" ng-model="report.name" required autofocus/>
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.description.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Description" field-name="description"></mb-form-label>
+                <div class="Form-field" mb-form-field="description">
+                    <mb-form-label display-name="Description" field-name="description"></mb-form-label>
                     <input class="Form-input Form-offset full" name="description" placeholder="What should people know about this report?" ng-model="report.description" />
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.mode.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Mode" field-name="mode"></mb-form-label>
+                <div class="Form-field" mb-form-field="mode">
+                    <mb-form-label display-name="Mode" field-name="mode"></mb-form-label>
                     <div class="Form-offset">
                         <div class="Button-group">
                             <!-- TODO: hardcoding values :( -->
@@ -33,15 +33,15 @@
                     </div>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.public_perms.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Permissions" field-name="public_perms"></mb-form-label>
+                <div class="Form-field" mb-form-field="public_perms">
+                    <mb-form-label display-name="Permissions" field-name="public_perms"></mb-form-label>
                     <label class="Select Form-offset">
                         <select name="public_perms" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions" required ></select>
                     </label>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.recipients.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Recipients" field-name="recipients"></mb-form-label>
+                <div class="Form-field" mb-form-field="recipients">
+                    <mb-form-label display-name="Recipients" field-name="recipients"></mb-form-label>
                     <ul class="Checkbox-group Form-offset">
                       <li ng-repeat="user in form_input.users">
                         <input type="checkbox" id="{{user.id}}" ng-model="user.incl" /> <label for="{{user.id}}">{{user.name}}</label>
@@ -49,14 +49,14 @@
                     </li>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.email_addresses.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Email aliases" field-name="email_addresses"></mb-form-label>
+                <div class="Form-field" mb-form-field="email_addresses">
+                    <mb-form-label display-name="Email aliases" field-name="email_addresses"></mb-form-label>
                     <textarea class="Form-input Form-offset full" name="email_addresses" ng-model="report.email_addresses" placeholder="Enter emails (separated by commas) of other recipients, who may need this email"></textarea>
                     <span class="Form-charm"></span>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.dataset_query.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Email contents" field-name="dataset_query"></mb-form-label>
+                <div class="Form-field" mb-form-field="dataset_query">
+                    <mb-form-label display-name="Email contents" field-name="dataset_query"></mb-form-label>
                     <div class="mb1">
                         <label class="Select Form-offset block">
                             <select ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
@@ -73,8 +73,8 @@
                     </div>
                 </div>
 
-                <div class="Form-field" ng-class="{'Form--fieldError': form.schedule.$error.message !== undefined}">
-                    <mb-form-label form="form" display-name="Schedule" field-name="schedule"></mb-form-label>
+                <div class="Form-field" mb-form-field="schedule">
+                    <mb-form-label display-name="Schedule" field-name="schedule"></mb-form-label>
                     <div class="Form-offset">
                         <div class="Button-group">
                             <button class="Button" ng-class="{ 'Button--active' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</button>
@@ -98,7 +98,7 @@
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid || report.dataset_query.query.source_table == ''">
                         Save
                     </button>
-                    <mb-form-message form="form"></mb-form-message>
+                    <mb-form-message></mb-form-message>
                 </div>
             </form>
         </div>

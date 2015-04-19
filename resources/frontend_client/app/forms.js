@@ -5,61 +5,49 @@
 
 var MetabaseForms = angular.module('metabase.forms', ['corvus.directives']);
 
-MetabaseForms.service('MetabaseForm', function() {
+MetabaseForms.directive('mbFormField', [function () {
 
-	// accepts an instance of angular form.FormController and clears any of our error messages from the form
-    this.clearFormErrors = function(form) {
-    	Object.keys(form).forEach(function (key) {
-            // we only care about attributes of the form which do NOT start with '$'
-            if (key.indexOf('$') === -1 &&
-                key in form &&
-                typeof(form[key]) === 'object' &&
-                form[key] !== null &&
-                '$error' in form[key]) {
-                form[key].$error.message = undefined;
-            }
-    	});
+    return {
+        restrict: 'A',
+        scope: {},
+        link: function(scope, element, attr) {
+            var fieldName = attr.mbFormField;
 
-    	form.$error.message = undefined;
-    };
-
-    // accepts an instance of angular form.FormController and the http errors from an $http call
-    // and will parse out any supplied error information and set it on the form
-    this.parseFormErrors = function(form, httpErrors) {
-        if (httpErrors.data.errors) {
-            // field validation error(s)
-            Object.keys(httpErrors.data.errors).forEach(function (key) {
-                if (form[key] !== 'undefined') {
-                    // this simply takes the error message from our api response and
-                    // applies it to the correct form field in our angular form object
-                    form[key].$error.message = httpErrors.data.errors[key];
+            scope.$on("form:api-error", function (event, httpErrors) {
+                if (httpErrors.data.errors && fieldName in httpErrors.data.errors) {
+                    element.addClass('Form--fieldError');
                 }
-
-                // NOTE: if we the above conditional fails that means we got an error for a field that our form
-                //       does not seem to be interested in, so we simply skip over it and do nothing
             });
 
-        } else if (httpErrors.data.message) {
-            // generic error not attributed to specific field
-            form.$error.message = httpErrors.data.message;
-
-        } else if (httpErrors.status === 500) {
-            // generic 500 without a specific message
-            form.$error.message = "Server error encountered";
+            scope.$on("form:reset", function (event) {
+                element.removeClass('Form--fieldError');
+            });
         }
     };
-});
+}]);
 
 MetabaseForms.directive('mbFormLabel', [function () {
 
     return {
         restrict: 'E',
         replace: true,
-        template: '<label class="Form-label Form-offset">{{displayName}}: <span ng-show="form[fieldName].$error.message">{{form[fieldName].$error.message}}</span></label>',
+        template: '<label class="Form-label Form-offset">{{name}}: <span ng-show="message">{{message}}</span></label>',
         scope: {
-            form: '=',
-            displayName: '@',
-            fieldName: '@'
+            name: '@displayName'
+        },
+        link: function(scope, element, attr) {
+            var fieldName = attr.fieldName;
+            scope.message = undefined;
+
+            scope.$on("form:api-error", function (event, httpErrors) {
+                if (httpErrors.data.errors && fieldName in httpErrors.data.errors) {
+                    scope.message = httpErrors.data.errors[fieldName];
+                }
+            });
+
+            scope.$on("form:reset", function (event) {
+                scope.message = undefined;
+            });
         }
     };
 }]);
@@ -70,9 +58,7 @@ MetabaseForms.directive('mbFormMessage', [function () {
         restrict: 'E',
         replace: true,
         template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-if="visible" cv-delayed-call="reset()">{{message}}</span>',
-        scope: {
-            form: '='
-        },
+        scope: {},
         link: function(scope, element, attr) {
 
             var setMessage = function (msg, isError) {
@@ -87,12 +73,26 @@ MetabaseForms.directive('mbFormMessage', [function () {
                 scope.error = undefined;
             };
 
-            scope.$on("form:error", function (event, message) {
-                setMessage(message, true);
+            // notification of api error
+            scope.$on("form:api-error", function (event, httpErrors) {
+                if (httpErrors.data.message) {
+                    setMessage(httpErrors.data.message, true);
+
+                } else if (httpErrors.status === 500) {
+                    // generic 500 without a specific message
+                    setMessage("Server error encountered", true);
+                }
+
             });
 
-            scope.$on("form:success", function (event, message) {
+            // notification of api success
+            scope.$on("form:api-success", function (event, message) {
                 setMessage(message, false);
+            });
+
+            // notification of form state reset
+            scope.$on("form:reset", function (event) {
+                scope.reset();
             });
 
             // start from base state
