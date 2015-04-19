@@ -22,10 +22,10 @@
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
                     <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-                        <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-                    <span dropdown-toggle ng-if="user.is_multi_org">
-                      <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-                    </span>
+                        <span dropdown-toggle ng-if="user.is_multi_org">
+                            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
+                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                        </span>
                         <ul class="Dropdown-content">
                             <li ng-repeat="organization in userMemberOf">
                                 <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
