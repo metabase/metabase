@@ -50,7 +50,8 @@
   (let [{user-id :id} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    (check-404 user-id)
+    (checkp (not (nil? user-id))
+      (symbol "email") "no account found for the given email")
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
     (email/send-password-reset-email email server-name password-reset-url)
     (log/info password-reset-url)))
