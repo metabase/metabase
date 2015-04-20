@@ -28,12 +28,12 @@
 
 .brand-illustration {
   position: absolute;
-  height: 202px;
   bottom: 15px;
-  left: -100px;
-  right: -100px;
-  background-image: url('../img/bridge.png');
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
   z-index: 5;
+  margin: 0 auto;
+  display: flex;
+}
+
+.brand-bridge {
+    margin-left: -115px;
 }
