@@ -64,8 +64,8 @@
   (client :post 400 "session/forgot_password" {}))
 
 ;; Test that email not found gives 404
-(expect "Not found."
-  (client :post 404 "session/forgot_password" {:email "not-found@metabase.com"}))
+(expect {:errors {:email "no account found for the given email"}}
+  (client :post 400 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password
