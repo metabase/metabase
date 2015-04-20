@@ -10,8 +10,8 @@ var AuthControllers = angular.module('corvus.auth.controllers', [
     'metabase.forms'
 ]);
 
-AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState', 'MetabaseForm',
-    function($scope, $location, $timeout, ipCookie, Session, AppState, MetabaseForm) {
+AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState',
+    function($scope, $location, $timeout, ipCookie, Session, AppState) {
 
         var formFields = {
             email: 'email',
@@ -24,11 +24,10 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
         };
 
         $scope.login = function(email, password, remember_me) {
-            MetabaseForm.clearFormErrors($scope.form, formFields);
-            $scope.form.$setPristine();
+            $scope.$broadcast("form:reset");
 
             if (!validEmail(email)) {
-                $scope.form.email.$error.message = "Please enter a valid formatted email address.";
+                $scope.$broadcast("form:api-error", {'data': {'errors': {'email': "Please enter a valid formatted email address."}}});
                 return;
             }
 
@@ -53,7 +52,7 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
                     $location.path('/');
                 }, 300);
             }, function (error) {
-                MetabaseForm.parseFormErrors($scope.form, formFields, error);
+                $scope.$broadcast("form:api-error", error);
             });
         };
 
