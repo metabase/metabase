@@ -91,23 +91,14 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
 AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
 
     $scope.sentNotification = false;
-    $scope.error = false;
-
 
     $scope.sendResetNotification = function(email) {
         Session.forgot_password({
             'email': email
         }, function(result) {
-            console.log('notification sent');
             $scope.sentNotification = true;
         }, function(error) {
-            if (error.status === 400) {
-                $scope.error = "You must specify the email address of your account.";
-            } else if (error.status === 404) {
-                $scope.error = "Could not find a user for the given email address.";
-            } else {
-                $scope.error = "Error triggering password reset.  Please ask the system administrator for assistance.";
-            }
+            $scope.$broadcast("form:api-error", error);
         });
     };
 
