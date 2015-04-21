@@ -1,39 +1,39 @@
 .brand-scene {
-  z-index: 4;
+    z-index: 4;
 }
 
 .brand-boat {
-  position: relative;
-  z-index: 6;
-  -webkit-animation: boat_trip 200s linear infinite;
-  margin-bottom: 0.5em;
+    position: relative;
+    z-index: 6;
+    -webkit-animation: boat_trip 200s linear infinite;
+    margin-bottom: 0.5em;
 }
 
 @-webkit-keyframes boat_trip {
-  0% {
-    margin-left: -2%;
-  }
-  10% {
-    margin-left: 5%;
-    transform: translate3d(0, 0, 2%);
-  }
-  100% {
-    margin-left: 120%;
-  }
+    0% {
+        margin-left: -2%;
+    }
+    10% {
+        margin-left: 5%;
+        transform: translate3d(0, 0, 2%);
+    }
+    100% {
+        margin-left: 120%;
+    }
 }
 
 .Login-header {
-  color: #6A6A6A;
+    color: #6A6A6A;
 }
 
 .brand-illustration {
-  position: absolute;
-  height: 202px;
-  bottom: 15px;
-  left: -100px;
-  right: -100px;
-  background-image: url('../img/bridge.png');
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  z-index: 5;
+    position: absolute;
+    bottom: 15px;
+    z-index: 5;
+    margin: 0 auto;
+    display: flex;
+}
+
+.brand-bridge {
+    margin-left: -115px;
 }
