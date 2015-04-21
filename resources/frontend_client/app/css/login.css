@@ -1,7 +1,19 @@
+/* ensure our form doesn't get too wide */
+.Login-wrapper {
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+/* the login content should always sit on top of the illustration */
 .Login-content {
     position: relative;
     z-index: 1000;
 }
+
+.Login-header {
+    color: #6A6A6A;
+}
+
 .brand-scene {
     z-index: 4;
 }
@@ -26,10 +38,6 @@
     }
 }
 
-.Login-header {
-    color: #6A6A6A;
-}
-
 .brand-illustration {
     position: absolute;
     bottom: 15px;
@@ -41,6 +49,7 @@
 .brand-bridge {
     margin-left: -115px;
 }
+
 
 .SuccessGroup {
     display: flex;
