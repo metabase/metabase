@@ -102,14 +102,14 @@
 (expect {:errors {:password "field is a required param."}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
-;; Test that invalid token returns 404
-(expect "Not found."
-  (client :post 404 "session/reset_password" {:token "not-found"
+;; Test that invalid token returns 400
+(expect {:errors {:token "Invalid reset token"}}
+  (client :post 400 "session/reset_password" {:token "not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that old token can expire
-(expect "Not found."
+(expect {:errors {:token "Reset token has expired"}}
   (let [token (.toString (java.util.UUID/randomUUID))]
     (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
-    (client :post 404 "session/reset_password" {:token "not-found"
+    (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
