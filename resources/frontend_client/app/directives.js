@@ -96,6 +96,63 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
+CorvusDirectives.directive('mbActionButton', ['$timeout', function ($timeout) {
+
+    return {
+        restrict: 'A',
+        scope: {
+            actionFunction: '=mbActionButton'
+        },
+        link: function link(scope, element, attr) {
+
+            var defaultText = element.text();
+            var activeText = attr.activeText;
+            var failedText = attr.errorText;
+            var successText = attr.successText;
+
+            var delayedReset = function() {
+                // do we need to have this timeout be configurable?
+                $timeout(function () {
+                    element.text(defaultText);
+                    element.removeClass('Button--waiting');
+                    element.removeClass('Button--success');
+                    element.removeClass('Button--failed');
+                }, 3000);
+            };
+
+            element.bind('click', function (event) {
+                element.text(activeText);
+                element.addClass('Button--waiting');
+                // TODO: disable button
+                // TODO: activate spinner
+
+                // NOTE: we are assuming the action function is a promise
+                var promise = scope.actionFunction();
+
+                promise.then(function (result) {
+                    element.text(successText);
+                    element.removeClass('Button--waiting');
+                    element.addClass('Button--success');
+                    // TODO: re-activate button
+                    // TODO: stop spinner
+
+                    // TODO: timeout, reset to base
+                    delayedReset();
+                }, function (error) {
+                    element.text(failedText);
+                    element.removeClass('Button--waiting');
+                    element.addClass('Button--failed');
+                    // TODO: re-activate button
+                    // TODO: stop spinner
+
+                    // TODO: timeout, reset to base
+                    delayedReset();
+                });
+            });
+        }
+    };
+}]);
+
 
 var NavbarDirectives = angular.module('corvus.navbar.directives', []);
 

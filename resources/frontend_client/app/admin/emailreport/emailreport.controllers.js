@@ -137,15 +137,12 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
         };
 
-        $scope.executeReport = function(reportId) {
-            EmailReport.execute({
-                'reportId': reportId
-            }, function(result) {
-                $scope.success_message = 'EmailReport has been sent!';
-            }, function(error) {
-                $scope.error_message = 'Failed sending EmailReport!';
-                console.log('error executing email report', error);
+        $scope.executeReport = function() {
+            var call = EmailReport.execute({
+                'reportId': $scope.report.id
             });
+
+            return call.$promise;
         };
 
         $scope.refreshTableList = function(dbId) {
