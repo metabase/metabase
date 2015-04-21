@@ -62,9 +62,9 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (let-404 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
+  (let-400 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
     ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-    (check-404 (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0))))
+    (check-400 [(> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0))) "Reset token has expired"])
     (set-user-password (:id user) password)
     {:success true}))
 

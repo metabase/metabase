@@ -95,9 +95,9 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
     $scope.sendResetNotification = function(email) {
         Session.forgot_password({
             'email': email
-        }, function(result) {
+        }, function (result) {
             $scope.sentNotification = true;
-        }, function(error) {
+        }, function (error) {
             $scope.$broadcast("form:api-error", error);
         });
     };
@@ -108,25 +108,22 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
 AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$location', 'Session', function($scope, $routeParams, $location, Session) {
 
     $scope.resetSuccess = false;
-    $scope.error = false;
-
-    // TODO - check for password matching
-    // TODO - check for password strength
 
     $scope.resetPassword = function(password) {
+        $scope.$broadcast("form:reset");
+
+        if (password != $scope.password2) {
+            $scope.$broadcast("form:api-error", {'data': {'errors': {'password2': "Passwords do not match"}}});
+            return;
+        }
+
         Session.reset_password({
             'token': $routeParams.token,
             'password': password
-        }, function(result) {
+        }, function (result) {
             $scope.resetSuccess = true;
-        }, function(error) {
-            if (error.status === 400) {
-                $scope.error = "You must specify a valid password.";
-            } else if (error.status === 404) {
-                $scope.error = "Invalid reset token specified.";
-            } else {
-                $scope.error = "Error resetting password.  Please ask the system administrator for assistance.";
-            }
+        }, function (error) {
+            $scope.$broadcast("form:api-error", error);
         });
     };
 
