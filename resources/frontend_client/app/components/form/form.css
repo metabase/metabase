@@ -1,6 +1,6 @@
 :root {
     --form-padding: 1em;
-    --form-input-placeholder-color: #C1C1C1;
+    --form-input-placeholder-color: #C0C0C0;
 }
 
 /* TODO: deprecate this base object, it shouldn't be this specific */
@@ -33,7 +33,6 @@
     font-size: 0.85em;
     font-weight: bold;
     color: currentColor;
-    margin-bottom: 1em;
 }
 
 .Form-field.Form--fieldError {
@@ -54,7 +53,7 @@
 }
 
 .Form-offset {
-    padding-left: 2rem;
+    padding-left: 2.25rem;
 }
 
 .Form-charm {
@@ -112,9 +111,22 @@
 }
 
 .Form-actions {
-    padding: 2em;
+    padding: 1em 2em 2em;
+    display: flex;
+    align-items: center;
 }
 
-.Form-label .Form-input {
-    margin-top: -1em;
+::-webkit-input-placeholder { /* WebKit browsers */
+    color: var(--form-input-placeholder-color);
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+   color:    var(--form-input-placeholder-color);
+   opacity:  1;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+   color:    var(--form-input-placeholder-color);
+   opacity:  1;
+}
+:-ms-input-placeholder { /* Internet Explorer 10+ */
+   color:    var(--form-input-placeholder-color);
 }

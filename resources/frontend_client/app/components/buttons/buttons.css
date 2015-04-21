@@ -26,6 +26,12 @@
   line-height: 1;
 }
 
+@media screen and (--breakpoint-min-md) {
+    .Button {
+        padding: 1em;
+    }
+}
+
 .Button:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   transition: border .3s linear, box-shadow .3s linear;

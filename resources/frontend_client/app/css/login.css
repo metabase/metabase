@@ -1,3 +1,7 @@
+.Login-content {
+    position: relative;
+    z-index: 1000;
+}
 .brand-scene {
     z-index: 4;
 }
@@ -36,4 +40,27 @@
 
 .brand-bridge {
     margin-left: -115px;
+}
+
+.SuccessGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--success-color);
+    padding: 4em;
+}
+
+.SuccessMark {
+    display: flex;
+    padding: 1em;
+    border: 3px solid var(--success-color);
+    border-radius: 99px;
+    color: var(--success-color);
+    line-height: 1;
+}
+
+.SuccessText {
+    font-weight: bold;
+    margin-top: 1em;
+    text-align: center;
 }

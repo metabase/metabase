@@ -11,9 +11,9 @@
                     </g>
                 </svg>
             </div>
-            <div class="Grid-cell">
+            <div class="Login-content Grid-cell">
                 <form class="Login-wrapper bg-white Form-new bordered rounded shadowed" name="form" novalidate>
-                    <h3 class="Login-header mb3">Sign in to Metabase</h3>
+                    <h3 class="Login-header Form-offset mb3">Sign in to Metabase</h3>
 
                     <mb-form-message form="form"></mb-form-message>
 
@@ -37,11 +37,11 @@
                         </ul>
                     </div>
 
-                    <div class="Form-actions clearfix">
-                        <a class="text-grey-3 text-centered link float-right" href="/auth/forgot_password">I seem to have forgotten my password</a>
+                    <div class="Form-actions ">
                         <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="login(email, password, remember_me)" ng-disabled="!form.$valid">
                             Sign in
                         </button>
+                        <a class="text-grey-3 text-right flex-full link" href="/auth/forgot_password">I seem to have forgotten my password</a>
                     </div>
                 </form>
             </div>
