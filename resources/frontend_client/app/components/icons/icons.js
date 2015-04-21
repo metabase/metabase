@@ -9,6 +9,7 @@
         'Close',
         'ChevronDown',
         'ChevronRight',
+        'Check',
         'Dashboards',
         'Explore',
         'Gear',
@@ -52,4 +53,3 @@
     }
 
 }());
-

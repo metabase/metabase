@@ -37,3 +37,18 @@
 .brand-bridge {
     margin-left: -115px;
 }
+
+.SuccessGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--success-color);
+}
+
+.SuccessMark {
+    display: flex;
+    padding: 1em;
+    border: 3px solid var(--success-color);
+    border-radius: 99px;
+    color: var(--success-color);
+}
