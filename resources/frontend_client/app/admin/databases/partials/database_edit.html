@@ -70,12 +70,12 @@
             <div class="Actions">
                 <h3>Actions</h3>
                 <div class="Actions-group">
-                    <button class="Button" ng-click="save(database)">Sync</button>
+                    <button class="Button" mb-action-button="sync" success-text="Sync triggered!" failed-text="Failed to sync" active-text="Starting ...">Sync</button>
                 </div>
 
                 <div class="Actions-group Actions--dangerZone">
                     <label class="Actions-groupLabel block">Danger Zone:</label>
-                    <button class="Button Button--danger" ng-click="save(database)">Remove this database</button>
+                    <button class="Button Button--danger">Remove this database</button>
                 </div>
             </div>
         </div>

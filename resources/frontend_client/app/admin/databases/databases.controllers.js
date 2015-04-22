@@ -112,6 +112,14 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             }
         };
 
+        $scope.sync = function() {
+            var call = Metabase.db_sync_metadata({
+                'dbId': $scope.database.id
+            });
+
+            return call.$promise;
+        };
+
         // load our form input data
         Metabase.db_form_input(function (form_input) {
             $scope.form_input = form_input;

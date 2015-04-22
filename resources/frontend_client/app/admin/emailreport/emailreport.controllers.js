@@ -52,15 +52,11 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
         };
 
         $scope.executeReport = function(reportId) {
-            EmailReport.execute({
+            var call = EmailReport.execute({
                 'reportId': reportId
-            }, function(result) {
-                $scope.success_message = 'EmailReport has been sent!';
-                // TODO: better user feedback
-            }, function(error) {
-                $scope.error_message = 'Failed sending EmailReport!';
-                console.log('error executing email report', error);
             });
+
+            return call.$promise;
         };
 
         $scope.deleteReport = function(index) {
