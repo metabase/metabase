@@ -110,6 +110,8 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
             var failedText = attr.errorText;
             var successText = attr.successText;
 
+            var fnArg = attr.fnArg;
+
             var delayedReset = function() {
                 // do we need to have this timeout be configurable?
                 $timeout(function () {
@@ -134,7 +136,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                 element.attr('disabled', 'true');
 
                 // NOTE: we are assuming the action function is a promise
-                var promise = scope.actionFunction();
+                var promise = (fnArg) ? scope.actionFunction(fnArg) : scope.actionFunction();
 
                 promise.then(function (result) {
                     element.text(successText);
