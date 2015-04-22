@@ -47,7 +47,23 @@
 }
 
 .brand-bridge {
-    margin-left: -115px;
+    margin-left: -140px;
+}
+
+.brand-mountain-1 {
+    position: relative;
+    z-index: 50;
+}
+
+/* flip the second mountain around */
+.brand-mountain-2 {
+    -moz-transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+    -o-transform: scaleX(-1);
+    transform: scaleX(-1);
+    -ms-filter: fliph; /*IE*/
+    filter: fliph; /*IE*/
+    margin-left: -170px;
 }
 
 
