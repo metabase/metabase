@@ -96,7 +96,7 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
-CorvusDirectives.directive('mbActionButton', ['$timeout', function ($timeout) {
+CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
 
     return {
         restrict: 'A',
@@ -117,14 +117,21 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', function ($timeout) {
                     element.removeClass('Button--waiting');
                     element.removeClass('Button--success');
                     element.removeClass('Button--failed');
-                }, 3000);
+                    element.removeAttr('disabled');
+                }, 5000);
             };
 
             element.bind('click', function (event) {
                 element.text(activeText);
                 element.addClass('Button--waiting');
-                // TODO: disable button
-                // TODO: activate spinner
+
+                // activate spinner
+                var loadingIcon = angular.element('<cv-loading-icon width="12px" height="12px"></cv-loading-icon>');
+                element.append(loadingIcon);
+                $compile(loadingIcon)(scope);
+
+                // disable button
+                element.attr('disabled', 'true');
 
                 // NOTE: we are assuming the action function is a promise
                 var promise = scope.actionFunction();
@@ -133,19 +140,25 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', function ($timeout) {
                     element.text(successText);
                     element.removeClass('Button--waiting');
                     element.addClass('Button--success');
-                    // TODO: re-activate button
-                    // TODO: stop spinner
+                    var checkIcon = angular.element('<cv-check-icon width="12px" height="12px"></cv-check-icon>');
+                    element.prepend(checkIcon);
+                    $compile(checkIcon)(scope);
 
-                    // TODO: timeout, reset to base
+                    // re-activate button
+                    element.removeAttr('disabled');
+
+                    // timeout, reset to base
                     delayedReset();
+
                 }, function (error) {
                     element.text(failedText);
                     element.removeClass('Button--waiting');
                     element.addClass('Button--failed');
-                    // TODO: re-activate button
-                    // TODO: stop spinner
 
-                    // TODO: timeout, reset to base
+                    // re-activate button
+                    element.removeAttr('disabled');
+
+                    // timeout, reset to base
                     delayedReset();
                 });
             });
