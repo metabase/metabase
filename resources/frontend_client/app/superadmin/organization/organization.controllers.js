@@ -52,6 +52,12 @@ OrganizationControllers.controller('OrganizationDetailController', ['$scope', '$
             // provide a relevant save() function
             $scope.save = function(organization) {
                 $scope.$broadcast("form:reset");
+
+                // use NULL for unset timezone
+                if (!organization.report_timezone) {
+                    organization.report_timezone = null;
+                }
+
                 Organization.update(organization, function (org) {
                     $scope.organization = org;
                     $scope.$broadcast("form:api-success", "Successfully saved!");
