@@ -26,14 +26,13 @@ var Corvus = angular.module('corvus', [
     'corvus.search',
     'corvus.user',
     'corvus.setup',
-    'corvusadmin.index.controllers',
+    'corvusadmin.organization',
     'corvusadmin.databases',
-    'corvusadmin.datasets',
     'corvusadmin.emailreport',
     'corvusadmin.people',
     'corvusadmin.query',
     'corvusadmin.annotation',
-    'superadmin.index',
+    'superadmin.settings',
     'superadmin.organization'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
@@ -62,6 +61,12 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         controller: 'SetupInit'
     });
 
+    $routeProvider.when('/superadmin/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/superadmin/settings/';
+        }
+    });
+
     // TODO: we need actual homepages for orgs!
     $routeProvider.when('/:orgSlug/', {
         redirectTo: function(routeParams, path, search) {
@@ -69,12 +74,13 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         }
     });
 
-    // admin routes
     $routeProvider.when('/:orgSlug/admin/', {
-        templateUrl: '/app/admin/home.html',
-        controller: 'AdminHome'
+        redirectTo: function(routeParams, path, search) {
+            return '/' + routeParams.orgSlug + '/admin/org/';
+        }
     });
 
+    // admin routes
     $routeProvider.when('/:orgSlug/admin/test_login_form', {
         templateUrl: '/app/admin/test_login_form.html',
         controller: 'TestLoginForm'

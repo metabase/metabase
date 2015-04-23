@@ -19,18 +19,18 @@
       (client :post 200 "session" (user->credentials :rasta))))
 
 ;; Test for required params
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   (client :post 400 "session" {}))
 
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
-(expect "Invalid Request."
+(expect {:errors {:email "no account found for the given email"}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking
-(expect "password mismatch"
+(expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (-> (user->credentials :rasta)
                                   (assoc :password "something else"))))
 
@@ -60,12 +60,12 @@
     (reset-fields-set?)))
 
 ;; Test that email is required
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   (client :post 400 "session/forgot_password" {}))
 
 ;; Test that email not found gives 404
-(expect "Not found."
-  (client :post 404 "session/forgot_password" {:email "not-found@metabase.com"}))
+(expect {:errors {:email "no account found for the given email"}}
+  (client :post 400 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password
@@ -89,27 +89,27 @@
                                                                      :password (:new password)})
     ;; Old creds should no longer work
     (assert (= (metabase.http-client/client :post 400 "session" (:old creds))
-              "password mismatch"))
+              {:errors {:password "did not match stored password"}}))
     ;; New creds *should* work
     (metabase.http-client/client :post 200 "session" (:new creds))
     ;; Double check that reset token was cleared
     (sel :one :fields [User :reset_token :reset_triggered] :id id)))
 
 ;; Test that token and password are required
-(expect "'token' is a required param."
+(expect {:errors {:token "field is a required param."}}
   (client :post 400 "session/reset_password" {}))
 
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
-;; Test that invalid token returns 404
-(expect "Not found."
-  (client :post 404 "session/reset_password" {:token "not-found"
+;; Test that invalid token returns 400
+(expect {:errors {:token "Invalid reset token"}}
+  (client :post 400 "session/reset_password" {:token "not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that old token can expire
-(expect "Not found."
+(expect {:errors {:token "Reset token has expired"}}
   (let [token (.toString (java.util.UUID/randomUUID))]
     (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
-    (client :post 404 "session/reset_password" {:token "not-found"
+    (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))

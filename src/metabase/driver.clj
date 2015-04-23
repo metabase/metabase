@@ -10,9 +10,14 @@
 
 
 (def available-drivers
-  "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
-  [["h2" "H2"]
-   ["postgres" "PostgreSQL"]])
+  "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
+  ex: `:h2 {:id \"h2\" :name \"H2\"}`"
+  {:h2       {:id   "h2"
+              :name "H2"
+              :example "file:[filename]"}
+   :postgres {:id "postgres"
+              :name "Postgres"
+              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}})
 
 ;; TODO lazily requiring this way is a bit wonky.
 ;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does
@@ -58,7 +63,17 @@
   (db-dispatch-fn "connection"))
 
 (defmulti can-connect?
-  "Check whether we can connect to DATABASE and perform a simple query."
+  "Check whether we can connect to DATABASE and perform a simple query.
+   (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
+
+     (can-connect? (sel :one Database :id 1))"
+  (db-dispatch-fn "connection"))
+
+(defmulti can-connect-with-details?
+  "Check whether we can connect to a database and performa a simple query.
+   Returns true if we can, otherwise returns false or throws an Exception.
+
+     (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})"
   (db-dispatch-fn "connection"))
 
 (defmulti sync-database

@@ -10,7 +10,7 @@
 (defannotation SetupToken
   "Check that param matches setup token or throw a 403."
   [symb value]
-  (checkp-with setup/token-match? symb value [403 "Token does not match the setup token."]))
+  (checkp-with setup/token-match? symb value "Token does not match the setup token."))
 
 
 (defendpoint POST "/user"

@@ -7,7 +7,7 @@
 }
 
 .Dropdown-content {
-  opacity: 0; /* start invisible */ 
+  opacity: 0; /* start invisible */
   pointer-events: none; /* and without any clicks */
   z-index: 20;
   position: absolute;
@@ -33,7 +33,7 @@
   display: block;
 }
 
-/* switching from home rolled to BS logic for dropdowns so we still have both classes */ 
+/* switching from home rolled to BS logic for dropdowns so we still have both classes */
 .Dropdown.open .Dropdown-content,
 .Dropdown--showing.Dropdown-content{
   opacity: 1;
@@ -42,3 +42,7 @@
   margin-top: 0;
 }
 
+.Dropdown-item {
+    padding-top: 1em;
+    padding-bottom: 1em;
+}

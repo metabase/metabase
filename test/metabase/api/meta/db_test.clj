@@ -18,8 +18,12 @@
 
 ;; ## GET /api/meta/db/form_input
 (expect
-    {:engines [["h2" "H2"]
-               ["postgres" "PostgreSQL"]]
+    {:engines {:h2       {:id   "h2"
+                          :name "H2"
+                          :example "file:[filename]"}
+               :postgres {:id "postgres"
+                          :name "Postgres"
+                          :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}}
      :timezones ["GMT"
                  "UTC"
                  "US/Alaska"

@@ -1,0 +1,22 @@
+/* provide flex utilities in lieu of float based layouts */
+
+.flex {
+    display: flex;
+}
+
+.flex-full {
+    flex: 1;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.align-start {
+    align-items: flex-start;
+}
+
+.align-self-end {
+    align-self: flex-end;
+}
+

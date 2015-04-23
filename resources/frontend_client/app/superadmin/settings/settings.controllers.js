@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-var SettingsAdminControllers = angular.module('superadmin.index.controllers', ['superadmin.index.services']);
+var SettingsAdminControllers = angular.module('superadmin.settings.controllers', ['superadmin.settings.services']);
 
 SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'SettingsAdminServices',
     function($scope, SettingsAdminServices) {

@@ -711,7 +711,10 @@ CardControllers.controller('CardDetail', [
                 updateAvailableDisplayTypes(result);
                 var display = $scope.card.display;
                 if (typeof display === 'undefined' || display === 'none' || (!$scope.displayTypes[display].available)) {
-                    $scope.card.display = getDefaultDisplayType($scope.displayTypes, result);
+                    var new_display = getDefaultDisplayType($scope.displayTypes, result);
+                    if (new_display) {
+                        $scope.card.display = new_display;
+                    }
                 } else {
                     assignColumns(result);
                 }

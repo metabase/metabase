@@ -17,15 +17,15 @@
 
     <body ng-controller="Corvus">
 
-        <!-- MAIN NAV -->
         <div ng-controller="Nav" ng-if="user" ng-cloak>
+            <!-- MAIN NAV -->
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
                     <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-                        <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-                    <span dropdown-toggle ng-if="user.is_multi_org">
-                      <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-                    </span>
+                        <span dropdown-toggle ng-if="user.is_multi_org">
+                            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
+                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                        </span>
                         <ul class="Dropdown-content">
                             <li ng-repeat="organization in userMemberOf">
                                 <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
@@ -86,44 +86,82 @@
 
             <!-- ADMIN NAV -->
             <nav class="AdminNav" ng-show="nav === 'admin'">
-                <div class="bg-white border-bottom">
-                    <div class="py2 wrapper">
-                        <label class="Select" ng-if="user.is_multi_org">
-                            <select ng-change="changeCurrOrg(currentOrgSlug)" ng-model="currentOrgSlug" ng-options="organization.slug as organization.name for organization in userAdminOf"></select>
-                        </label>
-                        <a class="AdminTitle link" cv-org-href="/admin/">
-                            <span ng-if="!user.is_multi_org">{{currentOrg.name}} - </span>Admin
-                        </a>
-                        <div class="mx1 float-right">
-                            <a class="AdminExit-trigger link" cv-org-href="/">Exit Admin</a>
-                        </div>
+                <div class="wrapper flex align-center">
+                    <!-- org title -->
+                    <div class="NavTitle flex align-center" ng-if="!user.is_multi_org">
+                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
+                        <span class="NavItem-text">{{currentOrg.name}} Admin</span>
                     </div>
-                    <section class="mt1 wrapper">
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases">Databases</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/datasets')}" cv-org-href="/admin/datasets">Datasets</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">Email Reports</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">People</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" cv-org-href="/admin">Settings</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}"cv-org-href="/admin/query/run">SQL Query</a>
-                    </section>
+                    <div class="NavTitle flex align-center Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
+                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
+                        <span dropdown-toggle>
+                            <span class="NavItem-text">{{currentOrg.name}} Admin</span>
+                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                        </span>
+                        <ul class="Dropdown-content left">
+                            <li ng-repeat="organization in userMemberOf">
+                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug, true)">{{organization.name}}</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- admin sections -->
+                    <ul class="ml4 flex flex-full">
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/org')}" cv-org-href="/admin/org/">
+                                <span class="NavItem-text">Organization</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">
+                                <span class="NavItem-text">People</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases/">
+                                <span class="NavItem-text">Databases</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">
+                                <span class="NavItem-text">Email Reports</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}" cv-org-href="/admin/query/run">
+                                <span class="NavItem-text">SQL Query</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- user profile dropdown -->
+                    <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
             </nav>
 
             <!-- SITE ADMINISTRATION (SUPER ADMIN) NAV -->
             <nav class="AdminNav" ng-show="nav === 'superadmin'">
-                <div class="bg-white border-bottom">
-                    <div class="py2 wrapper">
-                        <a class="AdminTitle link" href="/superadmin/">
-                            Site Administration
-                        </a>
-                        <div class="mx1 float-right">
-                            <a class="AdminExit-trigger link" href="/">Exit Site Administration</a>
-                        </div>
+                <div class="wrapper flex align-center">
+                    <div class="NavTitle flex align-center">
+                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
+                        <span class="NavItem-text ml1">Site Administration</span>
                     </div>
-                    <section class="mt1 wrapper">
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/') && !isActive('/superadmin/organization')}" href="/superadmin/">Global Settings</a>
-                        <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">Organizations</a>
-                    </section>
+
+                    <ul class="ml4 flex flex-full">
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/settings')}" href="/superadmin/settings/">
+                                <span class="NavItem-text">Global Settings</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">
+                                <span class="NavItem-text">Organizations</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- user profile dropdown -->
+                    <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
             </nav>
 
@@ -146,8 +184,8 @@
             </nav>
         </div>
 
-        <div class="MainContent">
-            <div ng-view></div>
+        <div class="MainContent full-height">
+            <div class="full-height" ng-view></div>
         </div>
     </body>
 

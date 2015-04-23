@@ -34,7 +34,7 @@
                 <label class="Connection-label" for="lastName" ng-class="{'Connection--error' : setupForm.email.$invalid && !setupForm.email.$pristine}">Email:</label>
 
                 <input class="Connection-input block full" name="password" type="password" placeholder="Create a new password" ng-model="newUser.password">
-                <label class="Connection-label">Create a password - Include one a number and one special character</label>
+                <label class="Connection-label">Create a password - Must be 8 characters long and include one upper case letter, one a number and one special character</label>
 
                 <input class="Connection-input block full" type="password" placeholder="Type it again so we can verify it" ng-model="newUser.repeated_password" required>
                 <label class="Connection-label">Verify your new password</label>
