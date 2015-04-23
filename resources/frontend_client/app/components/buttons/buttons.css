@@ -8,6 +8,7 @@
   --selected-button-bg-color: #F4F6F8;
 
   --danger-button-bg-color: #EF8C8C;
+  --success-button-color: var(--success-color);
 }
 
 .Button {
@@ -94,5 +95,11 @@
 .Button--danger {
     background-color: var(--danger-button-bg-color);
     border-color: var(--danger-button-bg-color);
+    color: #fff;
+}
+
+.Button--success {
+    background-color: var(--success-button-color);
+    border-color: var(--success-button-color);
     color: #fff;
 }

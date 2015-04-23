@@ -16,10 +16,13 @@
 
 .brand-scene {
     z-index: 4;
+    overflow: hidden;
+    height: 180px;
 }
 
 .brand-boat {
-    position: relative;
+    position: absolute;
+    bottom: 0;
     z-index: 6;
     -webkit-animation: boat_trip 200s linear infinite;
     margin-bottom: 0.5em;
@@ -39,6 +42,7 @@
 }
 
 .brand-illustration {
+    height: 180px;
     position: absolute;
     bottom: 15px;
     z-index: 5;
