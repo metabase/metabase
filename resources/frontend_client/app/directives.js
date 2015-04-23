@@ -107,7 +107,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
 
             var defaultText = element.text();
             var activeText = attr.activeText;
-            var failedText = attr.errorText;
+            var failedText = attr.failedText;
             var successText = attr.successText;
 
             var fnArg = attr.fnArg;
@@ -118,7 +118,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                     element.text(defaultText);
                     element.removeClass('Button--waiting');
                     element.removeClass('Button--success');
-                    element.removeClass('Button--failed');
+                    element.removeClass('Button--danger');
                     element.removeAttr('disabled');
                 }, 5000);
             };
@@ -155,7 +155,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                 }, function (error) {
                     element.text(failedText);
                     element.removeClass('Button--waiting');
-                    element.addClass('Button--failed');
+                    element.addClass('Button--danger');
 
                     // re-activate button
                     element.removeAttr('disabled');
