@@ -551,19 +551,3 @@ CardDirectives.directive('cvCardFavoriteButton', ['Card', function(Card) {
         link: link
     };
 }]);
-
-CardDirectives.directive('queryBuilder', function() {
-    return {
-        link: function(scope, element) {
-            scope.$on('query:updated', function () {
-                renderReact();
-            });
-
-            function renderReact() {
-                React.render(new QueryBuilder({
-                    model: scope.model
-                }), document.getElementById('react'));
-            }
-        }
-    };
-});

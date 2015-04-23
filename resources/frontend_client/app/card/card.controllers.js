@@ -1234,378 +1234,388 @@ CardControllers.controller('CardDetailNew', [
         */
         var MAX_DIMENSIONS = 2;
 
-        $scope.$watch('currentOrg', function(org) {
-            // we need org always, so we just won't do anything if we don't have one
-            if (org) {
-                $scope.model = {
-                    org: org,
-                    getDatabaseList: function() {
-                        Metabase.db_list({
-                            'orgId': org.id
-                        }, function(dbs) {
-                            $scope.model.database_list = dbs;
-                            // set the database to the first db, the user will be able to change it
-                            // TODO be smarter about this and use the most recent or popular db
-                            $scope.model.setDatabase(dbs[0].id);
-                        }, function(error) {
-                            console.log('error getting database list', error);
-                        });
-                    },
-                    setDatabase: function(databaseId) {
-                        // check if this is the same db or not
-                        if (databaseId != $scope.model.card.dataset_query.database) {
-                            $scope.model.resetQuery();
-                            $scope.model.card.dataset_query.database = databaseId;
-                            $scope.model.getTables(databaseId);
-                            $scope.model.inform();
-                        } else {
-                            return false;
-                        }
-                    },
-                    resetQuery: function() {
-                        $scope.model.card.dataset_query = {
-                            type: "query",
-                            query: {
-                                aggregation: [null],
-                                breakout: [],
-                                filter: []
-                            }
-                        };
-                    },
-                    setPermissions: function(permission) {
-                        $scope.model.card.public_perms = permission;
+        var createReactModel = function (org) {
+            return {
+                org: org,
+                getDatabaseList: function() {
+                    Metabase.db_list({
+                        'orgId': org.id
+                    }, function(dbs) {
+                        $scope.model.database_list = dbs;
+                        // set the database to the first db, the user will be able to change it
+                        // TODO be smarter about this and use the most recent or popular db
+                        $scope.model.setDatabase(dbs[0].id);
+                    }, function(error) {
+                        console.log('error getting database list', error);
+                    });
+                },
+                setDatabase: function(databaseId) {
+                    // check if this is the same db or not
+                    if (databaseId != $scope.model.card.dataset_query.database) {
+                        $scope.model.resetQuery();
+                        $scope.model.card.dataset_query.database = databaseId;
+                        $scope.model.getTables(databaseId);
                         $scope.model.inform();
-                    },
-                    getTableFields: function(tableId) {
-                        Metabase.table_query_metadata({
-                            'tableId': tableId
-                        }, function(result) {
-                            console.log('result', result);
-                            // Decorate with valid operators
-                            var table = CorvusFormGenerator.addValidOperatorsToFields(result);
-                            table = QueryUtils.populateQueryOptions(table);
-                            $scope.model.selected_table_fields = table;
-                            if ($scope.model.card.dataset_query.query.aggregation.length > 1) {
-                                $scope.model.getAggregationFields($scope.model.card.dataset_query.query.aggregation[0]);
-                            } else {
-                                $scope.model.inform();
-                            }
-                        });
-                    },
-                    getTables: function(databaseId) {
-                        Metabase.db_tables({
-                            'dbId': databaseId
-                        }, function(tables) {
-                            $scope.model.table_list = tables;
-                            $scope.model.inform();
-                            // TODO(@kdoh) what are we actually doing with this?
-                        }, function(error) {
-                            console.log('error getting tables', error);
-                        });
-                    },
-                    canAddDimensions: function() {
-                        var canAdd = $scope.model.card.dataset_query.query.breakout.length < MAX_DIMENSIONS ? true : false;
-                        return canAdd;
-                    },
-                    // a simple funciton to call when updating parts of the query. this allows us to know whether the query is 'dirty' and triggers
-                    // a re-render of the react ui
-                    inform: function() {
-                        $scope.model.hasChanged = true;
-                        $scope.$broadcast('query:updated');
-                    },
-                    extractQuery: function(card) {
-                        $scope.model.card = card;
-                        $scope.model.getTables(card.dataset_query.database);
-                        $scope.model.setSourceTable(card.dataset_query.query.source_table);
-                    },
-                    getAggregationFields: function(aggregation) {
-                        // @aggregation: id
-                        // todo - this could be a war crime
-                        _.map($scope.model.selected_table_fields.aggregation_options, function(option) {
-                            if (option.short === aggregation) {
-                                if (option.fields.length > 0) {
-                                    if ($scope.model.card.dataset_query.query.aggregation.length == 1) {
-                                        $scope.model.card.dataset_query.query.aggregation[1] = null;
-                                    }
-                                    $scope.model.aggregation_field_list = option.fields;
-                                    $scope.model.inform();
-                                } else {
-                                    $scope.model.card.dataset_query.query.aggregation.splice(1, 1);
-                                    $scope.model.inform();
-                                }
-                            }
-                        });
-                    },
-                    setSourceTable: function(sourceTable) {
-                        // this will either be the id or an object with an id
-                        var tableId = sourceTable.id || sourceTable;
-                        Metabase.table_get({
-                                tableId: tableId
-                            },
-                            function(result) {
-                                $scope.model.card.dataset_query.query.source_table = result.id;
-                                $scope.model.getTableFields(result.id);
-                                $scope.model.inform();
-                            },
-                            function(error) {
-                                console.log('error', error);
-                            });
-                    },
-
-                    aggregationComplete: function() {
-                        var aggregationComplete;
-                        if (($scope.model.card.dataset_query.query.aggregation[0] !== null) && ($scope.model.card.dataset_query.query.aggregation[1] !== null)) {
-                            aggregationComplete = true;
-                        } else {
-                            aggregationComplete = false;
+                    } else {
+                        return false;
+                    }
+                },
+                resetQuery: function() {
+                    $scope.model.card.dataset_query = {
+                        type: "query",
+                        query: {
+                            aggregation: [null],
+                            breakout: [],
+                            filter: []
                         }
-                        return aggregationComplete;
-                    },
-                    addDimension: function() {
-                        $scope.model.card.dataset_query.query.breakout.push(null);
-                        $scope.model.inform();
-                    },
-                    removeDimension: function(index) {
-                        $scope.model.card.dataset_query.query.breakout.splice(index, 1);
-                        $scope.model.inform();
-                    },
-                    updateDimension: function(dimension, index) {
-                        $scope.model.card.dataset_query.query.breakout[index] = dimension;
-                        $scope.model.inform();
-                    },
-                    setAggregation: function(aggregation) {
-                        $scope.model.card.dataset_query.query.aggregation[0] = aggregation;
-
-                        // go grab the aggregations
-                        $scope.model.getAggregationFields(aggregation);
-                    },
-                    setAggregationTarget: function(target) {
-                        $scope.model.card.dataset_query.query.aggregation[1] = target;
-                        $scope.model.inform();
-                    },
-                    updateFilter: function(value, index, filterListIndex) {
-                        var filters = $scope.model.card.dataset_query.query.filter;
-                        if (filterListIndex) {
-                            filters[filterListIndex][index] = value;
-                        } else {
-                            filters[index] = value;
-                        }
-
-                        $scope.model.inform();
-                    },
-                    removeFilter: function(index) {
-                        var filters = $scope.model.card.dataset_query.query.filter;
-
-                        /*
-                            HERE BE MORE DRAGONS
-
-                            1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
-                            instead of slicing off individual elements
-
-                            2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
-                            having added multiple so we should reset to [] in this case as well
-                        */
-
-                        if ((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
-                            // just reset the array
-                            $scope.model.card.dataset_query.query.filter = [];
-                        } else {
-                            $scope.model.card.dataset_query.query.filter.splice(index, 1);
-                        }
-                        $scope.model.inform();
-                    },
-                    addFilter: function() {
-                        var filter = $scope.model.card.dataset_query.query.filter,
-                            filterLength = filter.length;
-
-                        // this gets run the second time you click the add filter button
-                        if (filterLength === 3 && filter[0] !== 'AND') {
-                            var newFilters = [];
-                            newFilters.push(filter);
-                            newFilters.unshift('AND');
-                            newFilters.push([null, null, null]);
-                            $scope.model.card.dataset_query.query.filter = newFilters;
-                            $scope.model.inform();
-                        } else if (filter[0] === 'AND') {
-                            pushFilterTemplate(filterLength);
-                            $scope.model.inform();
-                        } else {
-                            pushFilterTemplate();
-                            $scope.model.inform();
-                        }
-
-                        function pushFilterTemplate(index) {
-                            if (index) {
-                                filter[index] = [null, null, null];
-                            } else {
-                                filter.push(null, null, null);
-                            }
-                        }
-                    },
-                    save: function(settings) {
-                        var card = $scope.model.card;
-                        card.name = settings.name;
-                        card.description = settings.description;
-                        card.organization = $scope.model.org.id;
-                        card.display = "table"; // TODO, be smart about this
-
-                        if ($routeParams.cardId) {
-                            Card.update(card, function(updatedCard) {
-                                $scope.model.inform();
-                            });
-                        } else {
-                            Card.create(card, function(newCard) {
-                                $location.path('/' + $scope.currentOrg.slug + '/cool_new_card/' + newCard.id);
-                            }, function(error) {
-                                console.log('error creating card', error);
-                            });
-
-                        }
-                    },
-                    getDownloadLink: function() {
-                        return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify($scope.model.card.dataset_query));
-                    },
-                    cleanFilters: function(dataset_query) {
-                        var filters = dataset_query.query.filter,
-                            cleanFilters = [];
-                        // in instances where there's only one filter, the api expects just one array with the values
-                        if (typeof(filters[0]) == 'object' && filters[0] != 'AND') {
-                            for (var filter in filters[0]) {
-                                cleanFilters.push(filters[0][filter]);
-                            }
-                            dataset_query.query.filter = cleanFilters;
-                        }
-                        // reset to initial state of filters if we've removed 'em all
-                        if (filters.length === 1 && filters[0] === 'AND') {
-                            dataset_query.filter = [];
-                        }
-                        return dataset_query;
-                    },
-                    canRun: function() {
-                        var canRun = false;
-                        if ($scope.model.aggregationComplete()) {
-                            canRun = true;
-                        }
-                        return canRun;
-                    },
-                    run: function() {
-                        var query = this.cleanFilters($scope.model.card.dataset_query);
-                        console.log(query);
-                        $scope.model.isRunning = true;
-                        $scope.model.inform();
-
-                        Metabase.dataset(query, function(result) {
-                            console.log('result', result);
-                            $scope.model.result = result;
-                            $scope.model.isRunning = false;
-                            // we've not changed yet since we just ran
-                            $scope.model.hasRun = true;
-                            $scope.model.hasChanged = false;
-                            $scope.model.inform();
-                        }, function(error) {
-                            console.log('could not run card!', error);
-                        });
-                    },
-                    setDisplay: function(type) {
-                        // change the card visualization type and refresh chart settings
-                        $scope.model.card.display = type;
-                        $scope.model.card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
-                        $scope.model.inform();
-                    },
-                };
-                if ($routeParams.cardId) {
-                    // loading up an existing card
-                    Card.get({
-                        'cardId': $routeParams.cardId
+                    };
+                },
+                setPermissions: function(permission) {
+                    $scope.model.card.public_perms = permission;
+                    $scope.model.inform();
+                },
+                getTableFields: function(tableId) {
+                    Metabase.table_query_metadata({
+                        'tableId': tableId
                     }, function(result) {
                         console.log('result', result);
-                        $scope.model.extractQuery(result);
-                        $scope.model.getDatabaseList();
-                        // run the query
-                        $scope.model.run();
-                        // execute the query
-                    }, function(error) {
-                        if (error.status == 404) {
-                            // TODO() - we should redirect to the card builder with no query instead of /
-                            $location.path('/');
+                        // Decorate with valid operators
+                        var table = CorvusFormGenerator.addValidOperatorsToFields(result);
+                        table = QueryUtils.populateQueryOptions(table);
+                        $scope.model.selected_table_fields = table;
+                        if ($scope.model.card.dataset_query.query.aggregation.length > 1) {
+                            $scope.model.getAggregationFields($scope.model.card.dataset_query.query.aggregation[0]);
+                        } else {
+                            $scope.model.inform();
                         }
                     });
-
-                } else if ($routeParams.clone) {
-                    // fetch the existing Card so we can set $scope.card with the existing values
-                    Card.get({
-                        'cardId': $routeParams.clone
-                    }, function(result) {
-                        $scope.setCard(result);
-
-                        // execute the Card so it can be saved right away
-                        $scope.execute(result);
-
-                        // replace values in $scope.card as needed
-                        $scope.card.id = undefined; // since it's a new card
-                        $scope.card.organization = $scope.currentOrg.id;
-                        $scope.carddirty = true; // so it cand be saved right away
+                },
+                getTables: function(databaseId) {
+                    Metabase.db_tables({
+                        'dbId': databaseId
+                    }, function(tables) {
+                        $scope.model.table_list = tables;
+                        $scope.model.inform();
+                        // TODO(@kdoh) what are we actually doing with this?
                     }, function(error) {
-                        console.log(error);
-                        if (error.status == 404) {
-                            $location.path('/');
-                        }
+                        console.log('error getting tables', error);
                     });
-
-                } else if ($routeParams.queryId) {
-                    // @legacy ----------------------
-                    // someone looking to create a card from a query
-                    Query.get({
-                        'queryId': $routeParams.queryId
-                    }, function(query) {
-                        $scope.card = {
-                            'organization': $scope.currentOrg.id,
-                            'name': query.name,
-                            'public_perms': 0,
-                            'can_read': true,
-                            'can_write': true,
-                            'display': 'table', //table display type is currently always available (and should always be displayable) for SQL-backed queries, per updateAvailableDisplayTypes
-                            'dataset_query': {
-                                'database': query.database.id,
-                                'type': 'result',
-                                'result': {
-                                    'query_id': query.id
+                },
+                canAddDimensions: function() {
+                    var canAdd = $scope.model.card.dataset_query.query.breakout.length < MAX_DIMENSIONS ? true : false;
+                    return canAdd;
+                },
+                // a simple funciton to call when updating parts of the query. this allows us to know whether the query is 'dirty' and triggers
+                // a re-render of the react ui
+                inform: function() {
+                    $scope.model.hasChanged = true;
+                    //$scope.$broadcast('query:updated');
+                    //renderReact();
+                    React.render(new QueryBuilder({
+                        model: $scope.model
+                    }), document.getElementById('react'));
+                },
+                extractQuery: function(card) {
+                    $scope.model.card = card;
+                    $scope.model.getTables(card.dataset_query.database);
+                    $scope.model.setSourceTable(card.dataset_query.query.source_table);
+                },
+                getAggregationFields: function(aggregation) {
+                    // @aggregation: id
+                    // todo - this could be a war crime
+                    _.map($scope.model.selected_table_fields.aggregation_options, function(option) {
+                        if (option.short === aggregation) {
+                            if (option.fields.length > 0) {
+                                if ($scope.model.card.dataset_query.query.aggregation.length == 1) {
+                                    $scope.model.card.dataset_query.query.aggregation[1] = null;
                                 }
+                                $scope.model.aggregation_field_list = option.fields;
+                                $scope.model.inform();
+                            } else {
+                                $scope.model.card.dataset_query.query.aggregation.splice(1, 1);
+                                $scope.model.inform();
                             }
-                        };
-
-                        // now get the data for the card
-                        $scope.execute($scope.card);
-
-                        // in this particular case we are already dirty and ready for save
-                        $scope.carddirty = true;
-
-                    }, function(error) {
-                        console.log(error);
-                        if (error.status == 404) {
-                            $location.path('/');
                         }
                     });
+                },
+                setSourceTable: function(sourceTable) {
+                    // this will either be the id or an object with an id
+                    var tableId = sourceTable.id || sourceTable;
+                    Metabase.table_get({
+                            tableId: tableId
+                        },
+                        function(result) {
+                            $scope.model.card.dataset_query.query.source_table = result.id;
+                            $scope.model.getTableFields(result.id);
+                            $scope.model.inform();
+                        },
+                        function(error) {
+                            console.log('error', error);
+                        });
+                },
 
-                } else {
+                aggregationComplete: function() {
+                    var aggregationComplete;
+                    if (($scope.model.card.dataset_query.query.aggregation[0] !== null) && ($scope.model.card.dataset_query.query.aggregation[1] !== null)) {
+                        aggregationComplete = true;
+                    } else {
+                        aggregationComplete = false;
+                    }
+                    return aggregationComplete;
+                },
+                addDimension: function() {
+                    $scope.model.card.dataset_query.query.breakout.push(null);
+                    $scope.model.inform();
+                },
+                removeDimension: function(index) {
+                    $scope.model.card.dataset_query.query.breakout.splice(index, 1);
+                    $scope.model.inform();
+                },
+                updateDimension: function(dimension, index) {
+                    $scope.model.card.dataset_query.query.breakout[index] = dimension;
+                    $scope.model.inform();
+                },
+                setAggregation: function(aggregation) {
+                    $scope.model.card.dataset_query.query.aggregation[0] = aggregation;
+
+                    // go grab the aggregations
+                    $scope.model.getAggregationFields(aggregation);
+                },
+                setAggregationTarget: function(target) {
+                    $scope.model.card.dataset_query.query.aggregation[1] = target;
+                    $scope.model.inform();
+                },
+                updateFilter: function(value, index, filterListIndex) {
+                    var filters = $scope.model.card.dataset_query.query.filter;
+                    if (filterListIndex) {
+                        filters[filterListIndex][index] = value;
+                    } else {
+                        filters[index] = value;
+                    }
+
+                    $scope.model.inform();
+                },
+                removeFilter: function(index) {
+                    var filters = $scope.model.card.dataset_query.query.filter;
+
+                    /*
+                        HERE BE MORE DRAGONS
+
+                        1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
+                        instead of slicing off individual elements
+
+                        2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
+                        having added multiple so we should reset to [] in this case as well
+                    */
+
+                    if ((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
+                        // just reset the array
+                        $scope.model.card.dataset_query.query.filter = [];
+                    } else {
+                        $scope.model.card.dataset_query.query.filter.splice(index, 1);
+                    }
+                    $scope.model.inform();
+                },
+                addFilter: function() {
+                    var filter = $scope.model.card.dataset_query.query.filter,
+                        filterLength = filter.length;
+
+                    // this gets run the second time you click the add filter button
+                    if (filterLength === 3 && filter[0] !== 'AND') {
+                        var newFilters = [];
+                        newFilters.push(filter);
+                        newFilters.unshift('AND');
+                        newFilters.push([null, null, null]);
+                        $scope.model.card.dataset_query.query.filter = newFilters;
+                        $scope.model.inform();
+                    } else if (filter[0] === 'AND') {
+                        pushFilterTemplate(filterLength);
+                        $scope.model.inform();
+                    } else {
+                        pushFilterTemplate();
+                        $scope.model.inform();
+                    }
+
+                    function pushFilterTemplate(index) {
+                        if (index) {
+                            filter[index] = [null, null, null];
+                        } else {
+                            filter.push(null, null, null);
+                        }
+                    }
+                },
+                save: function(settings) {
+                    var card = $scope.model.card;
+                    card.name = settings.name;
+                    card.description = settings.description;
+                    card.organization = $scope.model.org.id;
+                    card.display = "table"; // TODO, be smart about this
+
+                    if ($routeParams.cardId) {
+                        Card.update(card, function(updatedCard) {
+                            $scope.model.inform();
+                        });
+                    } else {
+                        Card.create(card, function(newCard) {
+                            $location.path('/' + $scope.currentOrg.slug + '/cool_new_card/' + newCard.id);
+                        }, function(error) {
+                            console.log('error creating card', error);
+                        });
+
+                    }
+                },
+                getDownloadLink: function() {
+                    return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify($scope.model.card.dataset_query));
+                },
+                cleanFilters: function(dataset_query) {
+                    var filters = dataset_query.query.filter,
+                        cleanFilters = [];
+                    // in instances where there's only one filter, the api expects just one array with the values
+                    if (typeof(filters[0]) == 'object' && filters[0] != 'AND') {
+                        for (var filter in filters[0]) {
+                            cleanFilters.push(filters[0][filter]);
+                        }
+                        dataset_query.query.filter = cleanFilters;
+                    }
+                    // reset to initial state of filters if we've removed 'em all
+                    if (filters.length === 1 && filters[0] === 'AND') {
+                        dataset_query.filter = [];
+                    }
+                    return dataset_query;
+                },
+                canRun: function() {
+                    var canRun = false;
+                    if ($scope.model.aggregationComplete()) {
+                        canRun = true;
+                    }
+                    return canRun;
+                },
+                run: function() {
+                    var query = this.cleanFilters($scope.model.card.dataset_query);
+                    console.log(query);
+                    $scope.model.isRunning = true;
+                    $scope.model.inform();
+
+                    Metabase.dataset(query, function(result) {
+                        console.log('result', result);
+                        $scope.model.result = result;
+                        $scope.model.isRunning = false;
+                        // we've not changed yet since we just ran
+                        $scope.model.hasRun = true;
+                        $scope.model.hasChanged = false;
+                        $scope.model.inform();
+                    }, function(error) {
+                        console.log('could not run card!', error);
+                    });
+                },
+                setDisplay: function(type) {
+                    // change the card visualization type and refresh chart settings
+                    $scope.model.card.display = type;
+                    $scope.model.card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
+                    $scope.model.inform();
+                },
+            };
+        };
+
+
+        $scope.$watch('currentOrg', function (org) {
+            // we need org always, so we just won't do anything if we don't have one
+            if (!org) {return};
+
+            $scope.model = createReactModel(org);
+
+            if ($routeParams.cardId) {
+                // loading up an existing card
+                Card.get({
+                    'cardId': $routeParams.cardId
+                }, function(result) {
+                    console.log('result', result);
+                    $scope.model.extractQuery(result);
                     $scope.model.getDatabaseList();
-                    $scope.model.card = {
-                        name: null,
-                        public_perms: 0,
-                        can_read: true,
-                        can_write: true,
-                        display: 'none',
-                        dataset_query: {
-                            type: "query",
-                            query: {
-                                aggregation: [null],
-                                breakout: [],
-                                filter: []
+                    // run the query
+                    $scope.model.run();
+                    // execute the query
+                }, function(error) {
+                    if (error.status == 404) {
+                        // TODO() - we should redirect to the card builder with no query instead of /
+                        $location.path('/');
+                    }
+                });
+
+            } else if ($routeParams.clone) {
+                // fetch the existing Card so we can set $scope.card with the existing values
+                Card.get({
+                    'cardId': $routeParams.clone
+                }, function(result) {
+                    $scope.setCard(result);
+
+                    // execute the Card so it can be saved right away
+                    $scope.execute(result);
+
+                    // replace values in $scope.card as needed
+                    $scope.card.id = undefined; // since it's a new card
+                    $scope.card.organization = $scope.currentOrg.id;
+                    $scope.carddirty = true; // so it cand be saved right away
+                }, function(error) {
+                    console.log(error);
+                    if (error.status == 404) {
+                        $location.path('/');
+                    }
+                });
+
+            } else if ($routeParams.queryId) {
+                // @legacy ----------------------
+                // someone looking to create a card from a query
+                Query.get({
+                    'queryId': $routeParams.queryId
+                }, function(query) {
+                    $scope.card = {
+                        'organization': $scope.currentOrg.id,
+                        'name': query.name,
+                        'public_perms': 0,
+                        'can_read': true,
+                        'can_write': true,
+                        'display': 'table', //table display type is currently always available (and should always be displayable) for SQL-backed queries, per updateAvailableDisplayTypes
+                        'dataset_query': {
+                            'database': query.database.id,
+                            'type': 'result',
+                            'result': {
+                                'query_id': query.id
                             }
                         }
                     };
-                }
-            } // end if current org
+
+                    // now get the data for the card
+                    $scope.execute($scope.card);
+
+                    // in this particular case we are already dirty and ready for save
+                    $scope.carddirty = true;
+
+                }, function(error) {
+                    console.log(error);
+                    if (error.status == 404) {
+                        $location.path('/');
+                    }
+                });
+
+            } else {
+                $scope.model.getDatabaseList();
+                $scope.model.card = {
+                    name: null,
+                    public_perms: 0,
+                    can_read: true,
+                    can_write: true,
+                    display: 'none',
+                    dataset_query: {
+                        type: "query",
+                        query: {
+                            aggregation: [null],
+                            breakout: [],
+                            filter: []
+                        }
+                    }
+                };
+            }
         }); // end watch
     }
 ]);
