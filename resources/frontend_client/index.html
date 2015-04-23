@@ -90,9 +90,9 @@
                     <!-- org title -->
                     <div class="NavTitle flex align-center" ng-if="!user.is_multi_org">
                         <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
-                        <span class="ml1 NavItem-text">{{currentOrg.name}} Admin</span>
+                        <span class="NavItem-text">{{currentOrg.name}} Admin</span>
                     </div>
-                    <div class="NavTitle Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
+                    <div class="NavTitle flex align-center Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
                         <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
                         <span dropdown-toggle>
                             <span class="NavItem-text">{{currentOrg.name}} Admin</span>
