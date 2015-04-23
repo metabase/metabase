@@ -33,6 +33,15 @@
                     <span class="Form-charm"></span>
                 </div>
 
+                <div class="Form-field" mb-form-field="report_timezone">
+                    <mb-form-label display-name="Reporting timezone" field-name="report_timezone"></mb-form-label>
+                    <label class="Select Form-offset">
+                        <select ng-model="organization.report_timezone" ng-options="tz for tz in form_input['timezones']">
+                            <option value="">---  default timezone ---</option>
+                        </select>
+                    </label>
+                </div>
+
                 <div class="Form-actions">
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(organization)" ng-disabled="!form.$valid">
                         Save
