@@ -1,17 +1,145 @@
-#id_sql {
-    height: 200px;
+:root {
+    --admin-nav-bg-color: #6F7A8B;
+    --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
+    --admin-nav-item-text-active-color: #fff;
+    --page-header-padding: 2.375rem;
+}
+
+.AdminNav {
+    padding: 1.825em;
+    background: var(--admin-nav-bg-color);
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.AdminGear {
+    margin-top: 0.25em;
+    margin-right: 0.5em;
 }
 
 .AdminNav .NavItem {
-    padding: 1.15em 0;
-    margin: 0 1em 0 0;
-    font-size: 1.12em;
+    /* cancel out padding as .AdminNav + flex will allow for proper centering */
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    color: var(--admin-nav-item-text-color);
 }
 
-.AdminExit-trigger {
-    color: #ddd;
+.AdminNav .NavItem:hover,
+.AdminNav .NavItem.is--selected {
+    color: var(--admin-nav-item-text-active-color);
 }
 
-.AdminTitle {
-    color: #222;
+/* TODO: this feels itchy. should refactor .NavItem.is--selected to be less cascadey */
+.AdminNav .NavItem:hover:after,
+.AdminNav .NavItem.is--selected:after {
+    display: none;
+}
+
+.UserNick {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 99px;
+    width: 2rem;
+    height: 2rem; /* set an explicit height since we want it to be square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.AdminNav .UserNick {
+    color: #fff;
+    border-color: #fff;
+    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.AdminNav .Dropdown-chevron {
+    color: #fff;
+}
+
+.UserInitials,
+.UserInitials:hover {
+    font-size: 0.85rem;
+    color: currentColor;
+    cursor: pointer;
+}
+
+.Actions {
+    background-color: rgba(243,243,243,0.46);
+    border: 1px solid #E0E0E0;
+    padding: 2em;
+}
+
+.Actions-group {
+    margin-bottom: 2em;
+}
+
+.Actions-group:last-child {
+    margin-bottom: 0;
+}
+
+.Actions-group.Actions--dangerZone {
+    color: var(--error-color);
+}
+
+
+.Actions-groupLabel {
+    font-size: 0.85em;
+    margin-bottom: 1em;
+}
+
+.ContentTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    text-align: left;
+}
+
+.ContentTable thead {
+    border-top: 1px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8;
+}
+
+.AdminBadge {
+    background-color: #A989C5;
+    border-radius: 4px;
+    color: #fff;
+    padding: 0.25em;
+}
+.PageHeader {
+    padding-top: var(--page-header-padding);
+    padding-bottom: var(--page-header-padding);
+}
+
+.PageTitle {
+    margin: 0;
+}
+
+.Table-actions {
+    text-align: right;
+}
+
+.ContentTable .Table-actions {
+    opacity: 0;
+}
+
+.ContentTable td,
+.ContentTable th {
+    padding: 1em;
+}
+
+.ContentTable tbody tr:hover {
+    background-color: rgba(74, 144, 226, 0.04);
+}
+
+.ContentTable tr:hover .Table-actions {
+    opacity: 1;
+    transition: opacity .2s linear;
+}
+
+/* TODO: this is for the ace editor and should be handled without an ID */
+#id_sql {
+    height: 200px;
 }

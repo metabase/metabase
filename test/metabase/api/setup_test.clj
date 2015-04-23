@@ -27,36 +27,36 @@
 
 
 ;; Test input validations
-(expect "'first_name' is a required param."
+(expect {:errors {:first_name "field is a required param."}}
   (http/client :post 400 "setup/user" {}))
 
-(expect "'last_name' is a required param."
+(expect {:errors {:last_name "field is a required param."}}
   (http/client :post 400 "setup/user" {:first_name "anything"}))
 
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   (http/client :post 400 "setup/user" {:first_name "anything"
                                        :last_name "anything"}))
 
-(expect "'password' is a required param."
+(expect {:errors {:password "field is a required param."}}
   (http/client :post 400 "setup/user" {:first_name "anything"
                                        :last_name "anything"
                                        :email "anything@metabase.com"}))
 
-(expect "'token' is a required param."
+(expect {:errors {:token "field is a required param."}}
   (http/client :post 400 "setup/user" {:first_name "anything"
                                        :last_name "anything"
                                        :email "anything@metabase.com"
                                        :password "anythingUP12!!"}))
 
 ;; valid email + complex password
-(expect "Invalid value 'anything' for 'email': Not a valid email address."
+(expect {:errors {:email "Invalid value 'anything' for 'email': Not a valid email address."}}
   (http/client :post 400 "setup/user" {:token "anything"
                                        :first_name "anything"
                                        :last_name "anything"
                                        :email "anything"
                                        :password "anything"}))
 
-(expect "Invalid value for 'password': Insufficient password strength"
+(expect {:errors {:password "Insufficient password strength"}}
   (http/client :post 400 "setup/user" {:token "anything"
                                        :first_name "anything"
                                        :last_name "anything"
@@ -64,8 +64,8 @@
                                        :password "anything"}))
 
 ;; token match
-(expect "Invalid value 'anything' for 'token': Token does not match the setup token."
-  (http/client :post 403 "setup/user" {:token "anything"
+(expect {:errors {:token "Invalid value 'anything' for 'token': Token does not match the setup token."}}
+  (http/client :post 400 "setup/user" {:token "anything"
                                        :first_name "anything"
                                        :last_name "anything"
                                        :email "anything@email.com"

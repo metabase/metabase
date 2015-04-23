@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as korma]
@@ -10,7 +9,7 @@
             [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password]]
                              [session :refer [Session]])
-            [metabase.util.password :as password]))
+            [metabase.util.password :as pass]))
 
 
 (defendpoint POST "/"
@@ -18,9 +17,11 @@
   [:as {{:keys [email password] :as body} :body}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (let-400 [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
-    (check (creds/bcrypt-verify (str (:password_salt user) password) (:password user))
-      [400 "password mismatch"])
+  (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
+    (checkp (not (nil? user))
+      (symbol "email") "no account found for the given email")
+    (checkp (pass/verify-password password (:password_salt user) (:password user))
+      (symbol "password") "did not match stored password")
     (let [session-id (str (java.util.UUID/randomUUID))]
       (ins Session
         :id session-id
@@ -49,7 +50,8 @@
   (let [{user-id :id} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    (check-404 user-id)
+    (checkp (not (nil? user-id))
+      (symbol "email") "no account found for the given email")
     (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
     (email/send-password-reset-email email server-name password-reset-url)
     (log/info password-reset-url)))
@@ -60,9 +62,12 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (let-404 [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
+  (let [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
+    (checkp (not (nil? user))
+      (symbol "token") "Invalid reset token")
     ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-    (check-404 (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0))))
+    (checkp (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0)))
+      (symbol "token") "Reset token has expired")
     (set-user-password (:id user) password)
     {:success true}))
 

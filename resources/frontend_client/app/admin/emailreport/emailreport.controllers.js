@@ -1,6 +1,9 @@
 'use strict';
 
-var EmailReportControllers = angular.module('corvusadmin.emailreport.controllers', ['corvus.metabase.services']);
+var EmailReportControllers = angular.module('corvusadmin.emailreport.controllers', [
+    'corvus.metabase.services',
+    'metabase.forms'
+]);
 
 EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', '$location', 'EmailReport',
     function($scope, $routeParams, $location, EmailReport) {
@@ -49,15 +52,11 @@ EmailReportControllers.controller('EmailReportList', ['$scope', '$routeParams', 
         };
 
         $scope.executeReport = function(reportId) {
-            EmailReport.execute({
+            var call = EmailReport.execute({
                 'reportId': reportId
-            }, function(result) {
-                $scope.success_message = 'EmailReport has been sent!';
-                // TODO: better user feedback
-            }, function(error) {
-                $scope.error_message = 'Failed sending EmailReport!';
-                console.log('error executing email report', error);
             });
+
+            return call.$promise;
         };
 
         $scope.deleteReport = function(index) {
@@ -101,7 +100,7 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
         // $scope.error_message
 
         $scope.save = function(reportDetail) {
-            $scope.clearStatus();
+            $scope.$broadcast("form:reset");
 
             // we need to ensure our recipients list is properly set on the report
             var recipients = [];
@@ -112,14 +111,11 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
             if ($scope.report.id) {
                 // if there is already an ID associated with the report then we are updating
-                EmailReport.update(reportDetail, function(result) {
+                EmailReport.update(reportDetail, function (result) {
                     $scope.report = result;
-
-                    // alert
-                    $scope.success_message = 'EmailReport saved successfully!';
-                }, function(error) {
-                    $scope.error_message = 'Failed saving EmailReport!';
-                    console.log('error updating email report', error);
+                    $scope.$broadcast("form:api-success", "Successfully saved!");
+                }, function (error) {
+                    $scope.$broadcast("form:api-error", error);
                 });
             } else {
                 // otherwise we are creating a new report
@@ -130,30 +126,19 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
 
                     // move the user over the the actual page for the new report
                     $location.path('/' + $scope.currentOrg.slug + '/admin/emailreport/' + result.id);
-                }, function(error) {
-                    $scope.error_message = 'Failed saving EmailReport!';
-                    console.log('error creating email report', error);
+                }, function (error) {
+                    $scope.$broadcast("form:api-error", error);
                 });
             }
 
         };
 
-        $scope.executeReport = function(reportId) {
-            $scope.clearStatus();
-
-            EmailReport.execute({
-                'reportId': reportId
-            }, function(result) {
-                $scope.success_message = 'EmailReport has been sent!';
-            }, function(error) {
-                $scope.error_message = 'Failed sending EmailReport!';
-                console.log('error executing email report', error);
+        $scope.executeReport = function() {
+            var call = EmailReport.execute({
+                'reportId': $scope.report.id
             });
-        };
 
-        $scope.clearStatus = function() {
-            $scope.success_message = undefined;
-            $scope.error_message = undefined;
+            return call.$promise;
         };
 
         $scope.refreshTableList = function(dbId) {
@@ -232,8 +217,8 @@ EmailReportControllers.controller('EmailReportDetail', ['$scope', '$routeParams'
                                 "wed": true,
                                 "thu": true,
                                 "fri": true,
-                                "sat": true,
-                                "sun": true
+                                "sat": false,
+                                "sun": false
                             },
                             "time_of_day": "morning",
                             "timezone": ""

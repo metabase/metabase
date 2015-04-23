@@ -1,6 +1,6 @@
 'use strict';
 
-var SettingsAdminServices = angular.module('superadmin.index.services', ['ngResource']);
+var SettingsAdminServices = angular.module('superadmin.settings.services', ['ngResource']);
 
 SettingsAdminServices.factory('SettingsAdminServices', ['$resource', function($resource) {
     return $resource('/api/setting', {}, {

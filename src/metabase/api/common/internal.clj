@@ -4,7 +4,8 @@
             [medley.core :as m]
             [swiss.arrows :refer :all]
             [metabase.util :as u])
-  (:import com.metabase.corvus.api.ApiException))
+  (:import com.metabase.corvus.api.ApiException
+           com.metabase.corvus.api.ApiFieldValidationException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
 
@@ -215,6 +216,9 @@
   "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."
   [& body]
   `(try ~@body
+        (catch ApiFieldValidationException e#
+          {:status (.getStatusCode e#)
+           :body {:errors {(keyword (.getFieldName e#)) (.getMessage e#)}}})
         (catch ApiException e#
           {:status (.getStatusCode e#)
            :body (.getMessage e#)})

@@ -67,11 +67,11 @@
   {name NonEmptyString
    report_timezone TimezoneOption}
   (write-check Org id)
-  (check-500 (upd-non-nil-keys Org id
-                               :description description
-                               :logo_url logo_url
-                               :report_timezone report_timezone
-                               :name name))
+  (check-500 (upd Org id
+                  :description description
+                  :logo_url logo_url
+                  :report_timezone report_timezone
+                  :name name))
   (sel :one Org :id id))
 
 (defendpoint DELETE "/:id"

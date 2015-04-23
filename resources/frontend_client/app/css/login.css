@@ -1,19 +1,95 @@
-.Login-page {
-  height: 420px;
+/* ensure our form doesn't get too wide */
+.Login-wrapper {
+    max-width: 1240px;
+    margin: 0 auto;
 }
 
-.Login-greeting {
-  margin-top: 2em;
-  font-size: 3em;
+/* the login content should always sit on top of the illustration */
+.Login-content {
+    position: relative;
+    z-index: 1000;
 }
 
-@media screen and (--breakpoint-min-md) {
-  .Login-form {
-    border-left: 1px solid #d9d9d9;
-  }
+.Login-header {
+    color: #6A6A6A;
 }
 
-.Login-form .Form {
-  width: 100%;
+.brand-scene {
+    z-index: 4;
+    overflow: hidden;
+    height: 180px;
 }
 
+.brand-boat {
+    position: absolute;
+    bottom: 0;
+    z-index: 6;
+    -webkit-animation: boat_trip 200s linear infinite;
+    margin-bottom: 0.5em;
+}
+
+@-webkit-keyframes boat_trip {
+    0% {
+        margin-left: -2%;
+    }
+    10% {
+        margin-left: 5%;
+        transform: translate3d(0, 0, 2%);
+    }
+    100% {
+        margin-left: 120%;
+    }
+}
+
+.brand-illustration {
+    height: 180px;
+    position: absolute;
+    bottom: 15px;
+    z-index: 5;
+    margin: 0 auto;
+    display: flex;
+}
+
+.brand-bridge {
+    margin-left: -140px;
+}
+
+.brand-mountain-1 {
+    position: relative;
+    z-index: 50;
+}
+
+/* flip the second mountain around */
+.brand-mountain-2 {
+    -moz-transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+    -o-transform: scaleX(-1);
+    transform: scaleX(-1);
+    -ms-filter: fliph; /*IE*/
+    filter: fliph; /*IE*/
+    margin-left: -170px;
+}
+
+
+.SuccessGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--success-color);
+    padding: 4em;
+}
+
+.SuccessMark {
+    display: flex;
+    padding: 1em;
+    border: 3px solid var(--success-color);
+    border-radius: 99px;
+    color: var(--success-color);
+    line-height: 1;
+}
+
+.SuccessText {
+    font-weight: bold;
+    margin-top: 1em;
+    text-align: center;
+}

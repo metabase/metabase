@@ -123,10 +123,10 @@
       new-org)))
 
 ;; Test input validations on org create
-(expect "'name' is a required param."
+(expect {:errors {:name "field is a required param."}}
   ((user->client :crowberto) :post 400 "org" {}))
 
-(expect "'slug' is a required param."
+(expect {:errors {:slug "field is a required param."}}
   ((user->client :crowberto) :post 400 "org" {:name "anything"}))
 
 
@@ -354,18 +354,18 @@
         (select-keys [:id :admin :user_id :organization_id])))))
 
 ;; Test input validations on org member create
-(expect "'first_name' is a required param."
+(expect {:errors {:first_name "field is a required param."}}
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {}))
 
-(expect "'last_name' is a required param."
+(expect {:errors {:last_name "field is a required param."}}
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"}))
 
-(expect "'email' is a required param."
+(expect {:errors {:email "field is a required param."}}
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
                                                                           :last_name "anything"}))
 
 ;; this should fail due to invalid formatted email address
-(expect "Invalid value 'anything' for 'email': Not a valid email address."
+(expect {:errors {:email "Invalid value 'anything' for 'email': Not a valid email address."}}
   ((user->client :crowberto) :post 400 (format "org/%d/members" @org-id) {:first_name "anything"
                                                                           :last_name "anything"
                                                                           :email "anything"}))

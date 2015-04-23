@@ -59,6 +59,10 @@
   display: table;
 }
 
+.flex {
+  display: flex;
+}
+
 .table-cell {
   display: table-cell;
 }
@@ -91,11 +95,16 @@
 .left   { left: 0; }
 
 .layout-centered {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  transform-style: preserve-3d;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
 }
 
 /* grid */
