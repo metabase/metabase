@@ -90,11 +90,11 @@
                     <!-- org title -->
                     <div class="NavTitle flex align-center" ng-if="!user.is_multi_org">
                         <cv-gear-icon width="22px" height="22px"></cv-gear-icon>
-                        <span class="ml1 NavItem-text">{{currentOrg.name}} Admin</span>
+                        <span class="pl1 NavItem-text">{{currentOrg.name}} Admin</span>
                     </div>
                     <div class="NavTitle Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
                         <cv-gear-icon width="22px" height="22px"></cv-gear-icon>
-                        <span class="ml1" dropdown-toggle>
+                        <span class="pl1" dropdown-toggle>
                             <span class="NavItem-text">{{currentOrg.name}} Admin</span>
                             <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
                         </span>
@@ -143,8 +143,8 @@
             <nav class="AdminNav" ng-show="nav === 'superadmin'">
                 <div class="wrapper flex align-center">
                     <div class="NavTitle flex align-center">
-                        <cv-gear-icon width="16px" height="16px"></cv-gear-icon>
-                        <span class="NavItem-text ml1">Site Administration</span>
+                        <cv-gear-icon width="22px" height="22px"></cv-gear-icon>
+                        <span class="pl1 NavItem-text">Site Administration</span>
                     </div>
 
                     <ul class="ml4 flex flex-full">
