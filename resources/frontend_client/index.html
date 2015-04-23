@@ -98,7 +98,7 @@
                             <span class="NavItem-text">{{currentOrg.name}} Admin</span>
                             <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
                         </span>
-                        <ul class="Dropdown-content">
+                        <ul class="Dropdown-content left">
                             <li ng-repeat="organization in userMemberOf">
                                 <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug, true)">{{organization.name}}</a>
                             </li>
