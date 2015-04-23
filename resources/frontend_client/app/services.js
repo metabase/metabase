@@ -12,6 +12,8 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
         // 1. appstate:user
         // 2. appstate:organization
 
+        var initPromise;
+
         var service = {
 
             model: {
@@ -24,8 +26,21 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             },
 
             init: function() {
-                // just make sure we grab the current user
-                service.model.currentUserPromise = service.refreshCurrentUser();
+
+                if (!initPromise) {
+                    var deferred = $q.defer();
+                    initPromise = deferred.promise;
+
+                    // just make sure we grab the current user
+                    service.model.currentUserPromise = service.refreshCurrentUser();
+                    service.model.currentUserPromise.then(function (user) {
+                        deferred.resolve();
+                    }, function (error) {
+                        deferred.resolve();
+                    });
+                }
+
+                return initPromise;
             },
 
             clearState: function() {
