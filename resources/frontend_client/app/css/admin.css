@@ -12,6 +12,11 @@
     font-size: 0.85rem;
 }
 
+.AdminGear {
+    margin-top: 0.25em;
+    margin-right: 0.5em;
+}
+
 .AdminNav .NavItem {
     /* cancel out padding as .AdminNav + flex will allow for proper centering */
     padding-top: 0;
