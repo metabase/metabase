@@ -2,9 +2,9 @@
 
 # Overview
 
-Metabase Report server is an easy way to generate charts and dashboards, ask simple ad hoc queries without using SQL, and see detailed information about rows in your Database. You can set it up in under 5 minutes, and then give yourself and others a place to ask simple questions and understand the data your application is generating. It is not tied to any specific framework and can be used out of the box with no configuration. 
+Metabase Report server is an easy way to generate charts and dashboards, ask simple ad hoc queries without using SQL, and see detailed information about rows in your Database. You can set it up in under 5 minutes, and then give yourself and others a place to ask simple questions and understand the data your application is generating. It is not tied to any specific framework and can be used out of the box with minimal configuration. 
 
-With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version administration interface. It also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
+With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface. It also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
 
 * Build moderation interfaces
 * Export subsets of your users to third party marketing automation software
@@ -20,7 +20,7 @@ See [Data Preparation Guide](docs/DATAPREPARATION.md) for more information and a
 
 # Security Disclosure
 
-Security is very important to us. If you have any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a github issue.
+Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a github issue.
 
 # Installation
 
@@ -36,7 +36,7 @@ If you see something like
 
 you are good to go. Otherwise, download the Java Runtime Environment at http://java.com/
 
-To install the Query Server, go to the [Metabase Download Page](www.metabase.com/download) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
+To install the Query Server, go to the [Metabase Download Page](http://www.metabase.com/download) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
 
     java -jar metabase.jar    
 

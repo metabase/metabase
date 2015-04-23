@@ -6,7 +6,7 @@ This guide assumes you have a database you have access to and it is set up corre
 
 Initially, let's see what data you have available. The Explore section of the app allows you to see which tables you have available, look at all the rows in a given table, and drill down to individual rows. 
 
-* Click “explore”
+* Click `explore`
 * Note that all of your tables are there
 * Click on one
 * Note the pagination
@@ -20,22 +20,22 @@ Initially, let's see what data you have available. The Explore section of the ap
 * Note that all fields are present
 * We can click on any FKs
 * Any urls are clickable
-* Note the “Linked Entites” on the bottom
+* Note the `Linked Entites` on the bottom
 * Click on one of these and note that below are a bunch of that entities linked objects
 
 # Asking a Question
 
 When you have a specific question you are trying to answer, you can use the Card section of the application. Here you can ask a specific question of a given table of data you have. We'll start with the simplest possible question you can ask, "How many X are there?".
 
-* Click “Cards"
-* Click “Create New"
+* Click `Cards`
+* Click `Create New`
 * Select a database
 * if you only have a single database, this step happens automatically
 * Select a table
 * See the bare rows
 * click run
 * note that this allows you to see all of the rows in a table
-* Select “total count"
+* Select `total count`
 
 # Saving a Question to a Dashboard
 
@@ -46,6 +46,6 @@ Assuming this is something you'll want to keep tabs on regularly, or share regul
 * Give it a name
 
 * Go to your newly created dashboard
-* click “Dashboards"
+* click `Dashboards`
 * click your new dashboard
 * Note that your card is there
