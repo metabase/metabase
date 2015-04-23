@@ -51,6 +51,12 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         controller: 'Unauthorized'
     });
 
+    $routeProvider.when('/auth/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/auth/login';
+        }
+    });
+
     $routeProvider.when('/setup/', {
         templateUrl: '/app/setup/partials/setup_intro.html',
         controller: 'SetupIntro'
