@@ -8,85 +8,9 @@ var QueryBuilder = React.createClass({
     propTypes: {
         model: React.PropTypes.object.isRequired
     },
-    _getFilterFields: function () {
-        var filterFieldList = [];
-        if(this.props.model.selected_table_fields) {
-            for(var key in this.props.model.selected_table_fields.fields_lookup) {
-                filterFieldList.push(this.props.model.selected_table_fields.fields_lookup[key]);
-            }
-        }
-        return filterFieldList;
-    },
-    _getFilterWidget: function (filter, index) {
-        var operator = filter[0], // name of the operator
-            field = filter[1], // id of the field
-            value = filter[2],
-
-            operatorList = [],
-            valueFields,
-            filterFieldList = this._getFilterFields();
-
-        // extract the real info
-        for(var fieldItem in filterFieldList) {
-            var theField = filterFieldList[fieldItem];
-
-            if(theField.id == field) {
-
-                for(var operatorItem in theField.operators_lookup) {
-                    var theOperator = theField.operators_lookup[operatorItem]
-                    // push the operator into the list we'll use for selection
-                    operatorList.push(theOperator);
-
-                    if(theOperator.name == operator) {
-                    // this is structured strangely
-                        valueFields = theOperator.fields[0];
-                    }
-                }
-            }
-        }
-
-        return (
-            <FilterWidget
-                placeholder="Item"
-                field={field}
-                filterFieldList={filterFieldList}
-                operator={operator}
-                operatorList={operatorList}
-                value={value}
-                valueFields={valueFields}
-                index={index || 0}
-                remove={this.props.model.removeFilter.bind(this.props.model)}
-                updateFilter={this.props.model.updateFilter.bind(this.props.model)}
-            />
-        );
-    },
     render: function () {
         var runButton,
-            runButtonText,
-            filterHtml,
-            filterList;
-
-        // populate the list of possible filterable fields
-
-        var filters = this.props.model.card.dataset_query.query.filter;
-
-        // if we have filters...
-        if(filters.length != 0) {
-            // and if we have multiple filters, map through and return a filter widget
-            if(filters[0] == 'AND') {
-                filterList = this.props.model.card.dataset_query.query.filter.map(function (filter, index) {
-                    if(filter == 'AND') {
-                        return
-                    } else {
-                        return (
-                            this._getFilterWidget(filter, index)
-                        )
-                    }
-                }.bind(this))
-            } else {
-                filterList = this._getFilterWidget(filters)
-            }
-        }
+            runButtonText;
 
         if(this.props.model.canRun()) {
             if(this.props.model.isRunning) {
@@ -96,17 +20,6 @@ var QueryBuilder = React.createClass({
             }
             runButton = (
                 <a className="Button Button--primary float-right"onClick={this.props.model.run.bind(this.props.model)}>{runButtonText}</a>
-            )
-
-            filterHtml = (
-                <div className="clearfix">
-                    <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.props.model.addFilter.bind(this.props.model)}>
-                        <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
-                        </svg>
-                    </a>
-                    {filterList}
-                </div>
             )
         }
 
@@ -124,8 +37,6 @@ var QueryBuilder = React.createClass({
                 />
             );
         }
-
-
 
         return (
             <div className="full-height">
@@ -151,6 +62,7 @@ var QueryBuilder = React.createClass({
                                     db={this.props.model.card.dataset_query.database}
                                     options={this.props.model.selected_table_fields}
                                     tables={this.props.model.table_list}
+                                    selected_table_fields={this.props.model.selected_table_fields}
                                     aggregationFieldList={this.props.model.aggregation_field_list}
                                     query={this.props.model.card.dataset_query.query}
                                     setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
@@ -160,17 +72,14 @@ var QueryBuilder = React.createClass({
                                     removeDimension={this.props.model.removeDimension.bind(this.props.model)}
                                     updateDimension={this.props.model.updateDimension.bind(this.props.model)}
                                     aggregationComplete={this.props.model.aggregationComplete.bind(this.props.model)}
+                                    addFilter={this.props.model.addFilter}
+                                    updateFilter={this.props.model.updateFilter}
+                                    removeFilter={this.props.model.removeFilter}
                                 />
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <div className="QueryWrapper my2">
-                            {filterHtml}
-                        </div>
-                    </div>
                 </div>
-
                 <div className="QueryWrapper mb4">
                     {result}
                 </div>
