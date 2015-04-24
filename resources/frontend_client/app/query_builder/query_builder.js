@@ -9,21 +9,6 @@ var QueryBuilder = React.createClass({
         model: React.PropTypes.object.isRequired
     },
     render: function () {
-        var queryPickerClasses = cx({
-            'QueryPicker-group': true
-        });
-
-        var result;
-        if(this.props.model.result) {
-            result = (
-                <QueryVisualization
-                    card={this.props.model.card}
-                    result={this.props.model.result}
-                    setDisplay={this.props.model.setDisplay.bind(this.props.model)}
-                />
-            );
-        }
-
         return (
             <div className="full-height">
                 <div className="QueryHeader">
@@ -37,7 +22,7 @@ var QueryBuilder = React.createClass({
                         </div>
                     </div>
                 </div>
-                <div className={queryPickerClasses}>
+                <div className="QueryPicker-group">
                     <div>
                         <div className="QueryWrapper">
                             <div className="clearfix">
@@ -69,10 +54,14 @@ var QueryBuilder = React.createClass({
                     </div>
                 </div>
                 <div className="QueryWrapper mb4">
-                    {result}
+                    <QueryVisualization
+                        card={this.props.model.card}
+                        result={this.props.model.result}
+                        setDisplay={this.props.model.setDisplay.bind(this.props.model)}
+                    />
                 </div>
             </div>
-        )
+        );
     }
 });
 

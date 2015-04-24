@@ -4,7 +4,7 @@
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
-        result: React.PropTypes.object.isRequired
+        result: React.PropTypes.object
     },
     getInitialState: function () {
         return {
@@ -29,6 +29,10 @@ var QueryVisualization = React.createClass({
         this.props.setDisplay(type);
     },
     render: function () {
+        if(!this.props.result) {
+            return false;
+        }
+
         // for table rendering
         var tableRows,
             tableHeaders,
