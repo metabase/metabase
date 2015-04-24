@@ -7,7 +7,9 @@
 ;; ## CONNECTION
 
 (defn- connection-details->connection-spec [details-map]
-  (korma.db/h2 details-map))
+  (korma.db/h2 (assoc details-map
+                      :db-type :h2          ; what are we using this for again (?)
+                      :make-pool? false)))
 
 (defn- database->connection-details [database]
   (set/rename-keys (:details database) {:conn_str :db}))

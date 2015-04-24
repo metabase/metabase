@@ -1,4 +1,5 @@
-(ns metabase.driver.interface)
+(ns metabase.driver.interface
+  "Protocols that DB drivers implement. Thus, the interface such drivers provide.")
 
 ;; ## IDriver Protocol
 

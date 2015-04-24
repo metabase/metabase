@@ -20,8 +20,9 @@
         connection-details->connection-spec (:connection-details->connection-spec driver)]
     (-> database database->connection-details connection-details->connection-spec)))
 
-#_(def ^{:arglists '([database])} db->korma-db
-  "Return a Korma database definition for DATABASE."
+(def ^{:arglists '([database])} db->korma-db
+  "Return a Korma database definition for DATABASE.
+   This does a little bit of smart caching (for 60 seconds) to avoid creating new connections when unneeded."
   (let [-db->korma-db (memo/ttl (fn [database]
                                   (log/debug (color/red "Creating a new DB connection..."))
                                   (kdb/create-db (db->connection-spec database)))
@@ -30,13 +31,8 @@
     (fn [database]
       (-db->korma-db (select-keys database [:engine :details])))))
 
-(defn db->korma-db [database]
-  (kdb/create-db (db->connection-spec database)))
-
-(def -db (sel :one Database :id 1))
-(defn x []
-  (-> (clojure.set/rename-keys (:details -db) {:conn_str :db})
-      korma.db/h2))
+#_(defn db->korma-db [database]
+    (kdb/create-db (db->connection-spec database)))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."

@@ -5,7 +5,7 @@
             [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            (metabase.driver [interface :as i]
+            (metabase.driver [interface :refer [IDriver] :as i]
                              [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
@@ -23,41 +23,67 @@
 ;; ## Driver Lookup
 
 (def ^{:arglists '([engine])} engine->driver
+  "Return the driver instance that should be used for given ENGINE.
+   This loads the corresponding driver if needed; it is expected that it resides in a var named
+
+     metabase.driver.<engine>/driver
+
+   i.e., the `:postgres` driver should be bound interned at `metabase.driver.postgres/driver`.
+
+     (require ['metabase.driver.interface :as i])
+     (i/active-table-names (engine->driver :postgres) some-pg-database)"
   (memoize
    (fn [engine]
+     {:pre [(keyword? engine)]}
      (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
        (require ns-symb)
-       (var-get (ns-resolve ns-symb 'driver))))))
+       (let [driver (some-> (ns-resolve ns-symb 'driver)
+                            var-get)]
+         (assert driver)
+         driver)))))
 
 ;; Can the type of a DB change?
 (def ^{:arglists '([database-id])} database-id->driver
+  "Memoized function that returns the driver instance that should be used for `Database` with ID.
+   (Databases aren't expected to change their types, and this optimization makes things a lot faster).
+
+   This loads the corresponding driver if needed."
   (memoize
    (fn [database-id]
+     {:pre [(integer? database-id)]}
      (engine->driver (sel :one :field [Database :engine] :id database-id)))))
 
 
 ;; ## Implementation-Agnostic Driver API
 
-(defn can-connect? [database]
-  (i/can-connect? ^i/IDriver (engine->driver (:engine database)) database))
+(defn can-connect?
+  "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
+  [database]
+  (i/can-connect? ^IDriver (engine->driver (:engine database)) database))
 
-(defn can-connect-with-details? [engine details-map]
-  (i/can-connect-with-details? ^i/IDriver (engine->driver engine) details-map))
+(defn can-connect-with-details?
+  "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
+
+     (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
+  [engine details-map]
+  (i/can-connect-with-details? ^IDriver (engine->driver engine) details-map))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
-      (-sync-database! ^i/IDriver (engine->driver (:engine database)) database))))
+      (-sync-database! ^IDriver (engine->driver (:engine database)) database))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
   (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
     (fn [table]
-      (-sync-table! ^i/IDriver (database-id->driver (:db_id table)) table))))
+      (-sync-table! ^IDriver (database-id->driver (:db_id table)) table))))
 
-(defn process-query [query]
-  (i/process-query ^i/IDriver (database-id->driver (:database query)) query))
+(defn process-query
+  "Process a structured or native query, and return the result."
+  [query]
+  (i/process-query ^IDriver (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff
@@ -184,3 +210,12 @@
       query-execution)
     ;; first time saving execution, so insert it
     (mapply ins QueryExecution query-execution)))
+
+(defn x [db-id]
+  (let [db (sel :one Database :id db-id)
+        driver (database-id->driver db-id)
+        connection-details ((:database->connection-details driver) db)
+        connection-spec ((:connection-details->connection-spec driver) connection-details)]
+    (clojure.pprint/pprint connection-details)
+    (clojure.pprint/pprint connection-spec)
+    (i/active-table-names driver db)))
