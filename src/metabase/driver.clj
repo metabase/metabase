@@ -210,12 +210,3 @@
       query-execution)
     ;; first time saving execution, so insert it
     (mapply ins QueryExecution query-execution)))
-
-(defn x [db-id]
-  (let [db (sel :one Database :id db-id)
-        driver (database-id->driver db-id)
-        connection-details ((:database->connection-details driver) db)
-        connection-spec ((:connection-details->connection-spec driver) connection-details)]
-    (clojure.pprint/pprint connection-details)
-    (clojure.pprint/pprint connection-spec)
-    (i/active-table-names driver db)))

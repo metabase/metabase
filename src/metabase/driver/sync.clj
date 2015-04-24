@@ -119,6 +119,7 @@
 (defn update-table-row-count!
   "Update the row count of TABLE if it has changed."
   [table]
+  {:pre [(integer? (:id table))]}
   (let [table-row-count (queries/table-row-count table)]
     (when-not (= (:rows table) table-row-count)
       (upd Table (:id table) :rows table-row-count))))
@@ -198,11 +199,14 @@
               (when-let [dest-table-id (table-name->id dest-table-name)]
                 (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
                   (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
+                  (log/info "<1>")
                   (ins ForeignKey
                     :origin_id fk-column-id
                     :destination_id dest-column-id
                     :relationship (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
-                  (upd Field fk-column-id :special_type :fk))))))))))
+                  (log/info "<2>")
+                  (upd Field fk-column-id :special_type :fk)
+                  (log/info "<3>"))))))))))
 
 
 ;; ### 4) sync-table-fields-metadata!
