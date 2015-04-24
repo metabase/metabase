@@ -333,7 +333,11 @@ CardControllers.controller('CardDetail', [
                     }
                 },
                 getDownloadLink: function() {
-                    return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify(queryBuilder.card.dataset_query));
+                    // TODO: this should be conditional and only return a valid url if we have valid
+                    //       data to be downloaded.  otherwise return something falsey
+                    if (queryBuilder.result) {
+                        return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify(queryBuilder.card.dataset_query));
+                    }
                 },
                 cleanFilters: function(dataset_query) {
                     // TODO: 'native' query support
@@ -386,6 +390,9 @@ CardControllers.controller('CardDetail', [
             };
         };
 
+        var isDirty = function() {
+            return false;
+        };
 
         $scope.$watch('currentOrg', function (org) {
             // we need org always, so we just won't do anything if we don't have one
@@ -398,6 +405,7 @@ CardControllers.controller('CardDetail', [
                 Card.get({
                     'cardId': $routeParams.cardId
                 }, function(result) {
+                    result.isDirty = isDirty;
                     console.log('result', result);
                     queryBuilder.extractQuery(result);
                     queryBuilder.getDatabaseList();
@@ -482,7 +490,8 @@ CardControllers.controller('CardDetail', [
                             breakout: [],
                             filter: []
                         }
-                    }
+                    },
+                    isDirty: isDirty
                 };
             }
         }); // end watch

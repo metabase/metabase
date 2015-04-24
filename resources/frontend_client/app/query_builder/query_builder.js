@@ -114,20 +114,8 @@ var QueryBuilder = React.createClass({
             'QueryPicker-group': true
         });
 
-        var saver,
-            result,
-            download;
+        var result;
         if(this.props.model.result) {
-            saver = (
-                <Saver
-                    save={this.props.model.save.bind(this.props.model)}
-                    name={this.props.model.card.name}
-                    description={this.props.model.card.description}
-                    hasChanged={this.props.model.hasChanged}
-                    setPermissions={this.props.model.setPermissions.bind(this.props.model)}
-                    permissions={this.props.model.card.public_perms}
-                />
-            );
             result = (
                 <QueryVisualization
                     card={this.props.model.card}
@@ -135,64 +123,57 @@ var QueryBuilder = React.createClass({
                     setDisplay={this.props.model.setDisplay.bind(this.props.model)}
                 />
             );
-            download = (
-                <a className="Button inline-block mr1" href={this.props.model.getDownloadLink()} target="_blank">Download data</a>
-            );
         }
 
 
 
         return (
             <div className="full-height">
-                    <div className="QueryHeader">
+                <div className="QueryHeader">
+                    <div className="QueryWrapper">
+                        <div className="inline-block">
+                            <QueryHeader
+                                card={this.props.model.card}
+                                save={this.props.model.save.bind(this.props.model)}
+                                downloadLink={this.props.model.getDownloadLink()}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className={queryPickerClasses}>
+                    <div>
                         <div className="QueryWrapper">
-                            <div className="inline-block">
-                                <QueryHeader
-                                    name={this.props.model.card.name}
-                                    user={this.props.model.user}
+                            <div className="clearfix">
+                                {runButton}
+                                <QueryPicker
+                                    dbList={this.props.model.database_list}
+                                    setDatabase={this.props.model.setDatabase.bind(this.props.model)}
+                                    db={this.props.model.card.dataset_query.database}
+                                    options={this.props.model.selected_table_fields}
+                                    tables={this.props.model.table_list}
+                                    aggregationFieldList={this.props.model.aggregation_field_list}
+                                    query={this.props.model.card.dataset_query.query}
+                                    setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
+                                    setAggregation={this.props.model.setAggregation.bind(this.props.model)}
+                                    setAggregationTarget={this.props.model.setAggregationTarget.bind(this.props.model)}
+                                    addDimension={this.props.model.addDimension.bind(this.props.model)}
+                                    removeDimension={this.props.model.removeDimension.bind(this.props.model)}
+                                    updateDimension={this.props.model.updateDimension.bind(this.props.model)}
+                                    aggregationComplete={this.props.model.aggregationComplete.bind(this.props.model)}
                                 />
                             </div>
                         </div>
                     </div>
-                    <div className={queryPickerClasses}>
-                        <div>
-                            <div className="QueryWrapper">
-                                <div className="clearfix">
-                                    {runButton}
-                                    <QueryPicker
-                                        dbList={this.props.model.database_list}
-                                        setDatabase={this.props.model.setDatabase.bind(this.props.model)}
-                                        db={this.props.model.card.dataset_query.database}
-                                        options={this.props.model.selected_table_fields}
-                                        tables={this.props.model.table_list}
-                                        aggregationFieldList={this.props.model.aggregation_field_list}
-                                        query={this.props.model.card.dataset_query.query}
-                                        setSourceTable={this.props.model.setSourceTable.bind(this.props.model)}
-                                        setAggregation={this.props.model.setAggregation.bind(this.props.model)}
-                                        setAggregationTarget={this.props.model.setAggregationTarget.bind(this.props.model)}
-                                        addDimension={this.props.model.addDimension.bind(this.props.model)}
-                                        removeDimension={this.props.model.removeDimension.bind(this.props.model)}
-                                        updateDimension={this.props.model.updateDimension.bind(this.props.model)}
-                                        aggregationComplete={this.props.model.aggregationComplete.bind(this.props.model)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="QueryWrapper my2">
-                                {filterHtml}
-                            </div>
+                    <div>
+                        <div className="QueryWrapper my2">
+                            {filterHtml}
                         </div>
                     </div>
+                </div>
 
-                    <div className="QueryWrapper mb4">
-                        {result}
-                    </div>
-
-                    <div className="ActionBar">
-                        {saver}
-                        {download}
-                    </div>
+                <div className="QueryWrapper mb4">
+                    {result}
+                </div>
             </div>
         )
     }

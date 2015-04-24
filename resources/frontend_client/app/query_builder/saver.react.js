@@ -4,18 +4,16 @@
 var Saver = React.createClass({
     displayName: 'Saver',
     propTypes: {
-        description: React.PropTypes.string,
+        card: React.PropTypes.object.isRequired,
         hasChanged: React.PropTypes.bool,
-        name: React.PropTypes.string,
-        permissions: React.PropTypes.number,
-        setPermissions: React.PropTypes.func.isRequired,
         save: React.PropTypes.func.isRequired
     },
     mixins: [OnClickOutside],
     getInitialState: function () {
         return {
             modalOpen: false,
-            triggerAction: this._openModal
+            triggerAction: this._openModal,
+            permissions: this.props.card.public_perms
         };
     },
     handleClickOutside: function () {
@@ -30,13 +28,21 @@ var Saver = React.createClass({
             this.refs.name.getDOMNode().focus();
         });
     },
+    _setPermissions: function(permission) {
+        console.log('setting perm to ', permission);
+        this.setState({
+            permissions: permission
+        });
+    },
     _save: function () {
         var name = this.refs.name.getDOMNode().value,
-            description = this.refs.description.getDOMNode().value;
+            description = this.refs.description.getDOMNode().value,
+            permissions = this.state.permissions;
 
         this.props.save({
             name: name,
-            description: description
+            description: description,
+            permissions: permissions
         });
         // reset the modal
         this.setState({
@@ -56,15 +62,6 @@ var Saver = React.createClass({
             'Modal--showing': this.state.modalOpen
         });
 
-        var buttonText;
-
-        // if the query has changed or the modal has been opened
-        if (this.props.hasChanged === true || this.state.modalOpen === true) {
-            buttonText = "Save";
-        } else {
-            buttonText = "Edit";
-        }
-
         var privacyOptions = [
             {
                 code: 0,
@@ -80,31 +77,35 @@ var Saver = React.createClass({
             },
         ];
 
-        return (
-            <div className="SaveWrapper float-right mr2">
-                <div className={modalClasses}>
-                    <div className="ModalContent">
-                        <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.name} />
-                        <input ref="description" type="text" placeholder="Add a description" defaultValue={this.props.description}/>
-                        <div className="mt4 ml2 mr2 clearfix">
-                            <span className="text-grey-3 inline-block my1">Privacy:</span>
-                            <div className="float-right">
-                                <SelectionModule
-                                    placeholder="Privacy"
-                                    items={privacyOptions}
-                                    selectedKey='code'
-                                    selectedValue={this.props.permissions}
-                                    display='display'
-                                    action={this.props.setPermissions}
-                                />
+        // default state is false, which means we don't render anything in the DOM
+        var saver = false;
+        if (this.props.card.isDirty()) {
+            saver = (
+                <div className="SaveWrapper float-right mr2">
+                    <div className={modalClasses}>
+                        <div className="ModalContent">
+                            <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.card.name} />
+                            <input ref="description" type="text" placeholder="Add a description" defaultValue={this.props.card.description}/>
+                            <div className="mt4 ml2 mr2 clearfix">
+                                <span className="text-grey-3 inline-block my1">Privacy:</span>
+                                <div className="float-right">
+                                    <SelectionModule
+                                        placeholder="Privacy"
+                                        items={privacyOptions}
+                                        selectedKey='code'
+                                        selectedValue={this.props.permissions}
+                                        display='display'
+                                        action={this._setPermissions}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <a className={buttonClasses} onClick={this.state.triggerAction}>Save</a>
                 </div>
-                <a className={buttonClasses} onClick={this.state.triggerAction}>
-                    {buttonText}
-                </a>
-            </div>
-        );
+            );
+        }
+
+        return saver;
     }
 });
