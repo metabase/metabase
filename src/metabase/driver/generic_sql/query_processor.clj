@@ -254,7 +254,7 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (log/debug
+  #_(log/debug
    "\n********************"
    "\nSOURCE TABLE: " source_table
    "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))

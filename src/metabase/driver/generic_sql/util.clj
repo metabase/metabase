@@ -1,30 +1,30 @@
 (ns metabase.driver.generic-sql.util
   "Shared functions for our generic-sql query processor."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.core.memoize :as memo]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [korma.core :as korma]
             [korma.db :as kdb]
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
+            [metabase.driver.context :as context]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
 
-;; Cache the Korma DB connections for given Database
-;; instead of creating new ones every single time
-(def ^:private connection->korma-db
-  (memoize
-    (fn [connection]
-      {:pre [(map? connection)]}
-      (log/debug "CREATING A NEW DB CONNECTION...")
-      (kdb/create-db connection))))
-
-(defn korma-db
+;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
+(def ^{:arglists '([database])} korma-db
   "Return a Korma database definition for DATABASE."
-  [database]
-  (log/debug "CREATING A NEW DB CONNECTION...")
-  (connection->korma-db (driver/connection database)))
+  (let [db-id->korma-db (memo/ttl (fn [db]
+                                    (log/debug (color/red "Creating a new DB connection..."))
+                                    (kdb/create-db (assoc (driver/connection db)
+                                                          :make-pool? true)))
+                                  :ttl/threshold (* 60 1000))]
+    ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
+    (fn [database]
+      (db-id->korma-db (select-keys database [:engine :details])))))
 
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
@@ -76,11 +76,12 @@
 (defn table-id->korma-entity
   "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
   [table-id]
-  {:pre [(integer? table-id)]
+  {:pre  [(integer? table-id)]
    :post [(map? %)]}
-  (let [table (sel :one Table :id table-id)]
-    (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
-    (korma-entity table)))
+  (korma-entity (or (and (= (:id context/*table*) table-id)
+                         context/*table*)
+                    (sel :one Table :id table-id)
+                    (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
 
 
 (defn castify-field

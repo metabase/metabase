@@ -1,9 +1,9 @@
 (ns metabase.driver.postgres.sync
   "Implementation of `sync-tables` for Postgres."
-  (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database sync-table]]))
+  (:require [metabase.driver :refer [sync-database sync-table]]
+            [metabase.driver.generic-sql.sync :as generic]))
 
-(def column->base-type
+(def ^:const column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   {:bigint        :BigIntegerField
@@ -68,11 +68,7 @@
   :CHAR_LENGTH)
 
 (defmethod sync-database :postgres [database]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-database database)))
+  (generic/sync-database! column->base-type sql-string-length-fn database))
 
 (defmethod sync-table :postgres [table]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-table table)))
+  (generic/sync-table! column->base-type sql-string-length-fn table))

@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql.query-processor.annotate
   "Functions related to annotating results returned by the Query Processor."
-  (:require [metabase.db :refer :all]
+  (:require [clojure.core.memoize :as memo]
+            [metabase.db :refer :all]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare get-column-names
@@ -54,6 +55,14 @@
     (->> (concat breakout-fields other-fields)
          (map :castified))))
 
+(def ^:private ^{:arglists '([table-id])} table-id->field-positions
+  "Return Field information for ordering results for a Table.
+   This is info is cached for 30 seconds to avoid slamming the DB when doing things like syncing
+   (which now relies heavily on the QP)."
+  (memo/ttl (fn [table-id]
+              (sel :many :fields [Field :id :name :position] :table_id table-id))
+            :ttl/threshold (* 30 1000)))
+
 (defn- order-columns
   "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
    They should be ordered as follows:
@@ -61,8 +70,8 @@
    1.  All breakout fields, in the same order as BREAKOUT-FIELD-IDS
    2.  Any aggregate fields like `count`
    3.  All other columns in the same order as `Field.position`."
-  [{{source-table :source_table breakout-field-ids :breakout} :query} castified-field-names]
-  (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
+  [{{source-table-id :source_table breakout-field-ids :breakout} :query} castified-field-names]
+  (-order-columns (table-id->field-positions source-table-id)
                   (filter identity breakout-field-ids)                                   ; handle empty breakout clauses like [nil]
                   castified-field-names))
 

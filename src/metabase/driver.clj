@@ -36,8 +36,12 @@
 
 (defmulti process-and-run
   "Process a query of type `query` (implemented by various DB drivers)."
-  (fn [{:keys [database] :as query}]
-    ((db-dispatch-fn "query-processor") (sel :one [Database :engine] :id database))))
+  (let [database-id->database (memoize
+                               (fn [database-id]
+                                 (sel :one [Database :engine] :id database-id))) ; actually we just need :engine for dispatch
+        dispatch-fn (db-dispatch-fn "query-processor")]
+    (fn [{database-id :database}]
+      (dispatch-fn (database-id->database database-id)))))
 
 
 (defn- execute-query

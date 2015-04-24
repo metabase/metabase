@@ -3,7 +3,7 @@
   (:require [metabase.driver.generic-sql.sync :as generic]
             [metabase.driver :refer [sync-database sync-table]]))
 
-(def column->base-type
+(def ^:const column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
   {:ARRAY                 :UnknownField
    :BIGINT                :BigIntegerField
@@ -72,11 +72,7 @@
   :LENGTH)
 
 (defmethod sync-database :h2 [database]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-database database)))
+  (generic/sync-database! column->base-type sql-string-length-fn database))
 
 (defmethod sync-table :h2 [table]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-table table)))
+  (generic/sync-table! column->base-type sql-string-length-fn table))
