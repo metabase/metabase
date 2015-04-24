@@ -47,7 +47,7 @@ Assuming you do not need to do a lot of transformation or ingest lots of third p
 
 Typically once enough data is in the system and/or the tranformation needs are complex enough, a dedicated analytics database is used. There are many options ranging from a normal general purpose database (MySQL, Postgres, SQL Server, etc), to a dedicated Analytics database (Vertica, Redshift, GreenPlum, Terredata, etc), the new generation of SQL on Hadoop databases (Spark, Presto) or NoSQL databases (Druid, Cassandra, etc). 
 
-Typically, once there is a dedicated analytics database or a datawarehouse, ETL processes become important. Learn more at [Data Preparation Guide](docs/DATAPREPARATION.md)
+Typically, once there is a dedicated analytics database or a datawarehouse, ETL processes become important. Learn more at See the [Data Warehouse Guide](docs/DATAWAREHOUSING.md).
 
 # Database Drivers
 Metabase currently has drivers for

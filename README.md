@@ -4,11 +4,7 @@
 
 Metabase Report server is an easy way to generate charts and dashboards, ask simple ad hoc queries without using SQL, and see detailed information about rows in your Database. You can set it up in under 5 minutes, and then give yourself and others a place to ask simple questions and understand the data your application is generating. It is not tied to any specific framework and can be used out of the box with minimal configuration. 
 
-With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface. It also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
-
-* Build moderation interfaces
-* Export subsets of your users to third party marketing automation software
-* Provide a specialized customer lookup application for the people in your company
+With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface. 
 
 # What it isn't
 
@@ -16,7 +12,7 @@ The Report Server does not deal with getting data into a database or data wareho
 
 The report server does not collect web page views or mobile events, though it can help you understand conversion funnels, cohort retention and use behavior in general once you have collected these events into a database. 
 
-See [Data Preparation Guide](docs/DATAPREPARATION.md) for more information and advice.
+See the [Data Warehouse Guide](docs/DATAWAREHOUSING.md) for more information and advice.
 
 # Security Disclosure
 
@@ -59,6 +55,15 @@ Follow our [Getting Started](docs/GETTINGSTARTED.md) guide to learn how to use t
 # Contributing
 
 To get started with a development installation of the Query Server and learn more about contributing, please follow the instructions at our [Developers Guide](docs/DEVELOPERS.md). 
+
+# Extending and Deep Integrations
+
+Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
+
+* Build moderation interfaces
+* Export subsets of your users to third party marketing automation software
+* Provide a specialized customer lookup application for the people in your company
+
 
 # License
 
