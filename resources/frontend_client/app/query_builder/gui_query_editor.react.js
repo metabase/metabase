@@ -17,7 +17,10 @@ var GuiQueryEditor = React.createClass({
         aggregationComplete: React.PropTypes.func,
         addFilter: React.PropTypes.func.isRequired,
         updateFilter: React.PropTypes.func.isRequired,
-        removeFilter: React.PropTypes.func.isRequired
+        removeFilter: React.PropTypes.func.isRequired,
+        canRun: React.PropTypes.boolean,
+        isRunning: React.PropTypes.boolean,
+        runFn: React.PropTypes.func.isRequired
     },
     _getFilterFields: function () {
         var filterFieldList = [];
@@ -262,6 +265,13 @@ var GuiQueryEditor = React.createClass({
                 </div>
                 <div className="QueryBar">
                     {filterHtml}
+                </div>
+                <div>
+                    <RunButton
+                        canRun={this.props.canRun}
+                        isRunning={this.props.isRunning}
+                        runFn={this.props.runFn}
+                    />
                 </div>
             </div>
         );

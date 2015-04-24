@@ -9,20 +9,6 @@ var QueryBuilder = React.createClass({
         model: React.PropTypes.object.isRequired
     },
     render: function () {
-        var runButton,
-            runButtonText;
-
-        if(this.props.model.canRun()) {
-            if(this.props.model.isRunning) {
-                runButtonText = "Loading..."
-            } else {
-                runButtonText = "Find out!"
-            }
-            runButton = (
-                <a className="Button Button--primary float-right"onClick={this.props.model.run.bind(this.props.model)}>{runButtonText}</a>
-            )
-        }
-
         var queryPickerClasses = cx({
             'QueryPicker-group': true
         });
@@ -55,7 +41,6 @@ var QueryBuilder = React.createClass({
                     <div>
                         <div className="QueryWrapper">
                             <div className="clearfix">
-                                {runButton}
                                 <GuiQueryEditor
                                     dbList={this.props.model.database_list}
                                     setDatabase={this.props.model.setDatabase.bind(this.props.model)}
@@ -75,6 +60,9 @@ var QueryBuilder = React.createClass({
                                     addFilter={this.props.model.addFilter}
                                     updateFilter={this.props.model.updateFilter}
                                     removeFilter={this.props.model.removeFilter}
+                                    canRun={this.props.model.canRun()}
+                                    isRunning={this.props.model.isRunning}
+                                    runFn={this.props.model.run}
                                 />
                             </div>
                         </div>
