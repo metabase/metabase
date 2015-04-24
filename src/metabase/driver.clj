@@ -1,91 +1,96 @@
 (ns metabase.driver
-  (:require [clojure.tools.logging :as log]
+  (:require clojure.java.classpath
+            [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
+(declare -dataset-query query-fail query-complete save-query-execution)
 
-(def available-drivers
+;; TODO - look this up at runtime
+(def ^:const available-drivers
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
   [["h2" "H2"]
    ["postgres" "PostgreSQL"]])
 
-;; TODO lazily requiring this way is a bit wonky.
-;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does
-(defn db-dispatch-fn
-  "Returns a dispatch fn for multi-methods that keys off of a database's `:engine`.
+(defprotocol IDriver
+  ;; Connection
+  (can-connect? [this database]
+    "Check whether we can connect to DATABASE and perform a simple query.
+     (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
 
-   The correct driver implementation is loaded dynamically to avoid having to require the files elsewhere in the codebase.
-   IMPL-NAMESPACE is the namespace we should load relative to the driver, e.g.
+       (can-connect? (sel :one Database :id 1))")
 
-    (defmulti my-multimethod (db-dispatch-fn \"metadata\"))
+  (can-connect-with-details? [this details-map]
+    "Check whether we can connect to a database and performa a simple query.
+     Returns true if we can, otherwise returns false or throws an Exception.
 
-   Would load `metabase.driver.postgres.metadata` for a `Database` whose `:engine` was `:postgres`."
-  [impl-namespace]
-  (let [memoized-dispatch (memoize (fn [engine] ; memoize this so we don't need to call require every single dispatch
-                                     (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
-                                     (keyword engine)))]
-    (fn [{:keys [engine]}]
-      {:pre [engine]}
-      (memoized-dispatch engine))))
+       (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})")
+
+  ;; Syncing
+  (sync-database! [this database]
+    "Sync DATABASE and all its Tables and Fields.")
+
+  (sync-table! [this table]
+    "Sync TABLE and all its Fields.")
+
+  ;; Query Processing
+  (process-query [this query]
+    "Process a native or structured query."))
 
 
-(defmulti process-and-run
-  "Process a query of type `query` (implemented by various DB drivers)."
-  (let [database-id->database (memoize
-                               (fn [database-id]
-                                 (sel :one [Database :engine] :id database-id))) ; actually we just need :engine for dispatch
-        dispatch-fn (db-dispatch-fn "query-processor")]
-    (fn [{database-id :database}]
-      (dispatch-fn (database-id->database database-id)))))
+;; ## Driver Lookup
 
+(def ^{:arglists '([engine])} engine->driver
+  (memoize
+   (fn [engine]
+     (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
+       (require ns-symb)
+       (var-get (ns-resolve ns-symb 'driver))))))
+
+;; Can the type of a DB change?
+(def ^{:arglists '([database-id])} database-id->driver
+  (memoize
+   (fn [database-id]
+     (engine->driver (sel :one :field [Database :engine] :id database-id)))))
+
+
+;; ## Implementation-Agnostic Driver API
+
+(defn driver-can-connect? [database]
+  (can-connect? ^IDriver (engine->driver (:engine database)) database))
+
+(defn driver-can-connect-with-details [details])
+
+(defn driver-sync-database! [database]
+  (sync-database! ^IDriver (engine->driver (:engine database)) database))
+
+(defn driver-sync-table! [table]
+  (sync-table! ^IDriver (database-id->driver (:db_id table)) table))
+
+(defn driver-process-query [query]
+  (process-query ^IDriver (database-id->driver (:database query)) query))
+
+;; ## DEPRECATED API -- Pending Removal
+
+(defn connection [database]
+  nil)
+
+
+;; ## Query Execution Stuff
 
 (defn- execute-query
   "Process and run a query and return results."
   [{:keys [type] :as query}]
   (case (keyword type)
-    :native (process-and-run query)
-    :query (process-and-run query)
+    :native (driver-process-query query)
+    :query (driver-process-query query)
     :result (result/process-and-run query)))
-
-
-(defmulti connection-details
-  "Return a map of connection details (in format usable by korma or equivalent) for DATABASE."
-  (db-dispatch-fn "connection"))
-
-(defmulti connection
-  "Return a [korma or equivalent] connection to DATABASE."
-  (db-dispatch-fn "connection"))
-
-(defmulti can-connect?
-  "Check whether we can connect to DATABASE and perform a simple query.
-   (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
-
-     (can-connect? (sel :one Database :id 1))"
-  (db-dispatch-fn "connection"))
-
-(defmulti can-connect-with-details?
-  "Check whether we can connect to a database and performa a simple query.
-   Returns true if we can, otherwise returns false or throws an Exception.
-
-     (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})"
-  (db-dispatch-fn "connection"))
-
-(defmulti sync-database
-  "Update the metadata for ALL `Tables` within a given DATABASE, creating new `Tables` if they don't already exist.
-  (This is executed in parallel.)"
-  (db-dispatch-fn "sync"))
-
-(defmulti sync-table
-  "Update the metadata for a SINGLE `Table`, creating it if it doesn't already exist.
-  (This is executed in parallel.)"
-  (db-dispatch-fn "sync"))
-
-(declare -dataset-query query-fail query-complete save-query-execution)
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -117,8 +122,8 @@
                          :version (get saved_query :version 0)
                          :status :starting
                          :error ""
-                         :started_at (util/new-sql-timestamp)
-                         :finished_at (util/new-sql-timestamp)
+                         :started_at (u/new-sql-timestamp)
+                         :finished_at (u/new-sql-timestamp)
                          :running_time 0
                          :result_rows 0
                          :result_file ""
@@ -159,7 +164,7 @@
   [query-execution error-message]
   (let [updates {:status :failed
                  :error error-message
-                 :finished_at (util/new-sql-timestamp)
+                 :finished_at (u/new-sql-timestamp)
                  :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
@@ -177,9 +182,9 @@
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result cache-result]
   ;; record our query execution and format response
-  (-> (util/assoc* query-execution
+  (-> (u/assoc* query-execution
                    :status :completed
-                   :finished_at (util/new-sql-timestamp)
+                   :finished_at (u/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
                    :result_data (if cache-result

@@ -15,7 +15,7 @@
 
 ;; # NEW IMPL
 
-(deftype GenericSqlSyncDriver [column->base-type sql-string-length-fn ^java.sql.DatabaseMetaData metadata]
+(deftype GenericSqlSyncDriverDatasource [column->base-type sql-string-length-fn ^java.sql.DatabaseMetaData metadata]
   sync/ISyncDriverDataSource
   (active-table-names [_ database]
     (->> (.getTables metadata nil nil nil (into-array String ["TABLE"]))
@@ -76,12 +76,3 @@
                                       (aggregate (count :*) :count)
                                       (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)]
             (float (/ url-count total-non-null-count)))))))
-
-(defn sync-database! [column->base-type sql-string-length-fn database]
-  (with-jdbc-metadata [md database]
-    (sync/sync-database! (GenericSqlSyncDriver. column->base-type sql-string-length-fn md) database)))
-
-(defn sync-table! [column->base-type sql-string-length-fn table]
-  (let [database @(:db table)]
-    (with-jdbc-metadata [md database]
-      (sync/sync-table! (GenericSqlSyncDriver. column->base-type sql-string-length-fn md) table))))

@@ -1,7 +1,19 @@
-(ns metabase.driver.h2.sync
-  "Implementation of `sync-tables` for H2."
-  (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database sync-table]]))
+(ns metabase.driver.h2
+  (:require [clojure.set :as set]
+            [korma.db :as kdb]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as generic-sql]))
+
+;; ## CONNECTION
+
+(defn- connection-details->korma-connection [details-map]
+  (korma.db/h2 (set/rename-keys details-map {:conn_str :db})))
+
+(defn- database->connection-details [database]
+  (:details database))
+
+
+;; ## SYNCING
 
 (def ^:const column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
@@ -68,11 +80,12 @@
    :YEAR                  :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
-(def ^:const ^:private sql-string-length-fn
-  :LENGTH)
+;; ## DRIVER
 
-(defmethod sync-database :h2 [database]
-  (generic/sync-database! column->base-type sql-string-length-fn database))
-
-(defmethod sync-table :h2 [table]
-  (generic/sync-table! column->base-type sql-string-length-fn table))
+(def ^:const driver
+  (generic-sql/make-sql-driver
+   :column->base-type                    column->base-type
+   :connection-details->korma-connection connection-details->korma-connection
+   :database->connection-details         database->connection-details
+   :sql-string-length-fn                 :LENGTH
+   :timezone->set-timezone-sql           nil))

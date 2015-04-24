@@ -7,7 +7,7 @@
 ;; It would be more efficient if we could let the QP could macroexpand normally for predefined queries like these
 
 (defn- field-query [field query]
-  (->> (driver/process-and-run
+  (->> (driver/driver-process-query
         {:type :query
          :database ((u/deref-> field :table :db) :id)
          :query (assoc query
