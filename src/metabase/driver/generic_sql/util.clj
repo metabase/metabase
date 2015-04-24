@@ -13,19 +13,30 @@
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
-
 ;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
-(def ^{:arglists '([database])} korma-db
+(defn- db->connection-spec [database]
+  (let [driver                              (driver/engine->driver (:engine database))
+        database->connection-details        (:database->connection-details driver)
+        connection-details->connection-spec (:connection-details->connection-spec driver)]
+    (-> database database->connection-details connection-details->connection-spec)))
+
+#_(def ^{:arglists '([database])} db->korma-db
   "Return a Korma database definition for DATABASE."
-  (let [db-id->korma-db (memo/ttl (fn [db]
-                                    (log/debug (color/red "Creating a new DB connection..."))
-                                    (kdb/create-db (assoc (driver/connection db)
-                                                          :make-pool? true)))
-                                  :ttl/threshold (* 60 1000))]
+  (let [-db->korma-db (memo/ttl (fn [database]
+                                  (log/debug (color/red "Creating a new DB connection..."))
+                                  (kdb/create-db (db->connection-spec database)))
+                                :ttl/threshold (* 60 1000))]
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
-      (db-id->korma-db (select-keys database [:engine :details])))))
+      (-db->korma-db (select-keys database [:engine :details])))))
 
+(defn db->korma-db [database]
+  (kdb/create-db (db->connection-spec database)))
+
+(def -db (sel :one Database :id 1))
+(defn x []
+  (-> (clojure.set/rename-keys (:details -db) {:conn_str :db})
+      korma.db/h2))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -35,7 +46,7 @@
   "Internal implementation. Don't use this directly; use `with-jdbc-metadata`."
   [database f]
   (if *jdbc-metadata* (f *jdbc-metadata*)
-                      (jdbc/with-db-metadata [md (driver/connection database)]
+                      (jdbc/with-db-metadata [md (db->connection-spec database)]
                         (binding [*jdbc-metadata* md]
                           (f *jdbc-metadata*)))))
 
@@ -70,8 +81,7 @@
   {:pre [(delay? db)]}
   {:table name
    :pk    :id
-   :db    (korma-db @db)})
-
+   :db    (db->korma-db @db)})
 
 (defn table-id->korma-entity
   "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."

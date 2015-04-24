@@ -6,10 +6,10 @@
 (defn- qp-query [table query-dict]
   (binding [context/*table* table
             context/*database* @(:db table)]
-    (driver/driver-process-query {:database (:db_id table)
-                                  :type "query"
-                                  :query (assoc query-dict
-                                                :source_table (:id table))})))
+    (driver/process-query {:database (:db_id table)
+                           :type "query"
+                           :query (assoc query-dict
+                                         :source_table (:id table))})))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."

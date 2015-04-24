@@ -6,11 +6,11 @@
 
 ;; ## CONNECTION
 
-(defn- connection-details->korma-connection [details-map]
-  (korma.db/h2 (set/rename-keys details-map {:conn_str :db})))
+(defn- connection-details->connection-spec [details-map]
+  (korma.db/h2 details-map))
 
 (defn- database->connection-details [database]
-  (:details database))
+  (set/rename-keys (:details database) {:conn_str :db}))
 
 
 ;; ## SYNCING
@@ -83,9 +83,9 @@
 ;; ## DRIVER
 
 (def ^:const driver
-  (generic-sql/make-sql-driver
-   :column->base-type                    column->base-type
-   :connection-details->korma-connection connection-details->korma-connection
-   :database->connection-details         database->connection-details
-   :sql-string-length-fn                 :LENGTH
-   :timezone->set-timezone-sql           nil))
+  (generic-sql/map->SqlDriver
+   {:column->base-type                   column->base-type
+    :connection-details->connection-spec connection-details->connection-spec
+    :database->connection-details        database->connection-details
+    :sql-string-length-fn                :LENGTH
+    :timezone->set-timezone-sql          nil}))

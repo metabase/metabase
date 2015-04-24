@@ -1,10 +1,11 @@
 (ns metabase.driver.sync
-  "Generalized DB / Table syncing functionality."
+  "The logic for doing DB and Table syncing itself."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as k]
             [metabase.db :refer :all]
+            [metabase.driver.interface :refer :all]
             [metabase.driver.sync.queries :as queries]
             (metabase.models [field :refer [Field] :as field]
                              [foreign-key :refer [ForeignKey]]
@@ -23,107 +24,57 @@
          sync-table-fields-metadata!
          update-table-row-count!)
 
-
-;; ## ISyncDriverDataSource Protocol
-
-(defprotocol ISyncDriverDataSource
-  "Required -- all sync drivers must implement this protocol."
-  (active-table-names [this database]
-    "Return a set of string names of tables, collections, or equivalent that currently exist in DATABASE.")
-  (active-column-names->type [this table]
-    "Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).")
-  (table-pks [this table]
-    "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent)."))
-
-
-;; ## ISyncDriverTableFKs Protocol
-
-(defprotocol ISyncDriverTableFKs
-  "Optional protocol to provide FK information for a TABLE.
-   If a sync driver implements it, Table FKs will be synced; otherwise, the step will be skipped."
-  (table-fks [this table]
-    "Return a set of maps containing info about FK columns for TABLE.
-     Each map should contain the following keys:
-
-     *  fk-column-name
-     *  dest-table-name
-     *  dest-column-name"))
-
-
-;; ## ISyncDriverField Protocols
-
-;; Sync drivers need to implement either ISyncDriverFieldValues or ISyncDriverFieldAvgLength *and* ISyncDriverFieldPercentUrls.
-;;
-;; ISyncDriverFieldValues is used to provide a generic fallback implementation of the other two that calculate these values by
-;; iterating over *every* value of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
-;; of ISyncDriverFieldAvgLength/ISyncDriverFieldPercentUrls when possible. (You can also implement ISyncDriverFieldValues and
-;; *one* of the other two; the optimized implementation will be used for that and the fallback implementation for the other)
-
-(defprotocol ISyncDriverFieldValues
-  "Optional. Used to implement generic fallback implementations of `ISyncDriverFieldAvgLength` and `ISyncDriverFieldPercentUrls`.
-   If a sync driver doesn't implement *either* of those protocols, it must implement this one."
-  (field-values-lazy-seq [this field]
-    "Return a lazy sequence of all values of Field."))
-
-(defprotocol ISyncDriverFieldAvgLength
-  "Optional. If this isn't provided, a fallback implementation that calculates average length in Clojure-land will be used instead.
-   If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
-  (field-avg-length [this field]
-    "Return the average length of all non-nil values of textual FIELD."))
-
-(defprotocol ISyncDriverFieldPercentUrls
-  "Optional. If this isn't provided, a fallback implementation that calculates URL percentage in Clojure-land will be used instead.
-   If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
-  (field-percent-urls [this field]
-    "Return the percentage of non-nil values of textual FIELD that are valid URLs."))
-
-
 ;; ## sync-database! and sync-table!
 
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields."
   [driver database]
-  (log/info (color/blue (format "Syncing database %s..." (:name database))))
+  (sync-in-context driver database
+    (fn []
+      (log/info (color/blue (format "Syncing database %s..." (:name database))))
 
-  (let [active-table-names (active-table-names driver database)
-        table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
-    (assert (set? active-table-names) "active-table-names should return a set.")
-    (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
+      (let [active-table-names (active-table-names driver database)
+            table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
+        (assert (set? active-table-names) "active-table-names should return a set.")
+        (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
 
-    ;; First, let's mark any Tables that are no longer active as such.
-    ;; These are ones that exist in table-name->id but not in active-table-names.
-    (log/debug "Marking inactive tables...")
-    (doseq [[table-name table-id] table-name->id]
-      (when-not (contains? active-table-names table-name)
-        (upd Table table-id :active false)
-        (log/info (format "Marked table %s.%s as inactive." (:name database) table-name))
+        ;; First, let's mark any Tables that are no longer active as such.
+        ;; These are ones that exist in table-name->id but not in active-table-names.
+        (log/debug "Marking inactive tables...")
+        (doseq [[table-name table-id] table-name->id]
+          (when-not (contains? active-table-names table-name)
+            (upd Table table-id :active false)
+            (log/info (format "Marked table %s.%s as inactive." (:name database) table-name))
 
-        ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.) This can happen in the background
-        (future (k/update Field
-                          (k/where {:table_id table-id})
-                          (k/set-fields {:active false})))))
+            ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.) This can happen in the background
+            (future (k/update Field
+                              (k/where {:table_id table-id})
+                              (k/set-fields {:active false})))))
 
-    ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
-    (log/debug "Creating new tables...")
-    (let [existing-table-names (set (keys table-name->id))]
-      (doseq [active-table-name active-table-names]
-        (when-not (contains? existing-table-names active-table-name)
-          (ins Table :db_id (:id database), :active true, :name active-table-name)
-          (log/info (format "Found new table: %s.%s" (:name database) active-table-name))))))
+        ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
+        (log/debug "Creating new tables...")
+        (let [existing-table-names (set (keys table-name->id))]
+          (doseq [active-table-name active-table-names]
+            (when-not (contains? existing-table-names active-table-name)
+              (ins Table :db_id (:id database), :active true, :name active-table-name)
+              (log/info (format "Found new table: %s.%s" (:name database) active-table-name))))))
 
-  ;; Now sync the active tables
-  (log/debug "Syncing active tables...")
-  (->> (sel :many Table :db_id (:id database) :active true)
-       (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
-       (sync-database-active-tables! driver))
+      ;; Now sync the active tables
+      (log/debug "Syncing active tables...")
+      (->> (sel :many Table :db_id (:id database) :active true)
+           (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
+           (sync-database-active-tables! driver))
 
-  (log/info (color/blue (format "Finished syncing database %s." (:name database)))))
+      (log/info (color/blue (format "Finished syncing database %s." (:name database)))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
    This is used *instead* of `sync-database!` when syncing just one Table is desirable."
   [driver table]
-  (sync-database-active-tables! driver [table]))
+  (let [database @(:db table)]
+    (sync-in-context driver database
+      (fn []
+        (sync-database-active-tables! driver [table])))))
 
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables

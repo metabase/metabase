@@ -5,7 +5,8 @@
             [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            (metabase.driver [result :as result])
+            (metabase.driver [interface :as i]
+                             [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.util :as u]))
@@ -17,31 +18,6 @@
   "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
   [["h2" "H2"]
    ["postgres" "PostgreSQL"]])
-
-(defprotocol IDriver
-  ;; Connection
-  (can-connect? [this database]
-    "Check whether we can connect to DATABASE and perform a simple query.
-     (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
-
-       (can-connect? (sel :one Database :id 1))")
-
-  (can-connect-with-details? [this details-map]
-    "Check whether we can connect to a database and performa a simple query.
-     Returns true if we can, otherwise returns false or throws an Exception.
-
-       (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})")
-
-  ;; Syncing
-  (sync-database! [this database]
-    "Sync DATABASE and all its Tables and Fields.")
-
-  (sync-table! [this table]
-    "Sync TABLE and all its Fields.")
-
-  ;; Query Processing
-  (process-query [this query]
-    "Process a native or structured query."))
 
 
 ;; ## Driver Lookup
@@ -62,24 +38,26 @@
 
 ;; ## Implementation-Agnostic Driver API
 
-(defn driver-can-connect? [database]
-  (can-connect? ^IDriver (engine->driver (:engine database)) database))
+(defn can-connect? [database]
+  (i/can-connect? ^i/IDriver (engine->driver (:engine database)) database))
 
-(defn driver-can-connect-with-details [details])
+(defn can-connect-with-details? [engine details-map]
+  (i/can-connect-with-details? ^i/IDriver (engine->driver engine) details-map))
 
-(defn driver-sync-database! [database]
-  (sync-database! ^IDriver (engine->driver (:engine database)) database))
+(def ^{:arglists '([database])} sync-database!
+  "Sync a `Database`, its `Tables`, and `Fields`."
+  (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
+    (fn [database]
+      (-sync-database! ^i/IDriver (engine->driver (:engine database)) database))))
 
-(defn driver-sync-table! [table]
-  (sync-table! ^IDriver (database-id->driver (:db_id table)) table))
+(def ^{:arglists '([table])} sync-table!
+  "Sync a `Table` and its `Fields`."
+  (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
+    (fn [table]
+      (-sync-table! ^i/IDriver (database-id->driver (:db_id table)) table))))
 
-(defn driver-process-query [query]
-  (process-query ^IDriver (database-id->driver (:database query)) query))
-
-;; ## DEPRECATED API -- Pending Removal
-
-(defn connection [database]
-  nil)
+(defn process-query [query]
+  (i/process-query ^i/IDriver (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff
@@ -88,8 +66,8 @@
   "Process and run a query and return results."
   [{:keys [type] :as query}]
   (case (keyword type)
-    :native (driver-process-query query)
-    :query (driver-process-query query)
+    :native (process-query query)
+    :query (process-query query)
     :result (result/process-and-run query)))
 
 (defn dataset-query

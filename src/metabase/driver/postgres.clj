@@ -73,7 +73,7 @@
 
 ;; ## CONNECTION
 
-(defn- connection-details->korma-connection [details-map]
+(defn- connection-details->connection-spec [details-map]
   (kdb/postgres (rename-keys details-map {:dbname :db})))
 
 (defn- database->connection-details [database]
@@ -102,9 +102,9 @@
 ;; ## DRIVER
 
 (def ^:const driver
-  (generic-sql/make-sql-driver
-   :column->base-type                    column->base-type
-   :connection-details->korma-connection connection-details->korma-connection
-   :database->connection-details         database->connection-details
-   :sql-string-length-fn                 :CHAR_LENGTH
-   :timezone->set-timezone-sql           timezone->set-timezone-sql))
+  (generic-sql/map->SqlDriver
+   {:column->base-type                   column->base-type
+    :connection-details->connection-spec connection-details->connection-spec
+    :database->connection-details        database->connection-details
+    :sql-string-length-fn                :CHAR_LENGTH
+    :timezone->set-timezone-sql          timezone->set-timezone-sql}))
