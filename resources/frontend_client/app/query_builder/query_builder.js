@@ -145,7 +145,7 @@ var QueryBuilder = React.createClass({
                         <div className="QueryWrapper">
                             <div className="clearfix">
                                 {runButton}
-                                <QueryPicker
+                                <GuiQueryEditor
                                     dbList={this.props.model.database_list}
                                     setDatabase={this.props.model.setDatabase.bind(this.props.model)}
                                     db={this.props.model.card.dataset_query.database}

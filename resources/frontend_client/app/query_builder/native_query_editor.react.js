@@ -1,8 +1,13 @@
 'use strict';
 /*global SelectionModule, DatabaseSelector*/
 
-var QueryPicker = React.createClass({
-    displayName: 'QueryPicker',
+// ACE Editor
+// Database Selector
+// run button
+// expand / collapse toggle
+
+var NativeQueryEditor = React.createClass({
+    displayName: 'NativeQueryEditor',
     propTypes: {
         addDimension: React.PropTypes.func.isRequired,
         aggregationComplete: React.PropTypes.func,
