@@ -46,7 +46,7 @@ var AddToDashboard = React.createClass({
     // },
     render: function () {
         return (
-            <button className="Button Button--primary float-right">Add to Dash</button>
+            <button className="Button Button--primary">Add to Dash</button>
         );
     }
 });

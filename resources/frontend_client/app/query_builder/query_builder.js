@@ -11,7 +11,7 @@ var QueryBuilder = React.createClass({
     render: function () {
         return (
             <div className="full-height">
-                <div className="QueryHeader flex full">
+                <div className="QueryHeader full">
                     <div className="QueryWrapper">
                         <QueryHeader
                             card={this.props.model.card}

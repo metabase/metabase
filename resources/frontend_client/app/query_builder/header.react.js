@@ -44,7 +44,7 @@ var QueryHeader = React.createClass({
         }
 
         return (
-            <div class="clearfix">
+            <div className="flex">
                 <h1 className="QueryName">{title}</h1>
                 {editButton}
                 <Saver

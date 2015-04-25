@@ -17,7 +17,7 @@ var QueryModeToggle = React.createClass({
     },
     render: function () {
         return (
-            <div className="Button-group float-right">
+            <div className="Button-group">
                 <button className="Button">GUI</button>
                 <button className="Button">SQL</button>
             </div>

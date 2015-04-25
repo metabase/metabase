@@ -81,7 +81,7 @@ var Saver = React.createClass({
         var saver = false;
         if (this.props.card.isDirty()) {
             saver = (
-                <div className="SaveWrapper float-right mr2">
+                <div className="SaveWrapper mr2">
                     <div className={modalClasses}>
                         <div className="ModalContent">
                             <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.card.name} />
