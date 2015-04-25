@@ -16,6 +16,7 @@ var QueryBuilder = React.createClass({
                         <QueryHeader
                             card={this.props.model.card}
                             save={this.props.model.save.bind(this.props.model)}
+                            setQueryModeFn={this.props.model.setQueryMode}
                             downloadLink={this.props.model.getDownloadLink()}
                         />
                     </div>

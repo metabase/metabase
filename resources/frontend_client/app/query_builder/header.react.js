@@ -14,6 +14,7 @@ var QueryHeader = React.createClass({
     propTypes: {
         card: React.PropTypes.object.isRequired,
         save: React.PropTypes.func.isRequired,
+        setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string
 
         // :: Add To Dashboard
@@ -39,7 +40,7 @@ var QueryHeader = React.createClass({
         // we consider a card to be already saved if it has an id
         if (this.props.card.id !== undefined) {
             editButton = (
-                <button className="Button float-right">Edit</button>
+                <button className="Button">Edit</button>
             );
         }
 
@@ -53,8 +54,13 @@ var QueryHeader = React.createClass({
                     save={this.props.save.bind(this.props.model)}
                 />
                 {downloadButton}
-                <AddToDashboard />
-                <QueryModeToggle />
+                <AddToDashboard
+                    card={this.props.card}
+                />
+                <QueryModeToggle
+                    card={this.props.card}
+                    setQueryModeFn={this.props.setQueryModeFn}
+                />
             </div>
         );
     }

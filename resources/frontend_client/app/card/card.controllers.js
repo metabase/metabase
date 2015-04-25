@@ -86,11 +86,29 @@ CardControllers.controller('CardDetail', [
         */
         var MAX_DIMENSIONS = 2;
 
+        var newQueryTemplates = {
+            "query": {
+                type: "query",
+                query: {
+                    aggregation: [null],
+                    breakout: [],
+                    filter: []
+                }
+            },
+            "native": {
+                type: "native",
+                native: {
+                    query: ""
+                }
+            }
+        };
+
         var queryBuilder;
 
         var createQueryBuilderModel = function (org) {
             return {
                 org: org,
+                // GLOBAL
                 getDatabaseList: function() {
                     Metabase.db_list({
                         'orgId': org.id
@@ -103,6 +121,7 @@ CardControllers.controller('CardDetail', [
                         console.log('error getting database list', error);
                     });
                 },
+                // QUERY EDIT
                 setDatabase: function(databaseId) {
                     // check if this is the same db or not
                     if (databaseId != queryBuilder.card.dataset_query.database) {
@@ -196,6 +215,14 @@ CardControllers.controller('CardDetail', [
                         }
                     });
                 },
+                setQueryMode: function(mode) {
+                    var queryTemplate = newQueryTemplates[mode];
+                    if (queryTemplate) {
+                        queryBuilder.card.dataset_query = queryTemplate;
+                        // TODO: should we carry over database here?
+                        queryBuilder.inform();
+                    }
+                },
                 setSourceTable: function(sourceTable) {
                     // this will either be the id or an object with an id
                     var tableId = sourceTable.id || sourceTable;
@@ -212,7 +239,6 @@ CardControllers.controller('CardDetail', [
                             console.log('error', error);
                         });
                 },
-
                 aggregationComplete: function() {
                     var aggregationComplete;
                     // TODO: 'native' query support
@@ -483,14 +509,7 @@ CardControllers.controller('CardDetail', [
                     can_read: true,
                     can_write: true,
                     display: 'none',
-                    dataset_query: {
-                        type: "query",
-                        query: {
-                            aggregation: [null],
-                            breakout: [],
-                            filter: []
-                        }
-                    },
+                    dataset_query: newQueryTemplates.query,
                     isDirty: isDirty
                 };
             }

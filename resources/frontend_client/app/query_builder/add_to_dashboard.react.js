@@ -4,6 +4,7 @@
 var AddToDashboard = React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {
+        card: React.PropTypes.object.isRequired
         // description: React.PropTypes.string,
         // hasChanged: React.PropTypes.bool,
         // name: React.PropTypes.string,
@@ -30,21 +31,26 @@ var AddToDashboard = React.createClass({
             this.refs.name.getDOMNode().focus();
         });
     },
-    // _save: function () {
-    //     var name = this.refs.name.getDOMNode().value,
-    //         description = this.refs.description.getDOMNode().value;
+    _save: function () {
+        // var name = this.refs.name.getDOMNode().value,
+        //     description = this.refs.description.getDOMNode().value;
 
-    //     this.props.save({
-    //         name: name,
-    //         description: description
-    //     });
-    //     // reset the modal
-    //     this.setState({
-    //         modalOpen: false,
-    //         triggerAction: this._openModal
-    //     });
-    // },
+        // this.props.save({
+        //     name: name,
+        //     description: description
+        // });
+        // // reset the modal
+        // this.setState({
+        //     modalOpen: false,
+        //     triggerAction: this._openModal
+        // });
+    },
     render: function () {
+        // if we don't have a saved card then don't render anything
+        if (this.props.card.id === undefined) {
+            return false;
+        }
+
         return (
             <button className="Button Button--primary">Add to Dash</button>
         );
