@@ -1,9 +1,15 @@
-(ns metabase.driver.postgres.sync
-  "Implementation of `sync-tables` for Postgres."
-  (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database sync-table]]))
+(ns metabase.driver.postgres
+  (:require [clojure.set :refer [rename-keys]]
+            [clojure.string :as s]
+            [korma.db :as kdb]
+            [swiss.arrows :refer :all]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as generic-sql]))
 
-(def column->base-type
+;; ## SYNCING
+
+(def ^:const column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   {:bigint        :BigIntegerField
@@ -64,15 +70,41 @@
    (keyword "timestamp with timezone")    :DateTimeField
    (keyword "timestamp without timezone") :DateTimeField})
 
-(def ^:const ^:private sql-string-length-fn
-  :CHAR_LENGTH)
 
-(defmethod sync-database :postgres [database]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-database database)))
+;; ## CONNECTION
 
-(defmethod sync-table :postgres [table]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-table table)))
+(defn- connection-details->connection-spec [details-map]
+  (kdb/postgres (rename-keys details-map {:dbname :db})))
+
+(defn- database->connection-details [database]
+  (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
+                      (s/split <> #" ")                       ; split into k=v pairs
+                      (map (fn [pair]                          ; convert to {:k v} pairs
+                             (let [[k v] (s/split pair #"=")]
+                               {(keyword k) v})))
+                      (reduce conj {}))                       ; combine into single dict
+        {:keys [host dbname port host]} details]
+    (-> details
+        (assoc :host host                                     ; e.g. "localhost"
+               :make-pool? false
+               :db-type :postgres
+               :port (Integer/parseInt port))                 ; convert :port to an Integer
+        (cond-> (config/config-bool :mb-postgres-ssl) (assoc :ssl true :sslfactory "org.postgresql.ssl.NonValidatingFactory"))
+        (rename-keys {:dbname :db}))))
+
+
+;; ## QP
+
+(defn- timezone->set-timezone-sql [timezone]
+  (format "SET LOCAL timezone TO '%s';" timezone))
+
+
+;; ## DRIVER
+
+(def ^:const driver
+  (generic-sql/map->SqlDriver
+   {:column->base-type                   column->base-type
+    :connection-details->connection-spec connection-details->connection-spec
+    :database->connection-details        database->connection-details
+    :sql-string-length-fn                :CHAR_LENGTH
+    :timezone->set-timezone-sql          timezone->set-timezone-sql}))

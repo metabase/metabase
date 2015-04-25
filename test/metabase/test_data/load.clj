@@ -54,7 +54,7 @@
             (log/info "Adding foreign key constraints...")
             (add-foreign-key-constraints!)
             (log/info "Syncing database...")
-            (driver/sync-database db)
+            (time (driver/sync-database! db))
             (log/info "Adding Schema Metadata...")
             (add-metadata!)
             (log/info "Finished. Enjoy your test data <3")

@@ -1,9 +1,23 @@
-(ns metabase.driver.h2.sync
-  "Implementation of `sync-tables` for H2."
-  (:require [metabase.driver.generic-sql.sync :as generic]
-            [metabase.driver :refer [sync-database sync-table]]))
+(ns metabase.driver.h2
+  (:require [clojure.set :as set]
+            [korma.db :as kdb]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as generic-sql]))
 
-(def column->base-type
+;; ## CONNECTION
+
+(defn- connection-details->connection-spec [details-map]
+  (korma.db/h2 (assoc details-map
+                      :db-type :h2          ; what are we using this for again (?)
+                      :make-pool? false)))
+
+(defn- database->connection-details [database]
+  (set/rename-keys (:details database) {:conn_str :db}))
+
+
+;; ## SYNCING
+
+(def ^:const column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
   {:ARRAY                 :UnknownField
    :BIGINT                :BigIntegerField
@@ -68,15 +82,12 @@
    :YEAR                  :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
-(def ^:const ^:private sql-string-length-fn
-  :LENGTH)
+;; ## DRIVER
 
-(defmethod sync-database :h2 [database]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-database database)))
-
-(defmethod sync-table :h2 [table]
-  (binding [generic/*column->base-type* column->base-type
-            generic/*sql-string-length-fn* sql-string-length-fn]
-    (generic/sync-table table)))
+(def ^:const driver
+  (generic-sql/map->SqlDriver
+   {:column->base-type                   column->base-type
+    :connection-details->connection-spec connection-details->connection-spec
+    :database->connection-details        database->connection-details
+    :sql-string-length-fn                :LENGTH
+    :timezone->set-timezone-sql          nil}))
