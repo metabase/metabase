@@ -7,7 +7,7 @@ var PureRenderMixin = React.addons.PureRenderMixin;
 // Save - only shown after Run
 // Download Data - only shown after Run
 // Add to Dashboard - only shown after Save
-// GUI vs SQL mode toggle - 2 mode slider
+// GUI vs SQL mode toggle - 2 mode slider - only visible on initial create (while query empty)
 
 var QueryHeader = React.createClass({
     displayName: 'QueryHeader',

@@ -18,8 +18,8 @@ var GuiQueryEditor = React.createClass({
         addFilter: React.PropTypes.func.isRequired,
         updateFilter: React.PropTypes.func.isRequired,
         removeFilter: React.PropTypes.func.isRequired,
-        canRun: React.PropTypes.boolean,
-        isRunning: React.PropTypes.boolean,
+        canRun: React.PropTypes.bool,
+        isRunning: React.PropTypes.bool,
         runFn: React.PropTypes.func.isRequired
     },
     _getFilterFields: function () {

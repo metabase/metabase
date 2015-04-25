@@ -364,7 +364,7 @@ CardControllers.controller('CardDetail', [
                     return canRun;
                 },
                 run: function() {
-                    var query = this.cleanFilters(queryBuilder.card.dataset_query);
+                    var query = queryBuilder.cleanFilters(queryBuilder.card.dataset_query);
                     console.log(query);
                     queryBuilder.isRunning = true;
                     queryBuilder.inform();
