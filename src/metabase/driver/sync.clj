@@ -199,14 +199,11 @@
               (when-let [dest-table-id (table-name->id dest-table-name)]
                 (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
                   (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
-                  (log/info "<1>")
                   (ins ForeignKey
                     :origin_id fk-column-id
                     :destination_id dest-column-id
                     :relationship (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
-                  (log/info "<2>")
-                  (upd Field fk-column-id :special_type :fk)
-                  (log/info "<3>"))))))))))
+                  (upd Field fk-column-id :special_type :fk))))))))))
 
 
 ;; ### 4) sync-table-fields-metadata!

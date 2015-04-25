@@ -31,12 +31,12 @@
 
 ;; ACTIVE-COLUMN-NAMES->TYPE
 (expect
-    #{{:type_name "INTEGER", :column_name "CATEGORY_ID"}
-      {:type_name "DOUBLE", :column_name "LONGITUDE"}
-      {:type_name "INTEGER", :column_name "PRICE"}
-      {:type_name "BIGINT", :column_name "ID"}
-      {:type_name "VARCHAR", :column_name "NAME"}
-      {:type_name "DOUBLE", :column_name "LATITUDE"}}
+    {"NAME" :TextField
+     "LATITUDE" :FloatField
+     "LONGITUDE" :FloatField
+     "PRICE" :IntegerField
+     "CATEGORY_ID" :IntegerField
+     "ID" :BigIntegerField}
   (i/active-column-names->type h2/driver @venues-table))
 
 

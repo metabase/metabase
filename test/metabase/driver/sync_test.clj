@@ -84,9 +84,9 @@
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
 (expect :Mt1
-  (sync/determine-fk-type (korma-entity (sel :one Table :id (table->id :venues))) "CATEGORY_ID"))
+  (sync/determine-fk-type (sel :one Field :id (field->id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (korma-entity (sel :one Table :id (table->id :venues))) "ID"))
+  (sync/determine-fk-type (sel :one Field :id (field->id :venues :id))))
