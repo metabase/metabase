@@ -43,12 +43,23 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
 
     $routeProvider.when('/', {
         template: '',
-        controller: 'Homepage'
+        controller: 'Homepage',
+        resolve: {
+            appState: function(AppState) {
+                return AppState.init();
+            }
+        }
     });
 
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',
         controller: 'Unauthorized'
+    });
+
+    $routeProvider.when('/auth/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/auth/login';
+        }
     });
 
     $routeProvider.when('/setup/', {
