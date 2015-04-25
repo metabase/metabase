@@ -5,7 +5,7 @@
             [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            (metabase.driver [interface :refer [IDriver] :as i]
+            (metabase.driver [interface :as i]
                              [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
@@ -59,31 +59,31 @@
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
-  (i/can-connect? ^IDriver (engine->driver (:engine database)) database))
+  (i/can-connect? (engine->driver (:engine database)) database))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map]
-  (i/can-connect-with-details? ^IDriver (engine->driver engine) details-map))
+  (i/can-connect-with-details? (engine->driver engine) details-map))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
-      (-sync-database! ^IDriver (engine->driver (:engine database)) database))))
+      (-sync-database! (engine->driver (:engine database)) database))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
   (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
     (fn [table]
-      (-sync-table! ^IDriver (database-id->driver (:db_id table)) table))))
+      (-sync-table! (database-id->driver (:db_id table)) table))))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (i/process-query ^IDriver (database-id->driver (:database query)) query))
+  (i/process-query (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff

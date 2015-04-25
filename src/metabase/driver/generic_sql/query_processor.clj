@@ -254,11 +254,12 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  #_(log/debug
-   "\n********************"
-   "\nSOURCE TABLE: " source_table
-   "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
-   "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
-   "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
-                              (sql-only (select entity# ~@forms))))
-   "\n********************\n"))
+  (when-not *jdbc-metadata* ; HACK. If *jdbc-metadata* is bound we're probably doing a DB sync. Don't log its hundreds of QP calls, which make it hard to debug.
+    (log/debug
+     "\n********************"
+     "\nSOURCE TABLE: " source_table
+     "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
+     "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
+     "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
+                                (sql-only (select entity# ~@forms))))
+     "\n********************\n")))

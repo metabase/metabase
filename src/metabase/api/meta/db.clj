@@ -63,10 +63,10 @@
                                                           :message m}})] ; but be backwards-compatible with the UI as it exists right now
     (try
       (cond
-        (driver/can-connect-with-details? details) {:valid true}
-        (u/host-port-up? host port)                (response-invalid :dbname "Invalid connection details")
-        (u/host-up? host)                          (response-invalid :port "Invalid port")
-        :else                                      (response-invalid :host "Host not reachable"))
+        (driver/can-connect-with-details? (keyword engine) details) {:valid true}
+        (u/host-port-up? host port)                                 (response-invalid :dbname "Invalid connection details")
+        (u/host-up? host)                                           (response-invalid :port "Invalid port")
+        :else                                                       (response-invalid :host "Host not reachable"))
       (catch Throwable e
         (response-invalid :dbname (.getMessage e))))))
 

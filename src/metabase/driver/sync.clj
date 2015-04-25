@@ -141,7 +141,7 @@
   [driver table]
   (let [database @(:db table)]
     ;; Now do the syncing for Table's Fields
-    (let [active-column-names->type (active-column-names->type ^ISyncDriverDataSource driver table) ; TODO pick either `column` or `field` and stick with it
+    (let [active-column-names->type (active-column-names->type driver table)
           field-name->id (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
       (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
@@ -184,7 +184,7 @@
 
 (defn sync-table-fks! [driver table]
   (when (extends? ISyncDriverTableFKs (type driver))
-    (let [fks (table-fks ^ISyncDriverTableFKs driver table)]
+    (let [fks (table-fks driver table)]
       (assert (and (set? fks)
                    (every? map? fks)
                    (every? :fk-column-name fks)
@@ -268,7 +268,7 @@
     (log/warn (color/red (format "Using default (read: slow) implementation of field-percent-urls for driver %s." (.getName (class this)))))
     (assert (extends? ISyncDriverFieldValues (class this))
             "A sync driver implementation that doesn't implement ISyncDriverFieldPercentURLs must implement ISyncDriverFieldValues.")
-    (let [field-values (field-values-lazy-seq ^ISyncDriverFieldValues this field)]
+    (let [field-values (field-values-lazy-seq this field)]
       (percent-valid-urls field-values))))
 
 (defn mark-url-field!
@@ -276,7 +276,7 @@
   [driver field]
   (when (and (not (:special_type field))
              (contains? #{:CharField :TextField} (:base_type field)))
-    (let [percent-urls (field-percent-urls ^ISyncDriverFieldPercentUrls driver field)]
+    (let [percent-urls (field-percent-urls driver field)]
       (assert (float? percent-urls))
       (assert (>= percent-urls 0.0))
       (assert (<= percent-urls 100.0))
