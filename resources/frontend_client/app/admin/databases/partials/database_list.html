@@ -1,30 +1,39 @@
-<section class="wrapper">
-    <div class="py2">
-        <div class="float-right">
-            <a class="Button Button--primary" cv-org-href="/admin/databases/create">Add Database</a>
-        </div>
-        <h2>Databases</h2>
-    </div>
+<div class="wrapper">
+    <section class="PageHeader clearfix">
+        <a class="Button Button--primary float-right" cv-org-href="/admin/databases/create">Add database</a>
+        <h2 class="PageTitle">Databases</h2>
+    </section>
 
-    <div ng-if="!databases">
-        <h3 class="text-normal text-centered">Loading ...</h3>
-    </div>
-
-    <table class="Table">
-        <tr>
-            <th>Name</th>
-            <th>Engine</th>
-            <th>Action</th>
-        </tr>
-        <tr ng-repeat="database in databases">
-            <td>
-                <a class="link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
-            </td>
-            <td>
-                {{database.engine}}
-            </td>
-            <td>
-                <button class="Button Button--remove float-right" ng-click="delete(database.id)" delete-confirm>Delete</button>
-            </td>
-    </table>
-</section>
+    <section>
+        <table class="ContentTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Engine</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-show="!databases">
+                    <td colspan=4>
+                        <cv-loading-icon></cv-loading-icon>
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+                <tr ng-repeat="database in databases">
+                    <td>
+                        <a class="text-bold link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
+                    </td>
+                    <td>
+                        {{database.engine}}
+                    </td>
+                    <td class="Table-actions">
+                        <!-- TODO: sync now button? -->
+                        <a class="Button" cv-org-href="/admin/databases/{{database.id}}/tables/">Tables</a>
+                        <button class="Button Button--danger" ng-click="delete(database.id)" delete-confirm>Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</div>

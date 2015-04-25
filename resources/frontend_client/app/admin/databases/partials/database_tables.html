@@ -1,0 +1,58 @@
+<div class="wrapper">
+    <section class="Breadcrumbs">
+        <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/databases/">Databases</a>
+        <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
+        <h2 class="Breadcrumb Breadcrumb--page">{{database.name}}</h2>
+        <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
+        <h2 class="Breadcrumb Breadcrumb--page">Tables</h2>
+    </section>
+
+    <section>
+        <table class="ContentTable">
+            <thead>
+                <tr>
+                    <th>Table</th>
+                    <th>Rows</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-show="!tables">
+                    <td colspan=4>
+                        <cv-loading-icon></cv-loading-icon>
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+                <tr ng-repeat="table in tables">
+                    <td>
+                        <a class="text-bold link" cv-org-href="/admin/databases/table/{{table.id}}">{{table.name}}</a>
+                    </td>
+                    <td>
+                        {{table.rows}}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</div>
+
+
+<section class="wrapper">
+    <div ng-repeat="db in databases">
+        <div class="py2 clearfix">
+            <div class="float-right">
+                <a class="Button Button--primary" ng-click="syncDatabase(db.id)">Re-Sync Database</a>
+            </div>
+            <h2>{{db.name}}</h2>
+        </div>
+        <ul class="bg-white bordered rounded shadowed">
+            <li class="p2 border-bottom" ng-repeat="table in db.tables">
+                <h4>
+                    <a class="EntityListItem link" ng-class="{ EditedEntity: table.entity_name, EditedEntityMarker: table.entity_name }" cv-org-href="/admin/datasets/{{table.id}}">
+                        <span class="ModifiedEntity">{{table.entity_name}}</span>
+                        <span ng-if="!table.entity_name">{{table.name}}</span>
+                    </a>
+                </h4>
+            </li>
+        </ul>
+    </div>
+</section>

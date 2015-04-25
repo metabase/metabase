@@ -194,3 +194,7 @@
   left: 10px;
   color: var(--icon-color);
 }
+
+.NavTitle {
+    color: currentColor;
+}

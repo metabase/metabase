@@ -18,7 +18,7 @@
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
   [symb value :nillable]
-  (checkp-contains? (set (map first driver/available-drivers)) symb value))
+  (checkp-contains? (set (map name (keys driver/available-drivers))) symb value))
 
 (defendpoint GET "/"
   "Fetch all `Databases` for an `Org`."
@@ -38,6 +38,7 @@
    name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
+  ;; TODO - we should validate the contents of `details` here based on the engine
   (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db

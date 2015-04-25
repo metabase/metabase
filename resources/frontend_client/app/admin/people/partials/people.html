@@ -1,21 +1,32 @@
 <div class="wrapper">
+    <section class="PageHeader clearfix">
+        <a class="Button Button--primary float-right" cv-org-href="/admin/people/add">Add person</a>
+        <h2 class="PageTitle">People</h2>
+    </section>
 
-    <div ng-cloak>
-        <alert class="alert" ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" ng-animate=" 'animate' " cv-delayed-call="closeAlert($index)">{{alert.msg}}</alert>
-    </div>
-
-    <div class="py2 clearfix">
-        <a class="Button Button--primary float-right" cv-admin-create-user organization="currentOrg" callback="createdUser">Add teammate</a>
-        <h2>People</h2>
-    </div>
-
-    <ul class="bordered bg-white shadowed rounded">
-        <li class="List-item List-section clearfix" ng-repeat="perm in people">
-            <h4 class="inline-block">
-                <a class="link" cv-org-href="/admin/people/{{perm.user.id}}/modify">{{perm.user.common_name}}</a>
-            </h4>
-            <span class="User-perms inline-block" ng-if="perm.admin">Admin</span>
-            <span class="User-perms inline-block" ng-if="!perm.admin">Member</span>
-        </li>
-    </ul>
+    <section>
+        <table class="ContentTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="perm in people">
+                    <td>
+                        {{perm.user.common_name}} <span ng-show="perm.admin" class="AdminBadge">Admin</span>
+                    </td>
+                    <td class="Table-actions">
+                        <button class="Button" ng-click="toggle(perm.user.id)">
+                            <span ng-show="perm.admin">Revoke</span>
+                            <span ng-show="!perm.admin">Grant</span>
+                            admin
+                        </button>
+                        <button class="Button Button--danger" ng-click="delete(perm.user.id)" delete-confirm>Remove</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 </div>

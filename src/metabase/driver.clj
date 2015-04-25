@@ -13,12 +13,15 @@
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
-;; TODO - look this up at runtime
 (def ^:const available-drivers
-  "DB drivers that are available (pairs of `[namespace user-facing-name]`)."
-  [["h2" "H2"]
-   ["postgres" "PostgreSQL"]])
-
+  "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
+  ex: `:h2 {:id \"h2\" :name \"H2\"}`"
+  {:h2       {:id   "h2"
+              :name "H2"
+              :example "file:[filename]"}
+   :postgres {:id "postgres"
+              :name "Postgres"
+              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}})
 
 ;; ## Driver Lookup
 
