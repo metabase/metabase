@@ -1,32 +1,307 @@
 'use strict';
 /*global SelectionModule, DatabaseSelector*/
 
+// queryChangedCallbackFn (could we use angular events here?)
+// clearVisualizationFn
+
 var GuiQueryEditor = React.createClass({
     displayName: 'GuiQueryEditor',
     propTypes: {
-        query: React.PropTypes.object,
-        options: React.PropTypes.object,
-        tables: React.PropTypes.array,
-        selected_table_fields: React.PropTypes.object,
-        setDatabase: React.PropTypes.func,
-        addDimension: React.PropTypes.func.isRequired,
-        updateDimension: React.PropTypes.func.isRequired,
-        removeDimension: React.PropTypes.func.isRequired,
-        setAggregation: React.PropTypes.func.isRequired,
-        setAggregationTarget: React.PropTypes.func.isRequired,
-        aggregationComplete: React.PropTypes.func,
-        addFilter: React.PropTypes.func.isRequired,
-        updateFilter: React.PropTypes.func.isRequired,
-        removeFilter: React.PropTypes.func.isRequired,
-        canRun: React.PropTypes.bool,
-        isRunning: React.PropTypes.bool,
-        runFn: React.PropTypes.func.isRequired
+        databases: React.PropTypes.array.isRequired,
+        initialQuery: React.PropTypes.object,
+        getTablesFn: React.PropTypes.func.isRequired,
+        getTableDetailsFn: React.PropTypes.func.isRequired,
+        runFn: React.PropTypes.func.isRequired,
+
+        isRunning: React.PropTypes.bool
+    },
+    getInitialState: function() {
+        var newQueryTemplates = {
+            "native": {
+                type: "native",
+                native: {
+                    query: ""
+                }
+            }
+        };
+
+        return {
+            query: {
+                database: null,
+                type: "query",
+                query: {
+                    source_table: null,
+                    aggregation: [null],
+                    breakout: [],
+                    filter: []
+                }
+            }
+        };
+    },
+    componentDidMount: function() {
+        // load tables & schema information
+        var query = (this.props.initialQuery) ? this.props.initialQuery : this.state.query;
+
+        // if we don't have a db set then try to pick a default now
+        if (!query.database &&
+            this.props.databases &&
+            this.props.databases.length > 0) {
+            // set the database to the first db
+            // TODO: be smarter about this and use the most recent or popular db
+            query.database = this.props.databases[0].id;
+        }
+
+        this.setState({
+            query: query
+        });
+
+        // if we know our database then load related information
+        if (query.database) {
+            this.loadDatabaseInfo(query.database);
+        }
+
+        // if we also know our table then load it's related information
+        if (query.query.source_table) {
+            this.loadTableInfo(query.query.source_table);
+        }
+
+    },
+    componentDidUpdate: function() {
+        console.log('query=', this.state.query);
+        // TODO: notify parent that query changed
+    },
+    loadDatabaseInfo: function(databaseId) {
+        var component = this;
+
+        // get tables for db
+        this.props.getTablesFn(databaseId).then(function (tables) {
+            component.setState({
+                tables: tables
+            });
+        }, function (error) {
+            console.log('error getting tables', error);
+        });
+    },
+    loadTableInfo: function(tableId) {
+        var component = this;
+
+        // get table details
+        this.props.getTableDetailsFn(tableId).then(function (table) {
+            // Decorate with valid operators
+            // TODO: would be better if this was in our component
+            var updatedTable = component.props.markupTableFn(table);
+
+            component.setState({
+                options: updatedTable
+            });
+
+            // TODO: fix this
+            // if (this.state.query.query.aggregation.length > 1) {
+            //     this.getAggregationFields(queryBuilder.card.dataset_query.query.aggregation[0]);
+            // }
+        }, function (error) {
+            console.log('error getting table metadata', error);
+        });
+    },
+    setDatabase: function(databaseId) {
+        // check if this is the same db or not
+        if (databaseId !== this.state.query.database) {
+            // reset to a brand new query
+            var state = this.getInitialState();
+
+            // set our new database on the query
+            state.query.database = databaseId;
+
+            // clear all previous state
+            this.replaceState(state);
+
+            // load rest of the data we need
+            this.loadDatabaseInfo(databaseId);
+        }
+    },
+    setSourceTable: function(sourceTable) {
+        // this will either be the id or an object with an id
+        var tableId = sourceTable.id || sourceTable;
+        this.loadTableInfo(tableId);
+
+        var query = this.state.query;
+        query.query.source_table = tableId;
+
+        this.setState({
+            query: query
+        });
+    },
+    runQuery: function() {
+        // ewwwww.  we should do something better here
+        var cleanQuery = this.cleanFilters(this.state.query);
+
+        this.props.runFn(cleanQuery);
+
+        // TODO: isRunning / hasJustRun state
+    },
+    canAddDimensions: function() {
+        var MAX_DIMENSIONS = 2;
+        return (this.state.query.query.breakout.length < MAX_DIMENSIONS);
+    },
+    addDimension: function() {
+        var query = this.state.query;
+        query.query.breakout.push(null);
+
+        this.setState({
+            query: query
+        });
+    },
+    updateDimension: function(dimension, index) {
+        var query = this.state.query;
+        query.query.breakout[index] = dimension;
+
+        this.setState({
+            query: query
+        });
+    },
+    removeDimension: function(index) {
+        var query = this.state.query;
+        query.query.breakout.splice(index, 1);
+
+        this.setState({
+            query: query
+        });
+    },
+    aggregationComplete: function() {
+        var aggregationComplete = false;
+        if ((this.state.query.query.aggregation[0] !== null) &&
+            (this.state.query.query.aggregation[1] !== null)) {
+            aggregationComplete = true;
+        }
+        return aggregationComplete;
+    },
+    getAggregationFields: function(aggregation) {
+        // why are we doing this?
+        // todo - this could be a war crime
+        var query = this.state.query;
+        _.map(this.state.options.aggregation_options, function (option) {
+            if (option.short === aggregation) {
+                if (option.fields.length > 0) {
+                    if (this.state.query.query.aggregation.length == 1) {
+                        query.query.aggregation[1] = null;
+                    }
+                    //queryBuilder.aggregation_field_list = option.fields;
+                } else {
+                    query.query.aggregation.splice(1, 1);
+                }
+            }
+        });
+
+        this.setState({
+            query: query
+        });
+    },
+    setAggregation: function(aggregation) {
+        var query = this.state.query;
+        query.query.aggregation[0] = aggregation;
+
+        this.setState({
+            query: query
+        });
+
+        // TODO: hmmm, it's clear what this is meant for really
+        this.getAggregationFields(aggregation);
+    },
+    setAggregationTarget: function(target) {
+        // TODO: 'native' query support
+        queryBuilder.card.dataset_query.query.aggregation[1] = target;
+        queryBuilder.inform();
+    },
+    addFilter: function() {
+        // TODO: 'native' query support
+        var filter = queryBuilder.card.dataset_query.query.filter,
+            filterLength = filter.length;
+
+        // this gets run the second time you click the add filter button
+        if (filterLength === 3 && filter[0] !== 'AND') {
+            var newFilters = [];
+            newFilters.push(filter);
+            newFilters.unshift('AND');
+            newFilters.push([null, null, null]);
+            queryBuilder.card.dataset_query.query.filter = newFilters;
+            queryBuilder.inform();
+        } else if (filter[0] === 'AND') {
+            pushFilterTemplate(filterLength);
+            queryBuilder.inform();
+        } else {
+            pushFilterTemplate();
+            queryBuilder.inform();
+        }
+
+        function pushFilterTemplate(index) {
+            if (index) {
+                filter[index] = [null, null, null];
+            } else {
+                filter.push(null, null, null);
+            }
+        }
+    },
+    updateFilter: function(value, index, filterListIndex) {
+        // TODO: 'native' query support
+        var filters = queryBuilder.card.dataset_query.query.filter;
+        if (filterListIndex) {
+            filters[filterListIndex][index] = value;
+        } else {
+            filters[index] = value;
+        }
+
+        queryBuilder.inform();
+    },
+    removeFilter: function(index) {
+        // TODO: 'native' query support
+        var filters = queryBuilder.card.dataset_query.query.filter;
+
+        /*
+            HERE BE MORE DRAGONS
+
+            1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
+            instead of slicing off individual elements
+
+            2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
+            having added multiple so we should reset to [] in this case as well
+        */
+
+        if ((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
+            // just reset the array
+            queryBuilder.card.dataset_query.query.filter = [];
+        } else {
+            queryBuilder.card.dataset_query.query.filter.splice(index, 1);
+        }
+        queryBuilder.inform();
+    },
+    cleanFilters: function(dataset_query) {
+        var filters = dataset_query.query.filter,
+            cleanFilters = [];
+        // in instances where there's only one filter, the api expects just one array with the values
+        if (typeof(filters[0]) == 'object' && filters[0] != 'AND') {
+            for (var filter in filters[0]) {
+                cleanFilters.push(filters[0][filter]);
+            }
+            dataset_query.query.filter = cleanFilters;
+        }
+        // reset to initial state of filters if we've removed 'em all
+        if (filters.length === 1 && filters[0] === 'AND') {
+            dataset_query.filter = [];
+        }
+        return dataset_query;
+    },
+    canRun: function() {
+        var canRun = false;
+        if (this.aggregationComplete()) {
+            canRun = true;
+        }
+        return canRun;
     },
     _getFilterFields: function () {
         var filterFieldList = [];
-        if(this.props.selected_table_fields) {
-            for(var key in this.props.selected_table_fields.fields_lookup) {
-                filterFieldList.push(this.props.selected_table_fields.fields_lookup[key]);
+        if(this.state.options) {
+            for(var key in this.state.options.fields_lookup) {
+                filterFieldList.push(this.state.options.fields_lookup[key]);
             }
         }
         return filterFieldList;
@@ -69,15 +344,15 @@ var GuiQueryEditor = React.createClass({
                 value={value}
                 valueFields={valueFields}
                 index={index || 0}
-                remove={this.props.removeFilter}
-                updateFilter={this.props.updateFilter}
+                remove={this.removeFilter}
+                updateFilter={this.updateFilter}
             />
         );
     },
     render: function () {
 
         /* @souce table */
-        var sourceTableSelection = this.props.query.source_table,
+        var sourceTableSelection = this.state.query.query.source_table,
             sourceTableListOpen = true;
 
         if(sourceTableSelection) {
@@ -86,7 +361,7 @@ var GuiQueryEditor = React.createClass({
 
         /* @aggregation table */
         var aggregationSelectionHtml,
-            aggregationSelection = this.props.query.aggregation[0],
+            aggregationSelection = this.state.query.query.aggregation[0],
             aggregationListOpen = true;
 
         if(aggregationSelection) {
@@ -101,18 +376,20 @@ var GuiQueryEditor = React.createClass({
             addDimensionButton,
             addDimensionButtonText;
 
-        if(this.props.aggregationComplete() && this.props.options.breakout_options.fields.length > 0) {
+        if (this.aggregationComplete() &&
+            this.state.options &&
+            this.state.options.breakout_options.fields.length > 0) {
 
-            addDimensionButtonText = (this.props.query.breakout.length < 1) ? "Grouped by" : "and";
+            addDimensionButtonText = (this.state.query.query.breakout.length < 1) ? "Grouped by" : "and";
 
-            if(this.props.query.breakout.length < 2) {
+            if(this.state.query.query.breakout.length < 2) {
                 addDimensionButton = (
-                    <a className="Button" onClick={this.props.addDimension}>{addDimensionButtonText}</a>
+                    <a className="Button" onClick={this.addDimension}>{addDimensionButtonText}</a>
                 );
             }
 
-            if(this.props.options.breakout_options) {
-                dimensionList = this.props.query.breakout.map(function (breakout, index) {
+            if(this.state.options.breakout_options) {
+                dimensionList = this.state.query.query.breakout.map(function (breakout, index) {
                         var  open;
                         if(breakout === null) {
                             open = true;
@@ -123,13 +400,13 @@ var GuiQueryEditor = React.createClass({
                                 <SelectionModule
                                     placeholder='What part of your data?'
                                     display='1'
-                                    items={this.props.options.breakout_options.fields}
+                                    items={this.state.options.breakout_options.fields}
                                     selectedValue={breakout}
                                     selectedKey='0'
                                     index={index}
                                     isInitiallyOpen={open}
-                                    action={this.props.updateDimension}
-                                    remove={this.props.removeDimension}
+                                    action={this.updateDimension}
+                                    remove={this.removeDimension}
                                 />
                             </div>
                         );
@@ -139,7 +416,7 @@ var GuiQueryEditor = React.createClass({
 
         var dimensionLabel;
 
-        if(this.props.query.breakout.length > 0) {
+        if(this.state.query.query.breakout.length > 0) {
             dimensionLabel = (
                 <div className="text-grey-3 inline-block mx2">
                     Grouped by:
@@ -148,33 +425,33 @@ var GuiQueryEditor = React.createClass({
         }
 
 
-        if(this.props.options) {
+        if(this.state.options) {
             aggregationSelectionHtml = (
                 <SelectionModule
                     placeholder='And I want to see...'
-                    items={this.props.options.aggregation_options}
+                    items={this.state.options.aggregation_options}
                     display='name'
                     selectedValue={aggregationSelection}
                     selectedKey='short'
                     isInitiallyOpen={aggregationListOpen}
-                    action={this.props.setAggregation}
+                    action={this.setAggregation}
                 />
             );
 
             // if there's a value in the second aggregation slot
-            if(this.props.query.aggregation.length > 1) {
-                if(this.props.query.aggregation[1] !== null) {
+            if(this.state.query.query.aggregation.length > 1) {
+                if(this.state.query.query.aggregation[1] !== null) {
                     aggregationTargetListOpen = false;
                 }
                 aggregationTargetHtml = (
                     <SelectionModule
                         placeholder='field named...'
-                        items={this.props.aggregationFieldList[0]}
+                        items={this.aggregationFieldList[0]}
                         display='1'
-                        selectedValue={this.props.query.aggregation[1]}
+                        selectedValue={this.state.query.query.aggregation[1]}
                         selectedKey='0'
                         isInitiallyOpen={aggregationTargetListOpen}
-                        action={this.props.setAggregationTarget}
+                        action={this.setAggregationTarget}
                     />
                 );
             }
@@ -182,18 +459,18 @@ var GuiQueryEditor = React.createClass({
 
         var querySelection;
         // tables are provided if we have a selected database
-        if(this.props.tables) {
+        if(this.state.tables) {
             querySelection = (
                 <div>
                     <div className="Metric-sourceTable inline-block">
                         <SelectionModule
                             placeholder='Lets start with...'
-                            items={this.props.tables}
+                            items={this.state.tables}
                             display='name'
-                            selectedValue={this.props.query.source_table}
+                            selectedValue={this.state.query.query.source_table}
                             selectedKey='id'
                             isInitiallyOpen={sourceTableListOpen}
-                            action={this.props.setSourceTable}
+                            action={this.setSourceTable}
                         />
                     </div>
 
@@ -209,12 +486,12 @@ var GuiQueryEditor = React.createClass({
         }
 
         var dbSelector;
-        if(this.props.dbList && this.props.dbList.length > 1) {
+        if(this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
                 <DatabaseSelector
-                    databases={this.props.dbList}
+                    databases={this.props.databases}
                     setDatabase={this.props.setDatabase}
-                    currentDatabaseId={this.props.db}
+                    currentDatabaseId={this.state.query.database}
                 />
             );
         }
@@ -224,7 +501,7 @@ var GuiQueryEditor = React.createClass({
             filterHtml;
 
         // if we have filters...
-        var filters = this.props.query.filter;
+        var filters = this.state.query.query.filter;
         if(filters.length != 0) {
             // and if we have multiple filters, map through and return a filter widget
             if(filters[0] == 'AND') {
@@ -244,7 +521,7 @@ var GuiQueryEditor = React.createClass({
 
         filterHtml = (
             <div className="clearfix">
-                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.props.addFilter.bind(this)}>
+                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.addFilter.bind(this)}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
                     </svg>
@@ -268,9 +545,9 @@ var GuiQueryEditor = React.createClass({
                 </div>
                 <div>
                     <RunButton
-                        canRun={this.props.canRun}
+                        canRun={this.canRun()}
                         isRunning={this.props.isRunning}
-                        runFn={this.props.runFn}
+                        runFn={this.runQuery}
                     />
                 </div>
             </div>

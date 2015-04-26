@@ -4,21 +4,25 @@
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
-        result: React.PropTypes.object
+        card: React.PropTypes.object,
+        result: React.PropTypes.object,
+        setDisplayFn: React.PropTypes.func.isRequired
     },
     getInitialState: function () {
         return {
-            type: 'table',
+            type: "table",
             chartId: Math.floor((Math.random() * 698754) + 1)
         };
     },
     componentDidMount: function () {
-        if (this.state.type !== 'table') {
-            CardRenderer[this.state.type](this.state.chartId, this.props.card, this.props.result.data);
-        }
+        this.renderChartIfNeeded();
     },
     componentDidUpdate: function () {
-        if (this.state.type !== 'table') {
+        this.renderChartIfNeeded();
+    },
+    renderChartIfNeeded: function () {
+        if (this.state.type !== "table") {
+            // TODO: it would be nicer if this didn't require the whole card
             CardRenderer[this.state.type](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
@@ -26,7 +30,8 @@ var QueryVisualization = React.createClass({
         this.setState({
             type: type
         });
-        this.props.setDisplay(type);
+        // notify our parent about our state change
+        this.props.setDisplayFn(type);
     },
     render: function () {
         if(!this.props.result) {

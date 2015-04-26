@@ -13,7 +13,7 @@ var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
-        save: React.PropTypes.func.isRequired,
+        saveFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string
 
@@ -51,7 +51,7 @@ var QueryHeader = React.createClass({
                 <Saver
                     card={this.props.card}
                     hasChanged={false}
-                    save={this.props.save.bind(this.props.model)}
+                    save={this.props.saveFn}
                 />
                 {downloadButton}
                 <AddToDashboard
