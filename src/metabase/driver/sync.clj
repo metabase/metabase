@@ -12,8 +12,6 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
-(set! *warn-on-reflection* true)
-
 (declare mark-category-field!
          mark-no-preview-display-field!
          mark-url-field!
@@ -85,27 +83,28 @@
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
   [driver active-tables]
-  ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a *ridiculous* number of DB calls each
+  ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
   ;; going to block while they run for the time being. (TODO - fix this)
   (log/debug (color/green "Updating table row counts..."))
-  (u/pdoseq [table active-tables]
+  (doseq [table active-tables]
     (u/try-apply update-table-row-count! table))
 
-  ;; Next, create new Fields / mark inactive Fields / mark PKs for each table (in parallel)
+  ;; Next, create new Fields / mark inactive Fields / mark PKs for each table
+  ;; (TODO - this was originally done in parallel but it was only marginally faster, and harder to debug. Should we switch back at some point?)
   (log/debug (color/green "Syncing active Fields + PKs..."))
-  (u/pdoseq [table active-tables]
+  (doseq [table active-tables]
     (u/try-apply sync-table-active-fields-and-pks! driver table))
 
   ;; Once that's finished, we can sync FKs
   (log/debug (color/green "Syncing FKs..."))
-  (u/pdoseq [table active-tables]
+  (doseq [table active-tables]
     (u/try-apply sync-table-fks! driver table))
 
   ;; After that, we can sync the metadata for all active Fields
   ;; Now sync all active fields
   (let [tables-count (count active-tables)
         finished-tables-count (atom 0)]
-    (u/pdoseq [table active-tables]
+    (doseq [table active-tables]
       (log/debug (color/green (format "Syncing metadata for %s.%s..." (:name @(:db table)) (:name table))))
       (sync-table-fields-metadata! driver table)
       (swap! finished-tables-count inc)

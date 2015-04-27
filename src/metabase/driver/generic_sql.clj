@@ -48,8 +48,8 @@
            jdbc/result-set-seq
            (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
            (map (fn [{:keys [column_name type_name]}]
-                  {column_name (column->base-type (or (keyword type_name)
-                                                      :UnknownField))}))
+                  {column_name (or (column->base-type (keyword type_name))
+                                   :UnknownField)}))
            (into {}))))
 
   (table-pks [_ table]
@@ -87,7 +87,7 @@
           total-non-null-count (-> (select korma-table
                                            (aggregate (count :*) :count)
                                            (where {(keyword (:name field)) [not= nil]})) first :count)]
-      (if (= total-non-null-count 0) 0
+      (if (= total-non-null-count 0) 0.0
           (let [url-count (-> (select korma-table
                                       (aggregate (count :*) :count)
                                       (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)]
