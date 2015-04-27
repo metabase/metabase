@@ -355,8 +355,10 @@
          :row_count 10,
          :data {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
                 :columns ["USER_ID" "VENUE_ID" "count"],
-                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
-                       {:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
+                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil,
+                        :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
+                       {:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil,
+                        :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
                        {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}}
   (driver/process-query {:type :query
                          :database @db-id

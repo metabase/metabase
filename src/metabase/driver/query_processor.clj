@@ -1,6 +1,5 @@
 (ns metabase.driver.query-processor
-  (:require [clojure.set :as set]
-            [colorize.core :as color]))
+  "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations.")
 
 (declare add-implicit-breakout-order-by
          preprocess-structured
@@ -26,7 +25,7 @@
 (def ^:const clause->empty-forms
   "Clause values that should be considered empty and removed during preprocessing."
   {:breakout #{[nil]}
-   :filter #{[nil nil]}})
+   :filter   #{[nil nil]}})
 
 (defn remove-empty-clauses
   "Remove all QP clauses whose value is:
@@ -50,10 +49,11 @@
   "Field IDs specified in `breakout` should add an implicit ascending `order_by` subclause *unless* that field is *explicitly* referenced in `order_by`."
   [{breakout-field-ids :breakout order-by-subclauses :order_by :as query}]
   (let [order-by-field-ids (set (map first order-by-subclauses))
-        implicit-breakout-order-by-field-ids (set/difference (set breakout-field-ids) order-by-field-ids)]
+        implicit-breakout-order-by-field-ids (filter (partial (complement contains?) order-by-field-ids)
+                                                     breakout-field-ids)]
     (if-not (seq implicit-breakout-order-by-field-ids) query
             (->> implicit-breakout-order-by-field-ids
-                 (map (fn [field-id]
-                        [field-id "ascending"]))
-                 (apply conj (or order-by-subclauses []))
+                 (mapv (fn [field-id]
+                         [field-id "ascending"]))
+                 ;; (apply conj (or order-by-subclauses []))
                  (assoc query :order_by)))))

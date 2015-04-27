@@ -40,10 +40,12 @@
    (fn [engine]
      {:pre [(keyword? engine)]}
      (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
+       (log/debug (format "Loading metabase.driver.%s..." (name engine)))
        (require ns-symb)
        (let [driver (some-> (ns-resolve ns-symb 'driver)
                             var-get)]
          (assert driver)
+         (log/debug "Ok.")
          driver)))))
 
 ;; Can the type of a DB change?
