@@ -10,18 +10,15 @@
                                          [util :refer :all])))
 
 (defrecord SqlDriver [column->base-type
-                     connection-details->connection-spec
-                     database->connection-details
-                     sql-string-length-fn]
+                      connection-details->connection-spec
+                      database->connection-details
+                      sql-string-length-fn]
   IDriver
   ;; Connection
   (can-connect? [_ database]
-    (try (connection/test-connection (-> database
-                                         database->connection-details
-                                         connection-details->connection-spec))
-         (catch Throwable e
-           (log/error "Failed to connect to database:" (.getMessage e))
-           false)))
+    (connection/test-connection (-> database
+                                    database->connection-details
+                                    connection-details->connection-spec)))
 
   (can-connect-with-details? [_ details]
     (connection/test-connection (connection-details->connection-spec details)))

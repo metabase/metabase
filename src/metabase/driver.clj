@@ -83,14 +83,22 @@
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
-  (i/can-connect? (engine->driver (:engine database)) database))
+  (try
+    (i/can-connect? (engine->driver (:engine database)) database)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      false)))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map]
-  (i/can-connect-with-details? (engine->driver engine) details-map))
+  (try
+    (i/can-connect-with-details? (engine->driver engine) details-map)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      false)))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
