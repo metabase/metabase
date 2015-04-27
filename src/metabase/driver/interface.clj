@@ -35,7 +35,9 @@
 
   ;; Query Processing
   (process-query [this query]
-    "Process a native or structured query."))
+    "Process a native or structured query.
+     (Don't use this directly; instead, use `metabase.driver/process-query`,
+     which does things like preprocessing before calling the appropriate implementation.)"))
 
 
 ;; ## ISyncDriverTableFKs Protocol (Optional)

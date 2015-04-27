@@ -6,6 +6,7 @@
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
+                             [query-processor :as qp]
                              [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
@@ -39,10 +40,12 @@
    (fn [engine]
      {:pre [(keyword? engine)]}
      (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
+       (log/debug (format "Loading metabase.driver.%s..." (name engine)))
        (require ns-symb)
        (let [driver (some-> (ns-resolve ns-symb 'driver)
                             var-get)]
          (assert driver)
+         (log/debug "Ok.")
          driver)))))
 
 ;; Can the type of a DB change?
@@ -86,7 +89,9 @@
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (i/process-query (database-id->driver (:database query)) query))
+  (binding [qp/*query* query]
+    (i/process-query (database-id->driver (:database query))
+                     (qp/preprocess query))))
 
 
 ;; ## Query Execution Stuff
