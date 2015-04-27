@@ -4,13 +4,12 @@
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
-        card: React.PropTypes.object,
+        card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired
     },
     getInitialState: function () {
         return {
-            type: "table",
             chartId: Math.floor((Math.random() * 698754) + 1)
         };
     },
@@ -21,17 +20,14 @@ var QueryVisualization = React.createClass({
         this.renderChartIfNeeded();
     },
     renderChartIfNeeded: function () {
-        if (this.state.type !== "table") {
+        if (this.props.card.display !== "table") {
             // TODO: it would be nicer if this didn't require the whole card
-            CardRenderer[this.state.type](this.state.chartId, this.props.card, this.props.result.data);
+            CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
-    _changeType: function (type) {
-        this.setState({
-            type: type
-        });
-        // notify our parent about our state change
-        this.props.setDisplayFn(type);
+    setDisplay: function (display) {
+        // notify our parent about our change
+        this.props.setDisplayFn(display);
     },
     render: function () {
         if(!this.props.result) {
@@ -47,7 +43,7 @@ var QueryVisualization = React.createClass({
             innerId;
 
         if(this.props.result && this.props.result.data) {
-            if(this.state.type === 'table') {
+            if(this.props.card.display === "table") {
                 tableRows = this.props.result.data.rows.map(function (row) {
                     var rowCols = row.map(function (data) {
                         return (<td>{data.toString()}</td>);
@@ -81,9 +77,9 @@ var QueryVisualization = React.createClass({
         }
 
         var viz;
-        if(this.state.type != 'table') {
+        if(this.props.card.display !== "table") {
             viz = (
-                <div class="Card--{this.state.type} Card-outer px1" id={this.state.chartId}>
+                <div class="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
                     <div id={titleId} class="text-centered"></div>
                     <div id={innerId} class="card-inner"></div>
                 </div>
@@ -107,10 +103,10 @@ var QueryVisualization = React.createClass({
             if(this.props.result) {
                 var buttonClasses = cx({
                     'Button': true,
-                    'Button--primary' : (type == this.state.type)
+                    'Button--primary' : (type === this.props.card.display)
                 });
                 return (
-                    <a className={buttonClasses} href="#" onClick={this._changeType.bind(null, type)}>{type}</a>
+                    <a className={buttonClasses} href="#" onClick={this.setDisplay.bind(null, type)}>{type}</a>
                 );
             } else {
                 return false;

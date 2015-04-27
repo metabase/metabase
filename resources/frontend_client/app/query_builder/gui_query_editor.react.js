@@ -1,7 +1,6 @@
 'use strict';
 /*global SelectionModule, DatabaseSelector*/
 
-// queryChangedCallbackFn (could we use angular events here?)
 // clearVisualizationFn
 
 var GuiQueryEditor = React.createClass({
@@ -12,19 +11,11 @@ var GuiQueryEditor = React.createClass({
         getTablesFn: React.PropTypes.func.isRequired,
         getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
+        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
 
         isRunning: React.PropTypes.bool
     },
     getInitialState: function() {
-        var newQueryTemplates = {
-            "native": {
-                type: "native",
-                native: {
-                    query: ""
-                }
-            }
-        };
-
         return {
             query: {
                 database: null,
@@ -39,7 +30,6 @@ var GuiQueryEditor = React.createClass({
         };
     },
     componentDidMount: function() {
-        // load tables & schema information
         var query = (this.props.initialQuery) ? this.props.initialQuery : this.state.query;
 
         // if we don't have a db set then try to pick a default now
@@ -51,9 +41,7 @@ var GuiQueryEditor = React.createClass({
             query.database = this.props.databases[0].id;
         }
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
 
         // if we know our database then load related information
         if (query.database) {
@@ -69,6 +57,17 @@ var GuiQueryEditor = React.createClass({
     componentDidUpdate: function() {
         console.log('query=', this.state.query);
         // TODO: notify parent that query changed
+    },
+    setQuery: function(dataset_query, notify) {
+        var doNotify = (notify !== undefined) ? notify : false;
+
+        this.setState({
+            query: dataset_query
+        });
+
+        if (doNotify) {
+            this.props.notifyQueryModifiedFn(dataset_query);
+        }
     },
     loadDatabaseInfo: function(databaseId) {
         var component = this;
@@ -115,6 +114,9 @@ var GuiQueryEditor = React.createClass({
             // clear all previous state
             this.replaceState(state);
 
+            // notify parent that we've started over
+            this.props.notifyQueryModifiedFn(state.query);
+
             // load rest of the data we need
             this.loadDatabaseInfo(databaseId);
         }
@@ -127,9 +129,7 @@ var GuiQueryEditor = React.createClass({
         var query = this.state.query;
         query.query.source_table = tableId;
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
     },
     runQuery: function() {
         // ewwwww.  we should do something better here
@@ -147,25 +147,19 @@ var GuiQueryEditor = React.createClass({
         var query = this.state.query;
         query.query.breakout.push(null);
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
     },
     updateDimension: function(dimension, index) {
         var query = this.state.query;
         query.query.breakout[index] = dimension;
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
     },
     removeDimension: function(index) {
         var query = this.state.query;
         query.query.breakout.splice(index, 1);
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
     },
     aggregationComplete: function() {
         var aggregationComplete = false;
@@ -192,17 +186,13 @@ var GuiQueryEditor = React.createClass({
             }
         });
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
     },
     setAggregation: function(aggregation) {
         var query = this.state.query;
         query.query.aggregation[0] = aggregation;
 
-        this.setState({
-            query: query
-        });
+        this.setQuery(query, true);
 
         // TODO: hmmm, it's clear what this is meant for really
         this.getAggregationFields(aggregation);

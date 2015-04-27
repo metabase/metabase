@@ -1,7 +1,5 @@
 'use strict';
 
-var PureRenderMixin = React.addons.PureRenderMixin;
-
 // Title - saved card title, otherwise static default
 // Edit - only shown after Save
 // Save - only shown after Run
@@ -13,6 +11,7 @@ var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
+        queryType: React.PropTypes.string,
         saveFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string
@@ -21,9 +20,7 @@ var QueryHeader = React.createClass({
 
         // :: Query Mode Toggle
         // allow native queries (available types list?)
-        // setType() function
     },
-    mixins: [PureRenderMixin],
     render: function () {
         var title = this.props.card.name || "What would you like to know?",
             editButton,

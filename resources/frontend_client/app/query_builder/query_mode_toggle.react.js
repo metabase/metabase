@@ -7,10 +7,6 @@ var QueryModeToggle = React.createClass({
         card: React.PropTypes.object.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired
     },
-    mixins: [],
-    getInitialState: function () {
-        return {};
-    },
     render: function () {
         // only render if the card is NEW && unmodified
         if (this.props.card.id !== undefined ||

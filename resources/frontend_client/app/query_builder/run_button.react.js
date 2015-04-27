@@ -7,13 +7,16 @@ var RunButton = React.createClass({
         isRunning: React.PropTypes.bool.isRequired,
         runFn: React.PropTypes.func.isRequired
     },
+    run: function() {
+
+    },
     render: function () {
         // default state is to not render anything if we can't actually run
         var runButton = false;
         if (this.props.canRun) {
             var runButtonText = (this.props.isRunning) ? "Loading..." : "Find out!";
             runButton = (
-                <button className="Button Button--primary" onClick={this.props.runFn.bind(this)}>{runButtonText}</button>
+                <button className="Button Button--primary" onClick={this.props.runFn}>{runButtonText}</button>
             );
         }
 

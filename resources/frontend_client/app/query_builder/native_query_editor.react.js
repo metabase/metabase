@@ -1,181 +1,65 @@
 'use strict';
 /*global SelectionModule, DatabaseSelector*/
 
-// ACE Editor
-// Database Selector
-// run button
-// expand / collapse toggle
-
 var NativeQueryEditor = React.createClass({
     displayName: 'NativeQueryEditor',
     propTypes: {
-        addDimension: React.PropTypes.func.isRequired,
-        aggregationComplete: React.PropTypes.func,
-        options: React.PropTypes.object,
-        query: React.PropTypes.object,
-        removeDimension: React.PropTypes.func.isRequired,
-        setAggregation: React.PropTypes.func.isRequired,
-        setAggregationTarget: React.PropTypes.func.isRequired,
-        setDatabase: React.PropTypes.func,
-        tables: React.PropTypes.array,
-        updateDimension: React.PropTypes.func.isRequired,
+        databases: React.PropTypes.array.isRequired,
+        defaultQuery: React.PropTypes.object.isRequired,
+        query: React.PropTypes.object.isRequired,
+        runFn: React.PropTypes.func.isRequired,
+        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
+        isRunning: React.PropTypes.bool.isRequired
+    },
+    setDatabase: function(databaseId) {
+        // check if this is the same db or not
+        if (databaseId !== this.props.query.database) {
+            // reset to a brand new query
+            var query = this.props.defaultQuery;
+
+            // set our new database on the query
+            query.database = databaseId;
+
+            // notify parent that we've started over
+            this.props.notifyQueryModifiedFn(query);
+        }
+    },
+    canRunQuery: function() {
+        return (this.props.query.database !== undefined && this.props.query.native.query !== "");
+    },
+    runQuery: function() {
+        this.props.runFn(this.props.query);
+    },
+    onChange: function(event) {
+        var query = this.props.query;
+        query.native.query = event.target.value;
+        this.props.notifyQueryModifiedFn(query);
     },
     render: function () {
-
-        /* @souce table */
-        var sourceTableSelection = this.props.query.source_table,
-            sourceTableListOpen = true;
-
-        if(sourceTableSelection) {
-            sourceTableListOpen = false;
-        }
-
-        /* @aggregation table */
-        var aggregationSelectionHtml,
-            aggregationSelection = this.props.query.aggregation[0],
-            aggregationListOpen = true;
-
-        if(aggregationSelection) {
-            aggregationListOpen = false;
-        }
-
-        /* @aggregation target */
-        var aggregationTargetHtml,
-            aggregationTargetListOpen = true;
-
-        var dimensionList,
-            addDimensionButton,
-            addDimensionButtonText;
-
-        if(this.props.aggregationComplete() && this.props.options.breakout_options.fields.length > 0) {
-
-            addDimensionButtonText = (this.props.query.breakout.length < 1) ? "Grouped by" : "and";
-
-            if(this.props.query.breakout.length < 2) {
-                addDimensionButton = (
-                    <a className="Button" onClick={this.props.addDimension}>{addDimensionButtonText}</a>
-                );
-            }
-
-            if(this.props.options.breakout_options) {
-                dimensionList = this.props.query.breakout.map(function (breakout, index) {
-                        var  open;
-                        if(breakout === null) {
-                            open = true;
-                        }
-
-                        return (
-                            <div className="DimensionList inline-block">
-                                <SelectionModule
-                                    placeholder='What part of your data?'
-                                    display='1'
-                                    items={this.props.options.breakout_options.fields}
-                                    selectedValue={breakout}
-                                    selectedKey='0'
-                                    index={index}
-                                    isInitiallyOpen={open}
-                                    action={this.props.updateDimension}
-                                    remove={this.props.removeDimension}
-                                />
-                            </div>
-                        );
-                }.bind(this));
-            }
-        }
-
-        var dimensionLabel;
-
-        if(this.props.query.breakout.length > 0) {
-            dimensionLabel = (
-                <div className="text-grey-3 inline-block mx2">
-                    Grouped by:
-                </div>
-            );
-        }
-
-
-        if(this.props.options) {
-            aggregationSelectionHtml = (
-                <SelectionModule
-                    placeholder='And I want to see...'
-                    items={this.props.options.aggregation_options}
-                    display='name'
-                    selectedValue={aggregationSelection}
-                    selectedKey='short'
-                    isInitiallyOpen={aggregationListOpen}
-                    action={this.props.setAggregation}
-                />
-            );
-
-            // if there's a value in the second aggregation slot
-            if(this.props.query.aggregation.length > 1) {
-                if(this.props.query.aggregation[1] !== null) {
-                    aggregationTargetListOpen = false;
-                }
-                aggregationTargetHtml = (
-                    <SelectionModule
-                        placeholder='field named...'
-                        items={this.props.aggregationFieldList[0]}
-                        display='1'
-                        selectedValue={this.props.query.aggregation[1]}
-                        selectedKey='0'
-                        isInitiallyOpen={aggregationTargetListOpen}
-                        action={this.props.setAggregationTarget}
-                    />
-                );
-            }
-        }
-
-        var querySelection;
-        // tables are provided if we have a selected database
-        if(this.props.tables) {
-            querySelection = (
-                <div>
-                    <div className="Metric-sourceTable inline-block">
-                        <SelectionModule
-                            placeholder='Lets start with...'
-                            items={this.props.tables}
-                            display='name'
-                            selectedValue={this.props.query.source_table}
-                            selectedKey='id'
-                            isInitiallyOpen={sourceTableListOpen}
-                            action={this.props.setSourceTable}
-                        />
-                    </div>
-
-                    <div className="inline-block mx2">
-                        {aggregationSelectionHtml}
-                        {aggregationTargetHtml}
-                    </div>
-                    {dimensionLabel}
-                    {dimensionList}
-                    {addDimensionButton}
-                </div>
-            );
-        }
-
+        //console.log(this.props.query);
+        // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
-        if(this.props.dbList && this.props.dbList.length > 1) {
+        if(this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
                 <DatabaseSelector
-                    databases={this.props.dbList}
-                    setDatabase={this.props.setDatabase}
-                    currentDatabaseId={this.props.db}
+                    databases={this.props.databases}
+                    setDatabase={this.setDatabase}
+                    currentDatabaseId={this.props.query.database}
                 />
             );
         }
 
         return (
             <div>
-                <div className="QueryBar">
-                    <div className="inline-block">
-                        {dbSelector}
-                    </div>
-                    <div className="inline-block">
-                        {querySelection}
-                    </div>
+                <textarea ref="sql" defaultValue={this.props.query.native.query} onChange={this.onChange}></textarea>
+                <div>
+                    {dbSelector}
+                    <RunButton
+                        canRun={this.canRunQuery()}
+                        isRunning={this.props.isRunning}
+                        runFn={this.runQuery}
+                    />
                 </div>
-
             </div>
         );
     }
