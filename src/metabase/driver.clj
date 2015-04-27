@@ -6,6 +6,7 @@
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
+                             [query-processor :as qp]
                              [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
@@ -86,7 +87,9 @@
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (i/process-query (database-id->driver (:database query)) query))
+  (binding [qp/*query* query]
+    (i/process-query (database-id->driver (:database query))
+                     (qp/preprocess query))))
 
 
 ;; ## Query Execution Stuff
