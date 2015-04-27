@@ -13,10 +13,6 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :refer :all])))
 
-(def test-db (delay (sel :one Database :id 67)))
-(def test-table {:name "zips"
-                 :db test-db})
-
 (declare driver)
 
 ;; ## with-mongo-connection
