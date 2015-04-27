@@ -89,7 +89,7 @@
 (def ^:private ssl-supported?
   "Determine wheter we can make an SSL connection.
    Do that by checking whether we can connect with SSL params assoced with DETAILS-MAP.
-  This call is memoized."
+   This call is memoized."
   (memoize
    (fn [details-map]
      (binding [*is-determining-ssl-support* true]
