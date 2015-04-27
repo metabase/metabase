@@ -14,6 +14,8 @@
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
+;; ## Constants
+
 (def ^:const available-drivers
   "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
   ex: `:h2 {:id \"h2\" :name \"H2\"}`"
@@ -22,7 +24,23 @@
               :example "file:[filename]"}
    :postgres {:id "postgres"
               :name "Postgres"
-              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}})
+              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}
+   :mongo    {:id "mongo"
+              :name "MongoDB"
+              :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
+
+(def ^:const class->base-type
+  "Map of classes returned from DB call to metabase.models.field/base-types"
+  {java.lang.Boolean    :BooleanField
+   java.lang.Double     :FloatField
+   java.lang.Float      :FloatField
+   java.lang.Integer    :IntegerField
+   java.lang.Long       :IntegerField
+   java.lang.String     :TextField
+   java.math.BigDecimal :DecimalField
+   java.math.BigInteger :BigIntegerField
+   java.sql.Date        :DateField
+   java.sql.Timestamp   :DateTimeField})
 
 ;; ## Driver Lookup
 
@@ -207,7 +225,6 @@
       ;; at this point we've saved and we just need to massage things into our final response format
       (select-keys [:id :uuid])
       (merge query-result)))
-
 
 (defn save-query-execution
   [{:keys [id] :as query-execution}]
