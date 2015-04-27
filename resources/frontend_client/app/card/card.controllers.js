@@ -111,33 +111,37 @@ CardControllers.controller('CardDetail', [
             return false;
         };
 
+        var queryResult = null,
+            databases = null,
+            isRunning = false,
+            card = {
+                name: null,
+                public_perms: 0,
+                display: "table",
+                dataset_query: angular.copy(newQueryTemplates.query),
+                isDirty: cardIsDirty
+            };
 
         // =====  REACT component models
 
         var headerModel = {
-            card: {
-                name: null,
-                public_perms: 0,
-                display: "table",
-                dataset_query: null,
-                isDirty: cardIsDirty
-            },
+            card: null,
             saveFn: function(settings) {
-                headerModel.card.name = settings.name;
-                headerModel.card.description = settings.description;
+                card.name = settings.name;
+                card.description = settings.description;
                 // TODO: set permissions here
 
-                if (headerModel.card.id !== undefined) {
-                    Card.update(headerModel.card, function (updatedCard) {
+                if (card.id !== undefined) {
+                    Card.update(card, function (updatedCard) {
                         // TODO: any reason to overwrite card and re-render?
                     }, function (error) {
                         console.log('error updating card', error);
                     });
                 } else {
                     // set the organization
-                    headerModel.card.organization = $scope.currentOrg.id;
+                    card.organization = $scope.currentOrg.id;
 
-                    Card.create(headerModel.card, function (newCard) {
+                    Card.create(card, function (newCard) {
                         $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
                     }, function (error) {
                         console.log('error creating card', error);
@@ -145,19 +149,19 @@ CardControllers.controller('CardDetail', [
                 }
             },
             setPermissions: function(permission) {
-                headerModel.card.public_perms = permission;
+                card.public_perms = permission;
                 renderHeader();
             },
             setQueryModeFn: function(mode) {
                 var queryTemplate = angular.copy(newQueryTemplates[mode]);
-                if ((!headerModel.card.dataset_query.type ||
-                    mode !== headerModel.card.dataset_query.type) &&
+                if ((!card.dataset_query.type ||
+                    mode !== card.dataset_query.type) &&
                     queryTemplate) {
 
                     // carry over currently selected database to new query, if possible
                     // otherwise try to set the database to a sensible default
-                    if (headerModel.card.dataset_query.database !== null) {
-                        queryTemplate.database = headerModel.card.dataset_query.database;
+                    if (card.dataset_query.database !== null) {
+                        queryTemplate.database = card.dataset_query.database;
                     } else if (editorModel.databases && editorModel.databases.length > 0) {
                         // TODO: be smarter about this and use the most recent or popular db
                         queryTemplate.database = editorModel.databases[0].id;
@@ -165,13 +169,12 @@ CardControllers.controller('CardDetail', [
 
 
                     // apply the new query to our card
-                    headerModel.card.dataset_query = queryTemplate;
-                    editorModel.defaultQuery = queryTemplate;
+                    card.dataset_query = queryTemplate;
 
                     // clear out any visualization and reset to defaults
-                    visualizationModel.result = null;
-                    headerModel.card.display = "table";
-                    headerModel.card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, headerModel.card.display);
+                    queryResult = null;
+                    card.display = "table";
+                    card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, card.display);
 
                     renderAll();
                 }
@@ -209,13 +212,13 @@ CardControllers.controller('CardDetail', [
                 return QueryUtils.populateQueryOptions(updatedTable);
             },
             runFn: function(dataset_query) {
-                editorModel.isRunning = true;
+                isRunning = true;
                 renderAll();
 
                 // make our api call
                 Metabase.dataset(dataset_query, function (result) {
-                    visualizationModel.result = result;
-                    editorModel.isRunning = false;
+                    queryResult = result;
+                    isRunning = false;
                     renderAll();
 
                 }, function (error) {
@@ -224,7 +227,7 @@ CardControllers.controller('CardDetail', [
             },
             notifyQueryModifiedFn: function(dataset_query) {
                 // we are being told that the query has been modified
-                headerModel.card.dataset_query = dataset_query;
+                card.dataset_query = dataset_query;
                 renderAll();
             }
         };
@@ -234,11 +237,9 @@ CardControllers.controller('CardDetail', [
             result: null,
             setDisplayFn: function(type) {
                 // change the card visualization type and refresh chart settings
-                headerModel.card.display = type;
-                headerModel.card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
-                // TODO: ideally this wouldn't be necessary
-                //       to fix this we'd need the component to not need the card
-                renderVisualization();
+                card.display = type;
+                card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
+                renderAll();
             }
         };
 
@@ -246,14 +247,21 @@ CardControllers.controller('CardDetail', [
         // =====  REACT render functions
 
         var renderHeader = function() {
+            // ensure rendering model is up to date
+            headerModel.card = card;
+
             React.render(new QueryHeader(headerModel), document.getElementById('react_qb_header'));
         };
 
         var renderEditor = function() {
-            // make sure we are using the latest query definition
-            editorModel.query = headerModel.card.dataset_query;
+            // ensure rendering model is up to date
+            editorModel.isRunning = isRunning;
+            editorModel.databases = databases;
+            editorModel.query = card.dataset_query;
+            editorModel.initialQuery = card.dataset_query;
+            editorModel.defaultQuery = newQueryTemplates[card.dataset_query.type];
 
-            if (headerModel.card.dataset_query && headerModel.card.dataset_query.type === 'native') {
+            if (card.dataset_query && card.dataset_query.type === 'native') {
                 React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
             } else {
                 React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
@@ -261,8 +269,10 @@ CardControllers.controller('CardDetail', [
         }
 
         var renderVisualization = function() {
-            // make sure our card is up to date
-            visualizationModel.card = headerModel.card;
+            // ensure rendering model is up to date
+            visualizationModel.card = card;
+            visualizationModel.result = queryResult;
+            visualizationModel.isRunning = isRunning;
 
             React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
         };
@@ -292,12 +302,11 @@ CardControllers.controller('CardDetail', [
                 result.isDirty = cardIsDirty;
 
                 // update our react models as needed
-                headerModel.card = result;
-                editorModel.initialQuery = headerModel.card.dataset_query;
+                card = result;
 
                 // run the query
                 // TODO: is there a case where we wouldn't want this?
-                editorModel.runFn(editorModel.initialQuery);
+                editorModel.runFn(card.dataset_query);
 
                 // trigger full rendering
                 renderAll();
@@ -371,7 +380,7 @@ CardControllers.controller('CardDetail', [
             Metabase.db_list({
                 'orgId': org.id
             }, function (dbs) {
-                editorModel.databases = dbs;
+                databases = dbs;
 
                 if (dbs.length < 1) {
                     // TODO: some indication that setting up a db is required
