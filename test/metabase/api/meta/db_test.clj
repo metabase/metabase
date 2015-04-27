@@ -1,6 +1,7 @@
 (ns metabase.api.meta.db-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
@@ -18,12 +19,7 @@
 
 ;; ## GET /api/meta/db/form_input
 (expect
-    {:engines {:h2       {:id   "h2"
-                          :name "H2"
-                          :example "file:[filename]"}
-               :postgres {:id "postgres"
-                          :name "Postgres"
-                          :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}}
+    {:engines driver/available-drivers
      :timezones ["GMT"
                  "UTC"
                  "US/Alaska"

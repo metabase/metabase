@@ -28,6 +28,7 @@
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.h2database/h2 "1.4.186"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
+                 [com.novemberain/monger "2.1.0"]                     ; MongoDB Driver
                  [compojure "1.3.3"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
