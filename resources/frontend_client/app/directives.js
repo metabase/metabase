@@ -96,6 +96,139 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
+CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
+
+    return {
+        restrict: 'A',
+        scope: {
+            actionFunction: '=mbActionButton'
+        },
+        link: function link(scope, element, attr) {
+
+            var defaultText = element.text();
+            var activeText = attr.activeText;
+            var failedText = attr.failedText;
+            var successText = attr.successText;
+
+            var fnArg = attr.fnArg;
+
+            var delayedReset = function() {
+                // do we need to have this timeout be configurable?
+                $timeout(function () {
+                    element.text(defaultText);
+                    element.removeClass('Button--waiting');
+                    element.removeClass('Button--success');
+                    element.removeClass('Button--danger');
+                    element.removeAttr('disabled');
+                }, 5000);
+            };
+
+            element.bind('click', function (event) {
+                element.text(activeText);
+                element.addClass('Button--waiting');
+
+                // activate spinner
+                var loadingIcon = angular.element('<cv-loading-icon width="12px" height="12px"></cv-loading-icon>');
+                element.append(loadingIcon);
+                $compile(loadingIcon)(scope);
+
+                // disable button
+                element.attr('disabled', 'true');
+
+                // NOTE: we are assuming the action function is a promise
+                var promise = (fnArg) ? scope.actionFunction(fnArg) : scope.actionFunction();
+
+                promise.then(function (result) {
+                    element.text(successText);
+                    element.removeClass('Button--waiting');
+                    element.addClass('Button--success');
+                    var checkIcon = angular.element('<cv-check-icon width="12px" height="12px"></cv-check-icon>');
+                    element.prepend(checkIcon);
+                    $compile(checkIcon)(scope);
+
+                    // re-activate button
+                    element.removeAttr('disabled');
+
+                    // timeout, reset to base
+                    delayedReset();
+
+                }, function (error) {
+                    element.text(failedText);
+                    element.removeClass('Button--waiting');
+                    element.addClass('Button--danger');
+
+                    // re-activate button
+                    element.removeAttr('disabled');
+
+                    // timeout, reset to base
+                    delayedReset();
+                });
+            });
+        }
+    };
+}]);
+
+
+var NavbarDirectives = angular.module('corvus.navbar.directives', []);
+
+NavbarDirectives.directive('mbProfileLink', [function () {
+
+    function link($scope, element, attr) {
+
+        $scope.userIsAdmin = false;
+        $scope.userIsSuperuser = false;
+
+        $scope.$watch('user', function (user) {
+            if (!user) return;
+
+            // extract a couple informational pieces about user
+            $scope.userIsAdmin = user.adminOf();
+            $scope.userIsSuperuser = user.is_superuser;
+
+            // determine initials for profile logo
+            var initials = '??';
+            if (user.first_name !== 'undefined') {
+                initials = user.first_name.substring(0, 1);
+            }
+
+            if (user.last_name !== 'undefined') {
+                initials = initials + user.last_name.substring(0, 1);
+            }
+
+            $scope.initials = initials;
+        });
+    }
+
+    return {
+        restrict: 'E',
+        replace: true,
+        template:  '<ul>' +
+                        '<li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
+                            '<a class="flex align-center" selectable-nav-item="settings" dropdown-toggle>' +
+                                '<span class="UserNick">' +
+                                    '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
+                                '</span>' +
+                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' +
+                            '</a>' +
+                            '<ul class="Dropdown-content right">' +
+                                '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
+                                '<li><a class="link" ng-if="userIsAdmin && context == \'main\'" cv-org-href="/admin/">Admin</a></li>' +
+                                '<li><a class="link" ng-if="userIsAdmin && context == \'admin\'" cv-org-href="/">Exit Admin</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context != \'superadmin\'" href="/superadmin/">Site Administration</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context == \'superadmin\'" href="/">Exit Site Administration</a></li>' +
+                                '<li><a class="link" href="/auth/logout">Logout</a></li>' +
+                            '</ul>' +
+                        '</li>' +
+                    '</ul>',
+        scope: {
+            context: '=',
+            user: '='
+        },
+        link: link
+    };
+}]);
+
+
 var CorvusFormsDirectives = angular.module('corvus.forms.directives', []);
 
 CorvusFormsDirectives.directive('cvForm', ['CorvusFormService', function(CorvusFormService) {

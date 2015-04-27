@@ -21,6 +21,9 @@
 ;; stringify Postgres binary objects (e.g. PostGIS geometries)
 (add-encoder org.postgresql.util.PGobject encode-str)
 
+;; Do the same for PG arrays
+(add-encoder org.postgresql.jdbc4.Jdbc4Array encode-str)
+
 ;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
 (add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
                              (.writeString json-generator (.toString date))))

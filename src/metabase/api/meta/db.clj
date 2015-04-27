@@ -18,7 +18,7 @@
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
   [symb value :nillable]
-  (checkp-contains? (set (map first driver/available-drivers)) symb value))
+  (checkp-contains? (set (map name (keys driver/available-drivers))) symb value))
 
 (defendpoint GET "/"
   "Fetch all `Databases` for an `Org`."
@@ -38,10 +38,11 @@
    name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
+  ;; TODO - we should validate the contents of `details` here based on the engine
   (write-check Org org)
   (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
-    (future (driver/sync-database new-db))
+    (future (driver/sync-database! new-db))
     ;; make sure we return the newly created db object
     new-db))
 
@@ -54,14 +55,21 @@
 ;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate"
   "Validate that we can connect to a `Database`."
-  [:as {{:keys [host port]} :body}]
+  [:as {{:keys [host port engine] :as details} :body}]
   {host Required
    port Required}
-  (let [response-invalid (fn [m] {:status 400 :body {:valid false :message m}})]
-    (cond
-      (u/host-port-up? host port) {:valid true}
-      (u/host-up? host)           (response-invalid "Invalid port")
-      :else                       (response-invalid "Host not reachable"))))
+  (let [details (assoc details :engine (keyword engine))
+        response-invalid (fn [field m] {:status 400 :body {:valid false
+                                                          field m        ; work with the new {:field error-message} format
+                                                          :message m}})] ; but be backwards-compatible with the UI as it exists right now
+    (try
+      (cond
+        (driver/can-connect-with-details? (keyword engine) details) {:valid true}
+        (u/host-port-up? host port)                                 (response-invalid :dbname "Invalid connection details")
+        (u/host-up? host)                                           (response-invalid :port "Invalid port")
+        :else                                                       (response-invalid :host "Host not reachable"))
+      (catch Throwable e
+        (response-invalid :dbname (.getMessage e))))))
 
 (defendpoint GET "/:id"
   "Get `Database` with ID."
@@ -130,7 +138,7 @@
   [id]
   (let-404 [db (sel :one Database :id id)]
     (write-check db)
-    (future (driver/sync-database db))) ; run sync-tables asynchronously
+    (future (driver/sync-database! db))) ; run sync-tables asynchronously
   {:status :ok})
 
 

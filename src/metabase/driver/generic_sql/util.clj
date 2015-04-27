@@ -1,31 +1,39 @@
 (ns metabase.driver.generic-sql.util
   "Shared functions for our generic-sql query processor."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.core.memoize :as memo]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [korma.core :as korma]
             [korma.db :as kdb]
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
+            [metabase.driver.context :as context]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
+;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
+(defn- db->connection-spec [database]
+  (let [driver                              (driver/engine->driver (:engine database))
+        database->connection-details        (:database->connection-details driver)
+        connection-details->connection-spec (:connection-details->connection-spec driver)]
+    (-> database database->connection-details connection-details->connection-spec)))
 
-;; Cache the Korma DB connections for given Database
-;; instead of creating new ones every single time
-(def ^:private connection->korma-db
-  (memoize
-    (fn [connection]
-      {:pre [(map? connection)]}
-      (log/debug "CREATING A NEW DB CONNECTION...")
-      (kdb/create-db connection))))
+(def ^{:arglists '([database])} db->korma-db
+  "Return a Korma database definition for DATABASE.
+   This does a little bit of smart caching (for 60 seconds) to avoid creating new connections when unneeded."
+  (let [-db->korma-db (memo/ttl (fn [database]
+                                  (log/debug (color/red "Creating a new DB connection..."))
+                                  (assoc (kdb/create-db (db->connection-spec database))
+                                         :make-pool? true))
+                                :ttl/threshold (* 60 1000))]
+    ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
+    (fn [database]
+      (-db->korma-db (select-keys database [:engine :details])))))
 
-(defn korma-db
-  "Return a Korma database definition for DATABASE."
-  [database]
-  (log/debug "CREATING A NEW DB CONNECTION...")
-  (connection->korma-db (driver/connection database)))
-
+#_(defn db->korma-db [database]
+    (kdb/create-db (db->connection-spec database)))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -35,7 +43,7 @@
   "Internal implementation. Don't use this directly; use `with-jdbc-metadata`."
   [database f]
   (if *jdbc-metadata* (f *jdbc-metadata*)
-                      (jdbc/with-db-metadata [md (driver/connection database)]
+                      (jdbc/with-db-metadata [md (db->connection-spec database)]
                         (binding [*jdbc-metadata* md]
                           (f *jdbc-metadata*)))))
 
@@ -70,17 +78,17 @@
   {:pre [(delay? db)]}
   {:table name
    :pk    :id
-   :db    (korma-db @db)})
-
+   :db    (db->korma-db @db)})
 
 (defn table-id->korma-entity
   "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
   [table-id]
-  {:pre [(integer? table-id)]
+  {:pre  [(integer? table-id)]
    :post [(map? %)]}
-  (let [table (sel :one Table :id table-id)]
-    (when-not table (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))
-    (korma-entity table)))
+  (korma-entity (or (and (= (:id context/*table*) table-id)
+                         context/*table*)
+                    (sel :one Table :id table-id)
+                    (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
 
 
 (defn castify-field

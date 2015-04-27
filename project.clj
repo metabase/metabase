@@ -18,6 +18,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
+                 [org.clojure/tools.reader "0.9.1"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                  [org.clojure/tools.trace "0.7.8"]                    ; "tracing macros/fns to help you see what your code is doing"
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -52,6 +53,7 @@
   :target-path "target/%s"
   :java-agents [[com.newrelic.agent.java/newrelic-agent "3.15.0"]]     ; NewRelic Java Agent
   :uberjar-name "metabase-standalone.jar"
+  :javac-options ["-target" "1.6" "-source" "1.6"]
   ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app
          :init metabase.core/init}
@@ -66,6 +68,7 @@
                              [jonase/eastwood "0.2.1"]                ; Linting
                              [lein-ancient "0.6.5"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
+                             [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.1"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
@@ -77,6 +80,7 @@
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
+                            :env {:mb-test-setting-1 "ABCDEFG"}
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"

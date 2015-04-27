@@ -1,3 +1,5 @@
+/* TODO: we should really have these as variables */
+
 @custom-media --breakpoint-min-sm (min-width: 40em);
 @custom-media --breakpoint-min-md (min-width: 60em);
 @custom-media --breakpoint-min-lg (min-width: 80em);
