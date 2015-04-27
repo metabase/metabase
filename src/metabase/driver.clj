@@ -96,7 +96,7 @@
   "Sync a `Database`, its `Tables`, and `Fields`."
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
-      (-sync-database! (engine->driver (:engine database)) database))))
+      (time (-sync-database! (engine->driver (:engine database)) database)))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
