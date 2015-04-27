@@ -55,5 +55,5 @@
             (->> implicit-breakout-order-by-field-ids
                  (mapv (fn [field-id]
                          [field-id "ascending"]))
-                 ;; (apply conj (or order-by-subclauses []))
+                 (apply conj (or order-by-subclauses []))
                  (assoc query :order_by)))))
