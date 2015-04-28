@@ -63,7 +63,9 @@ var FilterWidget = React.createClass({
         return this.props.valueFields.values.map(function(value) {
             var safeValues = {};
             for(var key in value) {
-                safeValues[key] = value[key].toString();
+                // TODO: why typing issues can we run into here?
+                //       we used to call toString() on these values
+                safeValues[key] = value[key];
             }
             return safeValues;
         });
