@@ -302,151 +302,162 @@ var GuiQueryEditor = React.createClass({
     },
     render: function () {
 
-        /* @souce table */
-        var sourceTableSelection = this.props.query.query.source_table,
-            sourceTableListOpen = true;
-
-        if(sourceTableSelection) {
-            sourceTableListOpen = false;
-        }
-
-        /* @aggregation table */
-        var aggregationSelectionHtml,
-            aggregationSelection = this.props.query.query.aggregation[0],
-            aggregationListOpen = true;
-
-        if(aggregationSelection) {
-            aggregationListOpen = false;
-        }
-
-        /* @aggregation target */
-        var aggregationTargetHtml,
-            aggregationTargetListOpen = true;
-
-        var dimensionList,
-            addDimensionButton,
-            addDimensionButtonText;
-
+        // database selector.  only show if there is multiple dbs to choose from
         var dbSelector;
         if(this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
-                <DatabaseSelector
-                    databases={this.props.databases}
-                    setDatabase={this.setDatabase}
-                    currentDatabaseId={this.props.query.database}
-                />
-            );
-        }
-
-
-        if (this.aggregationComplete() &&
-            this.state.options &&
-            this.state.options.breakout_options.fields.length > 0) {
-
-            addDimensionButtonText = (this.props.query.query.breakout.length < 1) ? "Grouped by" : "and";
-
-            if(this.props.query.query.breakout.length < 2) {
-                addDimensionButton = (
-                    <a className="Button" onClick={this.addDimension}>{addDimensionButtonText}</a>
-                );
-            }
-
-            if(this.state.options.breakout_options) {
-                dimensionList = this.props.query.query.breakout.map(function (breakout, index) {
-                        var  open;
-                        if(breakout === null) {
-                            open = true;
-                        }
-
-                        return (
-                            <div className="DimensionList inline-block">
-                                <SelectionModule
-                                    placeholder='What part of your data?'
-                                    display='1'
-                                    items={this.state.options.breakout_options.fields}
-                                    selectedValue={breakout}
-                                    selectedKey='0'
-                                    index={index}
-                                    isInitiallyOpen={open}
-                                    action={this.updateDimension}
-                                    remove={this.removeDimension}
-                                />
-                            </div>
-                        );
-                }.bind(this));
-            }
-        }
-
-        var dimensionLabel;
-
-        if(this.props.query.query.breakout.length > 0) {
-            dimensionLabel = (
-                <div className="text-grey-3 inline-block mx2">
-                    Grouped by:
+                <div>
+                    Using:
+                    <DatabaseSelector
+                        databases={this.props.databases}
+                        setDatabase={this.setDatabase}
+                        currentDatabaseId={this.props.query.database}
+                    />
                 </div>
             );
         }
 
 
-        if(this.state.options) {
-            aggregationSelectionHtml = (
-                <SelectionModule
-                    placeholder='And I want to see...'
-                    items={this.state.options.aggregation_options}
-                    display='name'
-                    selectedValue={aggregationSelection}
-                    selectedKey='short'
-                    isInitiallyOpen={aggregationListOpen}
-                    action={this.setAggregation}
-                />
-            );
+        // table selector
+        var tableSelector;
+        if (this.state.tables) {
+            var sourceTableListOpen = true;
+            if(this.props.query.query.source_table) {
+                sourceTableListOpen = false;
+            }
 
-            // if there's a value in the second aggregation slot
+            tableSelector = (
+                <div>
+                    From:
+                    <SelectionModule
+                        placeholder="What part of your data?"
+                        items={this.state.tables}
+                        display="name"
+                        selectedValue={this.props.query.query.source_table}
+                        selectedKey="id"
+                        isInitiallyOpen={sourceTableListOpen}
+                        action={this.setSourceTable}
+                    />
+                </div>
+            );
+        }
+
+
+        // aggregation clause.  must have table details available
+        var aggregationSelector;
+        if(this.state.options) {
+
+            var aggregationListOpen = true;
+            if(this.props.query.query.aggregation[0]) {
+                aggregationListOpen = false;
+            }
+
+            // if there's a value in the second aggregation slot render another selector
+            var aggregationTarget;
             if(this.props.query.query.aggregation.length > 1) {
+                var aggregationTargetListOpen = true;
                 if(this.props.query.query.aggregation[1] !== null) {
                     aggregationTargetListOpen = false;
                 }
-                aggregationTargetHtml = (
-                    <SelectionModule
-                        placeholder='field named...'
-                        items={this.getAggregationFields(this.props.query.query.aggregation[0])}
-                        display='1'
-                        selectedValue={this.props.query.query.aggregation[1]}
-                        selectedKey='0'
-                        isInitiallyOpen={aggregationTargetListOpen}
-                        action={this.setAggregationTarget}
-                    />
-                );
-            }
-        }
 
-        var querySelection;
-        // tables are provided if we have a selected database
-        if(this.state.tables) {
-            querySelection = (
-                <div>
-                    <div className="Metric-sourceTable inline-block">
+                aggregationTarget = (
+                    <div className="inline-block">
+                        of
                         <SelectionModule
-                            placeholder='Lets start with...'
-                            items={this.state.tables}
-                            display='name'
-                            selectedValue={this.props.query.query.source_table}
-                            selectedKey='id'
-                            isInitiallyOpen={sourceTableListOpen}
-                            action={this.setSourceTable}
+                            placeholder="What attribute?"
+                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
+                            display="1"
+                            selectedValue={this.props.query.query.aggregation[1]}
+                            selectedKey="0"
+                            isInitiallyOpen={aggregationTargetListOpen}
+                            action={this.setAggregationTarget}
                         />
                     </div>
+                );
+            }
 
-                    <div className="inline-block mx2">
-                        {aggregationSelectionHtml}
-                        {aggregationTargetHtml}
-                    </div>
-                    {dimensionLabel}
-                    {dimensionList}
-                    {addDimensionButton}
+            aggregationSelector = (
+                <div>
+                    I want to see:
+                    <SelectionModule
+                        placeholder="What data?"
+                        items={this.state.options.aggregation_options}
+                        display="name"
+                        selectedValue={this.props.query.query.aggregation[0]}
+                        selectedKey="short"
+                        isInitiallyOpen={aggregationListOpen}
+                        action={this.setAggregation}
+                    />
+                    {aggregationTarget}
                 </div>
             );
         }
+
+
+        // breakout clause.  must have table details available & a valid aggregation defined
+        var breakoutSelector;
+        if (this.state.options &&
+                this.state.options.breakout_options.fields.length > 0 &&
+                this.aggregationComplete()) {
+
+            // only render a label for our breakout if we have a valid breakout clause already
+            var breakoutLabel;
+            if(this.props.query.query.breakout.length > 0) {
+                breakoutLabel = (
+                    <div className="inline-block">
+                        Grouped by:
+                    </div>
+                );
+            }
+
+            var breakoutList;
+            if(this.state.options.breakout_options) {
+                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
+                    var breakoutListOpen = false;
+                    if(breakout === null) {
+                        breakoutListOpen = true;
+                    }
+
+                    return (
+                        <div className="DimensionList inline-block">
+                            <SelectionModule
+                                placeholder='What part of your data?'
+                                display="1"
+                                items={this.state.options.breakout_options.fields}
+                                selectedValue={breakout}
+                                selectedKey="0"
+                                index={index}
+                                isInitiallyOpen={breakoutListOpen}
+                                action={this.updateDimension}
+                                remove={this.removeDimension}
+                            />
+                        </div>
+                    );
+                }.bind(this));
+            }
+
+            // include a button to add a breakout, up to 2 total
+            var addBreakoutButton;
+            if (this.props.query.query.breakout.length === 0) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add a grouping ...</a>
+                );
+            } else if (this.props.query.query.breakout.length === 1 &&
+                            this.props.query.query.breakout[0] !== null) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add another grouping</a>
+                );
+            }
+
+            breakoutSelector = (
+                <div>
+                    {breakoutLabel}
+                    {breakoutList}
+                    {addBreakoutButton}
+                </div>
+            );
+        }
+
 
         //  FILTERS
         var filterList,
@@ -484,14 +495,10 @@ var GuiQueryEditor = React.createClass({
 
         return (
             <div>
-                <div className="QueryBar">
-                    <div className="inline-block">
-                        {dbSelector}
-                    </div>
-                    <div className="inline-block">
-                        {querySelection}
-                    </div>
-                </div>
+                {dbSelector}
+                {tableSelector}
+                {aggregationSelector}
+                {breakoutSelector}
                 <div className="QueryBar">
                     {filterHtml}
                 </div>
