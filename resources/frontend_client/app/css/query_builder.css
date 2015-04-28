@@ -1,9 +1,21 @@
-html {
-    height: 100%;
-}
-
+html,
 body {
     height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.QueryBuilder {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
+}
+
+.QueryVisualization {
+    display: flex;
+    flex: 1;
 }
 
 .SearchBar:focus {
@@ -25,11 +37,6 @@ body {
 
 .QueryBuilder .dc-chart .pie-slice {
     font-size: 1em;
-}
-
-.QueryWrapper {
-    padding-left: 1.5em;
-    padding-right: 1.5em;
 }
 
 .SaveModal.Modal--showing {
@@ -411,4 +418,13 @@ body {
     display: inline-block;
     font-size: 0.85em;
     margin: 0 0.5em;
+}
+
+.Visualization {
+    align-items: center;
+    justify-content: center;
+}
+
+.VisualizationSettings {
+    padding-bottom: 1em;
 }
