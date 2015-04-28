@@ -412,39 +412,3 @@ body {
     font-size: 0.85em;
     margin: 0 0.5em;
 }
-
-/* toggle button */
-.Button-toggle {
-    color: #797979;
-    display: flex;
-    line-height: 1;
-    border: 1px solid #ddd;
-    border-radius: 40px;
-    width: 4.25em;
-    transition: background .2s linear .2s, border .2s linear .2s;
-}
-
-.Button-toggleIndicator {
-    margin-left: 0;
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-    padding: 0.5em;
-    border: 1px solid #ddd;
-    border-radius: 99px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
-    transition: margin .3s linear;
-    background-color: #fff;
-}
-
-.Button-toggle.Button--toggled .Button-toggleIndicator {
-    margin-left: 50%;
-    transition: margin .3s linear;
-}
-
-.Button-toggle.Button--toggled {
-    color: var(--brand-color);
-    background-color: var(--brand-color);
-    border-color: var(--brand-color);
-    transition: background .2s linear .2s, border .2s linear .2s;
-}
