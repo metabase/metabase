@@ -12,11 +12,13 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
         // 1. appstate:user
         // 2. appstate:organization
 
+        var initPromise;
+        var currentUserPromise;
+
         var service = {
 
             model: {
                 setupToken: null,
-                currentUserPromise: null,
                 currentUser: null,
                 currentOrgSlug: null,
                 currentOrg: null,
@@ -24,12 +26,24 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             },
 
             init: function() {
-                // just make sure we grab the current user
-                service.model.currentUserPromise = service.refreshCurrentUser();
+
+                if (!initPromise) {
+                    var deferred = $q.defer();
+                    initPromise = deferred.promise;
+
+                    // just make sure we grab the current user
+                    service.refreshCurrentUser().then(function (user) {
+                        deferred.resolve();
+                    }, function (error) {
+                        deferred.resolve();
+                    });
+                }
+
+                return initPromise;
             },
 
             clearState: function() {
-                service.model.currentUserPromise = null;
+                currentUserPromise = null;
                 service.model.currentUser = null;
                 service.model.currentOrgSlug = null;
                 service.model.currentOrg = null;
@@ -47,10 +61,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             },
 
             refreshCurrentUser: function() {
-                var deferred = $q.defer();
 
                 // this is meant to be called once on app startup
-                User.current(function(result) {
+                var userRefresh = User.current(function (result) {
                     service.model.currentUser = result;
 
                     // add isMember(orgSlug) method to the object
@@ -88,13 +101,15 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     $rootScope.$broadcast('appstate:user', result);
 
-                    deferred.resolve(result);
-                }, function(error) {
+                }, function (error) {
                     console.log('unable to get current user', error);
-                    deferred.reject(error);
                 });
 
-                return deferred.promise;
+                // NOTE: every time we refresh the user we update our current promise to ensure that
+                //       we can guarantee we've resolved the current user
+                currentUserPromise = userRefresh.$promise;
+
+                return currentUserPromise;
             },
 
             switchOrg: function(org_slug) {
@@ -152,19 +167,11 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                if (service.model.currentUserPromise) {
-                    // we have an outstanding promise for getting current user, so wait for that first
-                    service.model.currentUserPromise.then(function(user) {
-                        service.model.currentUserPromise = null;
-                        service.routeChangedImpl(event);
-                    }, function(error) {
-                        service.model.currentUserPromise = null;
-                        service.routeChangedImpl(event);
-                    });
-                } else {
-                    // we must already have the user, so carry on
+                currentUserPromise.then(function (user) {
                     service.routeChangedImpl(event);
-                }
+                }, function (error) {
+                    service.routeChangedImpl(event);
+                });
             },
 
             routeChangedImpl: function(event) {
@@ -258,7 +265,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
         // login just took place, so lets force a refresh of the current user
         $rootScope.$on("appstate:login", function(event, session_id) {
-            service.model.currentUserPromise = service.refreshCurrentUser();
+            service.refreshCurrentUser();
         });
 
         // logout just took place, do some cleanup

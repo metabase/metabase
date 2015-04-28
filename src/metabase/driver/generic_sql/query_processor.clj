@@ -19,26 +19,21 @@
          query-is-cumulative-sum?
          apply-cumulative-sum)
 
-(def ^:dynamic ^:private *query*
-  "Query dictionary that we're currently processing"
-  nil)
-
 ;; # INTERFACE
 
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
   (when-not (zero? source_table)
-    (binding [*query* query]
-      (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
-                       (filter identity)
-                       (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                             [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
-                       doall)]
-        (when (config/config-bool :mb-db-logging)
-          (log-query query forms))
-        `(let [entity# (table-id->korma-entity ~source_table)]
-           (select entity# ~@forms))))))
+    (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
+                     (filter identity)
+                     (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
+                                           [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
+                     doall)]
+      (when (config/config-bool :mb-db-logging)
+        (log-query query forms))
+      `(let [entity# (table-id->korma-entity ~source_table)]
+         (select entity# ~@forms)))))
 
 
 (defn process-structured
@@ -108,20 +103,9 @@
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]]
-  (match field-ids
-    []    nil ; empty clause
-    [nil] nil ; empty clause
-    _     (let [field-names (map field-id->kw field-ids)
-                order-by-field-names (some->> (:order_by *query*) ; get set of names of all fields specified in `order_by`
-                                              (map first)
-                                              (map field-id->kw)
-                                              set)]
-            `[(group  ~@field-names)
-              (fields ~@field-names)
-              ~@(->> field-names                                                    ; Add an implicit `order :ASC` clause for every field specified in `breakout`
-                     (filter (complement (partial contains? order-by-field-names))) ; that is *not* specified *explicitly* in `order_by`.
-                     (map (fn [field-name]
-                            `(order ~field-name :ASC))))])))
+  (let [field-names (map field-id->kw field-ids)]
+    `[(group  ~@field-names)
+      (fields ~@field-names)]))
 
 ;; ### `:fields`
 ;; ex.
@@ -166,9 +150,6 @@
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
-    nil                  nil ; empty clause
-    [nil nil]            nil ; empty clause
-    []                   nil ; empty clause
     ["AND" & subclauses] `(where (~'and ~@(map filter-subclause->predicate
                                                subclauses)))
     ["OR" & subclauses]  `(where (~'or  ~@(map filter-subclause->predicate
@@ -180,8 +161,7 @@
 ;;
 ;;     10
 (defmethod apply-form :limit [[_ value]]
-  (when value
-    `(limit ~value)))
+  `(limit ~value))
 
 ;; ### `:order_by`
 ;; ex.
@@ -254,11 +234,12 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (log/debug
-   "\n********************"
-   "\nSOURCE TABLE: " source_table
-   "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
-   "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
-   "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
-                              (sql-only (select entity# ~@forms))))
-   "\n********************\n"))
+  (when-not *jdbc-metadata* ; HACK. If *jdbc-metadata* is bound we're probably doing a DB sync. Don't log its hundreds of QP calls, which make it hard to debug.
+    (log/debug
+     "\n********************"
+     "\nSOURCE TABLE: " source_table
+     "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
+     "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
+     "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
+                                (sql-only (select entity# ~@forms))))
+     "\n********************\n")))
