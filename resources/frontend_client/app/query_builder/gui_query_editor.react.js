@@ -174,45 +174,46 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
     addFilter: function() {
-        var filter = queryBuilder.card.dataset_query.query.filter,
-            filterLength = filter.length;
+        var query = this.props.query,
+            queryFilters = query.query.filter;
 
-        // this gets run the second time you click the add filter button
-        if (filterLength === 3 && filter[0] !== 'AND') {
-            var newFilters = [];
-            newFilters.push(filter);
-            newFilters.unshift('AND');
-            newFilters.push([null, null, null]);
-            queryBuilder.card.dataset_query.query.filter = newFilters;
-            queryBuilder.inform();
-        } else if (filter[0] === 'AND') {
-            pushFilterTemplate(filterLength);
-            queryBuilder.inform();
-        } else {
-            pushFilterTemplate();
-            queryBuilder.inform();
-        }
-
-        function pushFilterTemplate(index) {
+        var pushFilterTemplate = function(index) {
             if (index) {
-                filter[index] = [null, null, null];
+                queryFilters[index] = [null, null, null];
             } else {
-                filter.push(null, null, null);
+                queryFilters.push(null, null, null);
             }
         }
-    },
-    updateFilter: function(value, index, filterListIndex) {
-        var filters = queryBuilder.card.dataset_query.query.filter;
-        if (filterListIndex) {
-            filters[filterListIndex][index] = value;
+
+        // this gets run the second time you click the add filter button
+        if (queryFilters.length === 3 && queryFilters[0] !== 'AND') {
+            var newFilters = [];
+            newFilters.push(queryFilters);
+            newFilters.unshift('AND');
+            newFilters.push([null, null, null]);
+        } else if (queryFilters[0] === 'AND') {
+            pushFilterTemplate(queryFilters.length);
         } else {
-            filters[index] = value;
+            pushFilterTemplate();
         }
 
-        queryBuilder.inform();
+        this.setQuery(query, true);
+    },
+    updateFilter: function(value, index, filterListIndex) {
+        var query = this.props.query,
+            queryFilters = query.query.filter;
+
+        if (filterListIndex) {
+            queryFilters[filterListIndex][index] = value;
+        } else {
+            queryFilters[index] = value;
+        }
+
+        this.setQuery(query, true);
     },
     removeFilter: function(index) {
-        var filters = queryBuilder.card.dataset_query.query.filter;
+        var query = this.props.query,
+            queryFilters = query.query.filter;
 
         /*
             HERE BE MORE DRAGONS
@@ -224,13 +225,13 @@ var GuiQueryEditor = React.createClass({
             having added multiple so we should reset to [] in this case as well
         */
 
-        if ((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
-            // just reset the array
-            queryBuilder.card.dataset_query.query.filter = [];
+        if ((queryFilters.length === 3 && queryFilters[0] !== 'AND') || (queryFilters[0] === 'AND' && queryFilters.length === 2)) {
+            queryFilters = [];
         } else {
-            queryBuilder.card.dataset_query.query.filter.splice(index, 1);
+            queryFilters.splice(index, 1);
         }
-        queryBuilder.inform();
+
+        this.setQuery(query, true);
     },
     cleanFilters: function(dataset_query) {
         var filters = dataset_query.query.filter,
@@ -248,253 +249,271 @@ var GuiQueryEditor = React.createClass({
         }
         return dataset_query;
     },
-    _getFilterFields: function () {
-        var filterFieldList = [];
-        if(this.state.options) {
-            for(var key in this.state.options.fields_lookup) {
-                filterFieldList.push(this.state.options.fields_lookup[key]);
-            }
-        }
-        return filterFieldList;
-    },
-    _getFilterWidget: function (filter, index) {
-        var operator = filter[0], // name of the operator
-            field = filter[1], // id of the field
-            value = filter[2],
-
-            operatorList = [],
-            valueFields,
-            filterFieldList = this._getFilterFields();
-
-        // extract the real info
-        for(var fieldItem in filterFieldList) {
-            var theField = filterFieldList[fieldItem];
-
-            if(theField.id == field) {
-
-                for(var operatorItem in theField.operators_lookup) {
-                    var theOperator = theField.operators_lookup[operatorItem]
-                    // push the operator into the list we'll use for selection
-                    operatorList.push(theOperator);
-
-                    if(theOperator.name == operator) {
-                    // this is structured strangely
-                        valueFields = theOperator.fields[0];
-                    }
-                }
-            }
-        }
-
-        return (
-            <FilterWidget
-                placeholder="Item"
-                field={field}
-                filterFieldList={filterFieldList}
-                operator={operator}
-                operatorList={operatorList}
-                value={value}
-                valueFields={valueFields}
-                index={index || 0}
-                remove={this.removeFilter}
-                updateFilter={this.updateFilter}
-            />
-        );
-    },
     render: function () {
 
-        /* @souce table */
-        var sourceTableSelection = this.props.query.query.source_table,
-            sourceTableListOpen = true;
-
-        if(sourceTableSelection) {
-            sourceTableListOpen = false;
-        }
-
-        /* @aggregation table */
-        var aggregationSelectionHtml,
-            aggregationSelection = this.props.query.query.aggregation[0],
-            aggregationListOpen = true;
-
-        if(aggregationSelection) {
-            aggregationListOpen = false;
-        }
-
-        /* @aggregation target */
-        var aggregationTargetHtml,
-            aggregationTargetListOpen = true;
-
-        var dimensionList,
-            addDimensionButton,
-            addDimensionButtonText;
-
+        // database selector.  only show if there is multiple dbs to choose from
         var dbSelector;
         if(this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
-                <DatabaseSelector
-                    databases={this.props.databases}
-                    setDatabase={this.setDatabase}
-                    currentDatabaseId={this.props.query.database}
-                />
-            );
-        }
-
-
-        if (this.aggregationComplete() &&
-            this.state.options &&
-            this.state.options.breakout_options.fields.length > 0) {
-
-            addDimensionButtonText = (this.props.query.query.breakout.length < 1) ? "Grouped by" : "and";
-
-            if(this.props.query.query.breakout.length < 2) {
-                addDimensionButton = (
-                    <a className="Button" onClick={this.addDimension}>{addDimensionButtonText}</a>
-                );
-            }
-
-            if(this.state.options.breakout_options) {
-                dimensionList = this.props.query.query.breakout.map(function (breakout, index) {
-                        var  open;
-                        if(breakout === null) {
-                            open = true;
-                        }
-
-                        return (
-                            <div className="DimensionList inline-block">
-                                <SelectionModule
-                                    placeholder='What part of your data?'
-                                    display='1'
-                                    items={this.state.options.breakout_options.fields}
-                                    selectedValue={breakout}
-                                    selectedKey='0'
-                                    index={index}
-                                    isInitiallyOpen={open}
-                                    action={this.updateDimension}
-                                    remove={this.removeDimension}
-                                />
-                            </div>
-                        );
-                }.bind(this));
-            }
-        }
-
-        var dimensionLabel;
-
-        if(this.props.query.query.breakout.length > 0) {
-            dimensionLabel = (
-                <div className="text-grey-3 inline-block mx2">
-                    Grouped by:
+                <div>
+                    Using:
+                    <DatabaseSelector
+                        databases={this.props.databases}
+                        setDatabase={this.setDatabase}
+                        currentDatabaseId={this.props.query.database}
+                    />
                 </div>
             );
         }
 
 
-        if(this.state.options) {
-            aggregationSelectionHtml = (
-                <SelectionModule
-                    placeholder='And I want to see...'
-                    items={this.state.options.aggregation_options}
-                    display='name'
-                    selectedValue={aggregationSelection}
-                    selectedKey='short'
-                    isInitiallyOpen={aggregationListOpen}
-                    action={this.setAggregation}
-                />
-            );
+        // table selector
+        var tableSelector;
+        if (this.state.tables) {
+            var sourceTableListOpen = true;
+            if(this.props.query.query.source_table) {
+                sourceTableListOpen = false;
+            }
 
-            // if there's a value in the second aggregation slot
+            // if we don't have any filters applied yet then provide an option to do that
+            var filterButton;
+            if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
+                filterButton = (
+                    <span>
+                        <a className="FilterTrigger Button" onClick={this.addFilter}>
+                            <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
+                            </svg>
+                        </a>
+                    </span>
+                );
+            }
+
+
+            tableSelector = (
+                <div>
+                    From:
+                    <SelectionModule
+                        placeholder="What part of your data?"
+                        items={this.state.tables}
+                        display="name"
+                        selectedValue={this.props.query.query.source_table}
+                        selectedKey="id"
+                        isInitiallyOpen={sourceTableListOpen}
+                        action={this.setSourceTable}
+                    />
+                    {filterButton}
+                </div>
+            );
+        }
+
+
+        // filter clause.  must have table details available
+        var filterSelector;
+        if (this.state.options && this.props.query.query.filter.length > 0) {
+            var component = this;
+
+            var filterFieldList = [];
+            for(var key in this.state.options.fields_lookup) {
+                filterFieldList.push(this.state.options.fields_lookup[key]);
+            }
+
+            var filterWidget = function (filter, index) {
+                var operator = filter[0],           // name of the operator
+                    field = filter[1],              // id of the field
+                    value = filter[2],              // filtering value
+                    operatorList = [],
+                    valueFields;
+
+                // extract the real info
+                for(var fieldItem in filterFieldList) {
+                    var theField = filterFieldList[fieldItem];
+                    if(theField.id === field) {
+                        for(var operatorItem in theField.operators_lookup) {
+                            var theOperator = theField.operators_lookup[operatorItem]
+                            // push the operator into the list we'll use for selection
+                            operatorList.push(theOperator);
+
+                            if(theOperator.name === operator) {
+                                // this is structured strangely
+                                valueFields = theOperator.fields[0];
+                            }
+                        }
+                    }
+                }
+
+                return (
+                    <FilterWidget
+                        placeholder="Item"
+                        field={field}
+                        filterFieldList={filterFieldList}
+                        operator={operator}
+                        operatorList={operatorList}
+                        value={value}
+                        valueFields={valueFields}
+                        index={index || 0}
+                        remove={component.removeFilter}
+                        updateFilter={component.updateFilter}
+                    />
+                );
+            };
+
+            var filterList;
+            if(this.props.query.query.filter[0] === "AND") {
+                filterList = this.props.query.query.filter.map(function (filter, index) {
+                    if(filter === "AND") {
+                        return;
+                    } else {
+                        return (
+                            filterWidget(filter, index)
+                        );
+                    }
+                }.bind(this));
+            } else {
+                filterList = filterWidget(this.props.query.query.filter);
+            }
+
+            var addFilterButton;
+            // TODO: only allow adding another filter if last one is properly filled out
+            if (true) {
+                addFilterButton = (
+                    <a className="FilterTrigger Button" onClick={this.addFilter}>Add another filter ...</a>
+                );
+            }
+
+            filterSelector = (
+                <div>
+                    Filtered by:
+                    {filterList}
+                    {addFilterButton}
+                </div>
+            );
+        }
+
+
+        // aggregation clause.  must have table details available
+        var aggregationSelector;
+        if(this.state.options) {
+
+            var aggregationListOpen = true;
+            if(this.props.query.query.aggregation[0]) {
+                aggregationListOpen = false;
+            }
+
+            // if there's a value in the second aggregation slot render another selector
+            var aggregationTarget;
             if(this.props.query.query.aggregation.length > 1) {
+                var aggregationTargetListOpen = true;
                 if(this.props.query.query.aggregation[1] !== null) {
                     aggregationTargetListOpen = false;
                 }
-                aggregationTargetHtml = (
-                    <SelectionModule
-                        placeholder='field named...'
-                        items={this.getAggregationFields(this.props.query.query.aggregation[0])}
-                        display='1'
-                        selectedValue={this.props.query.query.aggregation[1]}
-                        selectedKey='0'
-                        isInitiallyOpen={aggregationTargetListOpen}
-                        action={this.setAggregationTarget}
-                    />
-                );
-            }
-        }
 
-        var querySelection;
-        // tables are provided if we have a selected database
-        if(this.state.tables) {
-            querySelection = (
-                <div>
-                    <div className="Metric-sourceTable inline-block">
+                aggregationTarget = (
+                    <div className="inline-block">
+                        of
                         <SelectionModule
-                            placeholder='Lets start with...'
-                            items={this.state.tables}
-                            display='name'
-                            selectedValue={this.props.query.query.source_table}
-                            selectedKey='id'
-                            isInitiallyOpen={sourceTableListOpen}
-                            action={this.setSourceTable}
+                            placeholder="What attribute?"
+                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
+                            display="1"
+                            selectedValue={this.props.query.query.aggregation[1]}
+                            selectedKey="0"
+                            isInitiallyOpen={aggregationTargetListOpen}
+                            action={this.setAggregationTarget}
                         />
                     </div>
+                );
+            }
 
-                    <div className="inline-block mx2">
-                        {aggregationSelectionHtml}
-                        {aggregationTargetHtml}
-                    </div>
-                    {dimensionLabel}
-                    {dimensionList}
-                    {addDimensionButton}
+            aggregationSelector = (
+                <div>
+                    I want to see:
+                    <SelectionModule
+                        placeholder="What data?"
+                        items={this.state.options.aggregation_options}
+                        display="name"
+                        selectedValue={this.props.query.query.aggregation[0]}
+                        selectedKey="short"
+                        isInitiallyOpen={aggregationListOpen}
+                        action={this.setAggregation}
+                    />
+                    {aggregationTarget}
                 </div>
             );
         }
 
-        //  FILTERS
-        var filterList,
-            filterHtml;
 
-        // if we have filters...
-        var filters = this.props.query.query.filter;
-        if(filters.length != 0) {
-            // and if we have multiple filters, map through and return a filter widget
-            if(filters[0] == 'AND') {
-                filterList = filters.map(function (filter, index) {
-                    if(filter == 'AND') {
-                        return
-                    } else {
-                        return (
-                            this._getFilterWidget(filter, index)
-                        )
-                    }
-                }.bind(this))
-            } else {
-                filterList = this._getFilterWidget(filters)
+        // breakout clause.  must have table details available & a valid aggregation defined
+        var breakoutSelector;
+        if (this.state.options &&
+                this.state.options.breakout_options.fields.length > 0 &&
+                this.aggregationComplete()) {
+
+            // only render a label for our breakout if we have a valid breakout clause already
+            var breakoutLabel;
+            if(this.props.query.query.breakout.length > 0) {
+                breakoutLabel = (
+                    <div className="inline-block">
+                        Grouped by:
+                    </div>
+                );
             }
+
+            var breakoutList;
+            if(this.state.options.breakout_options) {
+                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
+                    var breakoutListOpen = false;
+                    if(breakout === null) {
+                        breakoutListOpen = true;
+                    }
+
+                    return (
+                        <div className="DimensionList inline-block">
+                            <SelectionModule
+                                placeholder='What part of your data?'
+                                display="1"
+                                items={this.state.options.breakout_options.fields}
+                                selectedValue={breakout}
+                                selectedKey="0"
+                                index={index}
+                                isInitiallyOpen={breakoutListOpen}
+                                action={this.updateDimension}
+                                remove={this.removeDimension}
+                            />
+                        </div>
+                    );
+                }.bind(this));
+            }
+
+            // include a button to add a breakout, up to 2 total
+            var addBreakoutButton;
+            if (this.props.query.query.breakout.length === 0) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add a grouping ...</a>
+                );
+            } else if (this.props.query.query.breakout.length === 1 &&
+                            this.props.query.query.breakout[0] !== null) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add another grouping</a>
+                );
+            }
+
+            breakoutSelector = (
+                <div>
+                    {breakoutLabel}
+                    {breakoutList}
+                    {addBreakoutButton}
+                </div>
+            );
         }
 
-        filterHtml = (
-            <div className="clearfix">
-                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.addFilter}>
-                    <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
-                    </svg>
-                </a>
-                {filterList}
-            </div>
-        );
 
         return (
             <div>
-                <div className="QueryBar">
-                    <div className="inline-block">
-                        {dbSelector}
-                    </div>
-                    <div className="inline-block">
-                        {querySelection}
-                    </div>
-                </div>
-                <div className="QueryBar">
-                    {filterHtml}
-                </div>
+                {dbSelector}
+                {tableSelector}
+                {filterSelector}
+                {aggregationSelector}
+                {breakoutSelector}
                 <div>
                     <RunButton
                         canRun={this.canRun()}

@@ -171,7 +171,6 @@ CardControllers.controller('CardDetail', [
 
                     // apply the new query to our card
                     card.dataset_query = queryTemplate;
-                    console.log(queryTemplate);
 
                     // clear out any visualization and reset to defaults
                     queryResult = null;
