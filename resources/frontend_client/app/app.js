@@ -27,7 +27,6 @@ var Corvus = angular.module('corvus', [
     'corvus.setup',
     'corvusadmin.organization',
     'corvusadmin.databases',
-    'corvusadmin.emailreport',
     'corvusadmin.people',
     'corvusadmin.query',
     'superadmin.settings',

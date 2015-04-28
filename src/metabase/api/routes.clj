@@ -3,7 +3,6 @@
             [compojure.route :as route]
             (metabase.api [card :as card]
                           [dash :as dash]
-                          [emailreport :as emailreport]
                           [notify :as notify]
                           [org :as org]
                           [qs :as qs]
@@ -36,7 +35,6 @@
 (defroutes routes
   (context "/card"         [] (+auth card/routes))
   (context "/dash"         [] (+auth dash/routes))
-  (context "/emailreport"  [] (+auth emailreport/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/meta/dataset" [] (+auth dataset/routes))
   (context "/meta/db"      [] (+auth db/routes))
