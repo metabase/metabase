@@ -15,32 +15,23 @@ var QueryModeToggle = React.createClass({
             return false;
         }
 
-        var guiButton;
-        if (this.props.card.dataset_query.type === 'query') {
-            guiButton = (
-                <button className="Button Button--active">GUI</button>
-            );
-        } else {
-            guiButton = (
-                <button className="Button" onClick={this.props.setQueryModeFn.bind(this, 'query')}>GUI</button>
-            );
-        }
+        var newType;
+        // shorthand for the current type
+        var type = this.props.card.dataset_query.type;
 
-        var nativeButton;
-        if (this.props.card.dataset_query.type === 'native') {
-            nativeButton = (
-                <button className="Button Button--active">SQL</button>
-            );
-        } else {
-            nativeButton = (
-                <button className="Button" onClick={this.props.setQueryModeFn.bind(this, 'native')}>SQL</button>
-            );
-        }
+        // determine the type to switch to based on the type
+        type === 'query' ? newType = 'native' : newType = 'query';
+
+        // set css classes based on the current type
+        var buttonClasses = cx({
+            'Button-toggle': true,
+            'Mode--native': type === 'native',
+            'Mode--query': type === 'query'
+        });
 
         return (
-            <div className="Button-group">
-                {guiButton}
-                {nativeButton}
+            <div className={buttonClasses} onClick={this.props.setQueryModeFn.bind(this, newType)}>
+                <span className="Button-toggleIndicator"></span>
             </div>
         );
     }
