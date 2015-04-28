@@ -13,15 +13,18 @@ var QueryVisualizationTable = React.createClass({
 
         var tableRows = this.props.data.rows.map(function (row) {
             var rowCols = row.map(function (data) {
-                return (<td>{data.toString()}</td>);
+                // TODO: should we be casting all values toString()?
+                var rowVal = (data !== null) ? data.toString() : null;
+                return (<td>{rowVal}</td>);
             });
 
             return (<tr>{rowCols}</tr>);
         });
 
         var tableHeaders = this.props.data.columns.map(function (column) {
+            var colVal = (column !== null) ? column.toString() : null;
             return (
-                <th>{column.toString()}</th>
+                <th>{colVal}</th>
             );
         });
 
