@@ -44,7 +44,7 @@ var QueryVisualization = React.createClass({
                 var innerId = 'card-inner--'+this.state.chartId;
 
                 viz = (
-                    <div class="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
+                    <div className="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
                         <div id={titleId} class="text-centered"></div>
                         <div id={innerId} class="card-inner"></div>
                     </div>
@@ -80,7 +80,7 @@ var QueryVisualization = React.createClass({
                 {viz}
                 <div className="">
                     Show as:
-                    <label class="Select">
+                    <label className="Select">
                         <select onChange={this.setDisplay}>
                             {displayOptions}
                         </select>

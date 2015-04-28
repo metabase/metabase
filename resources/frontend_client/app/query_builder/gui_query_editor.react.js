@@ -174,45 +174,46 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
     addFilter: function() {
-        var filter = queryBuilder.card.dataset_query.query.filter,
-            filterLength = filter.length;
+        var query = this.props.query,
+            queryFilters = query.query.filter;
 
-        // this gets run the second time you click the add filter button
-        if (filterLength === 3 && filter[0] !== 'AND') {
-            var newFilters = [];
-            newFilters.push(filter);
-            newFilters.unshift('AND');
-            newFilters.push([null, null, null]);
-            queryBuilder.card.dataset_query.query.filter = newFilters;
-            queryBuilder.inform();
-        } else if (filter[0] === 'AND') {
-            pushFilterTemplate(filterLength);
-            queryBuilder.inform();
-        } else {
-            pushFilterTemplate();
-            queryBuilder.inform();
-        }
-
-        function pushFilterTemplate(index) {
+        var pushFilterTemplate = function(index) {
             if (index) {
-                filter[index] = [null, null, null];
+                queryFilters[index] = [null, null, null];
             } else {
-                filter.push(null, null, null);
+                queryFilters.push(null, null, null);
             }
         }
-    },
-    updateFilter: function(value, index, filterListIndex) {
-        var filters = queryBuilder.card.dataset_query.query.filter;
-        if (filterListIndex) {
-            filters[filterListIndex][index] = value;
+
+        // this gets run the second time you click the add filter button
+        if (queryFilters.length === 3 && queryFilters[0] !== 'AND') {
+            var newFilters = [];
+            newFilters.push(queryFilters);
+            newFilters.unshift('AND');
+            newFilters.push([null, null, null]);
+        } else if (queryFilters[0] === 'AND') {
+            pushFilterTemplate(queryFilters.length);
         } else {
-            filters[index] = value;
+            pushFilterTemplate();
         }
 
-        queryBuilder.inform();
+        this.setQuery(query, true);
+    },
+    updateFilter: function(value, index, filterListIndex) {
+        var query = this.props.query,
+            queryFilters = query.query.filter;
+
+        if (filterListIndex) {
+            queryFilters[filterListIndex][index] = value;
+        } else {
+            queryFilters[index] = value;
+        }
+
+        this.setQuery(query, true);
     },
     removeFilter: function(index) {
-        var filters = queryBuilder.card.dataset_query.query.filter;
+        var query = this.props.query,
+            queryFilters = query.query.filter;
 
         /*
             HERE BE MORE DRAGONS
@@ -224,13 +225,13 @@ var GuiQueryEditor = React.createClass({
             having added multiple so we should reset to [] in this case as well
         */
 
-        if ((filters.length === 3 && filters[0] !== 'AND') || (filters[0] === 'AND' && filters.length === 2)) {
-            // just reset the array
-            queryBuilder.card.dataset_query.query.filter = [];
+        if ((queryFilters.length === 3 && queryFilters[0] !== 'AND') || (queryFilters[0] === 'AND' && queryFilters.length === 2)) {
+            queryFilters = [];
         } else {
-            queryBuilder.card.dataset_query.query.filter.splice(index, 1);
+            queryFilters.splice(index, 1);
         }
-        queryBuilder.inform();
+
+        this.setQuery(query, true);
     },
     cleanFilters: function(dataset_query) {
         var filters = dataset_query.query.filter,
@@ -247,58 +248,6 @@ var GuiQueryEditor = React.createClass({
             dataset_query.filter = [];
         }
         return dataset_query;
-    },
-    _getFilterFields: function () {
-        var filterFieldList = [];
-        if(this.state.options) {
-            for(var key in this.state.options.fields_lookup) {
-                filterFieldList.push(this.state.options.fields_lookup[key]);
-            }
-        }
-        return filterFieldList;
-    },
-    _getFilterWidget: function (filter, index) {
-        var operator = filter[0], // name of the operator
-            field = filter[1], // id of the field
-            value = filter[2],
-
-            operatorList = [],
-            valueFields,
-            filterFieldList = this._getFilterFields();
-
-        // extract the real info
-        for(var fieldItem in filterFieldList) {
-            var theField = filterFieldList[fieldItem];
-
-            if(theField.id == field) {
-
-                for(var operatorItem in theField.operators_lookup) {
-                    var theOperator = theField.operators_lookup[operatorItem]
-                    // push the operator into the list we'll use for selection
-                    operatorList.push(theOperator);
-
-                    if(theOperator.name == operator) {
-                    // this is structured strangely
-                        valueFields = theOperator.fields[0];
-                    }
-                }
-            }
-        }
-
-        return (
-            <FilterWidget
-                placeholder="Item"
-                field={field}
-                filterFieldList={filterFieldList}
-                operator={operator}
-                operatorList={operatorList}
-                value={value}
-                valueFields={valueFields}
-                index={index || 0}
-                remove={this.removeFilter}
-                updateFilter={this.updateFilter}
-            />
-        );
     },
     render: function () {
 
@@ -326,6 +275,21 @@ var GuiQueryEditor = React.createClass({
                 sourceTableListOpen = false;
             }
 
+            // if we don't have any filters applied yet then provide an option to do that
+            var filterButton;
+            if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
+                filterButton = (
+                    <span>
+                        <a className="FilterTrigger Button" onClick={this.addFilter}>
+                            <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
+                            </svg>
+                        </a>
+                    </span>
+                );
+            }
+
+
             tableSelector = (
                 <div>
                     From:
@@ -338,6 +302,90 @@ var GuiQueryEditor = React.createClass({
                         isInitiallyOpen={sourceTableListOpen}
                         action={this.setSourceTable}
                     />
+                    {filterButton}
+                </div>
+            );
+        }
+
+
+        // filter clause.  must have table details available
+        var filterSelector;
+        if (this.state.options && this.props.query.query.filter.length > 0) {
+            var component = this;
+
+            var filterFieldList = [];
+            for(var key in this.state.options.fields_lookup) {
+                filterFieldList.push(this.state.options.fields_lookup[key]);
+            }
+
+            var filterWidget = function (filter, index) {
+                var operator = filter[0],           // name of the operator
+                    field = filter[1],              // id of the field
+                    value = filter[2],              // filtering value
+                    operatorList = [],
+                    valueFields;
+
+                // extract the real info
+                for(var fieldItem in filterFieldList) {
+                    var theField = filterFieldList[fieldItem];
+                    if(theField.id === field) {
+                        for(var operatorItem in theField.operators_lookup) {
+                            var theOperator = theField.operators_lookup[operatorItem]
+                            // push the operator into the list we'll use for selection
+                            operatorList.push(theOperator);
+
+                            if(theOperator.name === operator) {
+                                // this is structured strangely
+                                valueFields = theOperator.fields[0];
+                            }
+                        }
+                    }
+                }
+
+                return (
+                    <FilterWidget
+                        placeholder="Item"
+                        field={field}
+                        filterFieldList={filterFieldList}
+                        operator={operator}
+                        operatorList={operatorList}
+                        value={value}
+                        valueFields={valueFields}
+                        index={index || 0}
+                        remove={component.removeFilter}
+                        updateFilter={component.updateFilter}
+                    />
+                );
+            };
+
+            var filterList;
+            if(this.props.query.query.filter[0] === "AND") {
+                filterList = this.props.query.query.filter.map(function (filter, index) {
+                    if(filter === "AND") {
+                        return;
+                    } else {
+                        return (
+                            filterWidget(filter, index)
+                        );
+                    }
+                }.bind(this));
+            } else {
+                filterList = filterWidget(this.props.query.query.filter);
+            }
+
+            var addFilterButton;
+            // TODO: only allow adding another filter if last one is properly filled out
+            if (true) {
+                addFilterButton = (
+                    <a className="FilterTrigger Button" onClick={this.addFilter}>Add another filter ...</a>
+                );
+            }
+
+            filterSelector = (
+                <div>
+                    Filtered by:
+                    {filterList}
+                    {addFilterButton}
                 </div>
             );
         }
@@ -459,49 +507,13 @@ var GuiQueryEditor = React.createClass({
         }
 
 
-        //  FILTERS
-        var filterList,
-            filterHtml;
-
-        // if we have filters...
-        var filters = this.props.query.query.filter;
-        if(filters.length != 0) {
-            // and if we have multiple filters, map through and return a filter widget
-            if(filters[0] == 'AND') {
-                filterList = filters.map(function (filter, index) {
-                    if(filter == 'AND') {
-                        return
-                    } else {
-                        return (
-                            this._getFilterWidget(filter, index)
-                        )
-                    }
-                }.bind(this))
-            } else {
-                filterList = this._getFilterWidget(filters)
-            }
-        }
-
-        filterHtml = (
-            <div className="clearfix">
-                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.addFilter}>
-                    <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
-                    </svg>
-                </a>
-                {filterList}
-            </div>
-        );
-
         return (
             <div>
                 {dbSelector}
                 {tableSelector}
+                {filterSelector}
                 {aggregationSelector}
                 {breakoutSelector}
-                <div className="QueryBar">
-                    {filterHtml}
-                </div>
                 <div>
                     <RunButton
                         canRun={this.canRun()}
