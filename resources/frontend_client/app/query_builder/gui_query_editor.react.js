@@ -9,12 +9,11 @@ var GuiQueryEditor = React.createClass({
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
         defaultQuery: React.PropTypes.object.isRequired,
+        isRunning: React.PropTypes.bool.isRequired,
         getTablesFn: React.PropTypes.func.isRequired,
         getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
-        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
-
-        isRunning: React.PropTypes.bool
+        notifyQueryModifiedFn: React.PropTypes.func.isRequired
     },
     getInitialState: function() {
         return {
@@ -61,10 +60,6 @@ var GuiQueryEditor = React.createClass({
             component.setState({
                 options: updatedTable
             });
-
-            if (component.props.query.query.aggregation.length > 1) {
-                component.getAggregationFields(component.props.query.query.aggregation[0]);
-            }
         }, function (error) {
             console.log('error getting table metadata', error);
         });
@@ -73,6 +68,7 @@ var GuiQueryEditor = React.createClass({
         // check if this is the same db or not
         if (databaseId !== this.props.query.database) {
             // reset to a brand new query
+            // TODO: clone?
             var query = this.props.defaultQuery;
 
             // set our new database on the query
@@ -97,6 +93,13 @@ var GuiQueryEditor = React.createClass({
         query.query.source_table = tableId;
 
         this.setQuery(query, true);
+    },
+    canRun: function() {
+        var canRun = false;
+        if (this.aggregationComplete()) {
+            canRun = true;
+        }
+        return canRun;
     },
     runQuery: function() {
         // ewwwww.  we should do something better here
@@ -137,37 +140,32 @@ var GuiQueryEditor = React.createClass({
         return aggregationComplete;
     },
     getAggregationFields: function(aggregation) {
-        // TODO: why does this mutate the query?
 
-        // todo - this could be a war crime
-        var component = this;
-        var query = this.props.query;
-        _.map(this.state.options.aggregation_options, function (option) {
+        for (var i=0; i < this.state.options.aggregation_options.length; i++) {
+            var option = this.state.options.aggregation_options[i];
             if (option.short === aggregation) {
-                if (option.fields.length > 0) {
-                    if (query.query.aggregation.length == 1) {
-                        query.query.aggregation[1] = null;
-                    }
-                    component.setState({
-                        aggregation_field_list: option.fields
-                    });
-                } else {
-                    query.query.aggregation.splice(1, 1);
-                }
+                // not exactly sure why we need the first element instead of option.fields??
+                return option.fields[0];
+            }
+        }
+    },
+    setAggregation: function(aggregation) {
+        var query = this.props.query,
+            queryAggregation = [aggregation];
+
+        query.query.aggregation = queryAggregation;
+
+        // check to see if this aggregation type requires another choice
+        _.map(this.state.options.aggregation_options, function (option) {
+            if (option.short === aggregation &&
+                option.fields.length > 0) {
+
+                // extend aggregation array by 1
+                queryAggregation[1] = null;
             }
         });
 
         this.setQuery(query, true);
-    },
-    setAggregation: function(aggregation) {
-        var query = this.props.query;
-        query.query.aggregation[0] = aggregation;
-
-        this.setQuery(query, true);
-
-        // if our aggregation requires selecting another part (e.g. sum of <field>)
-        // then lets make sure we've determined what those options should be
-        this.getAggregationFields(aggregation);
     },
     setAggregationTarget: function(target) {
         var query = this.props.query;
@@ -249,13 +247,6 @@ var GuiQueryEditor = React.createClass({
             dataset_query.filter = [];
         }
         return dataset_query;
-    },
-    canRun: function() {
-        var canRun = false;
-        if (this.aggregationComplete()) {
-            canRun = true;
-        }
-        return canRun;
     },
     _getFilterFields: function () {
         var filterFieldList = [];
@@ -406,7 +397,7 @@ var GuiQueryEditor = React.createClass({
                 aggregationTargetHtml = (
                     <SelectionModule
                         placeholder='field named...'
-                        items={this.state.aggregation_field_list}
+                        items={this.getAggregationFields(this.props.query.query.aggregation[0])}
                         display='1'
                         selectedValue={this.props.query.query.aggregation[1]}
                         selectedKey='0'
