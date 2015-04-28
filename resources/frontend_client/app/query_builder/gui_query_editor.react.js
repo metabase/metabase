@@ -327,6 +327,18 @@ var GuiQueryEditor = React.createClass({
             addDimensionButton,
             addDimensionButtonText;
 
+        var dbSelector;
+        if(this.props.databases && this.props.databases.length > 1) {
+            dbSelector = (
+                <DatabaseSelector
+                    databases={this.props.databases}
+                    setDatabase={this.setDatabase}
+                    currentDatabaseId={this.props.query.database}
+                />
+            );
+        }
+
+
         if (this.aggregationComplete() &&
             this.state.options &&
             this.state.options.breakout_options.fields.length > 0) {
@@ -436,17 +448,6 @@ var GuiQueryEditor = React.createClass({
             );
         }
 
-        var dbSelector;
-        if(this.props.databases && this.props.databases.length > 1) {
-            dbSelector = (
-                <DatabaseSelector
-                    databases={this.props.databases}
-                    setDatabase={this.props.setDatabase}
-                    currentDatabaseId={this.props.query.database}
-                />
-            );
-        }
-
         //  FILTERS
         var filterList,
             filterHtml;
@@ -472,7 +473,7 @@ var GuiQueryEditor = React.createClass({
 
         filterHtml = (
             <div className="clearfix">
-                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.addFilter.bind(this)}>
+                <a className="FilterTrigger float-left Button inline-block mr4" onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
                     </svg>
