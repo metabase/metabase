@@ -413,12 +413,15 @@ body {
     margin: 0 0.5em;
 }
 
+/* toggle button */
 .Button-toggle {
+    color: #797979;
     display: flex;
+    line-height: 1;
     border: 1px solid #ddd;
     border-radius: 40px;
-    width: 2.5em;
-    transition: background .2s linear .2s;
+    width: 4.25em;
+    transition: background .2s linear .2s, border .2s linear .2s;
 }
 
 .Button-toggleIndicator {
@@ -426,6 +429,7 @@ body {
     display: inline-block;
     width: 1em;
     height: 1em;
+    padding: 0.5em;
     border: 1px solid #ddd;
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
@@ -433,12 +437,14 @@ body {
     background-color: #fff;
 }
 
-.Button-toggle.Mode--native .Button-toggleIndicator {
+.Button-toggle.Button--toggled .Button-toggleIndicator {
     margin-left: 50%;
     transition: margin .3s linear;
 }
 
-.Button-toggle.Mode--native {
+.Button-toggle.Button--toggled {
+    color: var(--brand-color);
     background-color: var(--brand-color);
-    transition: background .2s linear .2s;
+    border-color: var(--brand-color);
+    transition: background .2s linear .2s, border .2s linear .2s;
 }
