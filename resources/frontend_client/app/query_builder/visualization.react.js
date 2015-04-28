@@ -25,72 +25,38 @@ var QueryVisualization = React.createClass({
             CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
-    setDisplay: function (display) {
+    setDisplay: function (event) {
         // notify our parent about our change
-        this.props.setDisplayFn(display);
+        this.props.setDisplayFn(event.target.value);
     },
     render: function () {
         if(!this.props.result) {
             return false;
         }
 
-        // for table rendering
-        var tableRows,
-            tableHeaders,
-            table;
-        // for chart rendering
-        var titleId,
-            innerId;
+        var viz;
+        if(this.props.result.error) {
+            // TODO: error messaging?
+        } else if(this.props.result.data) {
+            if(this.props.card.display !== "table") {
+                // rendering a chart of some type
+                var titleId = 'card-title--'+this.state.chartId;
+                var innerId = 'card-inner--'+this.state.chartId;
 
-        if(this.props.result && this.props.result.data) {
-            if(this.props.card.display === "table") {
-                tableRows = this.props.result.data.rows.map(function (row) {
-                    var rowCols = row.map(function (data) {
-                        return (<td>{data.toString()}</td>);
-                    });
-
-                    return (<tr>{rowCols}</tr>);
-                });
-
-                tableHeaders = this.props.result.data.columns.map(function (column) {
-                    return (
-                        <th>{column.toString()}</th>
-                    );
-                });
-
-                table = (
-                    <table className="QueryTable Table">
-                        <thead>
-                            <tr>
-                                {tableHeaders}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableRows}
-                        </tbody>
-                    </table>
+                viz = (
+                    <div class="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
+                        <div id={titleId} class="text-centered"></div>
+                        <div id={innerId} class="card-inner"></div>
+                    </div>
                 );
             } else {
-                titleId = 'card-title--'+this.state.chartId;
-                innerId = 'card-inner--'+this.state.chartId;
+                // render all non-chart types as a table
+                viz = (
+                    <QueryVisualizationTable result={this.props.result} />
+                );
             }
         }
 
-        var viz;
-        if(this.props.card.display !== "table") {
-            viz = (
-                <div class="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
-                    <div id={titleId} class="text-centered"></div>
-                    <div id={innerId} class="card-inner"></div>
-                </div>
-            );
-        } else {
-            viz = (
-                <div className="Table-wrapper">
-                    {table}
-                </div>
-            );
-        }
 
         var types = [
             'table',
@@ -99,28 +65,27 @@ var QueryVisualization = React.createClass({
             'pie',
             'area',
             'timeseries'
-        ], typeControls = types.map(function (type) {
-            if(this.props.result) {
-                var buttonClasses = cx({
-                    'Button': true,
-                    'Button--primary' : (type === this.props.card.display)
-                });
-                return (
-                    <a className={buttonClasses} href="#" onClick={this.setDisplay.bind(null, type)}>{type}</a>
-                );
-            } else {
-                return false;
-            }
-        }.bind(this));
+        ];
+
+        var displayOptions = [];
+        for (var i = 0; i < types.length; i++) {
+            var val = types[i];
+            displayOptions.push(
+                <option key={i} value={val}>{val}</option>
+            );
+        };
 
         return (
             <div>
-                <div className="TypeControls">
-                    <div className="wrapper">
-                        {typeControls}
-                    </div>
-                </div>
                 {viz}
+                <div className="">
+                    Show as:
+                    <label class="Select">
+                        <select onChange={this.setDisplay}>
+                            {displayOptions}
+                        </select>
+                    </label>
+                </div>
             </div>
         );
     }

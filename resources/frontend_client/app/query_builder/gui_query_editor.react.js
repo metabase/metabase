@@ -198,12 +198,10 @@ var GuiQueryEditor = React.createClass({
         this.getAggregationFields(aggregation);
     },
     setAggregationTarget: function(target) {
-        // TODO: 'native' query support
         queryBuilder.card.dataset_query.query.aggregation[1] = target;
         queryBuilder.inform();
     },
     addFilter: function() {
-        // TODO: 'native' query support
         var filter = queryBuilder.card.dataset_query.query.filter,
             filterLength = filter.length;
 
@@ -232,7 +230,6 @@ var GuiQueryEditor = React.createClass({
         }
     },
     updateFilter: function(value, index, filterListIndex) {
-        // TODO: 'native' query support
         var filters = queryBuilder.card.dataset_query.query.filter;
         if (filterListIndex) {
             filters[filterListIndex][index] = value;
@@ -243,7 +240,6 @@ var GuiQueryEditor = React.createClass({
         queryBuilder.inform();
     },
     removeFilter: function(index) {
-        // TODO: 'native' query support
         var filters = queryBuilder.card.dataset_query.query.filter;
 
         /*
