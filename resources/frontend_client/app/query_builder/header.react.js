@@ -42,8 +42,8 @@ var QueryHeader = React.createClass({
         }
 
         return (
-            <div className="flex">
-                <h1 className="QueryName">{title}</h1>
+            <div className="flex align-center">
+                <h1 className="QueryName flex-full">{title}</h1>
                 {editButton}
                 <Saver
                     card={this.props.card}
