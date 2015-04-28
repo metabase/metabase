@@ -25,9 +25,10 @@ var QueryVisualization = React.createClass({
             CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
-    setDisplay: function (event) {
+    setDisplay: function (val) {
+        console.log('val', val);
         // notify our parent about our change
-        this.props.setDisplayFn(event.target.value);
+        this.props.setDisplayFn(val);
     },
     render: function () {
         if(!this.props.result) {
@@ -45,8 +46,8 @@ var QueryVisualization = React.createClass({
 
                 viz = (
                     <div className="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
-                        <div id={titleId} class="text-centered"></div>
-                        <div id={innerId} class="card-inner"></div>
+                        <div id={titleId} className="text-centered"></div>
+                        <div id={innerId} className="card-inner"></div>
                     </div>
                 );
             } else {
@@ -57,7 +58,6 @@ var QueryVisualization = React.createClass({
             }
         }
 
-
         var types = [
             'table',
             'line',
@@ -67,24 +67,13 @@ var QueryVisualization = React.createClass({
             'timeseries'
         ];
 
-        var displayOptions = [];
-        for (var i = 0; i < types.length; i++) {
-            var val = types[i];
-            displayOptions.push(
-                <option key={i} value={val}>{val}</option>
-            );
-        };
-
         return (
-            <div>
-                {viz}
-                <div className="">
-                    Show as:
-                    <label className="Select">
-                        <select onChange={this.setDisplay}>
-                            {displayOptions}
-                        </select>
-                    </label>
+            <div className="full flex flex-column">
+                <div className="Visualization full flex-full">
+                    {viz}
+                </div>
+                <div className="VisualizationSettings">
+                    Show as: DERP
                 </div>
             </div>
         );

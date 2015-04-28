@@ -10,7 +10,7 @@ var QueryBuilder = React.createClass({
     },
     render: function () {
         return (
-            <div className="full-height">
+            <div className="full-height flex">
                 <div className="QueryHeader full">
                     <div className="QueryWrapper">
                         <QueryHeader
@@ -50,7 +50,7 @@ var QueryBuilder = React.createClass({
                         </div>
                     </div>
                 </div>
-                <div className="QueryWrapper mb4">
+                <div className="QueryWrapper mb4 flex-full">
                     <QueryVisualization
                         card={this.props.model.card}
                         result={this.props.model.result}
