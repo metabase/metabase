@@ -118,7 +118,7 @@ CardControllers.controller('CardDetail', [
                 name: null,
                 public_perms: 0,
                 display: "table",
-                dataset_query: angular.copy(newQueryTemplates.query),
+                dataset_query: {},
                 isDirty: cardIsDirty
             };
 
@@ -160,16 +160,18 @@ CardControllers.controller('CardDetail', [
 
                     // carry over currently selected database to new query, if possible
                     // otherwise try to set the database to a sensible default
-                    if (card.dataset_query.database !== null) {
+                    if (card.dataset_query.database !== undefined &&
+                        card.dataset_query.database !== null) {
                         queryTemplate.database = card.dataset_query.database;
-                    } else if (editorModel.databases && editorModel.databases.length > 0) {
+                    } else if (databases && databases.length > 0) {
                         // TODO: be smarter about this and use the most recent or popular db
-                        queryTemplate.database = editorModel.databases[0].id;
+                        queryTemplate.database = databases[0].id;
                     }
 
 
                     // apply the new query to our card
                     card.dataset_query = queryTemplate;
+                    console.log(queryTemplate);
 
                     // clear out any visualization and reset to defaults
                     queryResult = null;
@@ -363,7 +365,10 @@ CardControllers.controller('CardDetail', [
                 });
 
             } else {
-                // starting a new card, so simply trigger full rendering
+                // starting a new card
+                // this is just an easy way to ensure defaults are all setup
+                headerModel.setQueryModeFn("query");
+
                 renderAll();
             }
         };

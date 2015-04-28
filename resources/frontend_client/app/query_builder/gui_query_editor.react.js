@@ -7,7 +7,8 @@ var GuiQueryEditor = React.createClass({
     displayName: 'GuiQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,
-        initialQuery: React.PropTypes.object,
+        query: React.PropTypes.object.isRequired,
+        defaultQuery: React.PropTypes.object.isRequired,
         getTablesFn: React.PropTypes.func.isRequired,
         getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
@@ -17,57 +18,24 @@ var GuiQueryEditor = React.createClass({
     },
     getInitialState: function() {
         return {
-            query: {
-                database: null,
-                type: "query",
-                query: {
-                    source_table: null,
-                    aggregation: [null],
-                    breakout: [],
-                    filter: []
-                }
-            }
+            tables: null,
+            options: null
         };
     },
     componentDidMount: function() {
-        var query = (this.props.initialQuery) ? this.props.initialQuery : this.state.query;
-
-        // if we don't have a db set then try to pick a default now
-        if (!query.database &&
-            this.props.databases &&
-            this.props.databases.length > 0) {
-            // set the database to the first db
-            // TODO: be smarter about this and use the most recent or popular db
-            query.database = this.props.databases[0].id;
-        }
-
-        this.setQuery(query, true);
-
         // if we know our database then load related information
-        if (query.database) {
-            this.loadDatabaseInfo(query.database);
+        if (this.props.query.database) {
+            this.loadDatabaseInfo(this.props.query.database);
         }
 
         // if we also know our table then load it's related information
-        if (query.query.source_table) {
-            this.loadTableInfo(query.query.source_table);
+        if (this.props.query.query.source_table) {
+            this.loadTableInfo(this.props.query.query.source_table);
         }
 
-    },
-    componentDidUpdate: function() {
-        console.log('query=', this.state.query);
-        // TODO: notify parent that query changed
     },
     setQuery: function(dataset_query, notify) {
-        var doNotify = (notify !== undefined) ? notify : false;
-
-        this.setState({
-            query: dataset_query
-        });
-
-        if (doNotify) {
-            this.props.notifyQueryModifiedFn(dataset_query);
-        }
+        this.props.notifyQueryModifiedFn(dataset_query);
     },
     loadDatabaseInfo: function(databaseId) {
         var component = this;
@@ -94,28 +62,27 @@ var GuiQueryEditor = React.createClass({
                 options: updatedTable
             });
 
-            // TODO: fix this
-            // if (this.state.query.query.aggregation.length > 1) {
-            //     this.getAggregationFields(queryBuilder.card.dataset_query.query.aggregation[0]);
-            // }
+            if (component.props.query.query.aggregation.length > 1) {
+                component.getAggregationFields(component.props.query.query.aggregation[0]);
+            }
         }, function (error) {
             console.log('error getting table metadata', error);
         });
     },
     setDatabase: function(databaseId) {
         // check if this is the same db or not
-        if (databaseId !== this.state.query.database) {
+        if (databaseId !== this.props.query.database) {
             // reset to a brand new query
-            var state = this.getInitialState();
+            var query = this.props.defaultQuery;
 
             // set our new database on the query
-            state.query.database = databaseId;
+            query.database = databaseId;
 
             // clear all previous state
-            this.replaceState(state);
+            this.replaceState({});
 
             // notify parent that we've started over
-            this.props.notifyQueryModifiedFn(state.query);
+            this.props.notifyQueryModifiedFn(query);
 
             // load rest of the data we need
             this.loadDatabaseInfo(databaseId);
@@ -126,14 +93,14 @@ var GuiQueryEditor = React.createClass({
         var tableId = sourceTable.id || sourceTable;
         this.loadTableInfo(tableId);
 
-        var query = this.state.query;
+        var query = this.props.query;
         query.query.source_table = tableId;
 
         this.setQuery(query, true);
     },
     runQuery: function() {
         // ewwwww.  we should do something better here
-        var cleanQuery = this.cleanFilters(this.state.query);
+        var cleanQuery = this.cleanFilters(this.props.query);
 
         this.props.runFn(cleanQuery);
 
@@ -141,45 +108,49 @@ var GuiQueryEditor = React.createClass({
     },
     canAddDimensions: function() {
         var MAX_DIMENSIONS = 2;
-        return (this.state.query.query.breakout.length < MAX_DIMENSIONS);
+        return (this.props.query.query.breakout.length < MAX_DIMENSIONS);
     },
     addDimension: function() {
-        var query = this.state.query;
+        var query = this.props.query;
         query.query.breakout.push(null);
 
         this.setQuery(query, true);
     },
     updateDimension: function(dimension, index) {
-        var query = this.state.query;
+        var query = this.props.query;
         query.query.breakout[index] = dimension;
 
         this.setQuery(query, true);
     },
     removeDimension: function(index) {
-        var query = this.state.query;
+        var query = this.props.query;
         query.query.breakout.splice(index, 1);
 
         this.setQuery(query, true);
     },
     aggregationComplete: function() {
         var aggregationComplete = false;
-        if ((this.state.query.query.aggregation[0] !== null) &&
-            (this.state.query.query.aggregation[1] !== null)) {
+        if ((this.props.query.query.aggregation[0] !== null) &&
+            (this.props.query.query.aggregation[1] !== null)) {
             aggregationComplete = true;
         }
         return aggregationComplete;
     },
     getAggregationFields: function(aggregation) {
-        // why are we doing this?
+        // TODO: why does this mutate the query?
+
         // todo - this could be a war crime
-        var query = this.state.query;
+        var component = this;
+        var query = this.props.query;
         _.map(this.state.options.aggregation_options, function (option) {
             if (option.short === aggregation) {
                 if (option.fields.length > 0) {
-                    if (this.state.query.query.aggregation.length == 1) {
+                    if (query.query.aggregation.length == 1) {
                         query.query.aggregation[1] = null;
                     }
-                    //queryBuilder.aggregation_field_list = option.fields;
+                    component.setState({
+                        aggregation_field_list: option.fields
+                    });
                 } else {
                     query.query.aggregation.splice(1, 1);
                 }
@@ -189,17 +160,20 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
     setAggregation: function(aggregation) {
-        var query = this.state.query;
+        var query = this.props.query;
         query.query.aggregation[0] = aggregation;
 
         this.setQuery(query, true);
 
-        // TODO: hmmm, it's clear what this is meant for really
+        // if our aggregation requires selecting another part (e.g. sum of <field>)
+        // then lets make sure we've determined what those options should be
         this.getAggregationFields(aggregation);
     },
     setAggregationTarget: function(target) {
-        queryBuilder.card.dataset_query.query.aggregation[1] = target;
-        queryBuilder.inform();
+        var query = this.props.query;
+        query.query.aggregation[1] = target;
+
+        this.setQuery(query, true);
     },
     addFilter: function() {
         var filter = queryBuilder.card.dataset_query.query.filter,
@@ -338,7 +312,7 @@ var GuiQueryEditor = React.createClass({
     render: function () {
 
         /* @souce table */
-        var sourceTableSelection = this.state.query.query.source_table,
+        var sourceTableSelection = this.props.query.query.source_table,
             sourceTableListOpen = true;
 
         if(sourceTableSelection) {
@@ -347,7 +321,7 @@ var GuiQueryEditor = React.createClass({
 
         /* @aggregation table */
         var aggregationSelectionHtml,
-            aggregationSelection = this.state.query.query.aggregation[0],
+            aggregationSelection = this.props.query.query.aggregation[0],
             aggregationListOpen = true;
 
         if(aggregationSelection) {
@@ -366,16 +340,16 @@ var GuiQueryEditor = React.createClass({
             this.state.options &&
             this.state.options.breakout_options.fields.length > 0) {
 
-            addDimensionButtonText = (this.state.query.query.breakout.length < 1) ? "Grouped by" : "and";
+            addDimensionButtonText = (this.props.query.query.breakout.length < 1) ? "Grouped by" : "and";
 
-            if(this.state.query.query.breakout.length < 2) {
+            if(this.props.query.query.breakout.length < 2) {
                 addDimensionButton = (
                     <a className="Button" onClick={this.addDimension}>{addDimensionButtonText}</a>
                 );
             }
 
             if(this.state.options.breakout_options) {
-                dimensionList = this.state.query.query.breakout.map(function (breakout, index) {
+                dimensionList = this.props.query.query.breakout.map(function (breakout, index) {
                         var  open;
                         if(breakout === null) {
                             open = true;
@@ -402,7 +376,7 @@ var GuiQueryEditor = React.createClass({
 
         var dimensionLabel;
 
-        if(this.state.query.query.breakout.length > 0) {
+        if(this.props.query.query.breakout.length > 0) {
             dimensionLabel = (
                 <div className="text-grey-3 inline-block mx2">
                     Grouped by:
@@ -425,16 +399,16 @@ var GuiQueryEditor = React.createClass({
             );
 
             // if there's a value in the second aggregation slot
-            if(this.state.query.query.aggregation.length > 1) {
-                if(this.state.query.query.aggregation[1] !== null) {
+            if(this.props.query.query.aggregation.length > 1) {
+                if(this.props.query.query.aggregation[1] !== null) {
                     aggregationTargetListOpen = false;
                 }
                 aggregationTargetHtml = (
                     <SelectionModule
                         placeholder='field named...'
-                        items={this.aggregationFieldList[0]}
+                        items={this.state.aggregation_field_list}
                         display='1'
-                        selectedValue={this.state.query.query.aggregation[1]}
+                        selectedValue={this.props.query.query.aggregation[1]}
                         selectedKey='0'
                         isInitiallyOpen={aggregationTargetListOpen}
                         action={this.setAggregationTarget}
@@ -453,7 +427,7 @@ var GuiQueryEditor = React.createClass({
                             placeholder='Lets start with...'
                             items={this.state.tables}
                             display='name'
-                            selectedValue={this.state.query.query.source_table}
+                            selectedValue={this.props.query.query.source_table}
                             selectedKey='id'
                             isInitiallyOpen={sourceTableListOpen}
                             action={this.setSourceTable}
@@ -477,7 +451,7 @@ var GuiQueryEditor = React.createClass({
                 <DatabaseSelector
                     databases={this.props.databases}
                     setDatabase={this.props.setDatabase}
-                    currentDatabaseId={this.state.query.database}
+                    currentDatabaseId={this.props.query.database}
                 />
             );
         }
@@ -487,7 +461,7 @@ var GuiQueryEditor = React.createClass({
             filterHtml;
 
         // if we have filters...
-        var filters = this.state.query.query.filter;
+        var filters = this.props.query.query.filter;
         if(filters.length != 0) {
             // and if we have multiple filters, map through and return a filter widget
             if(filters[0] == 'AND') {
