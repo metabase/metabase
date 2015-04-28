@@ -313,7 +313,6 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         };
 
-        $scope.annotations = [];
         $scope.fields = [];
 
         $scope.dragControlListeners = {

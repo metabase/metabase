@@ -30,7 +30,6 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.emailreport',
     'corvusadmin.people',
     'corvusadmin.query',
-    'corvusadmin.annotation',
     'superadmin.settings',
     'superadmin.organization'
 ]);
