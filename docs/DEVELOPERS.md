@@ -98,7 +98,7 @@ You can make API calls from the REPL using `metabase.http-client`:
 ```clojure
 (use 'metabase.http-client)
 (defn cl [& args]
-  (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
+  (-> (apply client {:email "crowberto@metabase.com", :password "squawk"} args)
       clojure.pprint/pprint))
 (cl :get "user/current")
 ;; -> {:email "crowbetro@metabase.com",
