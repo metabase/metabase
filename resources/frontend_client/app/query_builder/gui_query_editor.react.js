@@ -186,11 +186,12 @@ var GuiQueryEditor = React.createClass({
         }
 
         // this gets run the second time you click the add filter button
-        if (queryFilters.length === 3 && queryFilters[0] !== 'AND') {
+        if (queryFilters.length === 3 && queryFilters[0] !== "AND") {
             var newFilters = [];
             newFilters.push(queryFilters);
             newFilters.unshift('AND');
             newFilters.push([null, null, null]);
+            query.query.filter = newFilters;
         } else if (queryFilters[0] === 'AND') {
             pushFilterTemplate(queryFilters.length);
         } else {
@@ -226,7 +227,7 @@ var GuiQueryEditor = React.createClass({
         */
 
         if ((queryFilters.length === 3 && queryFilters[0] !== 'AND') || (queryFilters[0] === 'AND' && queryFilters.length === 2)) {
-            queryFilters = [];
+            query.query.filter = [];
         } else {
             queryFilters.splice(index, 1);
         }
@@ -236,6 +237,7 @@ var GuiQueryEditor = React.createClass({
     cleanFilters: function(dataset_query) {
         var filters = dataset_query.query.filter,
             cleanFilters = [];
+
         // in instances where there's only one filter, the api expects just one array with the values
         if (typeof(filters[0]) == 'object' && filters[0] != 'AND') {
             for (var filter in filters[0]) {
@@ -243,10 +245,12 @@ var GuiQueryEditor = React.createClass({
             }
             dataset_query.query.filter = cleanFilters;
         }
+
         // reset to initial state of filters if we've removed 'em all
         if (filters.length === 1 && filters[0] === 'AND') {
             dataset_query.filter = [];
         }
+
         return dataset_query;
     },
     render: function () {
@@ -351,7 +355,7 @@ var GuiQueryEditor = React.createClass({
                         operatorList={operatorList}
                         value={value}
                         valueFields={valueFields}
-                        index={index || 0}
+                        index={index}
                         remove={component.removeFilter}
                         updateFilter={component.updateFilter}
                     />
@@ -370,12 +374,21 @@ var GuiQueryEditor = React.createClass({
                     }
                 }.bind(this));
             } else {
-                filterList = filterWidget(this.props.query.query.filter);
+                filterList = filterWidget(this.props.query.query.filter, 0);
+            }
+
+            var lastFilter;
+            if (this.props.query.query.filter[0] === "AND") {
+                lastFilter = this.props.query.query.filter[this.props.query.query.filter.length - 1];
+            } else {
+                lastFilter = this.props.query.query.filter;
             }
 
             var addFilterButton;
-            // TODO: only allow adding another filter if last one is properly filled out
-            if (true) {
+            if (lastFilter.length === 3 &&
+                    lastFilter[0] !== null &&
+                    lastFilter[1] !== null &&
+                    lastFilter[2] !== null) {
                 addFilterButton = (
                     <a className="FilterTrigger Button" onClick={this.addFilter}>Add another filter ...</a>
                 );

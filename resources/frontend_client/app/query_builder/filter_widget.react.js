@@ -10,7 +10,7 @@ var FilterWidget = React.createClass({
         operator: React.PropTypes.string,
         operatorList: React.PropTypes.array.isRequired,
         updateFilter: React.PropTypes.func.isRequired, // a function to update the
-        valueFields: React.PropTypes.array.isRequired
+        valueFields: React.PropTypes.object
     },
     sectionClassName: 'FilterSection',
     _updateTextFilterValue: function (index) {

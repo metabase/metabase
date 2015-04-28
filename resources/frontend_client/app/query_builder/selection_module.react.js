@@ -10,7 +10,7 @@ var SelectionModule = React.createClass({
         items: React.PropTypes.array,
         remove: React.PropTypes.func,
         selectedKey: React.PropTypes.string,
-        selectedValue: React.PropTypes.number,
+        selectedValue: React.PropTypes.node,
         parentIndex: React.PropTypes.number,
         placeholder: React.PropTypes.string
     },
