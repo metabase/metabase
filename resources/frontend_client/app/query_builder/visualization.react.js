@@ -52,7 +52,7 @@ var QueryVisualization = React.createClass({
             } else {
                 // render all non-chart types as a table
                 viz = (
-                    <QueryVisualizationTable result={this.props.result} />
+                    <QueryVisualizationTable data={this.props.result.data} />
                 );
             }
         }

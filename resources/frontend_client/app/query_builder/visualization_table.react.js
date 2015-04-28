@@ -4,14 +4,14 @@
 var QueryVisualizationTable = React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
-        result: React.PropTypes.object
+        data: React.PropTypes.object
     },
     render: function () {
-        if(!this.props.result || !this.props.result.data) {
+        if(!this.props.data) {
             return false;
         }
 
-        var tableRows = this.props.result.data.rows.map(function (row) {
+        var tableRows = this.props.data.rows.map(function (row) {
             var rowCols = row.map(function (data) {
                 return (<td>{data.toString()}</td>);
             });
@@ -19,7 +19,7 @@ var QueryVisualizationTable = React.createClass({
             return (<tr>{rowCols}</tr>);
         });
 
-        var tableHeaders = this.props.result.data.columns.map(function (column) {
+        var tableHeaders = this.props.data.columns.map(function (column) {
             return (
                 <th>{column.toString()}</th>
             );
