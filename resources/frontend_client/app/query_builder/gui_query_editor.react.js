@@ -514,19 +514,19 @@ var GuiQueryEditor = React.createClass({
     render: function () {
         return (
             <div className="border-bottom">
-                <Transition>
+                <Transition transitionName="qb-section">
                     {this.renderDbSelector()}
                 </Transition>
-                <Transition>
+                <Transition transitionName="qb-section">
                     {this.renderTableSelector()}
                 </Transition>
-                <Transition>
+                <Transition transitioName="qb-section">
                     {this.renderFilterSelector()}
                 </Transition>
-                <Transition>
+                <Transition transitionName="qb-section">
                     {this.renderAggregation()}
                 </Transition>
-                <Transition>
+                <Transition transitionName="qb-section">
                     {this.renderBreakouts()}
                 </Transition>
                 <RunButton
