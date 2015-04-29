@@ -16,10 +16,6 @@
             <cv-data-grid table="table" query="query" allow-segments="true"></cv-data-grid>
         </div>
         <div ng-show="canvas == 'metadata'" class="TableMetadata">
-            <div class="py2 clearfix" ng-if="table">
-                <cv-annotation-form model="table" id="{{table.id}}"></cv-annotation-form>
-            </div>
-
             <div class="mt2 border-bottom">
                 <ul>
                     <li class="border-top py2" ng-repeat="field in fields">
@@ -35,8 +31,6 @@
                         </div>
                         <div class="mx1 pt1" ng-if="expanded_field === field.id">
                             <div ng-if="field.description">{{field.description}}</div>
-
-                            <cv-annotation-form model="field" id="{{field.id}}"></cv-annotation-form>
                         </div>
                     </li>
                 </ul>
