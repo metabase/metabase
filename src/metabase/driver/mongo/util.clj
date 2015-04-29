@@ -29,10 +29,12 @@
    The DB connection is re-used by subsequent calls to `with-mongo-connection` within BODY.
    (We're smart about it: DATABASE isn't even evaluated if `*mongo-connection*` is already bound.)
 
-     (with-mongo-connection [conn @(:db (sel :one Table ...))] ; delay isn't derefed if *mongo-connection* is already bound
+     ;; delay isn't derefed if *mongo-connection* is already bound
+     (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db (sel :one Table ...))]
        ...)
 
-     (with-mongo-connection [conn \"mongodb://127.0.0.1:27017/test\"] ; use a string instead of a DB
+     ;; You can use a string instead of a Database
+     (with-mongo-connection [^com.mongodb.DBApiLayer conn \"mongodb://127.0.0.1:27017/test\"]
         ...)"
   [[binding database] & body]
   `(let [f# (fn [~binding]

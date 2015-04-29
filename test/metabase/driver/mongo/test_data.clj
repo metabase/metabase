@@ -18,7 +18,7 @@
 ;; ## CONSTANTS
 
 (def ^:private ^:const mongo-test-db-conn-str
-  "Connection string for the Metabase Mongo Test DB." ; TODO - this needs to come from env var or something so we can get tests working in CircleCI too
+  "Connection string for the Metabase Mongo Test DB." ; TODO - does this need to come from an env var so it works in CircleCI?
   "mongodb://localhost/metabase-test")
 
 (def ^:private ^:const mongo-test-db-name
@@ -48,26 +48,50 @@
 
 ;; ## FNS FOR GETTING RELEVANT TABLES / FIELDS
 
-(def ^{:arglists '([table-name])} table-name->table
-  "Return Mongo test database `Table` with given name.
+(defn table-name->table
+  "Fetch `Table` for Mongo test database.
 
-     (table-name->table :users)
-       -> {:id 10, :name \"users\", ...}"
-  (let [-table-name->table (delay (m/map-keys keyword (sel :many :field->obj [Table :name] :db_id @mongo-test-db-id)))]
-    (fn [table-name]
-      {:pre [(or (keyword? table-name)
-                 (string? table-name))]
-       :post [(map? %)]}
-      (@-table-name->table (keyword table-name)))))
+    (table-name->table :users) -> {:id 100, :name \"users\", ...}"
+  [table-name]
+  {:pre [(keyword? table-name)]
+   :post [(map? %)]}
+  (sel :one Table :db_id @mongo-test-db-id :name (name table-name)))
 
-(defn table-name->id [table-name]
-  {:pre [(or (keyword? table-name)
-             (string? table-name))]
-   :post [(integer? %)]}
-  (:id (table-name->table (keyword table-name))))
+(def ^{:arglists '([table-name])} table-name->id
+  "Return ID of `Table` for Mongo test database (memoized).
 
-(defn table-name->field-name->field [table-name]
-  (let [table (table-name->table table-name)]))
+    (table-name->id :users) -> 10"
+  (memoize
+   (fn [table-name]
+     {:pre [(keyword? table-name)]
+      :post [(integer? %)]}
+     (:id (table-name->table table-name)))))
+
+(defn table-name->field-name->field
+  "Return a map of `field-name -> field` for `Table` for Mongo test database."
+  [table-name]
+  (m/map-keys keyword (sel :many :field->obj [Field :name] :table_id (table-name->id table-name))))
+
+(defn field-name->field
+  "Fetch `Field` for Mongo test database.
+
+    (field-name->field :users :name) -> {:id 292, :name \"name\", ...}"
+  [table-name field-name]
+  {:pre [(keyword? table-name)
+         (keyword? field-name)]
+   :post [(map? %)]}
+  ((table-name->field-name->field table-name) field-name))
+
+(def ^{:arglists '([table-name field-name])} field-name->id
+  "Return ID of `Field` for Mongo test Database (memoized).
+
+    (field-name->id :users :name) -> 292"
+  (memoize
+   (fn [table-name field-name]
+     {:pre [(keyword? table-name)
+            (keyword? field-name)]
+      :post [(integer? %)]}
+     (:id (field-name->field table-name field-name)))))
 
 
 ;; ## LOADING STUFF

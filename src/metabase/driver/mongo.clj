@@ -60,6 +60,8 @@
          1.0)))
 
   (can-connect-with-details? [this {:keys [user password host port dbname]}]
+    (assert (and host
+                 dbname))
     (can-connect? this (str "mongodb://"
                             user
                             (when password
@@ -86,7 +88,7 @@
       (-> (mdb/get-collection-names conn)
           (set/difference #{"system.indexes"}))))
 
-  (active-column-names->type [this table]
+  (active-column-names->type [_ table]
     (with-mongo-connection [_ @(:db table)]
       (->> (table->column-names table)
            (map (fn [column-name]
@@ -102,9 +104,10 @@
   (field-values-lazy-seq [_ field]
     (lazy-seq
      (let [table @(:table field)]
-       (with-mongo-connection [conn @(:db table)]
-         (mq/with-collection conn (:name table)
-           (mq/fields [(:name field)])))))))
+       (map (keyword (:name field))
+            (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
+              (mq/with-collection conn (:name table)
+                (mq/fields [(:name field)]))))))))
 
 (def ^:const driver
   "Concrete instance of the MongoDB driver."
