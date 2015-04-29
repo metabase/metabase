@@ -279,7 +279,7 @@ var GuiQueryEditor = React.createClass({
 
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     From:
                     <SelectionModule
                         placeholder="What part of your data?"
@@ -362,7 +362,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className="flex">
+                <div className="Query-section flex align-center">
                     {breakoutLabel}
                     {breakoutList}
                     {addBreakoutButton}
@@ -404,7 +404,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     I want to see:
                     <SelectionModule
                         placeholder="What data?"
@@ -502,7 +502,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     Filtered by:
                     {filterList}
                     {addFilterButton}
