@@ -5,7 +5,8 @@
             [monger.core :as mg]))
 
 (def ^:dynamic *mongo-connection*
-  "Bound by top-level `with-mongo-connection` so it may be reused within its body."
+  "Connection to a Mongo database.
+   Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
 
 (defn -with-mongo-connection

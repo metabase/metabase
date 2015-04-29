@@ -277,7 +277,7 @@
     (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
     (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, or `:id->fields`.
+  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, or `:id->fields`.
 
     ;; Only return IDs of objects.
     (sel :one :id User :email \"cam@metabase.com\") -> 120
@@ -296,6 +296,11 @@
     ;; Return a map of field value -> ID. Duplicates will be discarded!
     (sel :many :field->id [User :first_name])
       -> {\"Cam\" 1, \"Sameer\" 2}
+
+    ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
+    (sel :many :field->obj [Table :name] :db_id 1)
+      -> {\"venues\" {:id 1, :name \"venues\", ...}
+          \"users\"  {:id 2, :name \"users\", ...}}
 
     ;; Return a map of ID -> specified fields
     (sel :many :id->fields [User :first_name :last_name])
@@ -345,6 +350,11 @@
                            (map (fn [{id# :id field-val# field#}]
                                   {field-val# id#}))
                            (into {})))
+        :field->obj `(let [[entity# field#] ~entity]
+                       (->> (sel :many entity# ~@forms)
+                            (map (fn [obj#]
+                                   {(field# obj#) obj#}))
+                            (into {})))
         :fields `(let [[~'_ & fields# :as entity#] ~entity]
                    (map #(select-keys % fields#)
                         (sel :many entity# ~@forms)))
