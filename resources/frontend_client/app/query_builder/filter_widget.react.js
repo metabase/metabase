@@ -12,7 +12,7 @@ var FilterWidget = React.createClass({
         updateFilter: React.PropTypes.func.isRequired, // a function to update the
         valueFields: React.PropTypes.object
     },
-    sectionClassName: 'FilterSection',
+    sectionClassName: 'Filter-section',
     _updateTextFilterValue: function (index) {
         var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will 2 for the value of a filter
@@ -141,7 +141,7 @@ var FilterWidget = React.createClass({
             };
 
         return (
-            <div className="Query-filter">
+            <div className="Query-filter rounded">
                 {this._fieldList()}
                 {this._operatorList()}
                 {this._filterValue()}

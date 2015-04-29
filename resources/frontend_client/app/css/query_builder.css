@@ -1,3 +1,6 @@
+:root {
+    --selection-color: #ccdff6;
+}
 /* @layout */
 .QueryBuilder {
     display: flex;
@@ -12,8 +15,24 @@
     padding-right: 1em;
 }
 
+@media screen and (--breakpoint-min-md) {
+    .QueryBuilder-section {
+        padding-left: 2em;
+        padding-right: 2em;
+    }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .QueryBuilder-section {
+        padding-left: 3em;
+        padding-right: 3em;
+    }
+}
+
 /* a section of the graphical query itself */
 .Query-section {
+    display: flex;
+    align-items: center;
     margin-bottom: 1em;
     color: #91979E;
 }
@@ -31,6 +50,7 @@
 
 .Query-filter {
     display: flex;
+    align-items: center;
 }
 
 /*
@@ -83,7 +103,7 @@
     color: #fff;
 }
 
-.QueryBar .SelectionModule.open .SelectionItems {
+.SelectionModule.open .SelectionItems {
     opacity: 1;
     pointer-events: all;
 }
@@ -92,57 +112,43 @@
     color: currentColor;
 }
 
-.SelectionModule.selected .SelectionTitle {
-    margin: 0 0.25em;
-    border: 1px solid #ddd;
-    border-radius: 2px;
-}
-
-.SelectionModule.selected .SelectionTitle:hover {
+.SelectionTitle {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    background-color: #fff;
+    border: 1px solid var(--selection-color);
     cursor: pointer;
 }
 
-/* @ breakpoints */
-
-@media screen and (min-width: 60em) {
+@media screen and (--breakpoint-min-md) {
     .SelectionTitle {
         padding: 0.75em 1.25em;
     }
 }
 
-@media screen and (min-width: 120em) {
-    body {
-        font-size: 1em;
-    }
-    .Button,
-    .QueryBar .Button {
-        padding: 1em 2em;
-    }
-    .Table-wrapper {
-        margin-top: 3em;
-    }
-    .SelectionItems.open {
-        top: 3em;
-    }
-    .DimensionList .RemoveTrigger {
-        top: 15px;
-        right: 17px;
-    }
+.SelectionModule.selected .SelectionTitle {
+    background-color: var(--selection-color);
+    transition: background .3s linear;
+}
 
-    .QueryName {
-        margin-bottom: 1em;
-    }
+.SelectionModule.open.selected .SelectionTitle {
+    background-color: #fff;
+}
 
-    .ActionBar {
-        padding: 1em 0;
-    }
-    .QueryBar .SelectionTitle {
-        padding: 1em 2em;
-    }
+.Visualization {
+    overflow-y: scroll;
+    transition: background .3s linear;
+}
+
+.Visualization.Visualization--loading {
+    background-color: #e0e0e0;
+    transition: background .3s linear;
 }
 
 .VisualizationSettings {
     padding-bottom: 1em;
+    background-color: #fff;
 }
 
 .SaveModal {
@@ -188,20 +194,69 @@
     z-index: 10;
 }
 
-.qb-section-enter {
-    opacity: 0.01;
+.QueryError {
+    color: var(--error-color);
 }
 
-.qb-section-enter-active {
+
+/* @ breakpoints */
+
+@media screen and (min-width: 120em) {
+    body {
+        font-size: 1em;
+    }
+    .Button,
+    .QueryBar .Button {
+        padding: 1em 2em;
+    }
+    .Table-wrapper {
+        margin-top: 3em;
+    }
+    .SelectionItems.open {
+        top: 3em;
+    }
+
+    .QueryName {
+        margin-bottom: 1em;
+    }
+
+    .ActionBar {
+        padding: 1em 0;
+    }
+    .QueryBar .SelectionTitle {
+        padding: 1em 2em;
+    }
+}
+
+/* @transitions */
+
+.Transition-qb-section-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-qb-section-enter-active {
     opacity: 1;
     transition: opacity .3s linear;
 }
 
-.qb-section-leave {
+.Transition-qb-section-leave {
     opacity: 1;
+    transition: opacity .3s linear;
 }
 
-.qb-section-leave-active {
+.Transition-qb-section-leave-active {
     opacity: 0.01;
     transition: opacity .3s lienar;
+}
+
+.Transition-viz-enter {
+    width: 100%;
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-viz-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
 }
