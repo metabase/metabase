@@ -515,27 +515,29 @@ var GuiQueryEditor = React.createClass({
     render: function () {
         return (
             <div className="border-bottom">
-                <ReactCSSTransitionGroup transitionName="qb-section">
-                    {this.renderDbSelector()}
-                </ReactCSSTransitionGroup>
-                <ReactCSSTransitionGroup transitionName="qb-section">
-                    {this.renderTableSelector()}
-                </ReactCSSTransitionGroup>
-                <ReactCSSTransitionGroup transitioName="qb-section">
-                    {this.renderFilterSelector()}
-                </ReactCSSTransitionGroup>
-                <ReactCSSTransitionGroup transitionName="qb-section">
-                    {this.renderAggregation()}
-                </ReactCSSTransitionGroup>
-                <ReactCSSTransitionGroup transitionName="qb-section">
-                    {this.renderBreakouts()}
-                </ReactCSSTransitionGroup>
-                <div className="Query-section">
-                    <RunButton
-                        canRun={this.canRun()}
-                        isRunning={this.props.isRunning}
-                        runFn={this.runQuery}
-                    />
+                <div className="QueryBuilder-section">
+                    <ReactCSSTransitionGroup transitionName="qb-section">
+                        {this.renderDbSelector()}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitionName="qb-section">
+                        {this.renderTableSelector()}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitioName="qb-section">
+                        {this.renderFilterSelector()}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitionName="qb-section">
+                        {this.renderAggregation()}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitionName="qb-section">
+                        {this.renderBreakouts()}
+                    </ReactCSSTransitionGroup>
+                    <div className="Query-section">
+                        <RunButton
+                            canRun={this.canRun()}
+                            isRunning={this.props.isRunning}
+                            runFn={this.runQuery}
+                        />
+                    </div>
                 </div>
             </div>
         );

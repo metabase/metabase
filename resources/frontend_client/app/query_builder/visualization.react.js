@@ -102,7 +102,7 @@ var QueryVisualization = React.createClass({
 
 
         return (
-            <div className="full flex flex-column">
+            <div className="QueryBuilder-section full flex flex-column">
                 <div className="Visualization full flex-full">
                     {viz}
                 </div>

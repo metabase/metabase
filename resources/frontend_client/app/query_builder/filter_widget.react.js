@@ -141,7 +141,7 @@ var FilterWidget = React.createClass({
             };
 
         return (
-            <div className="QueryFilter relative inline-block">
+            <div className="Query-filter">
                 {this._fieldList()}
                 {this._operatorList()}
                 {this._filterValue()}

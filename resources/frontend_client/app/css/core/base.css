@@ -4,14 +4,18 @@
 }
 
 html {
-  text-rendering: optimizeLegibility;
+    text-rendering: optimizeLegibility;
+    height: 100%; /* ensure the entire page will fill the window */
 }
 
 body {
-  font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
-  font-size: var(--default-font-size);
-  margin: 0;
-  box-sizing: border-box;
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+    font-size: var(--default-font-size);
+    margin: 0;
+    box-sizing: border-box;
+    height: 100%; /* ensure the entire page will fill the window */
+    display: flex;
+    flex-direction: column;
 }
 
 /*
@@ -21,19 +25,19 @@ body {
 */
 ul,
 ol {
-  padding: 0;
-  margin: 0;
-  list-style-type: none;
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
 }
 
 /* reset button element */
 button {
-  font-size: 100%;
-  -webkit-appearance: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  outline: none;
+    font-size: 100%;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    outline: none;
 }
 
 .disabled {

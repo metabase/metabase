@@ -1,14 +1,21 @@
-html,
-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
+/* @layout */
 .QueryBuilder {
     display: flex;
     flex-direction: column;
     height: 100%;
+    line-height: 1;
+}
+
+/* a major section of the query builder */
+.QueryBuilder-section {
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+/* a section of the graphical query itself */
+.Query-section {
+    margin-bottom: 1em;
+    color: #91979E;
 }
 
 .QueryVisualization {
@@ -16,16 +23,19 @@ body {
     flex: 1;
 }
 
-.Query-section {
-    margin-bottom: 1em;
-    color: #91979E;
-}
 .QueryName {
     font-weight: 200;
     margin: 1em 0;
     font-size: 1.35em;
 }
 
+.Query-filter {
+    display: flex;
+}
+
+/*
+    @selectionmodule
+*/
 .SelectionModule {
     color: var(--brand-color);
 }
@@ -56,23 +66,13 @@ body {
 }
 
 .SelectionItem {
-    padding: 0.75em;
-    font-size: 0.85em;
-    position: relative;
-    background: #fff;
     display: flex;
     align-items: center;
     cursor: pointer;
-}
-
-.SelectionItem:before {
-    content: '';
-    width: 16px;
-    height: 16px;
-    border: 2px solid #ddd;
-    border-radius: 99px;
-    margin-right: 1em;
-    color: currentColor;
+    padding: 0.75em;
+    font-size: 0.85em;
+    position: relative;
+    background-color: #fff;
 }
 
 .SelectionItem:hover {
@@ -81,71 +81,6 @@ body {
 
 .SelectionItem:hover .SelectionModule-display {
     color: #fff;
-}
-
-
-.SelectionItem.selected {
-    color: #4A90E2;
-    color: currentColor;
-}
-
-.SelectionItem.selected:before {
-    background-color: currentColor;
-    border-color: currentColor;
-}
-
-.QueryBar .SelectionItem:hover:before {
-    color: #fff;
-    border-color: currentColor;
-    transition: border .3s linear;
-}
-
-.QueryBar .SelectionTitle {
-    text-align: left;
-    font-size: 0.85em;
-    border: 1px dotted #999;
-    border-radius: 2px;
-}
-
-.FilterSection .SelectionModule,
-.FilterSection .SelectionModule a {
-    color: #A8C28e;
-}
-
-.FilterSection .input {
-    color: #A8C28e;
-    border-color: transparent;
-}
-
-.FilterSection .input:focus {
-    border-color: transparent;
-    border-bottom: 1px solid #A8C28e;
-}
-
-.DimensionList .SelectionModule,
-.DimensionList .SelectionModule a {
-    color: #B9A2CD;
-}
-
-.QueryBar .Button {
-    padding: 0.75em 1.25em;
-    border: 1px dotted #ddd;
-    box-shadow: none;
-}
-
-.SearchBar {
-    border: none;
-    border-bottom: 1px solid #ddd;
-    padding: 0.75em;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .12);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.QueryPicker-wrapper {
-    padding: 0 2em;
-    display: flex;
-    flex-direction: column;
 }
 
 .QueryBar .SelectionModule.open .SelectionItems {
@@ -158,112 +93,16 @@ body {
 }
 
 .SelectionModule.selected .SelectionTitle {
-    display: inline-block;
     margin: 0 0.25em;
     border: 1px solid #ddd;
     border-radius: 2px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .08);
 }
 
 .SelectionModule.selected .SelectionTitle:hover {
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .18);
     cursor: pointer;
 }
 
-.RemoveTrigger {
-    display: inline-block;
-}
-
-.FilterGroupWrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.FilterGroupWrapper .FilterGroup {
-    margin-top: 1em;
-}
-
-.QueryPicker-group {
-    border-bottom: 1px solid #ddd;
-    background: #fff;
-}
-
-.QueryBar .Button {
-    font-size: 0.85em;
-}
-
-.QueryFilter {
-    background: #fff;
-    position: relative;
-    display: inline-block;
-    font-size: 0.85em;
-    margin-right: 1em;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 0px 3px rgba(0, 0, 0, .12);
-}
-
-.QueryFilter .input {
-    padding: 1em;
-    border-radius: 0;
-}
-
-.QueryFilter .SelectionModule.selected .SelectionTitle {
-    box-sizing: border-box;
-    margin: 0;
-    border: none;
-    border-right: 1px solid #ddd;
-}
-
-.QueryFilter .SelectionModule.selected .SelectionTitle:hover {
-    background: #FBFCFD;
-}
-
-.QueryFilter .RemoveTrigger {
-    margin: 0.75em 0.5em;
-}
-
-.FilterSection {
-    display: inline-block;
-}
-
-.FilterSection .SelectionItems {
-    position: absolute;
-    display: none;
-}
-
-.FilterSection .SelectionItems.open {
-    display: block;
-}
-
-.SelectionModule.removeable .SelectionTitle {
-    padding-right: 3em;
-}
-
-.QueryTable td,
-.QueryTable th {
-    padding: 1em;
-}
-
-.QueryTable {
-    margin-top: 1em;
-    box-shadow: 0 1px 3px rgba(0,0,0, .12);
-}
-
-.Metric-sourceTable:after {
-    content: '•';
-    display: inline-block;
-    color: #ddd;
-    margin-left: 1em;
-}
-
-.DimensionList .RemoveTrigger {
-    position: absolute;
-    top: 12px;
-    right: 14px;
-}
-
-/* breakpoints */
+/* @ breakpoints */
 
 @media screen and (min-width: 60em) {
     .SelectionTitle {
@@ -302,39 +141,8 @@ body {
     }
 }
 
-.FilterTrigger {
-    border-radius: 99px;
-    padding: 0.85em;
-    position: relative;
-    color: #fff;
-    background: #A8C28e;
-    border-color: #A8C28e;
-}
-
-.FilterTrigger .icon {
-    display: flex;
-}
-
 .VisualizationSettings {
     padding-bottom: 1em;
-}
-
-.qb-section-enter {
-    opacity: 0.01;
-}
-
-.qb-section-enter-active {
-    opacity: 1;
-    transition: opacity .3s linear;
-}
-
-.qb-section-leave {
-    opacity: 1;
-}
-
-.qb-section-leave-active {
-    opacity: 0.01;
-    transition: opacity .3s lienar;
 }
 
 .SaveModal {
@@ -378,4 +186,22 @@ body {
 .SaveButton {
     position: relative;
     z-index: 10;
+}
+
+.qb-section-enter {
+    opacity: 0.01;
+}
+
+.qb-section-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.qb-section-leave {
+    opacity: 1;
+}
+
+.qb-section-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s lienar;
 }
