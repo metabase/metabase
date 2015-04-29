@@ -2,6 +2,7 @@
 /*global SelectionModule, DatabaseSelector*/
 
 // clearVisualizationFn
+var Transition = React.addons.CSSTransitionGroup;
 
 var GuiQueryEditor = React.createClass({
     displayName: 'GuiQueryEditor',
@@ -253,13 +254,10 @@ var GuiQueryEditor = React.createClass({
 
         return dataset_query;
     },
-    render: function () {
-
-        // database selector.  only show if there is multiple dbs to choose from
-        var dbSelector;
+    renderDbSelector: function () {
         if(this.props.databases && this.props.databases.length > 1) {
-            dbSelector = (
-                <div>
+            return (
+                <div className="flex align-center">
                     Using:
                     <DatabaseSelector
                         databases={this.props.databases}
@@ -269,10 +267,8 @@ var GuiQueryEditor = React.createClass({
                 </div>
             );
         }
-
-
-        // table selector
-        var tableSelector;
+    },
+    renderTableSelector: function () {
         if (this.state.tables) {
             var sourceTableListOpen = true;
             if(this.props.query.query.source_table) {
@@ -280,22 +276,10 @@ var GuiQueryEditor = React.createClass({
             }
 
             // if we don't have any filters applied yet then provide an option to do that
-            var filterButton;
-            if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
-                filterButton = (
-                    <span>
-                        <a className="FilterTrigger Button" onClick={this.addFilter}>
-                            <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
-                            </svg>
-                        </a>
-                    </span>
-                );
-            }
 
 
-            tableSelector = (
-                <div>
+            return (
+                <div className="flex align-center">
                     From:
                     <SelectionModule
                         placeholder="What part of your data?"
@@ -306,14 +290,137 @@ var GuiQueryEditor = React.createClass({
                         isInitiallyOpen={sourceTableListOpen}
                         action={this.setSourceTable}
                     />
-                    {filterButton}
+                    {this.renderFilterButton()}
                 </div>
             );
         }
+    },
+    renderFilterButton: function () {
+        if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
+            return (
+                <a className="FilterTrigger Button" onClick={this.addFilter}>
+                    <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
+                    </svg>
+                </a>
+            );
+        }
+    },
+    renderBreakouts: function () {
+        // breakout clause.  must have table details available & a valid aggregation defined
+        if (this.state.options &&
+                this.state.options.breakout_options.fields.length > 0 &&
+                this.aggregationComplete()) {
 
+            // only render a label for our breakout if we have a valid breakout clause already
+            var breakoutLabel;
+            if(this.props.query.query.breakout.length > 0) {
+                breakoutLabel = (
+                    <div className="inline-block">
+                        Grouped by:
+                    </div>
+                );
+            }
 
-        // filter clause.  must have table details available
-        var filterSelector;
+            var breakoutList;
+            if(this.state.options.breakout_options) {
+                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
+                    var breakoutListOpen = false;
+                    if(breakout === null) {
+                        breakoutListOpen = true;
+                    }
+
+                    return (
+                        <div className="DimensionList inline-block">
+                            <SelectionModule
+                                placeholder='What part of your data?'
+                                display="1"
+                                items={this.state.options.breakout_options.fields}
+                                selectedValue={breakout}
+                                selectedKey="0"
+                                index={index}
+                                isInitiallyOpen={breakoutListOpen}
+                                action={this.updateDimension}
+                                remove={this.removeDimension}
+                            />
+                        </div>
+                    );
+                }.bind(this));
+            }
+
+            // include a button to add a breakout, up to 2 total
+            var addBreakoutButton;
+            if (this.props.query.query.breakout.length === 0) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add a grouping ...</a>
+                );
+            } else if (this.props.query.query.breakout.length === 1 &&
+                            this.props.query.query.breakout[0] !== null) {
+                addBreakoutButton = (
+                    <a className="Button" onClick={this.addDimension}>Add another grouping</a>
+                );
+            }
+
+            return (
+                <div className="flex">
+                    {breakoutLabel}
+                    {breakoutList}
+                    {addBreakoutButton}
+                </div>
+            );
+        }
+    },
+    renderAggregation: function () {
+        // aggregation clause.  must have table details available
+        if(this.state.options) {
+
+            var aggregationListOpen = true;
+            if(this.props.query.query.aggregation[0]) {
+                aggregationListOpen = false;
+            }
+
+            // if there's a value in the second aggregation slot render another selector
+            var aggregationTarget;
+            if(this.props.query.query.aggregation.length > 1) {
+                var aggregationTargetListOpen = true;
+                if(this.props.query.query.aggregation[1] !== null) {
+                    aggregationTargetListOpen = false;
+                }
+
+                aggregationTarget = (
+                    <div className="inline-block">
+                        of
+                        <SelectionModule
+                            placeholder="What attribute?"
+                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
+                            display="1"
+                            selectedValue={this.props.query.query.aggregation[1]}
+                            selectedKey="0"
+                            isInitiallyOpen={aggregationTargetListOpen}
+                            action={this.setAggregationTarget}
+                        />
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex align-center">
+                    I want to see:
+                    <SelectionModule
+                        placeholder="What data?"
+                        items={this.state.options.aggregation_options}
+                        display="name"
+                        selectedValue={this.props.query.query.aggregation[0]}
+                        selectedKey="short"
+                        isInitiallyOpen={aggregationListOpen}
+                        action={this.setAggregation}
+                    />
+                    {aggregationTarget}
+                </div>
+            );
+        }
+    },
+    renderFilterSelector: function () {
         if (this.state.options && this.props.query.query.filter.length > 0) {
             var component = this;
 
@@ -394,8 +501,8 @@ var GuiQueryEditor = React.createClass({
                 );
             }
 
-            filterSelector = (
-                <div>
+            return (
+                <div className="flex align-center">
                     Filtered by:
                     {filterList}
                     {addFilterButton}
@@ -403,137 +510,30 @@ var GuiQueryEditor = React.createClass({
             );
         }
 
-
-        // aggregation clause.  must have table details available
-        var aggregationSelector;
-        if(this.state.options) {
-
-            var aggregationListOpen = true;
-            if(this.props.query.query.aggregation[0]) {
-                aggregationListOpen = false;
-            }
-
-            // if there's a value in the second aggregation slot render another selector
-            var aggregationTarget;
-            if(this.props.query.query.aggregation.length > 1) {
-                var aggregationTargetListOpen = true;
-                if(this.props.query.query.aggregation[1] !== null) {
-                    aggregationTargetListOpen = false;
-                }
-
-                aggregationTarget = (
-                    <div className="inline-block">
-                        of
-                        <SelectionModule
-                            placeholder="What attribute?"
-                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
-                            display="1"
-                            selectedValue={this.props.query.query.aggregation[1]}
-                            selectedKey="0"
-                            isInitiallyOpen={aggregationTargetListOpen}
-                            action={this.setAggregationTarget}
-                        />
-                    </div>
-                );
-            }
-
-            aggregationSelector = (
-                <div>
-                    I want to see:
-                    <SelectionModule
-                        placeholder="What data?"
-                        items={this.state.options.aggregation_options}
-                        display="name"
-                        selectedValue={this.props.query.query.aggregation[0]}
-                        selectedKey="short"
-                        isInitiallyOpen={aggregationListOpen}
-                        action={this.setAggregation}
-                    />
-                    {aggregationTarget}
-                </div>
-            );
-        }
-
-
-        // breakout clause.  must have table details available & a valid aggregation defined
-        var breakoutSelector;
-        if (this.state.options &&
-                this.state.options.breakout_options.fields.length > 0 &&
-                this.aggregationComplete()) {
-
-            // only render a label for our breakout if we have a valid breakout clause already
-            var breakoutLabel;
-            if(this.props.query.query.breakout.length > 0) {
-                breakoutLabel = (
-                    <div className="inline-block">
-                        Grouped by:
-                    </div>
-                );
-            }
-
-            var breakoutList;
-            if(this.state.options.breakout_options) {
-                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
-                    var breakoutListOpen = false;
-                    if(breakout === null) {
-                        breakoutListOpen = true;
-                    }
-
-                    return (
-                        <div className="DimensionList inline-block">
-                            <SelectionModule
-                                placeholder='What part of your data?'
-                                display="1"
-                                items={this.state.options.breakout_options.fields}
-                                selectedValue={breakout}
-                                selectedKey="0"
-                                index={index}
-                                isInitiallyOpen={breakoutListOpen}
-                                action={this.updateDimension}
-                                remove={this.removeDimension}
-                            />
-                        </div>
-                    );
-                }.bind(this));
-            }
-
-            // include a button to add a breakout, up to 2 total
-            var addBreakoutButton;
-            if (this.props.query.query.breakout.length === 0) {
-                addBreakoutButton = (
-                    <a className="Button" onClick={this.addDimension}>Add a grouping ...</a>
-                );
-            } else if (this.props.query.query.breakout.length === 1 &&
-                            this.props.query.query.breakout[0] !== null) {
-                addBreakoutButton = (
-                    <a className="Button" onClick={this.addDimension}>Add another grouping</a>
-                );
-            }
-
-            breakoutSelector = (
-                <div>
-                    {breakoutLabel}
-                    {breakoutList}
-                    {addBreakoutButton}
-                </div>
-            );
-        }
-
-
+    },
+    render: function () {
         return (
-            <div>
-                {dbSelector}
-                {tableSelector}
-                {filterSelector}
-                {aggregationSelector}
-                {breakoutSelector}
-                <div>
-                    <RunButton
-                        canRun={this.canRun()}
-                        isRunning={this.props.isRunning}
-                        runFn={this.runQuery}
-                    />
-                </div>
+            <div className="border-bottom">
+                <Transition transitionName="qb-section">
+                    {this.renderDbSelector()}
+                </Transition>
+                <Transition transitionName="qb-section">
+                    {this.renderTableSelector()}
+                </Transition>
+                <Transition transitioName="qb-section">
+                    {this.renderFilterSelector()}
+                </Transition>
+                <Transition transitionName="qb-section">
+                    {this.renderAggregation()}
+                </Transition>
+                <Transition transitionName="qb-section">
+                    {this.renderBreakouts()}
+                </Transition>
+                <RunButton
+                    canRun={this.canRun()}
+                    isRunning={this.props.isRunning}
+                    runFn={this.runQuery}
+                />
             </div>
         );
     }
