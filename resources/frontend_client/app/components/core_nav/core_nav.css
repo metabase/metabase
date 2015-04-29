@@ -146,49 +146,6 @@
   margin-left: 1em;
 }
 
-.Search {
-  position: absolute;
-  top: 3px;
-  right: 0;
-  min-width: 200px;
-}
-
-.Search-button {
-  background-color: #4A90E2;
-  color: #fff;
-  display: inline-block;
-  border-radius: 2px;
-  padding: 6px 8px;
-  font-size: 0;
-  position: absolute;
-  top: 4px;
-  right: 4px;
-}
-
-.Search-button:hover {
-  color: #fff;
-}
-
-.Search-field {
-  width: 100%;
-  border: 1px solid #E4E4E4;
-  padding: 1em;
-  border-radius: 4px;
-  box-sizing: border-box;
-  transition: border .3s linear;
-}
-
-.Search-field:focus {
-  border-color: var(--core-nav-selected-text-color);
-  transition: border .3s linear;
-  box-shadow: none;
-  outline: none;
-}
-
-.SearchNav:after {
-  display: none;
-}
-
 .NavItem-withIcon .IconWrapper {
   position: absolute;
   left: 10px;
