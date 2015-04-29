@@ -97,7 +97,7 @@ var GuiQueryEditor = React.createClass({
     },
     canRun: function() {
         var canRun = false;
-        if (this.aggregationComplete()) {
+        if (this.hasValidAggregation()) {
             canRun = true;
         }
         return canRun;
@@ -132,10 +132,11 @@ var GuiQueryEditor = React.createClass({
 
         this.setQuery(query, true);
     },
-    aggregationComplete: function() {
+    hasValidAggregation: function() {
         var aggregationComplete = false;
-        if ((this.props.query.query.aggregation[0] !== null) &&
-            (this.props.query.query.aggregation[1] !== null)) {
+        if (this.props.query.query.aggregation !== undefined &&
+            this.props.query.query.aggregation[0] !== null &&
+            this.props.query.query.aggregation[1] !== null) {
             aggregationComplete = true;
         }
         return aggregationComplete;
@@ -310,7 +311,7 @@ var GuiQueryEditor = React.createClass({
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.state.options &&
                 this.state.options.breakout_options.fields.length > 0 &&
-                this.aggregationComplete()) {
+                this.hasValidAggregation()) {
 
             // only render a label for our breakout if we have a valid breakout clause already
             var breakoutLabel;

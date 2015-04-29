@@ -25,10 +25,54 @@ var QueryVisualization = React.createClass({
             CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
-    setDisplay: function (val) {
-        console.log('val', val);
+    setDisplay: function (event) {
         // notify our parent about our change
-        this.props.setDisplayFn(val);
+        this.props.setDisplayFn(event.target.value);
+    },
+    renderChartVisualization: function () {
+        // rendering a chart of some type
+        var titleId = 'card-title--'+this.state.chartId;
+        var innerId = 'card-inner--'+this.state.chartId;
+
+        return (
+            <div className="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
+                <div id={titleId} className="text-centered"></div>
+                <div id={innerId} className="card-inner"></div>
+            </div>
+        );
+    },
+    renderVizControls: function () {
+        if (this.props.result.error === undefined) {
+            var types = [
+                'table',
+                'line',
+                'bar',
+                'pie',
+                'area',
+                'timeseries'
+            ];
+
+            var displayOptions = [];
+            for (var i = 0; i < types.length; i++) {
+                var val = types[i];
+                displayOptions.push(
+                    <option key={i} value={val}>{val}</option>
+                );
+            };
+
+            return (
+                <div className="VisualizationSettings">
+                    Show as:
+                    <label className="Select">
+                        <select onChange={this.setDisplay}>
+                            {displayOptions}
+                        </select>
+                    </label>
+                </div>
+            );
+        } else {
+            return false;
+        }
     },
     render: function () {
         if(!this.props.result) {
@@ -37,44 +81,29 @@ var QueryVisualization = React.createClass({
 
         var viz;
         if(this.props.result.error) {
-            // TODO: error messaging?
-        } else if(this.props.result.data) {
-            if(this.props.card.display !== "table") {
-                // rendering a chart of some type
-                var titleId = 'card-title--'+this.state.chartId;
-                var innerId = 'card-inner--'+this.state.chartId;
+            viz = (
+                <p>{this.props.result.error}</p>
+            );
 
-                viz = (
-                    <div className="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
-                        <div id={titleId} className="text-centered"></div>
-                        <div id={innerId} className="card-inner"></div>
-                    </div>
-                );
-            } else {
-                // render all non-chart types as a table
+        } else if(this.props.result.data) {
+            if(this.props.card.display === "table") {
                 viz = (
                     <QueryVisualizationTable data={this.props.result.data} />
                 );
+            } else {
+                // assume that anything not a table is a chart
+                viz = this.renderChartVisualization();
             }
         }
 
-        var types = [
-            'table',
-            'line',
-            'bar',
-            'pie',
-            'area',
-            'timeseries'
-        ];
+
 
         return (
             <div className="full flex flex-column">
                 <div className="Visualization full flex-full">
                     {viz}
                 </div>
-                <div className="VisualizationSettings">
-                    Show as: DERP
-                </div>
+                {this.renderVizControls()}
             </div>
         );
     }
