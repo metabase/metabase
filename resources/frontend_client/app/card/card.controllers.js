@@ -230,6 +230,13 @@ CardControllers.controller('CardDetail', [
                 // we are being told that the query has been modified
                 card.dataset_query = dataset_query;
                 renderAll();
+            },
+            autocompleteResultsFn: function(prefix) {
+                var apiCall = Metabase.db_autocomplete_suggestions({
+                    dbId: card.dataset_query.database,
+                    prefix: prefix
+                });
+                return apiCall.$promise;
             }
         };
 
