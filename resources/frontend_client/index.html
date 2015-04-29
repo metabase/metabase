@@ -59,14 +59,6 @@
                         </li>
                     </ul>
                     <ul class="float-right">
-                        <li class="SearchNav NavItem mr4" selectable-nav-item="search">
-                            <form class="Search" ng-submit="submit()" ng-controller="SearchBox">
-                                <input class="Search-field" type="text" placeholder="Search" ng-model="searchText">
-                                <a class="Search-button">
-                                    <cv-search-icon width="16px" height="16px" ng-click="submit()"></cv-search-icon>
-                                </a>
-                            </form>
-                        </li>
                         <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
                             <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
                                 <span class="NavItem-text" ng-if="!user.first_name">Me</span>
@@ -120,11 +112,6 @@
                         <li>
                             <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases/">
                                 <span class="NavItem-text">Databases</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/emailreport')}" cv-org-href="/admin/emailreport/">
-                                <span class="NavItem-text">Email Reports</span>
                             </a>
                         </li>
                         <li>
