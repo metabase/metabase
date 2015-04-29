@@ -2,7 +2,7 @@
 /*global SelectionModule, DatabaseSelector*/
 
 // clearVisualizationFn
-var Transition = React.addons.CSSTransitionGroup;
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 var GuiQueryEditor = React.createClass({
     displayName: 'GuiQueryEditor',
@@ -514,26 +514,28 @@ var GuiQueryEditor = React.createClass({
     render: function () {
         return (
             <div className="border-bottom">
-                <Transition transitionName="qb-section">
+                <ReactCSSTransitionGroup transitionName="qb-section">
                     {this.renderDbSelector()}
-                </Transition>
-                <Transition transitionName="qb-section">
+                </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="qb-section">
                     {this.renderTableSelector()}
-                </Transition>
-                <Transition transitioName="qb-section">
+                </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitioName="qb-section">
                     {this.renderFilterSelector()}
-                </Transition>
-                <Transition transitionName="qb-section">
+                </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="qb-section">
                     {this.renderAggregation()}
-                </Transition>
-                <Transition transitionName="qb-section">
+                </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="qb-section">
                     {this.renderBreakouts()}
-                </Transition>
-                <RunButton
-                    canRun={this.canRun()}
-                    isRunning={this.props.isRunning}
-                    runFn={this.runQuery}
-                />
+                </ReactCSSTransitionGroup>
+                <div className="Query-section">
+                    <RunButton
+                        canRun={this.canRun()}
+                        isRunning={this.props.isRunning}
+                        runFn={this.runQuery}
+                    />
+                </div>
             </div>
         );
     }

@@ -9,8 +9,6 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding-left: 1.5em;
-    padding-right: 1.5em;
 }
 
 .QueryVisualization {
@@ -19,52 +17,9 @@ body {
 }
 
 .Query-section {
-    margin-bottom: 2em;
+    margin-bottom: 1em;
+    color: #91979E;
 }
-
-.SaveModal {
-    background: #fff;
-    border-radius: 4px;
-    position: absolute;
-    bottom: 0.5em;
-    right: 1.5em;
-    width: 400px;
-}
-
-.SaveModal.Modal--showing {
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-}
-
-.SaveModal .ModalContent {
-    display: none;
-    margin-bottom: 6em;
-    padding: 2em;
-}
-
-.SaveModal input {
-    border: none;
-    font-size: 1em;
-    border-bottom: 1px dotted #111;
-    display: block;
-    width: 100%;
-    padding: 1em;
-}
-
-.SaveModal input:focus {
-    outline: none;
-    border-bottom-color: #4A90E2;
-}
-
-.SaveModal.Modal--showing .ModalContent {
-    display: block;
-}
-
-.SaveButton {
-    position: relative;
-    z-index: 10;
-}
-
 .QueryName {
     font-weight: 200;
     margin: 1em 0;
@@ -356,16 +311,8 @@ body {
     border-color: #A8C28e;
 }
 
-.FilterTrigger:hover {
-    color: #fff;
-}
-
 .FilterTrigger .icon {
     display: flex;
-}
-
-.QueryHeader {
-    background: #fff;
 }
 
 .VisualizationSettings {
@@ -378,7 +325,7 @@ body {
 
 .qb-section-enter-active {
     opacity: 1;
-    transition: opacity;
+    transition: opacity .3s linear;
 }
 
 .qb-section-leave {
@@ -387,5 +334,48 @@ body {
 
 .qb-section-leave-active {
     opacity: 0.01;
-    transition: opacity;
+    transition: opacity .3s lienar;
+}
+
+.SaveModal {
+    background: #fff;
+    border-radius: 4px;
+    position: absolute;
+    bottom: 0.5em;
+    right: 1.5em;
+    width: 400px;
+}
+
+.SaveModal.Modal--showing {
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+.SaveModal .ModalContent {
+    display: none;
+    margin-bottom: 6em;
+    padding: 2em;
+}
+
+.SaveModal input {
+    border: none;
+    font-size: 1em;
+    border-bottom: 1px dotted #111;
+    display: block;
+    width: 100%;
+    padding: 1em;
+}
+
+.SaveModal input:focus {
+    outline: none;
+    border-bottom-color: #4A90E2;
+}
+
+.SaveModal.Modal--showing .ModalContent {
+    display: block;
+}
+
+.SaveButton {
+    position: relative;
+    z-index: 10;
 }
