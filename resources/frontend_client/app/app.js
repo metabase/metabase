@@ -23,15 +23,12 @@ var Corvus = angular.module('corvus', [
     'corvus.explore',
     'corvus.operator', // this is a short term hack
     'corvus.reserve',
-    'corvus.search',
     'corvus.user',
     'corvus.setup',
     'corvusadmin.organization',
     'corvusadmin.databases',
-    'corvusadmin.emailreport',
     'corvusadmin.people',
     'corvusadmin.query',
-    'corvusadmin.annotation',
     'superadmin.settings',
     'superadmin.organization'
 ]);
@@ -43,12 +40,23 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
 
     $routeProvider.when('/', {
         template: '',
-        controller: 'Homepage'
+        controller: 'Homepage',
+        resolve: {
+            appState: function(AppState) {
+                return AppState.init();
+            }
+        }
     });
 
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',
         controller: 'Unauthorized'
+    });
+
+    $routeProvider.when('/auth/', {
+        redirectTo: function(routeParams, path, search) {
+            return '/auth/login';
+        }
     });
 
     $routeProvider.when('/setup/', {

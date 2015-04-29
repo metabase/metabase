@@ -50,13 +50,13 @@
   []
   (case (config/config-kw :mb-db-type)
     :h2 (h2 {:db (db-file)
-             :naming {:keys str/lower-case
+             :naming {:keys   str/lower-case
                       :fields str/upper-case}})
-    :postgres (postgres {:db (config/config-str :mb-db-dbname)
-                         :port (config/config-int :mb-db-port)
-                         :user (config/config-str :mb-db-user)
+    :postgres (postgres {:db       (config/config-str :mb-db-dbname)
+                         :port     (config/config-int :mb-db-port)
+                         :user     (config/config-str :mb-db-user)
                          :password (config/config-str :mb-db-pass)
-                         :host (config/config-str :mb-db-host)})))
+                         :host     (config/config-str :mb-db-host)})))
 
 
 ;; ## CONNECTION
@@ -88,8 +88,8 @@
   [jdbc-db direction]
   (let [conn (jdbc/get-connection jdbc-db)]
     (case direction
-      :up (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
-      :down (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
+      :up    (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
+      :down  (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
       :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
 
 

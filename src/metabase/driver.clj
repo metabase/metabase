@@ -1,15 +1,22 @@
 (ns metabase.driver
-  (:require [clojure.tools.logging :as log]
+  (:require clojure.java.classpath
+            [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
-            (metabase.driver [result :as result])
+            (metabase.driver [interface :as i]
+                             [query-processor :as qp]
+                             [result :as result])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
+(declare -dataset-query query-fail query-complete save-query-execution)
 
-(def available-drivers
+;; ## Constants
+
+(def ^:const available-drivers
   "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
   ex: `:h2 {:id \"h2\" :name \"H2\"}`"
   {:h2       {:id   "h2"
@@ -17,76 +24,104 @@
               :example "file:[filename]"}
    :postgres {:id "postgres"
               :name "Postgres"
-              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}})
+              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}
+   :mongo    {:id "mongo"
+              :name "MongoDB"
+              :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
 
-;; TODO lazily requiring this way is a bit wonky.
-;; We should rewrite this to load all sub-namespaces on first load like `metabase.task` does
-(defn db-dispatch-fn
-  "Returns a dispatch fn for multi-methods that keys off of a database's `:engine`.
+(def ^:const class->base-type
+  "Map of classes returned from DB call to metabase.models.field/base-types"
+  {java.lang.Boolean            :BooleanField
+   java.lang.Double             :FloatField
+   java.lang.Float              :FloatField
+   java.lang.Integer            :IntegerField
+   java.lang.Long               :IntegerField
+   java.lang.String             :TextField
+   java.math.BigDecimal         :DecimalField
+   java.math.BigInteger         :BigIntegerField
+   java.sql.Date                :DateField
+   java.sql.Timestamp           :DateTimeField
+   org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
 
-   The correct driver implementation is loaded dynamically to avoid having to require the files elsewhere in the codebase.
-   IMPL-NAMESPACE is the namespace we should load relative to the driver, e.g.
+;; ## Driver Lookup
 
-    (defmulti my-multimethod (db-dispatch-fn \"metadata\"))
+(def ^{:arglists '([engine])} engine->driver
+  "Return the driver instance that should be used for given ENGINE.
+   This loads the corresponding driver if needed; it is expected that it resides in a var named
 
-   Would load `metabase.driver.postgres.metadata` for a `Database` whose `:engine` was `:postgres`."
-  [impl-namespace]
-  (let [memoized-dispatch (memoize (fn [engine] ; memoize this so we don't need to call require every single dispatch
-                                     (require (symbol (str "metabase.driver." (name engine) "." impl-namespace)))
-                                     (keyword engine)))]
-    (fn [{:keys [engine]}]
-      {:pre [engine]}
-      (memoized-dispatch engine))))
+     metabase.driver.<engine>/driver
+
+   i.e., the `:postgres` driver should be bound interned at `metabase.driver.postgres/driver`.
+
+     (require ['metabase.driver.interface :as i])
+     (i/active-table-names (engine->driver :postgres) some-pg-database)"
+  (memoize
+   (fn [engine]
+     {:pre [(keyword? engine)]}
+     (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
+       (log/debug (format "Loading metabase.driver.%s..." (name engine)))
+       (require ns-symb)
+       (let [driver (some-> (ns-resolve ns-symb 'driver)
+                            var-get)]
+         (assert driver)
+         (log/debug "Ok.")
+         driver)))))
+
+;; Can the type of a DB change?
+(def ^{:arglists '([database-id])} database-id->driver
+  "Memoized function that returns the driver instance that should be used for `Database` with ID.
+   (Databases aren't expected to change their types, and this optimization makes things a lot faster).
+
+   This loads the corresponding driver if needed."
+  (memoize
+   (fn [database-id]
+     {:pre [(integer? database-id)]}
+     (engine->driver (sel :one :field [Database :engine] :id database-id)))))
 
 
-(defmulti process-and-run
-  "Process a query of type `query` (implemented by various DB drivers)."
-  (fn [{:keys [database] :as query}]
-    ((db-dispatch-fn "query-processor") (sel :one [Database :engine] :id database))))
+;; ## Implementation-Agnostic Driver API
 
+(defn can-connect?
+  "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
+  [database]
+  (i/can-connect? (engine->driver (:engine database)) database))
+
+(defn can-connect-with-details?
+  "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
+
+     (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
+  [engine details-map]
+  (i/can-connect-with-details? (engine->driver engine) details-map))
+
+(def ^{:arglists '([database])} sync-database!
+  "Sync a `Database`, its `Tables`, and `Fields`."
+  (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
+    (fn [database]
+      (time (-sync-database! (engine->driver (:engine database)) database)))))
+
+(def ^{:arglists '([table])} sync-table!
+  "Sync a `Table` and its `Fields`."
+  (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
+    (fn [table]
+      (-sync-table! (database-id->driver (:db_id table)) table))))
+
+(defn process-query
+  "Process a structured or native query, and return the result."
+  [query]
+  (binding [qp/*query* query]
+    (i/process-query (database-id->driver (:database query))
+                     (qp/preprocess query))))
+
+
+;; ## Query Execution Stuff
 
 (defn- execute-query
   "Process and run a query and return results."
   [{:keys [type] :as query}]
   (case (keyword type)
-    :native (process-and-run query)
-    :query (process-and-run query)
+    :native (process-query query)
+    :query (process-query query)
     :result (result/process-and-run query)))
-
-
-(defmulti connection-details
-  "Return a map of connection details (in format usable by korma or equivalent) for DATABASE."
-  (db-dispatch-fn "connection"))
-
-(defmulti connection
-  "Return a [korma or equivalent] connection to DATABASE."
-  (db-dispatch-fn "connection"))
-
-(defmulti can-connect?
-  "Check whether we can connect to DATABASE and perform a simple query.
-   (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
-
-     (can-connect? (sel :one Database :id 1))"
-  (db-dispatch-fn "connection"))
-
-(defmulti can-connect-with-details?
-  "Check whether we can connect to a database and performa a simple query.
-   Returns true if we can, otherwise returns false or throws an Exception.
-
-     (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})"
-  (db-dispatch-fn "connection"))
-
-(defmulti sync-database
-  "Update the metadata for ALL `Tables` within a given DATABASE, creating new `Tables` if they don't already exist.
-  (This is executed in parallel.)"
-  (db-dispatch-fn "sync"))
-
-(defmulti sync-table
-  "Update the metadata for a SINGLE `Table`, creating it if it doesn't already exist.
-  (This is executed in parallel.)"
-  (db-dispatch-fn "sync"))
-
-(declare -dataset-query query-fail query-complete save-query-execution)
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -118,8 +153,8 @@
                          :version (get saved_query :version 0)
                          :status :starting
                          :error ""
-                         :started_at (util/new-sql-timestamp)
-                         :finished_at (util/new-sql-timestamp)
+                         :started_at (u/new-sql-timestamp)
+                         :finished_at (u/new-sql-timestamp)
                          :running_time 0
                          :result_rows 0
                          :result_file ""
@@ -160,7 +195,7 @@
   [query-execution error-message]
   (let [updates {:status :failed
                  :error error-message
-                 :finished_at (util/new-sql-timestamp)
+                 :finished_at (u/new-sql-timestamp)
                  :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
@@ -178,9 +213,9 @@
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result cache-result]
   ;; record our query execution and format response
-  (-> (util/assoc* query-execution
+  (-> (u/assoc* query-execution
                    :status :completed
-                   :finished_at (util/new-sql-timestamp)
+                   :finished_at (u/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
                    :result_rows (get query-result :row_count 0)
                    :result_data (if cache-result
@@ -191,7 +226,6 @@
       ;; at this point we've saved and we just need to massage things into our final response format
       (select-keys [:id :uuid])
       (merge query-result)))
-
 
 (defn save-query-execution
   [{:keys [id] :as query-execution}]

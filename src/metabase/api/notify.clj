@@ -15,10 +15,10 @@
   (let-404 [database (sel :one Database :id id)]
     (cond
       table_id (when-let [table (sel :one Table :db_id id :id (int table_id))]
-                 (future (driver/sync-table table)))
+                 (future (driver/sync-table! table)))
       table_name (when-let [table (sel :one Table :db_id id :name table_name)]
-                   (future (driver/sync-table table)))
-      :else (future (driver/sync-database database))))
+                   (future (driver/sync-table! table)))
+      :else (future (driver/sync-database! database))))
   {:success true})
 
 

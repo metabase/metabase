@@ -74,7 +74,7 @@
   (let-404 [table (sel :one Table :id id)]
     (write-check table)
     ;; run the task asynchronously
-    (future (driver/sync-table table)))
+    (future (driver/sync-table! table)))
   {:status :ok})
 
 (defendpoint POST "/:id/reorder"

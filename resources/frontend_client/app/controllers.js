@@ -116,17 +116,6 @@ CorvusControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', 'Ap
 ]);
 
 
-CorvusControllers.controller('SearchBox', ['$scope', '$location', function($scope, $location) {
-
-    $scope.submit = function() {
-        $location.path('/' + $scope.currentOrgSlug + '/search').search({
-            q: $scope.searchText
-        });
-    };
-
-}]);
-
-
 CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($scope, $location) {
 
 }]);

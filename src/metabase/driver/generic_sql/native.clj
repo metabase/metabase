@@ -6,21 +6,9 @@
             (korma [core :as korma]
                    db)
             [metabase.db :refer [sel]]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.database :refer [Database]]))
-
-(def ^:const class->base-type
-  "Map of classes returned from DB call to metabase.models.field/base-types"
-  {java.lang.Boolean    :BooleanField
-   java.lang.Double     :FloatField
-   java.lang.Float      :FloatField
-   java.lang.Integer    :IntegerField
-   java.lang.Long       :IntegerField
-   java.lang.String     :TextField
-   java.math.BigDecimal :DecimalField
-   java.math.BigInteger :BigIntegerField
-   java.sql.Date        :DateField
-   java.sql.Timestamp   :DateTimeField})
 
 (def ^:dynamic *timezone->set-timezone-sql*
   " This function is called whenever `timezone` is specified in a native query, at the beginning of
@@ -38,8 +26,8 @@
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
   (if-not v :UnknownField
-          (or (class->base-type (type v))
-              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in metabase.driver.generic-sql.native/class->base-type. Please add an entry."
+          (or (driver/class->base-type (type v))
+              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
                                                       (str (type v))))))))
 
 (defn process-and-run
@@ -53,7 +41,7 @@
              (with-out-str (clojure.pprint/pprint query)))
   (try (let [database (sel :one Database :id database-id)
              db (-> database
-                    korma-db
+                    db->korma-db
                     korma.db/get-connection)
              [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
                                                 ;; If timezone is specified in the Query and the driver supports setting the timezone then execute SQL to set it
@@ -79,5 +67,5 @@
                      (.getMessage e))})))
 
 (def db (delay (-> (sel :one Database :id 1)
-                   korma-db
+                   db->korma-db
                    korma.db/get-connection)))
