@@ -521,7 +521,7 @@ var GuiQueryEditor = React.createClass({
                 <Transition transitionName="qb-section">
                     {this.renderTableSelector()}
                 </Transition>
-                <Transition transitioName="qb-section">
+                <Transition transitionName="qb-section">
                     {this.renderFilterSelector()}
                 </Transition>
                 <Transition transitionName="qb-section">

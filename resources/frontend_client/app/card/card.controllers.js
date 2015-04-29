@@ -269,8 +269,15 @@ CardControllers.controller('CardDetail', [
             editorModel.initialQuery = card.dataset_query;
             editorModel.defaultQuery = newQueryTemplates[card.dataset_query.type];
 
-            if (card.dataset_query && card.dataset_query.type === 'native') {
+            if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
+            } else if (card.dataset_query && card.dataset_query.type === "result") {
+                // TODO: legacy stuff to be EOLed
+                var queryLink = "/"+$scope.currentOrg.slug+"/admin/query/"+card.dataset_query.result.query_id+"/modify";
+                var resultEditorModel = {
+                    queryLink: queryLink
+                };
+                React.render(new ResultQueryEditor(resultEditorModel), document.getElementById('react_qb_editor'));
             } else {
                 React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
             }
@@ -298,8 +305,6 @@ CardControllers.controller('CardDetail', [
             Card.get({
                 'cardId': cardId
             }, function (result) {
-                console.log('card', result);
-
                 if (cloning) {
                     result.id = undefined; // since it's a new card
                     result.organization = $scope.currentOrg.id;

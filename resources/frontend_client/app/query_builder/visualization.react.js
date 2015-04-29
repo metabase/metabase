@@ -19,8 +19,11 @@ var QueryVisualization = React.createClass({
     componentDidUpdate: function () {
         this.renderChartIfNeeded();
     },
+    isTableDisplay: function (display) {
+        return (display === "table" || display === "scalar");
+    },
     renderChartIfNeeded: function () {
-        if (this.props.card.display !== "table") {
+        if (!this.isTableDisplay(this.props.card.display) && this.props.result) {
             // TODO: it would be nicer if this didn't require the whole card
             CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
@@ -86,7 +89,7 @@ var QueryVisualization = React.createClass({
             );
 
         } else if(this.props.result.data) {
-            if(this.props.card.display === "table") {
+            if(this.isTableDisplay(this.props.card.display)) {
                 viz = (
                     <QueryVisualizationTable data={this.props.result.data} />
                 );

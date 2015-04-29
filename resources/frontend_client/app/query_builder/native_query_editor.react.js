@@ -34,6 +34,9 @@ var NativeQueryEditor = React.createClass({
         // initialize the content
         editor.setValue(this.props.query.native.query);
 
+        // clear the editor selection, otherwise we start with the whole editor selected
+        editor.clearSelection();
+
         // hmmm, this could be dangerous
         editor.focus();
 
