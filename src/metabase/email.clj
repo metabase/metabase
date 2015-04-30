@@ -1,77 +1,61 @@
 (ns metabase.email
-  (:require [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
-            [clj-http.lite.client :as client]
-            [medley.core :as medley]
+  (:require [clojure.tools.logging :as log]
+            [postal.core :as postal]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u]))
 
-(declare api-post-messages-send
-         format-recipients)
-
 ;; ## CONFIG
 
-(defsetting mandrill-api-key "API key for Mandrill.")
 (defsetting email-from-address "Email address used as the sender of system notifications." "notifications@metabase.com")
-(defsetting email-from-name "Name used as the sender of the system notifications." "Metabase")
-
+(defsetting email-smtp-host "SMTP host." "smtp.mandrillapp.com")
+(defsetting email-smtp-username "SMTP username.")
+(defsetting email-smtp-password "SMTP password.")
+(defsetting email-smtp-port "SMTP port." "587")
 
 ;; ## PUBLIC INTERFACE
 
-(defn send-message [subject recipients message-type message & {:as kwargs}]
+(def ^:dynamic *send-email-fn*
+  "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
+   Provided so you can swap this out with an \"inbox\" for test purposes."
+  postal/send-message)
+
+(defn send-message
+  "Send an email to one or more RECIPIENTS.
+   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
+
+     (email/send-message
+      :subject      \"[Metabase] Password Reset Request\"
+      :recipients   [\"cam@metabase.com\"]
+      :message-type :text
+      :message      \"How are you today?\")
+
+   Upon success, this returns the MESSAGE that was just sent."
+  [& {:keys [subject recipients message-type message]}]
   {:pre [(string? subject)
-         (map? recipients)
+         (sequential? recipients)
+         (every? u/is-email? recipients)
          (contains? #{:text :html} message-type)
          (string? message)]}
-  (medley/mapply api-post-messages-send (merge {:subject subject
-                                                :to (format-recipients recipients)
-                                                message-type message}
-                                               kwargs)))
-
-;; ## IMPLEMENTATION
-
-(def ^:private api-prefix
-  "URL prefix for API calls to the Mandrill API."
-  "https://mandrillapp.com/api/1.0/")
-
-(defn- api-post
-  "Make a `POST` call to the Mandrill API.
-
-    (api-post \"messages/send\" :body { ... })"
-  [endpoint & {:keys [body] :as request-map
-               :or {body {}}}]
-  {:pre [(string? endpoint)]}
-  (if-not (mandrill-api-key)
-    (log/warn "Cannot send email: no Mandrill API key!")
-    (let [defaults {:content-type :json
-                    :accept :json}
-          body (-> body
-                   (assoc :key (mandrill-api-key))
-                   json/write-str)]
-      (client/post (str api-prefix endpoint ".json")
-                   (merge defaults request-map {:body body})))))
-
-(defn- api-post-messages-send
-  "Make a `POST messages/send` call to the Mandrill API."
-  [& {:as kwargs}]
-  (let [defaults {:from_email (email-from-address)
-                  :from_name (email-from-name)}]
-    (= (:status (api-post "messages/send"
-                          :body {:message (merge defaults kwargs)}))
-       200)))
-
-(defn- format-recipients
-  "Format a map of email -> name in the format expected by the Mandrill API.
-
-    (format-recipients {\"cam@metabase.com\" \"Cam Saul\"})
-    -> {:email \"cam@metabase.com\"
-        :name \"Cam Saul\"
-        :type :to}"
-  [email->name]
-  (map (fn [[email name]]
-         {:pre [(u/is-email? email)
-                (string? name)]}
-         {:email email
-          :name name
-          :type :to})
-       email->name))
+  (try
+    ;; Check to make sure all valid settings are set!
+    (when-not (email-smtp-username)
+      (throw (Exception. "SMTP username is not set.")))
+    (when-not (email-smtp-password)
+      (throw (Exception. "SMTP password is not set.")))
+    ;; Now send the email
+    (let [{error :error error-message :message} (*send-email-fn* {:host (email-smtp-host)
+                                                                  :user (email-smtp-username)
+                                                                  :pass (email-smtp-password)
+                                                                  :port (Integer/parseInt (email-smtp-port))}
+                                                                 {:from    (email-from-address)
+                                                                  :to      recipients
+                                                                  :subject subject
+                                                                  :body    (condp = message-type
+                                                                             :text message
+                                                                             :html [{:type    "text/html; charset=utf-8"
+                                                                                     :content message}])})]
+      (when-not (= error :SUCCESS)
+        (throw (Exception. (format "Emails failed to send: error: %s; message: %s" error error-message))))
+      message)
+    (catch Throwable e
+      (log/warn "Failed to send email: " (.getMessage e)))))
