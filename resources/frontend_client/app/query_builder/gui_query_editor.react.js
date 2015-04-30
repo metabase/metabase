@@ -506,7 +506,9 @@ var GuiQueryEditor = React.createClass({
             return (
                 <div className="Query-section flex align-center">
                     Filtered by:
-                    {filterList}
+                    <div className="Query-filters">
+                        {filterList}
+                    </div>
                     {addFilterButton}
                 </div>
             );
@@ -537,7 +539,7 @@ var GuiQueryEditor = React.createClass({
                     <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                         {this.renderBreakouts()}
                     </ReactCSSTransitionGroup>
-                    <div className="Query-section">
+                    <div className="Query-section Query-section--right">
                         <RunButton
                             canRun={this.canRun()}
                             isRunning={this.props.isRunning}
