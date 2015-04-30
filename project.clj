@@ -26,6 +26,7 @@
                  [clj-time "0.9.0"]                                   ; library for dealing with date/time
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
+                 [com.draines/postal "1.11.3"]                        ; SMTP library
                  [com.h2database/h2 "1.4.186"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [com.novemberain/monger "2.1.0"]                     ; MongoDB Driver
