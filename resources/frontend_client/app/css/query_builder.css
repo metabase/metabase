@@ -34,13 +34,13 @@
     display: flex;
     align-items: center;
     color: #91979E;
-    padding-top: 1em;
-    padding-bottom: 1em;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+   font-size: 0.8rem;
 }
 
-.Query-section .SelectionModule {
-    margin-left: 1em;
-    margin-right: 1em;
+.Query-section.Query-section--right {
+    justify-content: flex-end;
 }
 
 .QueryVisualization {
@@ -54,10 +54,29 @@
     font-size: 1.35em;
 }
 
+.Query-filters {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    align-items: flex-end;
+}
+
 .Query-filter {
     display: flex;
     align-items: center;
     border: 1px solid var(--selection-color);
+    background-color: var(--selection-color);
+    margin-right: 1em;
+    margin-bottom: 1em;
+}
+
+.Query-filter .Icon-close {
+    margin-left: 1em;
+    margin-right: 1em;
+}
+
+.QueryTable-wrapper {
+    margin-top: 1em;
 }
 
 /*
@@ -95,7 +114,6 @@
     align-items: center;
     cursor: pointer;
     padding: 0.75em;
-    font-size: 0.85em;
     background-color: #fff;
 }
 
@@ -136,7 +154,6 @@
     display: flex;
     align-items: center;
     padding: 0.25rem;
-    background-color: #fff;
     border: 1px solid var(--selection-color);
     cursor: pointer;
     transition: background .3s linear;
@@ -144,13 +161,13 @@
 
 @media screen and (--breakpoint-min-md) {
     .SelectionTitle {
-        padding: 0.75em 1.25em;
+        padding: 0.5rem;
     }
 }
 
 .SelectionModule.selected .SelectionTitle {
     background-color: var(--selection-color);
-    transition: background .3s linear;
+    transition: background .3s linear, border .3s linear;
 }
 
 .SelectionModule.selected .SelectionTitle:hover {
