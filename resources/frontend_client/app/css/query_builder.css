@@ -70,6 +70,13 @@
     margin-bottom: 1em;
 }
 
+.Query-filter .input {
+    padding: 0;
+    border-radius: 0;
+    padding: 0.5rem;
+    border-color: transparent;
+}
+
 .Query-filter .Icon-close {
     margin-left: 1em;
     margin-right: 1em;
@@ -77,6 +84,17 @@
 
 .QueryTable-wrapper {
     margin-top: 1em;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    overflow: scroll;
+}
+
+.QueryTable.Table tr:nth-child(even) {
+    background-color: #fff;
+}
+
+.QueryTable.Table tr:hover {
+    background-color: var(--selection-color);
 }
 
 /*
