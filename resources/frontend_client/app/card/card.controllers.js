@@ -182,13 +182,6 @@ CardControllers.controller('CardDetail', [
 
                     renderAll();
                 }
-            },
-            getDownloadLink: function() {
-                // TODO: this should be conditional and only return a valid url if we have valid
-                //       data to be downloaded.  otherwise return something falsey
-                if (queryResult) {
-                    return '/api/meta/dataset/csv/?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-                }
             }
         };
 
@@ -260,6 +253,12 @@ CardControllers.controller('CardDetail', [
         var renderHeader = function() {
             // ensure rendering model is up to date
             headerModel.card = card;
+
+            if (queryResult) {
+                headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
+            } else {
+                headerModel.downloadLink = null;
+            }
 
             React.render(new QueryHeader(headerModel), document.getElementById('react_qb_header'));
         };
