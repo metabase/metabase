@@ -155,7 +155,7 @@
     opacity: 0;
     color: #fff;
     margin-left: 0.5rem;
-    margin-right: 0.5rem;   
+    margin-right: 0.5rem;
 }
 
 .SelectionItem:hover .Icon-check {
@@ -245,9 +245,9 @@
     border-radius: 99px;
 }
 
-/* @save */ 
+/* @save */
 
-.SaveWrapper {
+.SaveModal {
     position: fixed;
     left: 0;
     right: 0;
@@ -258,7 +258,14 @@
     opacity: 0;
     pointer-events: none;
     background-color: #fff;
+    z-index: 5000;
 }
+
+.SaveModal.Modal--showing {
+    opacity: 1;
+    pointer-events: all;
+}
+
 
 /* @transitions */
 

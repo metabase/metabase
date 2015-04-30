@@ -13,6 +13,7 @@ var QueryHeader = React.createClass({
         card: React.PropTypes.object.isRequired,
         cardApi: React.PropTypes.func.isRequired,
         dashboardApi: React.PropTypes.func.isRequired,
+        notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string
     },
@@ -108,7 +109,9 @@ var QueryHeader = React.createClass({
             saveButton = (
                 <Saver
                     card={this.props.card}
-                    saveFn={this.props.saveCard}
+                    saveFn={this.saveCard}
+                    buttonText="Save"
+                    saveButtonText="Create card"
                 />
             );
         } else if (this.cardIsDirty() || this.state.recentlySaved) {

@@ -18,9 +18,7 @@ var Saver = React.createClass({
 
     getInitialState: function () {
         return {
-            modalOpen: false,
-            triggerAction: this._openModal,
-            permissions: this.props.card.public_perms
+            modalOpen: false
         };
     },
 
@@ -46,15 +44,12 @@ var Saver = React.createClass({
     save: function (event) {
         event.preventDefault();
 
-        var name = this.refs.name.getDOMNode().value.trim();
-        var description = this.refs.description.getDOMNode().value.trim();
-        var public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
+        var card = this.props.card;
+        card.name = this.refs.name.getDOMNode().value.trim();
+        card.description = this.refs.description.getDOMNode().value.trim();
+        card.public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
 
-        this.props.saveFn({
-            name: name,
-            description: description,
-            public_perms: public_perms
-        });
+        this.props.saveFn(card);
 
         this.setState({
             modalOpen: false
@@ -122,6 +117,9 @@ var Saver = React.createClass({
                     <button className={buttonClasses}>
                         {this.props.saveButtonText}
                     </button>
+                    <a className="ml1" href="#" onClick={this.toggleModal}>
+                        Cancel
+                    </a>
                     {formError}
                 </div>
             </form>
@@ -131,11 +129,11 @@ var Saver = React.createClass({
     render: function() {
         var modalClasses = cx({
             'SaveModal': true,
-            'Modal--showing': this.state.modalOpen
+            'Modal--showing': this.state.modalOpen,
         });
 
         return (
-            <div className="SaveWrapper">
+            <div>
                 <div className={modalClasses}>
                     <div className="ModalContent">
                         {this.renderCardSaveForm()}
