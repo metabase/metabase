@@ -1,6 +1,6 @@
 :root {
   --default-font-family: "Lato";
-  --default-font-size: 100%;
+  --default-font-size: 1em;
 }
 
 html {
@@ -16,7 +16,7 @@ body {
     display: flex;
     flex-direction: column;
     text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: subpixel-antialiased;
 }
 
 /*

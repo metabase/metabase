@@ -57,7 +57,8 @@
 
 .QueryName {
     font-weight: 200;
-    margin: 1rem 0;
+    margin-top: 0;
+    margin-bottom: 0;
     font-size: 1em;
 }
 
