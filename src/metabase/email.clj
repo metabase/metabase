@@ -14,6 +14,11 @@
 
 ;; ## PUBLIC INTERFACE
 
+(def ^:dynamic *send-email-fn*
+  "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
+   Provided so you can swap this out with an \"inbox\" for test purposes."
+  postal/send-message)
+
 ;; TODO - wouldn't this be *nicer* if all args were kwargs?
 (defn send-message
   "Send an email to one or more RECIPIENTS.
@@ -39,17 +44,17 @@
     (when-not (email-smtp-password)
       (throw (Exception. "SMTP password is not set.")))
     ;; Now send the email
-    (let [{error :error error-message :message} (postal/send-message {:host (email-smtp-host)
-                                                                      :user (email-smtp-username)
-                                                                      :pass (email-smtp-password)
-                                                                      :port (Integer/parseInt (email-smtp-port))}
-                                                                     {:from    (email-from-address)
-                                                                      :to      recipients
-                                                                      :subject subject
-                                                                      :body    (condp = message-type
-                                                                                 :text message
-                                                                                 :html [{:type    "text/html; charset=utf-8"
-                                                                                         :content message}])})]
+    (let [{error :error error-message :message} (*send-email-fn* {:host (email-smtp-host)
+                                                                  :user (email-smtp-username)
+                                                                  :pass (email-smtp-password)
+                                                                  :port (Integer/parseInt (email-smtp-port))}
+                                                                 {:from    (email-from-address)
+                                                                  :to      recipients
+                                                                  :subject subject
+                                                                  :body    (condp = message-type
+                                                                             :text message
+                                                                             :html [{:type    "text/html; charset=utf-8"
+                                                                                     :content message}])})]
       (when-not (= error :SUCCESS)
         (throw (Exception. (format "Emails failed to send: error: %s; message: %s" error error-message))))
       message)
