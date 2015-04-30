@@ -22,24 +22,17 @@
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect [{:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :entity_name nil, :active true,
-          :id (table->id :categories), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :entity_name nil, :active true,
-          :id (table->id :checkins), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "USERS", :rows 15, :entity_name nil, :active true,
-          :id (table->id :users), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :entity_name nil, :active true,
-          :id (table->id :venues), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "categories", :rows 75, :entity_name nil, :active true,
-          :id (mongo-data/table-name->id :categories), :db_id @mongo-test-db-id}
-         {:description nil, :entity_type nil, :name "checkins", :rows 1000, :entity_name nil, :active true,
-          :id (mongo-data/table-name->id :checkins), :db_id @mongo-test-db-id}
-         {:description nil, :entity_type nil, :name "users", :rows 15, :entity_name nil, :active true,
-          :id (mongo-data/table-name->id :users), :db_id @mongo-test-db-id}
-         {:description nil, :entity_type nil, :name "venues", :rows 100, :entity_name nil, :active true,
-          :id (mongo-data/table-name->id :venues), :db_id @mongo-test-db-id}]
+(expect #{{:name "CATEGORIES", :rows 75,   :active true, :id (table->id :categories),                 :db_id @db-id}
+          {:name "CHECKINS",   :rows 1000, :active true, :id (table->id :checkins),                   :db_id @db-id}
+          {:name "USERS",      :rows 15,   :active true, :id (table->id :users),                      :db_id @db-id}
+          {:name "VENUES",     :rows 100,  :active true, :id (table->id :venues),                     :db_id @db-id}
+          {:name "categories", :rows 75,   :active true, :id (mongo-data/table-name->id :categories), :db_id @mongo-test-db-id}
+          {:name "checkins",   :rows 1000, :active true, :id (mongo-data/table-name->id :checkins),   :db_id @mongo-test-db-id}
+          {:name "users",      :rows 15,   :active true, :id (mongo-data/table-name->id :users),      :db_id @mongo-test-db-id}
+          {:name "venues",     :rows 100,  :active true, :id {mongo-data/table-name->id :venues},     :db_id @mongo-test-db-id}}
   (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
-       (map #(dissoc % :db :created_at :updated_at)))) ; don't care about checking nested DB, and not sure how to compare `:created_at` / `:updated_at`
+       (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
+       set))
 
 ;; ## GET /api/meta/table/:id
 (expect
