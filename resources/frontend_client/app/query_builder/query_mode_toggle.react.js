@@ -9,9 +9,8 @@ var QueryModeToggle = React.createClass({
     },
     render: function () {
         // only render if the card is NEW && unmodified
-        // TODO: @allen i'm not sure this is working
+        // TODO: need to add in check for card.isDirty
         if (this.props.card.id !== undefined ||
-            this.props.card.isDirty() ||
             !this.props.card.dataset_query) {
             return false;
         }
