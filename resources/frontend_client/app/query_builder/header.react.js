@@ -11,6 +11,7 @@ var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
+        dashboardApi: React.PropTypes.func.isRequired,
         queryType: React.PropTypes.string,
         saveFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
@@ -53,6 +54,7 @@ var QueryHeader = React.createClass({
                 {downloadButton}
                 <AddToDashboard
                     card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
                 />
                 <QueryModeToggle
                     card={this.props.card}

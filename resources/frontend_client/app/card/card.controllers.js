@@ -66,8 +66,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', 'Card', 'Query', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, Card, Query, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$scope', '$routeParams', '$location', 'Card', 'Dashboard', 'Query', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($scope, $routeParams, $location, Card, Dashboard, Query, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         /*
            HERE BE DRAGONS
@@ -126,13 +126,15 @@ CardControllers.controller('CardDetail', [
 
         var headerModel = {
             card: null,
+            dashboardApi: Dashboard,
             saveFn: function(settings) {
                 card.name = settings.name;
                 card.description = settings.description;
-                // TODO: set permissions here
+                card.public_perms = settings.public_perms;
 
+                var apiCall;
                 if (card.id !== undefined) {
-                    Card.update(card, function (updatedCard) {
+                    apiCall = Card.update(card, function (updatedCard) {
                         // TODO: any reason to overwrite card and re-render?
                     }, function (error) {
                         console.log('error updating card', error);
@@ -141,16 +143,17 @@ CardControllers.controller('CardDetail', [
                     // set the organization
                     card.organization = $scope.currentOrg.id;
 
-                    Card.create(card, function (newCard) {
+                    apiCall = Card.create(card, function (newCard) {
                         $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
                     }, function (error) {
                         console.log('error creating card', error);
                     });
                 }
+
+                return apiCall.$promise;
             },
-            setPermissions: function(permission) {
-                card.public_perms = permission;
-                renderHeader();
+            notifyCardSavedFn: function(savedCard) {
+                // header is telling us
             },
             setQueryModeFn: function(mode) {
                 var queryTemplate = angular.copy(newQueryTemplates[mode]);

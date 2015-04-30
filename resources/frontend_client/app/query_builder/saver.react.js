@@ -34,6 +34,10 @@ var Saver = React.createClass({
             permissions: permission
         });
     },
+    isFormReady: function () {
+        // TODO: make this work properly
+        return true;
+    },
     _save: function () {
         var name = this.refs.name.getDOMNode().value,
             description = this.refs.description.getDOMNode().value,
@@ -51,17 +55,22 @@ var Saver = React.createClass({
         });
     },
     render: function () {
+        if (!this.props.card.isDirty()) {
+            return false;
+        }
+
         var buttonClasses = cx({
             'SaveButton': true,
             'Button': true,
             'block': true,
-            'Button--primary': this.state.modalOpen
+            'Button--primary': this.isFormReady()
         });
         var modalClasses = cx({
             'SaveModal': true,
             'Modal--showing': this.state.modalOpen
         });
 
+        // TODO: these should be html <option> elements
         var privacyOptions = [
             {
                 code: 0,
@@ -77,35 +86,45 @@ var Saver = React.createClass({
             },
         ];
 
-        // default state is false, which means we don't render anything in the DOM
-        var saver = false;
-        if (this.props.card.isDirty()) {
-            saver = (
-                <div className="SaveWrapper mr2">
-                    <div className={modalClasses}>
-                        <div className="ModalContent">
-                            <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.card.name} />
-                            <input ref="description" type="text" placeholder="Add a description" defaultValue={this.props.card.description}/>
-                            <div className="mt4 ml2 mr2 clearfix">
-                                <span className="text-grey-3 inline-block my1">Privacy:</span>
-                                <div className="float-right">
-                                    <SelectionModule
-                                        placeholder="Privacy"
-                                        items={privacyOptions}
-                                        selectedKey='code'
-                                        selectedValue={this.props.permissions}
-                                        display='display'
-                                        action={this._setPermissions}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <a className={buttonClasses} onClick={this.state.triggerAction}>Save</a>
-                </div>
-            );
-        }
+// <form className="Form-new bordered rounded shadowed">
+//                             <div className="Form-field" mb-form-field="name">
+//                                 <mb-form-label display-name="Name" field-name="name"></mb-form-label>
+//                                 <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your dashboard?" defaultValue={this.props.card.name} autofocus/>
+//                                 <span className="Form-charm"></span>
+//                             </div>
 
-        return saver;
+//                             <div className="Form-field" mb-form-field="description">
+//                                 <mb-form-label display-name="Description" field-name="description"></mb-form-label>
+//                                 <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" defaultValue={this.props.card.description} />
+//                                 <span className="Form-charm"></span>
+//                             </div>
+
+//                             <div className="Form-field" mb-form-field="public_perms">
+//                                 <mb-form-label display-name="Privacy" field-name="public_perms"></mb-form-label>
+//                                 <label className="Select Form-offset">
+//                                     <select ref="public_perms">
+//                                         {privacyOptions}
+//                                     </select>
+//                                 </label>
+//                             </div>
+
+//                             <div className="Form-actions">
+//                                 <button className={buttonClasses} onClick={this.save} ng-disabled="!form.$valid">
+//                                     Save
+//                                 </button>
+//                                 <mb-form-message form="form"></mb-form-message>
+//                             </div>
+//                         </form>
+
+        return (
+            <div className="SaveWrapper">
+                <div className={modalClasses}>
+                    <div className="ModalContent">
+
+                    </div>
+                </div>
+                <a className="Button Button--primary" onClick={this.state.triggerAction}>Save</a>
+            </div>
+        );
     }
 });
