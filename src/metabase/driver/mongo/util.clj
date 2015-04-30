@@ -2,7 +2,8 @@
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
   (:require [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [monger.core :as mg]))
+            [monger.core :as mg]
+            [metabase.driver :as driver]))
 
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
@@ -41,3 +42,22 @@
               ~@body)]
      (if *mongo-connection* (f# *mongo-connection*)
          (-with-mongo-connection f# ~database))))
+
+;; TODO - this is actually more sophisticated than the one used for annotation in the GenericSQL driver, which just takes the
+;; types of the values in the first row.
+;; We should move this somewhere where it can be shared amongst the drivers and rewrite GenericSQL to use it instead.
+(defn values->base-type
+  "Given a sequence of values, return `Field` `base_type` in the most ghetto way possible.
+   This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
+  [values-seq]
+  {:pre [(sequential? values-seq)]}
+  (or (->> values-seq
+           (filter identity)
+           (group-by type)
+           (map (fn [[type valus]]
+                  [type (count valus)]))
+           (sort-by second)
+           first
+           first
+           driver/class->base-type)
+      :UnknownField))

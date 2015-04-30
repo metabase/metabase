@@ -1,11 +1,11 @@
 (ns metabase.driver.generic-sql.query-processor.annotate
   "Functions related to annotating results returned by the Query Processor."
   (:require [metabase.db :refer :all]
+            [metabase.driver.query-processor :as qp]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare get-column-names
          get-column-info
-         get-special-column-info
          uncastify)
 
 (defn annotate
@@ -95,36 +95,7 @@
   (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
       column-name))
 
-(defn- get-column-info
-  "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
-   information about special columns such as `count` via `get-special-column-info`."
+(defn get-column-info
+  "Wrapper for `metabase.driver.query-processor/get-column-info` that calls `uncastify` on column names."
   [query column-names]
-  (let [table-id (get-in query [:query :source_table])
-        column-names (map uncastify column-names)
-        columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
-                          :table_id table-id :name [in (set column-names)])
-                     (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
-                            {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
-                                      (assoc :extra_info (if-let [fk-table (field->fk-table column)]
-                                                           {:target_table_id (:id fk-table)}
-                                                           {})))}))
-                     (into {}))]
-    (->> column-names
-         (map (fn [column-name]
-                (or (columns column-name)                             ; try to get matching column from the map we build earlier
-                    (get-special-column-info query column-name))))))) ; if it's not there then it's a special column like `count`
-
-(defn- get-special-column-info
-  "Get info like `:base_type` and `:special_type` for a special aggregation column like `count` or `sum`."
-  [query column-name]
-  (merge {:name column-name
-          :id nil
-          :table_id nil
-          :description nil}
-         (let [aggregation-type (keyword column-name)                                ; For aggregations of a specific Field (e.g. `sum`)
-               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
-           (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
-                                       :id (-> query :query :aggregation second))    ; will be the same.)
-               (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
-                 :count {:base_type :IntegerField                                    ; just return hardcoded type info
-                         :special_type :number})))))
+  (qp/get-column-info query (map uncastify column-names)))

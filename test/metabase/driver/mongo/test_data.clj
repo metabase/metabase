@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo.test-data
   "Functionality related to creating / loading a test database for the Mongo driver."
-  (:require [colorize.core :as color]
+  (:require [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [medley.core :as m]
             (monger [collection :as mc]
                     [core :as mg])
@@ -10,7 +11,7 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test-data :refer :all]
+            [metabase.test-data :refer [org-id]]
             [metabase.test-data.data :as data]))
 
 (declare load-data)
@@ -37,8 +38,10 @@
                         :name mongo-test-db-name
                         :engine :mongo
                         :details {:conn_str mongo-test-db-conn-str})]
+               (log/debug (color/cyan "Loading Mongo test data..."))
                (load-data)
                (driver/sync-database! db)
+               (log/debug (color/cyan "Done."))
                db))))
 
 (def mongo-test-db-id
@@ -108,4 +111,4 @@
             (mc/insert mongo-db (name collection) (assoc (zipmap fields row)
                                                          :_id (inc i)))
             (catch com.mongodb.MongoException$DuplicateKey _)))
-        (println (color/cyan (format "Loaded data for collection '%s'." (name collection))))))))
+        (log/debug (color/cyan (format "Loaded data for collection '%s'." (name collection))))))))

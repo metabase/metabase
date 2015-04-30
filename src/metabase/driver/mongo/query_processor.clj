@@ -9,8 +9,8 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :refer [*query*]]
-            [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection*]]
+            [metabase.driver.query-processor :as qp :refer [*query*]]
+            [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]]))
@@ -146,22 +146,16 @@
 
 (defn annotate-results [{:keys [source_table] :as query} results]
   {:pre [(integer? source_table)]}
-  (let [field-name->id (sel :many :field->id [Field :name] :table_id source_table)
-        column-names (keys (first results))]
+  (let [field-name->field (sel :many :field->obj [Field :name] :table_id source_table)
+        column-keys       (keys (first results))
+        column-names      (map name column-keys)]
     {:row_count (count results)
      :status :completed
      :data {:columns column-names
-            :cols (map (fn [column-name]
-                         {:name column-name
-                          :id (field-name->id (name column-name))
-                          :table_id source_table
-                          :description nil
-                          :base_type :UnknownField
-                          :special_type nil
-                          :extra_info {}})
-                       column-names)
-            :rows (map #(map % column-names)
+            :cols (qp/get-column-info {:query query} column-names)
+            :rows (map #(map % column-keys)
                        results)}}))
+
 
 ;; ## CLAUSE APPLICATION 2.0
 

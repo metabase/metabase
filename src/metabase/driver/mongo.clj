@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.interface :refer :all]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection]])))
+                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])))
 
 (declare driver)
 
@@ -29,22 +29,12 @@
          (r/reduce set/union))))
 
 (defn- field->base-type
-  "Determine the base type of FIELD in the most ghetto way possible.
-   This just gets counts the types of *every* value of FIELD and returns the class whose count was highest."
+  "Determine the base type of FIELD in the most ghetto way possible, via `values->base-type`."
   [field]
   {:pre [(map? field)]
    :post [(keyword? %)]}
   (with-mongo-connection [_ @(:db @(:table field))]
-    (or (->> (field-values-lazy-seq driver field)
-             (filter identity)
-             (group-by type)
-             (map (fn [[type valus]]
-                    [type (count valus)]))
-             (sort-by second)
-             first
-             first
-             driver/class->base-type)
-        :UnknownField)))
+    (values->base-type (field-values-lazy-seq driver field))))
 
 
 ;;; ## MongoDriver

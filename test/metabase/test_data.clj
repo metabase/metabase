@@ -75,6 +75,13 @@
           (not (zero? %))]}
   (@tables table-name))
 
+(defn table-name->table
+  "Fetch `Table` with TABLE-NAME."
+  [table-name]
+  {:pre [(keyword? table-name)]
+   :post [(map? %)]}
+  (sel :one Table :id (table->id table-name)))
+
 
 ;; ## Test Organization
 

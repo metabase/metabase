@@ -15,24 +15,6 @@
           {:extra_info {} :special_type :latitude, :base_type :FloatField, :description nil, :name "LATITUDE", :table_id (table->id :venues), :id (field->id :venues :latitude)}
           {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
 
-;; ## "COUNT" AGGREGATION
-(expect {:status :completed
-         :row_count 1
-         :data {:rows [[100]]
-                :columns ["count"]
-                :cols [{:base_type :IntegerField
-                        :special_type :number
-                        :name "count"
-                        :id nil
-                        :table_id nil
-                        :description nil}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter [nil nil]
-                                 :aggregation ["count"]
-                                 :breakout [nil]
-                                 :limit nil}}))
 
 ;; ## "SUM" AGGREGATION
 (expect {:status :completed
