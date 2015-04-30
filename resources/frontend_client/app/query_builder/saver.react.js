@@ -5,10 +5,17 @@ var Saver = React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,
-        hasChanged: React.PropTypes.bool,
         saveFn: React.PropTypes.func.isRequired
     },
     mixins: [OnClickOutside],
+
+    getDefaultProps: function() {
+        return {
+            buttonText: "Edit",
+            saveButtonText: "Save"
+        }
+    },
+
     getInitialState: function () {
         return {
             modalOpen: false,
@@ -16,9 +23,11 @@ var Saver = React.createClass({
             permissions: this.props.card.public_perms
         };
     },
+
     handleClickOutside: function () {
         this.replaceState(this.getInitialState());
     },
+
     toggleModal: function () {
         var modalOpen = !this.state.modalOpen;
         this.setState({
@@ -28,16 +37,18 @@ var Saver = React.createClass({
             this.refs.name.getDOMNode().focus();
         });
     },
+
     isFormReady: function () {
         // TODO: make this work properly
         return true;
     },
+
     save: function (event) {
         event.preventDefault();
 
         var name = this.refs.name.getDOMNode().value.trim();
         var description = this.refs.description.getDOMNode().value.trim();
-        var public_perms = this.refs.public_perms.getDOMNode().value;
+        var public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
 
         this.props.saveFn({
             name: name,
@@ -49,12 +60,13 @@ var Saver = React.createClass({
             modalOpen: false
         });
     },
+
     renderCardSaveForm: function() {
         // TODO: hard coding values :(
         var privacyOptions = [
-            (<option key="0" value="0">Private</option>),
-            (<option key="1" value="1">Others can read</option>),
-            (<option key="2" value="2">Others can modify</option>)
+            (<option key="0" value={0}>Private</option>),
+            (<option key="1" value={1}>Others can read</option>),
+            (<option key="2" value={2}>Others can modify</option>)
         ];
 
         var formError;
@@ -83,7 +95,7 @@ var Saver = React.createClass({
                     fieldName="name"
                     showCharm={true}
                     errors={this.state.errors}>
-                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your card?" autofocus/>
+                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your card?" defaultValue={this.props.card.name} autofocus/>
                 </FormField>
 
                 <FormField
@@ -91,7 +103,7 @@ var Saver = React.createClass({
                     fieldName="description"
                     showCharm={true}
                     errors={this.state.errors}>
-                    <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" />
+                    <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" defaultValue={this.props.card.description} />
                 </FormField>
 
                 <FormField
@@ -100,7 +112,7 @@ var Saver = React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms">
+                        <select ref="public_perms" defaultValue={this.props.card.public_perms}>
                             {privacyOptions}
                         </select>
                     </label>
@@ -108,18 +120,15 @@ var Saver = React.createClass({
 
                 <div className="Form-actions">
                     <button className={buttonClasses}>
-                        Save
+                        {this.props.saveButtonText}
                     </button>
                     {formError}
                 </div>
             </form>
         );
     },
-    render: function() {
-        if (!this.props.card.isDirty()) {
-            return false;
-        }
 
+    render: function() {
         var modalClasses = cx({
             'SaveModal': true,
             'Modal--showing': this.state.modalOpen
@@ -132,7 +141,7 @@ var Saver = React.createClass({
                         {this.renderCardSaveForm()}
                     </div>
                 </div>
-                <a className="Button Button--primary" onClick={this.toggleModal}>Save</a>
+                <button className="Button" onClick={this.toggleModal}>{this.props.buttonText}</button>
             </div>
         );
     }

@@ -107,10 +107,6 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        var cardIsDirty = function() {
-            return true;
-        };
-
         var queryResult = null,
             databases = null,
             isRunning = false,
@@ -118,42 +114,30 @@ CardControllers.controller('CardDetail', [
                 name: null,
                 public_perms: 0,
                 display: "table",
+                visualization_settings: VisualizationSettings.getSettingsForVisualization({}, "table"),
                 dataset_query: {},
-                isDirty: cardIsDirty
             };
 
         // =====  REACT component models
 
         var headerModel = {
             card: null,
+            cardApi: Card,
             dashboardApi: Dashboard,
-            saveFn: function(settings) {
-                card.name = settings.name;
-                card.description = settings.description;
-                card.public_perms = settings.public_perms;
+            notifyCardChangedFn: function(modifiedCard) {
+                // these are the only things we let the header change
+                card.name = modifiedCard.name;
+                card.description = modifiedCard.description;
+                card.public_perms = modifiedCard.public_perms;
 
-                var apiCall;
-                if (card.id !== undefined) {
-                    apiCall = Card.update(card, function (updatedCard) {
-                        // TODO: any reason to overwrite card and re-render?
-                    }, function (error) {
-                        console.log('error updating card', error);
-                    });
-                } else {
-                    // set the organization
-                    card.organization = $scope.currentOrg.id;
-
-                    apiCall = Card.create(card, function (newCard) {
-                        $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
-                    }, function (error) {
-                        console.log('error creating card', error);
-                    });
-                }
-
-                return apiCall.$promise;
+                renderAll();
             },
-            notifyCardSavedFn: function(savedCard) {
-                // header is telling us
+            notifyCardCreatedFn: function(newCard) {
+                // for new cards we redirect the user
+                $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
+            },
+            notifyCardUpdatedFn: function(updatedCard) {
+                // do we need to do anything here?
             },
             setQueryModeFn: function(mode) {
                 var queryTemplate = angular.copy(newQueryTemplates[mode]);
@@ -313,9 +297,6 @@ CardControllers.controller('CardDetail', [
                     result.carddirty = true; // so it cand be saved right away
                 }
 
-                // add a custom function for tracking dirtyness
-                result.isDirty = cardIsDirty;
-
                 // update our react models as needed
                 card = result;
 
@@ -348,37 +329,33 @@ CardControllers.controller('CardDetail', [
                 Query.get({
                     'queryId': $routeParams.queryId
                 }, function (query) {
-                    $scope.card = {
-                        'organization': $scope.currentOrg.id,
-                        'name': query.name,
-                        'public_perms': 0,
-                        'can_read': true,
-                        'can_write': true,
-                        'display': 'table', //table display type is currently always available (and should always be displayable) for SQL-backed queries, per updateAvailableDisplayTypes
-                        'dataset_query': {
-                            'database': query.database.id,
-                            'type': 'result',
-                            'result': {
-                                'query_id': query.id
-                            }
+                    card.organization = $scope.currentOrg.id;
+                    card.name = query.name;
+                    card.dataset_query = {
+                        'database': query.database.id,
+                        'type': 'result',
+                        'result': {
+                            'query_id': query.id
                         }
                     };
 
-                    // now get the data for the card
-                    $scope.execute($scope.card);
+                    editorModel.runFn(card.dataset_query);
 
-                    // in this particular case we are already dirty and ready for save
-                    $scope.carddirty = true;
+                    renderAll();
 
                 }, function (error) {
-                    console.log(error);
                     if (error.status == 404) {
                         $location.path('/');
+                        return;
                     }
+                    // TODO: need to handle this better
+                    console.log('error getting query', error);
                 });
 
             } else {
                 // starting a new card
+                card.organization = $scope.currentOrg.id;
+
                 // this is just an easy way to ensure defaults are all setup
                 headerModel.setQueryModeFn("query");
 
