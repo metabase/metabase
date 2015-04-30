@@ -66,11 +66,12 @@ var SelectionModule = React.createClass({
                 var display = item[this.props.display] || item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
-                    'selected': selection == display
+                    'SelectionItem--selected': selection == display
                 });
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
+                        <CheckIcon width="12px" height="12px" />
                         <span className="SelectionModule-display">
                             {display}
                         </span>
@@ -132,16 +133,11 @@ var SelectionModule = React.createClass({
         }
 
         if(this.props.remove) {
-            var style = {
-                fill: '#ddd'
-            };
             remove = (
-                <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={style} width="16px" height="16px">
-                        <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                    </svg>
-                </a>
-            );
+                <div onClick={this.props.remove.bind(null, this.props.index)}>
+                    <CloseIcon width="16px" height="16px" />
+                </div>
+            )
         }
 
         return (
@@ -149,8 +145,8 @@ var SelectionModule = React.createClass({
                 <div className="SelectionModule-trigger">
                     <a className="SelectionTitle" onClick={this._toggleOpen}>
                         {placeholder}
+                        {remove}
                     </a>
-                    {remove}
                 </div>
                 <div className={itemListClasses}>
                     {searchBar}

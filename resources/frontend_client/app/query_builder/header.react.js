@@ -43,7 +43,7 @@ var QueryHeader = React.createClass({
         }
 
         return (
-            <div className="flex align-center">
+            <div className="QueryBuilder-section flex align-center">
                 <h1 className="QueryName flex-full">{title}</h1>
                 {editButton}
                 <Saver

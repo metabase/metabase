@@ -2,7 +2,7 @@
 /*global SelectionModule, DatabaseSelector*/
 
 // clearVisualizationFn
-var Transition = React.addons.CSSTransitionGroup;
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 var GuiQueryEditor = React.createClass({
     displayName: 'GuiQueryEditor',
@@ -280,7 +280,7 @@ var GuiQueryEditor = React.createClass({
 
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     From:
                     <SelectionModule
                         placeholder="What part of your data?"
@@ -299,10 +299,11 @@ var GuiQueryEditor = React.createClass({
     renderFilterButton: function () {
         if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
             return (
-                <a className="FilterTrigger Button" onClick={this.addFilter}>
+                <a onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
                     </svg>
+                    Filter {this.props.query.source_table}
                 </a>
             );
         }
@@ -317,7 +318,7 @@ var GuiQueryEditor = React.createClass({
             var breakoutLabel;
             if(this.props.query.query.breakout.length > 0) {
                 breakoutLabel = (
-                    <div className="inline-block">
+                    <div>
                         Grouped by:
                     </div>
                 );
@@ -332,7 +333,7 @@ var GuiQueryEditor = React.createClass({
                     }
 
                     return (
-                        <div className="DimensionList inline-block">
+                        <div className="DimensionList">
                             <SelectionModule
                                 placeholder='What part of your data?'
                                 display="1"
@@ -353,17 +354,17 @@ var GuiQueryEditor = React.createClass({
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
                 addBreakoutButton = (
-                    <a className="Button" onClick={this.addDimension}>Add a grouping ...</a>
+                    <a onClick={this.addDimension}>Add a grouping ...</a>
                 );
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
                 addBreakoutButton = (
-                    <a className="Button" onClick={this.addDimension}>Add another grouping</a>
+                    <a onClick={this.addDimension}>Add another grouping</a>
                 );
             }
 
             return (
-                <div className="flex">
+                <div className="Query-section flex align-center">
                     {breakoutLabel}
                     {breakoutList}
                     {addBreakoutButton}
@@ -389,7 +390,7 @@ var GuiQueryEditor = React.createClass({
                 }
 
                 aggregationTarget = (
-                    <div className="inline-block">
+                    <div className="flex align-center">
                         of
                         <SelectionModule
                             placeholder="What attribute?"
@@ -405,7 +406,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     I want to see:
                     <SelectionModule
                         placeholder="What data?"
@@ -498,12 +499,12 @@ var GuiQueryEditor = React.createClass({
                     lastFilter[1] !== null &&
                     lastFilter[2] !== null) {
                 addFilterButton = (
-                    <a className="FilterTrigger Button" onClick={this.addFilter}>Add another filter ...</a>
+                    <a onClick={this.addFilter}>Add another filter ...</a>
                 );
             }
 
             return (
-                <div className="flex align-center">
+                <div className="Query-section flex align-center">
                     Filtered by:
                     {filterList}
                     {addFilterButton}
@@ -515,26 +516,35 @@ var GuiQueryEditor = React.createClass({
     render: function () {
         return (
             <div className="border-bottom">
-                <Transition transitionName="qb-section">
-                    {this.renderDbSelector()}
-                </Transition>
-                <Transition transitionName="qb-section">
-                    {this.renderTableSelector()}
-                </Transition>
-                <Transition transitionName="qb-section">
-                    {this.renderFilterSelector()}
-                </Transition>
-                <Transition transitionName="qb-section">
-                    {this.renderAggregation()}
-                </Transition>
-                <Transition transitionName="qb-section">
-                    {this.renderBreakouts()}
-                </Transition>
-                <RunButton
-                    canRun={this.canRun()}
-                    isRunning={this.props.isRunning}
-                    runFn={this.runQuery}
-                />
+                <div className="QueryBuilder-section">
+
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderDbSelector()}
+                    </ReactCSSTransitionGroup>
+
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderTableSelector()}
+                    </ReactCSSTransitionGroup>
+
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderFilterSelector()}
+                    </ReactCSSTransitionGroup>
+
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderAggregation()}
+                    </ReactCSSTransitionGroup>
+
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderBreakouts()}
+                    </ReactCSSTransitionGroup>
+                    <div className="Query-section">
+                        <RunButton
+                            canRun={this.canRun()}
+                            isRunning={this.props.isRunning}
+                            runFn={this.runQuery}
+                        />
+                    </div>
+                </div>
             </div>
         );
     }

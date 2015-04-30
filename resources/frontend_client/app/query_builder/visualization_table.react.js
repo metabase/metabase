@@ -29,7 +29,7 @@ var QueryVisualizationTable = React.createClass({
         });
 
         return (
-            <div className="Table-wrapper">
+            <div className="Table-wrapper full">
                 <table className="QueryTable Table">
                     <thead>
                         <tr>
