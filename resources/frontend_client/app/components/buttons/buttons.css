@@ -111,15 +111,15 @@
     line-height: 1;
     border: 1px solid #ddd;
     border-radius: 40px;
-    width: 4.25em;
+    width: 3.5em;
     transition: background .2s linear .2s, border .2s linear .2s;
 }
 
 .Button-toggleIndicator {
     margin-left: 0;
-    display: inline-block;
-    width: 1em;
-    height: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.5em;
     border: 1px solid #ddd;
     border-radius: 99px;
