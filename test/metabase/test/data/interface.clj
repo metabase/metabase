@@ -14,4 +14,4 @@
 
   ;; Fetching Fns
   (table-name->table [this db-id table-name])
-  (field-name->field [this table-name field-name]))
+  (field-name->field [this table-id field-name]))

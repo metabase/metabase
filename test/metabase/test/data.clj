@@ -55,8 +55,8 @@
   (let [db (ins Database
              :engine          *engine*
              :organization_id @test-org-id
-             :name            (db-name (test-data))
-             :details         {:conn_str (connection-str (test-data))})]
+             :name            (i/db-name (test-data))
+             :details         {:conn_str (i/connection-str (test-data))})]
     (driver/sync-database! db)
     (log/debug (color/green "Done."))
     db))
@@ -70,14 +70,15 @@
 (def db-id
   (let [engine-name->db-id (memoize
                             (fn [engine-name]
-                              {:post [(integer? engine-name)]}
+                              {:post [(keyword? engine-name)
+                                      (integer? %)]}
                               (with-test-data engine-name
-                                (:id (db)))))])
-  (fn []
-    (engine-name->db-id *engine*)))
+                                (:id (db)))))]
+    (fn []
+      (engine-name->db-id *engine*))))
 
 (defn destroy! []
-  (cascade-delete Database :name (db-name (test-data))))
+  (cascade-delete Database :name (i/db-name (test-data))))
 
 (defn table-name->table [table-name]
   {:pre [(keyword? table-name)]
@@ -90,7 +91,7 @@
                                  {:pre [(keyword? table-name)]
                                   :post [(integer? %)]}
                                  (with-test-data engine-name
-                                   (i/table-name->id (test-data) (db-id) table-name))))]
+                                   (:id (i/table-name->table (test-data) (db-id) table-name)))))]
     (fn [table-name]
       (engine+table-name->id *engine* table-name))))
 
@@ -104,7 +105,7 @@
   {:pre [(keyword? table-name)
          (keyword? field-name)]
    :post [(integer? %)]}
-  (i/field-name->id (test-data) table-name field-name))
+  (:id (i/field-name->field (test-data) (table-name->id table-name) field-name)))
 
 
 ;; ## Fns that Run Across *All* Test Datasets
