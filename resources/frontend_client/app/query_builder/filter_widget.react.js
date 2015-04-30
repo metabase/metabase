@@ -136,19 +136,13 @@ var FilterWidget = React.createClass({
         );
     },
     render: function () {
-        var closeStyle = {
-                fill: '#ddd'
-            };
-
         return (
             <div className="Query-filter rounded">
                 {this._fieldList()}
                 {this._operatorList()}
                 {this._filterValue()}
-                <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={closeStyle} width="16px" height="16px">
-                        <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                    </svg>
+                <a onClick={this.props.remove.bind(null, this.props.index)}>
+                    <CloseIcon width="16px" height="16px" />
                 </a>
             </div>
         );
