@@ -5,9 +5,10 @@
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.db :refer :all]
-            [metabase.driver.generic-sql.native :as native]
+            [metabase.driver.query-processor :as qp]
+            (metabase.driver.generic-sql [native :as native]
+                                         [util :refer :all])
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
-            [metabase.driver.generic-sql.util :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
@@ -234,7 +235,7 @@
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (when-not *jdbc-metadata* ; HACK. If *jdbc-metadata* is bound we're probably doing a DB sync. Don't log its hundreds of QP calls, which make it hard to debug.
+  (when-not qp/*disable-qp-logging*
     (log/debug
      "\n********************"
      "\nSOURCE TABLE: " source_table

@@ -74,12 +74,6 @@
                       (config/config-str :mb-db-user)
                       (config/config-str :mb-db-pass))))
 
-(defn test-db-conn
-  "Simple test of a JDBC connection."
-  [jdbc-db]
-  (let [result (first (jdbc/query jdbc-db ["select 7 as num"] :row-fn :num))]
-    (assert (= 7 result) "JDBC Connection Test FAILED")))
-
 
 ;; ## MIGRATE
 
@@ -98,16 +92,22 @@
 (def ^:private setup-db-has-been-called?
   (atom false))
 
+(def ^:private db-can-connect? (u/runtime-resolved-fn 'metabase.driver 'can-connect?))
+
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [auto-migrate]
       :or {auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
+  (log/info "Setting up DB specs...")
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
     ;; Test DB connection and throw exception if we have any troubles connecting
-    (test-db-conn jdbc-db)
+    (log/info "Verifying Database Connection ...")
+    (assert (db-can-connect? {:engine (config/config-kw :mb-db-type)
+                              :details {:conn_str (metabase-db-conn-str)}})
+            "Unable to connect to Metabase DB.")
     (log/info "Verify Database Connection ... CHECK")
     ;; Run through our DB migration process and make sure DB is fully prepared
     (if auto-migrate

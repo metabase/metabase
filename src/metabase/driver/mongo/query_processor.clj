@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
   (:require [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             (monger [collection :as mc]
                     [core :as mg]
@@ -32,10 +33,10 @@
   (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
     (case (keyword query-type)
       :query (let [generated-query (process-structured (:query query))]
-               ;; ; TODO - log/debug
-               (println (color/magenta "\n******************** Generated Monger Query: ********************\n"
-                                       (with-out-str (clojure.pprint/pprint generated-query))
-                                       "*****************************************************************\n"))
+               (when-not qp/*disable-qp-logging*
+                 (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
+                                           (with-out-str (clojure.pprint/pprint generated-query))
+                                           "*****************************************************************\n")))
                (->> (eval generated-query)
                     (annotate-results (:query query))))
       :native (->> (eval-raw-command (:query (:native query)))

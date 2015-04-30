@@ -11,6 +11,9 @@
 (def ^:dynamic *query* "The structured query we're currently processing, before any preprocessing occurs (i.e. the `:query` part of the API call body)"
   nil)
 
+(def ^:dynamic *disable-qp-logging* "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
+  false)
+
 (defn preprocess [{query-type :type :as query}]
   (case (keyword query-type)
     :query (preprocess-structured query)

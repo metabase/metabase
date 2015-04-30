@@ -53,7 +53,8 @@
      (binding [*driver-data* driver-data#
                *db* db#
                *db-id* (:id db#)]
-       (assert (integer? *db-id*))
+       (assert (and (integer? *db-id*)
+                    (map? *db*)))
        ~@body)))
 
 (defmacro expect-with-all-drivers
@@ -82,16 +83,16 @@
    :post [(integer? %)]}
   (:id (->table table-name)))
 
-#_(def ^{:arglists '([table-name])} table-name->id
-  "Given keyword TABLE-NAME, fetch ID of corresponding `Table` in `*db*`."
-  (let [-table-name->id (memoize (fn [db-id table-name]
-                                   {:pre [(integer? db-id)
-                                          (keyword? table-name)]
-                                    :post [(integer? %)]}
-                                   (sel :one :id Table :db_id db-id :name (name table-name))))]
-    (fn [table-name]
-      {:pre [(integer? *db-id*)]}
-      (-table-name->id *db-id* table-name))))
+;; (def ^{:arglists '([table-name])} table-name->id
+;;   "Given keyword TABLE-NAME, fetch ID of corresponding `Table` in `*db*`."
+;;   (let [-table-name->id (memoize (fn [db-id table-name]
+;;                                    {:pre [(integer? db-id)
+;;                                           (keyword? table-name)]
+;;                                     :post [(integer? %)]}
+;;                                    (sel :one :id Table :db_id db-id :name (name table-name))))]
+;;     (fn [table-name]
+;;       {:pre [(integer? *db-id*)]}
+;;       (-table-name->id *db-id* table-name))))
 
 
 ;; ## Driver-Independent QP Tests

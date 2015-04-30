@@ -2,6 +2,7 @@
   "Tests for /api/meta/table endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver.mongo.test-data :as mongo-data :refer [mongo-test-db-id]]
             [metabase.http-client :as http]
             [metabase.middleware.auth :as auth]
             (metabase.models [field :refer [Field]]
@@ -21,10 +22,22 @@
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect [{:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :entity_name nil, :active true, :id (table->id :categories), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :entity_name nil, :active true, :id (table->id :checkins), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "USERS", :rows 15, :entity_name nil, :active true, :id (table->id :users), :db_id @db-id}
-         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :entity_name nil, :active true, :id (table->id :venues), :db_id @db-id}]
+(expect [{:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :entity_name nil, :active true,
+          :id (table->id :categories), :db_id @db-id}
+         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :entity_name nil, :active true,
+          :id (table->id :checkins), :db_id @db-id}
+         {:description nil, :entity_type nil, :name "USERS", :rows 15, :entity_name nil, :active true,
+          :id (table->id :users), :db_id @db-id}
+         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :entity_name nil, :active true,
+          :id (table->id :venues), :db_id @db-id}
+         {:description nil, :entity_type nil, :name "categories", :rows 75, :entity_name nil, :active true,
+          :id (mongo-data/table-name->id :categories), :db_id @mongo-test-db-id}
+         {:description nil, :entity_type nil, :name "checkins", :rows 1000, :entity_name nil, :active true,
+          :id (mongo-data/table-name->id :checkins), :db_id @mongo-test-db-id}
+         {:description nil, :entity_type nil, :name "users", :rows 15, :entity_name nil, :active true,
+          :id (mongo-data/table-name->id :users), :db_id @mongo-test-db-id}
+         {:description nil, :entity_type nil, :name "venues", :rows 100, :entity_name nil, :active true,
+          :id (mongo-data/table-name->id :venues), :db_id @mongo-test-db-id}]
   (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
        (map #(dissoc % :db :created_at :updated_at)))) ; don't care about checking nested DB, and not sure how to compare `:created_at` / `:updated_at`
 

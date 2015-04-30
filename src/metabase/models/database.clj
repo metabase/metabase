@@ -18,7 +18,9 @@
          :can_read     (delay (org-can-read organization_id))
          :can_write    (delay (org-can-write organization_id))))
 
-(defmethod pre-cascade-delete Database [_ {:keys [id]}]
+(defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
+  (if (= (:engine database) :mongo)
+    (throw (Exception. "WHY ARE WE DESTROYING MONGO DB!")))
   (cascade-delete 'metabase.models.table/Table :db_id id)
   (cascade-delete 'metabase.models.query/Query :database_id id))
 

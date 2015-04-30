@@ -6,7 +6,8 @@
             (metabase [core :as core]
                       [db :as db]
                       [task :as task]
-                      [test-data :refer :all])))
+                      [test-data :as h2-test-data])
+            [metabase.driver.mongo.test-data :as mongo-test-data]))
 
 (declare clear-test-db)
 
@@ -24,11 +25,17 @@
   []
   (log/info "Starting up Metabase unit test runner")
   ;; clear out any previous test data that's lying around
+  (log/info "Clearing out test DB...")
   (clear-test-db)
-  ;; setup the db and migrate up to current schema
+  (log/info "Setting up test DB and running migrations...")
   (db/setup-db :auto-migrate true)
-  ;; this causes the test data to be loaded
-  @test-db
+  (log/info "Loading test data: h2...")
+  @h2-test-data/test-db
+  (assert (integer? @h2-test-data/db-id))
+  (log/info "Loading test data: mongo...")
+  (mongo-test-data/destroy!)
+  @mongo-test-data/mongo-test-db
+  (assert (integer? @mongo-test-data/mongo-test-db-id))
   ;; startup test web server
   (core/start-jetty)
   ;; start the task runner

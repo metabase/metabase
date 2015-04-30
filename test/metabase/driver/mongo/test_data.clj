@@ -29,24 +29,37 @@
 
 ;; ## MONGO-TEST-DB + OTHER DELAYS
 
-(def mongo-test-db
-  "A delay that fetches or creates the Mongo test `Database`.
-   If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."
-  (delay (or (sel :one Database :name mongo-test-db-name)
-             (let [db (ins Database
-                        :organization_id @org-id
-                        :name mongo-test-db-name
-                        :engine :mongo
-                        :details {:conn_str mongo-test-db-conn-str})]
-               (log/debug (color/cyan "Loading Mongo test data..."))
-               (load-data)
-               (driver/sync-database! db)
-               (log/debug (color/cyan "Done."))
-               db))))
+(defn destroy!
+  "Remove `Database`, `Tables`, and `Fields` for the Mongo test DB."
+  []
+  #_(cascade-delete Database :name mongo-test-db-name))
 
-(def mongo-test-db-id
-  "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."
-  (delay (:id @mongo-test-db)))
+(defonce
+  ^{:doc "A delay that fetches or creates the Mongo test `Database`.
+          If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."}
+  mongo-test-db
+  (delay (let [db (or (sel :one Database :name mongo-test-db-name)
+                      (let [db (ins Database
+                                 :organization_id @org-id
+                                 :name mongo-test-db-name
+                                 :engine :mongo
+                                 :details {:conn_str mongo-test-db-conn-str})]
+                        (log/debug (color/cyan "Loading Mongo test data..."))
+                        (load-data)
+                        (driver/sync-database! db)
+                        (log/debug (color/cyan "Done."))
+                        db))]
+           (assert (and (map? db)
+                        (integer? (:id db))
+                        (exists? Database :id (:id db))))
+           db)))
+
+(defonce
+  ^{:doc "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."}
+  mongo-test-db-id
+  (delay (let [id (:id @mongo-test-db)]
+           (assert (integer? id))
+           id)))
 
 
 ;; ## FNS FOR GETTING RELEVANT TABLES / FIELDS
@@ -58,7 +71,12 @@
   [table-name]
   {:pre [(keyword? table-name)]
    :post [(map? %)]}
-  (sel :one Table :db_id @mongo-test-db-id :name (name table-name)))
+  (assert (exists? Database :id @mongo-test-db-id)
+          (format "Database with ID %d no longer exists!?" @mongo-test-db-id))
+  (or (sel :one Table :db_id @mongo-test-db-id :name (name table-name))
+      (println (colorize.core/red "db_id: " @mongo-test-db-id "\n"
+                                  "db: " (with-out-str (clojure.pprint/pprint (sel :one Database :id @mongo-test-db-id))) "\n"
+                                  "name: " (name table-name)))))
 
 (def ^{:arglists '([table-name])} table-name->id
   "Return ID of `Table` for Mongo test database (memoized).

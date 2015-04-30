@@ -39,13 +39,6 @@
    [:venues :name]
    [:venues :price]])
 
-(defmacro expect-with-data-loaded
-  "Like `expect`, but forces the test database to be loaded/synced/etc. before running the test."
-  [expected actual]
-  `(expect (do @mongo-test-db
-               ~expected)
-     ~actual))
-
 (defn- table-name->fake-table
   "Return an object that can be passed like a `Table` to driver sync functions."
   [table-name]
@@ -107,7 +100,7 @@
   (i/active-table-names mongo/driver @mongo-test-db))
 
 ;; ### table->column-names
-(expect-with-data-loaded
+(expect
     [#{:_id :name}
      #{:_id :date :venue_id :user_id}
      #{:_id :name :last_login}
@@ -117,7 +110,7 @@
        (map table->column-names)))
 
 ;; ### field->base-type
-(expect-with-data-loaded
+(expect
     [:IntegerField  ; categories._id
      :TextField     ; categories.name
      :IntegerField  ; checkins._id
@@ -158,7 +151,7 @@
 ;; ## Big-picture tests for the way data should look post-sync
 
 ;; Test that Tables got synced correctly, and row counts are correct
-(expect-with-data-loaded
+(expect
     [{:rows 75, :active true, :name "categories"}
      {:rows 1000, :active true, :name "checkins"}
      {:rows 15, :active true, :name "users"}
@@ -166,19 +159,22 @@
   (sel :many :fields [Table :name :active :rows] :db_id @mongo-test-db-id (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
-(expect-with-data-loaded
-    [({:special_type :id, :base_type :IntegerField, :field_type :info, :active true, :name "_id"}
-      {:special_type :category, :base_type :DateField, :field_type :info, :active true, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :field_type :info, :active true, :name "name"})
-     ({:special_type :id, :base_type :IntegerField, :field_type :info, :active true, :name "_id"}
-      {:special_type :category, :base_type :DateField, :field_type :info, :active true, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :field_type :info, :active true, :name "name"})
-     ({:special_type :id, :base_type :IntegerField, :field_type :info, :active true, :name "_id"}
-      {:special_type :category, :base_type :DateField, :field_type :info, :active true, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :field_type :info, :active true, :name "name"})
-     ({:special_type :id, :base_type :IntegerField, :field_type :info, :active true, :name "_id"}
-      {:special_type :category, :base_type :DateField, :field_type :info, :active true, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :field_type :info, :active true, :name "name"})]
+(expect
+    [[{:special_type :id, :base_type :IntegerField, :name "_id"}
+      {:special_type :category, :base_type :DateField, :name "last_login"}
+      {:special_type :category, :base_type :TextField, :name "name"}]
+     [{:special_type :id, :base_type :IntegerField, :name "_id"}
+      {:special_type :category, :base_type :DateField, :name "last_login"}
+      {:special_type :category, :base_type :TextField, :name "name"}]
+     [{:special_type :id, :base_type :IntegerField, :name "_id"}
+      {:special_type :category, :base_type :DateField, :name "last_login"}
+      {:special_type :category, :base_type :TextField, :name "name"}]
+     [{:special_type :id, :base_type :IntegerField, :name "_id"}
+      {:special_type :category, :base_type :DateField, :name "last_login"}
+      {:special_type :category, :base_type :TextField, :name "name"}]]
   (let [table->fields (fn [table-name]
-                        (sel :many :fields [Field :name :active :field_type :base_type :special_type] :table_id (table-name->id :users) (k/order :name)))]
-    (mapv table->fields table-names)))
+                        (sel :many :fields [Field :name :base_type :special_type]
+                             :active true
+                             :table_id (table-name->id :users)
+                             (k/order :name)))]
+    (map table->fields table-names)))
