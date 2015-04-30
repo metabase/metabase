@@ -132,11 +132,8 @@ var SelectionModule = React.createClass({
         }
 
         if(this.props.remove) {
-            var style = {
-                fill: '#ddd'
-            };
             remove = (
-                <svg viewBox="0 0 32 32" style={style} width="16px" height="16px" fill="currentcolor" onClick={this.props.remove.bind(null, this.props.index)}>
+                <svg viewBox="0 0 32 32" width="16px" height="16px" fill="currentcolor" onClick={this.props.remove.bind(null, this.props.index)}>
                     <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
                 </svg>
             );
@@ -145,12 +142,10 @@ var SelectionModule = React.createClass({
         return (
             <div className={moduleClasses}>
                 <div className="SelectionModule-trigger">
-                    <span className="SelectionTitle">
-                        <a onClick={this._toggleOpen}>
-                            {placeholder}
-                        </a>
+                    <a className="SelectionTitle" onClick={this._toggleOpen}>
+                        {placeholder}
                         {remove}
-                    </span>
+                    </a>
                 </div>
                 <div className={itemListClasses}>
                     {searchBar}

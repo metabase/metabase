@@ -146,6 +146,10 @@
     transition: background .3s linear;
 }
 
+.Visualization.Visualization--error {
+    justify-content: center;
+}
+
 .VisualizationSettings {
     padding-bottom: 1em;
     background-color: #fff;
@@ -195,37 +199,15 @@
 }
 
 .QueryError {
-    color: var(--error-color);
+    flex-direction: column;
+    justify-content: center;
 }
 
-
-/* @ breakpoints */
-
-@media screen and (min-width: 120em) {
-    body {
-        font-size: 1em;
-    }
-    .Button,
-    .QueryBar .Button {
-        padding: 1em 2em;
-    }
-    .Table-wrapper {
-        margin-top: 3em;
-    }
-    .SelectionItems.open {
-        top: 3em;
-    }
-
-    .QueryName {
-        margin-bottom: 1em;
-    }
-
-    .ActionBar {
-        padding: 1em 0;
-    }
-    .QueryBar .SelectionTitle {
-        padding: 1em 2em;
-    }
+.QueryError-iconWrapper {
+    padding: 2em;
+    margin-bottom: 2em;
+    border: 4px solid var(--error-color);
+    border-radius: 99px;
 }
 
 /* @transitions */
