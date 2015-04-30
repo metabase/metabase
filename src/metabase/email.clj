@@ -19,7 +19,6 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
-;; TODO - wouldn't this be *nicer* if all args were kwargs?
 (defn send-message
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
