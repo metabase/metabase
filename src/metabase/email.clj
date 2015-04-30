@@ -50,7 +50,7 @@
                                                                  {:from    (email-from-address)
                                                                   :to      recipients
                                                                   :subject subject
-                                                                  :body    (condp = message-type
+                                                                  :body    (case message-type
                                                                              :text message
                                                                              :html [{:type    "text/html; charset=utf-8"
                                                                                      :content message}])})]

@@ -17,7 +17,6 @@
 
 
 ;; ## "AVG" AGGREGATION
-;; TODO - try this with an integer field. (Should the average of an integer field be a float or an int?)
 (expect {:status :completed,
          :row_count 1,
          :data {:rows [[35.50589199999998]]
@@ -54,32 +53,6 @@
                                  :aggregation ["stddev" (field->id :venues :latitude)]
                                  :breakout [nil]
                                  :limit nil}}))
-
-;; ## "ROWS" AGGREGATION
-;; Test that a rows aggregation just returns rows as-is.
-(expect {:status :completed,
-         :row_count 10,
-         :data
-         {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
-                 [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
-                 [3 11 2 -118.428 34.0406 "The Apple Pan"]
-                 [4 29 2 -118.465 33.9997 "Wurstküche"]
-                 [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]
-                 [6 20 2 -118.324 34.1054 "The 101 Coffee Shop"]
-                 [7 44 2 -118.305 34.0689 "Don Day Korean Restaurant"]
-                 [8 11 2 -118.342 34.1015 "25°"]
-                 [9 71 1 -118.301 34.1018 "Krua Siri"]
-                 [10 20 2 -118.292 34.1046 "Fred 62"]]
-          :columns venues-columns
-          :cols @venues-cols}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter nil
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit 10
-                                 :order_by [[(field->id :venues :id) "ascending"]]}}))
 
 ;; ## "PAGE" CLAUSE
 ;; Test that we can get "pages" of results.

@@ -18,7 +18,10 @@
     "Return `Database` containing test data for this driver.")
   (table-name->table [this table-name]
     "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
-  (field-name->id [this table-name field-name]))
+  (field-name->id [this table-name field-name])
+  (fks-supported? [this])
+  (format-name [this table-or-field-name])
+  (id-field-type [this]))
 
 (deftype MongoDriverData []
   DriverData
@@ -27,7 +30,16 @@
   (table-name->table [_ table-name]
     (mongo-data/table-name->table table-name))
   (field-name->id [_ table-name field-name]
-    (mongo-data/field-name->id table-name field-name)))
+    (mongo-data/field-name->id table-name (if (= field-name :id) :_id
+                                              field-name)))
+  (fks-supported? [_]
+    false)
+  (format-name [_ table-or-field-name]
+    (if (= table-or-field-name "id") "_id"
+        table-or-field-name))
+
+  (id-field-type [_]
+    :IntegerField))
 
 (deftype GenericSqlDriverData []
   DriverData
@@ -36,7 +48,13 @@
   (table-name->table [_ table-name]
     (generic-sql-data/table-name->table table-name))
   (field-name->id [_ table-name field-name]
-    (generic-sql-data/field->id table-name field-name)))
+    (generic-sql-data/field->id table-name field-name))
+  (fks-supported? [_]
+    true)
+  (format-name [_ table-or-field-name]
+    (clojure.string/upper-case table-or-field-name))
+  (id-field-type [_]
+    :BigIntegerField))
 
 (def driver-name->driver-data
   {:mongo       (MongoDriverData.)
@@ -118,6 +136,60 @@
                             :database *db-id*
                             :query ~query})))
 
+(defn venues-columns []
+  [(format-name *driver-data* "id")
+   (format-name *driver-data* "category_id")
+   (format-name *driver-data* "price")
+   (format-name *driver-data* "longitude")
+   (format-name *driver-data* "latitude")
+   (format-name *driver-data* "name")])
+
+(defn venues-cols []
+  [{:extra_info {}
+    :special_type :id
+    :base_type (id-field-type *driver-data*)
+    :description nil
+    :name (format-name *driver-data* "id")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :id)}
+   {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :categories)}
+                    {})
+    :special_type (if (fks-supported? *driver-data*) :fk
+                      :category)
+    :base_type :IntegerField
+    :description nil
+    :name (format-name *driver-data* "category_id")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :category_id)}
+   {:extra_info {}
+    :special_type :category
+    :base_type :IntegerField
+    :description nil
+    :name (format-name *driver-data* "price")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :price)}
+   {:extra_info {}
+    :special_type :longitude,
+    :base_type :FloatField,
+    :description nil
+    :name (format-name *driver-data* "longitude")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :longitude)}
+   {:extra_info {}
+    :special_type :latitude
+    :base_type :FloatField
+    :description nil
+    :name (format-name *driver-data* "latitude")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :latitude)}
+   {:extra_info {}
+    :special_type nil
+    :base_type :TextField
+    :description nil
+    :name (format-name *driver-data* "name")
+    :table_id (->table-id :venues)
+    :id (->field-id :venues :name)}])
+
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-drivers
     {:rows [[100]]
@@ -165,3 +237,26 @@
    :aggregation ["distinct" (->field-id :checkins :user_id)]
    :breakout [nil]
    :limit nil})
+
+
+;; ## "ROWS" AGGREGATION
+;; Test that a rows aggregation just returns rows as-is.
+(qp-expect-with-all-drivers
+    {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
+            [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
+            [3 11 2 -118.428 34.0406 "The Apple Pan"]
+            [4 29 2 -118.465 33.9997 "Wurstküche"]
+            [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]
+            [6 20 2 -118.324 34.1054 "The 101 Coffee Shop"]
+            [7 44 2 -118.305 34.0689 "Don Day Korean Restaurant"]
+            [8 11 2 -118.342 34.1015 "25°"]
+            [9 71 1 -118.301 34.1018 "Krua Siri"]
+            [10 20 2 -118.292 34.1046 "Fred 62"]]
+     :columns (venues-columns)
+     :cols (venues-cols)}
+  {:source_table (->table-id :venues)
+   :filter nil
+   :aggregation ["rows"]
+   :breakout [nil]
+   :limit 10
+   :order_by [[(->field-id :venues :id) "ascending"]]})

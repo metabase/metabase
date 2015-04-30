@@ -14,7 +14,8 @@
             [metabase.test-data :refer [org-id]]
             [metabase.test-data.data :as data]))
 
-(declare load-data)
+(declare load-data
+         set-field-special-types!)
 
 ;; ## CONSTANTS
 
@@ -44,10 +45,11 @@
                                  :name mongo-test-db-name
                                  :engine :mongo
                                  :details {:conn_str mongo-test-db-conn-str})]
-                        (log/debug (color/cyan "Loading Mongo test data..."))
+                        (log/info (color/cyan "Loading Mongo test data..."))
                         (load-data)
                         (driver/sync-database! db)
-                        (log/debug (color/cyan "Done."))
+                        (set-field-special-types!)
+                        (log/info (color/cyan "Done."))
                         db))]
            (assert (and (map? db)
                         (integer? (:id db))
@@ -129,4 +131,15 @@
             (mc/insert mongo-db (name collection) (assoc (zipmap fields row)
                                                          :_id (inc i)))
             (catch com.mongodb.MongoException$DuplicateKey _)))
-        (log/debug (color/cyan (format "Loaded data for collection '%s'." (name collection))))))))
+        (log/info (color/cyan (format "Loaded data for collection '%s'." (name collection))))))))
+
+(defn- set-field-special-types! []
+  (doseq [[collection-name {fields :fields}] data/test-data]
+    (doseq [{:keys [special-type] :as field} fields]
+      (when special-type
+        (let [table-id (sel :one :id Table :name (name collection-name))
+              _        (assert (integer? table-id))
+              field-id (sel :one :id Field :table_id table-id :name (name (:name field)))
+              _        (assert (integer? table-id))]
+          (log/info (format "SET SPECIAL TYPE %s.%s -> %s..." collection-name (:name field) special-type))
+          (upd Field field-id :special_type special-type))))))
