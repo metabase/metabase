@@ -19,7 +19,10 @@
 
 ;; ## GET /api/query/form_input
 (expect-eval-actual-first
-    {:databases [(match-$ @test-db
+    {:databases [(match-$ @mongo-test-data/mongo-test-db
+                   {:id $
+                    :name "Mongo Test"})
+                 (match-$ @test-db
                    {:id $
                     :name "Test Database"})]
      :timezones ["GMT"
@@ -36,7 +39,8 @@
                    {:name "Read Only",    :id 1}
                    {:name "Read & Write", :id 2}]}
   (do
-    (cascade-delete Database :organization_id @org-id :id [not= (:id @test-db)]) ; delete any other rando test DBs made by other tests
+    (cascade-delete Database :organization_id @org-id :id [not-in (set [@db-id
+                                                                        @mongo-test-data/mongo-test-db-id])]) ; delete any other rando test DBs made by other tests
     ((user->client :rasta) :get 200 "query/form_input" :org @org-id)))
 
 ;; ## POST /api/query (create)

@@ -74,7 +74,7 @@
         (do-sync-fn)))
 
   (active-table-names [_ database]
-    (with-mongo-connection [conn database]
+    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
       (-> (mdb/get-collection-names conn)
           (set/difference #{"system.indexes"}))))
 

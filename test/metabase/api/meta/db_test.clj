@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])
             [metabase.test-data :refer :all]
@@ -110,41 +111,47 @@
 ;; Test that we can get all the DBs for an Org, ordered by name
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
-      [(match-$ (sel :one Database :name db-name)
-         {:created_at $
-          :engine "postgres"
-          :id $
-          :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-          :updated_at $
-          :organization {:id @org-id
+      (let [org {:id @org-id
                          :slug "test"
                          :name "Test Organization"
                          :description nil
                          :logo_url nil
                          :report_timezone nil
-                         :inherits true}
-          :name $
-          :organization_id @org-id
-          :description nil})
-       (match-$ @test-db
-         {:created_at $
-          :engine "h2"
-          :id $
-          :details $
-          :updated_at $
-          :organization {:id @org-id
-                         :slug "test"
-                         :name "Test Organization"
-                         :description nil
-                         :logo_url nil
-                         :report_timezone nil
-                         :inherits true}
-          :name "Test Database"
-          :organization_id @org-id
-          :description nil})]
+                 :inherits true}]
+        [(match-$ (sel :one Database :name db-name)
+           {:created_at $
+            :engine "postgres"
+            :id $
+            :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
+            :updated_at $
+            :organization org
+            :name $
+            :organization_id @org-id
+            :description nil})
+         (match-$ @mongo-test-data/mongo-test-db
+           {:created_at $
+            :engine "mongo"
+            :id $
+            :details $
+            :updated_at $
+            :organization org
+            :name "Mongo Test"
+            :organization_id @org-id
+            :description nil})
+         (match-$ @test-db
+           {:created_at $
+            :engine "h2"
+            :id $
+            :details $
+            :updated_at $
+            :organization org
+            :name "Test Database"
+            :organization_id @org-id
+            :description nil})])
     (do
       ;; Delete all the randomly created Databases we've made so far
-      (cascade-delete Database :organization_id @org-id :id [not= (:id @test-db)])
+      (cascade-delete Database :organization_id @org-id :id [not-in (set [@db-id
+                                                                          @mongo-test-data/mongo-test-db-id])])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint

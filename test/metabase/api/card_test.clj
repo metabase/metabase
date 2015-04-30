@@ -62,7 +62,7 @@
                                                        :aggregation ["count"]
                                                        :breakout [nil]
                                                        :limit nil}
-                                               :database @org-id}
+                                               :database @db-id}
                                :id $
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
