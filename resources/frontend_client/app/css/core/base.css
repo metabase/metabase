@@ -4,7 +4,6 @@
 }
 
 html {
-    text-rendering: optimizeLegibility;
     height: 100%; /* ensure the entire page will fill the window */
 }
 
@@ -16,6 +15,8 @@ body {
     height: 100%; /* ensure the entire page will fill the window */
     display: flex;
     flex-direction: column;
+    text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
 }
 
 /*

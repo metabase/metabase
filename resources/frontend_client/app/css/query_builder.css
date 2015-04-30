@@ -7,30 +7,34 @@
     flex-direction: column;
     height: 100%;
     line-height: 1;
+    font-size: 1em;
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .QueryBuilder {
+        font-size: 1.12em;
+    }
 }
 
 /* a major section of the query builder */
 .QueryBuilder-section {
-    padding-left: 1em;
-    padding-right: 1em;
+    padding: 0.8rem;
 }
 
 @media screen and (--breakpoint-min-lg) {
     .QueryBuilder-section {
-        padding-left: 2em;
-        padding-right: 2em;
+        padding: 1.05rem;
     }
 }
 
 @media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
-        padding-left: 3em;
-        padding-right: 3em;
+        padding: 1.25rem;
     }
 }
 
 .QueryHeader {
-    border-bottom: 1px solid #e0e0e0e;
+    border-bottom: 1px solid #F0F0F0;
 }
 
 /* a section of the graphical query itself */
@@ -38,9 +42,8 @@
     display: flex;
     align-items: center;
     color: #91979E;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-   font-size: 0.8rem;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
 }
 
 .Query-section.Query-section--right {
@@ -54,12 +57,12 @@
 
 .QueryName {
     font-weight: 200;
-    margin: 1em 0;
-    font-size: 1.2rem;
+    margin: 1rem 0;
+    font-size: 1em;
 }
 
 .Query-label {
-    min-width: 8em;
+    min-width: 8rem;
     display: inline-block;
 }
 
@@ -87,29 +90,14 @@
 }
 
 .Query-filter .Icon-close {
-    margin-left: 1em;
-    margin-right: 1em;
+    margin-left: 1rem;
+    margin-right: 1rem;
 }
 
 .QueryTable-wrapper {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     overflow: scroll;
 }
-
-@media screen and (--breakpoint-min-md) {
-    .QueryTable-wrapper {
-        margin-top: 2em;
-    }
-}
-
-@media screen and (--breakpoint-min-lg) {
-    .QueryTable-wrapper {
-        margin-top: 3em;
-    }
-}
-
 
 .QueryTable.Table tr:nth-child(even) {
     background-color: #fff;
@@ -124,13 +112,14 @@
 */
 .SelectionModule {
     color: var(--brand-color);
+    font-size: 1rem;
 }
 
 .SelectionItems {
     opacity: 0;
     pointer-events: none;
     position: absolute;
-    top: 2.75em;
+    top: 2.75rem;
     border: 1px solid #ddd;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
     border-radius: 4px;
@@ -153,7 +142,7 @@
     display: flex;
     align-items: center;
     cursor: pointer;
-    padding: 0.75em;
+    padding: 0.75rem;
     background-color: #fff;
 }
 
