@@ -29,7 +29,7 @@
           {:name "categories", :rows 75,   :active true, :id (mongo-data/table-name->id :categories), :db_id @mongo-test-db-id}
           {:name "checkins",   :rows 1000, :active true, :id (mongo-data/table-name->id :checkins),   :db_id @mongo-test-db-id}
           {:name "users",      :rows 15,   :active true, :id (mongo-data/table-name->id :users),      :db_id @mongo-test-db-id}
-          {:name "venues",     :rows 100,  :active true, :id {mongo-data/table-name->id :venues},     :db_id @mongo-test-db-id}}
+          {:name "venues",     :rows 100,  :active true, :id (mongo-data/table-name->id :venues),     :db_id @mongo-test-db-id}}
   (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
        set))
