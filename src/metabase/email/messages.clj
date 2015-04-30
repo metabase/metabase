@@ -21,11 +21,10 @@
                              [:p "Your account is setup and ready to go, you just need to set a password so you can login.  Follow the link below to reset your account password."]
                              [:p [:a {:href password-reset-url} password-reset-url]]]])]
     (email/send-message
-      "Your new Metabase account is all set up"
-      {email email}
-      :html message-body)
-    ;; return the message body we sent
-    message-body))
+     :subject     "Your new Metabase account is all set up"
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
 
 (defn send-password-reset-email
   "Format and Send an email informing the user how to reset their password."
@@ -40,8 +39,7 @@
                                       "It can be safely ignored if you did not request a password reset. Click the link below to reset your password.")]
                              [:p [:a {:href password-reset-url} password-reset-url]]]])]
     (email/send-message
-      "[Metabase] Password Reset Request"
-      {email email}
-      :html message-body)
-    ;; return the message body we sent
-    message-body))
+     :subject      "[Metabase] Password Reset Request"
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
