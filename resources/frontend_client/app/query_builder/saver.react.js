@@ -6,7 +6,7 @@ var Saver = React.createClass({
     propTypes: {
         card: React.PropTypes.object.isRequired,
         hasChanged: React.PropTypes.bool,
-        save: React.PropTypes.func.isRequired
+        saveFn: React.PropTypes.func.isRequired
     },
     mixins: [OnClickOutside],
     getInitialState: function () {
@@ -19,93 +19,121 @@ var Saver = React.createClass({
     handleClickOutside: function () {
         this.replaceState(this.getInitialState());
     },
-    _openModal: function () {
+    toggleModal: function () {
+        var modalOpen = !this.state.modalOpen;
         this.setState({
-            modalOpen: true,
-            triggerAction: this._save
+            modalOpen: modalOpen
         }, function () {
             // focus the name field
             this.refs.name.getDOMNode().focus();
         });
     },
-    _setPermissions: function(permission) {
-        console.log('setting perm to ', permission);
-        this.setState({
-            permissions: permission
-        });
+    isFormReady: function () {
+        // TODO: make this work properly
+        return true;
     },
-    _save: function () {
-        var name = this.refs.name.getDOMNode().value,
-            description = this.refs.description.getDOMNode().value,
-            permissions = this.state.permissions;
+    save: function (event) {
+        event.preventDefault();
 
-        this.props.save({
+        var name = this.refs.name.getDOMNode().value.trim();
+        var description = this.refs.description.getDOMNode().value.trim();
+        var public_perms = this.refs.public_perms.getDOMNode().value;
+
+        this.props.saveFn({
             name: name,
             description: description,
-            permissions: permissions
+            public_perms: public_perms
         });
-        // reset the modal
+
         this.setState({
-            modalOpen: false,
-            triggerAction: this._openModal
+            modalOpen: false
         });
     },
-    render: function () {
+    renderCardSaveForm: function() {
+        // TODO: hard coding values :(
+        var privacyOptions = [
+            (<option key="0" value="0">Private</option>),
+            (<option key="1" value="1">Others can read</option>),
+            (<option key="2" value="2">Others can modify</option>)
+        ];
+
+        var formError;
+        if (this.state.errors) {
+            var errorMessage = "Server error encountered";
+            if (this.state.errors.data &&
+                this.state.errors.data.message) {
+                errorMessage = this.state.errors.data.message;
+            }
+
+            // TODO: timeout display?
+            formError = (
+                <span className="text-error px2">{errorMessage}</span>
+            );
+        }
+
         var buttonClasses = cx({
-            'SaveButton': true,
-            'Button': true,
-            'block': true,
-            'Button--primary': this.state.modalOpen
+            "Button": true,
+            "Button--primary": this.isFormReady()
         });
+
+        return (
+            <form className="Form-new" onSubmit={this.save}>
+                <FormField
+                    displayName="Name"
+                    fieldName="name"
+                    showCharm={true}
+                    errors={this.state.errors}>
+                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your card?" autofocus/>
+                </FormField>
+
+                <FormField
+                    displayName="Description (optional)"
+                    fieldName="description"
+                    showCharm={true}
+                    errors={this.state.errors}>
+                    <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" />
+                </FormField>
+
+                <FormField
+                    displayName="Privacy"
+                    fieldName="public_perms"
+                    showCharm={false}
+                    errors={this.state.errors}>
+                    <label className="Select Form-offset">
+                        <select ref="public_perms">
+                            {privacyOptions}
+                        </select>
+                    </label>
+                </FormField>
+
+                <div className="Form-actions">
+                    <button className={buttonClasses}>
+                        Save
+                    </button>
+                    {formError}
+                </div>
+            </form>
+        );
+    },
+    render: function() {
+        if (!this.props.card.isDirty()) {
+            return false;
+        }
+
         var modalClasses = cx({
             'SaveModal': true,
             'Modal--showing': this.state.modalOpen
         });
 
-        var privacyOptions = [
-            {
-                code: 0,
-                display: 'Private'
-            },
-            {
-                code: 1,
-                display: 'Others can read'
-            },
-            {
-                code: 2,
-                display: 'Others can modify'
-            },
-        ];
-
-        // default state is false, which means we don't render anything in the DOM
-        var saver = false;
-        if (this.props.card.isDirty()) {
-            saver = (
-                <div className="SaveWrapper mr2">
-                    <div className={modalClasses}>
-                        <div className="ModalContent">
-                            <input ref="name" type="text" placeholder="Name" autofocus defaultValue={this.props.card.name} />
-                            <input ref="description" type="text" placeholder="Add a description" defaultValue={this.props.card.description}/>
-                            <div className="mt4 ml2 mr2 clearfix">
-                                <span className="text-grey-3 inline-block my1">Privacy:</span>
-                                <div className="float-right">
-                                    <SelectionModule
-                                        placeholder="Privacy"
-                                        items={privacyOptions}
-                                        selectedKey='code'
-                                        selectedValue={this.props.permissions}
-                                        display='display'
-                                        action={this._setPermissions}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+        return (
+            <div className="SaveWrapper">
+                <div className={modalClasses}>
+                    <div className="ModalContent">
+                        {this.renderCardSaveForm()}
                     </div>
-                    <a className={buttonClasses} onClick={this.state.triggerAction}>Save</a>
                 </div>
-            );
-        }
-
-        return saver;
+                <a className="Button Button--primary" onClick={this.toggleModal}>Save</a>
+            </div>
+        );
     }
 });

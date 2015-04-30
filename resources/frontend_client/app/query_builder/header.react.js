@@ -11,12 +11,10 @@ var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
-        queryType: React.PropTypes.string,
+        dashboardApi: React.PropTypes.func.isRequired,
         saveFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string
-
-        // :: Add To Dashboard
 
         // :: Query Mode Toggle
         // allow native queries (available types list?)
@@ -48,11 +46,12 @@ var QueryHeader = React.createClass({
                 <Saver
                     card={this.props.card}
                     hasChanged={false}
-                    save={this.props.saveFn}
+                    saveFn={this.props.saveFn}
                 />
                 {downloadButton}
                 <AddToDashboard
                     card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
                 />
                 <QueryModeToggle
                     card={this.props.card}

@@ -4,46 +4,19 @@
 var AddToDashboard = React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {
-        card: React.PropTypes.object.isRequired
-        // description: React.PropTypes.string,
-        // hasChanged: React.PropTypes.bool,
-        // name: React.PropTypes.string,
-        // permissions: React.PropTypes.number,
-        // setPermissions: React.PropTypes.func.isRequired,
-        // save: React.PropTypes.func.isRequired
+        card: React.PropTypes.object.isRequired,
+        dashboardApi: React.PropTypes.func.isRequired
     },
-    mixins: [OnClickOutside],
     getInitialState: function () {
         return {
-            modalOpen: false,
-            triggerAction: this._openModal
+            modalOpen: false
         };
     },
-    handleClickOutside: function () {
-        this.replaceState(this.getInitialState());
-    },
-    _openModal: function () {
+    toggleModal: function () {
+        var modalOpen = !this.state.modalOpen;
         this.setState({
-            modalOpen: true,
-            triggerAction: this._save
-        }, function () {
-            // focus the name field
-            this.refs.name.getDOMNode().focus();
+            modalOpen: modalOpen
         });
-    },
-    _save: function () {
-        // var name = this.refs.name.getDOMNode().value,
-        //     description = this.refs.description.getDOMNode().value;
-
-        // this.props.save({
-        //     name: name,
-        //     description: description
-        // });
-        // // reset the modal
-        // this.setState({
-        //     modalOpen: false,
-        //     triggerAction: this._openModal
-        // });
     },
     render: function () {
         // if we don't have a saved card then don't render anything
@@ -51,8 +24,41 @@ var AddToDashboard = React.createClass({
             return false;
         }
 
+        // we are rendering a button & controlling a modal popover associated with the button
+
+        var modal;
+        if (this.state.modalOpen) {
+            var tetherOptions = {
+                attachment: 'top left',
+                targetAttachment: 'bottom left',
+                targetOffset: '20px -150px',
+                optimizations: {
+                    moveElement: false // always moves to <body> anyway!
+                }
+            };
+
+            modal = (
+                <Popover
+                    className="bg-white bordered rounded"
+                    tetherOptions={tetherOptions}
+                    closePopoverFn={this.toggleModal}>
+                    <AddToDashboardPopover
+                        card={this.props.card}
+                        dashboardApi={this.props.dashboardApi}
+                    />
+                </Popover>
+            );
+        }
+
+
+        // TODO: if our card is dirty should we disable this button?
+        //       ex: someone modifies a query but hasn't run/save the change?
+
         return (
-            <button className="Button Button--primary">Add to Dash</button>
+            <span>
+                {modal}
+                <button className="Button Button--primary" onClick={this.toggleModal}>Add to Dash</button>
+            </span>
         );
     }
 });
