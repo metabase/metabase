@@ -117,9 +117,9 @@ var NativeQueryEditor = React.createClass({
         }
 
         return (
-            <div>
-                <div id="id_sql" className="border-bottom"></div>
-                <div>
+            <div className="QueryBuilder-section border-bottom">
+                <div id="id_sql" className="Query-section bordered"></div>
+                <div className="Query-section Query-section--right">
                     {dbSelector}
                     <RunButton
                         canRun={this.canRunQuery()}

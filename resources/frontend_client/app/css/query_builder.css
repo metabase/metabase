@@ -15,14 +15,14 @@
     padding-right: 1em;
 }
 
-@media screen and (--breakpoint-min-md) {
+@media screen and (--breakpoint-min-lg) {
     .QueryBuilder-section {
         padding-left: 2em;
         padding-right: 2em;
     }
 }
 
-@media screen and (--breakpoint-min-lg) {
+@media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
         padding-left: 3em;
         padding-right: 3em;
@@ -227,6 +227,13 @@
 }
 
 .Visualization.Visualization--error {
+    justify-content: center;
+}
+
+.Visualization .Card-outer {
+    width: 100%;
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 

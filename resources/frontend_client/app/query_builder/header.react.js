@@ -124,12 +124,13 @@ var QueryHeader = React.createClass({
         var downloadButton;
         if (this.props.downloadLink) {
             downloadButton = (
-                <a className="Button inline-block mr1" href={this.props.downloadLink} target="_blank">Download data</a>
+                <a className="inline-block mr1" href={this.props.downloadLink} target="_blank">Download data
+                </a>
             );
         }
 
         return (
-            <div className="QueryBuilder-section flex align-center">
+            <div className="QueryHeader QueryBuilder-section flex align-center">
                 <h1 className="QueryName flex-full">{title}</h1>
                 {editButton}
                 {saveButton}
