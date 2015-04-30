@@ -259,7 +259,7 @@ var GuiQueryEditor = React.createClass({
         if(this.props.databases && this.props.databases.length > 1) {
             return (
                 <div className="flex align-center">
-                    Using:
+                    <span className="Query-label">Using:</span>
                     <DatabaseSelector
                         databases={this.props.databases}
                         setDatabase={this.setDatabase}
@@ -281,7 +281,7 @@ var GuiQueryEditor = React.createClass({
 
             return (
                 <div className="Query-section flex align-center">
-                    From:
+                    <span className="Query-label">From:</span>
                     <SelectionModule
                         placeholder="What part of your data?"
                         items={this.state.tables}
@@ -318,7 +318,7 @@ var GuiQueryEditor = React.createClass({
             var breakoutLabel;
             if(this.props.query.query.breakout.length > 0) {
                 breakoutLabel = (
-                    <div>
+                    <div className="Query-label">
                         Grouped by:
                     </div>
                 );
@@ -407,7 +407,7 @@ var GuiQueryEditor = React.createClass({
 
             return (
                 <div className="Query-section flex align-center">
-                    I want to see:
+                    <span className="Query-label">I want to see:</span>
                     <SelectionModule
                         placeholder="What data?"
                         items={this.state.options.aggregation_options}
@@ -505,7 +505,7 @@ var GuiQueryEditor = React.createClass({
 
             return (
                 <div className="Query-section flex align-center">
-                    Filtered by:
+                    <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
                         {filterList}
                     </div>

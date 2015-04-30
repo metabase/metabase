@@ -29,6 +29,10 @@
     }
 }
 
+.QueryHeader {
+    border-bottom: 1px solid #e0e0e0e;
+}
+
 /* a section of the graphical query itself */
 .Query-section {
     display: flex;
@@ -51,14 +55,18 @@
 .QueryName {
     font-weight: 200;
     margin: 1em 0;
-    font-size: 1.35em;
+    font-size: 1.2rem;
+}
+
+.Query-label {
+    min-width: 8em;
+    display: inline-block;
 }
 
 .Query-filters {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    align-items: flex-end;
 }
 
 .Query-filter {
@@ -67,7 +75,6 @@
     border: 1px solid var(--selection-color);
     background-color: var(--selection-color);
     margin-right: 1em;
-    margin-bottom: 1em;
 }
 
 .Query-filter .input {
@@ -83,17 +90,30 @@
 }
 
 .QueryTable-wrapper {
-    margin-top: 1em;
+    margin-top: 1rem;
     margin-bottom: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     overflow: scroll;
 }
 
+@media screen and (--breakpoint-min-md) {
+    .QueryTable-wrapper {
+        margin-top: 2em;
+    }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .QueryTable-wrapper {
+        margin-top: 3em;
+    }
+}
+
+
 .QueryTable.Table tr:nth-child(even) {
     background-color: #fff;
 }
 
-.QueryTable.Table tr:hover {
+.QueryTable.Table tbody tr:hover {
     background-color: var(--selection-color);
 }
 
@@ -214,49 +234,6 @@
     background-color: #fff;
 }
 
-.SaveModal {
-    background: #fff;
-    border-radius: 4px;
-    position: absolute;
-    bottom: 0.5em;
-    right: 1.5em;
-    width: 400px;
-}
-
-.SaveModal.Modal--showing {
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-}
-
-.SaveModal .ModalContent {
-    display: none;
-    margin-bottom: 6em;
-    padding: 2em;
-}
-
-.SaveModal input {
-    border: none;
-    font-size: 1em;
-    border-bottom: 1px dotted #111;
-    display: block;
-    width: 100%;
-    padding: 1em;
-}
-
-.SaveModal input:focus {
-    outline: none;
-    border-bottom-color: #4A90E2;
-}
-
-.SaveModal.Modal--showing .ModalContent {
-    display: block;
-}
-
-.SaveButton {
-    position: relative;
-    z-index: 10;
-}
-
 .QueryError {
     flex-direction: column;
     justify-content: center;
@@ -267,6 +244,21 @@
     margin-bottom: 2em;
     border: 4px solid var(--error-color);
     border-radius: 99px;
+}
+
+/* @save */ 
+
+.SaveWrapper {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    background-color: #fff;
 }
 
 /* @transitions */
