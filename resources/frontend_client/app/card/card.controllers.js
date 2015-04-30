@@ -108,7 +108,7 @@ CardControllers.controller('CardDetail', [
         };
 
         var cardIsDirty = function() {
-            return false;
+            return true;
         };
 
         var queryResult = null,

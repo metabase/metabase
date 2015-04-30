@@ -35,7 +35,6 @@ var AddToDashboardPopover = React.createClass({
         this.replaceState(state);
     },
     addToExistingDash: function(dashboard, newDash) {
-        console.log('nd=', newDash);
         var isNewDash = (newDash !== undefined) ? newDash : false;
 
         var component = this;
