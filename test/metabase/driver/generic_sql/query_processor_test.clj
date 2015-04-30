@@ -16,44 +16,6 @@
           {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name "NAME", :table_id (table->id :venues), :id (field->id :venues :name)}]))
 
 
-;; ## "SUM" AGGREGATION
-(expect {:status :completed
-         :row_count 1
-         :data {:rows [[203]]
-                :columns ["sum"]
-                :cols [{:base_type :IntegerField
-                        :special_type :category
-                        :name "sum"
-                        :id nil
-                        :table_id nil
-                        :description nil}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter [nil nil]
-                                 :aggregation ["sum" (field->id :venues :price)]
-                                 :breakout [nil]
-                                 :limit nil}}))
-
-;; ## "DISTINCT COUNT" AGGREGATION
-(expect {:status :completed
-         :row_count 1
-         :data {:rows [[15]]
-                :columns ["count"]
-                :cols [{:base_type :IntegerField
-                        :special_type :number
-                        :name "count"
-                        :id nil
-                        :table_id nil
-                        :description nil}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :checkins)
-                                 :filter [nil nil]
-                                 :aggregation ["distinct" (field->id :checkins :user_id)]
-                                 :breakout [nil]
-                                 :limit nil}}))
-
 ;; ## "AVG" AGGREGATION
 ;; TODO - try this with an integer field. (Should the average of an integer field be a float or an int?)
 (expect {:status :completed,

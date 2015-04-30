@@ -17,21 +17,26 @@
   (db [this]
     "Return `Database` containing test data for this driver.")
   (table-name->table [this table-name]
-    "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`."))
+    "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
+  (field-name->id [this table-name field-name]))
 
 (deftype MongoDriverData []
   DriverData
   (db [_]
     @mongo-data/mongo-test-db)
   (table-name->table [_ table-name]
-    (mongo-data/table-name->table table-name)))
+    (mongo-data/table-name->table table-name))
+  (field-name->id [_ table-name field-name]
+    (mongo-data/field-name->id table-name field-name)))
 
 (deftype GenericSqlDriverData []
   DriverData
   (db [_]
     @generic-sql-data/test-db)
   (table-name->table [_ table-name]
-    (generic-sql-data/table-name->table table-name)))
+    (generic-sql-data/table-name->table table-name))
+  (field-name->id [_ table-name field-name]
+    (generic-sql-data/field->id table-name field-name)))
 
 (def driver-name->driver-data
   {:mongo       (MongoDriverData.)
@@ -94,6 +99,11 @@
 ;;       {:pre [(integer? *db-id*)]}
 ;;       (-table-name->id *db-id* table-name))))
 
+(defn ->field-id [table-name field-name]
+  {:pre [*driver-data*]
+   :post [(integer? %)]}
+  (field-name->id *driver-data* table-name field-name))
+
 
 ;; ## Driver-Independent QP Tests
 
@@ -121,5 +131,37 @@
   {:source_table (->table-id :venues)
    :filter [nil nil]
    :aggregation ["count"]
+   :breakout [nil]
+   :limit nil})
+
+;; ### "SUM" AGGREGATION
+(qp-expect-with-all-drivers
+    {:rows [[203]]
+     :columns ["sum"]
+     :cols [{:base_type :IntegerField
+             :special_type :category
+             :name "sum"
+             :id nil
+             :table_id nil
+             :description nil}]}
+  {:source_table (->table-id :venues)
+   :filter [nil nil]
+   :aggregation ["sum" (->field-id :venues :price)]
+   :breakout [nil]
+   :limit nil})
+
+;; ### "DISTINCT COUNT" AGGREGATION
+(qp-expect-with-all-drivers
+    {:rows [[15]]
+     :columns ["count"]
+     :cols [{:base_type :IntegerField
+             :special_type :number
+             :name "count"
+             :id nil
+             :table_id nil
+             :description nil}]}
+  {:source_table (->table-id :checkins)
+   :filter [nil nil]
+   :aggregation ["distinct" (->field-id :checkins :user_id)]
    :breakout [nil]
    :limit nil})
