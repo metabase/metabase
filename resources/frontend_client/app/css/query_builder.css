@@ -33,8 +33,14 @@
 .Query-section {
     display: flex;
     align-items: center;
-    margin-bottom: 1em;
     color: #91979E;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+.Query-section .SelectionModule {
+    margin-left: 1em;
+    margin-right: 1em;
 }
 
 .QueryVisualization {
@@ -51,6 +57,7 @@
 .Query-filter {
     display: flex;
     align-items: center;
+    border: 1px solid var(--selection-color);
 }
 
 /*
@@ -60,7 +67,7 @@
     color: var(--brand-color);
 }
 
-.SelectionModule .SelectionItems {
+.SelectionItems {
     opacity: 0;
     pointer-events: none;
     position: absolute;
@@ -74,14 +81,12 @@
     right: 0;
     overflow-y: scroll;
     max-height: 360px;
-}
-
-.SelectionItems {
     min-width: 320px;
 }
 
 .SelectionItems.open {
     opacity: 1;
+    transition: opacity .3s linear;
     pointer-events: all;
 }
 
@@ -91,7 +96,6 @@
     cursor: pointer;
     padding: 0.75em;
     font-size: 0.85em;
-    position: relative;
     background-color: #fff;
 }
 
@@ -99,8 +103,24 @@
     background-color: currentColor;
 }
 
+.SelectionItem .Icon-check {
+    opacity: 0;
+    color: #fff;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;   
+}
+
+.SelectionItem:hover .Icon-check {
+    opacity: 1;
+}
+
 .SelectionItem:hover .SelectionModule-display {
     color: #fff;
+}
+
+.SelectionItem.SelectionItem--selected .Icon-check {
+    opacity: 1;
+    color: var(--brand-color);
 }
 
 .SelectionModule.open .SelectionItems {
@@ -139,7 +159,6 @@
     color: #fff;
 }
 
-
 .Visualization {
     overflow-y: scroll;
     transition: background .3s linear;
@@ -156,6 +175,7 @@
 
 .VisualizationSettings {
     padding-bottom: 1em;
+    padding-top: 1em;
     background-color: #fff;
 }
 

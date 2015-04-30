@@ -66,11 +66,12 @@ var SelectionModule = React.createClass({
                 var display = item[this.props.display] || item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
-                    'selected': selection == display
+                    'SelectionItem--selected': selection == display
                 });
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
+                        <CheckIcon width="12px" height="12px" />
                         <span className="SelectionModule-display">
                             {display}
                         </span>
@@ -133,10 +134,10 @@ var SelectionModule = React.createClass({
 
         if(this.props.remove) {
             remove = (
-                <svg viewBox="0 0 32 32" width="16px" height="16px" fill="currentcolor" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                </svg>
-            );
+                <div onClick={this.props.remove.bind(null, this.props.index)}>
+                    <CloseIcon width="16px" height="16px" />
+                </div>
+            )
         }
 
         return (
