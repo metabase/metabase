@@ -119,6 +119,7 @@
     background-color: #fff;
     border: 1px solid var(--selection-color);
     cursor: pointer;
+    transition: background .3s linear;
 }
 
 @media screen and (--breakpoint-min-md) {
@@ -132,9 +133,12 @@
     transition: background .3s linear;
 }
 
-.SelectionModule.open.selected .SelectionTitle {
-    background-color: #fff;
+.SelectionModule.selected .SelectionTitle:hover {
+    background-color: var(--brand-color);
+    border-color: var(--brand-color);
+    color: #fff;
 }
+
 
 .Visualization {
     overflow-y: scroll;

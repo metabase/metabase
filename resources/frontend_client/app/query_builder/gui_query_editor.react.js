@@ -390,7 +390,7 @@ var GuiQueryEditor = React.createClass({
                 }
 
                 aggregationTarget = (
-                    <div>
+                    <div className="flex align-center">
                         of
                         <SelectionModule
                             placeholder="What attribute?"
