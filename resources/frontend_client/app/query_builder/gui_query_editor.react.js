@@ -508,8 +508,8 @@ var GuiQueryEditor = React.createClass({
                     <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
                         {filterList}
+                        {addFilterButton}
                     </div>
-                    {addFilterButton}
                 </div>
             );
         }

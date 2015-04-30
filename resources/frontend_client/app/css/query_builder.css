@@ -66,6 +66,7 @@
 .Query-filters {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     width: 100%;
 }
 
@@ -75,6 +76,7 @@
     border: 1px solid var(--selection-color);
     background-color: var(--selection-color);
     margin-right: 1em;
+    margin-bottom: 0.5em;
 }
 
 .Query-filter .input {
