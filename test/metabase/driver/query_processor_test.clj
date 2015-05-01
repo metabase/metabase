@@ -260,3 +260,43 @@
    :breakout [nil]
    :limit 10
    :order_by [[(->field-id :venues :id) "ascending"]]})
+
+
+;; ## "PAGE" CLAUSE
+;; Test that we can get "pages" of results.
+
+;; ### PAGE - Get the first page
+(qp-expect-with-all-drivers
+    {:rows [[1 "African"]
+            [2 "American"]
+            [3 "Artisan"]
+            [4 "Asian"]
+            [5 "BBQ"]]
+     :columns [(format-name *driver-data* "id"), (format-name *driver-data* "name")]
+     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
+             :table_id (->table-id :categories), :id (->field-id :categories :id)}
+            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
+             :table_id (->table-id :categories), :id (->field-id :categories :name)}]}
+  {:source_table (->table-id :categories)
+   :aggregation ["rows"]
+   :page {:items 5
+          :page 1}
+   :order_by [[(->field-id :categories :name) "ascending"]]})
+
+;; ### PAGE - Get the second page
+(qp-expect-with-all-drivers
+    {:rows [[6 "Bakery"]
+            [7 "Bar"]
+            [8 "Beer Garden"]
+            [9 "Breakfast / Brunch"]
+            [10 "Brewery"]]
+     :columns [(format-name *driver-data* "id"), (format-name *driver-data* "name")]
+     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
+             :table_id (->table-id :categories), :id (->field-id :categories :id)}
+            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
+             :table_id (->table-id :categories), :id (->field-id :categories :name)}]}
+  {:source_table (->table-id :categories)
+   :aggregation ["rows"]
+   :page {:items 5
+          :page 2}
+   :order_by [[(->field-id :categories :name) "ascending"]]})
