@@ -17,14 +17,17 @@ var FilterWidget = React.createClass({
     },
 
     componentWillReceiveProps: function(newProps) {
-        var operator = newProps.filter[0],            // name of the operator
-            field = newProps.filter[1],               // id of the field
-            value,                                      // filtering value
+        var operator = newProps.filter[0],      // name of the operator
+            field = newProps.filter[1],         // id of the field
+            value = null,                       // filtering value
             operatorList = [],
             valueFields;
 
         if (newProps.filter.length > 2) {
-            value = newProps.filter[2];
+            if (newProps.filter[2] !== null) {
+                // always cast the underlying value to a string, otherwise we get strange behavior on dealing with input
+                value = newProps.filter[2].toString();
+            }
         }
 
         // extract the real info
@@ -65,10 +68,12 @@ var FilterWidget = React.createClass({
     },
 
     setField: function(value, index, filterListIndex) {
-        // field is always the first item in our filter array
-        var filter = this.props.filter;
-        filter[1] = value;
-        this.props.updateFilter(this.props.index, filter);
+        // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
+        // make sense once you've changed the field, so starting fresh is the most sensible thing to do
+        if (this.state.value !== value) {
+            var filter = [null, value, null];
+            this.props.updateFilter(this.props.index, filter);
+        }
     },
 
     setOperator: function(value, index, filterListIndex) {
@@ -103,10 +108,13 @@ var FilterWidget = React.createClass({
     setValue: function(value, index, filterListIndex) {
         var filter = this.props.filter;
 
-        // TODO: value casting
-        console.log(this.state.fieldDef);
+        // value casting.  we need the value in the filter to be of the proper type
         if (this.state.fieldDef.base_type === "IntegerField") {
             value = parseInt(value);
+        } else if (this.state.fieldDef.base_type === "BooleanField") {
+            value = (value.toLowerCase() === "true") ? true : false;
+        } else if (this.state.fieldDef.base_type === "FloatField") {
+            value = parseFloat(value);
         }
 
         filter[index] = value;
@@ -161,7 +169,7 @@ var FilterWidget = React.createClass({
             for(var key in value) {
                 // TODO: what typing issues can we run into here?
                 //       we used to call toString() on these values
-                safeValues[key] = value[key];
+                safeValues[key] = value[key].toString();
             }
             return safeValues;
         });
@@ -172,7 +180,6 @@ var FilterWidget = React.createClass({
             isOpen = true;
 
         if(this.state.valueFields) {
-
             if(this.state.valueFields.values) {
                 // do some fixing up of the values so we can display true / false without causing "return true" or "return false"
                 var values = this.getSafeValues();
