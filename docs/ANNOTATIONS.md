@@ -31,8 +31,6 @@ Clicking on the name of the field allows you to change how the field name is dis
 
 This is a human readable description of what the field is and how it is meant to be used. Any caveats about interpretation can go here as well.
 
-Fields 
-
 ### Visibility
 
 Fields are always displayed in “long form” spots like the detail pages for a specific row. By default, any column with an average length of longer than 50 characters is clipped. If you wish to toggle this, click on the checkbox next to a field name.
@@ -56,6 +54,7 @@ This refers to how the basic representation of the field in the database. It is 
 A field’s semantic type is used to determine how to display it as well as providing information to users of the data about the underlying meaning. For example, by marking a fields in a table as Latitude and Longitude, you allow the table to be used to power pin and heat maps. Similarly, marking a field as a URL allows users to click on it and go to that url.
 
 Semantic types include
+
 * Avatar Image URL
 * Category
 * City
