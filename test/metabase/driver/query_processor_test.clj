@@ -388,3 +388,31 @@
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
+
+;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
+(qp-expect-with-all-drivers
+    {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
+            [22 50 1 -122.484 37.7822 "Gordo Taqueria"]]
+     :columns (venues-columns)
+     :cols (venues-cols)}
+  {:source_table (->table-id :venues)
+   :filter ["BETWEEN" (->field-id :venues :id) 21 22]
+   :aggregation ["rows"]
+   :breakout [nil]
+   :limit nil})
+
+;; ### FILTER -- "OR", "<=", "="
+(qp-expect-with-all-drivers
+    {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
+            [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
+            [3 11 2 -118.428 34.0406 "The Apple Pan"]
+            [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
+     :columns (venues-columns)
+     :cols (venues-cols)}
+  {:source_table (->table-id :venues)
+   :filter ["OR"
+            ["<=" (->field-id :venues :id) 3]
+            ["=" (->field-id :venues :id) 5]]
+   :aggregation ["rows"]
+   :breakout [nil]
+   :limit nil})

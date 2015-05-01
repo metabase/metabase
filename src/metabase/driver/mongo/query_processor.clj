@@ -201,9 +201,9 @@
 (defclause :filter ["NOT_NULL" field-id]
   {(field-id->kw field-id) {$exists true}})
 
-(defclause :filter ["BETWEEN" field-id min max] ; is this supposed to be inclusive, or not ?
-  {(field-id->kw field-id) {$gt min
-                            $lt max}})
+(defclause :filter ["BETWEEN" field-id min max]
+  {(field-id->kw field-id) {$gte min
+                            $lte max}})
 (defclause :filter ["=" field-id value]
   {(field-id->kw field-id) value})
 
