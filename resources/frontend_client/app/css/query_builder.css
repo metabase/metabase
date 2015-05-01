@@ -37,6 +37,29 @@
     border-bottom: 1px solid #F0F0F0;
 }
 
+.QueryHeader-details,
+.QueryHeader-actions {
+    display: flex;
+    align-items: center;
+    flex: 0 0 50%;
+}
+
+.QueryHeader-actions {
+    justify-content: flex-end;
+}
+
+.Icon-download,
+.Icon-addToDash {
+    fill: #919191;
+    transition: fill .3s linear;
+}
+
+.Icon-download:hover,
+.Icon-addToDash:hover {
+    fill: var(--brand-color);
+    transition: fill .3s linear;
+}
+
 /* a section of the graphical query itself */
 .Query-section {
     display: flex;
@@ -59,7 +82,7 @@
     font-weight: 200;
     margin-top: 0;
     margin-bottom: 0;
-    font-size: 1em;
+    font-size: 1.2em;
 }
 
 .Query-label {
@@ -254,16 +277,30 @@
     bottom: 0;
     top: 0;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     opacity: 0;
     pointer-events: none;
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.75);
     z-index: 5000;
 }
 
 .SaveModal.Modal--showing {
     opacity: 1;
     pointer-events: all;
+}
+
+.SaveModal .ModalContent {
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    display: flex;
+    max-width: 32em;
+    flex: 1;
+}
+
+.SaveModal .ModalContent .Form-new {
+    width: 100%;
 }
 
 
