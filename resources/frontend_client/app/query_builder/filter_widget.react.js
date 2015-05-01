@@ -79,7 +79,7 @@ var FilterWidget = React.createClass({
         this.setState({
             field: field,
             operator: operator,
-            operatorList,
+            operatorList: operatorList,
             value: value,
             fieldValues: fieldValues,
             fieldDef: fieldDef
@@ -142,6 +142,10 @@ var FilterWidget = React.createClass({
             filter[index] = value;
             this.props.updateFilter(this.props.index, filter);
         }
+    },
+
+    setDateValue: function (index, date) {
+        this.setValue(date.format('YYYY-MM-DD'), index, this.props.index);
     },
 
     setTextValue: function(index) {
@@ -225,15 +229,8 @@ var FilterWidget = React.createClass({
                             valueHtml = (
                                 <DateFilter
                                     date={this.state.value}
-                                    onChange={
-                                        function (date) {
-                                            this.setValue(
-                                                date.format('YYYY-MM-DD'),
-                                                {filterIndex},
-                                                this.props.index
-                                            );
-                                        }.bind(this)
-                                    }
+                                    index={filterIndex}
+                                    onChange={this.setDateValue}
                                 />
                             );
                             break;
