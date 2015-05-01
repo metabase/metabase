@@ -357,6 +357,9 @@
               [(->field-id :checkins :user_id) "descending"]
               [(->field-id :checkins :id) "ascending"]]})
 
+
+;; ## "FILTER" CLAUSE
+
 ;; ### FILTER -- "AND", ">", ">="
 (qp-expect-with-all-drivers
     {:rows [[55 67 4 -118.096 33.983 "Dal Rae Restaurant"]
@@ -413,6 +416,27 @@
    :filter ["OR"
             ["<=" (->field-id :venues :id) 3]
             ["=" (->field-id :venues :id) 5]]
+   :aggregation ["rows"]
+   :breakout [nil]
+   :limit nil})
+
+;; TODO - These are working, but it would be nice to have some tests that covered
+;; *  NOT_NULL
+;; *  NULL
+
+;; ### FILTER -- "INSIDE"
+(qp-expect-with-all-drivers
+    {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
+     :columns (venues-columns)
+     :cols (venues-cols)}
+  {:source_table (->table-id :venues)
+   :filter ["INSIDE"
+            (->field-id :venues :latitude)
+            (->field-id :venues :longitude)
+            10.0649
+            -165.379
+            10.0641
+            -165.371]
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})

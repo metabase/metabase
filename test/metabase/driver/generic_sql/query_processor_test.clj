@@ -83,34 +83,6 @@
                                  :order_by [[(field->id :venues :id) "ascending"]]}}))
 
 
-;; ## "FILTER" CLAUSE
-
-;; TODO - These are working, but it would be nice to have some tests that covered
-;; *  NOT_NULL
-;; *  NULL
-
-;; ### FILTER -- "INSIDE"
-;; TODO - add "NEAR"
-(expect
-    {:status :completed
-     :row_count 1
-     :data {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
-            :columns venues-columns
-            :cols @venues-cols}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter ["INSIDE"
-                                          (field->id :venues :latitude)
-                                          (field->id :venues :longitude)
-                                          10.0649
-                                          -165.379
-                                          10.0641
-                                          -165.371]
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit nil}}))
-
 ;; ## "BREAKOUT"
 ;; ### "BREAKOUT" - SINGLE COLUMN
 (expect {:status :completed,
