@@ -18,10 +18,24 @@ var QueryHeader = React.createClass({
         downloadLink: React.PropTypes.string
     },
 
-    getInitialState: function () {
+    getInitialState: function() {
         return {
             origCard: JSON.stringify(this.props.card),
-            recentlySaved: false
+            recentlySaved: false,
+            resetOrigCard: false
+        }
+    },
+
+    componentWillReceiveProps: function(nextProps) {
+        // pre-empt a card update via props
+        // we need this here for a specific case where we know the card will be changing
+        // and thus we need to reset our :origCard state BEFORE our next render cycle
+        if (this.state.resetOrigCard) {
+            this.setState({
+                origCard: JSON.stringify(nextProps.card),
+                recentlySaved: false,
+                resetOrigCard: false
+            });
         }
     },
 
@@ -46,11 +60,10 @@ var QueryHeader = React.createClass({
                     recentlySaved: false
                 });
             }
-        }.bind(this), 5000);
+        }.bind(component), 5000);
     },
 
     save: function() {
-        console.log('saving=', this.props.card);
         return this.saveCard(this.props.card);
     },
 
@@ -87,6 +100,16 @@ var QueryHeader = React.createClass({
         }
 
         return apiCall.$promise;
+    },
+
+    setQueryMode: function(mode) {
+        // we need to update our dirty state here
+        var component = this;
+        this.setState({
+            resetOrigCard: true
+        }, function() {
+            component.props.setQueryModeFn(mode);
+        });
     },
 
     render: function() {
@@ -132,6 +155,16 @@ var QueryHeader = React.createClass({
             );
         }
 
+        var queryModeToggle;
+        if (this.cardIsNew() && !this.cardIsDirty()) {
+            queryModeToggle = (
+                <QueryModeToggle
+                    currentQueryMode={this.props.card.dataset_query.type}
+                    setQueryModeFn={this.setQueryMode}
+                />
+            );
+        }
+
         return (
             <div className="QueryHeader QueryBuilder-section flex align-center">
                 <h1 className="QueryName flex-full">{title}</h1>
@@ -143,10 +176,7 @@ var QueryHeader = React.createClass({
                     card={this.props.card}
                     dashboardApi={this.props.dashboardApi}
                 />
-                <QueryModeToggle
-                    card={this.props.card}
-                    setQueryModeFn={this.props.setQueryModeFn}
-                />
+                {queryModeToggle}
             </div>
         );
     }
