@@ -23,13 +23,14 @@ var AddToDashboard = React.createClass({
             var tetherOptions = {
                 attachment: 'top right',
                 targetAttachment: 'bottom right',
+                targetOffset: '14px 0'
             };
             
             return (
                 <Popover
                     tetherOptions={tetherOptions}
                     closePopoverFn={this.toggleModal}
-                    className="PopoverBody"
+                    className="PopoverBody PopoverBody--withArrow"
                 >
                     <AddToDashboardPopover
                         card={this.props.card}

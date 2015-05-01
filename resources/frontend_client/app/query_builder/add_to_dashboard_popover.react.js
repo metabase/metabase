@@ -105,7 +105,7 @@ var AddToDashboardPopover = React.createClass({
 
         return (
             <div>
-                <h3>Dashboards</h3>
+                <h3 className="p2 m0">Dashboards</h3>
                 <ul className="text-brand">
                     {dashboardsList}
                 </ul>
@@ -187,13 +187,15 @@ var AddToDashboardPopover = React.createClass({
         );
     },
     render: function() {
+        var content;
+
         if (this.state.isCreating) {
-            return this.renderCreateDashboardForm();
+            content = this.renderCreateDashboardForm();
         } else if (this.state.newDashSuccess) {
             var dashDetails = this.state.newDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            return (
+            content = (
                 <div>
                     <p>Your dashboard, {dashDetails.name} was created and {this.props.card.name} was added.</p>
                     <p><a href={dashLink}>Let me check it out.</a></p>
@@ -204,8 +206,8 @@ var AddToDashboardPopover = React.createClass({
             var dashDetails = this.state.existingDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            return (
-                <div className="Success flex flex-column">
+            content = (
+                <div className="Success flex flex-column align-center text-success">
                     <CheckIcon width="64px" height="64px" />
                     <p>{this.props.card.name} was added to {dashDetails.name}</p>
                     <p><a href={dashLink}>Let me check it out.</a></p>
@@ -213,7 +215,14 @@ var AddToDashboardPopover = React.createClass({
             );
 
         } else {
-            return this.renderDashboardsList();
+            content = this.renderDashboardsList();
         }
+        return (
+            <div>
+                <ReactCSSTransitionGroup transitionName="Transition-popover-state">
+                    {content}
+                </ReactCSSTransitionGroup>
+            </div>
+        )
     }
 });
