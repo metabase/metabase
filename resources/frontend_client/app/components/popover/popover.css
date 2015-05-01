@@ -1,0 +1,15 @@
+:root {
+	
+}
+
+/* afaik popover needs a positioning context to be able to calculate the transform */
+.PopoverContainer {
+	position: absolute;
+	z-index: 10000000000000; /* above all the things */
+}
+
+.PopoverBody {
+	min-width: 20em; /* ewwwwwwww */
+	border: 1px solid #ddd;
+	box-shadow: 0 1px 3px rgba(0,0,0, .12);
+}

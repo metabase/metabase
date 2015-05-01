@@ -92,17 +92,24 @@ var AddToDashboardPopover = React.createClass({
         if (this.state.dashboards) {
             for (var i=0; i < this.state.dashboards.length; i++) {
                 var dash = this.state.dashboards[i];
-                dashboardsList.push((<li onClick={this.addToExistingDash.bind(null, dash, false)}>{dash.name}</li>))
+                dashboardsList.push(
+                    (
+                        <li className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
+                            <CheckIcon width="12px" height="12px" />
+                    	   <span className="SelectionModule-display">{dash.name}</span>
+                        </li>
+                    )
+                )
             }
         }
 
         return (
             <div>
                 <h3>Dashboards</h3>
-                <ul>
+                <ul className="text-brand">
                     {dashboardsList}
                 </ul>
-                <div>
+                <div className="p2 border-top">
                     <button onClick={this.toggleCreate}>Create a new dashboard</button>
                 </div>
             </div>
@@ -198,7 +205,8 @@ var AddToDashboardPopover = React.createClass({
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
             return (
-                <div>
+                <div className="Success flex flex-column">
+                    <CheckIcon width="64px" height="64px" />
                     <p>{this.props.card.name} was added to {dashDetails.name}</p>
                     <p><a href={dashLink}>Let me check it out.</a></p>
                 </div>
