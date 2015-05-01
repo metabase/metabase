@@ -1,16 +1,13 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
-            (metabase.api [annotation :as annotation]
-                          [card :as card]
+            (metabase.api [card :as card]
                           [dash :as dash]
-                          [emailreport :as emailreport]
                           [notify :as notify]
                           [org :as org]
                           [qs :as qs]
                           [query :as query]
                           [result :as result]
-                          [search :as search]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -36,10 +33,8 @@
       auth/enforce-authentication))
 
 (defroutes routes
-  (context "/annotation"   [] (+auth annotation/routes))
   (context "/card"         [] (+auth card/routes))
   (context "/dash"         [] (+auth dash/routes))
-  (context "/emailreport"  [] (+auth emailreport/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/meta/dataset" [] (+auth dataset/routes))
   (context "/meta/db"      [] (+auth db/routes))
@@ -50,7 +45,6 @@
   (context "/qs"           [] (+auth qs/routes))
   (context "/query"        [] (+auth query/routes))
   (context "/result"       [] (+auth result/routes))
-  (context "/search"       [] (+auth search/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)
