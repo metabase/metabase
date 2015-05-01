@@ -46,8 +46,6 @@ var Popover = React.createClass({
         // NOTE: these must be set here because they relate to OUR component and can't be passed in
         tetherOptions.element = this._popoverElement;
         tetherOptions.target = this.getDOMNode().parentElement;
-        
-        console.log(tetherOptions);
        
         if (this._tether != null) {
             this._tether.setOptions(tetherOptions);

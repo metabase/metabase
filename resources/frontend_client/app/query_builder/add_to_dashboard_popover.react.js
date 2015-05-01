@@ -186,6 +186,15 @@ var AddToDashboardPopover = React.createClass({
             </form>
         );
     },
+    renderSuccess: function (message, link) {
+        return (
+            <div className="Success py4 flex flex-column align-center text-success">
+                <CheckIcon width="64px" height="64px" />
+                <div className="inline-block">{message}</div>
+                <a href={link}>Let me check it out.</a>
+            </div>
+        )    
+    },
     render: function() {
         var content;
 
@@ -195,25 +204,13 @@ var AddToDashboardPopover = React.createClass({
             var dashDetails = this.state.newDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            content = (
-                <div>
-                    <p>Your dashboard, {dashDetails.name} was created and {this.props.card.name} was added.</p>
-                    <p><a href={dashLink}>Let me check it out.</a></p>
-                </div>
-            );
+            content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink)
 
         } else if (this.state.existingDashSuccess) {
             var dashDetails = this.state.existingDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            content = (
-                <div className="Success flex flex-column align-center text-success">
-                    <CheckIcon width="64px" height="64px" />
-                    <p>{this.props.card.name} was added to {dashDetails.name}</p>
-                    <p><a href={dashLink}>Let me check it out.</a></p>
-                </div>
-            );
-
+            content = this.renderSuccess(this.props.card.name + " was added to " + dashDetails.name, dashLink);
         } else {
             content = this.renderDashboardsList();
         }

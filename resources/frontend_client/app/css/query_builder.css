@@ -299,3 +299,43 @@
     opacity: 1;
     transition: opacity .3s linear;
 }
+
+.Transition-popover-state-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear;    
+}
+
+.Transition-popover-state-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-state-leave {
+    opacity: 1;
+    transition: opacity .3s linear;    
+}
+
+.Transition-popover-state-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-leave {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}

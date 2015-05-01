@@ -53,7 +53,9 @@ var AddToDashboard = React.createClass({
             <span>
                 <button className="Button Button--primary" onClick={this.toggleModal}>Add to Dash
                 </button>
-                {this.addToDash()}
+                <ReactCSSTransitionGroup transitionName="Transition-popover">
+                    {this.addToDash()}
+                </ReactCSSTransitionGroup>
             </span>
         );
     }
