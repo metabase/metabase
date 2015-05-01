@@ -85,24 +85,6 @@
 
 ;; ## "FILTER" CLAUSE
 
-;; ### FILTER -- "AND", "<", ">", "!="
-(expect
-    {:status :completed
-     :row_count 2
-     :data {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
-                   [23 50 2 -122.42 37.765 "Taqueria Los Coyotes"]]
-            :columns venues-columns
-            :cols @venues-cols}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter ["AND"
-                                          ["<" (field->id :venues :id) 24]
-                                          [">" (field->id :venues :id) 20]
-                                          ["!=" (field->id :venues :id) 22]]
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit nil}}))
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (expect
