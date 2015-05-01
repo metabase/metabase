@@ -85,27 +85,6 @@
 
 ;; ## "FILTER" CLAUSE
 
-;; ### FILTER -- "AND", ">", ">="
-(expect {:status :completed,
-         :row_count 5,
-         :data
-         {:rows [[55 67 4 -118.096 33.983 "Dal Rae Restaurant"]
-                 [61 67 4 -118.376 34.0677 "Lawry's The Prime Rib"]
-                 [77 40 4 -74.0045 40.7318 "Sushi Nakazawa"]
-                 [79 40 4 -73.9736 40.7514 "Sushi Yasuda"]
-                 [81 40 4 -73.9533 40.7677 "Tanoshi Sushi & Sake Bar"]]
-          :columns venues-columns
-          :cols @venues-cols}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :venues)
-                                 :filter ["AND"
-                                          [">" (field->id :venues :id) 50]
-                                          [">=" (field->id :venues :price) 4]]
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit nil}}))
-
 ;; ### FILTER -- "AND", "<", ">", "!="
 (expect
     {:status :completed
