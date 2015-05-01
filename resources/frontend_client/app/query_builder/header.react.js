@@ -156,7 +156,7 @@ var QueryHeader = React.createClass({
         }
 
         var queryModeToggle;
-        if (!this.cardIsDirty()) {
+        if (this.cardIsNew() && !this.cardIsDirty()) {
             queryModeToggle = (
                 <QueryModeToggle
                     currentQueryMode={this.props.card.dataset_query.type}
