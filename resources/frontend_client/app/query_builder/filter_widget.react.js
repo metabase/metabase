@@ -135,7 +135,7 @@ var FilterWidget = React.createClass({
     setTextValue: function(index) {
         var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will be 2 for the value of a filter
-        this.setValue(value, 2, index);
+        this.setValue(value, index, this.props.index);
     },
 
     renderFieldList: function() {
@@ -185,59 +185,69 @@ var FilterWidget = React.createClass({
             return false;
         }
 
-        var valueHtml;
-        if(this.state.fieldValues) {
-            if(this.state.fieldValues.values) {
-                valueHtml = (
-                    <SelectionModule
-                        action={this.setValue}
-                        display='name'
-                        index='2'
-                        items={this.state.fieldValues.values}
-                        isInitiallyOpen={this.state.value === null}
-                        placeholder="..."
-                        selectedValue={this.state.value}
-                        selectedKey='key'
-                        parentIndex={this.props.index}
-                    />
-                );
-            } else {
-                switch(this.state.fieldValues.type) {
-                    case 'date':
-                        valueHtml = (
-                            <DateFilter
-                                date={this.state.value}
-                                onChange={
-                                    function (date) {
-                                        this.setValue(
-                                            date.format('YYYY-MM-DD'),
-                                            2,
-                                            this.props.index
-                                        );
-                                    }.bind(this)
-                                }
-                            />
-                        );
-                        break;
-                    default:
-                        valueHtml = (
-                            <input
-                                className="input"
-                                type="text"
-                                defaultValue={this.state.value}
-                                onChange={this.setTextValue.bind(null, this.props.index)}
-                                ref="textFilterValue"
-                                placeholder="What value?"
-                            />
-                        );
+        // the first 2 positions of the filter are always for fieldId + fieldOperator
+        var numValues = this.props.filter.length - 2;
+
+        var filterValueInputs = [];
+        for (var i=0; i < numValues; i++) {
+            var filterIndex = i + 2;
+            var valueHtml;
+            if(this.state.fieldValues) {
+                if(this.state.fieldValues.values) {
+                    valueHtml = (
+                        <SelectionModule
+                            action={this.setValue}
+                            display='name'
+                            index={filterIndex}
+                            items={this.state.fieldValues.values}
+                            isInitiallyOpen={this.state.value === null}
+                            placeholder="..."
+                            selectedValue={this.state.value}
+                            selectedKey='key'
+                            parentIndex={this.props.index}
+                        />
+                    );
+                } else {
+                    switch(this.state.fieldValues.type) {
+                        case 'date':
+                            valueHtml = (
+                                <DateFilter
+                                    date={this.state.value}
+                                    onChange={
+                                        function (date) {
+                                            this.setValue(
+                                                date.format('YYYY-MM-DD'),
+                                                {filterIndex},
+                                                this.props.index
+                                            );
+                                        }.bind(this)
+                                    }
+                                />
+                            );
+                            break;
+                        default:
+                            valueHtml = (
+                                <input
+                                    className="input m1"
+                                    type="text"
+                                    defaultValue={this.state.value}
+                                    onChange={this.setTextValue.bind(null, filterIndex)}
+                                    ref="textFilterValue"
+                                    placeholder="What value?"
+                                />
+                            );
+                    }
                 }
             }
+
+            filterValueInputs[i] = (
+                <div className="FilterSection">
+                    {valueHtml}
+                </div>
+            );
         }
-        return (
-            <div className="FilterSection">
-                {valueHtml}
-            </div>
-        );
+
+        return filterValueInputs;
     },
 
     render: function() {
