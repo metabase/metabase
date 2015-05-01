@@ -79,7 +79,7 @@ CardControllers.controller('CardDetail', [
          * to be usable for to render an axis chart
          * (i.e. line, bar, timeseries)
          */
-        var AXIS_CHART_MAX_ROWS = 1000;
+        var AXIS_CHART_MAX_ROWS = 5000;
 
         /* maximum number of rows a dataset can have
          * to be usable to render a pie chart
