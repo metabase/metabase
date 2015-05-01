@@ -3,7 +3,7 @@
 /*global _*/
 /* global addValidOperatorsToFields*/
 
-var ExploreControllers = angular.module('corvus.explore.controllers', ['corvus.metabase.services', 'corvus.annotation.directives']);
+var ExploreControllers = angular.module('corvus.explore.controllers', ['corvus.metabase.services']);
 
 ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
     $scope.show_non_entities = {};

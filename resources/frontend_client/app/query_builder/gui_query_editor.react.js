@@ -179,56 +179,24 @@ var GuiQueryEditor = React.createClass({
         var query = this.props.query,
             queryFilters = query.query.filter;
 
-        var pushFilterTemplate = function(index) {
-            if (index) {
-                queryFilters[index] = [null, null, null];
-            } else {
-                queryFilters.push(null, null, null);
-            }
-        }
-
-        // this gets run the second time you click the add filter button
-        if (queryFilters.length === 3 && queryFilters[0] !== "AND") {
-            var newFilters = [];
-            newFilters.push(queryFilters);
-            newFilters.unshift('AND');
-            newFilters.push([null, null, null]);
-            query.query.filter = newFilters;
-        } else if (queryFilters[0] === 'AND') {
-            pushFilterTemplate(queryFilters.length);
+        if (queryFilters.length === 0) {
+            query.query.filter = ["AND", [null, null, null]]
         } else {
-            pushFilterTemplate();
+            queryFilters.push([null, null, null]);
         }
 
         this.setQuery(query, true);
     },
-    updateFilter: function(value, index, filterListIndex) {
-        var query = this.props.query,
-            queryFilters = query.query.filter;
-
-        if (filterListIndex) {
-            queryFilters[filterListIndex][index] = value;
-        } else {
-            queryFilters[index] = value;
-        }
-
+    updateFilter: function(index, filter) {
+        var query = this.props.query;
+        query.query.filter[index] = filter;
         this.setQuery(query, true);
     },
     removeFilter: function(index) {
         var query = this.props.query,
             queryFilters = query.query.filter;
 
-        /*
-            HERE BE MORE DRAGONS
-
-            1.) if there are 3 values and the first isn't AND, this means we only ever had one "filter", so reset to []
-            instead of slicing off individual elements
-
-            2.) if the first value is AND and there are only two values in the array, then we're about to remove the last filter after
-            having added multiple so we should reset to [] in this case as well
-        */
-
-        if ((queryFilters.length === 3 && queryFilters[0] !== 'AND') || (queryFilters[0] === 'AND' && queryFilters.length === 2)) {
+        if (queryFilters.length === 2) {
             query.query.filter = [];
         } else {
             queryFilters.splice(index, 1);
@@ -431,77 +399,25 @@ var GuiQueryEditor = React.createClass({
                 filterFieldList.push(this.state.options.fields_lookup[key]);
             }
 
-            var filterWidget = function (filter, index) {
-                var operator = filter[0],           // name of the operator
-                    field = filter[1],              // id of the field
-                    value = filter[2],              // filtering value
-                    operatorList = [],
-                    valueFields;
-
-                // extract the real info
-                for(var fieldItem in filterFieldList) {
-                    var theField = filterFieldList[fieldItem];
-                    if(theField.id === field) {
-                        for(var operatorItem in theField.operators_lookup) {
-                            var theOperator = theField.operators_lookup[operatorItem]
-                            // push the operator into the list we'll use for selection
-                            operatorList.push(theOperator);
-
-                            if(theOperator.name === operator) {
-                                // this is structured strangely
-                                valueFields = theOperator.fields[0];
-                            }
-                        }
-                    }
+            var filterList = this.props.query.query.filter.map(function (filter, index) {
+                if(index > 0) {
+                    return (
+                        <FilterWidget
+                            placeholder="Item"
+                            filter={filter}
+                            filterFieldList={filterFieldList}
+                            index={index}
+                            removeFilter={component.removeFilter}
+                            updateFilter={component.updateFilter}
+                        />
+                    );
                 }
+            }.bind(this));
 
-                return (
-                    <FilterWidget
-                        placeholder="Item"
-                        field={field}
-                        filterFieldList={filterFieldList}
-                        operator={operator}
-                        operatorList={operatorList}
-                        value={value}
-                        valueFields={valueFields}
-                        index={index}
-                        remove={component.removeFilter}
-                        updateFilter={component.updateFilter}
-                    />
-                );
-            };
-
-            var filterList;
-            if(this.props.query.query.filter[0] === "AND") {
-                filterList = this.props.query.query.filter.map(function (filter, index) {
-                    if(filter === "AND") {
-                        return;
-                    } else {
-                        return (
-                            filterWidget(filter, index)
-                        );
-                    }
-                }.bind(this));
-            } else {
-                filterList = filterWidget(this.props.query.query.filter, 0);
-            }
-
-            var lastFilter;
-            if (this.props.query.query.filter[0] === "AND") {
-                lastFilter = this.props.query.query.filter[this.props.query.query.filter.length - 1];
-            } else {
-                lastFilter = this.props.query.query.filter;
-            }
-
-            var addFilterButton;
-            if (lastFilter.length === 3 &&
-                    lastFilter[0] !== null &&
-                    lastFilter[1] !== null &&
-                    lastFilter[2] !== null) {
-                addFilterButton = (
-                    <a onClick={this.addFilter}>Add another filter ...</a>
-                );
-            }
+            // TODO: proper check for isFilterComplete(filter)
+            var addFilterButton = (
+                <a onClick={this.addFilter}>Add another filter ...</a>
+            );
 
             return (
                 <div className="Query-section flex align-center">
