@@ -19,9 +19,7 @@ var FilterWidget = React.createClass({
     componentWillReceiveProps: function(newProps) {
         var operator = newProps.filter[0],      // name of the operator
             field = newProps.filter[1],         // id of the field
-            value = null,                       // filtering value
-            operatorList = [],
-            valueFields;
+            value = null;                       // filtering value
 
         if (newProps.filter.length > 2) {
             if (newProps.filter[2] !== null) {
@@ -30,23 +28,42 @@ var FilterWidget = React.createClass({
             }
         }
 
-        // extract the real info
+        // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
         var fieldDef;
-        for(var fieldItem in newProps.filterFieldList) {
-            var theField = newProps.filterFieldList[fieldItem];
-            if(theField.id === field) {
-                fieldDef = theField;
-                for(var operatorItem in theField.operators_lookup) {
-                    var theOperator = theField.operators_lookup[operatorItem]
-                    // push the operator into the list we'll use for selection
-                    operatorList.push(theOperator);
+        for(var idx in newProps.filterFieldList) {
+            if(newProps.filterFieldList[idx].id === field) {
+                fieldDef = newProps.filterFieldList[idx];
+            }
+        }
 
-                    if(theOperator.name === operator) {
-                        // this is structured strangely
-                        valueFields = theOperator.fields[0];
-                    }
+        // once we know our field we can pull out the list of possible operators to filter on
+        // also, if we know the operator then we can pull out the possible values for the field (if available)
+        // TODO: why is fieldValues a function of the operator?
+        var operatorList = [],
+            fieldValues;
+        if (fieldDef) {
+            for(var idx in fieldDef.operators_lookup) {
+                var operatorDef = fieldDef.operators_lookup[idx];
+                operatorList.push(operatorDef);
+
+                if(operatorDef.name === operator) {
+                    // this is structured strangely
+                    fieldValues = operatorDef.fields[0];
                 }
             }
+        }
+
+        // this converts our fieldValues into things that are safe for us to work with through HTML
+        if (fieldValues && fieldValues.values) {
+            fieldValues.values = fieldValues.values.map(function(value) {
+                var safeValues = {};
+                for(var key in value) {
+                    // TODO: what typing issues can we run into here?
+                    //       we used to call toString() on these values
+                    safeValues[key] = value[key].toString();
+                }
+                return safeValues;
+            });
         }
 
         this.setState({
@@ -54,17 +71,9 @@ var FilterWidget = React.createClass({
             operator: operator,
             operatorList,
             value: value,
-            valueFields: valueFields,
+            fieldValues: fieldValues,
             fieldDef: fieldDef
         });
-    },
-
-    isOpen: function(value) {
-        if (value !== undefined) {
-            return true;
-        } else {
-            return false;
-        }
     },
 
     setField: function(value, index, filterListIndex) {
@@ -117,6 +126,8 @@ var FilterWidget = React.createClass({
             value = parseFloat(value);
         }
 
+        // TODO: we may need to do some date formatting work on DateTimeField and DateField
+
         filter[index] = value;
         this.props.updateFilter(this.props.index, filter);
     },
@@ -138,7 +149,7 @@ var FilterWidget = React.createClass({
                     placeholder="Filter by..."
                     selectedValue={this.state.field}
                     selectedKey='id'
-                    isInitiallyOpen={this.isOpen()}
+                    isInitiallyOpen={this.state.field === null}
                     parentIndex={this.props.index}
                 />
             </div>
@@ -146,6 +157,11 @@ var FilterWidget = React.createClass({
     },
 
     renderOperatorList: function() {
+        // if we don't know our field yet then don't render anything
+        if (this.state.field === null) {
+            return false;
+        }
+
         return (
             <div className={this.sectionClassName}>
                 <SelectionModule
@@ -155,7 +171,7 @@ var FilterWidget = React.createClass({
                     selectedValue={this.state.operator}
                     selectedKey='name'
                     index={0}
-                    isInitiallyOpen={this.isOpen()}
+                    isInitiallyOpen={this.state.operator === null}
                     parentIndex={this.props.index}
                     action={this.setOperator}
                 />
@@ -163,38 +179,22 @@ var FilterWidget = React.createClass({
         );
     },
 
-    getSafeValues: function() {
-        return this.state.valueFields.values.map(function(value) {
-            var safeValues = {};
-            for(var key in value) {
-                // TODO: what typing issues can we run into here?
-                //       we used to call toString() on these values
-                safeValues[key] = value[key].toString();
-            }
-            return safeValues;
-        });
-    },
-
     renderFilterValue: function() {
-        var valueHtml,
-            isOpen = true;
+        // if we don't know our field AND operator yet then don't render anything
+        if (this.state.field === null || this.state.operator === null) {
+            return false;
+        }
 
-        if(this.state.valueFields) {
-            if(this.state.valueFields.values) {
-                // do some fixing up of the values so we can display true / false without causing "return true" or "return false"
-                var values = this.getSafeValues();
-
-                if(this.state.value) {
-                    isOpen = false;
-                }
-
+        var valueHtml;
+        if(this.state.fieldValues) {
+            if(this.state.fieldValues.values) {
                 valueHtml = (
                     <SelectionModule
                         action={this.setValue}
                         display='name'
                         index='2'
-                        items={values}
-                        isInitiallyOpen={isOpen}
+                        items={this.state.fieldValues.values}
+                        isInitiallyOpen={this.state.value === null}
                         placeholder="..."
                         selectedValue={this.state.value}
                         selectedKey='key'
@@ -202,7 +202,7 @@ var FilterWidget = React.createClass({
                     />
                 );
             } else {
-                switch(this.state.valueFields.type) {
+                switch(this.state.fieldValues.type) {
                     case 'date':
                         valueHtml = (
                             <DateFilter

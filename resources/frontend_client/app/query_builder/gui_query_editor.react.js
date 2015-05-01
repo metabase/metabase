@@ -16,12 +16,14 @@ var GuiQueryEditor = React.createClass({
         runFn: React.PropTypes.func.isRequired,
         notifyQueryModifiedFn: React.PropTypes.func.isRequired
     },
+
     getInitialState: function() {
         return {
             tables: null,
             options: null
         };
     },
+
     componentDidMount: function() {
         // if we know our database then load related information
         if (this.props.query.database) {
@@ -34,9 +36,11 @@ var GuiQueryEditor = React.createClass({
         }
 
     },
+
     setQuery: function(dataset_query, notify) {
         this.props.notifyQueryModifiedFn(dataset_query);
     },
+
     loadDatabaseInfo: function(databaseId) {
         var component = this;
 
@@ -49,6 +53,7 @@ var GuiQueryEditor = React.createClass({
             console.log('error getting tables', error);
         });
     },
+
     loadTableInfo: function(tableId) {
         var component = this;
 
@@ -65,6 +70,7 @@ var GuiQueryEditor = React.createClass({
             console.log('error getting table metadata', error);
         });
     },
+
     setDatabase: function(databaseId) {
         // check if this is the same db or not
         if (databaseId !== this.props.query.database) {
@@ -85,6 +91,7 @@ var GuiQueryEditor = React.createClass({
             this.loadDatabaseInfo(databaseId);
         }
     },
+
     setSourceTable: function(sourceTable) {
         // this will either be the id or an object with an id
         var tableId = sourceTable.id || sourceTable;
@@ -95,6 +102,7 @@ var GuiQueryEditor = React.createClass({
 
         this.setQuery(query, true);
     },
+
     canRun: function() {
         var canRun = false;
         if (this.hasValidAggregation()) {
@@ -102,6 +110,7 @@ var GuiQueryEditor = React.createClass({
         }
         return canRun;
     },
+
     runQuery: function() {
         // ewwwww.  we should do something better here
         var cleanQuery = this.cleanFilters(this.props.query);
@@ -110,28 +119,33 @@ var GuiQueryEditor = React.createClass({
 
         // TODO: isRunning / hasJustRun state
     },
+
     canAddDimensions: function() {
         var MAX_DIMENSIONS = 2;
         return (this.props.query.query.breakout.length < MAX_DIMENSIONS);
     },
+
     addDimension: function() {
         var query = this.props.query;
         query.query.breakout.push(null);
 
         this.setQuery(query, true);
     },
+
     updateDimension: function(dimension, index) {
         var query = this.props.query;
         query.query.breakout[index] = dimension;
 
         this.setQuery(query, true);
     },
+
     removeDimension: function(index) {
         var query = this.props.query;
         query.query.breakout.splice(index, 1);
 
         this.setQuery(query, true);
     },
+
     hasValidAggregation: function() {
         var aggregationComplete = false;
         if (this.props.query.query.aggregation !== undefined &&
@@ -141,6 +155,7 @@ var GuiQueryEditor = React.createClass({
         }
         return aggregationComplete;
     },
+
     getAggregationFields: function(aggregation) {
 
         for (var i=0; i < this.state.options.aggregation_options.length; i++) {
@@ -151,6 +166,7 @@ var GuiQueryEditor = React.createClass({
             }
         }
     },
+
     setAggregation: function(aggregation) {
         var query = this.props.query,
             queryAggregation = [aggregation];
@@ -169,12 +185,14 @@ var GuiQueryEditor = React.createClass({
 
         this.setQuery(query, true);
     },
+
     setAggregationTarget: function(target) {
         var query = this.props.query;
         query.query.aggregation[1] = target;
 
         this.setQuery(query, true);
     },
+
     addFilter: function() {
         var query = this.props.query,
             queryFilters = query.query.filter;
@@ -187,11 +205,13 @@ var GuiQueryEditor = React.createClass({
 
         this.setQuery(query, true);
     },
+
     updateFilter: function(index, filter) {
         var query = this.props.query;
         query.query.filter[index] = filter;
         this.setQuery(query, true);
     },
+
     removeFilter: function(index) {
         var query = this.props.query,
             queryFilters = query.query.filter;
@@ -204,6 +224,7 @@ var GuiQueryEditor = React.createClass({
 
         this.setQuery(query, true);
     },
+
     cleanFilters: function(dataset_query) {
         var filters = dataset_query.query.filter,
             cleanFilters = [];
@@ -223,6 +244,7 @@ var GuiQueryEditor = React.createClass({
 
         return dataset_query;
     },
+
     renderDbSelector: function () {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
@@ -237,6 +259,7 @@ var GuiQueryEditor = React.createClass({
             );
         }
     },
+
     renderTableSelector: function () {
         if (this.state.tables) {
             var sourceTableListOpen = true;
@@ -264,6 +287,7 @@ var GuiQueryEditor = React.createClass({
             );
         }
     },
+
     renderFilterButton: function () {
         if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
             return (
@@ -276,6 +300,7 @@ var GuiQueryEditor = React.createClass({
             );
         }
     },
+
     renderBreakouts: function () {
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.state.options &&
@@ -340,6 +365,7 @@ var GuiQueryEditor = React.createClass({
             );
         }
     },
+
     renderAggregation: function () {
         // aggregation clause.  must have table details available
         if(this.state.options) {
@@ -390,6 +416,7 @@ var GuiQueryEditor = React.createClass({
             );
         }
     },
+
     renderFilterSelector: function () {
         if (this.state.options && this.props.query.query.filter.length > 0) {
             var component = this;
