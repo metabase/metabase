@@ -30,8 +30,8 @@ var Popover = React.createClass({
     _tetherOptions: function() {
         // sensible defaults for most popovers
         return {
-            attachment: 'top left',
-            targetAttachment: 'bottom left',
+            attachment: 'bottom right',
+            targetAttachment: 'top right',
             targetOffset: '10px 0',
             optimizations: {
                 moveElement: false // always moves to <body> anyway!
@@ -46,7 +46,7 @@ var Popover = React.createClass({
         // NOTE: these must be set here because they relate to OUR component and can't be passed in
         tetherOptions.element = this._popoverElement;
         tetherOptions.target = this.getDOMNode().parentElement;
-
+       
         if (this._tether != null) {
             this._tether.setOptions(tetherOptions);
         } else {

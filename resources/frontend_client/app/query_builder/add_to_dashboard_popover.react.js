@@ -92,17 +92,24 @@ var AddToDashboardPopover = React.createClass({
         if (this.state.dashboards) {
             for (var i=0; i < this.state.dashboards.length; i++) {
                 var dash = this.state.dashboards[i];
-                dashboardsList.push((<li onClick={this.addToExistingDash.bind(null, dash, false)}>{dash.name}</li>))
+                dashboardsList.push(
+                    (
+                        <li className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
+                            <CheckIcon width="12px" height="12px" />
+                    	   <span className="SelectionModule-display">{dash.name}</span>
+                        </li>
+                    )
+                )
             }
         }
 
         return (
             <div>
-                <h3>Dashboards</h3>
-                <ul>
+                <h3 className="p2 m0">Dashboards</h3>
+                <ul className="text-brand">
                     {dashboardsList}
                 </ul>
-                <div>
+                <div className="p2 border-top">
                     <button onClick={this.toggleCreate}>Create a new dashboard</button>
                 </div>
             </div>
@@ -179,33 +186,40 @@ var AddToDashboardPopover = React.createClass({
             </form>
         );
     },
+    renderSuccess: function (message, link) {
+        return (
+            <div className="Success py4 flex flex-column align-center text-success">
+                <CheckIcon width="64px" height="64px" />
+                <div className="inline-block">{message}</div>
+                <a href={link}>Let me check it out.</a>
+            </div>
+        )    
+    },
     render: function() {
+        var content;
+
         if (this.state.isCreating) {
-            return this.renderCreateDashboardForm();
+            content = this.renderCreateDashboardForm();
         } else if (this.state.newDashSuccess) {
             var dashDetails = this.state.newDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            return (
-                <div>
-                    <p>Your dashboard, {dashDetails.name} was created and {this.props.card.name} was added.</p>
-                    <p><a href={dashLink}>Let me check it out.</a></p>
-                </div>
-            );
+            content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink)
 
         } else if (this.state.existingDashSuccess) {
             var dashDetails = this.state.existingDashSuccess;
             var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            return (
-                <div>
-                    <p>{this.props.card.name} was added to {dashDetails.name}</p>
-                    <p><a href={dashLink}>Let me check it out.</a></p>
-                </div>
-            );
-
+            content = this.renderSuccess(this.props.card.name + " was added to " + dashDetails.name, dashLink);
         } else {
-            return this.renderDashboardsList();
+            content = this.renderDashboardsList();
         }
+        return (
+            <div>
+                <ReactCSSTransitionGroup transitionName="Transition-popover-state">
+                    {content}
+                </ReactCSSTransitionGroup>
+            </div>
+        )
     }
 });
