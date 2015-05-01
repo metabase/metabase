@@ -51,8 +51,9 @@ var AddToDashboard = React.createClass({
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
-                <button className="Button Button--primary" onClick={this.toggleModal}>Add to Dash
-                </button>
+                <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
+                    <AddToDashIcon />
+                </a>
                 <ReactCSSTransitionGroup transitionName="Transition-popover">
                     {this.addToDash()}
                 </ReactCSSTransitionGroup>

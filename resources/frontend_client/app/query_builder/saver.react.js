@@ -139,7 +139,7 @@ var Saver = React.createClass({
                         {this.renderCardSaveForm()}
                     </div>
                 </div>
-                <button className="Button" onClick={this.toggleModal}>{this.props.buttonText}</button>
+                <a className={this.props.className} onClick={this.toggleModal}>{this.props.buttonText}</a>
             </div>
         );
     }

@@ -150,7 +150,12 @@ var QueryHeader = React.createClass({
         var downloadButton;
         if (this.props.downloadLink) {
             downloadButton = (
-                <a className="inline-block mr1" href={this.props.downloadLink} target="_blank">Download data
+                <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                    <DownloadIcon>
+                        <Popover>
+                            <span>Download data</span>
+                        </Popover>
+                    </DownloadIcon>
                 </a>
             );
         }
@@ -167,16 +172,20 @@ var QueryHeader = React.createClass({
 
         return (
             <div className="QueryHeader QueryBuilder-section flex align-center">
-                <h1 className="QueryName flex-full">{title}</h1>
-                {editButton}
-                {saveButton}
-
-                {downloadButton}
-                <AddToDashboard
-                    card={this.props.card}
-                    dashboardApi={this.props.dashboardApi}
-                />
-                {queryModeToggle}
+                <div className="QueryHeader-details">
+                    <h1 className="QueryName">{title}</h1>
+                    {editButton}
+                    {saveButton}
+                </div>
+    
+                <div className="QueryHeader-actions">
+                    {downloadButton}
+                    <AddToDashboard
+                        card={this.props.card}
+                        dashboardApi={this.props.dashboardApi}
+                    />
+                    {queryModeToggle}
+                </div>
             </div>
         );
     }
