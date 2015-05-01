@@ -125,6 +125,8 @@
 
 ;; ## Driver-Independent QP Tests
 
+;; ### Helper Fns + Macros
+
 (defmacro qp-expect-with-all-drivers
   "Slightly more succinct way of writing QP tests. Adds standard boilerplate to actual/expected forms."
   [data query]
@@ -136,64 +138,68 @@
                             :database *db-id*
                             :query ~query})))
 
-(defn venues-columns []
-  [(format-name *driver-data* "id")
-   (format-name *driver-data* "category_id")
-   (format-name *driver-data* "price")
-   (format-name *driver-data* "longitude")
-   (format-name *driver-data* "latitude")
-   (format-name *driver-data* "name")])
-
-(defn venues-cols []
-  [{:extra_info {}
-    :special_type :id
-    :base_type (id-field-type *driver-data*)
-    :description nil
-    :name (format-name *driver-data* "id")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :id)}
-   {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :categories)}
-                    {})
-    :special_type (if (fks-supported? *driver-data*) :fk
-                      :category)
-    :base_type :IntegerField
-    :description nil
-    :name (format-name *driver-data* "category_id")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :category_id)}
-   {:extra_info {}
-    :special_type :category
-    :base_type :IntegerField
-    :description nil
-    :name (format-name *driver-data* "price")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :price)}
-   {:extra_info {}
-    :special_type :longitude,
-    :base_type :FloatField,
-    :description nil
-    :name (format-name *driver-data* "longitude")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :longitude)}
-   {:extra_info {}
-    :special_type :latitude
-    :base_type :FloatField
-    :description nil
-    :name (format-name *driver-data* "latitude")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :latitude)}
-   {:extra_info {}
-    :special_type nil
-    :base_type :TextField
-    :description nil
-    :name (format-name *driver-data* "name")
-    :table_id (->table-id :venues)
-    :id (->field-id :venues :name)}])
-
-(defn ->columns [& names]
+(defn ->columns
+  "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
+  [& names]
   (mapv (partial format-name *driver-data*)
         names))
 
+;; ### Predefinied Column Fns
+;; #### venues
+(defn venues-columns []
+  (->columns "id" "category_id" "price" "longitude" "latitude" "name"))
+
+(defn venue-col [col]
+  (case col
+    :id          {:extra_info {}
+                  :special_type :id
+                  :base_type (id-field-type *driver-data*)
+                  :description nil
+                  :name (format-name *driver-data* "id")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :id)}
+    :category_id {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :categories)}
+                                  {})
+                  :special_type (if (fks-supported? *driver-data*) :fk
+                                    :category)
+                  :base_type :IntegerField
+                  :description nil
+                  :name (format-name *driver-data* "category_id")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :category_id)}
+    :price       {:extra_info {}
+                  :special_type :category
+                  :base_type :IntegerField
+                  :description nil
+                  :name (format-name *driver-data* "price")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :price)}
+    :longitude   {:extra_info {}
+                  :special_type :longitude,
+                  :base_type :FloatField,
+                  :description nil
+                  :name (format-name *driver-data* "longitude")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :longitude)}
+    :latitude    {:extra_info {}
+                  :special_type :latitude
+                  :base_type :FloatField
+                  :description nil
+                  :name (format-name *driver-data* "latitude")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :latitude)}
+    :name        {:extra_info {}
+                  :special_type nil
+                  :base_type :TextField
+                  :description nil
+                  :name (format-name *driver-data* "name")
+                  :table_id (->table-id :venues)
+                  :id (->field-id :venues :name)}))
+
+(defn venues-cols []
+  (mapv venue-col [:id :category_id :price :longitude :latitude :name]))
+
+;; #### categories
 (defn categories-col [col]
   (case col
     :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
@@ -201,6 +207,7 @@
     :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
            :table_id (->table-id :categories), :id (->field-id :categories :name)}))
 
+;; #### checkins
 (defn checkins-col [col]
   (case col
     :id       {:extra_info {}
@@ -228,6 +235,8 @@
                :name (format-name *driver-data* "user_id")
                :table_id (->table-id :checkins)
                :id (->field-id :checkins :user_id)}))
+
+;; # THE TESTS THEMSELVES (!)
 
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-drivers
@@ -440,3 +449,29 @@
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
+
+
+;; ## "FIELDS" CLAUSE
+;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause
+(qp-expect-with-all-drivers
+    {:rows [["Red Medicine" 1]
+            ["Stout Burgers & Beers" 2]
+            ["The Apple Pan" 3]
+            ["Wurstküche" 4]
+            ["Brite Spot Family Restaurant" 5]
+            ["The 101 Coffee Shop" 6]
+            ["Don Day Korean Restaurant" 7]
+            ["25°" 8]
+            ["Krua Siri" 9]
+            ["Fred 62" 10]],
+     :columns (->columns "name" "id")
+     :cols [(venue-col :name)
+            (venue-col :id)]}
+  {:source_table (->table-id :venues)
+   :filter [nil nil]
+   :aggregation ["rows"]
+   :fields [(->field-id :venues :name)
+            (->field-id :venues :id)]
+   :breakout [nil]
+   :limit 10
+   :order_by [[(->field-id :venues :id) "ascending"]]})
