@@ -70,10 +70,10 @@
 (defn get-column-info
   "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
    information about special columns such as `count` via `get-special-column-info`."
-  [query column-names]
-  {:pre [(:query query)]}
-  (let [table-id (get-in query [:query :source_table])
-        columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
+  [{{table-id :source_table} :query, :as query} column-names]
+  {:pre [(integer? table-id)
+         (every? string? column-names)]}
+  (let [columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
                             {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
@@ -95,10 +95,67 @@
           :id nil
           :table_id nil
           :description nil}
-         (let [aggregation-type  (keyword column-name)                               ; For aggregations of a specific Field (e.g. `sum`)
+         (let [aggregation-type   (keyword column-name)                              ; For aggregations of a specific Field (e.g. `sum`)
                field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
            (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
                                        :id (-> query :query :aggregation second))    ; will be the same.)
                (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
                  :count {:base_type :IntegerField                                    ; just return hardcoded type info
                          :special_type :number})))))
+
+(def ^:dynamic *uncastify-fn* identity) ; default is no-op
+
+;; TODO - since this was moved over from generic SQL some of its functionality should be reworked. And dox updated.
+;; (Since castification is basically SQL-specific it would make sense to handle castification / decastification separately)
+;; Fix this when it's not a Friday
+
+(defn -order-columns
+  "Don't use this directly; use `order-columns`.
+
+   This broken out for testability -- it doesn't depend on data from the DB."
+  [fields breakout-field-ids field-field-ids castified-field-names]
+  ;; Basically we want to convert both BREAKOUT-FIELD-IDS and CASTIFIED-FIELD-NAMES to maps like:
+  ;;   {:name      "updated_at"
+  ;;    :id        224
+  ;;    :castified (keyword "CAST(updated_at AS DATE)")
+  ;;    :position  21}
+  ;; Then we can order things appropriately and return the castified names.
+  (let [uncastified->castified (zipmap (map #(*uncastify-fn* (name %)) castified-field-names) castified-field-names)
+        fields                 (map #(assoc % :castified (uncastified->castified (:name %)))
+                                    fields)
+        id->field              (zipmap (map :id fields) fields)
+        castified->field       (zipmap (map :castified fields) fields)
+        breakout-fields        (->> breakout-field-ids
+                                    (map id->field))
+        field-fields           (->> field-field-ids
+                                    (map id->field))
+        other-fields           (->> castified-field-names
+                                    (map (fn [castified-name]
+                                           (or (castified->field castified-name)
+                                               {:castified castified-name             ; for aggregate fields like 'count' create a fake map
+                                                :position 0})))                       ; with position 0 so it is returned ahead of the other fields
+                                    (filter #(not (or (contains? (set breakout-field-ids)
+                                                                 (:id %))
+                                                      (contains? (set field-field-ids)
+                                                                 (:id %)))))
+                                    (sort-by :position))]
+    (->> (concat breakout-fields field-fields other-fields)
+         (map :castified))))
+
+(defn order-columns
+  "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
+   They should be ordered as follows:
+
+   1.  All breakout fields, in the same order as BREAKOUT-FIELD-IDS
+   2.  Any aggregate fields like `count`
+   3.  Fields included in the `fields` clause
+   4.  All other columns in the same order as `Field.position`."
+  [{{source-table :source_table, breakout-field-ids :breakout, field-field-ids :fields} :query} castified-field-names]
+  (try
+    (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
+                    breakout-field-ids
+                    field-field-ids
+                    castified-field-names)
+    (catch Exception e
+      (.printStackTrace e)
+      (println (.getMessage e)))))

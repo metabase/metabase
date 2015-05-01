@@ -82,29 +82,8 @@
                                  :limit 10
                                  :order_by [[(field->id :venues :id) "ascending"]]}}))
 
-;; ## "ORDER_BY" CLAUSE
-;; Test that we can tell the Query Processor to return results ordered by multiple fields
-(expect {:status :completed,
-         :row_count 10,
-         :data {:rows [[1 12 375] [1 9 139] [1 1 72] [2 15 129] [2 12 471] [2 11 325] [2 9 590] [2 9 833] [2 8 380] [2 5 719]],
-                :columns ["VENUE_ID" "USER_ID" "ID"],
-                :cols [{:extra_info {:target_table_id (table->id :venues)} :special_type :fk, :base_type :IntegerField, :description nil, :name "VENUE_ID", :table_id (table->id :checkins), :id (field->id :checkins :venue_id)}
-                       {:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins), :id (field->id :checkins :user_id)}
-                       {:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :checkins), :id (field->id :checkins :id)}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :checkins)
-                                 :aggregation ["rows"]
-                                 :limit 10
-                                 :fields [(field->id :checkins :venue_id)
-                                          (field->id :checkins :user_id)
-                                          (field->id :checkins :id)]
-                                 :order_by [[(field->id :checkins :venue_id) "ascending"]
-                                            [(field->id :checkins :user_id) "descending"]
-                                            [(field->id :checkins :id) "ascending"]]}}))
 
 ;; ## "FILTER" CLAUSE
-
 
 ;; ### FILTER -- "AND", ">", ">="
 (expect {:status :completed,

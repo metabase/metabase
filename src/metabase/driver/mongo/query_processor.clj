@@ -148,7 +148,7 @@
 (defn annotate-results [{:keys [source_table] :as query} results]
   {:pre [(integer? source_table)]}
   (let [field-name->field (sel :many :field->obj [Field :name] :table_id source_table)
-        column-keys       (keys (first results))
+        column-keys       (qp/order-columns {:query query} (keys (first results)))
         column-names      (map name column-keys)]
     {:row_count (count results)
      :status :completed

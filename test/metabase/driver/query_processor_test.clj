@@ -190,6 +190,45 @@
     :table_id (->table-id :venues)
     :id (->field-id :venues :name)}])
 
+(defn ->columns [& names]
+  (mapv (partial format-name *driver-data*)
+        names))
+
+(defn categories-col [col]
+  (case col
+    :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
+           :table_id (->table-id :categories), :id (->field-id :categories :id)}
+    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
+           :table_id (->table-id :categories), :id (->field-id :categories :name)}))
+
+(defn checkins-col [col]
+  (case col
+    :id       {:extra_info {}
+               :special_type :id
+               :base_type (id-field-type *driver-data*)
+               :description nil
+               :name (format-name *driver-data* "id")
+               :table_id (->table-id :checkins)
+               :id (->field-id :checkins :id)}
+    :venue_id {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :venues)}
+                               {})
+               :special_type (when (fks-supported? *driver-data*)
+                               :fk)
+               :base_type :IntegerField
+               :description nil
+               :name (format-name *driver-data* "venue_id")
+               :table_id (->table-id :checkins)
+               :id (->field-id :checkins :venue_id)}
+    :user_id  {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :users)}
+                               {})
+               :special_type (if (fks-supported? *driver-data*) :fk
+                                 :category)
+               :base_type :IntegerField
+               :description nil
+               :name (format-name *driver-data* "user_id")
+               :table_id (->table-id :checkins)
+               :id (->field-id :checkins :user_id)}))
+
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-drivers
     {:rows [[100]]
@@ -272,7 +311,7 @@
             [3 "Artisan"]
             [4 "Asian"]
             [5 "BBQ"]]
-     :columns [(format-name *driver-data* "id"), (format-name *driver-data* "name")]
+     :columns (->columns "id" "name")
      :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
              :table_id (->table-id :categories), :id (->field-id :categories :id)}
             {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
@@ -290,13 +329,30 @@
             [8 "Beer Garden"]
             [9 "Breakfast / Brunch"]
             [10 "Brewery"]]
-     :columns [(format-name *driver-data* "id"), (format-name *driver-data* "name")]
-     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
-             :table_id (->table-id :categories), :id (->field-id :categories :id)}
-            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
-             :table_id (->table-id :categories), :id (->field-id :categories :name)}]}
+     :columns (->columns "id" "name")
+     :cols [(categories-col :id)
+            (categories-col :name)]}
   {:source_table (->table-id :categories)
    :aggregation ["rows"]
    :page {:items 5
           :page 2}
    :order_by [[(->field-id :categories :name) "ascending"]]})
+
+
+;; ## "ORDER_BY" CLAUSE
+;; Test that we can tell the Query Processor to return results ordered by multiple fields
+(qp-expect-with-all-drivers
+    {:rows [[1 12 375] [1 9 139] [1 1 72] [2 15 129] [2 12 471] [2 11 325] [2 9 590] [2 9 833] [2 8 380] [2 5 719]],
+     :columns (->columns "venue_id" "user_id" "id")
+     :cols [(checkins-col :venue_id)
+            (checkins-col :user_id)
+            (checkins-col :id)]}
+  {:source_table (->table-id :checkins)
+   :aggregation ["rows"]
+   :limit 10
+   :fields [(->field-id :checkins :venue_id)
+            (->field-id :checkins :user_id)
+            (->field-id :checkins :id)]
+   :order_by [[(->field-id :checkins :venue_id) "ascending"]
+              [(->field-id :checkins :user_id) "descending"]
+              [(->field-id :checkins :id) "ascending"]]})
