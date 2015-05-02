@@ -197,9 +197,20 @@ CardControllers.controller('CardDetail', [
                 renderAll();
 
                 // make our api call
+                var firstRunNewCard = (queryResult === null && card.id === undefined);
                 Metabase.dataset(dataset_query, function (result) {
                     queryResult = result;
                     isRunning = false;
+
+                    // if this is our first run on a NEW card then try a little logic to pick a smart display for the data
+                    if (firstRunNewCard &&
+                            queryResult.data.rows &&
+                            queryResult.data.rows.length === 1 &&
+                            queryResult.data.columns.length === 1) {
+                        // if we have a 1x1 data result then this should be viewed as a scalar
+                        card.display = "scalar";
+                    }
+
                     renderAll();
 
                 }, function (error) {
