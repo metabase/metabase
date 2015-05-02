@@ -175,10 +175,10 @@ var QueryHeader = React.createClass({
                 <div className="QueryHeader-details">
                     <h1 className="QueryName">{title}</h1>
                     {editButton}
-                    {saveButton}
                 </div>
     
                 <div className="QueryHeader-actions">
+                    {saveButton}
                     {downloadButton}
                     <AddToDashboard
                         card={this.props.card}
