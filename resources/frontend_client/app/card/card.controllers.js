@@ -214,7 +214,13 @@ CardControllers.controller('CardDetail', [
                     renderAll();
 
                 }, function (error) {
-                    console.log('error running query', error);
+                    isRunning = false;
+                    // TODO: we should update the api so that we get better error messaging from the api on query fails
+                    queryResult = {
+                        error: "Oh snap!  Something went wrong running your query :sad:"
+                    };
+
+                    renderAll();
                 });
             },
             notifyQueryModifiedFn: function(dataset_query) {
