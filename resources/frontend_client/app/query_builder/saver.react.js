@@ -45,6 +45,22 @@ var Saver = React.createClass({
     save: function (event) {
         event.preventDefault();
 
+        // make sure that user put in a card name before we close out the form
+        var name = this.refs.name.getDOMNode().value.trim();
+        if (!name || name === "") {
+            this.setState({
+                errors: {
+                    data: {
+                        errors: {
+                            name: "This is a required field"
+                        }
+                    }
+                }
+            });
+
+            return;
+        }
+
         var card = this.props.card;
         card.name = this.refs.name.getDOMNode().value.trim();
         card.description = this.refs.description.getDOMNode().value.trim();
@@ -67,16 +83,22 @@ var Saver = React.createClass({
 
         var formError;
         if (this.state.errors) {
-            var errorMessage = "Server error encountered";
+            var errorMessage;
+            if (this.state.errors.status === 500) {
+                errorMessage = "Server error encountered";
+            }
+
             if (this.state.errors.data &&
                 this.state.errors.data.message) {
                 errorMessage = this.state.errors.data.message;
             }
 
             // TODO: timeout display?
-            formError = (
-                <span className="text-error px2">{errorMessage}</span>
-            );
+            if (errorMessage) {
+                formError = (
+                    <span className="text-error px2">{errorMessage}</span>
+                );
+            }
         }
 
         var buttonClasses = cx({
