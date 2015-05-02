@@ -143,6 +143,7 @@ var QueryHeader = React.createClass({
             saveButton = (
                 <ActionButton
                     actionFn={this.save}
+                    className='Button Button--primary'
                 />
             );
         }

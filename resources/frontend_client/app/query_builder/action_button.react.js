@@ -11,7 +11,8 @@ var ActionButton = React.createClass({
             normalText: "Save",
             activeText: "Saving ...",
             failedText: "Save failed",
-            successText: "Save succeeded"
+            successText: "Save succeeded",
+            className: 'Button'
         };
     },
     getInitialState: function () {
@@ -56,24 +57,35 @@ var ActionButton = React.createClass({
 
         // TODO: timeout on success/failed state to reset back to normal state
     },
-    render: function() {
+    buttonContent: function () {
         if (this.state.active) {
             // TODO: loading spinner
-            return (
-                <button className="Button Button--waiting">{this.props.activeText}</button>
-            );
+            return this.props.activeText;
         } else if (this.state.result === "success") {
             return (
-                <button className="Button Button--success" onClick={this.onClick}><CheckIcon width="12px" height="12px" /> {this.props.successText}</button>
+                <span>
+                    <CheckIcon width="12px" height="12px" />
+                    {this.props.successText}
+                </span>
             );
         } else if (this.state.result === "failed") {
-            return (
-                <button className="Button Button--danger" onClick={this.onClick}>{this.props.failedText}</button>
-            );
+            return this.props.failedText;
         } else {
-            return (
-                <button className="Button" onClick={this.onClick}>{this.props.normalText}</button>
-            );
+            return this.props.normalText;
         }
+    },
+    render: function() {
+        var buttonStateClasses = cx({
+            'Button--waiting': this.state.active,
+            'Button--success': this.state.result === 'success',
+            'Button--danger': this.state.result === 'failed'
+        });
+
+        return (
+            <button className={this.props.className + ' ' + buttonStateClasses} onClick={this.onClick}>
+                {this.buttonContent()}
+            </button>
+        )
+
     }
 });
