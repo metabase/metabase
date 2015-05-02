@@ -209,6 +209,13 @@ CardControllers.controller('CardDetail', [
                             queryResult.data.columns.length === 1) {
                         // if we have a 1x1 data result then this should be viewed as a scalar
                         card.display = "scalar";
+
+                    } else if (dataset_query.type === "query" &&
+                            dataset_query.query.aggregation &&
+                            dataset_query.query.aggregation.length > 0 &&
+                            dataset_query.query.aggregation[0] === "rows") {
+                        // if our query aggregation is "rows" then ALWAYS set the display to "table"
+                        card.display = "table";
                     }
 
                     renderAll();

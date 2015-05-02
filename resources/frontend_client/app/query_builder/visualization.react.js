@@ -96,7 +96,7 @@ var QueryVisualization = React.createClass({
                 <div className="VisualizationSettings QueryBuilder-section">
                     Show as:
                     <label className="Select">
-                        <select onChange={this.setDisplay} defaultValue={this.props.card.display}>
+                        <select onChange={this.setDisplay} value={this.props.card.display}>
                             {displayOptions}
                         </select>
                     </label>
