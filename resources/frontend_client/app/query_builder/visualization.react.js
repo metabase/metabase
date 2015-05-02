@@ -142,7 +142,9 @@ var QueryVisualization = React.createClass({
                     );
                 } else if(this.props.card.display === "table") {
                     viz = (
-                        <QueryVisualizationTable data={this.props.result.data} />
+                        <QueryVisualizationTable
+                            data={this.props.result.data}
+                            maxRows={500} />
                     );
                 } else {
                     // assume that anything not a table is a chart
