@@ -72,10 +72,8 @@ var GuiQueryEditor = React.createClass({
     },
 
     setDatabase: function(databaseId) {
-        // check if this is the same db or not
         if (databaseId !== this.props.query.database) {
             // reset to a brand new query
-            // TODO: clone?
             var query = this.props.defaultQuery;
 
             // set our new database on the query
@@ -85,6 +83,7 @@ var GuiQueryEditor = React.createClass({
             this.replaceState({});
 
             // notify parent that we've started over
+            // TODO: should this clear the visualization as well?
             this.props.notifyQueryModifiedFn(query);
 
             // load rest of the data we need
@@ -97,7 +96,10 @@ var GuiQueryEditor = React.createClass({
         var tableId = sourceTable.id || sourceTable;
         this.loadTableInfo(tableId);
 
-        var query = this.props.query;
+        // when the table changes we reset everything else in the query, except the database of course
+        // TODO: should this clear the visualization as well?
+        var query = this.props.defaultQuery;
+        query.database = this.props.query.database;
         query.query.source_table = tableId;
 
         this.setQuery(query, true);

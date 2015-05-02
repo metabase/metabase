@@ -270,7 +270,7 @@ CardControllers.controller('CardDetail', [
             editorModel.databases = databases;
             editorModel.query = card.dataset_query;
             editorModel.initialQuery = card.dataset_query;
-            editorModel.defaultQuery = newQueryTemplates[card.dataset_query.type];
+            editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
