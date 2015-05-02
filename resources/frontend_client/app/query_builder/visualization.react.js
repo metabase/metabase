@@ -127,7 +127,19 @@ var QueryVisualization = React.createClass({
                 );
 
             } else if(this.props.result.data) {
-                if(this.props.card.display === "scalar") {
+                if (this.props.result.data.rows.length === 0) {
+                    // successful query but there were 0 rows returned with the result
+                    viz = (
+                        <div className="QueryError flex full align-center text-brand">
+                            <div className="QueryError-iconWrapper">
+                                <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
+                                    <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
+                                </svg>
+                            </div>
+                            <span className="QueryError-message">Doh! We ran your query but it returned 0 rows of data.</span>
+                        </div>
+                    );
+                } else if(this.props.card.display === "scalar") {
                     var scalarValue;
                     if (this.props.result.data.rows &&
                         this.props.result.data.rows.length > 0 &&
