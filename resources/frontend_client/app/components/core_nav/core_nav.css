@@ -3,7 +3,7 @@
   --core-nav-text-color: #8691AC;
   --core-nav-selected-text-color: #4A90E2;
   --core-nav-border-radius: 4px;
-  --core-nav-border-color: #E4E4E4;
+  --core-nav-border-color: #F2F2F2;
   --nav-item-text-color: #8691AC;
   --brand-text-color: #333;
 }
@@ -107,10 +107,10 @@
     content: '';
     display: block;
     position: absolute;
-    bottom: 0;
+    bottom: -1px;
     width: 100%;
     background-color: var(--core-nav-text-color);
-    height: 4px;
+    height: 1px;
     left: 0;
     opacity: 0;
     transition: opacity .2s ease-in;

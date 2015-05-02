@@ -7,13 +7,7 @@
     flex-direction: column;
     height: 100%;
     line-height: 1;
-    font-size: 1em;
-}
-
-@media screen and (--breakpoint-min-lg) {
-    .QueryBuilder {
-        font-size: 1.12em;
-    }
+    font-size: 0.85em;
 }
 
 /* a major section of the query builder */
@@ -21,15 +15,9 @@
     padding: 0.8rem;
 }
 
-@media screen and (--breakpoint-min-lg) {
-    .QueryBuilder-section {
-        padding: 1.05rem;
-    }
-}
-
 @media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
-        padding: 1.25rem;
+        padding: 2.05rem;
     }
 }
 
@@ -65,8 +53,7 @@
     display: flex;
     align-items: center;
     color: #91979E;
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
+    padding-top: 1em;
 }
 
 .Query-section.Query-section--right {
@@ -82,7 +69,7 @@
     font-weight: 200;
     margin-top: 0;
     margin-bottom: 0;
-    font-size: 1.2em;
+    font-size: 1.2rem;
 }
 
 .Query-label {
@@ -123,6 +110,14 @@
     overflow: scroll;
 }
 
+.QueryTable-wrapper .Table {
+    font-family: "Lato";
+}
+
+.QueryTable-wrapper .Table td {
+    padding: 0.5rem;
+}
+
 .QueryTable.Table tr:nth-child(even) {
     background-color: #fff;
 }
@@ -136,7 +131,6 @@
 */
 .SelectionModule {
     color: var(--brand-color);
-    font-size: 1rem;
 }
 
 .SelectionItems {
@@ -152,7 +146,7 @@
     left: 0;
     right: 0;
     overflow-y: scroll;
-    max-height: 360px;
+    max-height: 560px;
     min-width: 320px;
 }
 
@@ -339,7 +333,7 @@
 
 .Transition-popover-state-enter {
     opacity: 0.01;
-    transition: opacity .3s linear;    
+    transition: opacity .3s linear;
 }
 
 .Transition-popover-state-enter-active {
@@ -349,7 +343,7 @@
 
 .Transition-popover-state-leave {
     opacity: 1;
-    transition: opacity .3s linear;    
+    transition: opacity .3s linear;
 }
 
 .Transition-popover-state-leave-active {

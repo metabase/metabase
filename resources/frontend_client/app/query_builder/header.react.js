@@ -122,6 +122,7 @@ var QueryHeader = React.createClass({
                     card={this.props.card}
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
+                    className='inline-block ml1 mt1'
                 />
             );
         }
@@ -142,6 +143,7 @@ var QueryHeader = React.createClass({
             saveButton = (
                 <ActionButton
                     actionFn={this.save}
+                    className='Button Button--primary'
                 />
             );
         }
@@ -175,10 +177,10 @@ var QueryHeader = React.createClass({
                 <div className="QueryHeader-details">
                     <h1 className="QueryName">{title}</h1>
                     {editButton}
-                    {saveButton}
                 </div>
-    
+
                 <div className="QueryHeader-actions">
+                    {saveButton}
                     {downloadButton}
                     <AddToDashboard
                         card={this.props.card}

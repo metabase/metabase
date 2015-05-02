@@ -237,7 +237,7 @@ var FilterWidget = React.createClass({
                         default:
                             valueHtml = (
                                 <input
-                                    className="input m1"
+                                    className="input"
                                     type="text"
                                     defaultValue={this.state.value}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
@@ -266,7 +266,7 @@ var FilterWidget = React.createClass({
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
                 <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
-                    <CloseIcon width="16px" height="16px" />
+                    <CloseIcon width="12px" height="12px" />
                 </a>
             </div>
         );
