@@ -255,7 +255,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             headerModel.card = card;
 
-            if (queryResult) {
+            if (queryResult && !queryResult.error) {
                 headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
             } else {
                 headerModel.downloadLink = null;
