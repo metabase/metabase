@@ -10,30 +10,37 @@ var QueryVisualization = React.createClass({
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired
     },
+
     getInitialState: function () {
         return {
             chartId: Math.floor((Math.random() * 698754) + 1)
         };
     },
+
     componentDidMount: function () {
         this.renderChartIfNeeded();
     },
+
     componentDidUpdate: function () {
         this.renderChartIfNeeded();
     },
-    isTableDisplay: function (display) {
-        return (display === "table" || display === "scalar");
+
+    isChartDisplay: function(display) {
+        return (display !== "table" && display !== "scalar");
     },
+
     renderChartIfNeeded: function () {
-        if (!this.isTableDisplay(this.props.card.display) && this.props.result) {
+        if (this.isChartDisplay(this.props.card.display) && this.props.result) {
             // TODO: it would be nicer if this didn't require the whole card
             CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
         }
     },
+
     setDisplay: function (event) {
         // notify our parent about our change
         this.props.setDisplayFn(event.target.value);
     },
+
     renderChartVisualization: function () {
         // rendering a chart of some type
         var titleId = 'card-title--'+this.state.chartId;
@@ -46,15 +53,19 @@ var QueryVisualization = React.createClass({
             </div>
         );
     },
+
     renderVizControls: function () {
         if (this.props.result.error === undefined) {
             var types = [
+                'scalar',
                 'table',
                 'line',
                 'bar',
                 'pie',
                 'area',
-                'timeseries'
+                'timeseries',
+                'state',
+                'country'
             ];
 
             var displayOptions = [];
@@ -69,7 +80,7 @@ var QueryVisualization = React.createClass({
                 <div className="VisualizationSettings QueryBuilder-section">
                     Show as:
                     <label className="Select">
-                        <select onChange={this.setDisplay}>
+                        <select onChange={this.setDisplay} defaultValue={this.props.card.display}>
                             {displayOptions}
                         </select>
                     </label>
@@ -79,6 +90,7 @@ var QueryVisualization = React.createClass({
             return false;
         }
     },
+
     renderLoading: function () {
         return {
             __html: '<svg viewBox="0 0 32 32" width="32px" height="32px" fill="red">' +
@@ -89,6 +101,7 @@ var QueryVisualization = React.createClass({
                     '</svg>'
         }
     },
+
     render: function () {
         if(!this.props.result) {
             return false;
@@ -96,15 +109,15 @@ var QueryVisualization = React.createClass({
 
         var viz;
         if(this.props.isRunning) {
-            // we have to use dangerouslySetInnerHtml here cause react is treating 'animateTransform' as a react component 
+            // we have to use dangerouslySetInnerHtml here cause react is treating 'animateTransform' as a react component
            viz = (
                 <div dangerouslySetInnerHtml={this.renderLoading()}></div>
-           )   
+           )
         } else {
             if(this.props.result.error) {
                 viz = (
                     <div className="QueryError flex full align-center text-error">
-                        <div className="QueryError-iconWrapper">                    
+                        <div className="QueryError-iconWrapper">
                             <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
                                 <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
                             </svg>
@@ -112,9 +125,22 @@ var QueryVisualization = React.createClass({
                         <span className="QueryError-message">{this.props.result.error}</span>
                     </div>
                 );
-    
+
             } else if(this.props.result.data) {
-                if(this.isTableDisplay(this.props.card.display)) {
+                if(this.props.card.display === "scalar") {
+                    var scalarValue;
+                    if (this.props.result.data.rows &&
+                        this.props.result.data.rows.length > 0 &&
+                        this.props.result.data.rows[0].length > 0) {
+                        scalarValue = this.props.result.data.rows[0][0];
+                    }
+
+                    viz = (
+                        <div className="flex full align-center">
+                            <span>{scalarValue}</span>
+                        </div>
+                    );
+                } else if(this.props.card.display === "table") {
                     viz = (
                         <QueryVisualizationTable data={this.props.result.data} />
                     );
@@ -132,8 +158,7 @@ var QueryVisualization = React.createClass({
             'full': true,
             'flex': true,
             'flex-full': true,
-            'QueryBuilder-section': true, 
-
+            'QueryBuilder-section': true
         });
 
         return (
