@@ -175,6 +175,11 @@ var GuiQueryEditor = React.createClass({
 
         query.query.aggregation = queryAggregation;
 
+        // for "rows" type aggregation we always clear out any dimensions because they don't make sense
+        if (aggregation === "rows") {
+            query.query.breakout = [];
+        }
+
         // check to see if this aggregation type requires another choice
         _.map(this.state.options.aggregation_options, function (option) {
             if (option.short === aggregation &&
