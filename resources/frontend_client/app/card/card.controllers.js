@@ -253,7 +253,7 @@ CardControllers.controller('CardDetail', [
 
         var renderHeader = function() {
             // ensure rendering model is up to date
-            headerModel.card = card;
+            headerModel.card = angular.copy(card);
 
             if (queryResult && !queryResult.error) {
                 headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
@@ -269,7 +269,6 @@ CardControllers.controller('CardDetail', [
             editorModel.isRunning = isRunning;
             editorModel.databases = databases;
             editorModel.query = card.dataset_query;
-            editorModel.initialQuery = card.dataset_query;
             editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
             if (card.dataset_query && card.dataset_query.type === "native") {
@@ -288,7 +287,7 @@ CardControllers.controller('CardDetail', [
 
         var renderVisualization = function() {
             // ensure rendering model is up to date
-            visualizationModel.card = card;
+            visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
             visualizationModel.isRunning = isRunning;
 

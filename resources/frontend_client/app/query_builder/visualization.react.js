@@ -21,7 +21,7 @@ var QueryVisualization = React.createClass({
         // visualizations only change when the result itself changes OR the card display is different
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
         if (this.props.result == nextProps.result &&
-                this.display === nextProps.card.display) {
+                this.props.card.display === nextProps.card.display) {
             return false;
         } else {
             return true;
@@ -30,13 +30,13 @@ var QueryVisualization = React.createClass({
 
     componentDidMount: function () {
         // TODO: this is a workaround because our objects are mutable
-        this.display = this.props.card.display;
+        //this.display = this.props.card.display;
         this.renderChartIfNeeded();
     },
 
     componentDidUpdate: function () {
         // TODO: this is a workaround because our objects are mutable
-        this.display = this.props.card.display;
+        //this.display = this.props.card.display;
         this.renderChartIfNeeded();
     },
 
