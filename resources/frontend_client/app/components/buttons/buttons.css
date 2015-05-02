@@ -111,7 +111,7 @@
     line-height: 1;
     border: 1px solid #ddd;
     border-radius: 40px;
-    width: 3.5em;
+    width: 3rem;
     transition: background .2s linear .2s, border .2s linear .2s;
 }
 
@@ -120,7 +120,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5em;
+    padding: 0.25rem;
     border: 1px solid #ddd;
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
