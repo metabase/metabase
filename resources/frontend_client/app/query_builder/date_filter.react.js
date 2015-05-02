@@ -7,6 +7,15 @@ var DateFilter = React.createClass({
         date: React.PropTypes.string.isRequired,
         onChange: React.PropTypes.func.isRequired
     },
+
+    onChange: function(date) {
+        if (this.props.index) {
+            this.props.onChange(this.props.index, date);
+        } else {
+            this.props.onChange(date);
+        }
+    },
+
     render: function () {
         var date;
 
@@ -20,7 +29,7 @@ var DateFilter = React.createClass({
             <DatePicker
                 dateFormat="YYYY-MM-DD"
                 selected={date}
-                onChange={this.props.onChange}
+                onChange={this.onChange}
             />
         );
     }

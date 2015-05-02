@@ -54,22 +54,32 @@ var FilterWidget = React.createClass({
         }
 
         // this converts our fieldValues into things that are safe for us to work with through HTML
+        // it also filters out values like NULL which we don't want in our value options
         if (fieldValues && fieldValues.values) {
-            fieldValues.values = fieldValues.values.map(function(value) {
-                var safeValues = {};
-                for(var key in value) {
-                    // TODO: what typing issues can we run into here?
-                    //       we used to call toString() on these values
-                    safeValues[key] = value[key].toString();
+            var safeValues = [];
+            for (var idx in fieldValues.values) {
+                var fieldValue = fieldValues.values[idx];
+
+                var safeValue = {};
+                for(var key in fieldValue) {
+                    // NOTE: we specifically prevent any keys which are NULL values because those should be expressed using IS_NULL or NOT_NULL operators
+                    if (fieldValue[key] !== undefined && fieldValue[key] !== null) {
+                        safeValue[key] = fieldValue[key].toString();
+                    }
                 }
-                return safeValues;
-            });
+
+                if (Object.getOwnPropertyNames(safeValue).length > 0) {
+                    safeValues.push(safeValue);
+                }
+            }
+
+            fieldValues.values = safeValues;
         }
 
         this.setState({
             field: field,
             operator: operator,
-            operatorList,
+            operatorList: operatorList,
             value: value,
             fieldValues: fieldValues,
             fieldDef: fieldDef
@@ -128,8 +138,14 @@ var FilterWidget = React.createClass({
 
         // TODO: we may need to do some date formatting work on DateTimeField and DateField
 
-        filter[index] = value;
-        this.props.updateFilter(this.props.index, filter);
+        if (value !== undefined) {
+            filter[index] = value;
+            this.props.updateFilter(this.props.index, filter);
+        }
+    },
+
+    setDateValue: function (index, date) {
+        this.setValue(date.format('YYYY-MM-DD'), index, this.props.index);
     },
 
     setTextValue: function(index) {
@@ -213,15 +229,8 @@ var FilterWidget = React.createClass({
                             valueHtml = (
                                 <DateFilter
                                     date={this.state.value}
-                                    onChange={
-                                        function (date) {
-                                            this.setValue(
-                                                date.format('YYYY-MM-DD'),
-                                                {filterIndex},
-                                                this.props.index
-                                            );
-                                        }.bind(this)
-                                    }
+                                    index={filterIndex}
+                                    onChange={this.setDateValue}
                                 />
                             );
                             break;
