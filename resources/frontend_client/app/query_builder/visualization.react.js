@@ -80,7 +80,8 @@ var QueryVisualization = React.createClass({
                 'area',
                 'timeseries',
                 'state',
-                'country'
+                'country',
+                'pin_map'
             ];
 
             var displayOptions = [];
