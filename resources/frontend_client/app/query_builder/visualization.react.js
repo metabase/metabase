@@ -55,7 +55,7 @@ var QueryVisualization = React.createClass({
     },
 
     renderVizControls: function () {
-        if (this.props.result.error === undefined) {
+        if (this.props.result && this.props.result.error === undefined) {
             var types = [
                 'scalar',
                 'table',
@@ -103,18 +103,27 @@ var QueryVisualization = React.createClass({
     },
 
     render: function () {
-        if(!this.props.result) {
-            return false;
-        }
-
         var viz;
-        if(this.props.isRunning) {
+        if (!this.props.result) {
+            viz = (
+                <div className="QueryError flex full align-center text-brand">
+                    <div className="QueryError-iconWrapper">
+                        <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
+                            <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
+                        </svg>
+                    </div>
+                    <span className="QueryError-message">If you give me some data I can show you something cool.  Run a Query!</span>
+                </div>
+            );
+
+        } else if (this.props.isRunning) {
             // we have to use dangerouslySetInnerHtml here cause react is treating 'animateTransform' as a react component
            viz = (
                 <div dangerouslySetInnerHtml={this.renderLoading()}></div>
-           )
+           );
+
         } else {
-            if(this.props.result.error) {
+            if (this.props.result.error) {
                 viz = (
                     <div className="QueryError flex full align-center text-error">
                         <div className="QueryError-iconWrapper">
@@ -126,7 +135,7 @@ var QueryVisualization = React.createClass({
                     </div>
                 );
 
-            } else if(this.props.result.data) {
+            } else if (this.props.result.data) {
                 if (this.props.result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
                     viz = (
@@ -139,7 +148,8 @@ var QueryVisualization = React.createClass({
                             <span className="QueryError-message">Doh! We ran your query but it returned 0 rows of data.</span>
                         </div>
                     );
-                } else if(this.props.card.display === "scalar") {
+
+                } else if (this.props.card.display === "scalar") {
                     var scalarValue;
                     if (this.props.result.data.rows &&
                         this.props.result.data.rows.length > 0 &&
@@ -152,12 +162,14 @@ var QueryVisualization = React.createClass({
                             <span>{scalarValue}</span>
                         </div>
                     );
-                } else if(this.props.card.display === "table") {
+
+                } else if (this.props.card.display === "table") {
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
                             maxRows={500} />
                     );
+
                 } else {
                     // assume that anything not a table is a chart
                     viz = this.renderChartVisualization();
@@ -167,7 +179,7 @@ var QueryVisualization = React.createClass({
 
         var visualizationClasses = cx({
             'Visualization': true,
-            'Visualization--errors': this.props.result.error,
+            'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning,
             'full': true,
             'flex': true,
