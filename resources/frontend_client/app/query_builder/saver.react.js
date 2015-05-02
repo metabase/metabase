@@ -12,7 +12,8 @@ var Saver = React.createClass({
     getDefaultProps: function() {
         return {
             buttonText: "Edit",
-            saveButtonText: "Save"
+            saveButtonText: "Save",
+            className: 'Button Button--primary'
         }
     },
 

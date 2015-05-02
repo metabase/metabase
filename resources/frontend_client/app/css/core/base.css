@@ -20,9 +20,9 @@ body {
     -webkit-font-smoothing: subpixel-antialiased;
 }
 
-@media screen and (--breakpoint-min-lg) {
+@media screen and (--breakpoint-min-xl) {
     body {
-        font-size: var(--large-font-size);     
+        font-size: var(--large-font-size);
     }
 }
 
