@@ -19,12 +19,19 @@ var FilterWidget = React.createClass({
     componentWillReceiveProps: function(newProps) {
         var operator = newProps.filter[0],      // name of the operator
             field = newProps.filter[1],         // id of the field
-            value = null;                       // filtering value
+            values = null;                       // filtering value
 
         if (newProps.filter.length > 2) {
-            if (newProps.filter[2] !== null) {
-                // always cast the underlying value to a string, otherwise we get strange behavior on dealing with input
-                value = newProps.filter[2].toString();
+            values = [];
+
+            for (var i=2; i < newProps.filter.length; i++) {
+                var valuesIdx = i - 2;
+
+                values[valuesIdx] = null;
+                if (newProps.filter[i] !== null) {
+                    // always cast the underlying value to a string, otherwise we get strange behavior on dealing with input
+                    values[valuesIdx] = newProps.filter[i].toString();
+                }
             }
         }
 
@@ -80,7 +87,7 @@ var FilterWidget = React.createClass({
             field: field,
             operator: operator,
             operatorList: operatorList,
-            value: value,
+            values: values,
             fieldValues: fieldValues,
             fieldDef: fieldDef
         });
@@ -89,7 +96,7 @@ var FilterWidget = React.createClass({
     setField: function(value, index, filterListIndex) {
         // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
         // make sense once you've changed the field, so starting fresh is the most sensible thing to do
-        if (this.state.value !== value) {
+        if (this.state.field !== value) {
             var filter = [null, value, null];
             this.props.updateFilter(this.props.index, filter);
         }
@@ -207,6 +214,8 @@ var FilterWidget = React.createClass({
         var filterValueInputs = [];
         for (var i=0; i < numValues; i++) {
             var filterIndex = i + 2;
+            var filterValue = this.state.values[i];
+
             var valueHtml;
             if(this.state.fieldValues) {
                 if(this.state.fieldValues.values) {
@@ -216,11 +225,11 @@ var FilterWidget = React.createClass({
                             display='name'
                             index={filterIndex}
                             items={this.state.fieldValues.values}
-                            isInitiallyOpen={this.state.value === null}
+                            isInitiallyOpen={filterValue === null && i === 0}
                             placeholder="..."
-                            selectedValue={this.state.value}
+                            selectedValue={filterValue}
                             selectedKey='key'
-                            parentIndex={this.props.index}
+                            parentIndex={filterValue}
                         />
                     );
                 } else {
@@ -228,7 +237,7 @@ var FilterWidget = React.createClass({
                         case 'date':
                             valueHtml = (
                                 <DateFilter
-                                    date={this.state.value}
+                                    date={filterValue}
                                     index={filterIndex}
                                     onChange={this.setDateValue}
                                 />
@@ -239,7 +248,7 @@ var FilterWidget = React.createClass({
                                 <input
                                     className="input"
                                     type="text"
-                                    defaultValue={this.state.value}
+                                    defaultValue={filterValue}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
                                     ref="textFilterValue"
                                     placeholder="What value?"

@@ -4,7 +4,8 @@
 var DateFilter = React.createClass({
     displayName: 'DateFilter',
     propTypes: {
-        date: React.PropTypes.string.isRequired,
+        date: React.PropTypes.string,
+        index: React.PropTypes.number,
         onChange: React.PropTypes.func.isRequired
     },
 
@@ -18,7 +19,6 @@ var DateFilter = React.createClass({
 
     render: function () {
         var date;
-
         if(this.props.date) {
             date = moment(this.props.date);
         } else {
