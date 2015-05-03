@@ -200,6 +200,26 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
 
+    canAddFilter: function() {
+        var canAdd = true;
+
+        var query = this.props.query;
+        if (query.query.filter && query.query.filter.length > 0) {
+            var lastFilter = query.query.filter[query.query.filter.length - 1];
+
+            // simply make sure that there are no null values in the last filter
+            for (var i=0; i < lastFilter.length; i++) {
+                if (lastFilter[i] === null) {
+                    canAdd = false;
+                }
+            }
+        } else {
+            canAdd = false;
+        }
+
+        return canAdd;
+    },
+
     addFilter: function() {
         var query = this.props.query,
             queryFilters = query.query.filter;
@@ -449,9 +469,12 @@ var GuiQueryEditor = React.createClass({
             }.bind(this));
 
             // TODO: proper check for isFilterComplete(filter)
-            var addFilterButton = (
-                <a onClick={this.addFilter}>Add another filter ...</a>
-            );
+            var addFilterButton;
+            if (this.canAddFilter()) {
+                addFilterButton = (
+                    <a onClick={this.addFilter}>Add another filter ...</a>
+                );
+            }
 
             return (
                 <div className="Query-section flex align-center">
