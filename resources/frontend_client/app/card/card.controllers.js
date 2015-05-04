@@ -385,8 +385,7 @@ CardControllers.controller('CardDetail', [
         };
 
         $scope.$on('$locationChangeStart', function (event) {
-            if (cardJson !== JSON.stringify(card)) {
-                console.log('oh shit!  trying to leave with a dirty card.');
+            if (cardJson !== JSON.stringify(card) && queryResult !== null) {
                 if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
                     event.preventDefault();
                     return;
