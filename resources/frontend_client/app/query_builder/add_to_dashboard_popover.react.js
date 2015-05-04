@@ -43,6 +43,12 @@ var AddToDashboardPopover = React.createClass({
         this.replaceState(state);
     },
 
+    setName: function(event) {
+        // this is a bit stupid, but we put this here purely so that as someone types in the dashboard name we can know it's changed
+        // and update our form isDirty state.  so this call is purely so that we re-render after someone changes the dash name
+        this.setState({});
+    },
+
     addToExistingDash: function(dashboard, newDash) {
         var isNewDash = (newDash !== undefined) ? newDash : false;
 
@@ -130,9 +136,9 @@ var AddToDashboardPopover = React.createClass({
     renderCreateDashboardForm: function() {
         // TODO: hard coding values :(
         var privacyOptions = [
-            (<option key="0" value="0">Private</option>),
-            (<option key="1" value="1">Others can read</option>),
-            (<option key="2" value="2">Others can modify</option>)
+            (<option key="0" value={0}>Private</option>),
+            (<option key="1" value={1}>Others can read</option>),
+            (<option key="2" value={2}>Others can modify</option>)
         ];
 
         var formError;
@@ -149,10 +155,32 @@ var AddToDashboardPopover = React.createClass({
             );
         }
 
+        var name = null;
+        if (this.refs.name) {
+            name = this.refs.name.getDOMNode().value.trim();
+        }
+
+        var formReady = (name !== null && name !== "");
+
         var buttonClasses = cx({
             "Button": true,
-            "Button--primary": true
+            "Button--primary": formReady
         });
+
+        var saveButton;
+        if (formReady) {
+            saveButton = (
+                <button className={buttonClasses}>
+                    Save
+                </button>
+            );
+        } else {
+            saveButton = (
+                <button className={buttonClasses} disabled>
+                    Save
+                </button>
+            );
+        }
 
         return (
             <form className="Form-new" onSubmit={this.createNewDash}>
@@ -168,7 +196,7 @@ var AddToDashboardPopover = React.createClass({
                     fieldName="name"
                     showCharm={true}
                     errors={this.state.errors}>
-                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your dashboard?" autofocus/>
+                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your dashboard?" onChange={this.setName} autofocus />
                 </FormField>
 
                 <FormField
@@ -192,9 +220,7 @@ var AddToDashboardPopover = React.createClass({
                 </FormField>
 
                 <div className="Form-actions">
-                    <button className={buttonClasses}>
-                        Save
-                    </button>
+                    {saveButton}
                     {formError}
                 </div>
             </form>
