@@ -11,6 +11,26 @@ var QueryVisualization = React.createClass({
         setDisplayFn: React.PropTypes.func.isRequired
     },
 
+    getInitialState: function() {
+        return {
+            origQuery: JSON.stringify(this.props.card.dataset_query)
+        }
+    },
+
+    componentWillReceiveProps: function(nextProps) {
+        // whenever we are told that we are running a query lets update our understanding of the "current" query
+        if (nextProps.isRunning) {
+            this.setState({
+                origQuery: JSON.stringify(nextProps.card.dataset_query)
+            })
+        }
+    },
+
+    queryIsDirty: function() {
+        // a query is considered dirty if ANY part of it has been changed
+        return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
+    },
+
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
     },
@@ -68,7 +88,8 @@ var QueryVisualization = React.createClass({
     },
 
     render: function () {
-        var viz;
+        var viz,
+            queryModified;
         if (!this.props.result) {
             viz = (
                 <div className="QueryError flex full align-center text-brand">
@@ -81,6 +102,12 @@ var QueryVisualization = React.createClass({
                 </div>
             );
         } else {
+            if (this.queryIsDirty()) {
+                queryModified = (
+                    <p className="text-center"><span>Heads up</span> The data below is out of date because your query has changed</p>
+                );
+            }
+
             if (this.props.result.error) {
                 viz = (
                     <div className="QueryError flex full align-center text-error">
@@ -162,6 +189,7 @@ var QueryVisualization = React.createClass({
 
         return (
             <div className="relative full flex flex-column">
+                {queryModified}
                 {loading}
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}

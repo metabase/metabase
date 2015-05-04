@@ -247,6 +247,7 @@ CardControllers.controller('CardDetail', [
         var visualizationModel = {
             card: null,
             result: null,
+            isRunning: false,
             setDisplayFn: function(type) {
                 // change the card visualization type and refresh chart settings
                 card.display = type;
