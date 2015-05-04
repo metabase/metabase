@@ -56,21 +56,6 @@
 
 
 ;; ## "BREAKOUT"
-;; ### "BREAKOUT" - SINGLE COLUMN
-(expect {:status :completed,
-         :row_count 15,
-         :data {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
-                :columns ["USER_ID" "count"],
-                :cols [{:extra_info {:target_table_id (table->id :users)} :special_type :fk, :base_type :IntegerField, :description nil, :name "USER_ID", :table_id (table->id :checkins) :id (field->id :checkins :user_id)}
-                       {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:source_table (table->id :checkins)
-                                 :filter [nil nil]
-                                 :aggregation ["count"]
-                                 :breakout [(field->id :checkins :user_id)]
-                                 :order_by [[(field->id :checkins :user_id) "ascending"]]
-                                 :limit nil}}))
 
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`

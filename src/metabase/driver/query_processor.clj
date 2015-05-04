@@ -17,6 +17,9 @@
 (def ^:dynamic *disable-qp-logging* "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
+
+;; # PREPROCESSOR
+
 (defn preprocess [{query-type :type :as query}]
   (case (keyword query-type)
     :query (preprocess-structured query)
@@ -27,9 +30,9 @@
                                            remove-empty-clauses
                                            add-implicit-breakout-order-by
                                            preprocess-cumulative-sum))]
-    ;; (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
-    ;;                              (with-out-str (clojure.pprint/pprint pp)) "\n"
-    ;;                              "*******************************************************\n"))
+    (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
+                                 (with-out-str (clojure.pprint/pprint pp)) "\n"
+                                 "*******************************************************\n"))
     pp))
 
 
@@ -87,7 +90,7 @@
     _                    query))
 
 
-;; ## POSTPROCESSOR FNS
+;; # POSTPROCESSOR
 
 ;; ### POST-PROCESS-CUMULATIVE-SUM
 
@@ -205,7 +208,8 @@
                                                                  (:id %)))))
                                     (sort-by :position))]
     (->> (concat breakout-fields field-fields other-fields)
-         (map :castified))))
+         (map :castified)
+         (filter identity))))
 
 (defn order-columns
   "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
@@ -216,6 +220,7 @@
    3.  Fields included in the `fields` clause
    4.  All other columns in the same order as `Field.position`."
   [{{source-table :source_table, breakout-field-ids :breakout, field-field-ids :fields} :query} castified-field-names]
+  {:post [(every? keyword? %)]}
   (try
     (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
                     breakout-field-ids

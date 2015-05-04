@@ -496,6 +496,22 @@
    :order_by [[(id :venues :id) "ascending"]]})
 
 
+;; ## "BREAKOUT"
+;; ### "BREAKOUT" - SINGLE COLUMN
+(qp-expect-with-all-drivers
+    {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
+     :columns [(format-name *driver-dataset* "user_id")
+               "count"]
+     :cols [(checkins-col :user_id)
+            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :checkins)
+   :filter [nil nil]
+   :aggregation ["count"]
+   :breakout [(id :checkins :user_id)]
+   :order_by [[(id :checkins :user_id) "ascending"]]
+   :limit nil})
+
+
 ;; # POST PROCESSING TESTS
 
 ;; ## CUMULATIVE SUM

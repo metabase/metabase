@@ -30,13 +30,15 @@
 ;; # DRIVER QP INTERFACE
 
 (defn process-and-run [{query-type :type database-id :database :as query}]
+  {:pre [(contains? #{:native :query} (keyword query-type))
+         (integer? database-id)]}
   (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
     (case (keyword query-type)
       :query (let [generated-query (process-structured (:query query))]
                (when-not qp/*disable-qp-logging*
-                 (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
-                                           (with-out-str (clojure.pprint/pprint generated-query))
-                                           "*****************************************************************\n")))
+                 (println (color/magenta "\n******************** Generated Monger Query: ********************\n" ; NOCOMMIT log/debug
+                                         (with-out-str (clojure.pprint/pprint generated-query))
+                                         "*****************************************************************\n")))
                (->> (eval generated-query)
                     (annotate-results (:query query))))
       :native (->> (eval-raw-command (:query (:native query)))
@@ -127,37 +129,95 @@
                       "sum" {$sum (field-id->$string field-id)}}}
              {$project {"_id" false, "sum" true}}))
 
-;; (def db
-;;   (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
-
-;; (def users-table
-;;   (delay (sel :one Table :name "users" :db_id (:id @db))))
-
-;; (def users-id-field
-;;   (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
-
-
-;; (defn x []
-;;   (driver/process-query
-;;    {:type     :query
-;;     :database (:id @db)
-;;     :query    {:limit nil,
-;;                :source_table (:id @users-table)
-;;                :filter [nil nil],
-;;                :breakout [nil],
-;;                :aggregation ["cum_sum" (:id @users-id-field)]}}))
-
 (defmacro match-aggregation [aggregation]
   `(match ~aggregation
      ~@@aggregations
      ~'_ nil))
 
-(defn process-structured [{:keys [source_table aggregation] :as query}]
+
+;; ## [BREAKOUT DEBUG STUFF]
+
+(def db
+  (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
+
+(def users-table
+  (delay (sel :one Table :name "users" :db_id (:id @db))))
+
+(def users-id-field
+  (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
+
+
+(defn x []
+  (driver/process-query {:type :query
+                         :database (:id @db)
+                         :query {:source_table (:id @users-table)
+                                 :filter [nil nil]
+                                 :aggregation ["count"]
+                                 :breakout [(:id @users-id-field)]
+                                 :order_by [[(:id @users-id-field) "ascending"]]
+                                 :limit nil}}))
+
+(defn y []
+  (let [checkins-table-id (sel :one :id Table :name "checkins")
+        user-id           (sel :one :id Field :name "user_id", :table_id checkins-table-id)
+        venue-id          (sel :one :id Field :name "venue_id", :table_id checkins-table-id)]
+    (driver/process-query {:type :query
+                           :database (:id @db)
+                           :query {:source_table checkins-table-id
+                                   :filter [nil nil]
+                                   :aggregation ["count"]
+                                   :breakout [user-id venue-id]
+                                   :order_by [[user-id "ascending"]]
+                                   :limit nil}})))
+
+
+;; ## BREAKOUT
+;; This is similar to the aggregation stuff but has to be implemented separately
+;; since Mongo doesn't really have GROUP BY functionality the same way SQL does;
+;; the query we need to generate ends up being pretty different
+
+(defn breakout-aggregation->field-name+group-by-clause [aggregation]
+  (println "AGGREGATION:" aggregation)
+  (match aggregation
+    ["count"]        ["count" {$sum 1}]
+    ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
+    ["sum" field-id] ["sum" {$sum (field-id->$string field-id)}]))
+
+(defn do-breakout [{aggregation :aggregation, field-ids :breakout, order-by :order_by, :as query}]
+  {:pre [(sequential? field-ids)
+         (every? integer? field-ids)]}
+  (let [[ag-field ag-clause] (breakout-aggregation->field-name+group-by-clause aggregation)
+        fields               (->> (map field-id->kw field-ids)
+                                  (map name))
+        $fields              (map field-id->$string field-ids)
+        fields->$fields      (zipmap fields $fields)]
+    (aggregate {$group  (merge {"_id"    (if (= (count fields) 1) (first $fields)
+                                             fields->$fields)
+                                ag-field ag-clause}
+                               (->> fields->$fields
+                                    (map (fn [[field $field]]
+                                           (when-not (= field "_id")
+                                             {field {$first $field}})))
+                                    (into {})))}
+               {$sort    (->> order-by
+                              (mapcat (fn [[field-id asc-or-desc]]
+                                        [(name (field-id->kw field-id)) (case asc-or-desc
+                                                                          "ascending" 1
+                                                                          "descending" -1)]))
+                              (apply (partial sorted-map)))}
+               {$project (merge {"_id"    false
+                                 ag-field true}
+                                (zipmap fields (repeat true)))})))
+
+;; ## PROCESS-STRUCTURED
+
+(defn process-structured [{:keys [source_table aggregation breakout] :as query}]
   (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
             *constraints* (when-let [filter-clause (:filter query)]
                             (apply-clause [:filter filter-clause]))
             *query* (dissoc query :filter)]
-    (match-aggregation aggregation)))
+    (if-not (empty? breakout) (do-breakout query)
+            (match-aggregation aggregation))))
 
 
 ;; ## ANNOTATION
@@ -195,7 +255,7 @@
 
 ;; ### breakout (TODO)
 (defclause :breakout field-ids
-  nil)
+  (println (colorize.core/red "FIELD-IDS: " field-ids)))
 
 ;; #### cum_sum
 ;; Don't need to do anything here <3
@@ -283,4 +343,5 @@
      ~'_ nil))
 
 (defn apply-clause [clause]
+  (println "APPLYING CLAUSE: " clause)
   (match-clause clause))
