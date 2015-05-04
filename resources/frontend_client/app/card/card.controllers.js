@@ -100,7 +100,8 @@ CardControllers.controller('CardDetail', [
                 display: "table",
                 visualization_settings: VisualizationSettings.getSettingsForVisualization({}, "table"),
                 dataset_query: {},
-            };
+            },
+            cardJson = JSON.stringify(card);
 
         // =====  REACT component models
 
@@ -123,11 +124,13 @@ CardControllers.controller('CardDetail', [
                 return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
+                cardJson = JSON.stringify(card);
+
                 // for new cards we redirect the user
                 $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
             },
             notifyCardUpdatedFn: function(updatedCard) {
-                // do we need to do anything here?
+                cardJson = JSON.stringify(card);
             },
             setQueryModeFn: function(mode) {
                 var queryTemplate = angular.copy(newQueryTemplates[mode]);
@@ -313,6 +316,7 @@ CardControllers.controller('CardDetail', [
 
                 // update our react models as needed
                 card = result;
+                cardJson = JSON.stringify(card);
 
                 // run the query
                 // TODO: is there a case where we wouldn't want this?
@@ -352,6 +356,7 @@ CardControllers.controller('CardDetail', [
                             'query_id': query.id
                         }
                     };
+                    cardJson = JSON.stringify(card);
 
                     editorModel.runFn(card.dataset_query);
 
@@ -373,11 +378,21 @@ CardControllers.controller('CardDetail', [
                 // this is just an easy way to ensure defaults are all setup
                 headerModel.setQueryModeFn("query");
 
+                cardJson = JSON.stringify(card);
+
                 renderAll();
             }
         };
 
         $scope.$on('$locationChangeStart', function (event) {
+            if (cardJson !== JSON.stringify(card)) {
+                console.log('oh shit!  trying to leave with a dirty card.');
+                if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
+                    event.preventDefault();
+                    return;
+                }
+            }
+
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
             React.unmountComponentAtNode(document.getElementById('react_qb_header'));
