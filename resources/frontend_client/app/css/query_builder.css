@@ -1,5 +1,7 @@
 :root {
     --selection-color: #ccdff6;
+    --qb-offset-normal: 0.8rem;
+    --qb-offset-large: 2.05rem;
 }
 /* @layout */
 .QueryBuilder {
@@ -12,17 +14,28 @@
 
 /* a major section of the query builder */
 .QueryBuilder-section {
-    padding: 0.8rem;
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
 }
 
 @media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
-        padding: 2.05rem;
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
     }
 }
 
 .QueryHeader {
     border-bottom: 1px solid #F0F0F0;
+    padding-top: var(--qb-offset-normal);
+    padding-bottom: var(--qb-offset-normal);
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryHeader {
+        padding-top: var(--qb-offset-large);
+        padding-bottom: var(--qb-offset-large);
+    }
 }
 
 .QueryHeader-details,
@@ -83,7 +96,7 @@
 }
 
 .Query-label {
-    min-width: 8rem;
+    min-width: 7rem;
     display: inline-block;
 }
 
@@ -117,13 +130,28 @@
 
 .QueryTable-wrapper {
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    margin-top: var(--qb-offset-normal);
+    margin-bottom: var(--qb-offset-normal);
     overflow: scroll;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryTable-wrapper {
+        margin-top: var(--qb-offset-large);
+    }
 }
 
 .QueryTable-wrapper .Table {
     font-family: "Lato";
     font-size: 0.86em;
     line-height: 0.86em;
+}
+
+.QueryTable-wrapper .Table th {
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    font-weight: bold;
+    color: #444;
 }
 
 .QueryTable-wrapper .Table td {
@@ -418,22 +446,22 @@
     transition: opacity .3s linear;
 }
 
-.Transition-qb-sqlbutton-enter {
+.Transition-qb-querybutton-enter {
     opacity: 0.01;
     transition: opacity .3s linear !important;
 }
 
-.Transition-qb-sqlbutton-enter-active {
-    opacity: 1;
-    transition: opacity .3s linear .3s !important;
-}
-
-.Transition-qb-sqlbutton-leave {
+.Transition-qb-querybutton-enter-active {
     opacity: 1;
     transition: opacity .3s linear !important;
 }
 
-.Transition-qb-sqlbutton-leave-active {
+.Transition-qb-querybutton-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-querybutton-leave-active {
     opacity: 0.01;
     transition: opacity .3s linear !important;
 }

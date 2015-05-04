@@ -127,7 +127,7 @@ var QueryHeader = React.createClass({
                 return 'Error';
         }
         return (
-            <span className="PermissionsBadge ml2">
+            <span className="Badge Badge--permissions ml2">
                 {text}
             </span>
         );

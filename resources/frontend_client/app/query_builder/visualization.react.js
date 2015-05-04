@@ -102,7 +102,9 @@ var QueryVisualization = React.createClass({
         } else {
             if (this.queryIsDirty()) {
                 queryModified = (
-                    <p className="text-center"><span>Heads up</span> The data below is out of date because your query has changed</p>
+                    <div className="flex mt2 layout-centered text-headsup">
+                        <span className="Badge Badge--headsUp mr2">Heads up</span> The data below is out of date because your query has changed
+                    </div>
                 );
             }
 
@@ -187,7 +189,9 @@ var QueryVisualization = React.createClass({
 
         return (
             <div className="relative full flex flex-column">
-                {queryModified}
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {queryModified}
+                </ReactCSSTransitionGroup>
                 {loading}
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}
