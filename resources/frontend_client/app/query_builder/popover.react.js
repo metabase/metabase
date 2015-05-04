@@ -3,6 +3,7 @@
 
 var Popover = React.createClass({
     displayName: 'Popover',
+
     componentWillMount: function() {
         var popoverContainer = document.createElement('span');
         popoverContainer.className = 'PopoverContainer';
@@ -13,12 +14,23 @@ var Popover = React.createClass({
         //       its outside our ng-view and could cause lots of issues
         document.querySelector('body').appendChild(this._popoverElement);
     },
+
     componentDidMount: function() {
         this._renderPopover();
     },
+
     componentDidUpdate: function() {
         this._renderPopover();
     },
+
+    componentWillUnmount: function() {
+        this._tether.destroy();
+        React.unmountComponentAtNode(this._popoverElement);
+        if (this._popoverElement.parentNode) {
+            this._popoverElement.parentNode.removeChild(this._popoverElement);
+        }
+    },
+
     _popoverComponent: function() {
         var className = this.props.className;
         return (
@@ -27,6 +39,7 @@ var Popover = React.createClass({
             </div>
         );
     },
+
     _tetherOptions: function() {
         // sensible defaults for most popovers
         return {
@@ -38,6 +51,7 @@ var Popover = React.createClass({
             }
         };
     },
+
     _renderPopover: function() {
         React.render(this._popoverComponent(), this._popoverElement);
 
@@ -46,20 +60,14 @@ var Popover = React.createClass({
         // NOTE: these must be set here because they relate to OUR component and can't be passed in
         tetherOptions.element = this._popoverElement;
         tetherOptions.target = this.getDOMNode().parentElement;
-       
+
         if (this._tether != null) {
             this._tether.setOptions(tetherOptions);
         } else {
             this._tether = new Tether(tetherOptions);
         }
     },
-    componentWillUnmount: function() {
-        this._tether.destroy();
-        React.unmountComponentAtNode(this._popoverElement);
-        if (this._popoverElement.parentNode) {
-            this._popoverElement.parentNode.removeChild(this._popoverElement);
-        }
-    },
+
     render: function() {
         return <span/>;
     }

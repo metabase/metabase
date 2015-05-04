@@ -29,12 +29,12 @@ var AddToDashboard = React.createClass({
             return (
                 <Popover
                     tetherOptions={tetherOptions}
-                    closePopoverFn={this.toggleModal}
                     className="PopoverBody PopoverBody--withArrow"
                 >
                     <AddToDashboardPopover
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        closePopoverFn={this.toggleModal}
                     />
                 </Popover>
             )
