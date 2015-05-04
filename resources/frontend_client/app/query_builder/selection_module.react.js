@@ -135,7 +135,7 @@ var SelectionModule = React.createClass({
         if(this.props.remove) {
             remove = (
                 <div onClick={this.props.remove.bind(null, this.props.index)}>
-                    <CloseIcon width="16px" height="16px" />
+                    <CloseIcon className="ml2" width="12px" height="12px" />
                 </div>
             )
         }

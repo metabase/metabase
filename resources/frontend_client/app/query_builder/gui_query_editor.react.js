@@ -16,7 +16,6 @@ var GuiQueryEditor = React.createClass({
         runFn: React.PropTypes.func.isRequired,
         notifyQueryModifiedFn: React.PropTypes.func.isRequired
     },
-
     getInitialState: function() {
         return {
             tables: null,
@@ -310,7 +309,9 @@ var GuiQueryEditor = React.createClass({
                         isInitiallyOpen={sourceTableListOpen}
                         action={this.setSourceTable}
                     />
-                    {this.renderFilterButton()}
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderFilterButton()}
+                    </ReactCSSTransitionGroup>
                 </div>
             );
         }
@@ -319,7 +320,7 @@ var GuiQueryEditor = React.createClass({
     renderFilterButton: function () {
         if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
             return (
-                <a onClick={this.addFilter}>
+                <a className="ml2" onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
                     </svg>

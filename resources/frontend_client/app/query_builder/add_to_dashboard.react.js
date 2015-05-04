@@ -25,7 +25,7 @@ var AddToDashboard = React.createClass({
                 targetAttachment: 'bottom right',
                 targetOffset: '14px 0'
             };
-            
+
             return (
                 <Popover
                     tetherOptions={tetherOptions}

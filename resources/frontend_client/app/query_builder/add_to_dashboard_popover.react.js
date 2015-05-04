@@ -105,12 +105,12 @@ var AddToDashboardPopover = React.createClass({
 
         return (
             <div>
-                <h3 className="p2 m0">Dashboards</h3>
+                <h3 className="p2 m0">Add <span className="text-brand">{this.props.card.name}</span> to a dashboard</h3>
                 <ul className="text-brand">
                     {dashboardsList}
                 </ul>
-                <div className="p2 border-top">
-                    <button onClick={this.toggleCreate}>Create a new dashboard</button>
+                <div className="p2 text-centered border-top">
+                    <a className="link" onClick={this.toggleCreate}>Create a new dashboard</a>
                 </div>
             </div>
         );
@@ -144,9 +144,11 @@ var AddToDashboardPopover = React.createClass({
 
         return (
             <form className="Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset">
+                <div className="Form-offset flex align-center">
                     <h3>Create a new dashboard</h3>
-                    <a onClick={this.toggleCreate}>X</a>
+                    <a className="text-grey-3" onClick={this.toggleCreate}>
+                        <CloseIcon width="16px" height="16px"/>
+                    </a>
                 </div>
 
                 <FormField
@@ -193,7 +195,7 @@ var AddToDashboardPopover = React.createClass({
                 <div className="inline-block">{message}</div>
                 <a href={link}>Let me check it out.</a>
             </div>
-        )    
+        )
     },
     render: function() {
         var content;
