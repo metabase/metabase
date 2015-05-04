@@ -446,22 +446,22 @@
     transition: opacity .3s linear;
 }
 
-.Transition-qb-sqlbutton-enter {
+.Transition-qb-querybutton-enter {
     opacity: 0.01;
     transition: opacity .3s linear !important;
 }
 
-.Transition-qb-sqlbutton-enter-active {
-    opacity: 1;
-    transition: opacity .3s linear .3s !important;
-}
-
-.Transition-qb-sqlbutton-leave {
+.Transition-qb-querybutton-enter-active {
     opacity: 1;
     transition: opacity .3s linear !important;
 }
 
-.Transition-qb-sqlbutton-leave-active {
+.Transition-qb-querybutton-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-querybutton-leave-active {
     opacity: 0.01;
     transition: opacity .3s linear !important;
 }
