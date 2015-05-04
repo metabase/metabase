@@ -1,10 +1,13 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require [metabase.db :refer :all]
+  (:require [clojure.core.match :refer [match]]
+            [metabase.db :refer :all]
+            [metabase.driver.interface :as i]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare add-implicit-breakout-order-by
          get-special-column-info
+         preprocess-cumulative-sum
          preprocess-structured
          remove-empty-clauses)
 
@@ -20,9 +23,14 @@
     :native query))
 
 (defn preprocess-structured [query]
-  (update-in query [:query] #(->> %
-                                  remove-empty-clauses
-                                  add-implicit-breakout-order-by)))
+  (let [pp (update-in query [:query] #(->> %
+                                           remove-empty-clauses
+                                           add-implicit-breakout-order-by
+                                           preprocess-cumulative-sum))]
+    (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
+                                 (with-out-str (clojure.pprint/pprint pp)) "\n"
+                                 "*******************************************************\n"))
+    pp))
 
 
 ;; ## PREPROCESSOR FNS
@@ -63,6 +71,63 @@
                          [field-id "ascending"]))
                  (apply conj (or order-by-subclauses []))
                  (assoc query :order_by)))))
+
+
+;; ### PREPROCESS-CUMULATIVE-SUM
+
+(defn preprocess-cumulative-sum
+  "`cum_sum` queries are a special case, since they're implemented in Clojure-land. Check to see if we're doing a `cum_sum` aggregation,
+   and if so, rewrite the query as needed, run it, and do post processing."
+  [{aggregation :aggregation, :as query}]
+  (match aggregation
+    ["cum_sum" field-id] (assoc query
+                                :cum_sum     true
+                                :aggregation ["rows"]
+                                :fields      [field-id])
+    _                    query))
+
+
+;; ## POSTPROCESSOR FNS
+
+;; ### POST-PROCESS-CUMULATIVE-SUM
+
+(defn post-process-cumulative-sum
+  "Cumulative sum the values of the aggregate `Field` in RESULTS."
+  {:arglists '([driver query results])}
+  [driver {cumulative-sum? :cum_sum, :as query} {data :data, :as results}]
+  ;; (println (colorize.core/magenta "---------------------------------------- POSTPROCESSING: ----------------------------------------\n"
+  ;;                                 (with-out-str (clojure.pprint/pprint query)) "\n"
+  ;;                                 "=================================================================================================\n"
+  ;;                                 (with-out-str (clojure.pprint/pprint results)) "\n"
+  ;;                                 "-------------------------------------------------------------------------------------------------\n"))
+  (if-not cumulative-sum? results
+          (let [[field-id]   (:fields query)
+                _            (assert (integer? field-id))
+                ;; Determine the index of the cum_sum field by matching field-id in the result columns
+                field-index  (->> (:cols data)
+                                  (map-indexed (fn [i column]
+                                                 (when (= (:id column) field-id)
+                                                   i)))
+                                  (filter identity)
+                                  first)
+                _            (assert (integer? field-index))
+                ;; Make a sequence of cumulative sum values for each row
+                rows         (:rows data)
+                values       (->> rows
+                                  (map #(nth % field-index))
+                                  (reductions +))]
+            ;; Replace the value in each row
+            (->> (map (fn [row value]
+                        (assoc (vec row) field-index value))
+                      rows values)
+                 (assoc-in results [:data :rows])))))
+
+(defn post-process [driver query results]
+  (case (keyword (:type query))
+    :native results
+    :query  (let [query (:query query)]
+              (->> results
+                   (post-process-cumulative-sum driver query)))))
 
 
 ;; # COMMON ANNOTATION FNS

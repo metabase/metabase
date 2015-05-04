@@ -127,8 +127,25 @@
                       "sum" {$sum (field-id->$string field-id)}}}
              {$project {"_id" false, "sum" true}}))
 
-(defaggregation ["cum_sum" field-id]
-  nil) ; TODO
+(def db
+  (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
+
+(def users-table
+  (delay (sel :one Table :name "users" :db_id (:id @db))))
+
+(def users-id-field
+  (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
+
+
+(defn x []
+  (driver/process-query
+   {:type     :query
+    :database (:id @db)
+    :query    {:limit nil,
+               :source_table (:id @users-table)
+               :filter [nil nil],
+               :breakout [nil],
+               :aggregation ["cum_sum" (:id @users-id-field)]}}))
 
 (defmacro match-aggregation [aggregation]
   `(match ~aggregation
@@ -180,6 +197,12 @@
 (defclause :breakout field-ids
   nil)
 
+;; #### cum_sum
+;; Don't need to do anything here <3
+(defclause :cum_sum _
+  nil)
+
+;; ### fields
 ;; TODO - this still returns _id, even if we don't ask for it :/
 (defclause :fields field-ids
   `[(fields ~(mapv field-id->kw field-ids))])

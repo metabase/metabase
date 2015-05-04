@@ -125,8 +125,11 @@
   [query]
   {:pre [(map? query)]}
   (binding [qp/*query* query]
-    (i/process-query (database-id->driver (:database query))
-                     (qp/preprocess query))))
+    (let [driver  (database-id->driver (:database query))
+          query   (qp/preprocess query)]
+      (->> query
+           (i/process-query driver)
+           (qp/post-process driver query)))))
 
 
 ;; ## Query Execution Stuff

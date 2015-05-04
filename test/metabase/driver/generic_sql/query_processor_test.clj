@@ -122,25 +122,6 @@
                                  :breakout [nil]
                                  :limit nil}}))
 
-
-;; # POST PROCESSING TESTS
-
-;; ## CUMULATIVE SUM
-
-;; ### Simple cumulative sum w/o any breakout
-(expect {:status :completed
-         :row_count 15
-         :data {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
-                :columns ["ID"]
-                :cols [{:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :query {:limit nil
-                                 :source_table (table->id :users)
-                                 :filter [nil nil]
-                                 :breakout [nil]
-                                 :aggregation ["cum_sum" (field->id :users :id)]}}))
-
 ;; ### Cumulative sum w/ a breakout field
 (expect {:status :completed
          :row_count 15

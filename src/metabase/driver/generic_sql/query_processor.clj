@@ -15,10 +15,7 @@
 
 
 (declare apply-form
-         log-query
-         post-process
-         query-is-cumulative-sum?
-         apply-cumulative-sum)
+         log-query)
 
 ;; # INTERFACE
 
@@ -46,7 +43,6 @@
   (try
     (->> (process query)
          eval
-         (post-process query)
          (annotate/annotate query))
     (catch java.sql.SQLException e
       {:status :failed
@@ -95,9 +91,7 @@
                            "count"    `(aggregate (~'count ~field) :count)
                            "distinct" `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
                            "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
-                           "sum"      `(aggregate (~'sum ~field) :sum)
-                           "cum_sum"  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
-                                        (group ~field)])))) ; cumulative sum happens in post-processing (see below)
+                           "sum"      `(aggregate (~'sum ~field) :sum))))) ; cumulative sum happens in post-processing (see below)
 
 ;; ### `:breakout`
 ;; ex.
@@ -107,6 +101,12 @@
   (let [field-names (map field-id->kw field-ids)]
     `[(group  ~@field-names)
       (fields ~@field-names)]))
+
+;; ### :cum_sum
+;; Nothing to do here since this is just used internally to mark the we're doing a cumulative sum aggregation,
+;; and all functionality is handled by pre-processing / post-processing in metabase.driver.query-processor
+(defmethod apply-form :cum_sum [_]
+  nil)
 
 ;; ### `:fields`
 ;; ex.
@@ -196,38 +196,6 @@
 ;; ### `:source_table`
 (defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
   nil)
-
-
-;; ## Post Processing
-
-(defn- post-process
-  "Post-processing stage for query results."
-  [{query :query} results]
-  (cond
-    (query-is-cumulative-sum? query) (apply-cumulative-sum query results)
-    :else                            (do results)))
-
-;; ### Cumulative sum
-;; Cumulative sum is a special case. We can't do it in the DB because it's not a SQL function; thus we do it as a post-processing step.
-
-(defn- query-is-cumulative-sum?
-  "Is this a cumulative sum query?"
-  [query]
-  (some->> (:aggregation query)
-           first
-           (= "cum_sum")))
-
-(defn- apply-cumulative-sum
-  "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  {:arglists '([query results])}
-  [{[_ field-id] :aggregation} results]
-  (let [field (field-id->kw field-id)
-        values (->> results          ; make a sequence of cumulative sum values for each row
-                    (map field)
-                    (reductions +))]
-    (map (fn [row value]              ; replace the value for each row with the cumulative sum value
-           (assoc row field value))
-         results values)))
 
 
 ;; ## Debugging Functions (Internal)

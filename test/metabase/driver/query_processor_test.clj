@@ -236,6 +236,32 @@
                :table_id (->table-id :checkins)
                :id (->field-id :checkins :user_id)}))
 
+
+;; #### users
+(defn users-col [col]
+  (case col
+    :id         {:extra_info {}
+                 :special_type :id
+                 :base_type (id-field-type *driver-data*)
+                 :description nil
+                 :name (format-name *driver-data* "id")
+                 :table_id (->table-id :users)
+                 :id (->field-id :users :id)}
+    :name       {:extra_info {}
+                 :special_type nil
+                 :base_type :TextField
+                 :description nil
+                 :name (format-name *driver-data* "name")
+                 :table_id (->table-id :users)
+                 :id (->field-id :users :name)}
+    :last_login {:extra_info {}
+                 :special_type :category
+                 :base_type :DateTimeField
+                 :description nil
+                 :name (format-name *driver-data* "last_login")
+                 :table_id (->table-id :users)
+                 :id (->field-id :users :last_login)}))
+
 ;; # THE TESTS THEMSELVES (!)
 
 ;; ### "COUNT" AGGREGATION
@@ -475,3 +501,19 @@
    :breakout [nil]
    :limit 10
    :order_by [[(->field-id :venues :id) "ascending"]]})
+
+
+;; # POST PROCESSING TESTS
+
+;; ## CUMULATIVE SUM
+
+;; ### Simple cumulative sum w/o any breakout
+(qp-expect-with-all-drivers
+    {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
+     :columns (->columns "id")
+     :cols [(users-col :id)]}
+  {:limit nil
+   :source_table (->table-id :users)
+   :filter [nil nil]
+   :breakout [nil]
+   :aggregation ["cum_sum" (->field-id :users :id)]})
