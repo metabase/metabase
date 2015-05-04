@@ -1,5 +1,5 @@
 'use strict';
-/*global SelectionModule, DatabaseSelector*/
+/*global ace, RunButton, SelectionModule, DatabaseSelector*/
 
 var NativeQueryEditor = React.createClass({
     displayName: 'NativeQueryEditor',
@@ -12,12 +12,15 @@ var NativeQueryEditor = React.createClass({
         notifyQueryModifiedFn: React.PropTypes.func.isRequired,
         autocompleteResultsFn: React.PropTypes.func.isRequired
     },
+
     getInitialState: function() {
         return {};
     },
+
     componentDidMount: function() {
         this.loadAceEditor();
     },
+
     loadAceEditor: function() {
         var editor = ace.edit("id_sql");
 
@@ -72,10 +75,11 @@ var NativeQueryEditor = React.createClass({
                 }, function (error) {
                     console.log('error getting autocompletion data', error);
                     callback(null, []);
-                })
+                });
             }
         });
     },
+
     setDatabase: function(databaseId) {
         // check if this is the same db or not
         if (databaseId !== this.props.query.database) {
@@ -89,12 +93,15 @@ var NativeQueryEditor = React.createClass({
             this.props.notifyQueryModifiedFn(query);
         }
     },
+
     canRunQuery: function() {
         return (this.props.query.database !== undefined && this.props.query.native.query !== "");
     },
+
     runQuery: function() {
         this.props.runFn(this.props.query);
     },
+
     onChange: function(event) {
         if (this.state.editor) {
             var query = this.props.query;
@@ -102,7 +109,8 @@ var NativeQueryEditor = React.createClass({
             this.props.notifyQueryModifiedFn(query);
         }
     },
-    render: function () {
+
+    render: function() {
         //console.log(this.props.query);
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;

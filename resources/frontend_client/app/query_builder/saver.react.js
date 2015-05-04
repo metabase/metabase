@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
+/*global cx, OnClickOutside, FormField, SelectionModule*/
 
 var Saver = React.createClass({
     displayName: 'Saver',
@@ -14,21 +14,21 @@ var Saver = React.createClass({
             buttonText: "Edit",
             saveButtonText: "Save",
             className: 'Button Button--primary'
-        }
+        };
     },
 
-    getInitialState: function () {
+    getInitialState: function() {
         return {
             modalOpen: false,
             errors: null
         };
     },
 
-    handleClickOutside: function () {
+    handleClickOutside: function() {
         this.replaceState(this.getInitialState());
     },
 
-    toggleModal: function () {
+    toggleModal: function() {
         var modalOpen = !this.state.modalOpen;
         this.setState({
             modalOpen: modalOpen
@@ -38,12 +38,12 @@ var Saver = React.createClass({
         });
     },
 
-    isFormReady: function () {
+    isFormReady: function() {
         // TODO: make this work properly
         return true;
     },
 
-    save: function (event) {
+    save: function(event) {
         event.preventDefault();
 
         // make sure that user put in a card name before we close out the form

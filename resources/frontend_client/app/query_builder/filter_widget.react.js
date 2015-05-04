@@ -1,5 +1,5 @@
 'use strict';
-/*global DateFilter, SelectionModule*/
+/*global DateFilter, SelectionModule, CloseIcon*/
 
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
@@ -37,9 +37,9 @@ var FilterWidget = React.createClass({
 
         // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
         var fieldDef;
-        for(var idx in newProps.filterFieldList) {
-            if(newProps.filterFieldList[idx].id === field) {
-                fieldDef = newProps.filterFieldList[idx];
+        for(var i in newProps.filterFieldList) {
+            if(newProps.filterFieldList[i].id === field) {
+                fieldDef = newProps.filterFieldList[i];
             }
         }
 
@@ -110,14 +110,14 @@ var FilterWidget = React.createClass({
         if (operatorInfo.validArgumentsFilters.length !== this.props.filter.length) {
             // looks like our new filter operator expects a different length filter from our current
             filter = [];
-            for(var i = 0; i < operatorInfo.validArgumentsFilters.length + 2; i++) {
+            for(var i=0; i < operatorInfo.validArgumentsFilters.length + 2; i++) {
                 filter[i] = null;
             }
 
             // anything after 2 positions is going to be variable
-            for (var i=0; i < filter.length; i++) {
-                if (this.props.filter.length >= i+1) {
-                    filter[i] = this.props.filter[i];
+            for (var j=0; j < filter.length; j++) {
+                if (this.props.filter.length >= j+1) {
+                    filter[j] = this.props.filter[j];
                 }
             }
 

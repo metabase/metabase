@@ -1,3 +1,5 @@
+'use strict';
+
 var DownloadIcon = React.createClass({
 	getDefaultProps: function() {
 	    return {
@@ -8,7 +10,8 @@ var DownloadIcon = React.createClass({
 			fill: 'currentcolor'
 	    };
   	},
-	render: function () {
+
+	render: function() {
 		return (
 			<svg className={this.props.className} id={this.props.id} viewBox="0 0 32 32" fill={this.props.fill} width={this.props.width} height={this.props.height}>
 	            <path d="M17,16.5 L17,8 L15,8 L15,16.5 L11,16.5 L9.93247919,16.5 L10.6158894,17.3200922 L15.6158894,23.3200922 L16,23.781025 L16.3841106,23.3200922 L21.3841106,17.3200922 L22.0675208,16.5 L21,16.5 L17,16.5 L17,16.5 Z"></path>

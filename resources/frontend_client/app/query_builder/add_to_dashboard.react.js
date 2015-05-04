@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
+/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, AddToDashIcon, ReactCSSTransitionGroup*/
 
 var AddToDashboard = React.createClass({
     displayName: 'AddToDashboard',
@@ -37,7 +37,7 @@ var AddToDashboard = React.createClass({
                         closePopoverFn={this.toggleModal}
                     />
                 </Popover>
-            )
+            );
         }
     },
     render: function () {

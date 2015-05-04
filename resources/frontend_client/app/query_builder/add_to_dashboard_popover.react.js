@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
+/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, CheckIcon, CloseIcon*/
 
 var AddToDashboardPopover = React.createClass({
     displayName: 'AddToDashboardPopover',
@@ -116,7 +116,7 @@ var AddToDashboardPopover = React.createClass({
                     	    <span className="SelectionModule-display">{dash.name}</span>
                         </li>
                     )
-                )
+                );
             }
         }
 
@@ -234,34 +234,37 @@ var AddToDashboardPopover = React.createClass({
                 <div className="inline-block">{message}</div>
                 <a href={link}>Let me check it out.</a>
             </div>
-        )
+        );
     },
 
     render: function() {
-        var content;
+        var content,
+            dashDetails,
+            dashLink;
 
         if (this.state.isCreating) {
             content = this.renderCreateDashboardForm();
         } else if (this.state.newDashSuccess) {
-            var dashDetails = this.state.newDashSuccess;
-            var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashDetails = this.state.newDashSuccess;
+            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
-            content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink)
+            content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink);
 
         } else if (this.state.existingDashSuccess) {
-            var dashDetails = this.state.existingDashSuccess;
-            var dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashDetails = this.state.existingDashSuccess;
+            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
 
             content = this.renderSuccess(this.props.card.name + " was added to " + dashDetails.name, dashLink);
         } else {
             content = this.renderDashboardsList();
         }
+
         return (
             <div>
                 <ReactCSSTransitionGroup transitionName="Transition-popover-state">
                     {content}
                 </ReactCSSTransitionGroup>
             </div>
-        )
+        );
     }
 });

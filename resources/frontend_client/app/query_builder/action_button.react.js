@@ -1,11 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
+/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, CheckIcon*/
 
 var ActionButton = React.createClass({
     displayName: 'ActionButton',
     propTypes: {
         actionFn: React.PropTypes.func.isRequired
     },
+
     getDefaultProps: function() {
         return {
             normalText: "Save",
@@ -15,12 +16,14 @@ var ActionButton = React.createClass({
             className: 'Button'
         };
     },
+
     getInitialState: function () {
         return {
             active: false,
             result: null
         };
     },
+
     resetStateOnTimeout: function() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
@@ -32,7 +35,8 @@ var ActionButton = React.createClass({
             }
         }.bind(this), 5000);
     },
-    onClick: function (event) {
+
+    onClick: function(event) {
         event.preventDefault();
 
         // set state to active
@@ -57,7 +61,8 @@ var ActionButton = React.createClass({
 
         // TODO: timeout on success/failed state to reset back to normal state
     },
-    buttonContent: function () {
+
+    buttonContent: function() {
         if (this.state.active) {
             // TODO: loading spinner
             return this.props.activeText;
@@ -74,6 +79,7 @@ var ActionButton = React.createClass({
             return this.props.normalText;
         }
     },
+
     render: function() {
         var buttonStateClasses = cx({
             'Button--waiting': this.state.active,
@@ -85,7 +91,6 @@ var ActionButton = React.createClass({
             <button className={this.props.className + ' ' + buttonStateClasses} onClick={this.onClick}>
                 {this.buttonContent()}
             </button>
-        )
-
+        );
     }
 });

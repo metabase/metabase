@@ -10,10 +10,10 @@ var QueryVisualizationTable = React.createClass({
     getDefaultProps: function() {
         return {
             maxRows: null
-        }
+        };
     },
 
-    render: function () {
+    render: function() {
         if(!this.props.data) {
             return false;
         }

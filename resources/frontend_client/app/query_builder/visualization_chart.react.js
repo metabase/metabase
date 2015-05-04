@@ -1,5 +1,5 @@
 'use strict';
-/*global */
+/*global CardRenderer*/
 
 var QueryVisualizationChart = React.createClass({
     displayName: 'QueryVisualizationChart',

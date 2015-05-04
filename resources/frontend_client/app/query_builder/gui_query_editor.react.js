@@ -1,7 +1,6 @@
 'use strict';
-/*global SelectionModule, DatabaseSelector*/
+/*global _, cx, FilterWidget, RunButton, SelectionModule, DatabaseSelector*/
 
-// clearVisualizationFn
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 var GuiQueryEditor = React.createClass({
@@ -16,6 +15,7 @@ var GuiQueryEditor = React.createClass({
         runFn: React.PropTypes.func.isRequired,
         notifyQueryModifiedFn: React.PropTypes.func.isRequired
     },
+
     getInitialState: function() {
         return {
             tables: null,
@@ -226,7 +226,7 @@ var GuiQueryEditor = React.createClass({
             queryFilters = query.query.filter;
 
         if (queryFilters.length === 0) {
-            query.query.filter = ["AND", [null, null, null]]
+            query.query.filter = ["AND", [null, null, null]];
         } else {
             queryFilters.push([null, null, null]);
         }
@@ -273,7 +273,7 @@ var GuiQueryEditor = React.createClass({
         return dataset_query;
     },
 
-    renderDbSelector: function () {
+    renderDbSelector: function() {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
                 <div className={this.querySectionClasses}>
@@ -288,7 +288,7 @@ var GuiQueryEditor = React.createClass({
         }
     },
 
-    renderTableSelector: function () {
+    renderTableSelector: function() {
         if (this.state.tables) {
             var sourceTableListOpen = true;
             if(this.props.query.query.source_table) {
@@ -318,7 +318,7 @@ var GuiQueryEditor = React.createClass({
         }
     },
 
-    renderFilterButton: function () {
+    renderFilterButton: function() {
         if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
             return (
                 <a className="ml2" onClick={this.addFilter}>
@@ -331,7 +331,7 @@ var GuiQueryEditor = React.createClass({
         }
     },
 
-    renderBreakouts: function () {
+    renderBreakouts: function() {
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.state.options &&
                 this.state.options.breakout_options.fields.length > 0 &&
@@ -396,7 +396,7 @@ var GuiQueryEditor = React.createClass({
         }
     },
 
-    renderAggregation: function () {
+    renderAggregation: function() {
         // aggregation clause.  must have table details available
         if(this.state.options) {
 
@@ -447,7 +447,7 @@ var GuiQueryEditor = React.createClass({
         }
     },
 
-    renderFilterSelector: function () {
+    renderFilterSelector: function() {
         if (this.state.options && this.props.query.query.filter.length > 0) {
             var component = this;
 
@@ -496,29 +496,28 @@ var GuiQueryEditor = React.createClass({
 
     },
 
-    toggleOpen: function () {
+    toggleOpen: function() {
         var newOpenValue = !this.state.isOpen;
         this.setState({
             isOpen: newOpenValue
         });
     },
 
-    toggleText: function () {
-        var text;
-        this.state.isOpen ? text = 'Hide query' : text = 'Show query';
-        return text;
+    toggleText: function() {
+        return (this.state.isOpen) ? 'Hide query' : 'Show query';
     },
 
-    openStatus: function () {
+    openStatus: function() {
         return (<a href="#" className="QueryToggle" onClick={this.toggleOpen}>{this.toggleText()}</a>);
     },
 
-    render: function () {
+    render: function() {
         var guiBuilderClasses = cx({
             'GuiBuilder': true,
             'GuiBuilder--collapsed': !this.state.isOpen,
             'QueryBuilder-section': true,
-        })
+        });
+
         return (
             <div className={guiBuilderClasses}>
                 {this.openStatus()}

@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SearchBar*/
+/*global cx, OnClickOutside, SearchBar, CloseIcon, CheckIcon*/
 
 var SelectionModule = React.createClass({
     displayName:'SelectionModule',
@@ -15,6 +15,7 @@ var SelectionModule = React.createClass({
         placeholder: React.PropTypes.string
     },
     mixins: [OnClickOutside],
+
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed
         var isInitiallyOpen = this.props.isInitiallyOpen || false;
@@ -26,12 +27,14 @@ var SelectionModule = React.createClass({
             filterTerm: null
         };
     },
-    handleClickOutside: function () {
+
+    handleClickOutside: function() {
         this.setState({
             open: false
         });
     },
-    _enableSearch: function () {
+
+    _enableSearch: function() {
         /*
         not showing search for now
         if(this.props.items.length > this.state.searchThreshold) {
@@ -42,13 +45,15 @@ var SelectionModule = React.createClass({
         */
         return false;
     },
-    _toggleOpen: function () {
+
+    _toggleOpen: function() {
         var open = !this.state.open;
         this.setState({
             open: open
         });
     },
-    _displayCustom: function (values) {
+
+    _displayCustom: function(values) {
         var custom = [];
         this.props.children.forEach(function (element) {
             var newElement = element;
@@ -57,7 +62,8 @@ var SelectionModule = React.createClass({
         });
         return custom;
     },
-    _listItems: function (selection) {
+
+    _listItems: function(selection) {
         var items,
             remove;
 
@@ -83,7 +89,8 @@ var SelectionModule = React.createClass({
             return "Sorry. Something went wrong.";
         }
     },
-    _select: function (item) {
+
+    _select: function(item) {
         var index = this.props.index;
         // send back the item with the specified action
         if (this.props.action) {
@@ -99,7 +106,8 @@ var SelectionModule = React.createClass({
         }
         this._toggleOpen();
     },
-    render: function () {
+
+    render: function() {
         var selection;
         this.props.items.map(function (item) {
             if(item[this.props.selectedKey] === this.props.selectedValue) {
@@ -137,7 +145,7 @@ var SelectionModule = React.createClass({
                 <div onClick={this.props.remove.bind(null, this.props.index)}>
                     <CloseIcon className="ml2" width="12px" height="12px" />
                 </div>
-            )
+            );
         }
 
         return (

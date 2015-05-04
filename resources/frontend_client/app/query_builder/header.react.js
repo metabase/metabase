@@ -1,11 +1,5 @@
 'use strict';
-
-// Title - saved card title, otherwise static default
-// Edit - only shown after Save
-// Save - only shown after Run
-// Download Data - only shown after Run
-// Add to Dashboard - only shown after Save
-// GUI vs SQL mode toggle - 2 mode slider - only visible on initial create (while query empty)
+/*global setTimeout, clearTimeout, ReactCSSTransitionGroup, Saver, ActionButton, Popover, DownloadIcon, QueryModeToggle, AddToDashboard*/
 
 var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
@@ -23,7 +17,7 @@ var QueryHeader = React.createClass({
             origCard: JSON.stringify(this.props.card),
             recentlySaved: false,
             resetOrigCard: false
-        }
+        };
     },
 
     componentWillReceiveProps: function(nextProps) {
@@ -111,7 +105,7 @@ var QueryHeader = React.createClass({
             component.props.setQueryModeFn(mode);
         });
     },
-    permissions: function () {
+    permissions: function() {
         var text;
         switch(this.props.card.public_perms) {
             case 0:

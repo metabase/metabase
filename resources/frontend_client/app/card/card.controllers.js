@@ -1,6 +1,5 @@
 'use strict';
-/*global _*/
-/* global addValidOperatorsToFields*/
+/*global _, document, confirm, QueryHeader, NativeQueryEditor, GuiQueryEditor, ResultQueryEditor, QueryVisualization*/
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', ['corvusadmin.query.services']);
@@ -284,7 +283,7 @@ CardControllers.controller('CardDetail', [
             } else {
                 React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
             }
-        }
+        };
 
         var renderVisualization = function() {
             // ensure rendering model is up to date
@@ -403,7 +402,7 @@ CardControllers.controller('CardDetail', [
         //       because without databases this UI is meaningless
         $scope.$watch('currentOrg', function (org) {
             // we need org always, so we just won't do anything if we don't have one
-            if (!org) {return};
+            if (!org) {return;}
 
             // TODO: while we wait for the databases list we should put something on screen
 

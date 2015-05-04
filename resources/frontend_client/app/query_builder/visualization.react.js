@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, CardRenderer*/
+/*global cx, CardRenderer, QueryVisualizationTable, QueryVisualizationChart*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -14,7 +14,7 @@ var QueryVisualization = React.createClass({
     getInitialState: function() {
         return {
             origQuery: JSON.stringify(this.props.card.dataset_query)
-        }
+        };
     },
 
     componentWillReceiveProps: function(nextProps) {
@@ -22,7 +22,7 @@ var QueryVisualization = React.createClass({
         if (nextProps.isRunning) {
             this.setState({
                 origQuery: JSON.stringify(nextProps.card.dataset_query)
-            })
+            });
         }
     },
 
@@ -61,7 +61,7 @@ var QueryVisualization = React.createClass({
                 displayOptions.push(
                     <option key={i} value={val}>{val}</option>
                 );
-            };
+            }
 
             return (
                 <div className="VisualizationSettings QueryBuilder-section">
@@ -174,7 +174,7 @@ var QueryVisualization = React.createClass({
                     {this.loader()}
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
-            )
+            );
         }
 
         var visualizationClasses = cx({
