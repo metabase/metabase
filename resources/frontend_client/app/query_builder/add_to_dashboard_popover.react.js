@@ -7,6 +7,8 @@ var AddToDashboardPopover = React.createClass({
         card: React.PropTypes.object.isRequired,
         dashboardApi: React.PropTypes.func.isRequired
     },
+    mixins: [OnClickOutside],
+
     getInitialState: function () {
         this.loadDashboardList();
         return {
@@ -15,6 +17,11 @@ var AddToDashboardPopover = React.createClass({
             errors: null
         };
     },
+
+    handleClickOutside: function() {
+        this.props.closePopoverFn();
+    },
+
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
@@ -28,12 +35,14 @@ var AddToDashboardPopover = React.createClass({
             // TODO: do something relevant here
         });
     },
+
     toggleCreate: function() {
         var state = this.getInitialState();
         state.dashboards = this.state.dashboards;
         state.isCreating = !this.state.isCreating;
         this.replaceState(state);
     },
+
     addToExistingDash: function(dashboard, newDash) {
         var isNewDash = (newDash !== undefined) ? newDash : false;
 
@@ -62,6 +71,7 @@ var AddToDashboardPopover = React.createClass({
             });
         });
     },
+
     createNewDash: function(event) {
         event.preventDefault();
 
@@ -87,6 +97,7 @@ var AddToDashboardPopover = React.createClass({
             });
         });
     },
+
     renderDashboardsList: function() {
         var dashboardsList = [];
         if (this.state.dashboards) {
@@ -115,6 +126,7 @@ var AddToDashboardPopover = React.createClass({
             </div>
         );
     },
+
     renderCreateDashboardForm: function() {
         // TODO: hard coding values :(
         var privacyOptions = [
@@ -188,7 +200,8 @@ var AddToDashboardPopover = React.createClass({
             </form>
         );
     },
-    renderSuccess: function (message, link) {
+
+    renderSuccess: function(message, link) {
         return (
             <div className="Success py4 flex flex-column align-center text-success">
                 <CheckIcon width="64px" height="64px" />
@@ -197,6 +210,7 @@ var AddToDashboardPopover = React.createClass({
             </div>
         )
     },
+
     render: function() {
         var content;
 
