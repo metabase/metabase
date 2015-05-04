@@ -121,7 +121,7 @@ var QueryVisualization = React.createClass({
         // todo: this is always showing
         if (!this.props.result) {
             viz = (
-                <div className="flex full align-center text-brand text-centered">
+                <div className="flex full layout-centered text-brand">
                     <h1>If you give me some data I can show you something cool.  Run a Query!</h1>
                 </div>
             );
@@ -161,7 +161,7 @@ var QueryVisualization = React.createClass({
                     }
 
                     viz = (
-                        <div className="Visualization--scalar flex full align-center">
+                        <div className="Visualization--scalar flex full layout-centered">
                             <span>{scalarValue}</span>
                         </div>
                     );
@@ -184,7 +184,7 @@ var QueryVisualization = React.createClass({
 
         if(this.props.isRunning) {
             loading = (
-                <div className="Loading absolute top left bottom right flex align-center">
+                <div className="Loading absolute top left bottom right flex layout-centered">
                     <span dangerouslySetInnerHtml={{__html: this.svg()}}></span>
                     <span className="Loading-message text-brand text-uppercase">Loading...</span>
                 </div>
