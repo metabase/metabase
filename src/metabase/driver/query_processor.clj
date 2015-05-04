@@ -30,9 +30,9 @@
                                            remove-empty-clauses
                                            add-implicit-breakout-order-by
                                            preprocess-cumulative-sum))]
-    (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
-                                 (with-out-str (clojure.pprint/pprint pp)) "\n"
-                                 "*******************************************************\n"))
+    ;; (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
+    ;;                              (with-out-str (clojure.pprint/pprint pp)) "\n"
+    ;;                              "*******************************************************\n"))
     pp))
 
 

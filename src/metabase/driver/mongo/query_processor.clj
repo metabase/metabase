@@ -90,7 +90,7 @@
 (defn aggregate [& forms]
   `(mc/aggregate *mongo-connection* ~*collection-name* [~@(when *constraints*
                                                          [{$match *constraints*}])
-                                                     ~@forms]))
+                                                        ~@(filter identity forms)]))
 
 (defn field-id->$string [field-id]
   (format "$%s" (name (field-id->kw field-id))))
@@ -168,7 +168,7 @@
                                    :aggregation ["count"]
                                    :breakout [user-id venue-id]
                                    :order_by [[user-id "ascending"]]
-                                   :limit nil}})))
+                                   :limit 10}})))
 
 
 ;; ## BREAKOUT
@@ -183,7 +183,7 @@
     ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
     ["sum" field-id] ["sum" {$sum (field-id->$string field-id)}]))
 
-(defn do-breakout [{aggregation :aggregation, field-ids :breakout, order-by :order_by, :as query}]
+(defn do-breakout [{aggregation :aggregation, field-ids :breakout, order-by :order_by, limit :limit, :as query}]
   {:pre [(sequential? field-ids)
          (every? integer? field-ids)]}
   (let [[ag-field ag-clause] (breakout-aggregation->field-name+group-by-clause aggregation)
@@ -207,7 +207,9 @@
                               (apply (partial sorted-map)))}
                {$project (merge {"_id"    false
                                  ag-field true}
-                                (zipmap fields (repeat true)))})))
+                                (zipmap fields (repeat true)))}
+               (when limit
+                 {$limit limit}))))
 
 ;; ## PROCESS-STRUCTURED
 
@@ -343,5 +345,4 @@
      ~'_ nil))
 
 (defn apply-clause [clause]
-  (println "APPLYING CLAUSE: " clause)
   (match-clause clause))

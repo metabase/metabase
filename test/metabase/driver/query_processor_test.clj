@@ -511,6 +511,40 @@
    :order_by [[(id :checkins :user_id) "ascending"]]
    :limit nil})
 
+;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
+;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
+(qp-expect-with-all-drivers
+    {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
+     :columns [(format-name *driver-dataset* "user_id")
+               (format-name *driver-dataset* "venue_id")
+               "count"]
+     :cols [(checkins-col :user_id)
+            (checkins-col :venue_id)
+            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :checkins)
+   :limit 10
+   :aggregation ["count"]
+   :breakout [(id :checkins :user_id)
+              (id :checkins :venue_id)]})
+
+;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
+;; `breakout` should not implicitly order by any fields specified in `order_by`
+(qp-expect-with-all-drivers
+    {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]],
+     :columns [(format-name *driver-dataset* "user_id")
+               (format-name *driver-dataset* "venue_id")
+               "count"]
+     :cols [(checkins-col :user_id)
+            (checkins-col :venue_id)
+            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :checkins)
+   :limit 10
+   :aggregation ["count"]
+   :breakout [(id :checkins :user_id)
+              (id :checkins :venue_id)]
+   :order_by [[(id :checkins :user_id) "descending"]
+              [(id :checkins :venue_id) "ascending"]]})
+
 
 ;; # POST PROCESSING TESTS
 
