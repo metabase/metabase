@@ -127,25 +127,25 @@
                       "sum" {$sum (field-id->$string field-id)}}}
              {$project {"_id" false, "sum" true}}))
 
-(def db
-  (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
+;; (def db
+;;   (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
 
-(def users-table
-  (delay (sel :one Table :name "users" :db_id (:id @db))))
+;; (def users-table
+;;   (delay (sel :one Table :name "users" :db_id (:id @db))))
 
-(def users-id-field
-  (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
+;; (def users-id-field
+;;   (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
 
 
-(defn x []
-  (driver/process-query
-   {:type     :query
-    :database (:id @db)
-    :query    {:limit nil,
-               :source_table (:id @users-table)
-               :filter [nil nil],
-               :breakout [nil],
-               :aggregation ["cum_sum" (:id @users-id-field)]}}))
+;; (defn x []
+;;   (driver/process-query
+;;    {:type     :query
+;;     :database (:id @db)
+;;     :query    {:limit nil,
+;;                :source_table (:id @users-table)
+;;                :filter [nil nil],
+;;                :breakout [nil],
+;;                :aggregation ["cum_sum" (:id @users-id-field)]}}))
 
 (defmacro match-aggregation [aggregation]
   `(match ~aggregation

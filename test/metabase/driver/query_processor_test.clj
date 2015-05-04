@@ -11,7 +11,7 @@
 
 (def ^:dynamic *db* "Bound to `Database` for the current driver inside body of `with-driver`.")
 (def ^:dynamic *db-id* "Bound to ID of `Database` for the current driver inside body of `with-driver`.")
-(def ^:dynamic *driver-data*)
+(def ^:dynamic *driver-dataset*)
 
 (defprotocol DriverData
   (db [this]
@@ -56,7 +56,7 @@
   (id-field-type [_]
     :BigIntegerField))
 
-(def driver-name->driver-data
+(def driver-name->driver-dataset
   {:mongo       (MongoDriverData.)
    :generic-sql (GenericSqlDriverData.)})
 
@@ -71,9 +71,9 @@
   [driver-name & body]
   {:pre [(keyword? driver-name)
          (contains? valid-driver-names driver-name)]}
-  `(let [driver-data# (driver-name->driver-data ~driver-name)
+  `(let [driver-data# (driver-name->driver-dataset ~driver-name)
          db#          (db driver-data#)]
-     (binding [*driver-data* driver-data#
+     (binding [*driver-dataset* driver-data#
                *db* db#
                *db-id* (:id db#)]
        (assert (and (integer? *db-id*)
@@ -97,30 +97,23 @@
 (defn ->table
   "Given keyword TABLE-NAME, fetch corresponding `Table` in `*db*`."
   [table-name]
-  {:pre [*driver-data*]
+  {:pre [*driver-dataset*]
    :post [(map? %)]}
-  (table-name->table *driver-data* table-name))
+  (table-name->table *driver-dataset* table-name))
 
-(defn ->table-id [table-name]
-  {:pre [*driver-data*]
-   :post [(integer? %)]}
-  (:id (->table table-name)))
-
-;; (def ^{:arglists '([table-name])} table-name->id
-;;   "Given keyword TABLE-NAME, fetch ID of corresponding `Table` in `*db*`."
-;;   (let [-table-name->id (memoize (fn [db-id table-name]
-;;                                    {:pre [(integer? db-id)
-;;                                           (keyword? table-name)]
-;;                                     :post [(integer? %)]}
-;;                                    (sel :one :id Table :db_id db-id :name (name table-name))))]
-;;     (fn [table-name]
-;;       {:pre [(integer? *db-id*)]}
-;;       (-table-name->id *db-id* table-name))))
-
-(defn ->field-id [table-name field-name]
-  {:pre [*driver-data*]
-   :post [(integer? %)]}
-  (field-name->id *driver-data* table-name field-name))
+(defn id
+  "Return the ID of a `Table` or `Field` for the current driver data set."
+  ([table-name]
+   {:pre [*driver-dataset*
+          (keyword? table-name)]
+    :post [(integer? %)]}
+   (:id (->table table-name)))
+  ([table-name field-name]
+   {:pre [*driver-dataset*
+          (keyword? table-name)
+          (keyword? field-name)]
+    :post [(integer? %)]}
+   (field-name->id *driver-dataset* table-name field-name)))
 
 
 ;; ## Driver-Independent QP Tests
@@ -141,7 +134,7 @@
 (defn ->columns
   "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
   [& names]
-  (mapv (partial format-name *driver-data*)
+  (mapv (partial format-name *driver-dataset*)
         names))
 
 ;; ### Predefinied Column Fns
@@ -153,48 +146,48 @@
   (case col
     :id          {:extra_info {}
                   :special_type :id
-                  :base_type (id-field-type *driver-data*)
+                  :base_type (id-field-type *driver-dataset*)
                   :description nil
-                  :name (format-name *driver-data* "id")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :id)}
-    :category_id {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :categories)}
+                  :name (format-name *driver-dataset* "id")
+                  :table_id (id :venues)
+                  :id (id :venues :id)}
+    :category_id {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :categories)}
                                   {})
-                  :special_type (if (fks-supported? *driver-data*) :fk
+                  :special_type (if (fks-supported? *driver-dataset*) :fk
                                     :category)
                   :base_type :IntegerField
                   :description nil
-                  :name (format-name *driver-data* "category_id")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :category_id)}
+                  :name (format-name *driver-dataset* "category_id")
+                  :table_id (id :venues)
+                  :id (id :venues :category_id)}
     :price       {:extra_info {}
                   :special_type :category
                   :base_type :IntegerField
                   :description nil
-                  :name (format-name *driver-data* "price")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :price)}
+                  :name (format-name *driver-dataset* "price")
+                  :table_id (id :venues)
+                  :id (id :venues :price)}
     :longitude   {:extra_info {}
                   :special_type :longitude,
                   :base_type :FloatField,
                   :description nil
-                  :name (format-name *driver-data* "longitude")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :longitude)}
+                  :name (format-name *driver-dataset* "longitude")
+                  :table_id (id :venues)
+                  :id (id :venues :longitude)}
     :latitude    {:extra_info {}
                   :special_type :latitude
                   :base_type :FloatField
                   :description nil
-                  :name (format-name *driver-data* "latitude")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :latitude)}
+                  :name (format-name *driver-dataset* "latitude")
+                  :table_id (id :venues)
+                  :id (id :venues :latitude)}
     :name        {:extra_info {}
                   :special_type nil
                   :base_type :TextField
                   :description nil
-                  :name (format-name *driver-data* "name")
-                  :table_id (->table-id :venues)
-                  :id (->field-id :venues :name)}))
+                  :name (format-name *driver-dataset* "name")
+                  :table_id (id :venues)
+                  :id (id :venues :name)}))
 
 (defn venues-cols []
   (mapv venue-col [:id :category_id :price :longitude :latitude :name]))
@@ -202,39 +195,39 @@
 ;; #### categories
 (defn categories-col [col]
   (case col
-    :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
-           :table_id (->table-id :categories), :id (->field-id :categories :id)}
-    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
-           :table_id (->table-id :categories), :id (->field-id :categories :name)}))
+    :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-dataset*), :description nil, :name (format-name *driver-dataset* "id")
+           :table_id (id :categories), :id (id :categories :id)}
+    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-dataset* "name")
+           :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### checkins
 (defn checkins-col [col]
   (case col
     :id       {:extra_info {}
                :special_type :id
-               :base_type (id-field-type *driver-data*)
+               :base_type (id-field-type *driver-dataset*)
                :description nil
-               :name (format-name *driver-data* "id")
-               :table_id (->table-id :checkins)
-               :id (->field-id :checkins :id)}
-    :venue_id {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :venues)}
+               :name (format-name *driver-dataset* "id")
+               :table_id (id :checkins)
+               :id (id :checkins :id)}
+    :venue_id {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :venues)}
                                {})
-               :special_type (when (fks-supported? *driver-data*)
+               :special_type (when (fks-supported? *driver-dataset*)
                                :fk)
                :base_type :IntegerField
                :description nil
-               :name (format-name *driver-data* "venue_id")
-               :table_id (->table-id :checkins)
-               :id (->field-id :checkins :venue_id)}
-    :user_id  {:extra_info (if (fks-supported? *driver-data*) {:target_table_id (->table-id :users)}
+               :name (format-name *driver-dataset* "venue_id")
+               :table_id (id :checkins)
+               :id (id :checkins :venue_id)}
+    :user_id  {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :users)}
                                {})
-               :special_type (if (fks-supported? *driver-data*) :fk
+               :special_type (if (fks-supported? *driver-dataset*) :fk
                                  :category)
                :base_type :IntegerField
                :description nil
-               :name (format-name *driver-data* "user_id")
-               :table_id (->table-id :checkins)
-               :id (->field-id :checkins :user_id)}))
+               :name (format-name *driver-dataset* "user_id")
+               :table_id (id :checkins)
+               :id (id :checkins :user_id)}))
 
 
 ;; #### users
@@ -242,25 +235,25 @@
   (case col
     :id         {:extra_info {}
                  :special_type :id
-                 :base_type (id-field-type *driver-data*)
+                 :base_type (id-field-type *driver-dataset*)
                  :description nil
-                 :name (format-name *driver-data* "id")
-                 :table_id (->table-id :users)
-                 :id (->field-id :users :id)}
+                 :name (format-name *driver-dataset* "id")
+                 :table_id (id :users)
+                 :id (id :users :id)}
     :name       {:extra_info {}
                  :special_type nil
                  :base_type :TextField
                  :description nil
-                 :name (format-name *driver-data* "name")
-                 :table_id (->table-id :users)
-                 :id (->field-id :users :name)}
+                 :name (format-name *driver-dataset* "name")
+                 :table_id (id :users)
+                 :id (id :users :name)}
     :last_login {:extra_info {}
                  :special_type :category
                  :base_type :DateTimeField
                  :description nil
-                 :name (format-name *driver-data* "last_login")
-                 :table_id (->table-id :users)
-                 :id (->field-id :users :last_login)}))
+                 :name (format-name *driver-dataset* "last_login")
+                 :table_id (id :users)
+                 :id (id :users :last_login)}))
 
 ;; # THE TESTS THEMSELVES (!)
 
@@ -274,7 +267,7 @@
              :id nil
              :table_id nil
              :description nil}]}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["count"]
    :breakout [nil]
@@ -290,9 +283,9 @@
              :id nil
              :table_id nil
              :description nil}]}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter [nil nil]
-   :aggregation ["sum" (->field-id :venues :price)]
+   :aggregation ["sum" (id :venues :price)]
    :breakout [nil]
    :limit nil})
 
@@ -306,9 +299,9 @@
              :id nil
              :table_id nil
              :description nil}]}
-  {:source_table (->table-id :checkins)
+  {:source_table (id :checkins)
    :filter [nil nil]
-   :aggregation ["distinct" (->field-id :checkins :user_id)]
+   :aggregation ["distinct" (id :checkins :user_id)]
    :breakout [nil]
    :limit nil})
 
@@ -328,12 +321,12 @@
             [10 20 2 -118.292 34.1046 "Fred 62"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter nil
    :aggregation ["rows"]
    :breakout [nil]
    :limit 10
-   :order_by [[(->field-id :venues :id) "ascending"]]})
+   :order_by [[(id :venues :id) "ascending"]]})
 
 
 ;; ## "PAGE" CLAUSE
@@ -347,15 +340,15 @@
             [4 "Asian"]
             [5 "BBQ"]]
      :columns (->columns "id" "name")
-     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-data*), :description nil, :name (format-name *driver-data* "id")
-             :table_id (->table-id :categories), :id (->field-id :categories :id)}
-            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-data* "name")
-             :table_id (->table-id :categories), :id (->field-id :categories :name)}]}
-  {:source_table (->table-id :categories)
+     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-dataset*), :description nil, :name (format-name *driver-dataset* "id")
+             :table_id (id :categories), :id (id :categories :id)}
+            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-dataset* "name")
+             :table_id (id :categories), :id (id :categories :name)}]}
+  {:source_table (id :categories)
    :aggregation ["rows"]
    :page {:items 5
           :page 1}
-   :order_by [[(->field-id :categories :name) "ascending"]]})
+   :order_by [[(id :categories :name) "ascending"]]})
 
 ;; ### PAGE - Get the second page
 (qp-expect-with-all-drivers
@@ -367,11 +360,11 @@
      :columns (->columns "id" "name")
      :cols [(categories-col :id)
             (categories-col :name)]}
-  {:source_table (->table-id :categories)
+  {:source_table (id :categories)
    :aggregation ["rows"]
    :page {:items 5
           :page 2}
-   :order_by [[(->field-id :categories :name) "ascending"]]})
+   :order_by [[(id :categories :name) "ascending"]]})
 
 
 ;; ## "ORDER_BY" CLAUSE
@@ -382,15 +375,15 @@
      :cols [(checkins-col :venue_id)
             (checkins-col :user_id)
             (checkins-col :id)]}
-  {:source_table (->table-id :checkins)
+  {:source_table (id :checkins)
    :aggregation ["rows"]
    :limit 10
-   :fields [(->field-id :checkins :venue_id)
-            (->field-id :checkins :user_id)
-            (->field-id :checkins :id)]
-   :order_by [[(->field-id :checkins :venue_id) "ascending"]
-              [(->field-id :checkins :user_id) "descending"]
-              [(->field-id :checkins :id) "ascending"]]})
+   :fields [(id :checkins :venue_id)
+            (id :checkins :user_id)
+            (id :checkins :id)]
+   :order_by [[(id :checkins :venue_id) "ascending"]
+              [(id :checkins :user_id) "descending"]
+              [(id :checkins :id) "ascending"]]})
 
 
 ;; ## "FILTER" CLAUSE
@@ -404,10 +397,10 @@
             [81 40 4 -73.9533 40.7677 "Tanoshi Sushi & Sake Bar"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter ["AND"
-            [">" (->field-id :venues :id) 50]
-            [">=" (->field-id :venues :price) 4]]
+            [">" (id :venues :id) 50]
+            [">=" (id :venues :price) 4]]
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
@@ -418,11 +411,11 @@
             [23 50 2 -122.42 37.765 "Taqueria Los Coyotes"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter ["AND"
-            ["<" (->field-id :venues :id) 24]
-            [">" (->field-id :venues :id) 20]
-            ["!=" (->field-id :venues :id) 22]]
+            ["<" (id :venues :id) 24]
+            [">" (id :venues :id) 20]
+            ["!=" (id :venues :id) 22]]
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
@@ -433,8 +426,8 @@
             [22 50 1 -122.484 37.7822 "Gordo Taqueria"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
-   :filter ["BETWEEN" (->field-id :venues :id) 21 22]
+  {:source_table (id :venues)
+   :filter ["BETWEEN" (id :venues :id) 21 22]
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
@@ -447,10 +440,10 @@
             [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter ["OR"
-            ["<=" (->field-id :venues :id) 3]
-            ["=" (->field-id :venues :id) 5]]
+            ["<=" (id :venues :id) 3]
+            ["=" (id :venues :id) 5]]
    :aggregation ["rows"]
    :breakout [nil]
    :limit nil})
@@ -464,10 +457,10 @@
     {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
      :columns (venues-columns)
      :cols (venues-cols)}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter ["INSIDE"
-            (->field-id :venues :latitude)
-            (->field-id :venues :longitude)
+            (id :venues :latitude)
+            (id :venues :longitude)
             10.0649
             -165.379
             10.0641
@@ -493,14 +486,14 @@
      :columns (->columns "name" "id")
      :cols [(venue-col :name)
             (venue-col :id)]}
-  {:source_table (->table-id :venues)
+  {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["rows"]
-   :fields [(->field-id :venues :name)
-            (->field-id :venues :id)]
+   :fields [(id :venues :name)
+            (id :venues :id)]
    :breakout [nil]
    :limit 10
-   :order_by [[(->field-id :venues :id) "ascending"]]})
+   :order_by [[(id :venues :id) "ascending"]]})
 
 
 ;; # POST PROCESSING TESTS
@@ -513,7 +506,7 @@
      :columns (->columns "id")
      :cols [(users-col :id)]}
   {:limit nil
-   :source_table (->table-id :users)
+   :source_table (id :users)
    :filter [nil nil]
    :breakout [nil]
-   :aggregation ["cum_sum" (->field-id :users :id)]})
+   :aggregation ["cum_sum" (id :users :id)]})
