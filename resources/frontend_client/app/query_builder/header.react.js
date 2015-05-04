@@ -202,13 +202,19 @@ var QueryHeader = React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions">
-                    {saveButton}
-                    {downloadButton}
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {saveButton}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {downloadButton}
+                    </ReactCSSTransitionGroup>
                     <AddToDashboard
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
                     />
-                    {queryModeToggle}
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-querybutton">
+                        {queryModeToggle}
+                    </ReactCSSTransitionGroup>
                 </div>
             </div>
         );

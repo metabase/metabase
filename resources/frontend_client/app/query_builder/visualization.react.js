@@ -95,7 +95,7 @@ var QueryVisualization = React.createClass({
             return (
                 <div className="VisualizationSettings QueryBuilder-section">
                     Show as:
-                    <label className="Select">
+                    <label className="Select ml2">
                         <select onChange={this.setDisplay} value={this.props.card.display}>
                             {displayOptions}
                         </select>
@@ -118,15 +118,11 @@ var QueryVisualization = React.createClass({
 
     render: function () {
         var viz;
+        // todo: this is always showing
         if (!this.props.result) {
             viz = (
-                <div className="QueryError flex full align-center text-brand">
-                    <div className="QueryError-iconWrapper">
-                        <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-                            <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                        </svg>
-                    </div>
-                    <span className="QueryError-message">If you give me some data I can show you something cool.  Run a Query!</span>
+                <div className="flex full align-center text-brand text-centered">
+                    <h1>If you give me some data I can show you something cool.  Run a Query!</h1>
                 </div>
             );
         } else {

@@ -414,7 +414,7 @@ var GuiQueryEditor = React.createClass({
 
                 aggregationTarget = (
                     <div className="flex align-center">
-                        of
+                        <span className="mx2">of</span>
                         <SelectionModule
                             placeholder="What attribute?"
                             items={this.getAggregationFields(this.props.query.query.aggregation[0])}
