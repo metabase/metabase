@@ -27,11 +27,12 @@ var QueryVisualizationTable = React.createClass({
         for (var i=0; i < rowLimit; i++) {
             var row = this.props.data.rows[i];
 
-            var rowCols = row.map(function (data, idx) {
+            var rowCols = [];
+            for (var k=0; k < row.length; k++) {
                 // TODO: should we be casting all values toString()?
-                var rowVal = (data !== null) ? data.toString() : null;
-                return (<td>{rowVal}</td>);
-            });
+                var rowVal = (row[k] !== null) ? row[k].toString() : null;
+                rowCols.push((<td>{rowVal}</td>));
+            }
 
             tableRows.push((<tr>{rowCols}</tr>));
         }

@@ -37,9 +37,9 @@ var FilterWidget = React.createClass({
 
         // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
         var fieldDef;
-        for(var i in newProps.filterFieldList) {
-            if(newProps.filterFieldList[i].id === field) {
-                fieldDef = newProps.filterFieldList[i];
+        for(var j in newProps.filterFieldList) {
+            if(newProps.filterFieldList[j].id === field) {
+                fieldDef = newProps.filterFieldList[j];
             }
         }
 
@@ -64,8 +64,8 @@ var FilterWidget = React.createClass({
         // it also filters out values like NULL which we don't want in our value options
         if (fieldValues && fieldValues.values) {
             var safeValues = [];
-            for (var idx in fieldValues.values) {
-                var fieldValue = fieldValues.values[idx];
+            for (var idx2 in fieldValues.values) {
+                var fieldValue = fieldValues.values[idx2];
 
                 var safeValue = {};
                 for(var key in fieldValue) {

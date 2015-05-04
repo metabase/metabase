@@ -75,7 +75,7 @@ var Saver = React.createClass({
         }, function(error) {
             component.setState({
                 errors: error
-            })
+            });
         });
     },
 
