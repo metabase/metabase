@@ -386,6 +386,14 @@ CardControllers.controller('CardDetail', [
             }
         };
 
+        $scope.$on('$locationChangeStart', function (event) {
+            // any time we route away from the query builder force unmount our react components to make sure they have a chance
+            // to fully clean themselves up and remove things like popover elements which may be on the screen
+            React.unmountComponentAtNode(document.getElementById('react_qb_header'));
+            React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
+            React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+        });
+
         // TODO: we should get database list first, then do rest of setup
         //       because without databases this UI is meaningless
         $scope.$watch('currentOrg', function (org) {
