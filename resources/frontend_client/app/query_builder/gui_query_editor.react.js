@@ -19,7 +19,8 @@ var GuiQueryEditor = React.createClass({
     getInitialState: function() {
         return {
             tables: null,
-            options: null
+            options: null,
+            isOpen: true
         };
     },
 
@@ -494,10 +495,33 @@ var GuiQueryEditor = React.createClass({
         }
 
     },
-    render: function () {
-        return (
-            <div className="GuiBuilder QueryBuilder-section">
 
+    toggleOpen: function () {
+        var newOpenValue = !this.state.isOpen;
+        this.setState({
+            isOpen: newOpenValue
+        });
+    },
+
+    toggleText: function () {
+        var text;
+        this.state.isOpen ? text = 'Hide query' : text = 'Show query';
+        return text;
+    },
+
+    openStatus: function () {
+        return (<a href="#" className="QueryToggle" onClick={this.toggleOpen}>{this.toggleText()}</a>);
+    },
+
+    render: function () {
+        var guiBuilderClasses = cx({
+            'GuiBuilder': true,
+            'GuiBuilder--collapsed': !this.state.isOpen,
+            'QueryBuilder-section': true,
+        })
+        return (
+            <div className={guiBuilderClasses}>
+                {this.openStatus()}
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderDbSelector()}
                 </ReactCSSTransitionGroup>

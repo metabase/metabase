@@ -122,6 +122,8 @@
 
 .QueryTable-wrapper .Table {
     font-family: "Lato";
+    font-size: 0.76em;
+    line-height: 0.76em;
 }
 
 .QueryTable-wrapper .Table td {
@@ -329,6 +331,17 @@
 
 .GuiBuilder {
     border-bottom: 1px solid #F0F0F0;
+    max-height: 100%;
+}
+
+.GuiBuilder.GuiBuilder--collapsed {
+    overflow: hidden;
+    max-height: 1em;
+}
+
+.QueryToggle {
+    display: flex;
+    justify-content: flex-end;
 }
 
 
