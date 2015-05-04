@@ -126,6 +126,13 @@
     line-height: 0.86em;
 }
 
+.QueryTable-wrapper .Table th {
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    font-weight: bold;
+    color: #444;
+}
+
 .QueryTable-wrapper .Table td {
     padding: 0.5rem;
 }
