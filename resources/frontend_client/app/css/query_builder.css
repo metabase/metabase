@@ -237,6 +237,12 @@
     justify-content: center;
 }
 
+.Visualization--scalar {
+    justify-content: center;
+    font-size: 8rem;
+    font-weight: 200;
+}
+
 .Visualization .Card-outer {
     width: 100%;
     display: flex;

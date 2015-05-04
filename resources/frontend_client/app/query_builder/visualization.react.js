@@ -174,7 +174,7 @@ var QueryVisualization = React.createClass({
                     }
 
                     viz = (
-                        <div className="flex full align-center">
+                        <div className="Visualization--scalar flex full align-center">
                             <span>{scalarValue}</span>
                         </div>
                     );
