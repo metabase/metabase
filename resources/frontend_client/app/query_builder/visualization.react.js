@@ -11,62 +11,13 @@ var QueryVisualization = React.createClass({
         setDisplayFn: React.PropTypes.func.isRequired
     },
 
-    getInitialState: function () {
-        return {
-            chartId: Math.floor((Math.random() * 698754) + 1)
-        };
-    },
-
-    shouldComponentUpdate: function(nextProps, nextState) {
-        // visualizations only change when the result itself changes OR the card display is different
-        // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
-        if (this.props.result == nextProps.result &&
-                this.props.card.display === nextProps.card.display) {
-            return false;
-        } else {
-            return true;
-        }
-    },
-
-    componentDidMount: function () {
-        // TODO: this is a workaround because our objects are mutable
-        //this.display = this.props.card.display;
-        this.renderChartIfNeeded();
-    },
-
-    componentDidUpdate: function () {
-        // TODO: this is a workaround because our objects are mutable
-        //this.display = this.props.card.display;
-        this.renderChartIfNeeded();
-    },
-
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
-    },
-
-    renderChartIfNeeded: function () {
-        if (this.isChartDisplay(this.props.card.display) && this.props.result) {
-            // TODO: it would be nicer if this didn't require the whole card
-            CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.result.data);
-        }
     },
 
     setDisplay: function (event) {
         // notify our parent about our change
         this.props.setDisplayFn(event.target.value);
-    },
-
-    renderChartVisualization: function () {
-        // rendering a chart of some type
-        var titleId = 'card-title--'+this.state.chartId;
-        var innerId = 'card-inner--'+this.state.chartId;
-
-        return (
-            <div className="Card--{this.props.card.display} Card-outer px1" id={this.state.chartId}>
-                <div id={titleId} className="text-centered"></div>
-                <div id={innerId} className="card-inner"></div>
-            </div>
-        );
     },
 
     renderVizControls: function () {
@@ -179,7 +130,11 @@ var QueryVisualization = React.createClass({
 
                 } else {
                     // assume that anything not a table is a chart
-                    viz = this.renderChartVisualization();
+                    viz = (
+                        <QueryVisualizationChart
+                            card={this.props.card}
+                            data={this.props.result.data} />
+                    );
                 }
             }
         }
