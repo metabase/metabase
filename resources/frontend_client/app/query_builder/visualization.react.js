@@ -65,7 +65,7 @@ var QueryVisualization = React.createClass({
             }
 
             return (
-                <div className="VisualizationSettings QueryBuilder-section">
+                <div>
                     Show as:
                     <label className="Select ml2">
                         <select onChange={this.setDisplay} value={this.props.card.display}>
@@ -91,28 +91,11 @@ var QueryVisualization = React.createClass({
         );
     },
 
-    tableControls: function () {
-        if(this.props.result && this.props.result.length > this.maxTableRows) {
-            return (
-                <div>Too many rows to display! Previewing {this.maxTableRows} of {this.props.result.length} total.</div>
-            );
-        }
-        /*
-        if (rowLimit !== this.props.data.rows.length) {
-            tableRows.push((
-                <tr>
-                    <td className="text-centered" colSpan={this.props.data.columns.length}>
-                        <span className="text-brand text-bold">Too many rows to display!  Previewing {rowLimit} out of <span className="text-italic">{this.props.data.rows.length}</span> total rows.</span>
-                    </td>
-                </tr>
-            ));
-        }
-        */
-    },
-
     render: function () {
         var viz,
-            queryModified;
+            queryModified,
+            rowMaxMessage;
+
         if (!this.props.result) {
             viz = (
                 <div className="flex full layout-centered text-brand">
@@ -169,6 +152,14 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
+                    if(this.props.result.data.rows.length > this.maxTableRows) {
+                        rowMaxMessage = (
+                            <div>
+                                <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
+                                Previewing <b>{this.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                            </div>
+                        );
+                    }
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
@@ -216,8 +207,12 @@ var QueryVisualization = React.createClass({
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}
                 </ReactCSSTransitionGroup>
-                {this.tableControls()}
-                {this.renderVizControls()}
+                <div className="VisualizationSettings QueryBuilder-section clearfix">
+                    <div className="float-right">
+                        {rowMaxMessage}
+                    </div>
+                    {this.renderVizControls()}
+                </div>
             </div>
         );
     }
