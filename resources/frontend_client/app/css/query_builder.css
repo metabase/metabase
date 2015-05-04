@@ -229,7 +229,6 @@
 }
 
 .Visualization.Visualization--loading {
-    background-color: #e0e0e0;
     transition: background .3s linear;
 }
 
@@ -254,6 +253,11 @@
     padding-bottom: 1em;
     padding-top: 1em;
     background-color: #fff;
+}
+
+.Loading {
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.82);
 }
 
 .QueryError {

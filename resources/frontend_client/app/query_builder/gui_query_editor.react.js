@@ -482,7 +482,7 @@ var GuiQueryEditor = React.createClass({
                 <div className={this.querySectionClasses}>
                     <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
-                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
                         {filterList}
                         </ReactCSSTransitionGroup>
                         <ReactCSSTransitionGroup transitionName="Transition-qb-section">

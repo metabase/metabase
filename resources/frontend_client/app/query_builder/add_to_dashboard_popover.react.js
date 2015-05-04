@@ -96,7 +96,7 @@ var AddToDashboardPopover = React.createClass({
                     (
                         <li className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
                             <CheckIcon width="12px" height="12px" />
-                    	   <span className="SelectionModule-display">{dash.name}</span>
+                    	    <span className="SelectionModule-display">{dash.name}</span>
                         </li>
                     )
                 )
@@ -147,7 +147,7 @@ var AddToDashboardPopover = React.createClass({
                 <div className="Form-offset flex align-center">
                     <h3>Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
-                        <CloseIcon width="16px" height="16px"/>
+                        <CloseIcon width="12px" height="12px"/>
                     </a>
                 </div>
 

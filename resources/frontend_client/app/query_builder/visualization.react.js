@@ -107,15 +107,13 @@ var QueryVisualization = React.createClass({
         }
     },
 
-    renderLoading: function () {
-        return {
-            __html: '<svg viewBox="0 0 32 32" width="32px" height="32px" fill="red">' +
+    svg: function () {
+        return'<svg viewBox="0 0 32 32" width="32px" height="32px" fill="red">' +
                       '<path opacity=".25" d="M16 0 A16 16 0 0 0 16 32 A16 16 0 0 0 16 0 M16 4 A12 12 0 0 1 16 28 A12 12 0 0 1 16 4"/>' +
                       '<path d="M16 0 A16 16 0 0 1 32 16 L28 16 A12 12 0 0 0 16 4z">' +
                         '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />' +
                       '</path>' +
                     '</svg>'
-        }
     },
 
     render: function () {
@@ -131,13 +129,6 @@ var QueryVisualization = React.createClass({
                     <span className="QueryError-message">If you give me some data I can show you something cool.  Run a Query!</span>
                 </div>
             );
-
-        } else if (this.props.isRunning) {
-            // we have to use dangerouslySetInnerHtml here cause react is treating 'animateTransform' as a react component
-           viz = (
-                <div dangerouslySetInnerHtml={this.renderLoading()}></div>
-           );
-
         } else {
             if (this.props.result.error) {
                 viz = (
@@ -193,6 +184,17 @@ var QueryVisualization = React.createClass({
             }
         }
 
+        var loading;
+
+        if(this.props.isRunning) {
+            loading = (
+                <div className="Loading absolute top left bottom right flex align-center">
+                    <span dangerouslySetInnerHtml={{__html: this.svg()}}></span>
+                    <span className="Loading-message text-brand text-uppercase">Loading...</span>
+                </div>
+            )
+        }
+
         var visualizationClasses = cx({
             'Visualization': true,
             'Visualization--errors': (this.props.result && this.props.result.error),
@@ -204,7 +206,8 @@ var QueryVisualization = React.createClass({
         });
 
         return (
-            <div className="full flex flex-column">
+            <div className="relative full flex flex-column">
+                {loading}
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}
                 </ReactCSSTransitionGroup>
