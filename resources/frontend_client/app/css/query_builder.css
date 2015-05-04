@@ -12,12 +12,14 @@
 
 /* a major section of the query builder */
 .QueryBuilder-section {
-    padding: 0.8rem;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
 }
 
 @media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
-        padding: 2.05rem;
+        padding-left: 2.05rem;
+        padding-right: 2.05rem;
     }
 }
 
