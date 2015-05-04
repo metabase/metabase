@@ -19,7 +19,8 @@ var Saver = React.createClass({
 
     getInitialState: function () {
         return {
-            modalOpen: false
+            modalOpen: false,
+            errors: null
         };
     },
 
@@ -66,10 +67,15 @@ var Saver = React.createClass({
         card.description = this.refs.description.getDOMNode().value.trim();
         card.public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
 
-        this.props.saveFn(card);
-
-        this.setState({
-            modalOpen: false
+        var component = this;
+        this.props.saveFn(card).then(function(success) {
+            component.setState({
+                modalOpen: false
+            });
+        }, function(error) {
+            component.setState({
+                errors: error
+            })
         });
     },
 

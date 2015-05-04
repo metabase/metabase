@@ -66,24 +66,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', 'Card', 'Dashboard', 'Query', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, Card, Dashboard, Query, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
-
-        /*
-           HERE BE DRAGONS
-
-           this is the react query builder prototype. there are a few things to know:
-
-
-           1. all hail the queryBuilder. it's what syncs up this controller and react. any time a value of the model changes,
-              the react app will re-render with the new "state of the world" the model provides.
-
-           2. the react app calls the functions in queryBuilder in order to interact with the backend
-
-           3. many bits o' functionality related to mutating the query result or lookups have been moved to QueryUtils to keep this controller
-              lighter weight and focused on communicating with the react app
-
-        */
+    '$scope', '$routeParams', '$location', '$q', 'Card', 'Dashboard', 'Query', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($scope, $routeParams, $location, $q, Card, Dashboard, Query, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         // =====  Controller local objects
 
@@ -131,6 +115,12 @@ CardControllers.controller('CardDetail', [
                 card.public_perms = modifiedCard.public_perms;
 
                 renderAll();
+
+                // this looks a little hokey, but its preferrable to setup our functions as promises so that callers can
+                // be certain when they have been resolved.
+                var deferred = $q.defer();
+                deferred.resolve();
+                return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
                 // for new cards we redirect the user
