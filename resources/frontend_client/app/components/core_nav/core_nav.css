@@ -87,10 +87,27 @@
   display: inline-block;
   text-decoration: none;
   color: var(--nav-item-text-color);
-  padding: 1em 0.5em;
+  padding: 0.5em 0.5em;
   font-size: 0.9em;
   text-rendering: optimizeLegibility;
   position: relative;
+}
+
+/* this is jank */
+.NavItem .IconWrapper svg {
+    width: 24px;
+    height: 24px;
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .NavItem {
+        padding-top: 1em;
+        padding-bottom: 1em;
+    }
+    .NavItem .IconWrapper svg {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 .NavItem-withIcon {

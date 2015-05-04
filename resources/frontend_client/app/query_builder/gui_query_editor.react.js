@@ -19,7 +19,8 @@ var GuiQueryEditor = React.createClass({
     getInitialState: function() {
         return {
             tables: null,
-            options: null
+            options: null,
+            isOpen: true
         };
     },
 
@@ -414,7 +415,7 @@ var GuiQueryEditor = React.createClass({
 
                 aggregationTarget = (
                     <div className="flex align-center">
-                        of
+                        <span className="mx2">of</span>
                         <SelectionModule
                             placeholder="What attribute?"
                             items={this.getAggregationFields(this.props.query.query.aggregation[0])}
@@ -494,37 +495,58 @@ var GuiQueryEditor = React.createClass({
         }
 
     },
+
+    toggleOpen: function () {
+        var newOpenValue = !this.state.isOpen;
+        this.setState({
+            isOpen: newOpenValue
+        });
+    },
+
+    toggleText: function () {
+        var text;
+        this.state.isOpen ? text = 'Hide query' : text = 'Show query';
+        return text;
+    },
+
+    openStatus: function () {
+        return (<a href="#" className="QueryToggle" onClick={this.toggleOpen}>{this.toggleText()}</a>);
+    },
+
     render: function () {
+        var guiBuilderClasses = cx({
+            'GuiBuilder': true,
+            'GuiBuilder--collapsed': !this.state.isOpen,
+            'QueryBuilder-section': true,
+        })
         return (
-            <div className="border-bottom">
-                <div className="QueryBuilder-section">
+            <div className={guiBuilderClasses}>
+                {this.openStatus()}
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderDbSelector()}
+                </ReactCSSTransitionGroup>
 
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderDbSelector()}
-                    </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderTableSelector()}
+                </ReactCSSTransitionGroup>
 
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderTableSelector()}
-                    </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderFilterSelector()}
+                </ReactCSSTransitionGroup>
 
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderFilterSelector()}
-                    </ReactCSSTransitionGroup>
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderAggregation()}
+                </ReactCSSTransitionGroup>
 
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderAggregation()}
-                    </ReactCSSTransitionGroup>
-
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderBreakouts()}
-                    </ReactCSSTransitionGroup>
-                    <div className="Query-section Query-section--right">
-                        <RunButton
-                            canRun={this.canRun()}
-                            isRunning={this.props.isRunning}
-                            runFn={this.runQuery}
-                        />
-                    </div>
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderBreakouts()}
+                </ReactCSSTransitionGroup>
+                <div className="Query-section Query-section--right">
+                    <RunButton
+                        canRun={this.canRun()}
+                        isRunning={this.props.isRunning}
+                        runFn={this.runQuery}
+                    />
                 </div>
             </div>
         );

@@ -40,12 +40,22 @@
 .Icon-addToDash {
     fill: #919191;
     transition: fill .3s linear;
+    width: 24px;
+    height: 24px;
 }
 
 .Icon-download:hover,
 .Icon-addToDash:hover {
     fill: var(--brand-color);
     transition: fill .3s linear;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Icon-download,
+    .Icon-addToDash {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 /* a section of the graphical query itself */
@@ -112,6 +122,8 @@
 
 .QueryTable-wrapper .Table {
     font-family: "Lato";
+    font-size: 0.76em;
+    line-height: 0.76em;
 }
 
 .QueryTable-wrapper .Table td {
@@ -317,27 +329,42 @@
     font-size: 0.6rem;
 }
 
+.GuiBuilder {
+    border-bottom: 1px solid #F0F0F0;
+    max-height: 100%;
+}
+
+.GuiBuilder.GuiBuilder--collapsed {
+    overflow: hidden;
+    max-height: 1em;
+}
+
+.QueryToggle {
+    display: flex;
+    justify-content: flex-end;
+}
+
 
 /* @transitions */
 
 .Transition-qb-section-enter {
     opacity: 0.01;
-    transition: opacity .3s linear;
+    transition: opacity .3s linear !important;
 }
 
 .Transition-qb-section-enter-active {
     opacity: 1;
-    transition: opacity .3s linear;
+    transition: opacity .3s linear !important;
 }
 
 .Transition-qb-section-leave {
     opacity: 1;
-    transition: opacity .3s linear;
+    transition: opacity .3s linear !important;
 }
 
 .Transition-qb-section-leave-active {
     opacity: 0.01;
-    transition: opacity .3s lienar;
+    transition: opacity .3s linear !important;
 }
 
 .Transition-viz-enter {
@@ -389,4 +416,24 @@
 .Transition-popover-leave-active {
     opacity: 0.01;
     transition: opacity .3s linear;
+}
+
+.Transition-qb-sqlbutton-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-sqlbutton-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear .3s !important;
+}
+
+.Transition-qb-sqlbutton-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-sqlbutton-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
 }
