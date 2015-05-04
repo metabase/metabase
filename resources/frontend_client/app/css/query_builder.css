@@ -1,5 +1,7 @@
 :root {
     --selection-color: #ccdff6;
+    --qb-offset-normal: 0.8rem;
+    --qb-offset-large: 2.05rem;
 }
 /* @layout */
 .QueryBuilder {
@@ -12,19 +14,28 @@
 
 /* a major section of the query builder */
 .QueryBuilder-section {
-    padding-left: 0.8rem;
-    padding-right: 0.8rem;
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
 }
 
 @media screen and (--breakpoint-min-xl) {
     .QueryBuilder-section {
-        padding-left: 2.05rem;
-        padding-right: 2.05rem;
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
     }
 }
 
 .QueryHeader {
     border-bottom: 1px solid #F0F0F0;
+    padding-top: var(--qb-offset-normal);
+    padding-bottom: var(--qb-offset-normal);
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryHeader {
+        padding-top: var(--qb-offset-large);
+        padding-bottom: var(--qb-offset-large);
+    }
 }
 
 .QueryHeader-details,
@@ -85,7 +96,7 @@
 }
 
 .Query-label {
-    min-width: 8rem;
+    min-width: 7rem;
     display: inline-block;
 }
 
@@ -119,7 +130,15 @@
 
 .QueryTable-wrapper {
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    margin-top: var(--qb-offset-normal);
+    margin-bottom: var(--qb-offset-normal);
     overflow: scroll;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryTable-wrapper {
+        margin-top: var(--qb-offset-large);
+    }
 }
 
 .QueryTable-wrapper .Table {
