@@ -111,6 +111,27 @@ var QueryHeader = React.createClass({
             component.props.setQueryModeFn(mode);
         });
     },
+    permissions: function () {
+        var text;
+        switch(this.props.card.public_perms) {
+            case 0:
+                text = 'Private';
+                break;
+            case 1:
+                text = 'Others can read';
+                break;
+            case 2:
+                text = 'Others can modify';
+                break;
+            default:
+                return 'Error';
+        }
+        return (
+            <span className="PermissionsBadge ml2">
+                {text}
+            </span>
+        );
+    },
 
     render: function() {
         var title = this.props.card.name || "What would you like to know?";
@@ -122,7 +143,7 @@ var QueryHeader = React.createClass({
                     card={this.props.card}
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
-                    className='inline-block ml1 mt1'
+                    className='inline-block ml1 link'
                 />
             );
         }
@@ -176,6 +197,7 @@ var QueryHeader = React.createClass({
             <div className="QueryHeader QueryBuilder-section flex align-center">
                 <div className="QueryHeader-details">
                     <h1 className="QueryName">{title}</h1>
+                    {this.permissions()}
                     {editButton}
                 </div>
 

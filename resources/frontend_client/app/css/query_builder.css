@@ -307,6 +307,16 @@
     width: 100%;
 }
 
+.PermissionsBadge {
+    background-color: #A989C5;
+    color: #fff;
+    border-radius: 4px;
+    padding: 0.5em;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 0.6rem;
+}
+
 
 /* @transitions */
 
