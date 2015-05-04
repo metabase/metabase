@@ -327,6 +327,10 @@
     font-size: 0.6rem;
 }
 
+.GuiBuilder {
+    border-bottom: 1px solid #F0F0F0;
+}
+
 
 /* @transitions */
 
@@ -399,4 +403,24 @@
 .Transition-popover-leave-active {
     opacity: 0.01;
     transition: opacity .3s linear;
+}
+
+.Transition-qb-sqlbutton-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-sqlbutton-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear .3s !important;
+}
+
+.Transition-qb-sqlbutton-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-sqlbutton-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
 }
