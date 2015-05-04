@@ -37,16 +37,6 @@ var QueryVisualizationTable = React.createClass({
             tableRows.push((<tr>{rowCols}</tr>));
         }
 
-        if (rowLimit !== this.props.data.rows.length) {
-            tableRows.push((
-                <tr>
-                    <td className="text-centered" colSpan={this.props.data.columns.length}>
-                        <span className="text-brand text-bold">Too many rows to display!  Previewing {rowLimit} out of <span className="text-italic">{this.props.data.rows.length}</span> total rows.</span>
-                    </td>
-                </tr>
-            ));
-        }
-
         var tableHeaders = this.props.data.columns.map(function (column, idx) {
             var colVal = (column !== null) ? column.toString() : null;
             return (

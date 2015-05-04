@@ -25,6 +25,7 @@ var QueryVisualization = React.createClass({
             });
         }
     },
+    maxTableRows: 500,
 
     queryIsDirty: function() {
         // a query is considered dirty if ANY part of it has been changed
@@ -90,6 +91,25 @@ var QueryVisualization = React.createClass({
         );
     },
 
+    tableControls: function () {
+        if(this.props.result && this.props.result.length > this.maxTableRows) {
+            return (
+                <div>Too many rows to display! Previewing {this.maxTableRows} of {this.props.result.length} total.</div>
+            );
+        }
+        /*
+        if (rowLimit !== this.props.data.rows.length) {
+            tableRows.push((
+                <tr>
+                    <td className="text-centered" colSpan={this.props.data.columns.length}>
+                        <span className="text-brand text-bold">Too many rows to display!  Previewing {rowLimit} out of <span className="text-italic">{this.props.data.rows.length}</span> total rows.</span>
+                    </td>
+                </tr>
+            ));
+        }
+        */
+    },
+
     render: function () {
         var viz,
             queryModified;
@@ -152,7 +172,7 @@ var QueryVisualization = React.createClass({
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={500} />
+                            maxRows={this.maxTableRows} />
                     );
 
                 } else {
@@ -196,6 +216,7 @@ var QueryVisualization = React.createClass({
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}
                 </ReactCSSTransitionGroup>
+                {this.tableControls()}
                 {this.renderVizControls()}
             </div>
         );

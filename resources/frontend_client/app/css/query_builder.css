@@ -133,6 +133,7 @@
     margin-top: var(--qb-offset-normal);
     margin-bottom: var(--qb-offset-normal);
     overflow: scroll;
+    border-top: 1px solid #E8E8E8;
 }
 
 @media screen and (--breakpoint-min-xl) {
@@ -152,6 +153,7 @@
     padding-bottom: 1.2rem;
     font-weight: bold;
     color: #444;
+    border-top-color: transparent;
 }
 
 .QueryTable-wrapper .Table td {
@@ -347,19 +349,19 @@
     width: 100%;
 }
 
-.PermissionsBadge {
-    background-color: #A989C5;
-    color: #fff;
-    border-radius: 4px;
-    padding: 0.5em;
-    text-transform: uppercase;
-    font-weight: bold;
-    font-size: 0.6rem;
-}
-
 .GuiBuilder {
+    position: relative;
     border-bottom: 1px solid #F0F0F0;
     max-height: 100%;
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .GuiBuilder {
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
+    }
 }
 
 .GuiBuilder.GuiBuilder--collapsed {
@@ -368,10 +370,9 @@
 }
 
 .QueryToggle {
-    display: flex;
-    justify-content: flex-end;
+    position: absolute;
+    right: 0;
 }
-
 
 /* @transitions */
 

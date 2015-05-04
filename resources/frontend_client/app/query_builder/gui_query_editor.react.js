@@ -515,9 +515,7 @@ var GuiQueryEditor = React.createClass({
         var guiBuilderClasses = cx({
             'GuiBuilder': true,
             'GuiBuilder--collapsed': !this.state.isOpen,
-            'QueryBuilder-section': true,
         });
-
         return (
             <div className={guiBuilderClasses}>
                 {this.openStatus()}
