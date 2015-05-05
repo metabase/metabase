@@ -16,6 +16,12 @@ var GuiQueryEditor = React.createClass({
         notifyQueryModifiedFn: React.PropTypes.func.isRequired
     },
 
+    getDefaultProps: function() {
+        return {
+            querySectionClasses: 'Query-section flex align-center'
+        };
+    },
+
     getInitialState: function() {
         return {
             tables: null,
@@ -34,9 +40,7 @@ var GuiQueryEditor = React.createClass({
         if (this.props.query.query.source_table) {
             this.loadTableInfo(this.props.query.query.source_table);
         }
-
     },
-    querySectionClasses: 'Query-section flex align-center',
 
     setQuery: function(dataset_query, notify) {
         this.props.notifyQueryModifiedFn(dataset_query);
@@ -383,7 +387,7 @@ var GuiQueryEditor = React.createClass({
     renderDbSelector: function() {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Using:</span>
                     <DatabaseSelector
                         databases={this.props.databases}
@@ -406,7 +410,7 @@ var GuiQueryEditor = React.createClass({
 
 
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <span className="Query-label">From:</span>
                     <SelectionModule
                         placeholder="What part of your data?"
@@ -494,7 +498,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     {breakoutLabel}
                     {breakoutList}
                     {addBreakoutButton}
@@ -537,7 +541,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <span className="Query-label">I want to see:</span>
                     <SelectionModule
                         placeholder="What data?"
@@ -587,7 +591,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
                         <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
@@ -665,7 +669,7 @@ var GuiQueryEditor = React.createClass({
             }
 
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Limit and sort:</span>
                     <div className="Query-filters">
                         <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
@@ -681,7 +685,7 @@ var GuiQueryEditor = React.createClass({
 
         } else if (this.canAddLimitAndSort()) {
             return (
-                <div className={this.querySectionClasses}>
+                <div className={this.props.querySectionClasses}>
                     <a className="QuerySection-addTrigger my2" onClick={this.addLimit}>
                         Set row limits and sorting
                     </a>
