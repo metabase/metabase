@@ -488,7 +488,7 @@ var GuiQueryEditor = React.createClass({
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
                 addBreakoutButton = (
-                    <a className="QuerySection-addTrigger" onClick={this.addDimension}>Add a grouping ...</a>
+                    <a className="QuerySection-addTrigger" onClick={this.addDimension}>Add a grouping</a>
                 );
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
@@ -586,7 +586,7 @@ var GuiQueryEditor = React.createClass({
             var addFilterButton;
             if (this.canAddFilter()) {
                 addFilterButton = (
-                    <a onClick={this.addFilter}>Add another filter ...</a>
+                    <a onClick={this.addFilter}>Add another filter</a>
                 );
             }
 
