@@ -350,6 +350,11 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
 
+    canAddSort: function() {
+        // TODO: allow for multiple sorting choices
+        return false;
+    },
+
     addSort: function() {
         // TODO: make sure people don't try to sort by the same field multiple times
         var query = this.props.query,
@@ -647,8 +652,7 @@ var GuiQueryEditor = React.createClass({
                 }.bind(this));
             }
 
-            var addSortButton,
-                sortSection;
+            var sortSection;
             if (sortList.length === 0) {
                 sortSection = (
                     <div className="flex align-center">
@@ -656,14 +660,18 @@ var GuiQueryEditor = React.createClass({
                     </div>
                 );
             } else {
-                addSortButton = (
-                    <a onClick={this.addSort}>Add another sort</a>
-                );
+                var addSortButton;
+                if (this.canAddSort()) {
+                    addSortButton = (
+                        <a onClick={this.addSort}>Add another sort</a>
+                    );
+                }
 
                 sortSection = (
                     <div className="flex align-center">
                         <span className="mx2">sorted by</span>
                         {sortList}
+                        {addSortButton}
                     </div>
                 );
             }
