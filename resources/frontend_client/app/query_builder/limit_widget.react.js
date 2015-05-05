@@ -32,7 +32,7 @@ var LimitWidget = React.createClass({
 
     render: function() {
         return (
-            <div className="Query-filter rounded">
+            <div className="Query-filter">
                 <div className={this.sectionClassName}>
                     <SelectionModule
                         placeholder="How many rows?"

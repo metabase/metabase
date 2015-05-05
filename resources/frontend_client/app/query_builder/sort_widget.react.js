@@ -45,7 +45,7 @@ var SortWidget = React.createClass({
         ];
 
         return (
-            <div className="Query-filter rounded">
+            <div className="Query-filter">
                 <div className={this.sectionClassName}>
                     <SelectionModule
                         action={this.setField}
