@@ -9,22 +9,30 @@
 
 ;; ## Functionality for writing driver-independent tests
 
-(def ^:dynamic *db* "Bound to `Database` for the current driver inside body of `with-driver`.")
-(def ^:dynamic *db-id* "Bound to ID of `Database` for the current driver inside body of `with-driver`.")
+(def ^:dynamic *db*
+  "Bound to `Database` for the current driver inside body of `with-driver`.")
+(def ^:dynamic *db-id*
+  "Bound to ID of `Database` for the current driver inside body of `with-driver`.")
 (def ^:dynamic *driver-dataset*)
 
-(defprotocol DriverData
+(defprotocol IDriverDataset
+  "Functions needed to fetch test data for various drivers."
   (db [this]
     "Return `Database` containing test data for this driver.")
   (table-name->table [this table-name]
     "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
-  (field-name->id [this table-name field-name])
-  (fks-supported? [this])
-  (format-name [this table-or-field-name])
-  (id-field-type [this]))
+  (field-name->id [this table-name field-name]
+    "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
+  (fks-supported? [this]
+    "Does this driver support Foreign Keys?")
+  (format-name [this table-or-field-name]
+    "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
+     (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
+  (id-field-type [this]
+    "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`)."))
 
 (deftype MongoDriverData []
-  DriverData
+  IDriverDataset
   (db [_]
     @mongo-data/mongo-test-db)
   (table-name->table [_ table-name]
@@ -42,7 +50,7 @@
     :IntegerField))
 
 (deftype GenericSqlDriverData []
-  DriverData
+  IDriverDataset
   (db [_]
     @generic-sql-data/test-db)
   (table-name->table [_ table-name]
@@ -57,9 +65,13 @@
     :BigIntegerField))
 
 (def driver-name->driver-dataset
+  "Map of driver keyword name -> dataset instance (i.e., an object that implements `IDriverDataset`)."
   {:mongo       (MongoDriverData.)
    :generic-sql (GenericSqlDriverData.)})
-(def valid-driver-names (set (keys driver-name->driver-dataset)))
+
+(def valid-driver-names
+  "Set of valid driver name keywords."
+  (set (keys driver-name->driver-dataset)))
 
 (defmacro with-driver
   "Execute BODY with `*db*` and `*db-id*` bound to appropriate places for "
@@ -133,11 +145,17 @@
         names))
 
 ;; ### Predefinied Column Fns
+;; These are meant for inclusion in the expected output of the QP tests, to save us from writing the same results several times
+
 ;; #### venues
-(defn venues-columns []
+(defn venues-columns
+  "Names of all columns for the `venues` table."
+  []
   (->columns "id" "category_id" "price" "longitude" "latitude" "name"))
 
-(defn venue-col [col]
+(defn venue-col
+  "Return column information for the `venues` column named by keyword COL."
+  [col]
   (case col
     :id          {:extra_info {}
                   :special_type :id
@@ -184,11 +202,15 @@
                   :table_id (id :venues)
                   :id (id :venues :name)}))
 
-(defn venues-cols []
+(defn venues-cols
+  "`cols` information for all the columns in `venues`."
+  []
   (mapv venue-col [:id :category_id :price :longitude :latitude :name]))
 
 ;; #### categories
-(defn categories-col [col]
+(defn categories-col
+  "Return column information for the `categories` column named by keyword COL."
+  [col]
   (case col
     :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-dataset*), :description nil, :name (format-name *driver-dataset* "id")
            :table_id (id :categories), :id (id :categories :id)}
@@ -196,7 +218,9 @@
            :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### checkins
-(defn checkins-col [col]
+(defn checkins-col
+  "Return column information for the `checkins` column named by keyword COL."
+  [col]
   (case col
     :id       {:extra_info {}
                :special_type :id
@@ -226,7 +250,9 @@
 
 
 ;; #### users
-(defn users-col [col]
+(defn users-col
+  "Return column information for the `users` column named by keyword COL."
+  [col]
   (case col
     :id         {:extra_info {}
                  :special_type :id
@@ -249,6 +275,7 @@
                  :name (format-name *driver-dataset* "last_login")
                  :table_id (id :users)
                  :id (id :users :last_login)}))
+
 
 ;; # THE TESTS THEMSELVES (!)
 
