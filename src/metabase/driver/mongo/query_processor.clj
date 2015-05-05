@@ -216,7 +216,7 @@
                                         [(name (field-id->kw field-id)) (case asc-or-desc
                                                                           "ascending" 1
                                                                           "descending" -1)]))
-                              (apply (partial sorted-map)))}
+                              (apply sorted-map))}
                {$project (merge {"_id"    false
                                  ag-field true}
                                 (zipmap fields (repeat true)))}
