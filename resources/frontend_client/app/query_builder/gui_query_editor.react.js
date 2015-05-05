@@ -85,7 +85,7 @@ var GuiQueryEditor = React.createClass({
             query.database = databaseId;
 
             // clear all previous state
-            this.replaceState({});
+            this.replaceState(this.getInitialState());
 
             // notify parent that we've started over
             // TODO: should this clear the visualization as well?
