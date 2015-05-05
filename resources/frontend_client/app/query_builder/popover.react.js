@@ -29,6 +29,7 @@ var Popover = React.createClass({
         if (this._popoverElement.parentNode) {
             this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
+        this._tether = undefined;
     },
 
     _popoverComponent: function() {
@@ -61,7 +62,7 @@ var Popover = React.createClass({
         tetherOptions.element = this._popoverElement;
         tetherOptions.target = this.getDOMNode().parentElement;
 
-        if (this._tether !== null) {
+        if (this._tether !== undefined && this._tether !== null) {
             this._tether.setOptions(tetherOptions);
         } else {
             this._tether = new Tether(tetherOptions);
