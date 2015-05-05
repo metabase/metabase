@@ -35,8 +35,30 @@ var QueryVisualizationChart = React.createClass({
 
     renderChart: function () {
         if (this.props.data) {
-            // TODO: it would be nicer if this didn't require the whole card
-            CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.data);
+            if (this.props.card.display === "pin_map") {
+                // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
+
+                // these are example callback functions that could be passed into the renderer
+                // var updateMapCenter = function(lat, lon) {
+                //     scope.card.visualization_settings.map.center_latitude = lat;
+                //     scope.card.visualization_settings.map.center_longitude = lon;
+                //     scope.$apply();
+                // };
+
+                // var updateMapZoom = function(zoom) {
+                //     scope.card.visualization_settings.map.zoom = zoom;
+                //     scope.$apply();
+                // };
+
+                var no_op = function(a, b) {
+                    // do nothing for now
+                };
+
+                CardRenderer[this.props.card.display](this.state.chartId, this.props.card, no_op, no_op);
+            } else {
+                // TODO: it would be nicer if this didn't require the whole card
+                CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.data);
+            }
         }
     },
 
