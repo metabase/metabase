@@ -191,6 +191,7 @@
                                   (map name))
         $fields              (map field-id->$string field-ids)
         fields->$fields      (zipmap fields $fields)]
+    (println "FIELDS->$FIELDS:" fields->$fields)
     (aggregate {$group  (merge {"_id"    (if (= (count fields) 1) (first $fields)
                                              fields->$fields)
                                 ag-field ag-clause}

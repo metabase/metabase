@@ -30,9 +30,9 @@
                                            remove-empty-clauses
                                            add-implicit-breakout-order-by
                                            preprocess-cumulative-sum))]
-    ;; (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
-    ;;                              (with-out-str (clojure.pprint/pprint pp)) "\n"
-    ;;                              "*******************************************************\n"))
+    (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
+                                 (with-out-str (clojure.pprint/pprint pp)) "\n"
+                                 "*******************************************************\n"))
     pp))
 
 
@@ -83,10 +83,14 @@
    and if so, rewrite the query as needed, run it, and do post processing."
   [{aggregation :aggregation, :as query}]
   (match aggregation
-    ["cum_sum" field-id] (assoc query
-                                :cum_sum     true
-                                :aggregation ["rows"]
-                                :fields      [field-id])
+    ["cum_sum" field-id] (merge query
+                                {:cum_sum true}
+                                (if (:breakout query) {:breakout    [field-id]
+                                                       :aggregation ["sum" field-id]
+                                                       :order_by    (conj (or (vec (:order_by query)) [])
+                                                                          [field-id "ascending"])}
+                                    {:aggregation ["rows"]
+                                     :fields      [field-id]}))
     _                    query))
 
 
@@ -104,7 +108,9 @@
   ;;                                 (with-out-str (clojure.pprint/pprint results)) "\n"
   ;;                                 "-------------------------------------------------------------------------------------------------\n"))
   (if-not cumulative-sum? results
-          (let [[field-id]   (:fields query)
+          (let [field-id     (or (first (:fields query))
+                                 (second (:aggregation query)))
+                ;; [field-id]   (:fields query)
                 _            (assert (integer? field-id))
                 ;; Determine the index of the cum_sum field by matching field-id in the result columns
                 field-index  (->> (:cols data)
@@ -113,6 +119,7 @@
                                                    i)))
                                   (filter identity)
                                   first)
+                _            (println "COLS:" (:cols data))
                 _            (assert (integer? field-index))
                 ;; Make a sequence of cumulative sum values for each row
                 rows         (:rows data)

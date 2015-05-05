@@ -70,20 +70,18 @@
 ;; ### Cumulative sum w/ a breakout field
 (expect {:status :completed
          :row_count 15
-         :data {:rows [4 12 13 22 34 44 57 72 78 85 90 104 115 118 120]
-                :columns ["CAST(LAST_LOGIN AS DATE)" "ID"]
-                :cols [{:extra_info {} :special_type :category :base_type :DateTimeField, :description nil, :name "LAST_LOGIN", :table_id (table->id :users), :id (field->id :users :last_login)}
-                       {:extra_info {} :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}]}}
-  (-> (driver/process-query {:type :query
-                             :database @db-id
-                             :query {:limit nil
-                                     :source_table (table->id :users)
-                                     :filter [nil nil]
-                                     :breakout [(field->id :users :last_login)]
-                                     :aggregation ["cum_sum" (field->id :users :id)]}})
-      ;; Rows come back like `[value timestamp]` but it is hard to compare timestamps directly since the values that come back are casted
-      ;; to Dates and the exact value depends on the locale of the machine running the tests. So just drop the timestamps from the results.
-      (update-in [:data :rows] (partial map last))))
+         :data
+         {:rows [[4 4M] [12 8M] [13 1M] [22 9M] [34 12M] [44 10M] [57 13M] [72 15M] [78 6M] [85 7M] [90 5M] [104 14M] [115 11M] [118 3M] [120 2M]]
+          :columns ["ID" "sum"]
+          :cols [{:extra_info {}, :special_type :id, :base_type :BigIntegerField, :description nil, :name "ID", :table_id (table->id :users), :id (field->id :users :id)}
+                 {:base_type :BigIntegerField, :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}}
+  (driver/process-query {:type :query
+                         :database @db-id
+                         :query {:limit nil
+                                 :source_table (table->id :users)
+                                 :filter [nil nil]
+                                 :breakout [(field->id :users :last_login)]
+                                 :aggregation ["cum_sum" (field->id :users :id)]}}))
 
 
 ;; # ERROR RESPONSES
