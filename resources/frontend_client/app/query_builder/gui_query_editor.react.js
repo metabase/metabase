@@ -484,7 +484,7 @@ var GuiQueryEditor = React.createClass({
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
                 addBreakoutButton = (
-                    <a onClick={this.addDimension}>Add a grouping ...</a>
+                    <a className="QuerySection-addTrigger" onClick={this.addDimension}>Add a grouping ...</a>
                 );
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
@@ -682,7 +682,7 @@ var GuiQueryEditor = React.createClass({
         } else if (this.canAddLimitAndSort()) {
             return (
                 <div className={this.querySectionClasses}>
-                    <a className="ml2" onClick={this.addLimit}>
+                    <a className="QuerySection-addTrigger my2" onClick={this.addLimit}>
                         Set row limits and sorting
                     </a>
                 </div>
