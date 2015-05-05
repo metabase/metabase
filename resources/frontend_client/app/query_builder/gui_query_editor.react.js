@@ -507,8 +507,25 @@ var GuiQueryEditor = React.createClass({
         return (this.state.isOpen) ? 'Hide query' : 'Show query';
     },
 
+    toggleIcon: function () {
+        if(this.state.isOpen) {
+            return (
+                <ExpandIcon width="16px" height="16px" />
+            )
+        } else {
+            return (
+                <ExpandIcon width="16px" height="16px" />
+            )
+        }
+    },
+
     openStatus: function() {
-        return (<a href="#" className="QueryToggle" onClick={this.toggleOpen}>{this.toggleText()}</a>);
+        return (
+            <a href="#" className="QueryToggle flex align-center" onClick={this.toggleOpen}>
+                {this.toggleIcon()}
+                {this.toggleText()}
+            </a>
+        );
     },
 
     render: function() {
@@ -538,7 +555,7 @@ var GuiQueryEditor = React.createClass({
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderBreakouts()}
                 </ReactCSSTransitionGroup>
-                <div className="Query-section Query-section--right">
+                <div className="Query-section Query-section--right mb2">
                     <RunButton
                         canRun={this.canRun()}
                         isRunning={this.props.isRunning}

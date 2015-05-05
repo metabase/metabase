@@ -154,7 +154,7 @@ var QueryVisualization = React.createClass({
                 } else if (this.props.card.display === "table") {
                     if(this.props.result.data.rows.length > this.maxTableRows) {
                         rowMaxMessage = (
-                            <div className="mt2">
+                            <div className="mt1">
                                 <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
                                 Previewing <b>{this.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
                             </div>
