@@ -1,5 +1,5 @@
 'use strict';
-/*global _, cx, FilterWidget, RunButton, SelectionModule, DatabaseSelector*/
+/*global _, cx, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -342,7 +342,7 @@ var GuiQueryEditor = React.createClass({
 
     removeLimit: function() {
         var query = this.props.query;
-        delete query.query["limit"];
+        delete query.query.limit;
         this.setQuery(query, true);
     },
 
@@ -372,7 +372,7 @@ var GuiQueryEditor = React.createClass({
             queryOrderBy = query.query.order_by;
 
         if (queryOrderBy.length === 1) {
-            delete query.query["order_by"];
+            delete query.query.order_by;
         } else {
             queryOrderBy.splice(index, 1);
         }
@@ -706,11 +706,11 @@ var GuiQueryEditor = React.createClass({
         if(this.state.isOpen) {
             return (
                 <ExpandIcon width="16px" height="16px" />
-            )
+            );
         } else {
             return (
                 <ExpandIcon width="16px" height="16px" />
-            )
+            );
         }
     },
 
