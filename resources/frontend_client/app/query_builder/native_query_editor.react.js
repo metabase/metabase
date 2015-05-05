@@ -89,6 +89,9 @@ var NativeQueryEditor = React.createClass({
             // set our new database on the query
             query.database = databaseId;
 
+            // carry over our previous query
+            query.native.query = this.props.query.native.query;
+
             // notify parent that we've started over
             this.props.notifyQueryModifiedFn(query);
         }
