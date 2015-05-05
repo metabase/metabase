@@ -128,6 +128,12 @@ var GuiQueryEditor = React.createClass({
         return (this.props.query.query.breakout.length < MAX_DIMENSIONS);
     },
 
+    hasValidBreakout: function() {
+        return (this.props.query.query.breakout &&
+                    this.props.query.query.breakout.length > 0 &&
+                    this.props.query.query.breakout[0] !== null);
+    },
+
     addDimension: function() {
         var query = this.props.query;
         query.query.breakout.push(null);
@@ -143,6 +149,7 @@ var GuiQueryEditor = React.createClass({
     },
 
     removeDimension: function(index) {
+        // TODO: when we remove breakouts we also need to remove any limits/sorts that don't make sense
         var query = this.props.query;
         query.query.breakout.splice(index, 1);
 
@@ -157,6 +164,12 @@ var GuiQueryEditor = React.createClass({
             aggregationComplete = true;
         }
         return aggregationComplete;
+    },
+
+    isBareRowsAggregation: function() {
+        return (this.props.query.query.aggregation &&
+                    this.props.query.query.aggregation.length > 0 &&
+                    this.props.query.query.aggregation[0] === "rows");
     },
 
     getAggregationFields: function(aggregation) {
@@ -271,6 +284,100 @@ var GuiQueryEditor = React.createClass({
         }
 
         return dataset_query;
+    },
+
+    canAddLimitAndSort: function() {
+        // limits and sorts only make sense if we know there will be multiple rows
+        var query = this.props.query;
+
+        if (this.isBareRowsAggregation()) {
+            return true;
+        } else if (this.hasValidBreakout()) {
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+    getSortableFields: function() {
+        // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
+        var query = this.props.query;
+
+        // start with all fields
+        var fieldList = [];
+        for(var key in this.state.options.fields_lookup) {
+            fieldList.push(this.state.options.fields_lookup[key]);
+        }
+
+        if (this.isBareRowsAggregation()) {
+            return fieldList;
+        } else if (this.hasValidBreakout()) {
+            // further filter field list down to only fields in our breakout clause
+            var breakoutFieldList = [];
+            this.props.query.query.breakout.map(function (breakoutFieldId) {
+                for (var idx in fieldList) {
+                    if (fieldList[idx].id === breakoutFieldId) {
+                        breakoutFieldList.push(fieldList[idx]);
+                    }
+                }
+            }.bind(this));
+
+            return breakoutFieldList;
+        } else {
+            return [];
+        }
+    },
+
+    addLimit: function() {
+        var query = this.props.query;
+        query.query.limit = null;
+        this.setQuery(query, true);
+    },
+
+    updateLimit: function(limit) {
+        var query = this.props.query;
+        query.query.limit = limit;
+        this.setQuery(query, true);
+    },
+
+    removeLimit: function() {
+        var query = this.props.query;
+        delete query.query["limit"];
+        this.setQuery(query, true);
+    },
+
+    addSort: function() {
+        // TODO: make sure people don't try to sort by the same field multiple times
+        var query = this.props.query,
+            order_by = query.query.order_by;
+
+        if (!order_by) {
+            order_by = [];
+        }
+
+        order_by.push([null, "ascending"]);
+        query.query.order_by = order_by;
+
+        this.setQuery(query, true);
+    },
+
+    updateSort: function(index, sort) {
+        var query = this.props.query;
+        query.query.order_by[index] = sort;
+        this.setQuery(query, true);
+    },
+
+    removeSort: function(index) {
+        var query = this.props.query,
+            queryOrderBy = query.query.order_by;
+
+        if (queryOrderBy.length === 1) {
+            delete query.query["order_by"];
+        } else {
+            queryOrderBy.splice(index, 1);
+        }
+
+        this.setQuery(query, true);
     },
 
     renderDbSelector: function() {
@@ -496,6 +603,94 @@ var GuiQueryEditor = React.createClass({
 
     },
 
+    renderLimitAndSort: function() {
+        if (this.state.options && this.hasValidAggregation() &&
+                (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
+
+            var limitSection;
+            if (this.props.query.query.limit !== undefined) {
+                limitSection = (
+                    <LimitWidget
+                        limit={this.props.query.query.limit}
+                        updateLimit={this.updateLimit}
+                        removeLimit={this.removeLimit}
+                    />
+                );
+            } else {
+                limitSection = (
+                    <div className="flex align-center">
+                        <a onClick={this.addLimit}>Add row limit</a>
+                    </div>
+                );
+            }
+
+            var sortList = [];
+            if (this.props.query.query.order_by) {
+                var sortableFields = this.getSortableFields();
+
+                var component = this;
+                sortList = this.props.query.query.order_by.map(function (order_by, index) {
+                    return (
+                        <SortWidget
+                            placeholder="Attribute"
+                            sort={order_by}
+                            fieldList={sortableFields}
+                            index={index}
+                            removeSort={component.removeSort}
+                            updateSort={component.updateSort}
+                        />
+                    );
+                }.bind(this));
+            }
+
+            var addSortButton,
+                sortSection;
+            if (sortList.length === 0) {
+                sortSection = (
+                    <div className="flex align-center">
+                        <a onClick={this.addSort}>Add sort</a>
+                    </div>
+                );
+            } else {
+                addSortButton = (
+                    <a onClick={this.addSort}>Add another sort</a>
+                );
+
+                sortSection = (
+                    <div className="flex align-center">
+                        <span className="mx2">sorted by</span>
+                        {sortList}
+                    </div>
+                );
+            }
+
+            return (
+                <div className={this.querySectionClasses}>
+                    <span className="Query-label">Limit and sort:</span>
+                    <div className="Query-filters">
+                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
+                            {limitSection}
+                        </ReactCSSTransitionGroup>
+
+                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                            {sortSection}
+                        </ReactCSSTransitionGroup>
+                    </div>
+                </div>
+            );
+
+        } else if (this.canAddLimitAndSort()) {
+            return (
+                <div className={this.querySectionClasses}>
+                    <a className="ml2" onClick={this.addLimit}>
+                        Set row limits and sorting
+                    </a>
+                </div>
+            );
+        }
+
+    },
+
     toggleOpen: function() {
         var newOpenValue = !this.state.isOpen;
         this.setState({
@@ -540,6 +735,11 @@ var GuiQueryEditor = React.createClass({
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderBreakouts()}
                 </ReactCSSTransitionGroup>
+
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderLimitAndSort()}
+                </ReactCSSTransitionGroup>
+
                 <div className="Query-section Query-section--right">
                     <RunButton
                         canRun={this.canRun()}

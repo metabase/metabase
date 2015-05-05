@@ -69,10 +69,10 @@ var SelectionModule = React.createClass({
 
         if(this.props.items) {
             items = this.props.items.map(function (item, index) {
-                var display = item[this.props.display] || item;
+                var display = (item) ? item[this.props.display] || item : item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
-                    'SelectionItem--selected': selection == display
+                    'SelectionItem--selected': selection === display
                 });
                 // if children are provided, use the custom layout display
                 return (
@@ -110,7 +110,7 @@ var SelectionModule = React.createClass({
     render: function() {
         var selection;
         this.props.items.map(function (item) {
-            if(item[this.props.selectedKey] === this.props.selectedValue) {
+            if(item && item[this.props.selectedKey] === this.props.selectedValue) {
                 selection = item[this.props.display];
             }
         }.bind(this));
