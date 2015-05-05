@@ -127,7 +127,7 @@
   (binding [qp/*query* query]
     (let [driver  (database-id->driver (:database query))
           query   (qp/preprocess query)
-          results (i/process-query driver (dissoc query :cum_sum))] ; strip out things that individual impls don't need to know about / deal with
+          results (i/process-query driver (dissoc-in query [:query :cum_sum]))] ; strip out things that individual impls don't need to know about / deal with
       (qp/post-process driver query results))))
 
 
