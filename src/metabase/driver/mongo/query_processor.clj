@@ -29,18 +29,24 @@
 
 ;; # DRIVER QP INTERFACE
 
+(def ^:const empty-response
+  {:status :completed
+   :row_count 0
+   :data {:rows [], :columns [], :cols []}})
+
 (defn process-and-run [{query-type :type database-id :database :as query}]
   {:pre [(contains? #{:native :query} (keyword query-type))
          (integer? database-id)]}
   (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
     (case (keyword query-type)
-      :query (let [generated-query (process-structured (:query query))]
-               (when-not qp/*disable-qp-logging*
-                 (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
-                                           (with-out-str (clojure.pprint/pprint generated-query))
-                                           "*****************************************************************\n")))
-               (->> (eval generated-query)
-                    (annotate-results (:query query))))
+      :query (if (zero? (:source_table (:query query))) empty-response
+                 (let [generated-query (process-structured (:query query))]
+                   (when-not qp/*disable-qp-logging*
+                     (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
+                                               (with-out-str (clojure.pprint/pprint generated-query))
+                                               "*****************************************************************\n")))
+                   (->> (eval generated-query)
+                        (annotate-results (:query query)))))
       :native (->> (eval-raw-command (:query (:native query)))
                    annotate-native-results))))
 

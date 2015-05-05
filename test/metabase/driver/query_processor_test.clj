@@ -564,6 +564,22 @@
               [(id :checkins :venue_id) "ascending"]]})
 
 
+;; ## EMPTY QUERY
+;; Just don't barf
+(expect-with-all-drivers
+    {:status :completed
+     :row_count 0
+     :data {:rows [], :columns [], :cols []}}
+  (driver/process-query {:type :query
+                         :database *db-id*
+                         :native {}
+                         :query {:source_table 0
+                                 :filter [nil nil]
+                                 :aggregation ["rows"]
+                                 :breakout [nil]
+                                 :limit nil}}))
+
+
 ;; # POST PROCESSING TESTS
 
 ;; ## CUMULATIVE SUM

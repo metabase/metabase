@@ -40,18 +40,6 @@
                                  :limit nil}}))
 
 
-;; ## EMPTY QUERY
-;; Just don't barf
-(expect {:status :completed, :row_count 0, :data {:rows [], :columns [], :cols []}}
-  (driver/process-query {:type :query
-                         :database @db-id
-                         :native {}
-                         :query {:source_table 0
-                                 :filter [nil nil]
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit nil}}))
-
 ;; ### Cumulative sum w/ a breakout field
 (expect {:status :completed
          :row_count 15

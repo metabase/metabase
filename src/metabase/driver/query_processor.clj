@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.models.field :refer [Field field->fk-table]]))
