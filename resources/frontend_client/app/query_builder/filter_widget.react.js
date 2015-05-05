@@ -10,7 +10,12 @@ var FilterWidget = React.createClass({
         updateFilter: React.PropTypes.func.isRequired,
         removeFilter: React.PropTypes.func.isRequired
     },
-    sectionClassName: 'Filter-section',
+
+    getDefaultProps: function() {
+        return {
+            sectionClassName: 'Filter-section'
+        };
+    },
 
     componentWillMount: function() {
         this.componentWillReceiveProps(this.props);
@@ -163,7 +168,7 @@ var FilterWidget = React.createClass({
 
     renderFieldList: function() {
         return (
-            <div className={this.sectionClassName}>
+            <div className={this.props.sectionClassName}>
                 <SelectionModule
                     action={this.setField}
                     display='name'
@@ -186,7 +191,7 @@ var FilterWidget = React.createClass({
         }
 
         return (
-            <div className={this.sectionClassName}>
+            <div className={this.props.sectionClassName}>
                 <SelectionModule
                     placeholder="..."
                     items={this.state.operatorList}
@@ -248,7 +253,7 @@ var FilterWidget = React.createClass({
                                 <input
                                     className="input"
                                     type="text"
-                                    defaultValue={filterValue}
+                                    value={filterValue}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
                                     ref="textFilterValue"
                                     placeholder="What value?"
