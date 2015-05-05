@@ -165,7 +165,7 @@
 }
 
 .QueryTable.Table tbody tr:hover {
-    background-color: var(--selection-color);
+    background-color: #EAF0F7;
 }
 
 /*
