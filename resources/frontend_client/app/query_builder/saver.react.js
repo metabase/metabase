@@ -80,6 +80,10 @@ var Saver = React.createClass({
     },
 
     renderCardSaveForm: function() {
+        if (!this.state.modalOpen) {
+            return false;
+        }
+
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
