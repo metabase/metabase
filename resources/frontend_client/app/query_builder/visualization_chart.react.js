@@ -17,7 +17,7 @@ var QueryVisualizationChart = React.createClass({
     shouldComponentUpdate: function(nextProps, nextState) {
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
-        if (this.props.result == nextProps.result &&
+        if (this.props.data == nextProps.data &&
                 this.props.card.display === nextProps.card.display) {
             return false;
         } else {
