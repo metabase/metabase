@@ -102,11 +102,6 @@
     `[(group  ~@field-names)
       (fields ~@field-names)]))
 
-;; ### :cum_sum
-;; Nothing to do here since this is just used internally to mark the we're doing a cumulative sum aggregation,
-;; and all functionality is handled by pre-processing / post-processing in metabase.driver.query-processor
-(defmethod apply-form :cum_sum [_]
-  nil)
 
 ;; ### `:fields`
 ;; ex.

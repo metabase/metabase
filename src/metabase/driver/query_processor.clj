@@ -12,21 +12,38 @@
          preprocess-structured
          remove-empty-clauses)
 
-(def ^:dynamic *query* "The structured query we're currently processing, before any preprocessing occurs (i.e. the `:query` part of the API call body)"
+;; # CONSTANTS
+
+(def ^:const empty-response
+  "An empty response dictionary to return when there's no query to run."
+  {:status :completed
+   :row_count 0
+   :data {:rows [], :columns [], :cols []}})
+
+
+;; # DYNAMIC VARS
+
+(def ^:dynamic *query*
+  "The structured query we're currently processing, before any preprocessing occurs (i.e. the `:query` part of the API call body)"
   nil)
 
-(def ^:dynamic *disable-qp-logging* "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
+(def ^:dynamic *disable-qp-logging*
+  "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
 
 ;; # PREPROCESSOR
 
-(defn preprocess [{query-type :type :as query}]
+(defn preprocess
+  "Preprocess QUERY dict, applying various driver-independent transformations to it before it is passed to specific driver query processor implementations."
+  [{query-type :type :as query}]
   (case (keyword query-type)
     :query (preprocess-structured query)
     :native query))
 
-(defn preprocess-structured [query]
+(defn preprocess-structured
+  "Preprocess a strucuted QUERY dict."
+  [query]
   (let [pp (update-in query [:query] #(->> %
                                            remove-empty-clauses
                                            add-implicit-breakout-order-by
@@ -81,16 +98,20 @@
 ;; ### PREPROCESS-CUMULATIVE-SUM
 
 (defn preprocess-cumulative-sum
-  "`cum_sum` queries are a special case, since they're implemented in Clojure-land. Check to see if we're doing a `cum_sum` aggregation,
-   and if so, rewrite the query as needed, run it, and do post processing."
+  "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
+   (Cumulative sum is a special case; it is implemented in post-processing)."
   [{aggregation :aggregation, :as query}]
   (match aggregation
     ["cum_sum" field-id] (merge query
+                                ;; Mark the Query dict as cum_sum so we know to apply post-processing later
                                 {:cum_sum true}
+                                ;; A Query that combines breakout + cum_sum needs to be rewritten as a query that gets the
+                                ;; sum of the aggregate field for each value of the breakout field
                                 (if (:breakout query) {:breakout    [field-id]
                                                        :aggregation ["sum" field-id]
                                                        :order_by    (conj (or (vec (:order_by query)) [])
                                                                           [field-id "ascending"])}
+                                    ;; Otherwise we are only interested in the values of the aggregate field itself
                                     {:aggregation ["rows"]
                                      :fields      [field-id]}))
     _                    query))
@@ -127,7 +148,9 @@
                       rows values)
                  (assoc-in results [:data :rows])))))
 
-(defn post-process [driver query results]
+(defn post-process
+  "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
+  [driver query results]
   (case (keyword (:type query))
     :native results
     :query  (let [query (:query query)]
@@ -173,11 +196,15 @@
                  :count {:base_type :IntegerField                                    ; just return hardcoded type info
                          :special_type :number})))))
 
-(def ^:dynamic *uncastify-fn* identity) ; default is no-op
+(def ^:dynamic *uncastify-fn*
+  "Function that should be called to transform a column name from the set of results to one that matches a `Field` in the DB.
+   The default implementation returns the column name as is; others, such as `generic-sql`, provide implementations that remove
+   remove casting statements and the like."
+  identity)
 
 ;; TODO - since this was moved over from generic SQL some of its functionality should be reworked. And dox updated.
 ;; (Since castification is basically SQL-specific it would make sense to handle castification / decastification separately)
-;; Fix this when it's not a Friday
+;; Fix this when I'm not burnt out on driver code
 
 (defn -order-columns
   "Don't use this directly; use `order-columns`.

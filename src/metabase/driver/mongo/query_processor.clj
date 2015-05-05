@@ -29,17 +29,16 @@
 
 ;; # DRIVER QP INTERFACE
 
-(def ^:const empty-response
-  {:status :completed
-   :row_count 0
-   :data {:rows [], :columns [], :cols []}})
 
-(defn process-and-run [{query-type :type database-id :database :as query}]
+
+(defn process-and-run
+  "Process and run a MongoDB QUERY."
+  [{query-type :type database-id :database :as query}]
   {:pre [(contains? #{:native :query} (keyword query-type))
          (integer? database-id)]}
   (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
     (case (keyword query-type)
-      :query (if (zero? (:source_table (:query query))) empty-response
+      :query (if (zero? (:source_table (:query query))) qp/empty-response
                  (let [generated-query (process-structured (:query query))]
                    (when-not qp/*disable-qp-logging*
                      (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
@@ -55,9 +54,10 @@
 
 (defn eval-raw-command
   "Evaluate raw MongoDB javascript code. This must be ran insided the body of a `with-mongo-connection`.
-    (with-mongo-connection [_ \"mongodb://localhost/test\"]
-      (eval-raw-command \"db.zips.findOne()\"))
-      -> {\"_id\" \"01001\", \"city\" \"AGAWAM\", ...}"
+
+     (with-mongo-connection [_ \"mongodb://localhost/test\"]
+       (eval-raw-command \"db.zips.findOne()\"))
+     -> {\"_id\" \"01001\", \"city\" \"AGAWAM\", ...}"
   [^String command]
   (assert *mongo-connection* "eval-raw-command must be ran inside the body of with-mongo-connection.")
   (let [^CommandResult result (.doEval ^DBApiLayer *mongo-connection* command nil)]
@@ -80,12 +80,24 @@
 
 ;; ## AGGREGATION IMPLEMENTATIONS
 
-(def ^:private aggregations (atom '()))
+(def ^:private aggregations
+  "Used internally by `defaggregation` to store the different aggregation patterns to match against."
+  (atom '()))
 
-(def ^:dynamic *collection-name* nil)
-(def ^:dynamic *constraints* nil)
+(def ^:dynamic *collection-name*
+  "String name of the collection (i.e., `Table`) that we're currently querying against."
+  nil)
+(def ^:dynamic *constraints*
+  "Monger clauses generated from query dict `filter` clauses; bound dynamically so we can insert these as appropriate for various types of aggregations."
+  nil)
 
-(defmacro defaggregation [match-binding & body]
+(defmacro defaggregation
+  "Define a new function that will be called when the `aggregation` clause in a structured query matches MATCH-BINDING.
+   (All functions defined with `defaggregation` are combined into a massive `match` statement inside `match-aggregation`).
+
+   These should emit a form that can be `eval`ed to get the query results; the `aggregate` function takes care of some of the
+   boilerplate for this form."
+  [match-binding & body]
   `(swap! aggregations concat
           (quote [~match-binding (try
                                    ~@body
@@ -93,12 +105,16 @@
                                      (log/error (color/red ~(format "Failed to apply aggregation %s: " match-binding)
                                                            e#))))])))
 
-(defn aggregate [& forms]
+(defn aggregate
+  "Generate a Monger `aggregate` form."
+  [& forms]
   `(mc/aggregate *mongo-connection* ~*collection-name* [~@(when *constraints*
                                                          [{$match *constraints*}])
                                                         ~@(filter identity forms)]))
 
-(defn field-id->$string [field-id]
+(defn field-id->$string
+  "Given a FIELD-ID, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
+  [field-id]
   (format "$%s" (name (field-id->kw field-id))))
 
 
@@ -136,27 +152,42 @@
                       "sum" {$sum (field-id->$string field-id)}}}
              {$project {"_id" false, "sum" true}}))
 
-(defmacro match-aggregation [aggregation]
+(defmacro match-aggregation
+  "Match structured query `aggregation` clause against the clauses defined by `defaggregation`."
+  [aggregation]
   `(match ~aggregation
      ~@@aggregations
      ~'_ nil))
 
 
 ;; ## BREAKOUT
-;; This is similar to the aggregation stuff but has to be implemented separately
-;; since Mongo doesn't really have GROUP BY functionality the same way SQL does;
-;; the query we need to generate ends up being pretty different
+;; This is similar to the aggregation stuff but has to be implemented separately since Mongo doesn't really have
+;; GROUP BY functionality the same way SQL does.
+;; This is annoying, since it effectively duplicates logic we have in the aggregation definitions above and the
+;; clause definitions below, but the query we need to generate is different enough that I haven't found a cleaner
+;; way of doing this yet.
 
-(defn breakout-aggregation->field-name+group-by-clause [aggregation]
+;;
+(defn breakout-aggregation->field-name+expression
+  "Match AGGREGATION clause of a structured query *that contains a `breakout` clause*, and return
+   a pair containing `[field-name aggregation-expression]`, which are used to generate the Mongo aggregate query."
+  [aggregation]
+  ;; AFAIK these are the only aggregation types that make sense in combination with a breakout clause
+  ;; or are we missing something?
+  ;; At any rate these seem to be the most common use cases, so we can add more here if and when they're needed.
   (match aggregation
     ["count"]        ["count" {$sum 1}]
     ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
     ["sum" field-id] ["sum" {$sum (field-id->$string field-id)}]))
 
-(defn do-breakout [{aggregation :aggregation, field-ids :breakout, order-by :order_by, limit :limit, :as query}]
+(defn do-breakout
+  "Generate a Monger query from a structured QUERY dictionary that contains a `breakout` clause.
+   Since the Monger query we generate looks very different from ones we generate when no `breakout` clause
+   is present, this is essentialy a separate implementation :/"
+  [{aggregation :aggregation, field-ids :breakout, order-by :order_by, limit :limit, :as query}]
   {:pre [(sequential? field-ids)
          (every? integer? field-ids)]}
-  (let [[ag-field ag-clause] (breakout-aggregation->field-name+group-by-clause aggregation)
+  (let [[ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
         fields               (->> (map field-id->kw field-ids)
                                   (map name))
         $fields              (map field-id->$string field-ids)
@@ -183,18 +214,29 @@
 
 ;; ## PROCESS-STRUCTURED
 
-(defn process-structured [{:keys [source_table aggregation breakout] :as query}]
+(defn process-structured
+  "Process a structured MongoDB QUERY.
+   This establishes some bindings, then:
+
+   *  queries that contain `breakout` clauses are handled by `do-breakout`
+   *  other queries are handled by `match-aggregation`, which hands off to the
+      appropriate fn defined by a `defaggregation`."
+  [{:keys [source_table aggregation breakout] :as query}]
   (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
             *constraints* (when-let [filter-clause (:filter query)]
                             (apply-clause [:filter filter-clause]))
             *query* (dissoc query :filter)]
+    ;;
     (if-not (empty? breakout) (do-breakout query)
             (match-aggregation aggregation))))
 
 
 ;; ## ANNOTATION
 
-(defn annotate-results [{:keys [source_table] :as query} results]
+;; TODO - This is similar to the implementation in generic-sql; can we combine them and move it into metabase.driver.query-processor?
+(defn annotate-results
+  "Add column information, `row_count`, etc. to the results of a Mongo QP query."
+  [{:keys [source_table] :as query} results]
   {:pre [(integer? source_table)]}
   (let [field-name->field (sel :many :field->obj [Field :name] :table_id source_table)
         column-keys       (qp/order-columns {:query query} (keys (first results)))
@@ -209,14 +251,25 @@
 
 ;; ## CLAUSE APPLICATION 2.0
 
-(def field-id->kw
+(def ^{:arglists '([field-id])} field-id->kw
+  "Return the keyword name of a `Field` with ID FIELD-ID. Memoized."
   (memoize
    (fn [field-id]
+     {:pre [(integer? field-id)]
+      :post [(keyword? %)]}
      (keyword (sel :one :field [Field :name] :id field-id)))))
 
-(def clauses (atom '()))
+(def ^:private clauses
+  "Used by `defclause` to store the clause definitions generated by it."
+  (atom '()))
 
-(defmacro defclause [clause match-binding & body]
+(defmacro defclause
+  "Generate a new clause definition that will be called inside of a `match` statement
+   whenever CLAUSE matches MATCH-BINDING.
+
+   In general, these should emit a vector of forms to be included in the generated Monger query;
+   however, `filter` is handled a little differently (see below)."
+  [clause match-binding & body]
   `(swap! clauses concat '[[~clause ~match-binding] (try
                                                       ~@body
                                                       (catch Throwable e#
@@ -225,21 +278,14 @@
 
 ;; ### CLAUSE DEFINITIONS
 
-;; #### cum_sum
-;; Don't need to do anything here <3
-(defclause :cum_sum _
-  nil)
-
 ;; ### fields
-;; TODO - this still returns _id, even if we don't ask for it :/
 (defclause :fields field-ids
   `[(fields ~(mapv field-id->kw field-ids))])
 
 
 ;; ### filter
-;; !!! SPECIAL CASE - since this is used in a different way by the different aggregation options
-;; we just return a "constraints" map
-
+;; !!! SPECIAL CASE - the results of this clause are bound to *constraints*, which is used differently
+;; by the various defaggregation definitions or by do-breakout. Here, we just return a "constraints" map instead.
 (defclause :filter ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max]
   (let [lat-field (field-id->kw lat-field-id)
         lon-field (field-id->kw lon-field-id)]
@@ -305,10 +351,14 @@
 
 ;; ### APPLY-CLAUSE
 
-(defmacro match-clause [clause]
+(defmacro match-clause
+  "Generate a `match` form against all the clauses defined by `defclause`."
+  [clause]
   `(match ~clause
      ~@@clauses
      ~'_ nil))
 
-(defn apply-clause [clause]
+(defn apply-clause
+  "Match CLAUSE against a clause defined by `defclause`."
+  [clause]
   (match-clause clause))
