@@ -59,12 +59,7 @@
 (def driver-name->driver-dataset
   {:mongo       (MongoDriverData.)
    :generic-sql (GenericSqlDriverData.)})
-
-(def driver-name->db-delay
-  "Map of `driver-name` to a delay that will return the corresponding `Database`."
-  {:mongo       mongo-data/mongo-test-db
-   :generic-sql generic-sql-data/test-db})
-(def valid-driver-names (set (keys driver-name->db-delay)))
+(def valid-driver-names (set (keys driver-name->driver-dataset)))
 
 (defmacro with-driver
   "Execute BODY with `*db*` and `*db-id*` bound to appropriate places for "
