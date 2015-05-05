@@ -75,10 +75,7 @@
    :post [(map? %)]}
   (assert (exists? Database :id @mongo-test-db-id)
           (format "Database with ID %d no longer exists!?" @mongo-test-db-id))
-  (or (sel :one Table :db_id @mongo-test-db-id :name (name table-name))
-      (println (colorize.core/red "db_id: " @mongo-test-db-id "\n"
-                                  "db: " (with-out-str (clojure.pprint/pprint (sel :one Database :id @mongo-test-db-id))) "\n"
-                                  "name: " (name table-name)))))
+  (sel :one Table :db_id @mongo-test-db-id :name (name table-name)))
 
 (def ^{:arglists '([table-name])} table-name->id
   "Return ID of `Table` for Mongo test database (memoized).

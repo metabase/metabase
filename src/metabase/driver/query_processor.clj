@@ -30,9 +30,10 @@
                                            remove-empty-clauses
                                            add-implicit-breakout-order-by
                                            preprocess-cumulative-sum))]
-    (println (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
-                                 (with-out-str (clojure.pprint/pprint pp)) "\n"
-                                 "*******************************************************\n"))
+    (when-not *disable-qp-logging*
+      (log/debug (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
+                                     (with-out-str (clojure.pprint/pprint pp)) "\n"
+                                     "*******************************************************\n")))
     pp))
 
 
@@ -102,15 +103,9 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([driver query results])}
   [driver {cumulative-sum? :cum_sum, :as query} {data :data, :as results}]
-  ;; (println (colorize.core/magenta "---------------------------------------- POSTPROCESSING: ----------------------------------------\n"
-  ;;                                 (with-out-str (clojure.pprint/pprint query)) "\n"
-  ;;                                 "=================================================================================================\n"
-  ;;                                 (with-out-str (clojure.pprint/pprint results)) "\n"
-  ;;                                 "-------------------------------------------------------------------------------------------------\n"))
   (if-not cumulative-sum? results
           (let [field-id     (or (first (:fields query))
                                  (second (:aggregation query)))
-                ;; [field-id]   (:fields query)
                 _            (assert (integer? field-id))
                 ;; Determine the index of the cum_sum field by matching field-id in the result columns
                 field-index  (->> (:cols data)
@@ -119,7 +114,6 @@
                                                    i)))
                                   (filter identity)
                                   first)
-                _            (println "COLS:" (:cols data))
                 _            (assert (integer? field-index))
                 ;; Make a sequence of cumulative sum values for each row
                 rows         (:rows data)
@@ -235,4 +229,4 @@
                     castified-field-names)
     (catch Exception e
       (.printStackTrace e)
-      (println (.getMessage e)))))
+      (log/error (.getMessage e)))))

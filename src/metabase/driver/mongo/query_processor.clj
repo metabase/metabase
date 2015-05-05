@@ -36,9 +36,9 @@
     (case (keyword query-type)
       :query (let [generated-query (process-structured (:query query))]
                (when-not qp/*disable-qp-logging*
-                 (println (color/magenta "\n******************** Generated Monger Query: ********************\n" ; NOCOMMIT log/debug
-                                         (with-out-str (clojure.pprint/pprint generated-query))
-                                         "*****************************************************************\n")))
+                 (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
+                                           (with-out-str (clojure.pprint/pprint generated-query))
+                                           "*****************************************************************\n")))
                (->> (eval generated-query)
                     (annotate-results (:query query))))
       :native (->> (eval-raw-command (:query (:native query)))
@@ -84,8 +84,8 @@
           (quote [~match-binding (try
                                    ~@body
                                    (catch Throwable e#
-                                     (println (color/red ~(format "Failed to apply aggregation %s: " match-binding)
-                                                         e#))))])))
+                                     (log/error (color/red ~(format "Failed to apply aggregation %s: " match-binding)
+                                                           e#))))])))
 
 (defn aggregate [& forms]
   `(mc/aggregate *mongo-connection* ~*collection-name* [~@(when *constraints*
@@ -136,59 +136,12 @@
      ~'_ nil))
 
 
-;; ## [BREAKOUT DEBUG STUFF]
-
-(def db
-  (delay (sel :one Database :engine "mongo" :name "Mongo Test")))
-
-(def users-table
-  (delay (sel :one Table :name "users" :db_id (:id @db))))
-
-(def users-id-field
-  (delay (sel :one Field :name "_id" :table_id (:id @users-table))))
-
-
-(defn x []
-  (driver/process-query {:type :query
-                         :database (:id @db)
-                         :query {:source_table (:id @users-table)
-                                 :filter [nil nil]
-                                 :aggregation ["count"]
-                                 :breakout [(:id @users-id-field)]
-                                 :order_by [[(:id @users-id-field) "ascending"]]
-                                 :limit nil}}))
-
-(defn y []
-  (let [checkins-table-id (sel :one :id Table :name "checkins")
-        user-id           (sel :one :id Field :name "user_id", :table_id checkins-table-id)
-        venue-id          (sel :one :id Field :name "venue_id", :table_id checkins-table-id)]
-    (driver/process-query {:type :query
-                           :database (:id @db)
-                           :query {:source_table checkins-table-id
-                                   :filter [nil nil]
-                                   :aggregation ["count"]
-                                   :breakout [user-id venue-id]
-                                   :order_by [[user-id "ascending"]]
-                                   :limit 10}})))
-
-(defn z []
-  (let [venues-id (sel :one :id Table :name "venues", :db_id (:id @db))]
-    (driver/process-query {:type :query
-                           :database (:id @db)
-                           :query {:source_table venues-id
-                                   :filter [nil nil]
-                                   :aggregation ["avg" (sel :one :id Field :name "latitude", :table_id venues-id)]
-                                   :breakout [nil]
-                                   :limit nil}})))
-
-
 ;; ## BREAKOUT
 ;; This is similar to the aggregation stuff but has to be implemented separately
 ;; since Mongo doesn't really have GROUP BY functionality the same way SQL does;
 ;; the query we need to generate ends up being pretty different
 
 (defn breakout-aggregation->field-name+group-by-clause [aggregation]
-  (println "AGGREGATION:" aggregation)
   (match aggregation
     ["count"]        ["count" {$sum 1}]
     ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
@@ -202,7 +155,6 @@
                                   (map name))
         $fields              (map field-id->$string field-ids)
         fields->$fields      (zipmap fields $fields)]
-    (println "FIELDS->$FIELDS:" fields->$fields)
     (aggregate {$group  (merge {"_id"    (if (= (count fields) 1) (first $fields)
                                              fields->$fields)
                                 ag-field ag-clause}
@@ -262,14 +214,10 @@
   `(swap! clauses concat '[[~clause ~match-binding] (try
                                                       ~@body
                                                       (catch Throwable e#
-                                                        (println (color/red ~(format "Failed to process clause [%s %s]: " clause match-binding)
-                                                                            (.getMessage e#)))))]))
+                                                        (log/error (color/red ~(format "Failed to process clause [%s %s]: " clause match-binding)
+                                                                              (.getMessage e#)))))]))
 
 ;; ### CLAUSE DEFINITIONS
-
-;; ### breakout (TODO)
-(defclause :breakout field-ids
-  (println (colorize.core/red "FIELD-IDS: " field-ids)))
 
 ;; #### cum_sum
 ;; Don't need to do anything here <3
