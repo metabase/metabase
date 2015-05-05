@@ -184,8 +184,8 @@ var AddToDashboardPopover = React.createClass({
 
         return (
             <form className="Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset flex align-center">
-                    <h3>Create a new dashboard</h3>
+                <div className="Form-offset flex align-center mr4">
+                    <h3 className="flex-full">Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
                         <CloseIcon width="12px" height="12px"/>
                     </a>
