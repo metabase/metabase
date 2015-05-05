@@ -611,6 +611,17 @@ var CardRenderer = {
             return initialHeight - headerHeight - 5; // why the magic number :/
         }
 
+        // if we can find the chart element in the DOM then max width is parent element - parent x padding
+        var chartElement = chartElementForId(id);
+        if (chartElement) {
+            var parent = chartElement.parentElement,
+                parentHeight = getComputedHeight(parent),
+                parentPaddingTop = getComputedSizeProperty('padding-top', parent),
+                parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
+
+            return parentHeight - parentPaddingTop - parentPaddingBottom;
+        }
+
         return null;
     },
 
