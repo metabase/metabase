@@ -25,6 +25,7 @@ var QueryVisualization = React.createClass({
             });
         }
     },
+    maxTableRows: 500,
 
     queryIsDirty: function() {
         // a query is considered dirty if ANY part of it has been changed
@@ -64,7 +65,7 @@ var QueryVisualization = React.createClass({
             }
 
             return (
-                <div className="VisualizationSettings QueryBuilder-section">
+                <div>
                     Show as:
                     <label className="Select ml2">
                         <select onChange={this.setDisplay} value={this.props.card.display}>
@@ -92,7 +93,9 @@ var QueryVisualization = React.createClass({
 
     render: function () {
         var viz,
-            queryModified;
+            queryModified,
+            rowMaxMessage;
+
         if (!this.props.result) {
             viz = (
                 <div className="flex full layout-centered text-brand">
@@ -149,10 +152,18 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
+                    if(this.props.result.data.rows.length > this.maxTableRows) {
+                        rowMaxMessage = (
+                            <div className="mt1">
+                                <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
+                                Previewing <b>{this.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                            </div>
+                        );
+                    }
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={500} />
+                            maxRows={this.maxTableRows} />
                     );
 
                 } else {
@@ -196,7 +207,12 @@ var QueryVisualization = React.createClass({
                 <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
                     {viz}
                 </ReactCSSTransitionGroup>
-                {this.renderVizControls()}
+                <div className="VisualizationSettings QueryBuilder-section clearfix">
+                    <div className="float-right">
+                        {rowMaxMessage}
+                    </div>
+                    {this.renderVizControls()}
+                </div>
             </div>
         );
     }

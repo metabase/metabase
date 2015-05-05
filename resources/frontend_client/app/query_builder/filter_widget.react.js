@@ -270,7 +270,7 @@ var FilterWidget = React.createClass({
 
     render: function() {
         return (
-            <div className="Query-filter rounded">
+            <div className="Query-filter">
                 {this.renderFieldList()}
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}

@@ -131,8 +131,9 @@
 .QueryTable-wrapper {
     box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     margin-top: var(--qb-offset-normal);
-    margin-bottom: var(--qb-offset-normal);
+    margin-bottom: 3px; /* we need a small amount of margin here for the box shadow to show */
     overflow: scroll;
+    border-top: 1px solid #E8E8E8;
 }
 
 @media screen and (--breakpoint-min-xl) {
@@ -152,6 +153,7 @@
     padding-bottom: 1.2rem;
     font-weight: bold;
     color: #444;
+    border-top-color: transparent;
 }
 
 .QueryTable-wrapper .Table td {
@@ -163,7 +165,7 @@
 }
 
 .QueryTable.Table tbody tr:hover {
-    background-color: var(--selection-color);
+    background-color: #EAF0F7;
 }
 
 /*
@@ -295,8 +297,11 @@
     background-color: #fff;
 }
 
+.VisualizationSettings .Select select {
+    padding: 0.5rem;
+}
+
 .Loading {
-    justify-content: center;
     background-color: rgba(255, 255, 255, 0.82);
 }
 
@@ -347,31 +352,50 @@
     width: 100%;
 }
 
-.PermissionsBadge {
-    background-color: #A989C5;
-    color: #fff;
-    border-radius: 4px;
-    padding: 0.5em;
-    text-transform: uppercase;
-    font-weight: bold;
-    font-size: 0.6rem;
-}
-
 .GuiBuilder {
+    position: relative;
     border-bottom: 1px solid #F0F0F0;
     max-height: 100%;
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .GuiBuilder {
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
+    }
 }
 
 .GuiBuilder.GuiBuilder--collapsed {
     overflow: hidden;
-    max-height: 1em;
+    max-height: 2rem;
+    min-height: 2rem;
+}
+
+.GuiBuilder.GuiBuilder--collapsed .Query-section {
+    display: none;
 }
 
 .QueryToggle {
-    display: flex;
-    justify-content: flex-end;
+    color: #999;
+    position: absolute;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    right: var(--qb-offset-normal);
+    text-decoration: none;
+    font-weight: bold;
 }
 
+.QueryToggle:hover {
+    color: var(--brand-color);
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryToggle {
+        right: var(--qb-offset-large);
+    }
+}
 
 /* @transitions */
 
