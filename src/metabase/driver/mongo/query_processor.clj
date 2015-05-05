@@ -107,7 +107,8 @@
 
 (defaggregation ["avg" field-id]
   (aggregate {$group {"_id" nil
-                      "avg" {$avg (field-id->$string field-id)}}}))
+                      "avg" {$avg (field-id->$string field-id)}}}
+             {$project {"_id" false, "avg" true}}))
 
 (defaggregation ["count" field-id]
   (aggregate {$match {(field-id->kw field-id) {$exists true}}}
@@ -169,6 +170,16 @@
                                    :breakout [user-id venue-id]
                                    :order_by [[user-id "ascending"]]
                                    :limit 10}})))
+
+(defn z []
+  (let [venues-id (sel :one :id Table :name "venues", :db_id (:id @db))]
+    (driver/process-query {:type :query
+                           :database (:id @db)
+                           :query {:source_table venues-id
+                                   :filter [nil nil]
+                                   :aggregation ["avg" (sel :one :id Field :name "latitude", :table_id venues-id)]
+                                   :breakout [nil]
+                                   :limit nil}})))
 
 
 ;; ## BREAKOUT

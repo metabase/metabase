@@ -289,6 +289,24 @@
    :breakout [nil]
    :limit nil})
 
+
+;; ## "AVG" AGGREGATION
+(qp-expect-with-all-drivers
+    {:rows [[35.50589199999998]]
+     :columns ["avg"]
+     :cols [{:base_type :FloatField
+             :special_type :latitude
+             :name "avg"
+             :id nil
+             :table_id nil
+             :description nil}]}
+  {:source_table (id :venues)
+   :filter [nil nil]
+   :aggregation ["avg" (id :venues :latitude)]
+   :breakout [nil]
+   :limit nil})
+
+
 ;; ### "DISTINCT COUNT" AGGREGATION
 (qp-expect-with-all-drivers
     {:rows [[15]]
