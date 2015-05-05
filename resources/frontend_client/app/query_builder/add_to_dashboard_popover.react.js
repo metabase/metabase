@@ -64,7 +64,6 @@ var AddToDashboardPopover = React.createClass({
                     newDashSuccess: dashboard
                 });
             } else {
-                console.log('booyah');
                 component.setState({
                     isCreating: false,
                     errors: null,
