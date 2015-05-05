@@ -231,7 +231,7 @@ var AddToDashboardPopover = React.createClass({
         return (
             <div className="Success py4 flex flex-column align-center text-success">
                 <CheckIcon width="64px" height="64px" />
-                <div className="inline-block">{message}</div>
+                <div className="AddToDashSuccess ">{message}</div>
                 <a href={link}>Let me check it out.</a>
             </div>
         );

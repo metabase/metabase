@@ -1,5 +1,5 @@
 :root {
-	
+
 }
 
 /* afaik popover needs a positioning context to be able to calculate the transform */
@@ -46,5 +46,5 @@
 /* if the tether element is attached right, move our arrows right */
 .tether-target-attached-right .PopoverBody--withArrow:before,
 .tether-target-attached-right .PopoverBody--withArrow:after {
-	right: 40px;
+	right: 12px;
 }

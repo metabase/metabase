@@ -493,3 +493,8 @@
     opacity: 0.01;
     transition: opacity .3s linear !important;
 }
+
+.AddToDashSuccess {
+    max-width: 260px;
+    text-align: center;
+}
