@@ -6,6 +6,7 @@ var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
+        visualizationSettingsApi: React.PropTypes.func.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired
@@ -160,6 +161,7 @@ var QueryVisualization = React.createClass({
                             </div>
                         );
                     }
+
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
@@ -170,6 +172,7 @@ var QueryVisualization = React.createClass({
                     // assume that anything not a table is a chart
                     viz = (
                         <QueryVisualizationChart
+                            visualizationSettingsApi={this.props.visualizationSettingsApi}
                             card={this.props.card}
                             data={this.props.result.data} />
                     );
