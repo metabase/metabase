@@ -1,6 +1,10 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [colorize.core :as color]
+            [environ.core :refer [env]]
+            [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.mongo.test-data :as mongo-data]
@@ -14,6 +18,8 @@
 (def ^:dynamic *db-id*
   "Bound to ID of `Database` for the current driver inside body of `with-driver`.")
 (def ^:dynamic *driver-dataset*)
+
+;; ### IDriverDataset + Implementations
 
 (defprotocol IDriverDataset
   "Functions needed to fetch test data for various drivers."
@@ -69,15 +75,52 @@
   {:mongo       (MongoDriverData.)
    :generic-sql (GenericSqlDriverData.)})
 
-(def valid-driver-names
-  "Set of valid driver name keywords."
+(def all-valid-driver-names
+  "Names of all valid drivers to test against."
   (set (keys driver-name->driver-dataset)))
 
+;; ### Logic for determining which drivers to test against
+
+;; By default, we'll test against *all* valid drivers;
+;; otherwise, you can test against only a subset of drivers by setting the env var `MB_TEST_AGAINST_DRIVERS`
+;; to a comma-separated list of driver names, e.g.
+;;
+;;    # test against :generic-sql and :mongo
+;;    MB_TEST_AGAINST_DRIVERS=generic-sql,mongo
+;;
+;;    # just test against :generic-sql
+;;    MB_TEST_AGAINST_DRIVERS=generic-sql
+
+(defn- get-drivers-to-test-from-env
+  "Return a set of driver names to test against from the env var `MB_TEST_AGAINST_DRIVERS`."
+  []
+  (when-let [env-drivers (some-> (env :mb-test-against-drivers)
+                                 s/lower-case)]
+    (->> (s/split env-drivers #",")
+         (map keyword)
+         ;; Double check that the specified drivers are all valid
+         (map (fn [driver-name]
+                (assert (contains? all-valid-driver-names driver-name)
+                        (format "Invalid driver specified in MB_TEST_AGAINST_DRIVERS: %s" (name driver-name)))
+                driver-name))
+         set)))
+
+(def driver-names-to-test
+  "Delay that returns set of names of drivers we should run tests against.
+   By default, this returns *all* drivers, but can be overriden by setting env var `MB_TEST_AGAINST_DRIVERS`."
+  (delay (let [drivers (or (get-drivers-to-test-from-env)
+                           all-valid-driver-names)]
+           (log/info (color/green "Running QP tests against these drivers: " drivers))
+           drivers)))
+
+
+;; ###  EXPECT-WITH-ALL-DRIVERS
+
 (defmacro with-driver
-  "Execute BODY with `*db*` and `*db-id*` bound to appropriate places for "
+  "Execute BODY with `*driver-dataset*`, `*db*` and `*db-id*` bound to appropriate values for DRIVER-NAME."
   [driver-name & body]
   {:pre [(keyword? driver-name)
-         (contains? valid-driver-names driver-name)]}
+         (contains? all-valid-driver-names driver-name)]}
   `(let [driver-data# (driver-name->driver-dataset ~driver-name)
          db#          (db driver-data#)]
      (binding [*driver-dataset* driver-data#
@@ -96,7 +139,7 @@
                            ~expected)
                        (with-driver ~driver-name
                          ~actual))])
-                 valid-driver-names)))
+                 @driver-names-to-test)))
 
 
 ;; ##  Driver-Independent Data Fns
