@@ -7,6 +7,7 @@
                       [db :as db]
                       [task :as task]
                       [test-data :as h2-test-data])
+            [metabase.test.data.datasets :as datasets]
             [metabase.driver.mongo.test-data :as mongo-test-data]))
 
 (declare clear-test-db)
@@ -20,24 +21,30 @@
 
 ;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
 
+(defn load-test-datasets
+  "Call `load-data!` on all the datasets we're testing against."
+  []
+  (doseq [dataset-name @datasets/test-dataset-names]
+    (log/info (format "Loading test data: %s..." (name dataset-name)))
+    (datasets/load-data! (datasets/dataset-name->dataset dataset-name))))
+
 (defn test-startup
   {:expectations-options :before-run}
   []
   (log/info "Starting up Metabase unit test runner")
+
   ;; clear out any previous test data that's lying around
   (log/info "Clearing out test DB...")
   (clear-test-db)
   (log/info "Setting up test DB and running migrations...")
   (db/setup-db :auto-migrate true)
-  (log/info "Loading test data: h2...")
-  @h2-test-data/test-db
-  (assert (integer? @h2-test-data/db-id))
-  (log/info "Loading test data: mongo...")
-  (mongo-test-data/destroy!)
-  @mongo-test-data/mongo-test-db
-  (assert (integer? @mongo-test-data/mongo-test-db-id))
+
+  ;; Load the test datasets
+  (load-test-datasets)
+
   ;; startup test web server
   (core/start-jetty)
+
   ;; start the task runner
   (task/start-task-runner!))
 
@@ -51,8 +58,6 @@
 
 
 ;; ## DB Setup
-;; WARNING: BY RUNNING ANY UNIT TESTS THAT REQUIRE THIS FILE OR BY RUNNING YOUR ENTIRE TEST SUITE YOU WILL EFFECTIVELY BE WIPING OUT YOUR DATABASE.
-;; SETUP-DB DELETES YOUR DATABASE FILE, AND GETS RAN AUTOMATICALLY BY EXPECTATIONS. USE AT YOUR OWN RISK!
 
 (defn- clear-test-db
   "Delete the test db file if it's still lying around."

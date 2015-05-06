@@ -1,155 +1,56 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [colorize.core :as color]
-            [environ.core :refer [env]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [table :refer [Table]])
-            [metabase.test-data :as generic-sql-data]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; ## Functionality for writing driver-independent tests
 
 (def ^:dynamic *db*
-  "Bound to `Database` for the current driver inside body of `with-driver`.")
+  "Bound to `Database` for the current driver inside body of `with-dataset`.")
 (def ^:dynamic *db-id*
-  "Bound to ID of `Database` for the current driver inside body of `with-driver`.")
+  "Bound to ID of `Database` for the current driver inside body of `with-dataset`.")
 (def ^:dynamic *driver-dataset*)
-
-;; ### IDriverDataset + Implementations
-
-(defprotocol IDriverDataset
-  "Functions needed to fetch test data for various drivers."
-  (db [this]
-    "Return `Database` containing test data for this driver.")
-  (table-name->table [this table-name]
-    "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
-  (field-name->id [this table-name field-name]
-    "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
-  (fks-supported? [this]
-    "Does this driver support Foreign Keys?")
-  (format-name [this table-or-field-name]
-    "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
-     (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
-  (id-field-type [this]
-    "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`)."))
-
-(deftype MongoDriverData []
-  IDriverDataset
-  (db [_]
-    @mongo-data/mongo-test-db)
-  (table-name->table [_ table-name]
-    (mongo-data/table-name->table table-name))
-  (field-name->id [_ table-name field-name]
-    (mongo-data/field-name->id table-name (if (= field-name :id) :_id
-                                              field-name)))
-  (fks-supported? [_]
-    false)
-  (format-name [_ table-or-field-name]
-    (if (= table-or-field-name "id") "_id"
-        table-or-field-name))
-
-  (id-field-type [_]
-    :IntegerField))
-
-(deftype GenericSqlDriverData []
-  IDriverDataset
-  (db [_]
-    @generic-sql-data/test-db)
-  (table-name->table [_ table-name]
-    (generic-sql-data/table-name->table table-name))
-  (field-name->id [_ table-name field-name]
-    (generic-sql-data/field->id table-name field-name))
-  (fks-supported? [_]
-    true)
-  (format-name [_ table-or-field-name]
-    (clojure.string/upper-case table-or-field-name))
-  (id-field-type [_]
-    :BigIntegerField))
-
-(def driver-name->driver-dataset
-  "Map of driver keyword name -> dataset instance (i.e., an object that implements `IDriverDataset`)."
-  {:mongo       (MongoDriverData.)
-   :generic-sql (GenericSqlDriverData.)})
-
-(def all-valid-driver-names
-  "Names of all valid drivers to test against."
-  (set (keys driver-name->driver-dataset)))
-
-;; ### Logic for determining which drivers to test against
-
-;; By default, we'll test against *all* valid drivers;
-;; otherwise, you can test against only a subset of drivers by setting the env var `MB_TEST_AGAINST_DRIVERS`
-;; to a comma-separated list of driver names, e.g.
-;;
-;;    # test against :generic-sql and :mongo
-;;    MB_TEST_AGAINST_DRIVERS=generic-sql,mongo
-;;
-;;    # just test against :generic-sql
-;;    MB_TEST_AGAINST_DRIVERS=generic-sql
-
-(defn- get-drivers-to-test-from-env
-  "Return a set of driver names to test against from the env var `MB_TEST_AGAINST_DRIVERS`."
-  []
-  (when-let [env-drivers (some-> (env :mb-test-against-drivers)
-                                 s/lower-case)]
-    (->> (s/split env-drivers #",")
-         (map keyword)
-         ;; Double check that the specified drivers are all valid
-         (map (fn [driver-name]
-                (assert (contains? all-valid-driver-names driver-name)
-                        (format "Invalid driver specified in MB_TEST_AGAINST_DRIVERS: %s" (name driver-name)))
-                driver-name))
-         set)))
-
-(def driver-names-to-test
-  "Delay that returns set of names of drivers we should run tests against.
-   By default, this returns *all* drivers, but can be overriden by setting env var `MB_TEST_AGAINST_DRIVERS`."
-  (delay (let [drivers (or (get-drivers-to-test-from-env)
-                           all-valid-driver-names)]
-           (log/info (color/green "Running QP tests against these drivers: " drivers))
-           drivers)))
 
 
 ;; ###  EXPECT-WITH-ALL-DRIVERS
 
-(defmacro with-driver
+(defmacro with-dataset
   "Execute BODY with `*driver-dataset*`, `*db*` and `*db-id*` bound to appropriate values for DRIVER-NAME."
-  [driver-name & body]
-  {:pre [(keyword? driver-name)
-         (contains? all-valid-driver-names driver-name)]}
-  `(let [driver-data# (driver-name->driver-dataset ~driver-name)
-         db#          (db driver-data#)]
-     (binding [*driver-dataset* driver-data#
-               *db* db#
-               *db-id* (:id db#)]
+  [dataset-name & body]
+  {:pre [(keyword? dataset-name)
+         (contains? datasets/all-valid-dataset-names dataset-name)]}
+  `(let [dataset# (datasets/dataset-name->dataset ~dataset-name)
+         db#      (datasets/db dataset#)]
+     (binding [*driver-dataset* dataset#
+               *db*             db#
+               *db-id*          (:id db#)]
        (assert (and (integer? *db-id*)
                     (map? *db*)))
        ~@body)))
 
-(defmacro expect-with-all-drivers
-  "Like expect, but runs a test inside of `with-driver` for *each* of the available drivers."
+(defmacro expect-with-all-datasets
+  "Like expect, but runs a test inside of `with-dataset` for *each* of the available datasets."
   [expected actual]
-  `(do ~@(mapcat (fn [driver-name]
+  `(do ~@(mapcat (fn [dataset-name]
                    `[(expect
-                         (with-driver ~driver-name
+                         (with-dataset ~dataset-name
                            ~expected)
-                       (with-driver ~driver-name
+                       (with-dataset ~dataset-name
                          ~actual))])
-                 @driver-names-to-test)))
+                 @datasets/test-dataset-names)))
 
 
-;; ##  Driver-Independent Data Fns
+;; ##  Dataset-Independent Data Fns
 
 (defn ->table
   "Given keyword TABLE-NAME, fetch corresponding `Table` in `*db*`."
   [table-name]
   {:pre [*driver-dataset*]
    :post [(map? %)]}
-  (table-name->table *driver-dataset* table-name))
+  (datasets/table-name->table *driver-dataset* table-name))
 
 (defn id
   "Return the ID of a `Table` or `Field` for the current driver data set."
@@ -163,17 +64,17 @@
           (keyword? table-name)
           (keyword? field-name)]
     :post [(integer? %)]}
-   (field-name->id *driver-dataset* table-name field-name)))
+   (datasets/field-name->id *driver-dataset* table-name field-name)))
 
 
-;; ## Driver-Independent QP Tests
+;; ## Dataset-Independent QP Tests
 
 ;; ### Helper Fns + Macros
 
-(defmacro qp-expect-with-all-drivers
+(defmacro qp-expect-with-all-datasets
   "Slightly more succinct way of writing QP tests. Adds standard boilerplate to actual/expected forms."
   [data query]
-  `(expect-with-all-drivers
+  `(expect-with-all-datasets
        {:status :completed
         :row_count ~(count (:rows data))
         :data ~data}
@@ -181,11 +82,21 @@
                             :database *db-id*
                             :query ~query})))
 
+(defn fks-supported? []
+  (datasets/fks-supported? *driver-dataset*))
+
+(defn format-name [name]
+  (datasets/format-name *driver-dataset* name))
+
+(defn id-field-type []
+  (datasets/id-field-type *driver-dataset*))
+
 (defn ->columns
   "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
   [& names]
-  (mapv (partial format-name *driver-dataset*)
+  (mapv (partial format-name)
         names))
+
 
 ;; ### Predefinied Column Fns
 ;; These are meant for inclusion in the expected output of the QP tests, to save us from writing the same results several times
@@ -202,46 +113,46 @@
   (case col
     :id          {:extra_info {}
                   :special_type :id
-                  :base_type (id-field-type *driver-dataset*)
+                  :base_type (id-field-type)
                   :description nil
-                  :name (format-name *driver-dataset* "id")
+                  :name (format-name "id")
                   :table_id (id :venues)
                   :id (id :venues :id)}
-    :category_id {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :categories)}
+    :category_id {:extra_info (if (fks-supported?) {:target_table_id (id :categories)}
                                   {})
-                  :special_type (if (fks-supported? *driver-dataset*) :fk
+                  :special_type (if (fks-supported?) :fk
                                     :category)
                   :base_type :IntegerField
                   :description nil
-                  :name (format-name *driver-dataset* "category_id")
+                  :name (format-name "category_id")
                   :table_id (id :venues)
                   :id (id :venues :category_id)}
     :price       {:extra_info {}
                   :special_type :category
                   :base_type :IntegerField
                   :description nil
-                  :name (format-name *driver-dataset* "price")
+                  :name (format-name "price")
                   :table_id (id :venues)
                   :id (id :venues :price)}
     :longitude   {:extra_info {}
                   :special_type :longitude,
                   :base_type :FloatField,
                   :description nil
-                  :name (format-name *driver-dataset* "longitude")
+                  :name (format-name "longitude")
                   :table_id (id :venues)
                   :id (id :venues :longitude)}
     :latitude    {:extra_info {}
                   :special_type :latitude
                   :base_type :FloatField
                   :description nil
-                  :name (format-name *driver-dataset* "latitude")
+                  :name (format-name "latitude")
                   :table_id (id :venues)
                   :id (id :venues :latitude)}
     :name        {:extra_info {}
                   :special_type nil
                   :base_type :TextField
                   :description nil
-                  :name (format-name *driver-dataset* "name")
+                  :name (format-name "name")
                   :table_id (id :venues)
                   :id (id :venues :name)}))
 
@@ -255,9 +166,9 @@
   "Return column information for the `categories` column named by keyword COL."
   [col]
   (case col
-    :id   {:extra_info {} :special_type :id, :base_type (id-field-type *driver-dataset*), :description nil, :name (format-name *driver-dataset* "id")
+    :id   {:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
            :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-dataset* "name")
+    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
            :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### checkins
@@ -267,27 +178,27 @@
   (case col
     :id       {:extra_info {}
                :special_type :id
-               :base_type (id-field-type *driver-dataset*)
+               :base_type (id-field-type)
                :description nil
-               :name (format-name *driver-dataset* "id")
+               :name (format-name "id")
                :table_id (id :checkins)
                :id (id :checkins :id)}
-    :venue_id {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :venues)}
+    :venue_id {:extra_info (if (fks-supported?) {:target_table_id (id :venues)}
                                {})
-               :special_type (when (fks-supported? *driver-dataset*)
+               :special_type (when (fks-supported?)
                                :fk)
                :base_type :IntegerField
                :description nil
-               :name (format-name *driver-dataset* "venue_id")
+               :name (format-name "venue_id")
                :table_id (id :checkins)
                :id (id :checkins :venue_id)}
-    :user_id  {:extra_info (if (fks-supported? *driver-dataset*) {:target_table_id (id :users)}
+    :user_id  {:extra_info (if (fks-supported?) {:target_table_id (id :users)}
                                {})
-               :special_type (if (fks-supported? *driver-dataset*) :fk
+               :special_type (if (fks-supported?) :fk
                                  :category)
                :base_type :IntegerField
                :description nil
-               :name (format-name *driver-dataset* "user_id")
+               :name (format-name "user_id")
                :table_id (id :checkins)
                :id (id :checkins :user_id)}))
 
@@ -299,23 +210,23 @@
   (case col
     :id         {:extra_info {}
                  :special_type :id
-                 :base_type (id-field-type *driver-dataset*)
+                 :base_type (id-field-type)
                  :description nil
-                 :name (format-name *driver-dataset* "id")
+                 :name (format-name "id")
                  :table_id (id :users)
                  :id (id :users :id)}
     :name       {:extra_info {}
                  :special_type :category
                  :base_type :TextField
                  :description nil
-                 :name (format-name *driver-dataset* "name")
+                 :name (format-name "name")
                  :table_id (id :users)
                  :id (id :users :name)}
     :last_login {:extra_info {}
                  :special_type :category
                  :base_type :DateTimeField
                  :description nil
-                 :name (format-name *driver-dataset* "last_login")
+                 :name (format-name "last_login")
                  :table_id (id :users)
                  :id (id :users :last_login)}))
 
@@ -323,7 +234,7 @@
 ;; # THE TESTS THEMSELVES (!)
 
 ;; ### "COUNT" AGGREGATION
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[100]]
      :columns ["count"]
      :cols [{:base_type :IntegerField
@@ -339,7 +250,7 @@
    :limit nil})
 
 ;; ### "SUM" AGGREGATION
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[203]]
      :columns ["sum"]
      :cols [{:base_type :IntegerField
@@ -356,7 +267,7 @@
 
 
 ;; ## "AVG" AGGREGATION
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[35.50589199999998]]
      :columns ["avg"]
      :cols [{:base_type :FloatField
@@ -373,7 +284,7 @@
 
 
 ;; ### "DISTINCT COUNT" AGGREGATION
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[15]]
      :columns ["count"]
      :cols [{:base_type :IntegerField
@@ -391,7 +302,7 @@
 
 ;; ## "ROWS" AGGREGATION
 ;; Test that a rows aggregation just returns rows as-is.
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
             [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
             [3 11 2 -118.428 34.0406 "The Apple Pan"]
@@ -416,16 +327,16 @@
 ;; Test that we can get "pages" of results.
 
 ;; ### PAGE - Get the first page
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 "African"]
             [2 "American"]
             [3 "Artisan"]
             [4 "Asian"]
             [5 "BBQ"]]
      :columns (->columns "id" "name")
-     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type *driver-dataset*), :description nil, :name (format-name *driver-dataset* "id")
+     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
              :table_id (id :categories), :id (id :categories :id)}
-            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name *driver-dataset* "name")
+            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
              :table_id (id :categories), :id (id :categories :name)}]}
   {:source_table (id :categories)
    :aggregation ["rows"]
@@ -434,7 +345,7 @@
    :order_by [[(id :categories :name) "ascending"]]})
 
 ;; ### PAGE - Get the second page
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[6 "Bakery"]
             [7 "Bar"]
             [8 "Beer Garden"]
@@ -452,7 +363,7 @@
 
 ;; ## "ORDER_BY" CLAUSE
 ;; Test that we can tell the Query Processor to return results ordered by multiple fields
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 12 375] [1 9 139] [1 1 72] [2 15 129] [2 12 471] [2 11 325] [2 9 590] [2 9 833] [2 8 380] [2 5 719]],
      :columns (->columns "venue_id" "user_id" "id")
      :cols [(checkins-col :venue_id)
@@ -472,7 +383,7 @@
 ;; ## "FILTER" CLAUSE
 
 ;; ### FILTER -- "AND", ">", ">="
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[55 67 4 -118.096 33.983 "Dal Rae Restaurant"]
             [61 67 4 -118.376 34.0677 "Lawry's The Prime Rib"]
             [77 40 4 -74.0045 40.7318 "Sushi Nakazawa"]
@@ -489,7 +400,7 @@
    :limit nil})
 
 ;; ### FILTER -- "AND", "<", ">", "!="
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
             [23 50 2 -122.42 37.765 "Taqueria Los Coyotes"]]
      :columns (venues-columns)
@@ -504,7 +415,7 @@
    :limit nil})
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[21 58 2 -122.421 37.7441 "PizzaHacker"]
             [22 50 1 -122.484 37.7822 "Gordo Taqueria"]]
      :columns (venues-columns)
@@ -516,7 +427,7 @@
    :limit nil})
 
 ;; ### FILTER -- "OR", "<=", "="
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
             [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
             [3 11 2 -118.428 34.0406 "The Apple Pan"]
@@ -536,7 +447,7 @@
 ;; *  NULL
 
 ;; ### FILTER -- "INSIDE"
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]]
      :columns (venues-columns)
      :cols (venues-cols)}
@@ -555,7 +466,7 @@
 
 ;; ## "FIELDS" CLAUSE
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [["Red Medicine" 1]
             ["Stout Burgers & Beers" 2]
             ["The Apple Pan" 3]
@@ -581,9 +492,9 @@
 
 ;; ## "BREAKOUT"
 ;; ### "BREAKOUT" - SINGLE COLUMN
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
-     :columns [(format-name *driver-dataset* "user_id")
+     :columns [(format-name "user_id")
                "count"]
      :cols [(checkins-col :user_id)
             {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
@@ -596,10 +507,10 @@
 
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
-     :columns [(format-name *driver-dataset* "user_id")
-               (format-name *driver-dataset* "venue_id")
+     :columns [(format-name "user_id")
+               (format-name "venue_id")
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
@@ -612,10 +523,10 @@
 
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]],
-     :columns [(format-name *driver-dataset* "user_id")
-               (format-name *driver-dataset* "venue_id")
+     :columns [(format-name "user_id")
+               (format-name "venue_id")
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
@@ -631,7 +542,7 @@
 
 ;; ## EMPTY QUERY
 ;; Just don't barf
-(expect-with-all-drivers
+(expect-with-all-datasets
     {:status :completed
      :row_count 0
      :data {:rows [], :columns [], :cols []}}
@@ -650,17 +561,17 @@
 ;; ## CUMULATIVE SUM
 
 ;; ### cum_sum w/o breakout should be treated the same as sum
-(qp-expect-with-all-drivers
-    {:rows [[(case (id-field-type *driver-dataset*)
+(qp-expect-with-all-datasets
+    {:rows [[(case (id-field-type)
                :IntegerField    120
                :BigIntegerField 120M)]]
      :columns ["sum"]
-     :cols [{:base_type (id-field-type *driver-dataset*), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+     :cols [{:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
   {:source_table (id :users)
    :aggregation ["cum_sum" (id :users :id)]})
 
 ;; ### Simple cumulative sum where breakout field is same as cum_sum field
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
      :cols [(users-col :id)]}
@@ -669,7 +580,7 @@
    :aggregation ["cum_sum" (id :users :id)]})
 
 ;; ### Cumulative sum w/ a different breakout field
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:rows [["Broen Olujimi" 14]
             ["Conchúr Tihomir" 21]
             ["Dwight Gresham" 34]
@@ -693,7 +604,7 @@
    :aggregation ["cum_sum" (id :users :id)]})
 
 ;; ### Cumulative sum w/ a different breakout field that requires grouping
-(qp-expect-with-all-drivers
+(qp-expect-with-all-datasets
     {:columns (->columns "price" "id")
      :cols [(venue-col :price)
             (venue-col :id)]
