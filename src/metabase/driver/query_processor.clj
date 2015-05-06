@@ -16,15 +16,13 @@
 
 (def ^:const empty-response
   "An empty response dictionary to return when there's no query to run."
-  {:status :completed
-   :row_count 0
-   :data {:rows [], :columns [], :cols []}})
+  {:rows [], :columns [], :cols []})
 
 
 ;; # DYNAMIC VARS
 
 (def ^:dynamic *query*
-  "The structured query we're currently processing, before any preprocessing occurs (i.e. the `:query` part of the API call body)"
+  "The query we're currently processing (i.e., the body of the query API call)."
   nil)
 
 (def ^:dynamic *disable-qp-logging*
@@ -130,7 +128,7 @@
 (defn post-process-cumulative-sum
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
-  [{cum-sum-field :cum_sum, :as query} {{rows :rows, cols :cols, :as data} :data, :as results}]
+  [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
   (if-not cum-sum-field results
           (let [ ;; Determine the index of the field we need to cumulative sum
                 cum-sum-field-index (->> cols
@@ -170,7 +168,22 @@
                  reverse
                  (filter (complement same-breakout-field-values-as-previous-row?))
                  reverse
-                 (assoc-in results [:data :rows])))))
+                 (assoc results :rows)))))
+
+;; ### ADD-ROW-COUNT-AND-STATUS
+
+(defn add-row-count-and-status
+  "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
+  [results]
+  {:pre [(map? results)
+         (sequential? (:columns results))
+         (sequential? (:cols results))
+         (sequential? (:rows results))]}
+  {:row_count (count (:rows results))
+   :status    :completed
+   :data      results})
+
+;; ### POST-PROCESS
 
 (defn post-process
   "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
@@ -179,7 +192,8 @@
     :native results
     :query  (let [query (:query query)]
               (->> results
-                   (post-process-cumulative-sum query)))))
+                   (post-process-cumulative-sum query)
+                   add-row-count-and-status))))
 
 
 ;; # COMMON ANNOTATION FNS

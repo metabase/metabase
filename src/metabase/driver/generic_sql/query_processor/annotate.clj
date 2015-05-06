@@ -17,14 +17,13 @@
    *  `:columns` ordered sequence of column names
    *  `:cols` ordered sequence of information about each column, such as `:base_type` and `:special_type`"
   [query results]
-  (let [column-names (get-column-names query results)]
-    {:status :completed
-     :row_count (count results)
-     :data {:rows (->> results
-                       (map #(map %                             ; pull out the values in each result in the same order we got from get-column-names
-                                  (map keyword column-names))))
-            :columns (map uncastify column-names)
-            :cols (get-column-info query column-names)}}))
+  (let [column-names    (get-column-names query results)
+        column-name-kws (map keyword column-names)]
+    {:rows (->> results
+                (map (fn [row]
+                       (map row column-name-kws))))
+     :columns (map uncastify column-names)
+     :cols (get-column-info query column-names)}))
 
 (defn- order-columns
   [query castified-field-names]

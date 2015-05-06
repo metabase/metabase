@@ -648,3 +648,16 @@
   {:source_table (id :users)
    :breakout [(id :users :name)]
    :aggregation ["cum_sum" (id :users :id)]})
+
+;; ### Cumulative sum w/ a different breakout field that requires grouping
+(qp-expect-with-all-drivers
+    {:columns (->columns "price" "id")
+     :cols [(venue-col :price)
+            (venue-col :id)]
+     :rows [[1 1211]
+            [2 4066]
+            [3 4681]
+            [4 5050]]}
+  {:source_table (id :venues)
+   :breakout     [(id :venues :price)]
+   :aggregation  ["cum_sum" (id :venues :id)]})

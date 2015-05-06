@@ -108,9 +108,9 @@
 (defn aggregate
   "Generate a Monger `aggregate` form."
   [& forms]
-  `(mc/aggregate *mongo-connection* ~*collection-name* [~@(when *constraints*
-                                                         [{$match *constraints*}])
-                                                        ~@(filter identity forms)]))
+  `(mc/aggregate ^DBApiLayer *mongo-connection* ~*collection-name* [~@(when *constraints*
+                                                                        [{$match *constraints*}])
+                                                                    ~@(filter identity forms)]))
 
 (defn field-id->$string
   "Given a FIELD-ID, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
@@ -119,12 +119,12 @@
 
 
 (defaggregation ["rows"]
-  `(doall (with-collection *mongo-connection* ~*collection-name*
+  `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*
             ~@(when *constraints* [`(find ~*constraints*)])
             ~@(mapcat apply-clause *query*))))
 
 (defaggregation ["count"]
-  `[{:count (mc/count *mongo-connection* ~*collection-name*
+  `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
                       ~*constraints*)}])
 
 (defaggregation ["avg" field-id]
@@ -241,12 +241,10 @@
   (let [field-name->field (sel :many :field->obj [Field :name] :table_id source_table)
         column-keys       (qp/order-columns {:query query} (keys (first results)))
         column-names      (map name column-keys)]
-    {:row_count (count results)
-     :status :completed
-     :data {:columns column-names
-            :cols (qp/get-column-info {:query query} column-names)
-            :rows (map #(map % column-keys)
-                       results)}}))
+    {:columns column-names
+     :cols (qp/get-column-info {:query query} column-names)
+     :rows (map #(map % column-keys)
+                results)}))
 
 
 ;; ## CLAUSE APPLICATION 2.0
