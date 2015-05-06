@@ -4,7 +4,7 @@
 
 JS_HINT=./node_modules/jsxhint/cli.js
 JS_HINT_OPTS='--config .jshintrc'
-JS_FILES=`find resources/frontend_client/app -name "*.js*" | grep -v bower_components | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
+JS_FILES=`find resources/frontend_client/app -name "*.js" | grep -v bower_components | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
 
 BOLD='\033[1;30m'
 RED='\033[0;31m' # \e doesn't work on OS X but \033 works on either
