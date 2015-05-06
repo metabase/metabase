@@ -93,3 +93,9 @@
     margin-top: 1em;
     text-align: center;
 }
+
+.ForgotForm,
+.SuccessGroup {
+    position: relative;
+    z-index: 10;
+}
