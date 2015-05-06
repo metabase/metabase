@@ -18,7 +18,8 @@
   [query]
   {query [Required String->Dict]}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})]
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})
+        columns (map name columns)]                         ; turn keywords into strings, otherwise we get colons in our output
     (if (= status :completed)
       ;; successful query, send CSV file
       {:status 200

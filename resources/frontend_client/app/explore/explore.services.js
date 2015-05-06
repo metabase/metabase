@@ -132,7 +132,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         },
         'IS_NOT': {
             'name': "!=",
-            'verbose_name': "Is not",
+            'verbose_name': "Is Not",
             'validArgumentsFilters': [equivalentArgument]
         },
         'IS_NULL': {
@@ -217,6 +217,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         return {
             'name': cls.name,
             'verbose_name': cls.verbose_name,
+            'validArgumentsFilters': cls.validArgumentsFilters,
             'fields': _.map(cls.validArgumentsFilters, function(validArgumentsFilter) {
                 return validArgumentsFilter(field, table);
             })

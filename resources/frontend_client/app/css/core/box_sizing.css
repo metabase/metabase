@@ -12,6 +12,7 @@ table,
 fieldset,
 textarea,
 ul,
-li {
+li,
+span {
   box-sizing: border-box;
 }
