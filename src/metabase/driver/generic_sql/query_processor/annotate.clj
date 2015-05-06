@@ -2,6 +2,7 @@
   "Functions related to annotating results returned by the Query Processor."
   (:require [metabase.db :refer :all]
             [metabase.driver.query-processor :as qp]
+            [metabase.driver.generic-sql.util :as gsu]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare get-column-names
@@ -22,7 +23,7 @@
      :data {:rows (->> results
                        (map #(map %                             ; pull out the values in each result in the same order we got from get-column-names
                                   (map keyword column-names))))
-            :columns column-names
+            :columns (map uncastify column-names)
             :cols (get-column-info query column-names)}}))
 
 (defn- order-columns
@@ -37,10 +38,10 @@
   (let [field-ids (-> query :query :fields)
         fields-clause-fields (when-not (or (empty? field-ids)
                                            (= field-ids [nil]))
-                               (let [field-id->name (->> (sel :many [Field :id :name]
-                                                              :id [in field-ids])     ; Fetch names of fields from `fields` clause
-                                                         (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
-                                                                {id (keyword name)}))
+                               (let [field-id->name (->> (sel :many [Field :id :name :base_type]
+                                                              :id [in field-ids])               ; Fetch names of fields from `fields` clause
+                                                         (map (fn [{:keys [id name base_type]}]  ; build map of field-id -> field-name
+                                                                {id (gsu/field-name+base-type->castified-key name base_type)}))
                                                          (into {}))]
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)

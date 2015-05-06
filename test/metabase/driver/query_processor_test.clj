@@ -262,7 +262,7 @@
                  :table_id (id :users)
                  :id (id :users :id)}
     :name       {:extra_info {}
-                 :special_type nil
+                 :special_type :category
                  :base_type :TextField
                  :description nil
                  :name (format-name *driver-dataset* "name")
@@ -606,13 +606,45 @@
 
 ;; ## CUMULATIVE SUM
 
-;; ### Simple cumulative sum w/o any breakout
+;; ### cum_sum w/o breakout should be treated the same as sum
+(qp-expect-with-all-drivers
+    {:rows [[(case (id-field-type *driver-dataset*)
+               :IntegerField    120
+               :BigIntegerField 120M)]]
+     :columns ["sum"]
+     :cols [{:base_type (id-field-type *driver-dataset*), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :users)
+   :aggregation ["cum_sum" (id :users :id)]})
+
+;; ### Simple cumulative sum where breakout field is same as cum_sum field
 (qp-expect-with-all-drivers
     {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
      :cols [(users-col :id)]}
-  {:limit nil
-   :source_table (id :users)
-   :filter [nil nil]
-   :breakout [nil]
+  {:source_table (id :users)
+   :breakout [(id :users :id)]
+   :aggregation ["cum_sum" (id :users :id)]})
+
+;; ### Cumulative sum w/ a different breakout field
+(qp-expect-with-all-drivers
+    {:rows [["Broen Olujimi" 14]
+            ["Conchúr Tihomir" 21]
+            ["Dwight Gresham" 34]
+            ["Felipinho Asklepios" 36]
+            ["Frans Hevel" 46]
+            ["Kaneonuskatew Eiran" 49]
+            ["Kfir Caj" 61]
+            ["Nils Gotam" 70]
+            ["Plato Yeshua" 71]
+            ["Quentin Sören" 76]
+            ["Rüstem Hebel" 91]
+            ["Shad Ferdynand" 97]
+            ["Simcha Yan" 101]
+            ["Spiros Teofil" 112]
+            ["Szymon Theutrich" 120]]
+     :columns (->columns "name" "id")
+     :cols [(users-col :name)
+            (users-col :id)]}
+  {:source_table (id :users)
+   :breakout [(id :users :name)]
    :aggregation ["cum_sum" (id :users :id)]})

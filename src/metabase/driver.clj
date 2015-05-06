@@ -127,7 +127,8 @@
   (binding [qp/*query* query]
     (let [driver  (database-id->driver (:database query))
           query   (qp/preprocess query)
-          results (i/process-query driver (dissoc-in query [:query :cum_sum]))] ; strip out things that individual impls don't need to know about / deal with
+          results (binding [qp/*query* query]
+                    (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
       (qp/post-process driver query results))))
 
 
@@ -205,6 +206,7 @@
         (query-complete query-execution query-result (:cache_result options)))
       (catch Exception ex
         (log/warn ex)
+        (.printStackTrace ex)
         (query-fail query-execution (.getMessage ex))))))
 
 

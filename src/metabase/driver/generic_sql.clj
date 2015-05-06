@@ -85,7 +85,8 @@
                                            (aggregate (count :*) :count)
                                            (where {(keyword (:name field)) [not= nil]})) first :count)]
       (if (= total-non-null-count 0) 0.0
-          (let [url-count (-> (select korma-table
-                                      (aggregate (count :*) :count)
-                                      (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)]
+          (let [url-count (or (-> (select korma-table
+                                          (aggregate (count :*) :count)
+                                          (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
+                              0)]
             (float (/ url-count total-non-null-count)))))))

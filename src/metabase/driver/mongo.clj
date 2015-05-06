@@ -22,7 +22,7 @@
 (defn- table->column-names
   "Return a set of the column names for TABLE."
   [table]
-  (with-mongo-connection [conn @(:db table)]
+  (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
          (r/map keys)
          (r/map set)
@@ -43,7 +43,7 @@
   IDriver
 ;;; ### Connection
   (can-connect? [_ database]
-    (with-mongo-connection [conn database]
+    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
       (= (-> (cmd/db-stats conn)
              (conv/from-db-object :keywordize)
              :ok)

@@ -44,15 +44,15 @@
 (defn preprocess-structured
   "Preprocess a strucuted QUERY dict."
   [query]
-  (let [pp (update-in query [:query] #(->> %
-                                           remove-empty-clauses
-                                           add-implicit-breakout-order-by
-                                           preprocess-cumulative-sum))]
+  (let [preprocessed-query (update-in query [:query] #(->> %
+                                                           remove-empty-clauses
+                                                           add-implicit-breakout-order-by
+                                                           preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
-      (log/debug (colorize.core/cyan "******************** PREPROCESSED: ********************\n"
-                                     (with-out-str (clojure.pprint/pprint pp)) "\n"
+      (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
+                                     (with-out-str (clojure.pprint/pprint preprocessed-query)) "\n"
                                      "*******************************************************\n")))
-    pp))
+    preprocessed-query))
 
 
 ;; ## PREPROCESSOR FNS
@@ -100,21 +100,27 @@
 (defn preprocess-cumulative-sum
   "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
    (Cumulative sum is a special case; it is implemented in post-processing)."
-  [{aggregation :aggregation, :as query}]
-  (match aggregation
-    ["cum_sum" field-id] (merge query
-                                ;; Mark the Query dict as cum_sum so we know to apply post-processing later
-                                {:cum_sum true}
-                                ;; A Query that combines breakout + cum_sum needs to be rewritten as a query that gets the
-                                ;; sum of the aggregate field for each value of the breakout field
-                                (if (:breakout query) {:breakout    [field-id]
-                                                       :aggregation ["sum" field-id]
-                                                       :order_by    (conj (or (vec (:order_by query)) [])
-                                                                          [field-id "ascending"])}
-                                    ;; Otherwise we are only interested in the values of the aggregate field itself
-                                    {:aggregation ["rows"]
-                                     :fields      [field-id]}))
-    _                    query))
+  [{[ag-type ag-field :as aggregation] :aggregation, breakout-fields :breakout, order-by :order_by, :as query}]
+  (let [cum-sum?      (= ag-type "cum_sum")
+        has-breakout? (not (empty? breakout-fields))]
+    (cond
+      ;; Cumulative sum is only applicable if it has breakout fields
+      ;; Rewrite the query as a simple "rows" aggregation that fetches the fields in cum_sum and breakout
+      ;; cum_sum will happen in post-processing
+      ;; Store the cumulative sum field under the key :cum_sum so we know which one to sum later
+      (and cum-sum?
+           has-breakout?) (-> query
+                              (dissoc :breakout)
+                              (assoc :cum_sum     ag-field
+                                     :aggregation ["rows"]
+                                     :fields      (distinct (concat breakout-fields [ag-field]))))
+
+      ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
+           cum-sum?       (assoc query
+                                 :aggregation ["sum" ag-field])
+
+      ;; Otherwise if this isn't a cum_sum query return it as-is
+      :else               query)))
 
 
 ;; # POSTPROCESSOR
@@ -123,29 +129,47 @@
 
 (defn post-process-cumulative-sum
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  {:arglists '([driver query results])}
-  [driver {cumulative-sum? :cum_sum, :as query} {data :data, :as results}]
-  (if-not cumulative-sum? results
-          (let [field-id     (or (first (:fields query))
-                                 (second (:aggregation query)))
-                _            (assert (integer? field-id))
-                ;; Determine the index of the cum_sum field by matching field-id in the result columns
-                field-index  (->> (:cols data)
-                                  (map-indexed (fn [i column]
-                                                 (when (= (:id column) field-id)
-                                                   i)))
-                                  (filter identity)
-                                  first)
-                _            (assert (integer? field-index))
-                ;; Make a sequence of cumulative sum values for each row
-                rows         (:rows data)
-                values       (->> rows
-                                  (map #(nth % field-index))
-                                  (reductions +))]
-            ;; Replace the value in each row
-            (->> (map (fn [row value]
-                        (assoc (vec row) field-index value))
-                      rows values)
+  {:arglists '([query results])}
+  [{cum-sum-field :cum_sum, :as query} {{rows :rows, cols :cols, :as data} :data, :as results}]
+  (if-not cum-sum-field results
+          (let [ ;; Determine the index of the field we need to cumulative sum
+                cum-sum-field-index (->> cols
+                                                (map-indexed (fn [i {field-id :id}]
+                                                               (when (= field-id cum-sum-field)
+                                                                 i)))
+                                                (filter identity)
+                                                first)
+                _                   (assert (integer? cum-sum-field-index))
+                ;; Now make a sequence of cumulative sum values for each row
+                values              (->> rows
+                                         (map #(nth % cum-sum-field-index))
+                                         (reductions +))
+                ;; Update the values in each row
+                rows                (map (fn [row value]
+                                           (assoc (vec row) cum-sum-field-index value))
+                                         rows values)
+                ;; We only want to return a single row for each value of the breakout columns.
+                ;; e.g.
+                ;; 2014-04-03  3        2014-04-03  8  ; only return one row for 2014-04-03
+                ;; 2014-04-03  5  --->  2014-04-04 18
+                ;; 2014-04-04 10
+                ;;
+                ;; We'll reverse the sequence of rows, then filter out all rows whose breakout field values were the same as the last.
+                ;; Then we'll reverse the sequence again to restore the original order.
+                remove-cum-sum-value                        (fn [row]
+                                                              (concat (subvec row 0 cum-sum-field-index)
+                                                                      (subvec row (inc cum-sum-field-index) (count row))))
+                previous-row-breakout-field-values          (atom nil)
+                same-breakout-field-values-as-previous-row? (fn [row]
+                                                              (let [breakout-values (remove-cum-sum-value row)
+                                                                    previous-values @previous-row-breakout-field-values]
+                                                                (reset! previous-row-breakout-field-values breakout-values)
+                                                                (and (not (empty? breakout-values))
+                                                                     (= breakout-values previous-values))))]
+            (->> rows
+                 reverse
+                 (filter (complement same-breakout-field-values-as-previous-row?))
+                 reverse
                  (assoc-in results [:data :rows])))))
 
 (defn post-process
@@ -155,7 +179,7 @@
     :native results
     :query  (let [query (:query query)]
               (->> results
-                   (post-process-cumulative-sum driver query)))))
+                   (post-process-cumulative-sum query)))))
 
 
 ;; # COMMON ANNOTATION FNS

@@ -90,7 +90,6 @@
                     (sel :one Table :id table-id)
                     (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
 
-
 (defn castify-field
   "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `:DateTimeField`).
 
@@ -101,6 +100,15 @@
          (keyword? field-base-type)]}
   ;; do we need to cast DateFields ? or just DateTimeFields ?
   (if (contains? #{:DateField :DateTimeField} field-base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+      (keyword field-name)))
+
+(defn field-name+base-type->castified-key
+  "Like `castify-field`, but returns a keyword that should match the one returned in results."
+  [field-name field-base-type]
+  {:pre [(string? field-name)
+         (keyword? field-base-type)]
+   :post [(keyword? %)]}
+  (if (contains? #{:DateField :DateTimeField} field-base-type) (keyword (format "CAST(%s AS DATE)" field-name))
       (keyword field-name)))
 
 (def field-id->kw

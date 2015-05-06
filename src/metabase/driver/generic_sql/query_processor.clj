@@ -98,9 +98,14 @@
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]]
-  (let [field-names (map field-id->kw field-ids)]
+  (let [ ;; Group by all the breakout fields
+        field-names                       (map field-id->kw field-ids)
+        ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
+        fields-not-in-fields-clause-names (->> field-ids
+                                               (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
+                                               (map field-id->kw))]
     `[(group  ~@field-names)
-      (fields ~@field-names)]))
+      (fields ~@fields-not-in-fields-clause-names)]))
 
 
 ;; ### `:fields`
