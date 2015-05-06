@@ -154,7 +154,6 @@ CardControllers.controller('CardDetail', [
                     // clear out any visualization and reset to defaults
                     queryResult = null;
                     card.display = "table";
-                    card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, card.display);
 
                     renderAll();
                 }
@@ -237,18 +236,12 @@ CardControllers.controller('CardDetail', [
         };
 
         var visualizationModel = {
+            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
             isRunning: false,
             setDisplayFn: function(type) {
-                // change the card visualization type and refresh chart settings
                 card.display = type;
-                card.visualization_settings = VisualizationSettings.getSettingsForVisualization({}, type);
-
-                if (type === "pin_map") {
-                    // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    card.visualization_settings = VisualizationSettings.setLatitudeAndLongitude(card.visualization_settings, queryResult.data.cols);
-                }
 
                 renderAll();
             }

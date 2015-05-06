@@ -119,12 +119,49 @@ var GuiQueryEditor = React.createClass({
     },
 
     runQuery: function() {
-        // ewwwww.  we should do something better here
-        var cleanQuery = this.cleanFilters(this.props.query);
+        var cleanQuery = this.cleanQuery(this.props.query);
 
         this.props.runFn(cleanQuery);
+    },
 
-        // TODO: isRunning / hasJustRun state
+    cleanQuery: function(dataset_query) {
+        // it's possible the user left some half-done parts of the query on screen when they hit the run button, so find those
+        // things now and clear them out so that we have a nice clean set of valid clauses in our query
+
+        // TODO: breakouts
+
+        // filters
+        var queryFilters = this.getFilters();
+        if (queryFilters.length > 1) {
+            var hasNullValues = function(arr) {
+                for (var j=0; j < arr.length; j++) {
+                    if (arr[j] === null) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            var cleanFilters = [queryFilters[0]];
+            for (var i=1; i < queryFilters.length; i++) {
+                if (!hasNullValues(queryFilters[i])) {
+                    cleanFilters.push(queryFilters[i]);
+                }
+            }
+
+            if (cleanFilters.length > 1) {
+                dataset_query.query.filter = cleanFilters;
+            } else {
+                dataset_query.query.filter = [];
+            }
+        }
+
+        // TODO: limit
+
+        // TODO: sort
+
+        return dataset_query;
     },
 
     canAddDimensions: function() {
@@ -218,12 +255,34 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
 
-    canAddFilter: function() {
+    getFilters: function() {
+        // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
+        // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
+
+        var queryFilters = this.props.query.query.filter;
+
+        // quick check for older style filter definitions and tweak them to a format we want to work with
+        if (queryFilters && queryFilters.length > 0 && queryFilters[0] !== "AND") {
+            var reformattedFilters = [];
+
+            for (var i=0; i < queryFilters.length; i++) {
+                if (queryFilters[i] !== null) {
+                    reformattedFilters = ["AND", queryFilters];
+                    break;
+                }
+            }
+
+            queryFilters = reformattedFilters;
+        }
+
+        return queryFilters;
+    },
+
+    canAddFilter: function(queryFilters) {
         var canAdd = true;
 
-        var query = this.props.query;
-        if (query.query.filter && query.query.filter.length > 0) {
-            var lastFilter = query.query.filter[query.query.filter.length - 1];
+        if (queryFilters && queryFilters.length > 0) {
+            var lastFilter = queryFilters[queryFilters.length - 1];
 
             // simply make sure that there are no null values in the last filter
             for (var i=0; i < lastFilter.length; i++) {
@@ -240,54 +299,41 @@ var GuiQueryEditor = React.createClass({
 
     addFilter: function() {
         var query = this.props.query,
-            queryFilters = query.query.filter;
+            queryFilters = this.getFilters();
 
         if (queryFilters.length === 0) {
-            query.query.filter = ["AND", [null, null, null]];
+            queryFilters = ["AND", [null, null, null]];
         } else {
             queryFilters.push([null, null, null]);
         }
 
+        query.query.filter = queryFilters;
         this.setQuery(query, true);
     },
 
     updateFilter: function(index, filter) {
-        var query = this.props.query;
-        query.query.filter[index] = filter;
+        var query = this.props.query,
+            queryFilters = this.getFilters();
+
+        queryFilters[index] = filter;
+
+        query.query.filter = queryFilters;
         this.setQuery(query, true);
     },
 
     removeFilter: function(index) {
         var query = this.props.query,
-            queryFilters = query.query.filter;
+            queryFilters = this.getFilters();
 
         if (queryFilters.length === 2) {
-            query.query.filter = [];
+            // this equates to having a single filter because the arry looks like ... ["AND" [a filter def array]]
+            queryFilters = [];
         } else {
             queryFilters.splice(index, 1);
         }
 
+        query.query.filter = queryFilters;
         this.setQuery(query, true);
-    },
-
-    cleanFilters: function(dataset_query) {
-        var filters = dataset_query.query.filter,
-            cleanFilters = [];
-
-        // in instances where there's only one filter, the api expects just one array with the values
-        if (typeof(filters[0]) == 'object' && filters[0] != 'AND') {
-            for (var filter in filters[0]) {
-                cleanFilters.push(filters[0][filter]);
-            }
-            dataset_query.query.filter = cleanFilters;
-        }
-
-        // reset to initial state of filters if we've removed 'em all
-        if (filters.length === 1 && filters[0] === 'AND') {
-            dataset_query.filter = [];
-        }
-
-        return dataset_query;
     },
 
     canAddLimitAndSort: function() {
@@ -435,7 +481,7 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderFilterButton: function() {
-        if (this.props.query.query.source_table && this.props.query.query.filter.length === 0) {
+        if (this.props.query.query.source_table && this.getFilters().length === 0) {
             return (
                 <a className="ml2" onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
@@ -564,7 +610,9 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderFilterSelector: function() {
-        if (this.state.options && this.props.query.query.filter.length > 0) {
+        var queryFilters = this.getFilters();
+
+        if (this.state.options && queryFilters && queryFilters.length > 0) {
             var component = this;
 
             var filterFieldList = [];
@@ -572,7 +620,7 @@ var GuiQueryEditor = React.createClass({
                 filterFieldList.push(this.state.options.fields_lookup[key]);
             }
 
-            var filterList = this.props.query.query.filter.map(function (filter, index) {
+            var filterList = queryFilters.map(function (filter, index) {
                 if(index > 0) {
                     return (
                         <FilterWidget
@@ -589,7 +637,7 @@ var GuiQueryEditor = React.createClass({
 
             // TODO: proper check for isFilterComplete(filter)
             var addFilterButton;
-            if (this.canAddFilter()) {
+            if (this.canAddFilter(queryFilters)) {
                 addFilterButton = (
                     <a onClick={this.addFilter}>Add another filter</a>
                 );

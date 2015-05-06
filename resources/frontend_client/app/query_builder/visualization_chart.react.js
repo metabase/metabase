@@ -4,6 +4,7 @@
 var QueryVisualizationChart = React.createClass({
     displayName: 'QueryVisualizationChart',
     propTypes: {
+        visualizationSettingsApi: React.PropTypes.func.isRequired,
         card: React.PropTypes.object.isRequired,
         data: React.PropTypes.object
     },
@@ -37,8 +38,16 @@ var QueryVisualizationChart = React.createClass({
     renderChart: function () {
         if (this.props.data) {
             try {
+                // always ensure we have the most recent visualization settings to use for rendering
+                var card = this.props.card;
+                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(card.visualization_settings, card.display);
+                card.visualization_settings = vizSettings;
+
                 if (this.props.card.display === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
+
+                    // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
+                    card.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(card.visualization_settings, this.props.data.cols);
 
                     // these are example callback functions that could be passed into the renderer
                     // var updateMapCenter = function(lat, lon) {
