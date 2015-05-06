@@ -1,96 +1,189 @@
-html {
+:root {
+    --selection-color: #ccdff6;
+    --qb-offset-normal: 0.8rem;
+    --qb-offset-large: 2.05rem;
+}
+/* @layout */
+.QueryBuilder {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    line-height: 1;
+    font-size: 0.85em;
 }
 
-body {
-    height: 100%;
+/* a major section of the query builder */
+.QueryBuilder-section {
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
 }
 
-.SearchBar:focus {
-    outline: none;
+@media screen and (--breakpoint-min-xl) {
+    .QueryBuilder-section {
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
+    }
 }
 
-.SaveModal {
-    background: #fff;
-    border-radius: 4px;
-    position: absolute;
-    bottom: 0.5em;
-    right: 1.5em;
-    width: 400px;
+.QueryHeader {
+    border-bottom: 1px solid #F0F0F0;
+    padding-top: var(--qb-offset-normal);
+    padding-bottom: var(--qb-offset-normal);
 }
 
-.QueryBuilder .dc-chart {
-    padding: 2em;
+@media screen and (--breakpoint-min-xl) {
+    .QueryHeader {
+        padding-top: var(--qb-offset-large);
+        padding-bottom: var(--qb-offset-large);
+    }
 }
 
-.QueryBuilder .dc-chart .pie-slice {
-    font-size: 1em;
+.QueryHeader-details,
+.QueryHeader-actions {
+    display: flex;
+    align-items: center;
+    flex: 0 0 50%;
 }
 
-.QueryWrapper {
-    padding-left: 1.5em;
-    padding-right: 1.5em;
+.QueryHeader-actions {
+    justify-content: flex-end;
 }
 
-.SaveModal.Modal--showing {
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+.Icon-download,
+.Icon-addToDash {
+    fill: #919191;
+    transition: fill .3s linear;
+    width: 24px;
+    height: 24px;
 }
 
-.SaveModal .ModalContent {
-    display: none;
-    margin-bottom: 6em;
-    padding: 2em;
+.Icon-download:hover,
+.Icon-addToDash:hover {
+    fill: var(--brand-color);
+    transition: fill .3s linear;
 }
 
-.SaveModal input {
-    border: none;
-    font-size: 1em;
-    border-bottom: 1px dotted #111;
-    display: block;
-    width: 100%;
-    padding: 1em;
+@media screen and (--breakpoint-min-xl) {
+    .Icon-download,
+    .Icon-addToDash {
+        width: 32px;
+        height: 32px;
+    }
 }
 
-.SaveModal input:focus {
-    outline: none;
-    border-bottom-color: #4A90E2;
+/* a section of the graphical query itself */
+.Query-section {
+    display: flex;
+    align-items: center;
+    color: #91979E;
+    padding-top: 1em;
 }
 
-.SaveModal.Modal--showing .ModalContent {
-    display: block;
+.Query-section.Query-section--right {
+    justify-content: flex-end;
 }
 
-.SaveButton {
-    position: relative;
-    z-index: 10;
-}
-
-.QueryBar {
-    display: inline-block;
-    margin: 0 0 1.2em 0;
+.QueryVisualization {
+    display: flex;
+    flex: 1;
 }
 
 .QueryName {
     font-weight: 200;
-    margin: 1em 0;
-    font-size: 1.35em;
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 1.2rem;
 }
 
-.QueryBar .SelectionModule {
-    position: relative;
+.Query-label {
+    min-width: 7rem;
     display: inline-block;
 }
 
+.Query-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+}
+
+.Query-filter {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--selection-color);
+    background-color: var(--selection-color);
+    margin-right: 1em;
+    margin-bottom: 0.5em;
+}
+
+.Query-filter .input {
+    padding: 0;
+    border-radius: 0;
+    padding: 0.5rem;
+    border-color: transparent;
+}
+
+.Query-filter .Icon-close {
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+
+.QueryTable-wrapper {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    margin-top: var(--qb-offset-normal);
+    margin-bottom: 3px; /* we need a small amount of margin here for the box shadow to show */
+    overflow: scroll;
+    border-top: 1px solid #E8E8E8;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .QueryTable-wrapper {
+        margin-top: var(--qb-offset-large);
+    }
+}
+
+.QueryTable-wrapper .Table {
+    font-family: "Lato";
+    font-size: 0.86em;
+    line-height: 0.86em;
+}
+
+.QueryTable-wrapper .Table th {
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    font-weight: bold;
+    color: #444;
+    border-top-color: transparent;
+}
+
+.QueryTable-wrapper .Table td {
+    padding: 0.5rem;
+}
+
+.QueryTable.Table tr:nth-child(even) {
+    background-color: #fff;
+}
+
+.QueryTable.Table tbody tr:hover {
+    background-color: #EAF0F7;
+}
+
+.QuerySection-addTrigger {
+    margin-left: 7rem;
+}
+
+/*
+    @selectionmodule
+*/
 .SelectionModule {
     color: var(--brand-color);
 }
 
-.SelectionModule .SelectionItems {
+.SelectionItems {
     opacity: 0;
     pointer-events: none;
     position: absolute;
-    top: 2.75em;
+    top: 2.75rem;
     border: 1px solid #ddd;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
     border-radius: 4px;
@@ -99,116 +192,49 @@ body {
     left: 0;
     right: 0;
     overflow-y: scroll;
-    max-height: 360px;
-}
-
-.SelectionList {
-    max-height: 420px;
+    max-height: 340px;
+    min-width: 320px;
 }
 
 .SelectionItems.open {
     opacity: 1;
+    transition: opacity .3s linear;
     pointer-events: all;
 }
 
 .SelectionItem {
-    padding: 0.75em;
-    font-size: 0.85em;
-    position: relative;
-    background: #fff;
     display: flex;
     align-items: center;
     cursor: pointer;
-}
-
-.SelectionItems {
-    min-width: 320px;
+    padding: 0.75rem;
+    background-color: #fff;
 }
 
 .SelectionItem:hover {
     background-color: currentColor;
 }
 
+.SelectionItem .Icon-check {
+    opacity: 0;
+    color: #fff;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.SelectionItem:hover .Icon-check {
+    opacity: 1;
+}
+
 .SelectionItem:hover .SelectionModule-display {
     color: #fff;
 }
 
-
-.SelectionItem:before {
-    content: '';
-    width: 16px;
-    height: 16px;
-    border: 2px solid #ddd;
-    border-radius: 99px;
-    margin-right: 1em;
-    color: currentColor;
+.SelectionItem.SelectionItem--selected .Icon-check {
+    opacity: 1;
+    color: var(--brand-color);
 }
 
-.SelectionItem.selected {
-    color: #4A90E2;
-    color: currentColor;
-}
-
-.SelectionItem.selected:before {
-    background-color: currentColor;
-    border-color: currentColor;
-}
-
-.QueryBar .SelectionItem:hover:before {
-    color: #fff;
-    border-color: currentColor;
-    transition: border .3s linear;
-}
-
-.QueryBar .SelectionTitle {
-    text-align: left;
-    font-size: 0.85em;
-    border: 1px dotted #999;
-    border-radius: 2px;
-}
-
-.FilterSection .SelectionModule,
-.FilterSection .SelectionModule a {
-    color: #A8C28e;
-}
-
-.FilterSection .input {
-    color: #A8C28e;
-    border-color: transparent;
-}
-
-.FilterSection .input:focus {
-    border-color: transparent;
-    border-bottom: 1px solid #A8C28e;
-}
-
-.DimensionList .SelectionModule,
-.DimensionList .SelectionModule a {
-    color: #B9A2CD;
-}
-
-.QueryBar .Button {
-    padding: 0.75em 1.25em;
-    border: 1px dotted #ddd;
-    box-shadow: none;
-}
-
-.SearchBar {
-    border: none;
-    border-bottom: 1px solid #ddd;
-    padding: 0.75em;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .12);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.QueryPicker-wrapper {
-    padding: 0 2em;
-    display: flex;
-    flex-direction: column;
-}
-
-.QueryBar .SelectionModule.open .SelectionItems {
+.SelectionModule.open .SelectionItems {
     opacity: 1;
     pointer-events: all;
 }
@@ -217,200 +243,258 @@ body {
     color: currentColor;
 }
 
+.SelectionTitle {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    border: 1px solid var(--selection-color);
+    cursor: pointer;
+    transition: background .3s linear;
+}
+
+@media screen and (--breakpoint-min-md) {
+    .SelectionTitle {
+        padding: 0.5rem;
+    }
+}
+
 .SelectionModule.selected .SelectionTitle {
-    display: inline-block;
-    margin: 0 0.25em;
-    border: 1px solid #ddd;
-    border-radius: 2px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .08);
+    background-color: var(--selection-color);
+    transition: background .3s linear, border .3s linear;
 }
 
 .SelectionModule.selected .SelectionTitle:hover {
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .18);
-    cursor: pointer;
+    background-color: var(--brand-color);
+    border-color: var(--brand-color);
+    color: #fff;
 }
 
-
-.RemoveTrigger {
-    display: inline-block;
+.Visualization {
+    overflow-y: scroll;
+    transition: background .3s linear;
 }
 
-.ActionBar {
+.Visualization.Visualization--loading {
+    transition: background .3s linear;
+}
+
+.Visualization.Visualization--error {
+    justify-content: center;
+}
+
+.Visualization--scalar {
+    justify-content: center;
+    font-size: 8rem;
+    font-weight: 200;
+}
+
+.Visualization .Card-outer {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.VisualizationSettings {
+    padding-bottom: 1em;
+    padding-top: 1em;
+    background-color: #fff;
+}
+
+.VisualizationSettings .Select select {
+    padding: 0.5rem;
+}
+
+.Loading {
+    background-color: rgba(255, 255, 255, 0.82);
+}
+
+.QueryError {
+    flex-direction: column;
+    justify-content: center;
+}
+
+.QueryError-iconWrapper {
+    padding: 2em;
+    margin-bottom: 2em;
+    border: 4px solid var(--error-color);
+    border-radius: 99px;
+}
+
+/* @save */
+
+.SaveModal {
     position: fixed;
-    bottom: 0;
+    left: 0;
     right: 0;
-    padding: 1em;
-    z-index: 100;
+    bottom: 0;
+    top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    background-color: rgba(255, 255, 255, 0.75);
+    z-index: 5000;
 }
 
-.ActionBar .SettingsButtons {
-    float: right;
+.SaveModal.Modal--showing {
+    opacity: 1;
+    pointer-events: all;
 }
 
-.FilterGroupWrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.FilterGroupWrapper .FilterGroup {
-    margin-top: 1em;
-}
-
-.QueryPicker-group {
-    border-bottom: 1px solid #ddd;
+.SaveModal .ModalContent {
     background: #fff;
-}
-
-.QueryBar .Button {
-    font-size: 0.85em;
-}
-
-.QueryFilter {
-    background: #fff;
-    position: relative;
-    display: inline-block;
-    font-size: 0.85em;
-    margin-right: 1em;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 0px 3px rgba(0, 0, 0, .12);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    display: flex;
+    max-width: 32em;
+    flex: 1;
 }
 
-.QueryFilter .input {
-    padding: 1em;
-    border-radius: 0;
+.SaveModal .ModalContent .Form-new {
+    width: 100%;
 }
 
-.QueryFilter .SelectionModule.selected .SelectionTitle {
-    box-sizing: border-box;
-    margin: 0;
-    border: none;
-    border-right: 1px solid #ddd;
+.GuiBuilder {
+    position: relative;
+    border-bottom: 1px solid #F0F0F0;
+    max-height: 100%;
+    padding-left: var(--qb-offset-normal);
+    padding-right: var(--qb-offset-normal);
 }
 
-.QueryFilter .SelectionModule.selected .SelectionTitle:hover {
-    background: #FBFCFD;
+@media screen and (--breakpoint-min-xl) {
+    .GuiBuilder {
+        padding-left: var(--qb-offset-large);
+        padding-right: var(--qb-offset-large);
+    }
 }
 
-.QueryFilter .RemoveTrigger {
-    margin: 0.75em 0.5em;
+.GuiBuilder.GuiBuilder--collapsed {
+    overflow: hidden;
+    max-height: 2rem;
+    min-height: 2rem;
 }
 
-.FilterSection {
-    display: inline-block;
-}
-
-.FilterSection .SelectionItems {
-    position: absolute;
+.GuiBuilder.GuiBuilder--collapsed .Query-section {
     display: none;
 }
 
-.FilterSection .SelectionItems.open {
-    display: block;
-}
-
-.SelectionModule.removeable .SelectionTitle {
-    padding-right: 3em;
-}
-
-.QueryTable td,
-.QueryTable th {
-    padding: 1em;
-}
-
-.QueryTable {
-    margin-top: 1em;
-    box-shadow: 0 1px 3px rgba(0,0,0, .12);
-}
-
-.Metric-sourceTable:after {
-    content: '•';
-    display: inline-block;
-    color: #ddd;
-    margin-left: 1em;
-}
-
-.DimensionList .RemoveTrigger {
+.QueryToggle {
+    color: #999;
     position: absolute;
-    top: 12px;
-    right: 14px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    right: var(--qb-offset-normal);
+    text-decoration: none;
+    font-weight: bold;
 }
 
-/* breakpoints */
-
-@media screen and (min-width: 60em) {
-    .SelectionTitle {
-        padding: 0.75em 1.25em;
-    }
+.QueryToggle:hover {
+    color: var(--brand-color);
 }
 
-@media screen and (min-width: 120em) {
-    body {
-        font-size: 1em;
-    }
-    .Button,
-    .QueryBar .Button {
-        padding: 1em 2em;
-    }
-    .Table-wrapper {
-        margin-top: 3em;
-    }
-    .SelectionItems.open {
-        top: 3em;
-    }
-    .DimensionList .RemoveTrigger {
-        top: 15px;
-        right: 17px;
-    }
-
-    .QueryName {
-        margin-bottom: 1em;
-    }
-
-    .ActionBar {
-        padding: 1em 0;
-    }
-    .QueryBar .SelectionTitle {
-        padding: 1em 2em;
+@media screen and (--breakpoint-min-xl) {
+    .QueryToggle {
+        right: var(--qb-offset-large);
     }
 }
 
-.FilterTrigger {
-    border-radius: 99px;
-    padding: 0.85em;
-    position: relative;
-    color: #fff;
-    background: #A8C28e;
-    border-color: #A8C28e;
+/* @transitions */
+
+.Transition-qb-section-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
 }
 
-.FilterTrigger:hover {
-    color: #fff;
+.Transition-qb-section-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear !important;
 }
 
-
-
-.FilterTrigger .icon {
-    display: flex;
+.Transition-qb-section-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
 }
 
-.QueryHeader {
-    background: #fff;
+.Transition-qb-section-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
 }
 
-.TypeControls {
-    position: fixed;
-    bottom: 0;
+.Transition-viz-enter {
     width: 100%;
-    z-index: 100;
-    left: 0;
-    right: 0;
-    text-align: center;
-    margin: 1em 0;
+    opacity: 0.01;
+    transition: opacity .3s linear;
 }
 
-.TypeControls .Button {
-    display: inline-block;
-    font-size: 0.85em;
-    margin: 0 0.5em;
+.Transition-viz-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-state-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-state-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-state-leave {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-state-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-leave {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.Transition-popover-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear;
+}
+
+.Transition-qb-querybutton-enter {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-querybutton-enter-active {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-querybutton-leave {
+    opacity: 1;
+    transition: opacity .3s linear !important;
+}
+
+.Transition-qb-querybutton-leave-active {
+    opacity: 0.01;
+    transition: opacity .3s linear !important;
+}
+
+.AddToDashSuccess {
+    max-width: 260px;
+    text-align: center;
 }

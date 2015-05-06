@@ -27,31 +27,6 @@
 //     - panKey
 // - pie.dataLabels_enabled
 
-/// WTF is this for ????
-$.ajaxSetup({
-    beforeSend: function(xhr, settings) {
-        function getCookie(name) {
-            var cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                var cookies = document.cookie.split(';');
-                for (var i = 0; i < cookies.length; i++) {
-                    var cookie = jQuery.trim(cookies[i]);
-                    // Does this cookie string begin with the name we want?
-                    if (cookie.substring(0, name.length + 1) == (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
-            // Only send the token to relative URLs i.e. locally.
-            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
-        }
-    }
-});
-
 var DEFAULT_CARD_WIDTH = 900,
     DEFAULT_CARD_HEIGHT = 500;
 
@@ -611,6 +586,17 @@ var CardRenderer = {
             return initialHeight - headerHeight - 5; // why the magic number :/
         }
 
+        // if we can find the chart element in the DOM then max width is parent element - parent x padding
+        var chartElement = chartElementForId(id);
+        if (chartElement) {
+            var parent = chartElement.parentElement,
+                parentHeight = getComputedHeight(parent),
+                parentPaddingTop = getComputedSizeProperty('padding-top', parent),
+                parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
+
+            return parentHeight - parentPaddingTop - parentPaddingBottom;
+        }
+
         return null;
     },
 
@@ -892,7 +878,7 @@ var CardRenderer = {
 
         var chartRenderer = new GeoHeatmapChartRenderer(id, card, result)
             .setData(chartData, 'stateCode', 'value')
-            .setJson('/static/json/us-states.json', function(d) {
+            .setJson('/app/charts/us-states.json', function(d) {
                 return d.properties.name;
             })
             .setProjection(d3.geo.albersUsa())
@@ -921,7 +907,7 @@ var CardRenderer = {
 
         var chartRenderer = new GeoHeatmapChartRenderer(id, card, result)
             .setData(chartData, 'code', 'value')
-            .setJson('/static/json/world.json', function(d) {
+            .setJson('/app/charts/world.json', function(d) {
                 return d.properties.ISO_A2; // 2-letter country code
             })
             .setProjection(d3.geo.mercator())

@@ -5,6 +5,7 @@
   --alt-bg-color: #F4F6F8;
 
   --success-color: #9CC177;
+  --headsup-color: #F5A623;
 
   --error-color: #EF8C8C;
 }
@@ -48,6 +49,14 @@
 
 .bg-error {
   background-color: var(--error-color);
+}
+
+.text-headsup {
+  color: var(--headsup-color);
+}
+
+.bg-headsup {
+  background-color: var(--headsup-color);
 }
 
 /* grey */

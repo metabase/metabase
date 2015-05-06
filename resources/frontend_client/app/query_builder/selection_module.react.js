@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SearchBar*/
+/*global cx, OnClickOutside, SearchBar, CloseIcon, CheckIcon*/
 
 var SelectionModule = React.createClass({
     displayName:'SelectionModule',
@@ -10,11 +10,12 @@ var SelectionModule = React.createClass({
         items: React.PropTypes.array,
         remove: React.PropTypes.func,
         selectedKey: React.PropTypes.string,
-        selectedValue: React.PropTypes.number,
+        selectedValue: React.PropTypes.node,
         parentIndex: React.PropTypes.number,
         placeholder: React.PropTypes.string
     },
     mixins: [OnClickOutside],
+
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed
         var isInitiallyOpen = this.props.isInitiallyOpen || false;
@@ -26,12 +27,14 @@ var SelectionModule = React.createClass({
             filterTerm: null
         };
     },
-    handleClickOutside: function () {
+
+    handleClickOutside: function() {
         this.setState({
             open: false
         });
     },
-    _enableSearch: function () {
+
+    _enableSearch: function() {
         /*
         not showing search for now
         if(this.props.items.length > this.state.searchThreshold) {
@@ -42,13 +45,15 @@ var SelectionModule = React.createClass({
         */
         return false;
     },
-    _toggleOpen: function () {
+
+    _toggleOpen: function() {
         var open = !this.state.open;
         this.setState({
             open: open
         });
     },
-    _displayCustom: function (values) {
+
+    _displayCustom: function(values) {
         var custom = [];
         this.props.children.forEach(function (element) {
             var newElement = element;
@@ -57,20 +62,22 @@ var SelectionModule = React.createClass({
         });
         return custom;
     },
-    _listItems: function (selection) {
+
+    _listItems: function(selection) {
         var items,
             remove;
 
         if(this.props.items) {
             items = this.props.items.map(function (item, index) {
-                var display = item[this.props.display] || item;
+                var display = (item) ? item[this.props.display] || item : item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
-                    'selected': selection == display
+                    'SelectionItem--selected': selection === display
                 });
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
+                        <CheckIcon width="12px" height="12px" />
                         <span className="SelectionModule-display">
                             {display}
                         </span>
@@ -82,7 +89,8 @@ var SelectionModule = React.createClass({
             return "Sorry. Something went wrong.";
         }
     },
-    _select: function (item) {
+
+    _select: function(item) {
         var index = this.props.index;
         // send back the item with the specified action
         if (this.props.action) {
@@ -98,10 +106,11 @@ var SelectionModule = React.createClass({
         }
         this._toggleOpen();
     },
-    render: function () {
+
+    render: function() {
         var selection;
         this.props.items.map(function (item) {
-            if(item[this.props.selectedKey] === this.props.selectedValue) {
+            if(item && item[this.props.selectedKey] === this.props.selectedValue) {
                 selection = item[this.props.display];
             }
         }.bind(this));
@@ -132,15 +141,10 @@ var SelectionModule = React.createClass({
         }
 
         if(this.props.remove) {
-            var style = {
-                fill: '#ddd'
-            };
             remove = (
-                <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={style} width="16px" height="16px">
-                        <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                    </svg>
-                </a>
+                <div onClick={this.props.remove.bind(null, this.props.index)}>
+                    <CloseIcon className="ml2" width="12px" height="12px" />
+                </div>
             );
         }
 
@@ -149,8 +153,8 @@ var SelectionModule = React.createClass({
                 <div className="SelectionModule-trigger">
                     <a className="SelectionTitle" onClick={this._toggleOpen}>
                         {placeholder}
+                        {remove}
                     </a>
-                    {remove}
                 </div>
                 <div className={itemListClasses}>
                     {searchBar}
