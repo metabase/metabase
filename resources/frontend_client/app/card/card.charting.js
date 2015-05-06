@@ -150,7 +150,13 @@ function applyChartLegend(dcjsChart, card) {
     // ENABLE LEGEND IF SPECIFIED IN VISUALIZATION SETTINGS
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
     var settings = card.visualization_settings,
-        legendEnabled = (card.display === 'pie') ? settings.pie.legend_enabled : settings.chart.legend_enabled;
+        legendEnabled = false;
+
+    if (card.display === "pie" && settings.pie) {
+        legendEnabled = settings.pie.legend_enabled;
+    } else if (settings.chart) {
+        legendEnabled = settings.chart.legend_enabled;
+    }
 
     if (legendEnabled) {
         return dcjsChart.legend(dc.legend());
