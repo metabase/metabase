@@ -127,7 +127,6 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
   [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
-  (println (colorize.core/magenta (with-out-str (clojure.pprint/pprint results))))
   (if-not cum-sum-field results
           (let [ ;; Determine the index of the field we need to cumulative sum
                 cum-sum-field-index (->> cols
