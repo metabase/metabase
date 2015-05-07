@@ -1,11 +1,12 @@
 (ns metabase.driver.generic-sql.query-processor.annotate
   "Functions related to annotating results returned by the Query Processor."
   (:require [metabase.db :refer :all]
+            [metabase.driver.query-processor :as qp]
+            [metabase.driver.generic-sql.util :as gsu]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare get-column-names
          get-column-info
-         get-special-column-info
          uncastify)
 
 (defn annotate
@@ -16,55 +17,18 @@
    *  `:columns` ordered sequence of column names
    *  `:cols` ordered sequence of information about each column, such as `:base_type` and `:special_type`"
   [query results]
-  (let [column-names (get-column-names query results)]
-    {:status :completed
-     :row_count (count results)
-     :data {:rows (->> results
-                       (map #(map %                             ; pull out the values in each result in the same order we got from get-column-names
-                                  (map keyword column-names))))
-            :columns column-names
-            :cols (get-column-info query column-names)}}))
-
-(defn- -order-columns
-  "Don't use this directly; use `order-columns`.
-
-   This broken out for testability -- it doesn't depend on data from the DB."
-  [fields breakout-field-ids castified-field-names]
-  ;; Basically we want to convert both BREAKOUT-FIELD-IDS and CASTIFIED-FIELD-NAMES to maps like:
-  ;;   {:name      "updated_at"
-  ;;    :id        224
-  ;;    :castified (keyword "CAST(updated_at AS DATE)")
-  ;;    :position  21}
-  ;; Then we can order things appropriately and return the castified names.
-  (let [uncastified->castified (zipmap (map #(uncastify (name %)) castified-field-names) castified-field-names)
-        fields                 (map #(assoc % :castified (uncastified->castified (:name %)))
-                                    fields)
-        id->field              (zipmap (map :id fields) fields)
-        castified->field       (zipmap (map :castified fields) fields)
-        breakout-fields        (->> breakout-field-ids
-                                    (map id->field))
-        other-fields           (->> castified-field-names
-                                    (map (fn [castified-name]
-                                           (or (castified->field castified-name)
-                                               {:castified castified-name             ; for aggregate fields like 'count' create a fake map
-                                                :position 0})))                       ; with position 0 so it is returned ahead of the other fields
-                                    (filter #(not (contains? (set breakout-field-ids)
-                                                             (:id %))))
-                                    (sort-by :position))]
-    (->> (concat breakout-fields other-fields)
-         (map :castified))))
+  (let [column-names    (get-column-names query results)
+        column-name-kws (map keyword column-names)]
+    {:rows (->> results
+                (map (fn [row]
+                       (map row column-name-kws))))
+     :columns (map uncastify column-names)
+     :cols (get-column-info query column-names)}))
 
 (defn- order-columns
-  "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
-   They should be ordered as follows:
-
-   1.  All breakout fields, in the same order as BREAKOUT-FIELD-IDS
-   2.  Any aggregate fields like `count`
-   3.  All other columns in the same order as `Field.position`."
-  [{{source-table :source_table breakout-field-ids :breakout} :query} castified-field-names]
-  (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
-                  (filter identity breakout-field-ids)                                   ; handle empty breakout clauses like [nil]
-                  castified-field-names))
+  [query castified-field-names]
+  (binding [qp/*uncastify-fn* uncastify]
+    (qp/order-columns query castified-field-names)))
 
 (defn- get-column-names
   "Get an ordered seqences of column names for the results.
@@ -73,10 +37,10 @@
   (let [field-ids (-> query :query :fields)
         fields-clause-fields (when-not (or (empty? field-ids)
                                            (= field-ids [nil]))
-                               (let [field-id->name (->> (sel :many [Field :id :name]
-                                                              :id [in field-ids])     ; Fetch names of fields from `fields` clause
-                                                         (map (fn [{:keys [id name]}]  ; build map of field-id -> field-name
-                                                                {id (keyword name)}))
+                               (let [field-id->name (->> (sel :many [Field :id :name :base_type]
+                                                              :id [in field-ids])               ; Fetch names of fields from `fields` clause
+                                                         (map (fn [{:keys [id name base_type]}]  ; build map of field-id -> field-name
+                                                                {id (gsu/field-name+base-type->castified-key name base_type)}))
                                                          (into {}))]
                                  (map field-id->name field-ids)))                     ; now get names in same order as the IDs
         other-fields (->> (first results)
@@ -84,6 +48,7 @@
                           (filter #(not (contains? (set fields-clause-fields) %)))
                           (order-columns query))]
     (->> (concat fields-clause-fields other-fields)                                   ; Return a combined vector. Convert them to strs, otherwise korma
+         (filter identity)                                                            ; remove any nils -- don't want a NullPointerException
          (map name))))                                                                ; will qualify them like `"METABASE_FIELD"."FOLLOWERS_COUNT"
 
 (defn- uncastify
@@ -95,36 +60,7 @@
   (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
       column-name))
 
-(defn- get-column-info
-  "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
-   information about special columns such as `count` via `get-special-column-info`."
+(defn get-column-info
+  "Wrapper for `metabase.driver.query-processor/get-column-info` that calls `uncastify` on column names."
   [query column-names]
-  (let [table-id (get-in query [:query :source_table])
-        column-names (map uncastify column-names)
-        columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
-                          :table_id table-id :name [in (set column-names)])
-                     (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
-                            {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
-                                      (assoc :extra_info (if-let [fk-table (field->fk-table column)]
-                                                           {:target_table_id (:id fk-table)}
-                                                           {})))}))
-                     (into {}))]
-    (->> column-names
-         (map (fn [column-name]
-                (or (columns column-name)                             ; try to get matching column from the map we build earlier
-                    (get-special-column-info query column-name))))))) ; if it's not there then it's a special column like `count`
-
-(defn- get-special-column-info
-  "Get info like `:base_type` and `:special_type` for a special aggregation column like `count` or `sum`."
-  [query column-name]
-  (merge {:name column-name
-          :id nil
-          :table_id nil
-          :description nil}
-         (let [aggregation-type (keyword column-name)                                ; For aggregations of a specific Field (e.g. `sum`)
-               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
-           (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
-                                       :id (-> query :query :aggregation second))    ; will be the same.)
-               (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
-                 :count {:base_type :IntegerField                                    ; just return hardcoded type info
-                         :special_type :number})))))
+  (qp/get-column-info query (map uncastify column-names)))

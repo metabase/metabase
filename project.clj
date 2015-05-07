@@ -73,6 +73,7 @@
                              [lein-instant-cheatsheet "2.1.1"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
                              [refactor-nrepl "1.0.1"]]                ; support for advanced refactoring in Emacs/LightTable
+                   :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI

@@ -41,6 +41,7 @@
    java.math.BigInteger         :BigIntegerField
    java.sql.Date                :DateField
    java.sql.Timestamp           :DateTimeField
+   java.util.Date               :DateField
    org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
 
 ;; ## Driver Lookup
@@ -84,33 +85,56 @@
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
-  (i/can-connect? (engine->driver (:engine database)) database))
+  {:pre [(map? database)]}
+  (try
+    (i/can-connect? (engine->driver (:engine database)) database)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      false)))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map]
-  (i/can-connect-with-details? (engine->driver engine) details-map))
+  {:pre [(keyword? engine)
+         (contains? (set (keys available-drivers)) engine)
+         (map? details-map)]}
+  (try
+    (i/can-connect-with-details? (engine->driver engine) details-map)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      false)))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
+      {:pre [(map? database)]}
       (time (-sync-database! (engine->driver (:engine database)) database)))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
   (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
     (fn [table]
+      {:pre [(map? table)]}
       (-sync-table! (database-id->driver (:db_id table)) table))))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (binding [qp/*query* query]
-    (i/process-query (database-id->driver (:database query))
-                     (qp/preprocess query))))
+  {:pre [(map? query)]}
+  (try
+    (binding [qp/*query* query]
+      (let [driver  (database-id->driver (:database query))
+            query   (qp/preprocess query)
+            results (binding [qp/*query* query]
+                      (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
+        (qp/post-process driver query results)))
+    (catch Throwable e
+      (.printStackTrace e)
+      {:status :failed
+       :error  (.getMessage e)})))
 
 
 ;; ## Query Execution Stuff
@@ -187,6 +211,7 @@
         (query-complete query-execution query-result (:cache_result options)))
       (catch Exception ex
         (log/warn ex)
+        (.printStackTrace ex)
         (query-fail query-execution (.getMessage ex))))))
 
 

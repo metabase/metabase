@@ -1,9 +1,14 @@
 (ns metabase.driver.generic-sql.query-processor.annotate-test
   (:require [expectations :refer :all]
             [metabase.driver.generic-sql.query-processor.annotate :refer :all]
+            [metabase.driver.query-processor :as qp]
             [metabase.test.util :refer [resolve-private-fns]]))
 
-(resolve-private-fns metabase.driver.generic-sql.query-processor.annotate -order-columns)
+(resolve-private-fns metabase.driver.generic-sql.query-processor.annotate uncastify)
+
+(defn -order-columns [& args]
+  (binding [qp/*uncastify-fn* uncastify]
+    (apply qp/-order-columns args)))
 
 ;; ## TESTS FOR -ORDER-COLUMNS
 
@@ -42,7 +47,7 @@
          :description
          :external_url
          (keyword "CAST(updated_at AS DATE)")]
-  (-order-columns mock-fields [] mock-castified-field-names))
+  (-order-columns mock-fields [] []  mock-castified-field-names))
 
 ;; Check that breakout fields are returned first, in order, before other fields
 (expect [:description
@@ -55,7 +60,7 @@
          (keyword "CAST(created_at AS DATE)")
          :external_url
          (keyword "CAST(updated_at AS DATE)")]
-  (-order-columns mock-fields [375 433] mock-castified-field-names))
+  (-order-columns mock-fields [375 433] [] mock-castified-field-names))
 
 ;; Check that aggregate fields are returned ahead of other fields
 (expect [:allows_suggestions
@@ -69,4 +74,4 @@
          (keyword "CAST(created_at AS DATE)")
          :external_url
          (keyword "CAST(updated_at AS DATE)")]
-  (-order-columns mock-fields [433 375] (concat [:count] mock-castified-field-names)))
+  (-order-columns mock-fields [433 375] []  (concat [:count] mock-castified-field-names)))

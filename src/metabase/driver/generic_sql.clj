@@ -10,18 +10,15 @@
                                          [util :refer :all])))
 
 (defrecord SqlDriver [column->base-type
-                     connection-details->connection-spec
-                     database->connection-details
-                     sql-string-length-fn]
+                      connection-details->connection-spec
+                      database->connection-details
+                      sql-string-length-fn]
   IDriver
   ;; Connection
   (can-connect? [_ database]
-    (try (connection/test-connection (-> database
-                                         database->connection-details
-                                         connection-details->connection-spec))
-         (catch Throwable e
-           (log/error "Failed to connect to database:" (.getMessage e))
-           false)))
+    (connection/test-connection (-> database
+                                    database->connection-details
+                                    connection-details->connection-spec)))
 
   (can-connect-with-details? [_ details]
     (connection/test-connection (connection-details->connection-spec details)))
@@ -88,7 +85,8 @@
                                            (aggregate (count :*) :count)
                                            (where {(keyword (:name field)) [not= nil]})) first :count)]
       (if (= total-non-null-count 0) 0.0
-          (let [url-count (-> (select korma-table
-                                      (aggregate (count :*) :count)
-                                      (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)]
+          (let [url-count (or (-> (select korma-table
+                                          (aggregate (count :*) :count)
+                                          (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
+                              0)]
             (float (/ url-count total-non-null-count)))))))

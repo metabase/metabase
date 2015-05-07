@@ -5,19 +5,17 @@
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.db :refer :all]
-            [metabase.driver.generic-sql.native :as native]
+            [metabase.driver.query-processor :as qp]
+            (metabase.driver.generic-sql [native :as native]
+                                         [util :refer :all])
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
-            [metabase.driver.generic-sql.util :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
 
 
 (declare apply-form
-         log-query
-         post-process
-         query-is-cumulative-sum?
-         apply-cumulative-sum)
+         log-query)
 
 ;; # INTERFACE
 
@@ -45,14 +43,13 @@
   (try
     (->> (process query)
          eval
-         (post-process query)
          (annotate/annotate query))
     (catch java.sql.SQLException e
-      {:status :failed
-       :error (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
-                       (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                       second)
-                  (.getMessage e))})))                       ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+      (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
+                                          (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
+                                          second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+                                (.getMessage e))]
+        (throw (Exception. message))))))
 
 
 (defn process-and-run
@@ -94,18 +91,22 @@
                            "count"    `(aggregate (~'count ~field) :count)
                            "distinct" `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
                            "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
-                           "sum"      `(aggregate (~'sum ~field) :sum)
-                           "cum_sum"  `[(fields ~field)     ; just make sure this field is returned + included in GROUP BY
-                                        (group ~field)])))) ; cumulative sum happens in post-processing (see below)
+                           "sum"      `(aggregate (~'sum ~field) :sum))))) ; cumulative sum happens in post-processing (see below)
 
 ;; ### `:breakout`
 ;; ex.
 ;;
 ;;     [1412 1413]
 (defmethod apply-form :breakout [[_ field-ids]]
-  (let [field-names (map field-id->kw field-ids)]
+  (let [ ;; Group by all the breakout fields
+        field-names                       (map field-id->kw field-ids)
+        ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
+        fields-not-in-fields-clause-names (->> field-ids
+                                               (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
+                                               (map field-id->kw))]
     `[(group  ~@field-names)
-      (fields ~@field-names)]))
+      (fields ~@fields-not-in-fields-clause-names)]))
+
 
 ;; ### `:fields`
 ;; ex.
@@ -197,44 +198,12 @@
   nil)
 
 
-;; ## Post Processing
-
-(defn- post-process
-  "Post-processing stage for query results."
-  [{query :query} results]
-  (cond
-    (query-is-cumulative-sum? query) (apply-cumulative-sum query results)
-    :else                            (do results)))
-
-;; ### Cumulative sum
-;; Cumulative sum is a special case. We can't do it in the DB because it's not a SQL function; thus we do it as a post-processing step.
-
-(defn- query-is-cumulative-sum?
-  "Is this a cumulative sum query?"
-  [query]
-  (some->> (:aggregation query)
-           first
-           (= "cum_sum")))
-
-(defn- apply-cumulative-sum
-  "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  {:arglists '([query results])}
-  [{[_ field-id] :aggregation} results]
-  (let [field (field-id->kw field-id)
-        values (->> results          ; make a sequence of cumulative sum values for each row
-                    (map field)
-                    (reductions +))]
-    (map (fn [row value]              ; replace the value for each row with the cumulative sum value
-           (assoc row field value))
-         results values)))
-
-
 ;; ## Debugging Functions (Internal)
 
 (defn- log-query
   "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
   [{:keys [source_table] :as query} forms]
-  (when-not *jdbc-metadata* ; HACK. If *jdbc-metadata* is bound we're probably doing a DB sync. Don't log its hundreds of QP calls, which make it hard to debug.
+  (when-not qp/*disable-qp-logging*
     (log/debug
      "\n********************"
      "\nSOURCE TABLE: " source_table
