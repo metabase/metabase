@@ -108,10 +108,8 @@
       ;; Store the cumulative sum field under the key :cum_sum so we know which one to sum later
       (and cum-sum?
            has-breakout?) (-> query
-                              (dissoc :breakout)
                               (assoc :cum_sum     ag-field
-                                     :aggregation ["rows"]
-                                     :fields      (distinct (concat breakout-fields [ag-field]))))
+                                     :aggregation ["sum" ag-field]))
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
            cum-sum?       (assoc query
@@ -129,14 +127,15 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
   [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
+  (println (colorize.core/magenta (with-out-str (clojure.pprint/pprint results))))
   (if-not cum-sum-field results
           (let [ ;; Determine the index of the field we need to cumulative sum
                 cum-sum-field-index (->> cols
-                                                (map-indexed (fn [i {field-id :id}]
-                                                               (when (= field-id cum-sum-field)
-                                                                 i)))
-                                                (filter identity)
-                                                first)
+                                         (map-indexed (fn [i {field-name :name}]
+                                                        (when (= field-name "sum")
+                                                          i)))
+                                         (filter identity)
+                                         first)
                 _                   (assert (integer? cum-sum-field-index))
                 ;; Now make a sequence of cumulative sum values for each row
                 values              (->> rows
@@ -145,30 +144,8 @@
                 ;; Update the values in each row
                 rows                (map (fn [row value]
                                            (assoc (vec row) cum-sum-field-index value))
-                                         rows values)
-                ;; We only want to return a single row for each value of the breakout columns.
-                ;; e.g.
-                ;; 2014-04-03  3        2014-04-03  8  ; only return one row for 2014-04-03
-                ;; 2014-04-03  5  --->  2014-04-04 18
-                ;; 2014-04-04 10
-                ;;
-                ;; We'll reverse the sequence of rows, then filter out all rows whose breakout field values were the same as the last.
-                ;; Then we'll reverse the sequence again to restore the original order.
-                remove-cum-sum-value                        (fn [row]
-                                                              (concat (subvec row 0 cum-sum-field-index)
-                                                                      (subvec row (inc cum-sum-field-index) (count row))))
-                previous-row-breakout-field-values          (atom nil)
-                same-breakout-field-values-as-previous-row? (fn [row]
-                                                              (let [breakout-values (remove-cum-sum-value row)
-                                                                    previous-values @previous-row-breakout-field-values]
-                                                                (reset! previous-row-breakout-field-values breakout-values)
-                                                                (and (not (empty? breakout-values))
-                                                                     (= breakout-values previous-values))))]
-            (->> rows
-                 reverse
-                 (filter (complement same-breakout-field-values-as-previous-row?))
-                 reverse
-                 (assoc results :rows)))))
+                                         rows values)]
+            (assoc results :rows rows))))
 
 ;; ### ADD-ROW-COUNT-AND-STATUS
 
