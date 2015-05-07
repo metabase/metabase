@@ -18,7 +18,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
-                 [org.clojure/tools.reader "0.9.1"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
+                 [org.clojure/tools.reader "0.9.2"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                  [org.clojure/tools.trace "0.7.8"]                    ; "tracing macros/fns to help you see what your code is doing"
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -27,7 +27,7 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.3"]                        ; SMTP library
-                 [com.h2database/h2 "1.4.186"]                        ; embedded SQL database
+                 [com.h2database/h2 "1.4.187"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]
                  [com.novemberain/monger "2.1.0"]                     ; MongoDB Driver
                  [compojure "1.3.3"]                                  ; HTTP Routing library built on Ring
@@ -39,8 +39,8 @@
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.5.5"]                                     ; lightweight lib of useful functions
-                 [org.liquibase/liquibase-core "3.3.2"]               ; migration management (Java lib)
+                 [medley "0.6.0"]                                     ; lightweight lib of useful functions
+                 [org.liquibase/liquibase-core "3.3.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
@@ -61,7 +61,7 @@
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test]}                       ; korma macros generate some formats with if statements that are always logically true or false
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]  ; REPL <3
-                                  [expectations "2.1.0"]              ; unit tests
+                                  [expectations "2.1.1"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.2.0"]]
                    :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]     ; Interactive development w/ cider NREPL in Emacs
@@ -72,7 +72,7 @@
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.1"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
-                             [refactor-nrepl "1.0.1"]]                ; support for advanced refactoring in Emacs/LightTable
+                             [refactor-nrepl "1.0.5"]]                ; support for advanced refactoring in Emacs/LightTable
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
