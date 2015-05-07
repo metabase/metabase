@@ -522,7 +522,7 @@
 ;; ## CUMULATIVE SUM
 
 ;; TODO - Should we move this into IDataset? It's only used here, but the logic might get a little more compilcated when we add more drivers
-(defn- ->sum-field-type
+(defn- ->sum-type
   "Since summed integer fields come back as different types depending on which DB we're using, cast value V appropriately."
   [v]
   (case (id-field-type)
@@ -531,7 +531,7 @@
 
 ;; ### cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-datasets
-    {:rows [[(->sum-field-type 120)]]
+    {:rows [[(->sum-type 120)]]
      :columns ["sum"]
      :cols [{:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
   {:source_table (id :users)
@@ -550,21 +550,21 @@
 
 ;; ### Cumulative sum w/ a different breakout field
 (qp-expect-with-all-datasets
- {:rows [["Broen Olujimi"       (->sum-field-type 14)]
-         ["Conchúr Tihomir"     (->sum-field-type 21)]
-         ["Dwight Gresham"      (->sum-field-type 34)]
-         ["Felipinho Asklepios" (->sum-field-type 36)]
-         ["Frans Hevel"         (->sum-field-type 46)]
-         ["Kaneonuskatew Eiran" (->sum-field-type 49)]
-         ["Kfir Caj"            (->sum-field-type 61)]
-         ["Nils Gotam"          (->sum-field-type 70)]
-         ["Plato Yeshua"        (->sum-field-type 71)]
-         ["Quentin Sören"       (->sum-field-type 76)]
-         ["Rüstem Hebel"        (->sum-field-type 91)]
-         ["Shad Ferdynand"      (->sum-field-type 97)]
-         ["Simcha Yan"          (->sum-field-type 101)]
-         ["Spiros Teofil"       (->sum-field-type 112)]
-         ["Szymon Theutrich"    (->sum-field-type 120)]]
+ {:rows [["Broen Olujimi"       (->sum-type 14)]
+         ["Conchúr Tihomir"     (->sum-type 21)]
+         ["Dwight Gresham"      (->sum-type 34)]
+         ["Felipinho Asklepios" (->sum-type 36)]
+         ["Frans Hevel"         (->sum-type 46)]
+         ["Kaneonuskatew Eiran" (->sum-type 49)]
+         ["Kfir Caj"            (->sum-type 61)]
+         ["Nils Gotam"          (->sum-type 70)]
+         ["Plato Yeshua"        (->sum-type 71)]
+         ["Quentin Sören"       (->sum-type 76)]
+         ["Rüstem Hebel"        (->sum-type 91)]
+         ["Shad Ferdynand"      (->sum-type 97)]
+         ["Simcha Yan"          (->sum-type 101)]
+         ["Spiros Teofil"       (->sum-type 112)]
+         ["Szymon Theutrich"    (->sum-type 120)]]
   :columns [(format-name "name")
             "sum"]
   :cols [(users-col :name)
@@ -580,10 +580,10 @@
             "sum"]
   :cols [(venue-col :price)
          {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]
-  :rows [[1 (->sum-field-type 1211)]
-         [2 (->sum-field-type 4066)]
-         [3 (->sum-field-type 4681)]
-         [4 (->sum-field-type 5050)]]}
+  :rows [[1 (->sum-type 1211)]
+         [2 (->sum-type 4066)]
+         [3 (->sum-type 4681)]
+         [4 (->sum-type 5050)]]}
  {:source_table (id :venues)
   :breakout     [(id :venues :price)]
   :aggregation  ["cum_sum" (id :venues :id)]})
