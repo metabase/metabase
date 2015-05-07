@@ -45,10 +45,11 @@
          eval
          (annotate/annotate query))
     (catch java.sql.SQLException e
-      (throw (Exception. ^String (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
+      (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
                                           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
                                           second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
-                                     (.getMessage e)))))))
+                                (.getMessage e))]
+        (throw (Exception. message))))))
 
 
 (defn process-and-run
