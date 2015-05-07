@@ -96,13 +96,13 @@
 
 ;; # Logic for determining which datasets to test against
 
-;; By default, we'll test against *all* datasets; otherwise, you can test against only a
-;; subset of them by setting the env var `MB_TEST_DATASETS` to a comma-separated list of driver names, e.g.
+;; By default, we'll test against against only the :generic-sql (H2) dataset; otherwise, you can specify which
+;; datasets to test against by setting the env var `MB_TEST_DATASETS` to a comma-separated list of dataset names, e.g.
 ;;
 ;;    # test against :generic-sql and :mongo
 ;;    MB_TEST_DATASETS=generic-sql,mongo
 ;;
-;;    # just test against :generic-sql
+;;    # just test against :generic-sql (default)
 ;;    MB_TEST_DATASETS=generic-sql
 
 (defn- get-test-datasets-from-env
@@ -121,9 +121,9 @@
 
 (def test-dataset-names
   "Delay that returns set of names of drivers we should run tests against.
-   By default, this returns *all* drivers, but can be overriden by setting env var `MB_TEST_DATASETS`."
+   By default, this returns only `:generic-sql`, but can be overriden by setting env var `MB_TEST_DATASETS`."
   (delay (let [datasets (or (get-test-datasets-from-env)
-                            all-valid-dataset-names)]
+                            #{:generic-sql})]
            (log/info (color/green "Running QP tests against these datasets: " datasets))
            datasets)))
 
