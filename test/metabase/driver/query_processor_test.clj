@@ -521,58 +521,69 @@
 
 ;; ## CUMULATIVE SUM
 
+;; TODO - Should we move this into IDataset? It's only used here, but the logic might get a little more compilcated when we add more drivers
+(defn- ->sum-field-type
+  "Since summed integer fields come back as different types depending on which DB we're using, cast value V appropriately."
+  [v]
+  (case (id-field-type)
+    :IntegerField    (int v)
+    :BigIntegerField (bigdec v)))
+
 ;; ### cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-datasets
-    {:rows [[(case (id-field-type)
-               :IntegerField    120
-               :BigIntegerField 120M)]]
+    {:rows [[(->sum-field-type 120)]]
      :columns ["sum"]
      :cols [{:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
   {:source_table (id :users)
    :aggregation ["cum_sum" (id :users :id)]})
 
+
 ;; ### Simple cumulative sum where breakout field is same as cum_sum field
 (qp-expect-with-all-datasets
-    {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
-     :columns (->columns "id")
-     :cols [(users-col :id)]}
-  {:source_table (id :users)
-   :breakout [(id :users :id)]
-   :aggregation ["cum_sum" (id :users :id)]})
+ {:rows [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
+  :columns (->columns "id")
+  :cols [(users-col :id)]}
+ {:source_table (id :users)
+  :breakout [(id :users :id)]
+  :aggregation ["cum_sum" (id :users :id)]})
+
 
 ;; ### Cumulative sum w/ a different breakout field
 (qp-expect-with-all-datasets
-    {:rows [["Broen Olujimi" 14]
-            ["Conchúr Tihomir" 21]
-            ["Dwight Gresham" 34]
-            ["Felipinho Asklepios" 36]
-            ["Frans Hevel" 46]
-            ["Kaneonuskatew Eiran" 49]
-            ["Kfir Caj" 61]
-            ["Nils Gotam" 70]
-            ["Plato Yeshua" 71]
-            ["Quentin Sören" 76]
-            ["Rüstem Hebel" 91]
-            ["Shad Ferdynand" 97]
-            ["Simcha Yan" 101]
-            ["Spiros Teofil" 112]
-            ["Szymon Theutrich" 120]]
-     :columns (->columns "name" "id")
-     :cols [(users-col :name)
-            (users-col :id)]}
-  {:source_table (id :users)
-   :breakout [(id :users :name)]
-   :aggregation ["cum_sum" (id :users :id)]})
+ {:rows [["Broen Olujimi"       (->sum-field-type 14)]
+         ["Conchúr Tihomir"     (->sum-field-type 21)]
+         ["Dwight Gresham"      (->sum-field-type 34)]
+         ["Felipinho Asklepios" (->sum-field-type 36)]
+         ["Frans Hevel"         (->sum-field-type 46)]
+         ["Kaneonuskatew Eiran" (->sum-field-type 49)]
+         ["Kfir Caj"            (->sum-field-type 61)]
+         ["Nils Gotam"          (->sum-field-type 70)]
+         ["Plato Yeshua"        (->sum-field-type 71)]
+         ["Quentin Sören"       (->sum-field-type 76)]
+         ["Rüstem Hebel"        (->sum-field-type 91)]
+         ["Shad Ferdynand"      (->sum-field-type 97)]
+         ["Simcha Yan"          (->sum-field-type 101)]
+         ["Spiros Teofil"       (->sum-field-type 112)]
+         ["Szymon Theutrich"    (->sum-field-type 120)]]
+  :columns [(format-name "name")
+            "sum"]
+  :cols [(users-col :name)
+         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+ {:source_table (id :users)
+  :breakout [(id :users :name)]
+  :aggregation ["cum_sum" (id :users :id)]})
+
 
 ;; ### Cumulative sum w/ a different breakout field that requires grouping
 (qp-expect-with-all-datasets
-    {:columns (->columns "price" "id")
-     :cols [(venue-col :price)
-            (venue-col :id)]
-     :rows [[1 1211]
-            [2 4066]
-            [3 4681]
-            [4 5050]]}
-  {:source_table (id :venues)
-   :breakout     [(id :venues :price)]
-   :aggregation  ["cum_sum" (id :venues :id)]})
+ {:columns [(format-name "price")
+            "sum"]
+  :cols [(venue-col :price)
+         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]
+  :rows [[1 (->sum-field-type 1211)]
+         [2 (->sum-field-type 4066)]
+         [3 (->sum-field-type 4681)]
+         [4 (->sum-field-type 5050)]]}
+ {:source_table (id :venues)
+  :breakout     [(id :venues :price)]
+  :aggregation  ["cum_sum" (id :venues :id)]})
