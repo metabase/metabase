@@ -176,6 +176,7 @@
   ;; or are we missing something?
   ;; At any rate these seem to be the most common use cases, so we can add more here if and when they're needed.
   (match aggregation
+    ["rows"]         nil
     ["count"]        ["count" {$sum 1}]
     ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
     ["sum" field-id] ["sum" {$sum (field-id->$string field-id)}]))
@@ -193,8 +194,9 @@
         $fields              (map field-id->$string field-ids)
         fields->$fields      (zipmap fields $fields)]
     (aggregate {$group  (merge {"_id"    (if (= (count fields) 1) (first $fields)
-                                             fields->$fields)
-                                ag-field ag-clause}
+                                             fields->$fields)}
+                               (when (and ag-field ag-clause)
+                                 {ag-field ag-clause})
                                (->> fields->$fields
                                     (map (fn [[field $field]]
                                            (when-not (= field "_id")
@@ -206,8 +208,9 @@
                                                                           "ascending" 1
                                                                           "descending" -1)]))
                               (apply sorted-map))}
-               {$project (merge {"_id"    false
-                                 ag-field true}
+               {$project (merge {"_id"    false}
+                                (when ag-field
+                                  {ag-field true})
                                 (zipmap fields (repeat true)))}
                (when limit
                  {$limit limit}))))
