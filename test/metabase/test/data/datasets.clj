@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [environ.core :refer [env]]
+            [expectations :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data]
             [metabase.test-data :as generic-sql-data]))
 
@@ -17,6 +18,8 @@
     "Return `Database` containing test data for this driver.")
   (table-name->table [this table-name]
     "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
+  (table-name->id [this table-name]
+    "Given a TABLE-NAME keyword like `:venues`, return corresponding `Table` ID.")
   (field-name->id [this table-name field-name]
     "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
   (fks-supported? [this]
@@ -38,11 +41,12 @@
     (mongo-data/destroy!)
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
-
   (db [_]
     @mongo-data/mongo-test-db)
   (table-name->table [_ table-name]
     (mongo-data/table-name->table table-name))
+  (table-name->id [_ table-name]
+    (mongo-data/table-name->id table-name))
   (field-name->id [_ table-name field-name]
     (mongo-data/field-name->id table-name (if (= field-name :id) :_id
                                               field-name)))
@@ -51,7 +55,6 @@
   (format-name [_ table-or-field-name]
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
-
   (id-field-type [_]
     :IntegerField))
 
@@ -63,19 +66,18 @@
   (load-data! [_]
     @generic-sql-data/test-db
     (assert (integer? @generic-sql-data/db-id)))
-
   (db [_]
     @generic-sql-data/test-db)
   (table-name->table [_ table-name]
     (generic-sql-data/table-name->table table-name))
+  (table-name->id [_ table-name]
+    (generic-sql-data/table->id table-name))
   (field-name->id [_ table-name field-name]
     (generic-sql-data/field->id table-name field-name))
-
   (fks-supported? [_]
     true)
   (format-name [_ table-or-field-name]
     (clojure.string/upper-case table-or-field-name))
-
   (id-field-type [_]
     :BigIntegerField))
 
@@ -124,3 +126,61 @@
                             all-valid-dataset-names)]
            (log/info (color/green "Running QP tests against these datasets: " datasets))
            datasets)))
+
+
+;; # Helper Macros
+
+(def ^:dynamic *dataset*
+  "The dataset we're currently testing against, bound by `with-dataset`."
+  nil)
+
+(defmacro with-dataset
+  "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
+  [dataset-name & body]
+  `(binding [*dataset* (dataset-name->dataset ~dataset-name)]
+     ~@body))
+
+(defmacro when-testing-dataset
+  "Execute BODY only if we're currently testing against DATASET-NAME."
+  [dataset-name & body]
+  `(when (contains? @test-dataset-names ~dataset-name)
+     ~@body))
+
+(defmacro with-dataset-when-testing
+  "When testing DATASET-NAME, binding `*dataset*` and executes BODY."
+  [dataset-name & body]
+  `(when-testing-dataset ~dataset-name
+     (with-dataset ~dataset-name
+       ~@body)))
+
+(defmacro expect-when-testing-dataset
+  "Generate a unit test that only runs if we're currently testing against DATASET-NAME."
+  [dataset-name expected actual]
+  `(expect
+       (when-testing-dataset ~dataset-name
+         ~expected)
+     (when-testing-dataset ~dataset-name
+       ~actual)))
+
+(defmacro expect-with-dataset
+  "Generate a unit test that only runs if we're currently testing against DATASET-NAME, and that binds `*dataset*` to the current dataset."
+  [dataset-name expected actual]
+  `(expect-when-testing-dataset ~dataset-name
+     (with-dataset ~dataset-name
+       ~expected)
+     (with-dataset ~dataset-name
+       ~actual)))
+
+(defmacro expect-with-datasets
+  "Generate unit tests for all datasets in DATASET-NAMES; each test will only run if we're currently testing the corresponding dataset.
+   `*dataset*` is bound to the current dataset inside each test."
+  [dataset-names expected actual]
+  `(do ~@(map (fn [dataset-name]
+                `(expect-with-dataset ~dataset-name ~expected ~actual))
+              dataset-names)))
+
+(defmacro expect-with-all-datasets
+  "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
+  `*dataset*` is bound to the current dataset inside each test."
+  [expected actual]
+  `(expect-with-datasets ~all-valid-dataset-names ~expected ~actual))

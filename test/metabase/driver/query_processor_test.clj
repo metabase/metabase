@@ -4,67 +4,37 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [table :refer [Table]])
-            [metabase.test.data.datasets :as datasets]))
-
-;; ## Functionality for writing driver-independent tests
-
-(def ^:dynamic *db*
-  "Bound to `Database` for the current driver inside body of `with-dataset`.")
-(def ^:dynamic *db-id*
-  "Bound to ID of `Database` for the current driver inside body of `with-dataset`.")
-(def ^:dynamic *driver-dataset*)
-
-
-;; ###  EXPECT-WITH-ALL-DRIVERS
-
-(defmacro with-dataset
-  "Execute BODY with `*driver-dataset*`, `*db*` and `*db-id*` bound to appropriate values for DRIVER-NAME."
-  [dataset-name & body]
-  {:pre [(keyword? dataset-name)
-         (contains? datasets/all-valid-dataset-names dataset-name)]}
-  `(let [dataset# (datasets/dataset-name->dataset ~dataset-name)
-         db#      (datasets/db dataset#)]
-     (binding [*driver-dataset* dataset#
-               *db*             db#
-               *db-id*          (:id db#)]
-       (assert (and (integer? *db-id*)
-                    (map? *db*)))
-       ~@body)))
-
-(defmacro expect-with-all-datasets
-  "Like expect, but runs a test inside of `with-dataset` for *each* of the available datasets."
-  [expected actual]
-  `(do ~@(mapcat (fn [dataset-name]
-                   `[(expect
-                         (with-dataset ~dataset-name
-                           ~expected)
-                       (with-dataset ~dataset-name
-                         ~actual))])
-                 @datasets/test-dataset-names)))
-
+            [metabase.test.data.datasets :as datasets :refer [*dataset* expect-with-all-datasets]]))
 
 ;; ##  Dataset-Independent Data Fns
-
-(defn ->table
-  "Given keyword TABLE-NAME, fetch corresponding `Table` in `*db*`."
-  [table-name]
-  {:pre [*driver-dataset*]
-   :post [(map? %)]}
-  (datasets/table-name->table *driver-dataset* table-name))
 
 (defn id
   "Return the ID of a `Table` or `Field` for the current driver data set."
   ([table-name]
-   {:pre [*driver-dataset*
+   {:pre [*dataset*
           (keyword? table-name)]
     :post [(integer? %)]}
-   (:id (->table table-name)))
+   (datasets/table-name->id *dataset* table-name))
   ([table-name field-name]
-   {:pre [*driver-dataset*
+   {:pre [*dataset*
           (keyword? table-name)
           (keyword? field-name)]
     :post [(integer? %)]}
-   (datasets/field-name->id *driver-dataset* table-name field-name)))
+   (datasets/field-name->id *dataset* table-name field-name)))
+
+(defn db-id []
+  {:pre  [*dataset*]
+   :post [(integer? %)]}
+  (:id (datasets/db *dataset*)))
+
+(defn fks-supported? []
+  (datasets/fks-supported? *dataset*))
+
+(defn format-name [name]
+  (datasets/format-name *dataset* name))
+
+(defn id-field-type []
+  (datasets/id-field-type *dataset*))
 
 
 ;; ## Dataset-Independent QP Tests
@@ -79,17 +49,8 @@
         :row_count ~(count (:rows data))
         :data ~data}
      (driver/process-query {:type :query
-                            :database *db-id*
+                            :database (db-id)
                             :query ~query})))
-
-(defn fks-supported? []
-  (datasets/fks-supported? *driver-dataset*))
-
-(defn format-name [name]
-  (datasets/format-name *driver-dataset* name))
-
-(defn id-field-type []
-  (datasets/id-field-type *driver-dataset*))
 
 (defn ->columns
   "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
@@ -547,7 +508,7 @@
      :row_count 0
      :data {:rows [], :columns [], :cols []}}
   (driver/process-query {:type :query
-                         :database *db-id*
+                         :database (db-id)
                          :native {}
                          :query {:source_table 0
                                  :filter [nil nil]

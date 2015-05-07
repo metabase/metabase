@@ -10,7 +10,15 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test-data.data :refer [test-data]]
+            [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]]))
+
+;; ## Logic for selectively running mongo
+
+(defmacro expect-when-testing-mongo [expected actual]
+  `(datasets/expect-when-testing-dataset :mongo
+     ~expected
+     ~actual))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -56,35 +64,35 @@
 
 ;; ## Tests for connection functions
 
-(expect true
+(expect-when-testing-mongo true
   (driver/can-connect? @mongo-test-db))
 
-(expect false
+(expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
                         :details {:conn_str "mongodb://123.4.5.6/bad-db-name?connectTimeoutMS=50"}})) ; timeout after 50ms instead of 10s so test's don't take forever
 
-(expect false
+(expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
                         :details {:conn_str "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}}))
 
-(expect false
+(expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {}))
 
-(expect true
+(expect-when-testing-mongo true
   (driver/can-connect-with-details? :mongo {:host "localhost"
                                             :port 27017
                                             :dbname "metabase-test"}))
 
 ;; should use default port 27017 if not specified
-(expect true
+(expect-when-testing-mongo true
   (driver/can-connect-with-details? :mongo {:host "localhost"
                                             :dbname "metabase-test"}))
 
-(expect false
+(expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {:host "123.4.5.6"
                                             :dbname "bad-db-name?connectTimeoutMS=50"}))
 
-(expect false
+(expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {:host "localhost"
                                             :port 3000
                                             :dbname "bad-db-name?connectTimeoutMS=50"}))
@@ -95,12 +103,12 @@
 (resolve-private-fns metabase.driver.mongo field->base-type table->column-names)
 
 ;; ### active-table-names
-(expect
+(expect-when-testing-mongo
     #{"checkins" "categories" "users" "venues"}
   (i/active-table-names mongo/driver @mongo-test-db))
 
 ;; ### table->column-names
-(expect
+(expect-when-testing-mongo
     [#{:_id :name}
      #{:_id :date :venue_id :user_id}
      #{:_id :name :last_login}
@@ -110,7 +118,7 @@
        (map table->column-names)))
 
 ;; ### field->base-type
-(expect
+(expect-when-testing-mongo
     [:IntegerField  ; categories._id
      :TextField     ; categories.name
      :IntegerField  ; checkins._id
@@ -131,7 +139,7 @@
        (mapv field->base-type)))
 
 ;; ### active-column-names->type
-(expect
+(expect-when-testing-mongo
     [{"_id" :IntegerField, "name" :TextField}
      {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}
      {"_id" :IntegerField, "name" :TextField, "last_login" :DateField}
@@ -141,7 +149,7 @@
        (mapv (partial i/active-column-names->type mongo/driver))))
 
 ;; ### table-pks
-(expect
+(expect-when-testing-mongo
     [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
   (->> table-names
        (map table-name->fake-table)
@@ -151,7 +159,7 @@
 ;; ## Big-picture tests for the way data should look post-sync
 
 ;; Test that Tables got synced correctly, and row counts are correct
-(expect
+(expect-when-testing-mongo
     [{:rows 75, :active true, :name "categories"}
      {:rows 1000, :active true, :name "checkins"}
      {:rows 15, :active true, :name "users"}
@@ -159,7 +167,7 @@
   (sel :many :fields [Table :name :active :rows] :db_id @mongo-test-db-id (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
-(expect
+(expect-when-testing-mongo
     [[{:special_type :id, :base_type :IntegerField, :name "_id"}
       {:special_type :category, :base_type :DateField, :name "last_login"}
       {:special_type :category, :base_type :TextField, :name "name"}]

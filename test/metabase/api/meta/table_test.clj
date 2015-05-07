@@ -8,6 +8,7 @@
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
+            [metabase.test.data.datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
@@ -22,14 +23,14 @@
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect #{{:name "CATEGORIES", :rows 75,   :active true, :id (table->id :categories),                 :db_id @db-id}
-          {:name "CHECKINS",   :rows 1000, :active true, :id (table->id :checkins),                   :db_id @db-id}
-          {:name "USERS",      :rows 15,   :active true, :id (table->id :users),                      :db_id @db-id}
-          {:name "VENUES",     :rows 100,  :active true, :id (table->id :venues),                     :db_id @db-id}
-          {:name "categories", :rows 75,   :active true, :id (mongo-data/table-name->id :categories), :db_id @mongo-test-db-id}
-          {:name "checkins",   :rows 1000, :active true, :id (mongo-data/table-name->id :checkins),   :db_id @mongo-test-db-id}
-          {:name "users",      :rows 15,   :active true, :id (mongo-data/table-name->id :users),      :db_id @mongo-test-db-id}
-          {:name "venues",     :rows 100,  :active true, :id (mongo-data/table-name->id :venues),     :db_id @mongo-test-db-id}}
+(expect (set (mapcat (fn [dataset-name]
+                       (with-dataset-when-testing dataset-name
+                         (let [db-id (:id (datasets/db *dataset*))]
+                           [{:name (datasets/format-name *dataset* "categories"), :db_id db-id, :active true, :rows   75, :id (datasets/table-name->id *dataset* :categories)}
+                            {:name (datasets/format-name *dataset* "checkins"),   :db_id db-id, :active true, :rows 1000, :id (datasets/table-name->id *dataset* :checkins)}
+                            {:name (datasets/format-name *dataset* "users"),      :db_id db-id, :active true, :rows   15, :id (datasets/table-name->id *dataset* :users)}
+                            {:name (datasets/format-name *dataset* "venues"),     :db_id db-id, :active true, :rows  100, :id (datasets/table-name->id *dataset* :venues)}])))
+                     @datasets/test-dataset-names))
   (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
        set))

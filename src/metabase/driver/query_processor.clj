@@ -188,12 +188,12 @@
 (defn post-process
   "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
   [driver query results]
-  (case (keyword (:type query))
-    :native results
-    :query  (let [query (:query query)]
-              (->> results
-                   (post-process-cumulative-sum query)
-                   add-row-count-and-status))))
+  (->> (case (keyword (:type query))
+         :native results
+         :query  (let [query (:query query)]
+                   (->> results
+                        (post-process-cumulative-sum query))))
+       add-row-count-and-status))
 
 
 ;; # COMMON ANNOTATION FNS

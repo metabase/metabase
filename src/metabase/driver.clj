@@ -124,12 +124,17 @@
   "Process a structured or native query, and return the result."
   [query]
   {:pre [(map? query)]}
-  (binding [qp/*query* query]
-    (let [driver  (database-id->driver (:database query))
-          query   (qp/preprocess query)
-          results (binding [qp/*query* query]
-                    (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
-      (qp/post-process driver query results))))
+  (try
+    (binding [qp/*query* query]
+      (let [driver  (database-id->driver (:database query))
+            query   (qp/preprocess query)
+            results (binding [qp/*query* query]
+                      (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
+        (qp/post-process driver query results)))
+    (catch Throwable e
+      (.printStackTrace e)
+      {:status :failed
+       :error  (.getMessage e)})))
 
 
 ;; ## Query Execution Stuff

@@ -19,6 +19,7 @@
                               (expect-eval-actual-first 1)
                               (expect-expansion 0)
                               (expect-let 1)
+                              (expect-when-testing-against-dataset 1)
                               (expect-with-all-drivers 1)
                               (ins 1)
                               (let-400 1)
@@ -33,4 +34,5 @@
                               (symbol-macrolet 1)
                               (sync-in-context 2)
                               (upd 2)
+                              (when-testing-dataset 1)
                               (with-credentials 1)))))))

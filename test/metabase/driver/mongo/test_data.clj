@@ -39,22 +39,27 @@
   ^{:doc "A delay that fetches or creates the Mongo test `Database`.
           If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."}
   mongo-test-db
-  (delay (let [db (or (sel :one Database :name mongo-test-db-name)
-                      (let [db (ins Database
-                                 :organization_id @org-id
-                                 :name mongo-test-db-name
-                                 :engine :mongo
-                                 :details {:conn_str mongo-test-db-conn-str})]
-                        (log/info (color/cyan "Loading Mongo test data..."))
-                        (load-data)
-                        (driver/sync-database! db)
-                        (set-field-special-types!)
-                        (log/info (color/cyan "Done."))
-                        db))]
-           (assert (and (map? db)
-                        (integer? (:id db))
-                        (exists? Database :id (:id db))))
-           db)))
+  (delay
+   ;; Resolve metabase.test.data.datasets at runtime to avoid circular dependency
+   (require 'metabase.test.data.datasets)
+   (assert (contains? @@(ns-resolve 'metabase.test.data.datasets 'test-dataset-names) :mongo)
+           "Why are we attempting to use the Mongo test Database when we're not testing against mongo?")
+   (let [db (or (sel :one Database :name mongo-test-db-name)
+                (let [db (ins Database
+                           :organization_id @org-id
+                           :name mongo-test-db-name
+                           :engine :mongo
+                           :details {:conn_str mongo-test-db-conn-str})]
+                  (log/info (color/cyan "Loading Mongo test data..."))
+                  (load-data)
+                  (driver/sync-database! db)
+                  (set-field-special-types!)
+                  (log/info (color/cyan "Done."))
+                  db))]
+     (assert (and (map? db)
+                  (integer? (:id db))
+                  (exists? Database :id (:id db))))
+     db)))
 
 (defonce
   ^{:doc "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."}

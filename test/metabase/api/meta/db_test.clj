@@ -5,6 +5,7 @@
             [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])
+            [metabase.test.data.datasets :as datasets]
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
@@ -118,36 +119,39 @@
                          :logo_url nil
                          :report_timezone nil
                  :inherits true}]
-        [(match-$ (sel :one Database :name db-name)
-           {:created_at $
-            :engine "postgres"
-            :id $
-            :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-            :updated_at $
-            :organization org
-            :name $
-            :organization_id @org-id
-            :description nil})
-         (match-$ @mongo-test-data/mongo-test-db
-           {:created_at $
-            :engine "mongo"
-            :id $
-            :details $
-            :updated_at $
-            :organization org
-            :name "Mongo Test"
-            :organization_id @org-id
-            :description nil})
-         (match-$ @test-db
-           {:created_at $
-            :engine "h2"
-            :id $
-            :details $
-            :updated_at $
-            :organization org
-            :name "Test Database"
-            :organization_id @org-id
-            :description nil})])
+        (filter identity
+                [(datasets/when-testing-dataset :generic-sql
+                   (match-$ (sel :one Database :name db-name)
+                     {:created_at $
+                      :engine "postgres"
+                      :id $
+                      :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
+                      :updated_at $
+                      :organization org
+                      :name $
+                      :organization_id @org-id
+                      :description nil}))
+                 (datasets/when-testing-dataset :mongo
+                   (match-$ @mongo-test-data/mongo-test-db
+                     {:created_at $
+                      :engine "mongo"
+                      :id $
+                      :details $
+                      :updated_at $
+                      :organization org
+                      :name "Mongo Test"
+                      :organization_id @org-id
+                      :description nil}))
+                 (match-$ @test-db
+                   {:created_at $
+                    :engine "h2"
+                    :id $
+                    :details $
+                    :updated_at $
+                    :organization org
+                    :name "Test Database"
+                    :organization_id @org-id
+                    :description nil})]))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :organization_id @org-id :id [not-in (set [@db-id
