@@ -1,5 +1,7 @@
 (ns metabase.driver.generic-sql.query-processor-test
   (:require [clojure.math.numeric-tower :as math]
+            [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.test-data :refer [db-id table->id field->id]]))
@@ -10,15 +12,17 @@
 (expect
     {:status :failed
      :error "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".* FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?)"}
-  (driver/process-query {:database @db-id
-                         :type :query
-                         :query {:source_table (table->id :checkins)
-                                 :filter ["=" (field->id :venues :name) 1] ; wrong Field
-                                 :aggregation ["rows"]
-                                 :breakout [nil]
-                                 :limit nil}}))
+  ;; This will print a stacktrace. Better to reassure people that that's on purpose than to make people question whether the tests are working
+  (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))
+      (driver/process-query {:database @db-id
+                             :type :query
+                             :query {:source_table (table->id :checkins)
+                                     :filter ["=" (field->id :venues :name) 1] ; wrong Field
+                                     :aggregation ["rows"]
+                                     :breakout [nil]
+                                     :limit nil}})))
 
-;; # ---------------------------------------- TODO - ONES THAT STILL NEED TO BE MOVED OVER ----------------------------------------
+;; # ---------------------------------------- TODO - ONES THAT STILL NEED TO BE MOVED OVER (MONGO DOESN'T SUPPORT STDDEV YET) ----------------------------------------
 
 ;; ## "STDDEV" AGGREGATION
 (expect {:status :completed
