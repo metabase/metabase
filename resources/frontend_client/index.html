@@ -21,8 +21,11 @@
             <!-- MAIN NAV -->
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
-                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-                        <span dropdown-toggle ng-if="user.is_multi_org">
+                    <div class="NavItem float-left" ng-if="!user.is_multi_org">
+                        <span class="NavItem-text">{{currentOrg.name}}</span>
+                    </div>
+                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
+                        <span dropdown-toggle>
                             <span class="NavItem-text" ng-bind="currentOrg.name"></span>
                             <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
                         </span>
