@@ -46,7 +46,7 @@
     ;; delete any other rando test DBs made by other tests
     (cascade-delete Database :organization_id @org-id :id [not-in (set (filter identity
                                                                                [(datasets/when-testing-dataset :generic-sql
-                                                                                  db-id)
+                                                                                  @db-id)
                                                                                 (datasets/when-testing-dataset :mongo
                                                                                   @mongo-test-data/mongo-test-db-id)]))])
     ((user->client :rasta) :get 200 "query/form_input" :org @org-id)))
