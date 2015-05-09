@@ -203,8 +203,16 @@
                      (into {}))]
     (->> column-names
          (map (fn [column-name]
-                (or (columns column-name)                             ; try to get matching column from the map we build earlier
-                    (get-special-column-info query column-name))))))) ; if it's not there then it's a special column like `count`
+                (try
+                  (or (columns column-name)                        ; try to get matching column from the map we build earlier
+                      (get-special-column-info query column-name)) ; if it's not there then it's a special column like `count`
+                  (catch Throwable _                               ; If for some reason column info lookup failed just return empty info map
+                    {:name         column-name                     ; TODO - should we log this ? It shouldn't be happening ideally
+                     :id           nil
+                     :table_id     nil
+                     :description  nil
+                     :base_type    :UnknownField
+                     :special_type nil})))))))
 
 
 (defn get-special-column-info
