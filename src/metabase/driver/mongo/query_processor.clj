@@ -149,15 +149,18 @@
   ;;
   ;; It's faster and better-behaved to just implement this logic in Clojure-land for the time being.
   ;; Since it's lazy we can handle large data sets (I've ran this successfully over 500,000+ document collections w/o issue).
-  [{:count (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id field-id)) ; resolve driver at runtime to avoid circular deps
-                (filter identity)
-                ((fn [s]
-                   (if-let [limit (:limit (:query *query*))]
-                     (take limit s)
-                     s)))
-                (map hash)
-                set
-                count)}])
+  [{:count (let [values (transient (set []))
+                 limit  (:limit (:query *query*))
+                 keep-taking?  (if limit (fn [_]
+                                           (< (count values) limit))
+                                   (constantly true))]
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id field-id)) ; resolve driver at runtime to avoid circular deps
+                  (filter identity)
+                  (map hash)
+                  (map #(conj! values %))
+                  (take-while keep-taking?)
+                  dorun)
+             (count values))}])
 
 (defaggregation ["stddev" field-id]
   nil) ; TODO
