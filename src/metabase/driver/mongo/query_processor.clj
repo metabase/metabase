@@ -145,18 +145,6 @@
                       "count" {$sum 1}}}
              {$project {"_id" false, "count" true}}))
 
-(defn u []
-  (with-mongo-connection [^DBApiLayer conn (sel :one Database :name "Strider")]
-    (binding [*collection-name* "venues"]
-      (eval (aggregate {$match {:atlas_id {$exists true}}}
-                       {$group {"_id" nil
-                                "count" {$sum 1}}}
-                       {$project {"_id" false, "count" true}})))))
-
-(defn x []
-  (with-mongo-connection [^DBApiLayer conn (sel :one Database :name "Strider")]
-    ))
-
 (defaggregation ["stddev" field-id]
   nil) ; TODO
 
