@@ -10,6 +10,7 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.interface :as i]
             [metabase.driver.query-processor :as qp :refer [*query*]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             (metabase.models [database :refer [Database]]
@@ -138,12 +139,25 @@
                              {(field-id->kw field-id) {$exists true}}))}])
 
 (defaggregation ["distinct" field-id]
-  (aggregate {$group {"_id" (field-id->$string field-id)}}
-             (when-let [limit (:limit (:query *query*))]
-               {$limit limit})
-             {$group {"_id" nil
-                      "count" {$sum 1}}}
-             {$project {"_id" false, "count" true}}))
+  ;; Unfortunately trying to do a MongoDB distinct aggregation runs out of memory if there are more than a few thousand values
+  ;; because Monger currently doesn't expose any way to enable allowDiskUse in aggregations
+  ;; (see https://groups.google.com/forum/#!searchin/clojure-mongodb/$2BallowDiskUse/clojure-mongodb/3qT34rZSFwQ/tYCxj5coo8gJ).
+  ;;
+  ;; We also can't effectively limit the number of values considered in the aggregation meaning simple things like determining categories
+  ;; in sync (which only needs to know if distinct count is < 40, meaning it can theoretically stop as soon as it sees the 40th value)
+  ;; will still barf on large columns.
+  ;;
+  ;; It's faster and better-behaved to just implement this logic in Clojure-land for the time being.
+  ;; Since it's lazy we can handle large data sets (I've ran this successfully over 500,000+ document collections w/o issue).
+  [{:count (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id field-id)) ; resolve driver at runtime to avoid circular deps
+                (filter identity)
+                ((fn [s]
+                   (if-let [limit (:limit (:query *query*))]
+                     (take limit s)
+                     s)))
+                (map hash)
+                set
+                count)}])
 
 (defaggregation ["stddev" field-id]
   nil) ; TODO
