@@ -3,10 +3,12 @@
   (:require [expectations :refer :all]
             [korma.core :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [query :refer [Query]]
                              [query-execution :refer [QueryExecution]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
+            [metabase.test.data.datasets :as datasets]
             [metabase.test-data :refer :all]))
 
 ;; ## Helper Fns
@@ -18,9 +20,15 @@
 
 ;; ## GET /api/query/form_input
 (expect-eval-actual-first
-    {:databases [(match-$ @test-db
-                   {:id $
-                    :name "Test Database"})]
+    {:databases (filter identity
+                        [(datasets/when-testing-dataset :mongo
+                           (match-$ @mongo-test-data/mongo-test-db
+                             {:id $
+                              :name "Mongo Test"}))
+                         (datasets/when-testing-dataset :generic-sql
+                           (match-$ @test-db
+                             {:id $
+                              :name "Test Database"}))])
      :timezones ["GMT"
                  "UTC"
                  "US/Alaska"
@@ -35,8 +43,12 @@
                    {:name "Read Only",    :id 1}
                    {:name "Read & Write", :id 2}]}
   (do
-    @test-db                                                                             ; force lazy creation of test data / Metabase DB if it doesn't already exist
-    (cascade-delete Database :organization_id @org-id :id [not= (:id @test-db)]) ; delete any other rando test DBs made by other tests
+    ;; delete any other rando test DBs made by other tests
+    (cascade-delete Database :organization_id @org-id :id [not-in (set (filter identity
+                                                                               [(datasets/when-testing-dataset :generic-sql
+                                                                                  @db-id)
+                                                                                (datasets/when-testing-dataset :mongo
+                                                                                  @mongo-test-data/mongo-test-db-id)]))])
     ((user->client :rasta) :get 200 "query/form_input" :org @org-id)))
 
 ;; ## POST /api/query (create)

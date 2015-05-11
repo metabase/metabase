@@ -60,6 +60,13 @@ Run unit tests with
 
     lein test
 
+By default, the tests only run against the `generic-sql` dataset (an H2 test database).
+You can run specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
+
+    MB_TEST_DATASETS=generic-sql,mongo lein test
+
+At the time of this writing, the valid datasets are `generic-sql` and `mongo`.
+
 
 ## Documentation
 
