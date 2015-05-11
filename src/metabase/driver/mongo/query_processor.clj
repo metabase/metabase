@@ -121,7 +121,7 @@
 (defaggregation ["rows"]
   `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*
             ~@(when *constraints* [`(find ~*constraints*)])
-            ~@(mapcat apply-clause *query*))))
+            ~@(mapcat apply-clause (dissoc (:query *query*) :filter)))))
 
 (defaggregation ["count"]
   `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
@@ -238,9 +238,7 @@
   [{:keys [source_table aggregation breakout] :as query}]
   (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
             *constraints* (when-let [filter-clause (:filter query)]
-                            (apply-clause [:filter filter-clause]))
-            *query* (dissoc query :filter)]
-    ;;
+                            (apply-clause [:filter filter-clause]))]
     (if-not (empty? breakout) (do-breakout query)
             (match-aggregation aggregation))))
 
