@@ -10,6 +10,7 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.interface :as i]
             [metabase.driver.query-processor :as qp :refer [*query*]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             (metabase.models [database :refer [Database]]
@@ -121,7 +122,7 @@
 (defaggregation ["rows"]
   `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*
             ~@(when *constraints* [`(find ~*constraints*)])
-            ~@(mapcat apply-clause *query*))))
+            ~@(mapcat apply-clause (dissoc (:query *query*) :filter)))))
 
 (defaggregation ["count"]
   `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
@@ -133,16 +134,33 @@
              {$project {"_id" false, "avg" true}}))
 
 (defaggregation ["count" field-id]
-  (aggregate {$match {(field-id->kw field-id) {$exists true}}}
-             {$group {"_id" nil
-                      "count" {$sum 1}}}
-             {$project {"_id" false, "count" true}}))
+  `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
+                      (merge ~*constraints*
+                             {(field-id->kw field-id) {$exists true}}))}])
 
 (defaggregation ["distinct" field-id]
-  (aggregate {$group {"_id" (field-id->$string field-id)}}
-             {$group {"_id" nil
-                      "count" {$sum 1}}}
-             {$project {"_id" false, "count" true}}))
+  ;; Unfortunately trying to do a MongoDB distinct aggregation runs out of memory if there are more than a few thousand values
+  ;; because Monger currently doesn't expose any way to enable allowDiskUse in aggregations
+  ;; (see https://groups.google.com/forum/#!searchin/clojure-mongodb/$2BallowDiskUse/clojure-mongodb/3qT34rZSFwQ/tYCxj5coo8gJ).
+  ;;
+  ;; We also can't effectively limit the number of values considered in the aggregation meaning simple things like determining categories
+  ;; in sync (which only needs to know if distinct count is < 40, meaning it can theoretically stop as soon as it sees the 40th value)
+  ;; will still barf on large columns.
+  ;;
+  ;; It's faster and better-behaved to just implement this logic in Clojure-land for the time being.
+  ;; Since it's lazy we can handle large data sets (I've ran this successfully over 500,000+ document collections w/o issue).
+  [{:count (let [values (transient (set []))
+                 limit  (:limit (:query *query*))
+                 keep-taking?  (if limit (fn [_]
+                                           (< (count values) limit))
+                                   (constantly true))]
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id field-id)) ; resolve driver at runtime to avoid circular deps
+                  (filter identity)
+                  (map hash)
+                  (map #(conj! values %))
+                  (take-while keep-taking?)
+                  dorun)
+             (count values))}])
 
 (defaggregation ["stddev" field-id]
   nil) ; TODO
@@ -227,9 +245,7 @@
   [{:keys [source_table aggregation breakout] :as query}]
   (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
             *constraints* (when-let [filter-clause (:filter query)]
-                            (apply-clause [:filter filter-clause]))
-            *query* (dissoc query :filter)]
-    ;;
+                            (apply-clause [:filter filter-clause]))]
     (if-not (empty? breakout) (do-breakout query)
             (match-aggregation aggregation))))
 

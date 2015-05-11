@@ -32,9 +32,12 @@
 
 (defn field-distinct-count
   "Return the distinct count of FIELD via the query processor."
-  [field]
+  {:arglists '([field] [field limit])}
+  [field & [limit]]
   {:pre  [(delay? (:table field))
           (integer? (:id field))]
    :post [(integer? %)]}
-  (-> (qp-query @(:table field) {:aggregation ["distinct" (:id field)]})
+  (-> (qp-query @(:table field) (merge {:aggregation ["distinct" (:id field)]}
+                                       (when limit
+                                         {:limit limit})))
       first first))

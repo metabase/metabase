@@ -52,7 +52,8 @@
   [values-seq]
   {:pre [(sequential? values-seq)]}
   (or (->> values-seq
-           (filter identity)
+           (filter identity)             ; TODO - why not do a query to return non-nil values of this column instead
+           (take 1000)                   ; it's probably fine just to consider the first 1,000 non-nil values when trying to type a column instead of iterating over the whole collection
            (group-by type)
            (map (fn [[type valus]]
                   [type (count valus)]))

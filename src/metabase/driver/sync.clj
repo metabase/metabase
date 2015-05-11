@@ -143,6 +143,7 @@
   [driver table]
   (let [database @(:db table)]
     ;; Now do the syncing for Table's Fields
+    (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type (active-column-names->type driver table)
           field-name->id (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
@@ -237,6 +238,7 @@
   [driver field]
   {:pre [driver
          field]}
+  (log/debug (format "Syncing field '%s.%s'..." (:name @(:table field)) (:name field)))
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
@@ -269,7 +271,9 @@
   (field-percent-urls [this field]
     (assert (extends? ISyncDriverFieldValues (class this))
             "A sync driver implementation that doesn't implement ISyncDriverFieldPercentURLs must implement ISyncDriverFieldValues.")
-    (let [field-values (field-values-lazy-seq this field)]
+    (let [field-values (->> (field-values-lazy-seq this field)
+                            (filter identity)
+                            (take 10000))]                     ; Considering the first 10,000 rows is probably fine; don't want to have to do a full scan over millions
       (percent-valid-urls field-values))))
 
 (defn mark-url-field!
@@ -297,7 +301,7 @@
   "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
   [field]
   (when-not (:special_type field)
-    (let [cardinality (queries/field-distinct-count field)]
+    (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
       (when (and (> cardinality 0)
                  (< cardinality low-cardinality-threshold))
         (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:name @(:table field)) (:name field) cardinality))
@@ -316,10 +320,13 @@
   (field-avg-length [this field]
     (assert (extends? ISyncDriverFieldValues (class this))
             "A sync driver implementation that doesn't implement ISyncDriverFieldAvgLength must implement ISyncDriverFieldValues.")
-    (let [field-values (field-values-lazy-seq this field)
+    (let [field-values (->> (field-values-lazy-seq this field)
+                            (filter identity)
+                            (take 10000))                      ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
           field-values-count (count field-values)]
       (if (= field-values-count 0) 0
           (int (math/round (/ (->> field-values
+                                   (map str)
                                    (map count)
                                    (reduce +))
                               field-values-count)))))))
