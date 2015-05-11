@@ -143,6 +143,7 @@
   [driver table]
   (let [database @(:db table)]
     ;; Now do the syncing for Table's Fields
+    (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type (active-column-names->type driver table)
           field-name->id (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
@@ -237,6 +238,7 @@
   [driver field]
   {:pre [driver
          field]}
+  (log/debug (format "Syncing field '%s.%s'..." (:name @(:table field)) (:name field)))
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
