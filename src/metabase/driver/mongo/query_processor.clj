@@ -139,6 +139,8 @@
 
 (defaggregation ["distinct" field-id]
   (aggregate {$group {"_id" (field-id->$string field-id)}}
+             (when-let [limit (:limit (:query *query*))]
+               {$limit limit})
              {$group {"_id" nil
                       "count" {$sum 1}}}
              {$project {"_id" false, "count" true}}))
