@@ -133,16 +133,27 @@
              {$project {"_id" false, "avg" true}}))
 
 (defaggregation ["count" field-id]
-  (aggregate {$match {(field-id->kw field-id) {$exists true}}}
-             {$group {"_id" nil
-                      "count" {$sum 1}}}
-             {$project {"_id" false, "count" true}}))
+  `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
+                      (merge ~*constraints*
+                             {(field-id->kw field-id) {$exists true}}))}])
 
 (defaggregation ["distinct" field-id]
   (aggregate {$group {"_id" (field-id->$string field-id)}}
              {$group {"_id" nil
                       "count" {$sum 1}}}
              {$project {"_id" false, "count" true}}))
+
+(defn u []
+  (with-mongo-connection [^DBApiLayer conn (sel :one Database :name "Strider")]
+    (binding [*collection-name* "venues"]
+      (eval (aggregate {$match {:atlas_id {$exists true}}}
+                       {$group {"_id" nil
+                                "count" {$sum 1}}}
+                       {$project {"_id" false, "count" true}})))))
+
+(defn x []
+  (with-mongo-connection [^DBApiLayer conn (sel :one Database :name "Strider")]
+    ))
 
 (defaggregation ["stddev" field-id]
   nil) ; TODO
