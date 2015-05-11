@@ -271,7 +271,9 @@
   (field-percent-urls [this field]
     (assert (extends? ISyncDriverFieldValues (class this))
             "A sync driver implementation that doesn't implement ISyncDriverFieldPercentURLs must implement ISyncDriverFieldValues.")
-    (let [field-values (field-values-lazy-seq this field)]
+    (let [field-values (->> (field-values-lazy-seq this field)
+                            (filter identity)
+                            (take 10000))]                     ; Considering the first 10,000 rows is probably fine; don't want to have to do a full scan over millions
       (percent-valid-urls field-values))))
 
 (defn mark-url-field!
@@ -318,10 +320,13 @@
   (field-avg-length [this field]
     (assert (extends? ISyncDriverFieldValues (class this))
             "A sync driver implementation that doesn't implement ISyncDriverFieldAvgLength must implement ISyncDriverFieldValues.")
-    (let [field-values (field-values-lazy-seq this field)
+    (let [field-values (->> (field-values-lazy-seq this field)
+                            (filter identity)
+                            (take 10000))                      ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
           field-values-count (count field-values)]
       (if (= field-values-count 0) 0
           (int (math/round (/ (->> field-values
+                                   (map str)
                                    (map count)
                                    (reduce +))
                               field-values-count)))))))
