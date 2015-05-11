@@ -297,7 +297,7 @@
   "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
   [field]
   (when-not (:special_type field)
-    (let [cardinality (queries/field-distinct-count field)]
+    (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
       (when (and (> cardinality 0)
                  (< cardinality low-cardinality-threshold))
         (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:name @(:table field)) (:name field) cardinality))
