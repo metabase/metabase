@@ -23,7 +23,7 @@
                     <span class="Form-charm"></span>
                 </div>
 
-                <!-- Database Input Fields - show a form for each field in DatabaseEdit.DATABASE_FIELDS[database.engine] -->
+                <!-- Database Input Fields - show a form for each field in DatabaseEdit.ENGINES[database.engine].fields -->
                 <div class="FormInputGroup">
                     <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}">
                         <mb-form-label display-name="{{field.displayName}}" field-name="{{field.fieldName}}"></mb-form-label>
