@@ -19,8 +19,7 @@
          :can_write    (delay (org-can-write organization_id))))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
-  (cascade-delete 'metabase.models.table/Table :db_id id)
-  (cascade-delete 'metabase.models.query/Query :database_id id))
+  (cascade-delete 'metabase.models.table/Table :db_id id))
 
 (defn databases-for-org
   "Selects the ID and NAME for all databases available to the given org-id."
