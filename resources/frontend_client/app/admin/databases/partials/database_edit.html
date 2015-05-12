@@ -37,12 +37,8 @@
                             </button>
                         </div>
                         <!-- String Field (default) -->
-                        <input ng-if="!field.choices"
-                               class="Form-input Form-offset full"
-                               name="{{field.fieldName}}"
-                               placeholder="{{field.placeholder}}"
-                               ng-model="details[field.fieldName]"
-                               ng-required="field.required" />
+                        <input ng-if="!field.choices" class="Form-input Form-offset full" name="{{field.fieldName}}" placeholder="{{field.placeholder}}"
+                               ng-model="details[field.fieldName]" ng-required="field.required" />
                         <span class="Form-charm"></span>
                     </div>
                 </div>
