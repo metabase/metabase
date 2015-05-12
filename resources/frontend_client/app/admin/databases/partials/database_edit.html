@@ -23,35 +23,12 @@
                     <span class="Form-charm"></span>
                 </div>
 
-                <!-- TODO: database type dependent inputs -->
-                <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
-                    <div class="Form-field" mb-form-field="host">
-                        <mb-form-label display-name="Host" field-name="host"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="host" placeholder="localhost" ng-model="details.host" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="port">
-                        <mb-form-label display-name="Port" field-name="port"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="port" placeholder="5432" ng-model="details.port" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="dbname">
-                        <mb-form-label display-name="Database name" field-name="dbname"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="dbname" placeholder="What is the name of your database?" ng-model="details.dbname" />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="user">
-                        <mb-form-label display-name="Database username" field-name="user"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="user" placeholder="What username do you use to login to the database?" ng-model="details.user" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="pass">
-                        <mb-form-label display-name="Database password" field-name="pass"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="pass" placeholder="*******" ng-model="details.pass" />
+                <!-- Database Input Fields - show a form for each field in DatabaseEdit.ENGINES[database.engine].fields -->
+                <div class="FormInputGroup">
+                    <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}">
+                        <mb-form-label display-name="{{field.displayName}}" field-name="{{field.fieldName}}"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="{{field.fieldName}}" placeholder="{{field.placeholder}}"
+                               ng-model="details[field.fieldName]" ng-required="field.required" />
                         <span class="Form-charm"></span>
                     </div>
                 </div>
