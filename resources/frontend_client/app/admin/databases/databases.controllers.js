@@ -47,47 +47,134 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
 DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
     function($scope, $routeParams, $location, Metabase) {
 
-        // takes in our API form database details and parses them into a map of usable form field values
-        var parseDetails = function(engine, details) {
-            var map = {};
-            if (engine === 'postgres') {
-                details.conn_str.split(' ').forEach(function (val) {
-                    var split = val.split('=');
-                    if (split.length === 2) {
-                        map[split[0]] = split[1];
+        $scope.ENGINES = {
+            postgres: {
+                fields: [{
+                    displayName: "Host",
+                    fieldName: "host",
+                    placeholder: "localhost",
+                    required: true
+                }, {
+                    displayName: "Port",
+                    fieldName: "port",
+                    placeholder: "5432",
+                    required: true
+                }, {
+                    displayName: "Database name",
+                    fieldName: "dbname",
+                    placeholder: "birds_of_the_world",
+                    required: true
+                }, {
+                    displayName: "Database username",
+                    fieldName: "user",
+                    placeholder: "What username do you use to login to the database?",
+                    required: true
+                }, {
+                    displayName: "Database password",
+                    fieldName: "pass",
+                    placeholder: "*******"
+                }],
+                parseDetails: function(details) {
+                    var map = {};
+                    details.conn_str.split(' ').forEach(function(val) {
+                        var split = val.split('=');
+                        if (split.length === 2) {
+                            map[split[0]] = split[1];
+                        }
+                    });
+                    return map;
+                },
+                buildDetails: function(details) {
+                    var connStr = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user;
+                    if (details.pass) {
+                        connStr += " password=" + details.pass;
                     }
-                });
-            } else if (engine === 'h2') {
-                map.file = details.conn_str.substring(5);
+                    return {
+                        conn_str: connStr
+                    };
+                }
+            },
+            h2: {
+                fields: [{
+                    displayName: "Connection String",
+                    fieldName: "connectionString",
+                    placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+                }],
+                parseDetails: function(details) {
+                    return {
+                        connectionString: details.conn_str
+                    };
+                },
+                buildDetails: function(details) {
+                    return {
+                        conn_str: details.connectionString
+                    };
+                }
+            },
+            mongo: {
+                fields: [{
+                    displayName: "Host",
+                    fieldName: "host",
+                    placeholder: "localhost",
+                    required: true
+                }, {
+                    displayName: "Port",
+                    fieldName: "port",
+                    placeholder: "27017"
+                }, {
+                    displayName: "Database name",
+                    fieldName: "dbname",
+                    placeholder: "carrierPigeonDeliveries",
+                    required: true
+                }, {
+                    displayName: "Database username",
+                    fieldName: "user",
+                    placeholder: "What username do you use to login to the database?"
+                }, {
+                    displayName: "Database password",
+                    fieldName: "pass",
+                    placeholder: "******"
+                }],
+                parseDetails: function(details) {
+                    var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
+                        matches = regex.exec(details.conn_str);
+                    return {
+                        user: matches[1],
+                        pass: matches[2],
+                        host: matches[3],
+                        port: matches[4],
+                        dbname: matches[5]
+                    };
+                },
+                buildDetails: function(details) {
+                    var connStr = "mongodb://";
+                    if (details.user) {
+                        connStr += details.user;
+                        if (details.pass) {
+                            connStr += ":" + details.pass;
+                        }
+                        connStr += "@";
+                    }
+                    connStr += details.host;
+                    if (details.port) {
+                        connStr += ":" + details.port;
+                    }
+                    connStr += "/" + details.dbname;
+                    return {
+                        conn_str: connStr
+                    };
+                }
             }
-
-            return map;
-        };
-
-        // takes in a map of our form field values and builds them into our API form database details
-        var buildDetails = function(engine, details) {
-            var conn_str;
-            if (engine === 'postgres') {
-                conn_str = "host="+details.host+" port="+details.port+" dbname="+details.dbname+" user="+details.user+" password="+details.pass;
-            } else if (engine === 'h2') {
-                conn_str = "file:"+details.file;
-            } else {
-                conn_str = "";
-            }
-
-            return {
-                'conn_str': conn_str
-            };
         };
 
         // update an existing Database
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
-            database.details = buildDetails(database.engine, details);
-            Metabase.db_update(database, function (updated_database) {
+            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            Metabase.db_update(database, function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
-            }, function (error) {
+            }, function(error) {
                 $scope.$broadcast("form:api-error", error);
             });
         };
@@ -96,10 +183,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var create = function(database, details) {
             $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
-            database.details = buildDetails(database.engine, details);
-            Metabase.db_create(database, function (new_database) {
+            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            Metabase.db_create(database, function(new_database) {
                 $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
-            }, function (error) {
+            }, function(error) {
                 $scope.$broadcast("form:api-error", error);
             });
         };
@@ -121,9 +208,9 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         // load our form input data
-        Metabase.db_form_input(function (form_input) {
+        Metabase.db_form_input(function(form_input) {
             $scope.form_input = form_input;
-        }, function (error) {
+        }, function(error) {
             console.log('error getting database form_input', error);
         });
 
@@ -131,10 +218,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // load existing database for editing
             Metabase.db_get({
                 'dbId': $routeParams.databaseId
-            }, function (database) {
+            }, function(database) {
                 $scope.database = database;
-                $scope.details = parseDetails(database.engine, database.details);
-            }, function (error) {
+                $scope.details = $scope.ENGINES[database.engine].parseDetails(database.details);
+            }, function(error) {
                 console.log('error loading database', error);
                 if (error.status == 404) {
                     $location.path('/admin/databases/');
@@ -158,9 +245,9 @@ DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$l
 
         Metabase.db_get({
             'dbId': $routeParams.databaseId
-        }, function (database) {
+        }, function(database) {
             $scope.database = database;
-        }, function (error) {
+        }, function(error) {
             console.log('error loading database', error);
             if (error.status == 404) {
                 $location.path('/admin/databases/');
@@ -169,9 +256,9 @@ DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$l
 
         Metabase.db_tables({
             'dbId': $routeParams.databaseId
-        }, function (tables) {
+        }, function(tables) {
             $scope.tables = tables;
-        }, function (error) {
+        }, function(error) {
 
         });
     }
@@ -218,11 +305,11 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         $scope.inlineSave = function() {
             if ($scope.table) {
-                Metabase.table_update($scope.table, function (result) {
+                Metabase.table_update($scope.table, function(result) {
                     // there is a difference between the output of table/:id and table/:id/query_metadata
                     // so we don't actually want to overwrite $scope.table with this data in this case
                     //$scope.table = result;
-                }, function (error) {
+                }, function(error) {
                     console.log('error updating table', error);
                 });
             }
