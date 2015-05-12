@@ -4,7 +4,6 @@
                      [string :as s])
             [korma.db :as kdb]
             [swiss.arrows :refer :all]
-            [metabase.config :as config]
             [metabase.driver :as driver]
             (metabase.driver [generic-sql :as generic-sql]
                              [interface :as i])))
