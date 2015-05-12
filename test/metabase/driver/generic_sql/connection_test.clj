@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.connection :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.test-data :refer :all]))
 
