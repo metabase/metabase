@@ -73,9 +73,23 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     displayName: "Database password",
                     fieldName: "pass",
                     placeholder: "*******"
+                }, {
+                    displayName: "Use a secure connection (SSL)?",
+                    fieldName: "ssl",
+                    choices: [{
+                        name: 'Yes <3',
+                        value: true,
+                        selectionAccent: 'active'
+                    }, {
+                        name: 'No :/',
+                        value: false,
+                        selectionAccent: 'danger'
+                    }]
                 }],
                 parseDetails: function(details) {
-                    var map = {};
+                    var map = {
+                        ssl: details.ssl
+                    };
                     details.conn_str.split(' ').forEach(function(val) {
                         var split = val.split('=');
                         if (split.length === 2) {
@@ -90,7 +104,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                         connStr += " password=" + details.pass;
                     }
                     return {
-                        conn_str: connStr
+                        conn_str: connStr,
+                        ssl: details.ssl
                     };
                 }
             },

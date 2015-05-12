@@ -27,8 +27,22 @@
                 <div class="FormInputGroup">
                     <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}">
                         <mb-form-label display-name="{{field.displayName}}" field-name="{{field.fieldName}}"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="{{field.fieldName}}" placeholder="{{field.placeholder}}"
-                               ng-model="details[field.fieldName]" ng-required="field.required" />
+                        <!-- Multiple-Choice Field -->
+                        <div ng-if="field.choices" class="Form-input Form-offset full Button-group">
+                            <button ng-repeat="choice in field.choices" class="Button"
+                                    ng-class="{'Button--active': choice.selectionAccent === 'active' && details[field.fieldName] === choice.value,
+                                               'Button--danger': choice.selectionAccent === 'danger' && details[field.fieldName] === choice.value}"
+                                    ng-click="details[field.fieldName] = choice.value">
+                                {{choice.name}}
+                            </button>
+                        </div>
+                        <!-- String Field (default) -->
+                        <input ng-if="!field.choices"
+                               class="Form-input Form-offset full"
+                               name="{{field.fieldName}}"
+                               placeholder="{{field.placeholder}}"
+                               ng-model="details[field.fieldName]"
+                               ng-required="field.required" />
                         <span class="Form-charm"></span>
                     </div>
                 </div>
