@@ -30,8 +30,8 @@
                         <!-- Multiple-Choice Field -->
                         <div ng-if="field.choices" class="Form-input Form-offset full Button-group">
                             <button ng-repeat="choice in field.choices" class="Button"
-                                    ng-class="{'Button--active': choice.selectionAccent === 'active' && details[field.fieldName] === choice.value,
-                                               'Button--danger': choice.selectionAccent === 'danger' && details[field.fieldName] === choice.value}"
+                                    ng-class="details[field.fieldName] === choice.value ? {active: 'Button--active',
+                                                                                           danger: 'Button--danger'}[choice.selectionAccent] : null"
                                     ng-click="details[field.fieldName] = choice.value">
                                 {{choice.name}}
                             </button>
