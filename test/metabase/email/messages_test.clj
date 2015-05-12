@@ -61,3 +61,40 @@
   (with-fake-inbox
     (send-password-reset-email "test@test.com" "test.domain.com" "http://localhost/some/url")
     (@inbox "test@test.com")))
+
+;; email report
+(expect
+  [{:from "notifications@metabase.com",
+    :to ["test@test.com"],
+    :subject "My Email Report"
+    :body [{:type "text/html; charset=utf-8"
+            :content (str "<html><head></head>"
+                          "<body style=\"font-family: Helvetica Neue, Helvetica, sans-serif; width: 100%; margin: 0 auto; max-width: 800px; font-size: 12px;\">"
+                          "<div class=\"wrapper\" style=\"padding: 10px; background-color: #ffffff;\">"
+                          "<table style=\"border: 1px solid #cccccc; width: 100%; border-collapse: collapse;\">"
+                          "<tr style=\"background-color: #f4f4f4;\">"
+                          "<td style=\"text-align: left; padding: 0.5em; border: 1px solid #ddd; font-size: 12px;\">first</td>"
+                          "<td style=\"text-align: left; padding: 0.5em; border: 1px solid #ddd; font-size: 12px;\">second</td>"
+                          "</tr>"
+                          "<tr>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">N/A</td>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">N/A</td>"
+                          "</tr>"
+                          "<tr>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">abc</td>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">def</td>"
+                          "</tr>"
+                          "<tr>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">1,000</td>"
+                          "<td style=\"border: 1px solid #ddd; padding: 0.5em;\">17.45</td>"
+                          "</tr>"
+                          "</table>"
+                          "</div>"
+                          "</body>"
+                          "</html>")}]}]
+  (with-fake-inbox
+    (send-email-report "My Email Report" ["test@test.com"] {:data {:columns ["first" "second"]
+                                                                   :rows [[nil nil]
+                                                                          ["abc" "def"]
+                                                                          [1000 17.45234]]}})
+    (@inbox "test@test.com")))

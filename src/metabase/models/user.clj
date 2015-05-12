@@ -70,7 +70,8 @@
 
 (defmethod pre-cascade-delete User [_ {:keys [id]}]
   (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
-  (cascade-delete 'metabase.models.session/Session :user_id id))
+  (cascade-delete 'metabase.models.session/Session :user_id id)
+  (cascade-delete 'metabase.models.emailreport-recipients/EmailReportRecipients :user_id id))
 
 
 ;; ## Related Functions

@@ -1,0 +1,118 @@
+<div class="wrapper">
+    <section class="Breadcrumbs">
+        <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/emailreport/">Email Reports</a>
+        <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="!report.id">Create a report</h2>
+        <h2 class="Breadcrumb Breadcrumb--page" ng-if="report.id">{{report.name}}</h2>
+    </section>
+
+    <section class="Grid Grid--gutters Grid--full">
+        <!-- form -->
+        <div class="Grid-cell Cell--2of3">
+            <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+                <div class="Form-field" mb-form-field="name">
+                    <mb-form-label display-name="Name" field-name="name"></mb-form-label>
+                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this report?" ng-model="report.name" required autofocus/>
+                    <span class="Form-charm"></span>
+                </div>
+
+                <div class="Form-field" mb-form-field="description">
+                    <mb-form-label display-name="Description" field-name="description"></mb-form-label>
+                    <input class="Form-input Form-offset full" name="description" placeholder="What should people know about this report?" ng-model="report.description" />
+                    <span class="Form-charm"></span>
+                </div>
+
+                <div class="Form-field" mb-form-field="mode">
+                    <mb-form-label display-name="Mode" field-name="mode"></mb-form-label>
+                    <div class="Form-offset">
+                        <div class="Button-group">
+                            <!-- TODO: hardcoding values :( -->
+                            <button class="Button" ng-class="{'Button--active': report.mode === 1}" ng-click="report.mode = 1" ng-disabled>Active</button>
+                            <button class="Button" ng-class="{'Button--danger': report.mode === 2}" ng-click="report.mode = 2">Disabled</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="Form-field" mb-form-field="public_perms">
+                    <mb-form-label display-name="Permissions" field-name="public_perms"></mb-form-label>
+                    <label class="Select Form-offset">
+                        <select name="public_perms" ng-model="report.public_perms" ng-options="perm.id as perm.name for perm in form_input.permissions" required ></select>
+                    </label>
+                </div>
+
+                <div class="Form-field" mb-form-field="recipients">
+                    <mb-form-label display-name="Recipients" field-name="recipients"></mb-form-label>
+                    <ul class="Checkbox-group Form-offset">
+                      <li ng-repeat="user in form_input.users">
+                        <input type="checkbox" id="{{user.id}}" ng-model="user.incl" /> <label for="{{user.id}}">{{user.name}}</label>
+                      </li>
+                    </ul>
+                </div>
+
+                <div class="Form-field" mb-form-field="email_addresses">
+                    <mb-form-label display-name="Email aliases" field-name="email_addresses"></mb-form-label>
+                    <textarea class="Form-input Form-offset full" name="email_addresses" ng-model="report.email_addresses" placeholder="Enter emails (separated by commas) of other recipients, who may need this email"></textarea>
+                    <span class="Form-charm"></span>
+                </div>
+
+                <div class="Form-field" mb-form-field="dataset_query">
+                    <mb-form-label display-name="Email contents" field-name="dataset_query"></mb-form-label>
+                    <div class="mb1">
+                        <label class="Select Form-offset block">
+                            <select ng-model="report.dataset_query.database" ng-options="db.id as db.name for db in form_input.databases" ng-change="refreshTableList(report.dataset_query.database)">
+                                <option value="">Select a database</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="mb1">
+                        <label class="Select Form-offset" ng-class="{'Select--disabled': !report.dataset_query.hasOwnProperty('database')}">
+                            <select class="Select" name="dataset_query" ng-model="report.dataset_query.query.source_table" ng-options="tbl.id as tbl.name for tbl in tables" ng-disabled="!report.dataset_query.database">
+                                <option value="">Select a table</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="Form-field" mb-form-field="schedule">
+                    <mb-form-label display-name="Schedule" field-name="schedule"></mb-form-label>
+                    <div class="Form-offset">
+                        <div class="Button-group">
+                            <button class="Button" ng-class="{ 'Button--active' : report.schedule.days_of_week[day.id] }" ng-model="report.schedule.days_of_week[day.id]" ng-repeat="day in form_input.days_of_week" btn-checkbox>{{day.name}}</button>
+                        </div>
+                    </div>
+                    <div class="Form-offset mt1">
+                        <label class="Select">
+                            <select ng-model="report.schedule.time_of_day" ng-options="tod.id as tod.name for tod in form_input.times_of_day"></select>
+                        </label>
+                        <label class="Select">
+                            <select ng-model="report.schedule.timezone" ng-options="tz for tz in form_input['timezones']">
+                                <option value="">---  default timezone ---</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <span class="Form-offset block py1 ">{{human_readable_schedule}}</span>
+                </div>
+
+                <div class="Form-actions">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(report)" ng-disabled="!form.$valid || report.dataset_query.query.source_table == ''">
+                        Save
+                    </button>
+                    <mb-form-message></mb-form-message>
+                </div>
+            </form>
+        </div>
+
+        <!-- actions -->
+        <div class="Grid-cell Cell--1of3" ng-if="report.id">
+            <div class="Actions">
+                <h3>Actions</h3>
+                <div class="Actions-group">
+                    <button class="Button" mb-action-button="executeReport" success-text="Message sent!" failed-text="Failed to send" active-text="Sending">
+                        Send now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
