@@ -136,7 +136,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     placeholder: "******"
                 }],
                 parseDetails: function(details) {
-                    var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
+                    var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
                         matches = regex.exec(details.conn_str);
                     return {
                         user: matches[1],
