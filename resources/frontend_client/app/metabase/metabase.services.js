@@ -23,7 +23,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
             url:'/api/meta/db/validate/',
             method:'POST',
             headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
-            transformRequest: function(data, headersGetter) {
+            transformRequest: function(data) {
 		// API expects 'port' to be an int :imp:
 		if (data.port) data.port = parseInt(data.port);
 
