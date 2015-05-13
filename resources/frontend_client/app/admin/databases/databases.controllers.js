@@ -245,11 +245,13 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         } else {
             // prepare an empty database for creation
             $scope.database = {
-                "name": "",
-                "engine": 'postgres',
-                "details": {}
+                name: '',
+                engine: 'postgres',
+                details: {}
             };
-            $scope.details = {};
+            $scope.details = {
+                ssl: false
+            };
         }
     }
 ]);
