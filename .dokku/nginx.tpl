@@ -44,6 +44,7 @@ server {
     }
     proxy_pass  http://${APP};
     proxy_http_version 1.1;
+    proxy_read_timeout 120s;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $http_host;
