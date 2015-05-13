@@ -24,7 +24,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
             method:'POST',
             headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
             transformRequest: function(data, headersGetter) {
-		// API expects 'port' to be an int
+		// API expects 'port' to be an int :imp:
 		if (data.port) data.port = parseInt(data.port);
 
 		return angular.toJson(data);

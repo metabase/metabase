@@ -79,7 +79,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             });
         };
 
-        // TODO - Why do we *require* a valid connection in setup, but not care about it here?
+        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
         $scope.save = function(database, details) {
             if ($routeParams.databaseId) {
                 update(database, details);
