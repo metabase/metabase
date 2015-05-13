@@ -90,7 +90,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
     // hide the SSL field when creating a new DB until we auto-infer SSL support
     var hideSSLField = true;
     $scope.shouldHideField = function(field) {
-        return field.fieldName === 'ssl' ? hideSSLField : false;
+        return hideSSLField && field.fieldName === 'ssl';
     };
 
     if ($routeParams.dbId) {
@@ -123,10 +123,6 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
 
     // Call API to determine whether connection is valid. If so, save the DB.
     $scope.submit = function() {
-        // API expects 'port' to be an int
-        if ($scope.details.port) {
-            $scope.details.port = parseInt($scope.details.port);
-        }
         // add engine to the request body
         $scope.details.engine = $scope.database.engine;
 

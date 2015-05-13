@@ -22,7 +22,13 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
         validate_connection: {
             url:'/api/meta/db/validate/',
             method:'POST',
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }}
+            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            transformRequest: function(data, headersGetter) {
+		// API expects 'port' to be an int
+		if (data.port) data.port = parseInt(data.port);
+
+		return angular.toJson(data);
+            }
         },
         db_get: {
             url:'/api/meta/db/:dbId',

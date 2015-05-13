@@ -49,6 +49,12 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
         $scope.ENGINES = CorvusCore.ENGINES;
 
+        // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
+        var hideSSLField = true;
+        $scope.shouldHideField = function(field) {
+            return hideSSLField && field.fieldName === 'ssl';
+        }
+
         // update an existing Database
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
@@ -73,11 +79,25 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             });
         };
 
+        // TODO - Why do we *require* a valid connection in setup, but not care about it here?
         $scope.save = function(database, details) {
             if ($routeParams.databaseId) {
                 update(database, details);
             } else {
-                create(database, details);
+                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
+                details.ssl = true;
+
+                // add 'engine' to the request body
+                details.engine = database.engine;
+
+                Metabase.validate_connection(details, function() {
+                    console.log('Successfully connected with SSL. Setting SSL = true.');
+                    create(database, details);
+                }, function() {
+                    console.log('Unable to connect with SSL. Setting SSL = false.');
+                    details.ssl = false;
+                    create(database, details);
+                });
             }
         };
 
@@ -101,6 +121,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             Metabase.db_get({
                 'dbId': $routeParams.databaseId
             }, function(database) {
+                hideSSLField = false;
                 $scope.database = database;
                 $scope.details = $scope.ENGINES[database.engine].parseDetails(database.details);
             }, function(error) {
@@ -116,9 +137,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 engine: 'postgres',
                 details: {}
             };
-            $scope.details = {
-                ssl: false
-            };
+            $scope.details = {};
         }
     }
 ]);
