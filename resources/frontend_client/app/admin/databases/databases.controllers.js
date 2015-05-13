@@ -53,7 +53,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var hideSSLField = true;
         $scope.shouldHideField = function(field) {
             return hideSSLField && field.fieldName === 'ssl';
-        }
+        };
 
         // update an existing Database
         var update = function(database, details) {
