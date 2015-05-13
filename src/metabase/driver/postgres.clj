@@ -82,9 +82,10 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(defn- connection-details->connection-spec [{:keys [use-ssl] :as details-map}]
+(defn- connection-details->connection-spec [{:keys [ssl] :as details-map}]
   (-> details-map
-      (merge (when use-ssl
+      (dissoc :ssl)                                           ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+      (merge (when ssl                                        ; merging ssl-params will add :ssl back in if desirable
                ssl-params))
       (rename-keys {:dbname :db})
       kdb/postgres))
@@ -101,7 +102,7 @@
         (assoc :host       host
                :make-pool? false
                :db-type    :postgres                          ; What purpose is this serving?
-               :use-ssl    (:ssl (:details database))
+               :ssl        (:ssl (:details database))
                :port       (Integer/parseInt port))
         (rename-keys {:dbname :db}))))
 
