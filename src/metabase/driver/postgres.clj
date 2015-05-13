@@ -134,6 +134,3 @@
     :database->connection-details        database->connection-details
     :sql-string-length-fn                :CHAR_LENGTH
     :timezone->set-timezone-sql          timezone->set-timezone-sql}))
-
-(use 'metabase.db)
-(use 'metabase.models.database)
