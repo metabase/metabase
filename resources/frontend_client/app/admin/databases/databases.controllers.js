@@ -44,128 +44,10 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
-    function($scope, $routeParams, $location, Metabase) {
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore',
+    function($scope, $routeParams, $location, Metabase, CorvusCore) {
 
-        $scope.ENGINES = {
-            postgres: {
-                fields: [{
-                    displayName: "Host",
-                    fieldName: "host",
-                    placeholder: "localhost",
-                    required: true
-                }, {
-                    displayName: "Port",
-                    fieldName: "port",
-                    placeholder: "5432",
-                    required: true
-                }, {
-                    displayName: "Database name",
-                    fieldName: "dbname",
-                    placeholder: "birds_of_the_world",
-                    required: true
-                }, {
-                    displayName: "Database username",
-                    fieldName: "user",
-                    placeholder: "What username do you use to login to the database?",
-                    required: true
-                }, {
-                    displayName: "Database password",
-                    fieldName: "pass",
-                    placeholder: "*******"
-                }],
-                parseDetails: function(details) {
-                    var map = {};
-                    details.conn_str.split(' ').forEach(function(val) {
-                        var split = val.split('=');
-                        if (split.length === 2) {
-                            map[split[0]] = split[1];
-                        }
-                    });
-                    return map;
-                },
-                buildDetails: function(details) {
-                    var connStr = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user;
-                    if (details.pass) {
-                        connStr += " password=" + details.pass;
-                    }
-                    return {
-                        conn_str: connStr
-                    };
-                }
-            },
-            h2: {
-                fields: [{
-                    displayName: "Connection String",
-                    fieldName: "connectionString",
-                    placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
-                }],
-                parseDetails: function(details) {
-                    return {
-                        connectionString: details.conn_str
-                    };
-                },
-                buildDetails: function(details) {
-                    return {
-                        conn_str: details.connectionString
-                    };
-                }
-            },
-            mongo: {
-                fields: [{
-                    displayName: "Host",
-                    fieldName: "host",
-                    placeholder: "localhost",
-                    required: true
-                }, {
-                    displayName: "Port",
-                    fieldName: "port",
-                    placeholder: "27017"
-                }, {
-                    displayName: "Database name",
-                    fieldName: "dbname",
-                    placeholder: "carrierPigeonDeliveries",
-                    required: true
-                }, {
-                    displayName: "Database username",
-                    fieldName: "user",
-                    placeholder: "What username do you use to login to the database?"
-                }, {
-                    displayName: "Database password",
-                    fieldName: "pass",
-                    placeholder: "******"
-                }],
-                parseDetails: function(details) {
-                    var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
-                        matches = regex.exec(details.conn_str);
-                    return {
-                        user: matches[1],
-                        pass: matches[2],
-                        host: matches[3],
-                        port: matches[4],
-                        dbname: matches[5]
-                    };
-                },
-                buildDetails: function(details) {
-                    var connStr = "mongodb://";
-                    if (details.user) {
-                        connStr += details.user;
-                        if (details.pass) {
-                            connStr += ":" + details.pass;
-                        }
-                        connStr += "@";
-                    }
-                    connStr += details.host;
-                    if (details.port) {
-                        connStr += ":" + details.port;
-                    }
-                    connStr += "/" + details.dbname;
-                    return {
-                        conn_str: connStr
-                    };
-                }
-            }
-        };
+        $scope.ENGINES = CorvusCore.ENGINES;
 
         // update an existing Database
         var update = function(database, details) {
@@ -230,11 +112,13 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         } else {
             // prepare an empty database for creation
             $scope.database = {
-                "name": "",
-                "engine": 'postgres',
-                "details": {}
+                name: '',
+                engine: 'postgres',
+                details: {}
             };
-            $scope.details = {};
+            $scope.details = {
+                ssl: false
+            };
         }
     }
 ]);

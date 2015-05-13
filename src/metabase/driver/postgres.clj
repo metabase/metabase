@@ -4,7 +4,6 @@
                      [string :as s])
             [korma.db :as kdb]
             [swiss.arrows :refer :all]
-            [metabase.config :as config]
             [metabase.driver :as driver]
             (metabase.driver [generic-sql :as generic-sql]
                              [interface :as i])))
@@ -77,25 +76,19 @@
 
 ;; ## CONNECTION
 
-(defn- connection-details->connection-spec [details-map]
-  (kdb/postgres (rename-keys details-map {:dbname :db})))
-
 (def ^:private ^:const ssl-params
-  {:ssl true
-   :sslmode "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"}) ; HACK Why enable SSL if we disable certificate validation?
+  "Params to include in the JDBC connection spec for an SSL connection."
+  {:ssl        true
+   :sslmode    "require"
+   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(def ^:private ssl-supported?
-  "Determine wheter we can make an SSL connection.
-   Do that by checking whether we can connect with SSL params assoced with DETAILS-MAP.
-   This call is memoized."
-  (memoize
-   (fn [details-map]
-     (try (i/can-connect-with-details? driver (merge details-map ssl-params)) ; only calls connection-details->connection-spec
-          true
-          (catch Throwable e
-            (log/info (.getMessage e))
-            false)))))
+(defn- connection-details->connection-spec [{:keys [ssl] :as details-map}]
+  (-> details-map
+      (dissoc :ssl)                                           ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+      (merge (when ssl                                        ; merging ssl-params will add :ssl back in if desirable
+               ssl-params))
+      (rename-keys {:dbname :db})
+      kdb/postgres))
 
 (defn- database->connection-details [database]
   (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
@@ -104,20 +97,14 @@
                              (let [[k v] (s/split pair #"=")]
                                {(keyword k) v})))
                       (reduce conj {}))                       ; combine into single dict
-        {:keys [host dbname port host]} details
-        details-map (-> details
-                        (assoc :host host                    ; e.g. "localhost"
-                               :make-pool? false
-                               :db-type :postgres
-                               :port (Integer/parseInt port))
-                        (rename-keys {:dbname :db}))]       ; convert :port to an Integer
-
-    ;; Determine whether we should use an SSL connection, and assoc relevant params if so.
-    ;; If config option mb-postgres-ssl is true, the always use SSL;
-    ;; otherwise, call ssl-supported? to try and see if we can make an SSL connection.
-    (cond-> details-map
-      (or (config/config-bool :mb-postgres-ssl)
-          (ssl-supported? details-map)) (merge ssl-params))))
+        {:keys [host port]} details]
+    (-> details
+        (assoc :host       host
+               :make-pool? false
+               :db-type    :postgres                          ; What purpose is this serving?
+               :ssl        (:ssl (:details database))
+               :port       (Integer/parseInt port))
+        (rename-keys {:dbname :db}))))
 
 
 ;; ## QP
