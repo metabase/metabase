@@ -7,10 +7,22 @@
     </section>
 
     <section class="Grid Grid--gutters Grid--full">
-        <!-- form -->
-        <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'" class="Grid-cell Cell--2of3">
+        <div class="Grid-cell Cell--2of3">
+            <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+                <!-- Form -->
+                <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'"></div>
+
+                <!-- Bottom Actions -->
+                <div class="Form-actions">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details)" ng-disabled="!form.$valid">
+                        Save
+                    </button>
+                    <mb-form-message></mb-form-message>
+                </div>
+            </form>
         </div>
-        <!-- actions -->
+
+        <!-- Sidebar Actions -->
         <div class="Grid-cell Cell--1of3" ng-if="database.id">
             <div class="Actions">
                 <h3>Actions</h3>

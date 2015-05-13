@@ -32,9 +32,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     initPromise = deferred.promise;
 
                     // just make sure we grab the current user
-                    service.refreshCurrentUser().then(function (user) {
+                    service.refreshCurrentUser().then(function(user) {
                         deferred.resolve();
-                    }, function (error) {
+                    }, function(error) {
                         deferred.resolve();
                     });
                 }
@@ -63,7 +63,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             refreshCurrentUser: function() {
 
                 // this is meant to be called once on app startup
-                var userRefresh = User.current(function (result) {
+                var userRefresh = User.current(function(result) {
                     service.model.currentUser = result;
 
                     // add isMember(orgSlug) method to the object
@@ -101,7 +101,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     $rootScope.$broadcast('appstate:user', result);
 
-                }, function (error) {
+                }, function(error) {
                     console.log('unable to get current user', error);
                 });
 
@@ -167,9 +167,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                currentUserPromise.then(function (user) {
+                currentUserPromise.then(function(user) {
                     service.routeChangedImpl(event);
-                }, function (error) {
+                }, function(error) {
                     service.routeChangedImpl(event);
                 });
             },
@@ -446,6 +446,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'id': 'zip_code',
         'name': 'Zip Code'
     }];
+
     this.field_field_types = [{
         'id': 'info',
         'name': 'Information'
@@ -519,6 +520,146 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
 
     // this just makes it easier to access the current user
     this.currentUser = User.current;
+
+    // The various DB engines we support <3
+    // TODO - this should probably come back from the API, no?
+    this.ENGINES = {
+        postgres: {
+            name: 'Postgres',
+            fields: [{
+                displayName: "Host",
+                fieldName: "host",
+                placeholder: "localhost",
+                required: true
+            }, {
+                displayName: "Port",
+                fieldName: "port",
+                placeholder: "5432",
+                required: true
+            }, {
+                displayName: "Database name",
+                fieldName: "dbname",
+                placeholder: "birds_of_the_world",
+                required: true
+            }, {
+                displayName: "Database username",
+                fieldName: "user",
+                placeholder: "What username do you use to login to the database?",
+                required: true
+            }, {
+                displayName: "Database password",
+                fieldName: "pass",
+                placeholder: "*******"
+            }, {
+                displayName: "Use a secure connection (SSL)?",
+                fieldName: "ssl",
+                choices: [{
+                    name: 'Yes <3',
+                    value: true,
+                    selectionAccent: 'active'
+                }, {
+                    name: 'No :/',
+                    value: false,
+                    selectionAccent: 'danger'
+                }]
+            }],
+            parseDetails: function(details) {
+                var map = {
+                    ssl: details.ssl
+                };
+                details.conn_str.split(' ').forEach(function(val) {
+                    var split = val.split('=');
+                    if (split.length === 2) {
+                        map[split[0]] = split[1];
+                    }
+                });
+                return map;
+            },
+            buildDetails: function(details) {
+                var connStr = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user;
+                if (details.pass) {
+                    connStr += " password=" + details.pass;
+                }
+                return {
+                    conn_str: connStr,
+                    ssl: details.ssl
+                };
+            }
+        },
+        h2: {
+            name: 'H2',
+            fields: [{
+                displayName: "Connection String",
+                fieldName: "connectionString",
+                placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+            }],
+            parseDetails: function(details) {
+                return {
+                    connectionString: details.conn_str
+                };
+            },
+            buildDetails: function(details) {
+                return {
+                    conn_str: details.connectionString
+                };
+            }
+        },
+        mongo: {
+            name: 'MongoDB',
+            fields: [{
+                displayName: "Host",
+                fieldName: "host",
+                placeholder: "localhost",
+                required: true
+            }, {
+                displayName: "Port",
+                fieldName: "port",
+                placeholder: "27017"
+            }, {
+                displayName: "Database name",
+                fieldName: "dbname",
+                placeholder: "carrierPigeonDeliveries",
+                required: true
+            }, {
+                displayName: "Database username",
+                fieldName: "user",
+                placeholder: "What username do you use to login to the database?"
+            }, {
+                displayName: "Database password",
+                fieldName: "pass",
+                placeholder: "******"
+            }],
+            parseDetails: function(details) {
+                var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
+                    matches = regex.exec(details.conn_str);
+                return {
+                    user: matches[1],
+                    pass: matches[2],
+                    host: matches[3],
+                    port: matches[4],
+                    dbname: matches[5]
+                };
+            },
+            buildDetails: function(details) {
+                var connStr = "mongodb://";
+                if (details.user) {
+                    connStr += details.user;
+                    if (details.pass) {
+                        connStr += ":" + details.pass;
+                    }
+                    connStr += "@";
+                }
+                connStr += details.host;
+                if (details.port) {
+                    connStr += ":" + details.port;
+                }
+                connStr += "/" + details.dbname;
+                return {
+                    conn_str: connStr
+                };
+            }
+        }
+    };
 }]);
 
 CorvusServices.service('CorvusAlert', [function() {
@@ -749,8 +890,8 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Organization', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/org/:orgId', {}, {
         form_input: {
-            url:'/api/org/form_input',
-            method:'GET'
+            url: '/api/org/form_input',
+            method: 'GET'
         },
         list: {
             url: '/api/org/',
