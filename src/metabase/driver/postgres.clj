@@ -90,19 +90,31 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- database->connection-details [database]
-  (let [details (-<>> database :details :conn_str             ; get conn str like "password=corvus user=corvus ..."
-                      (s/split <> #" ")                       ; split into k=v pairs
-                      (map (fn [pair]                          ; convert to {:k v} pairs
-                             (let [[k v] (s/split pair #"=")]
-                               {(keyword k) v})))
-                      (reduce conj {}))                       ; combine into single dict
-        {:keys [host port]} details]
+(defn- is-legacy-conn-details?
+  "Is DETAILS-MAP a legacy map (i.e., does it only contain `conn_str`)?"
+  [details-map]
+  {:pre [(map? details-map)]}
+  (not (:dbname details-map)))
+
+(defn- parse-legacy-conn-str
+  "Parse a legacy `database.details.conn_str` CONNECTION-STRING."
+  [connection-string]
+  {:pre [(string? connection-string)]}
+  (-<>> connection-string
+        (s/split <> #" ")               ; split into k=v pairs
+        (map (fn [pair]                  ; convert to {:k v} pairs
+               (let [[k v] (s/split pair #"=")]
+                 {(keyword k) v})))
+        (reduce conj {})))
+
+(defn- database->connection-details [{:keys [details]}]
+  (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))
+                                            details)]
     (-> details
         (assoc :host       host
                :make-pool? false
                :db-type    :postgres                          ; What purpose is this serving?
-               :ssl        (:ssl (:details database))
+               :ssl        (:ssl details)
                :port       (Integer/parseInt port))
         (rename-keys {:dbname :db}))))
 
@@ -122,3 +134,6 @@
     :database->connection-details        database->connection-details
     :sql-string-length-fn                :CHAR_LENGTH
     :timezone->set-timezone-sql          timezone->set-timezone-sql}))
+
+(use 'metabase.db)
+(use 'metabase.models.database)
