@@ -45,6 +45,7 @@ server {
     proxy_pass  http://${APP};
     proxy_http_version 1.1;
     proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $http_host;
@@ -53,5 +54,6 @@ server {
     proxy_set_header X-Forwarded-Port $server_port;
     proxy_set_header X-Request-Start $msec;
     proxy_set_header X-Nginx-Proxy true;
+    send_timeout 120s;
   }
 }
