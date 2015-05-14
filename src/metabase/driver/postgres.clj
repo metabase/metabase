@@ -100,13 +100,14 @@
   "Parse a legacy `database.details.conn_str` CONNECTION-STRING and return a new-style map."
   [connection-string]
   {:pre [(string? connection-string)]}
-  (let [details (-<>> connection-string
-                      (s/split <> #" ")            ; split into k=v pairs
-                      (map (fn [pair]               ; convert to {:k v} pairs
-                             (let [[k v] (s/split pair #"=")]
-                               {(keyword k) v})))
-                      (reduce conj {}))]
-    (assoc details :port (Integer/parseInt (:port details)))))
+  (let [{:keys [port] :as details} (-<>> connection-string
+                                         (s/split <> #" ")                       ; split into k=v pairs
+                                         (map (fn [pair]                          ; convert to {:k v} pairs
+                                                (let [[k v] (s/split pair #"=")]
+                                                  {(keyword k) v})))
+                                         (reduce conj {}))]
+    (cond-> details
+      (string? port) (update-in :port (Integer/parseInt port)))))
 
 (defn- database->connection-details [{:keys [details]}]
   (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))
@@ -116,7 +117,8 @@
                :make-pool? false
                :db-type    :postgres                          ; What purpose is this serving?
                :ssl        (:ssl details)
-               :port       (Integer/parseInt port))
+               :port       (if (string? port) (Integer/parseInt port)
+                               port))
         (rename-keys {:dbname :db}))))
 
 
