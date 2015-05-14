@@ -88,14 +88,13 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
     $scope.breadcrumb = 'Add connection';
 
     // hide the SSL field when creating a new DB until we auto-infer SSL support
-    var hideSSLField = true;
-    $scope.shouldHideField = function(field) {
-        return hideSSLField && field.fieldName === 'ssl';
+    $scope.hiddenFields = {
+        ssl: true
     };
 
     if ($routeParams.dbId) {
         newConnection = false;
-        hideSSLField = false;
+        $scope.hiddenFields = null;
         Metabase.db_get({
             'dbId': $routeParams.dbId
         }, function(result) {

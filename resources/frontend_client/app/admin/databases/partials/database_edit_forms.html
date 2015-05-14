@@ -16,9 +16,10 @@
 
     <!-- Database Connection Info Fields - Varies by Engine (details.*) -->
     <div class="FormInputGroup">
-        <!-- If the controller defines a delegate function shouldHideField() then we'll query that to determine whether each field should be shown
+        <!-- If the controller defines an object called $scope.hiddenFields we'll check it to see if we should hide any fields.
+             e.g. $scope.hiddenFields = { ssl : true } will hide the SSL field.
              Otherwise we'll default to showing every field. This way we can hide 'advanced options' like SSL during the setup process -->
-        <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}" ng-if="!shouldHideField(field)">
+        <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}" ng-if="!hiddenFields[field.fieldName]">
             <mb-form-label display-name="{{field.displayName}}" field-name="{{field.fieldName}}"></mb-form-label>
             <!-- Multiple-Choice Field -->
             <div ng-if="field.choices" class="Form-input Form-offset full Button-group">

@@ -50,9 +50,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         $scope.ENGINES = CorvusCore.ENGINES;
 
         // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
-        var hideSSLField = true;
-        $scope.shouldHideField = function(field) {
-            return hideSSLField && field.fieldName === 'ssl';
+        $scope.hiddenFields = {
+            ssl: true
         };
 
         // update an existing Database
@@ -121,7 +120,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             Metabase.db_get({
                 'dbId': $routeParams.databaseId
             }, function(database) {
-                hideSSLField = false;
+                $scope.hiddenFields = null;
                 $scope.database = database;
                 $scope.details = $scope.ENGINES[database.engine].parseDetails(database.details);
             }, function(error) {
