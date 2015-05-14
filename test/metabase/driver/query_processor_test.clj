@@ -387,6 +387,20 @@
    :breakout [nil]
    :limit nil})
 
+;; ### FILTER -- "BETWEEN" with dates
+(qp-expect-with-all-datasets
+ {:rows [[29]]
+  :columns ["count"]
+  :cols [{:base_type :IntegerField
+          :special_type :number
+          :name "count"
+          :id nil
+          :table_id nil
+          :description nil}]}
+ {:source_table (id :checkins)
+  :filter ["AND" ["BETWEEN" (id :checkins :date) "2015-04-01" "2015-05-01"]]
+  :aggregation ["count"]})
+
 ;; ### FILTER -- "OR", "<=", "="
 (qp-expect-with-all-datasets
     {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
