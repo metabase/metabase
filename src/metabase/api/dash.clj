@@ -63,7 +63,7 @@
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
-  (del Dashboard :id id))
+  (cascade-delete Dashboard :id id))
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
