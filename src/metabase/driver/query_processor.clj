@@ -7,6 +7,7 @@
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare add-implicit-breakout-order-by
+         add-implicit-limit
          get-special-column-info
          preprocess-cumulative-sum
          preprocess-structured
@@ -17,6 +18,10 @@
 (def ^:const empty-response
   "An empty response dictionary to return when there's no query to run."
   {:rows [], :columns [], :cols []})
+
+(def ^:const max-result-rows
+  "Maximum number of rows the QP should ever return."
+  10000)
 
 
 ;; # DYNAMIC VARS
@@ -45,6 +50,7 @@
   (let [preprocessed-query (update-in query [:query] #(->> %
                                                            remove-empty-clauses
                                                            add-implicit-breakout-order-by
+                                                           add-implicit-limit
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -91,6 +97,17 @@
                          [field-id "ascending"]))
                  (apply conj (or order-by-subclauses []))
                  (assoc query :order_by)))))
+
+
+;;; ### ADD-IMPLICIT-LIMIT
+
+(defn add-implicit-limit
+  "Add an implicit limit clause to queries with `rows` aggregations."
+  [{:keys [limit aggregation] :as query}]
+  (if (and (= aggregation ["rows"])
+           (not limit))
+    (assoc query :limit max-result-rows)
+    query))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -161,12 +178,9 @@
 
 ;; ### LIMIT-MAX-RESULT-ROWS
 
-(def ^:const max-result-rows
-  "Maximum number of rows the QP should ever return."
-  2000)
-
 (defn limit-max-result-rows
-  "Limit the number of rows returned in RESULTS to `max-result-rows`."
+  "Limit the number of rows returned in RESULTS to `max-result-rows`.
+   (We want to do this here so we can put a hard limit on native SQL results and other ones where we couldn't add an implicit `:limit` clause)."
   [results]
   {:pre [(map? results)
          (sequential? (:rows results))]}
@@ -182,9 +196,11 @@
          (sequential? (:columns results))
          (sequential? (:cols results))
          (sequential? (:rows results))]}
-  {:row_count (count (:rows results))
-   :status    :completed
-   :data      results})
+  (let [num-results (count (:rows results))]
+    (cond-> {:row_count (count (:rows results))
+             :status    :completed
+             :data      results}
+      (= num-results max-result-rows) (assoc :num_results_over_limit true)))) ; so the front-end can let the user know why they're being arbitarily limited
 
 ;; ### POST-PROCESS
 
