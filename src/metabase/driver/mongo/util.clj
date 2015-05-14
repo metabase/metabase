@@ -5,6 +5,22 @@
             [monger.core :as mg]
             [metabase.driver :as driver]))
 
+(defn- details-map->connection-string
+  [{:keys [user password host port dbname]}]
+  {:pre [host
+         dbname]}
+  (str "mongodb://"
+       user
+       (when password
+         (assert user "Can't have a password without a user!")
+         (str ":" password))
+       (when user "@")
+       host
+       (when port
+         (str ":" port))
+       "/"
+       dbname))
+
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -14,9 +30,11 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [connection-string (if (map? database) (-> database :details :conn_str)
-                              database)
-        _ (assert (string? connection-string) (str "with-mongo-connection failed: connection string is must be a string, got: " connection-string))
+  (let [connection-string (cond
+                            (string? database)              database
+                            (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style
+                            (:conn_str (:details database)) (:conn_str (:details database))                      ; legacy
+                            :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try

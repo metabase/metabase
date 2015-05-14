@@ -20,6 +20,7 @@
                               (expect-expansion 0)
                               (expect-let 1)
                               (expect-when-testing-against-dataset 1)
+                              (expect-when-testing-mongo 1)
                               (expect-with-all-drivers 1)
                               (ins 1)
                               (let-400 1)
