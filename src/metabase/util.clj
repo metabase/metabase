@@ -98,13 +98,20 @@
       (java.sql.Timestamp.)))
 
 (defn parse-iso8601
-  "parse a string value expected in the iso8601 format into a `java.sql.Date`."
+  "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
   ^java.sql.Date
   [datetime]
   (some->> datetime
            (time/parse (time/formatters :date-time))
            (coerce/to-long)
            (java.sql.Date.)))
+
+
+(def ^{:arglists '([date])} parse-date-yyyy-mm-dd
+  "Parse a date in the `yyyy-mm-dd` format and return a `java.util.Date`."
+  (let [sdf (java.text.SimpleDateFormat. "yyyy-MM-dd")]
+    (fn [date]
+      (.parse sdf date))))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."

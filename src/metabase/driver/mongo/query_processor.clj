@@ -15,7 +15,8 @@
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
-                             [table :refer [Table]]))
+                             [table :refer [Table]])
+            [metabase.util :as u])
   (:import (com.mongodb CommandResult
                         DBApiLayer)
            (clojure.lang PersistentArrayMap)))
@@ -299,6 +300,17 @@
 (defclause :fields field-ids
   `[(fields ~(mapv field-id->kw field-ids))])
 
+(def ^:private field-id-is-date-field?
+  (memoize
+   (fn [field-id]
+     (contains? #{:DateField :DateTimeField}
+                (sel :one :field [Field :base_type] :id field-id)))))
+
+(defn- parse-date-if-needed
+  "Dates come back from the frontend as `YYYY-MM-DD` strings, so convert them to `java.util.Date` if needed."
+  [field-id value]
+  (if (field-id-is-date-field? field-id) (u/parse-date-yyyy-mm-dd value)
+      value))
 
 ;; ### filter
 ;; !!! SPECIAL CASE - the results of this clause are bound to *constraints*, which is used differently
@@ -316,25 +328,26 @@
   {(field-id->kw field-id) {$exists true}})
 
 (defclause :filter ["BETWEEN" field-id min max]
-  {(field-id->kw field-id) {$gte min
-                            $lte max}})
+  {(field-id->kw field-id) {$gte (parse-date-if-needed field-id min)
+                            $lte (parse-date-if-needed field-id max)}})
+
 (defclause :filter ["=" field-id value]
-  {(field-id->kw field-id) value})
+  {(field-id->kw field-id) (parse-date-if-needed field-id value)})
 
 (defclause :filter ["!=" field-id value]
-  {(field-id->kw field-id) {$ne value}})
+  {(field-id->kw field-id) {$ne (parse-date-if-needed field-id value)}})
 
 (defclause :filter ["<" field-id value]
-  {(field-id->kw field-id) {$lt value}})
+  {(field-id->kw field-id) {$lt (parse-date-if-needed field-id value)}})
 
 (defclause :filter [">" field-id value]
-  {(field-id->kw field-id) {$gt value}})
+  {(field-id->kw field-id) {$gt (parse-date-if-needed field-id value)}})
 
 (defclause :filter ["<=" field-id value]
-  {(field-id->kw field-id) {$lte value}})
+  {(field-id->kw field-id) {$lte (parse-date-if-needed field-id value)}})
 
 (defclause :filter [">=" field-id value]
-  {(field-id->kw field-id) {$gte value}})
+  {(field-id->kw field-id) {$gte (parse-date-if-needed field-id value)}})
 
 (defclause :filter ["AND" & subclauses]
   {$and (mapv #(apply-clause [:filter %]) subclauses)})
