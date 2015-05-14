@@ -87,8 +87,15 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
     var newConnection = true;
     $scope.breadcrumb = 'Add connection';
 
+    // hide the SSL field when creating a new DB until we auto-infer SSL support
+    var hideSSLField = true;
+    $scope.shouldHideField = function(field) {
+        return hideSSLField && field.fieldName === 'ssl';
+    };
+
     if ($routeParams.dbId) {
         newConnection = false;
+        hideSSLField = false;
         Metabase.db_get({
             'dbId': $routeParams.dbId
         }, function(result) {
@@ -114,44 +121,62 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
         $scope.database.engine = engine;
     };
 
+    // Call API to determine whether connection is valid. If so, save the DB.
     $scope.submit = function() {
-        var engine = $scope.database.engine,
-            database = {
-                org: $scope.currentOrg.id,
-                name: $scope.database.name,
-                engine: engine,
-                details: $scope.ENGINES[engine].buildDetails($scope.details)
-            };
-
-        function success(result) {
-            $location.path('/setup/data');
-        }
-
-        function error(err) {
-            $scope.error = err;
-            console.log('error', err);
-        }
-
-        // api needs a int
-        if ($scope.details.port) {
-            $scope.details.port = parseInt($scope.details.port);
-        }
-
-        // Validate the connection string. Add engine to the request body
+        // add engine to the request body
         $scope.details.engine = $scope.database.engine;
-        Metabase.validate_connection($scope.details, function(result) {
-            if (newConnection) {
-                Metabase.db_create(database, success, error);
-            } else {
-                // add the id since we're updating
-                database.id = $scope.database.id;
-                Metabase.db_update(database, success, error);
-            }
 
-        }, function(error) {
+        function validateConnectionDetails(onConnectionValidationFailed) {
+            console.log('attempting to connect with SSL set to: ', $scope.details.ssl);
+
+            Metabase.validate_connection($scope.details, function() {
+                // Connection valid, save the DB
+                console.log('connection successful.');
+
+                var engine = $scope.database.engine,
+                    database = {
+                        org: $scope.currentOrg.id,
+                        name: $scope.database.name,
+                        engine: engine,
+                        details: $scope.ENGINES[engine].buildDetails($scope.details)
+                    };
+
+                function onCreateOrUpdateDBSuccess(result) {
+                    $location.path('/setup/data');
+                }
+
+                function onCreateOrUpdateDBError(err) {
+                    $scope.error = err;
+                    console.log('error', err);
+                }
+
+                if (newConnection) {
+                    Metabase.db_create(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
+                } else {
+                    // add the id since we're updating
+                    database.id = $scope.database.id;
+                    Metabase.db_update(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
+                }
+            }, onConnectionValidationFailed);
+        }
+
+        function displayConnectionValidationError(error) {
             console.log(error);
             $scope.error = "Invalid Connection String - " + error.data.message;
-        });
+        }
+
+        // now perform the connection validation
+        if (newConnection) {
+            // if this is a new connection we'll try SSL first and if that fails we'll retry without it
+            $scope.details.ssl = true;
+            validateConnectionDetails(function(error) {
+                // try again without SSL
+                $scope.details.ssl = false;
+                validateConnectionDetails(displayConnectionValidationError);
+            });
+        } else {
+            validateConnectionDetails(displayConnectionValidationError);
+        }
     };
 }]);
 

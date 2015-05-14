@@ -841,7 +841,7 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
             ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
         delete: {
-            method: 'DELETE',
+            method: 'DELETE'
         },
         forgot_password: {
             url: '/api/session/forgot_password',
