@@ -31,6 +31,7 @@
                               (org-perms-case 1)
                               (pdoseq 1)
                               (qp-expect-with-all-drivers 1)
+                              (resolve-private-fns 1)
                               (symbol-macrolet 1)
                               (sync-in-context 2)
                               (upd 2)
