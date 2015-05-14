@@ -107,7 +107,7 @@
                                                   {(keyword k) v})))
                                          (reduce conj {}))]
     (cond-> details
-      (string? port) (update-in :port (Integer/parseInt port)))))
+      (string? port) (assoc :port (Integer/parseInt port)))))
 
 (defn- database->connection-details [{:keys [details]}]
   (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))
