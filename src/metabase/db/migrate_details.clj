@@ -17,7 +17,7 @@
 
 (def ^:private ^:const convert-legacy-connection-details
   {:postgres (fn [details]
-               (merge details) (postgres/parse-legacy-conn-str (:conn_str details)))
+               (merge details (postgres/parse-legacy-conn-str (:conn_str details))))
    :h2       (fn [details]
                (assoc details :db (:conn_str details)))
    :mongo    (fn [details]
