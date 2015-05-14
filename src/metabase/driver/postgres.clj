@@ -90,22 +90,24 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- is-legacy-conn-details?
+(defn is-legacy-conn-details?
   "Is DETAILS-MAP a legacy map (i.e., does it only contain `conn_str`)?"
   [details-map]
   {:pre [(map? details-map)]}
   (not (:dbname details-map)))
 
-(defn- parse-legacy-conn-str
-  "Parse a legacy `database.details.conn_str` CONNECTION-STRING."
+(defn parse-legacy-conn-str
+  "Parse a legacy `database.details.conn_str` CONNECTION-STRING and return a new-style map."
   [connection-string]
   {:pre [(string? connection-string)]}
-  (-<>> connection-string
-        (s/split <> #" ")               ; split into k=v pairs
-        (map (fn [pair]                  ; convert to {:k v} pairs
-               (let [[k v] (s/split pair #"=")]
-                 {(keyword k) v})))
-        (reduce conj {})))
+  (let [{:keys [port] :as details} (-<>> connection-string
+                                         (s/split <> #" ")                       ; split into k=v pairs
+                                         (map (fn [pair]                          ; convert to {:k v} pairs
+                                                (let [[k v] (s/split pair #"=")]
+                                                  {(keyword k) v})))
+                                         (reduce conj {}))]
+    (cond-> details
+      (string? port) (assoc :port (Integer/parseInt port)))))
 
 (defn- database->connection-details [{:keys [details]}]
   (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))
@@ -115,7 +117,8 @@
                :make-pool? false
                :db-type    :postgres                          ; What purpose is this serving?
                :ssl        (:ssl details)
-               :port       (Integer/parseInt port))
+               :port       (if (string? port) (Integer/parseInt port)
+                               port))
         (rename-keys {:dbname :db}))))
 
 
