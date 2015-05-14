@@ -383,10 +383,14 @@ CardControllers.controller('CardDetail', [
         };
 
         $scope.$on('$locationChangeStart', function (event) {
-            if (cardJson !== JSON.stringify(card) && queryResult !== null) {
-                if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
-                    event.preventDefault();
-                    return;
+            // only ask for a confirmation on unsaved changes if the question is
+            // saved already, indicated by a cardId
+            if($routeParams.cardId) {
+                if (cardJson !== JSON.stringify(card) && queryResult !== null) {
+                    if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
+                        event.preventDefault();
+                        return;
+                    }
                 }
             }
 
