@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.interface :refer :all]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type details-map->connection-string]])))
+                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])))
 
 (declare driver)
 
