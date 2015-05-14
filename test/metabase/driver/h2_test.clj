@@ -9,8 +9,8 @@
 ;; ## new-style
 (expect {:db
          "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}
-    {:details {:db "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}})
+  (database->connection-details {:details {:db "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}}))
 
 ;; ## legacy
 (expect {:db "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}
-  {:details {:conn_str "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}})
+  (database->connection-details {:details {:conn_str "file:/Users/cam/birdly/bird_sightings.db;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"}}))
