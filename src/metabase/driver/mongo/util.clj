@@ -21,12 +21,6 @@
        "/"
        dbname))
 
-(defn- is-new-style-details?
-  "Is DETAILS-MAP a new-style map (i.e., are its values broken out, rather than passed as a combined `conn_str`)?"
-  [details-map]
-  {:pre [(map? details-map)]}
-  (:dbname details-map)) ; just look for the new-style :dbname as evidence
-
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -37,10 +31,10 @@
    Don't use this directly; use `with-mongo-connection`."
   [f database]
   (let [connection-string (cond
-                            (string? database)                           database
-                            (is-new-style-details? (:details database)) (details-map->connection-string (:details database))
-                            :else                                       (:conn_str (:details database)))
-        _ (assert (string? connection-string) (str "with-mongo-connection failed: connection string is must be a string, got: " connection-string))
+                            (string? database)              database
+                            (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style
+                            (:conn_str (:details database)) (:conn_str (:details database))                      ; legacy
+                            :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
