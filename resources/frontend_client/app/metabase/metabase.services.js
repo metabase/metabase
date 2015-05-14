@@ -3,7 +3,7 @@
 // Metabase Services
 var MetabaseServices = angular.module('corvus.metabase.services', ['ngResource', 'ngCookies']);
 
-MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resource, $cookies) {
+MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'CorvusCore', function($resource, $cookies, CorvusCore) {
     return $resource('/api/meta', {}, {
         db_form_input: {
             url: '/api/meta/db/form_input',
@@ -21,6 +21,10 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
                 'X-CSRFToken': function() {
                     return $cookies.csrftoken;
                 }
+            },
+            transformRequest: function(data) {
+                data = CorvusCore.prepareDatabaseDetails(data);
+                return angular.toJson(data);
             }
         },
         validate_connection: {
@@ -32,8 +36,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', function($resourc
                 }
             },
             transformRequest: function(data) {
-                // API expects 'port' to be an int :imp:
-                if (data.port) data.port = parseInt(data.port);
+                data = CorvusCore.prepareDatabaseDetails(data);
                 return angular.toJson(data);
             }
         },

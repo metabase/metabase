@@ -533,11 +533,27 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     // Until this is fully supported by the backend(s), we can save the connection details with both the 'new-style' broken-out values, and the combined conn_str
     // to ensure backwards-compatibility. Until this transition is complete, however, we'll still need to handle legacy maps containing just 'conn_str'.
     //
-    // each engine should define the following properties:
+    // ENGINE DICT FORMAT:
     // *  name         - human-facing name to use for this DB engine
-    // *  fields       - list of available fields when a user adds/edits a DB of this type
     // *  buildDetails - take a 'new-style' details map and add 'conn_str' for backwards compatibility, if needed
     // *  parseDetails - take a details map and parse 'conn_str' if it's a legacy map. Otherwise we can return the map as-is
+    // *  fields       - array of available fields to display when a user adds/edits a DB of this type. Each field should be a dict of the format below:
+    //
+    // FIELD DICT FORMAT:
+    // *  displayName          - user-facing name for the Field
+    // *  fieldName            - name used for the field in a database details dict
+    // *  transform            - function to apply to this value before passing to the API, such as 'parseInt'. (default: none)
+    // *  placeholder          - placeholder value that should be used in text input for this field (default: none)
+    // *  placeholderIsDefault - if true, use the value of 'placeholder' as the default value of this field if none is specified (default: false)
+    //                           (if you set this, don't set 'required', or user will still have to add a value for the field)
+    // *  required             - require the user to enter a value for this field? (default: false)
+    // *  choices              - array of possible values for this field. If provided, display a button toggle instead of a text input.
+    //                           Each choice should be a dict of the format below: (optional)
+    //
+    // CHOICE DICT FORMAT:
+    // *  name            - User-facing name for the choice.
+    // *  value           - Value to use for the choice in the database connection details dict.
+    // *  selectionAccent - What accent type should be applied to the field when its value is chosen? Either 'active' (currently green), or 'danger' (currently red).
     this.ENGINES = {
         postgres: {
             name: 'Postgres',
@@ -545,12 +561,13 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 displayName: "Host",
                 fieldName: "host",
                 placeholder: "localhost",
-                required: true
+                placeholderIsDefault: true
             }, {
                 displayName: "Port",
                 fieldName: "port",
+                transform: parseInt,
                 placeholder: "5432",
-                required: true
+                placeholderIsDefault: true
             }, {
                 displayName: "Database name",
                 fieldName: "dbname",
@@ -596,7 +613,12 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             },
             buildDetails: function(details) {
                 // add conn_str for backwards-compatibility
-                details.conn_str = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user + (details.pass ? (" password=" + details.pass) : '');
+                details.conn_str =
+                    "host=" + details.host +
+                    " port=" + details.port +
+                    " dbname=" + details.dbname +
+                    " user=" + details.user +
+                    (details.pass ? (" password=" + details.pass) : '');
                 return details;
             }
         },
@@ -628,10 +650,11 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 displayName: "Host",
                 fieldName: "host",
                 placeholder: "localhost",
-                required: true
+                placeholderIsDefault: true
             }, {
                 displayName: "Port",
                 fieldName: "port",
+                transform: parseInt,
                 placeholder: "27017"
             }, {
                 displayName: "Database name",
@@ -682,6 +705,29 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 return details;
             }
         }
+    };
+
+    // Prepare database details before being sent to the API.
+    // This includes applying 'transform' functions and adding default values where applicable.
+    this.prepareDatabaseDetails = function(details) {
+        if (!details.engine) throw "Missing key 'engine' in database request details; please add this as API expects it in the request body.";
+
+        // iterate over each field definition
+        this.ENGINES[details.engine].fields.forEach(function(field) {
+            var fieldName = field.fieldName;
+
+            // set default value if applicable
+            if (!details[fieldName] && field.placeholderIsDefault) {
+                details[fieldName] = field.placeholder;
+            }
+
+            // apply transformation function if applicable
+            if (details[fieldName] && field.transform) {
+                details[fieldName] = field.transform(details[fieldName]);
+            }
+        });
+
+        return details;
     };
 }]);
 
