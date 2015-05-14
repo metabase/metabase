@@ -523,6 +523,21 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
 
     // The various DB engines we support <3
     // TODO - this should probably come back from the API, no?
+    //
+    // NOTE:
+    // A database's connection details is stored in a JSON map in the field database.details.
+    // Originially, this map was expected to contain a single key called 'conn_str' that combined all of a database's connection details.
+    // In real life, both the backend and frontend need access to the individual values, and have implemented complicated logic to parse conn_str.
+    // Thus, we are moving towards saving the connection details in a 'new-style' broken-out map, instead of as 'legacy' map containing just a combined conn_str.
+    //
+    // Until this is fully supported by the backend(s), we can save the connection details with both the 'new-style' broken-out values, and the combined conn_str
+    // to ensure backwards-compatibility. Until this transition is complete, however, we'll still need to handle legacy maps containing just 'conn_str'.
+    //
+    // each engine should define the following properties:
+    // *  name         - human-facing name to use for this DB engine
+    // *  fields       - list of available fields when a user adds/edits a DB of this type
+    // *  buildDetails - take a 'new-style' details map and add 'conn_str' for backwards compatibility, if needed
+    // *  parseDetails - take a details map and parse 'conn_str' if it's a legacy map. Otherwise we can return the map as-is
     this.ENGINES = {
         postgres: {
             name: 'Postgres',
@@ -564,6 +579,10 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 }]
             }],
             parseDetails: function(details) {
+                // Check for new-style details
+                if (details.dbname) return details;
+
+                // Otherwise parse legacy details
                 var map = {
                     ssl: details.ssl
                 };
@@ -576,14 +595,9 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 return map;
             },
             buildDetails: function(details) {
-                var connStr = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user;
-                if (details.pass) {
-                    connStr += " password=" + details.pass;
-                }
-                return {
-                    conn_str: connStr,
-                    ssl: details.ssl
-                };
+                // add conn_str for backwards-compatibility
+                details.conn_str = "host=" + details.host + " port=" + details.port + " dbname=" + details.dbname + " user=" + details.user + (details.pass ? (" password=" + details.pass) : '');
+                return details;
             }
         },
         h2: {
@@ -594,14 +608,18 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
             }],
             parseDetails: function(details) {
+                // Check for new-style details
+                if (details.connectionString) return details;
+
+                // Otherwise parse legacy details
                 return {
                     connectionString: details.conn_str
                 };
             },
             buildDetails: function(details) {
-                return {
-                    conn_str: details.connectionString
-                };
+                // add conn_str for backwards-compatibility
+                details.conn_str = details.connectionString;
+                return details;
             }
         },
         mongo: {
@@ -630,6 +648,10 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 placeholder: "******"
             }],
             parseDetails: function(details) {
+                // check for new-style details
+                if (details.dbname) return details;
+
+                // otherwise parse legacy details
                 var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
                     matches = regex.exec(details.conn_str);
                 return {
@@ -641,6 +663,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 };
             },
             buildDetails: function(details) {
+                // add conn_str for backwards-compatibility
                 var connStr = "mongodb://";
                 if (details.user) {
                     connStr += details.user;
@@ -654,9 +677,9 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                     connStr += ":" + details.port;
                 }
                 connStr += "/" + details.dbname;
-                return {
-                    conn_str: connStr
-                };
+
+                details.conn_str = connStr;
+                return details;
             }
         }
     };
