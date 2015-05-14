@@ -3,6 +3,7 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.query-processor :refer :all]
             (metabase.models [table :refer [Table]])
             [metabase.test.data.datasets :as datasets :refer [*dataset* expect-with-all-datasets]]))
 
@@ -518,6 +519,14 @@
 
 
 ;; # POST PROCESSING TESTS
+
+;; ## LIMIT-MAX-RESULT-ROWS
+;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `max-result-rows`
+(expect max-result-rows
+  (count (->> {:rows (repeat [:ok])}
+              limit-max-result-rows
+              :rows)))
+
 
 ;; ## CUMULATIVE SUM
 
