@@ -18,3 +18,6 @@
              :organization  (delay (sel :one Org :id organization_id))
              :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
       assoc-permissions-sets))
+
+(defmethod pre-cascade-delete Dashboard [_ {:keys [id]}]
+  (cascade-delete DashboardCard :dashboard_id id))
