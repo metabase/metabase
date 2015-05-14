@@ -135,19 +135,22 @@
                                                                                 {lon-kw ['< lon-max]}
                                                                                 {lon-kw ['> lon-min]}]))
     [_ field-id & _] {(field-id->kw field-id)
-                      (match subclause
-                        ["NOT_NULL" _]        ['not= nil]
-                        ["IS_NULL" _]         ['=    nil]
-                        ["BETWEEN" _ min max] ['between [min max]]
-                        [_ _ value]           (let [value (if (date-field-id? field-id) `(raw ~(format "CAST('%s' AS DATE)" value)) ; cast YYYY-MM-DD string from UI
-                                                              value)]                                                               ; to SQL date if applicable
-                                                (match subclause
-                                                  [">"  _ _] ['>    value]
-                                                  ["<"  _ _] ['<    value]
-                                                  [">=" _ _] ['>=   value]
-                                                  ["<=" _ _] ['<=   value]
-                                                  ["="  _ _] ['=    value]
-                                                  ["!=" _ _] ['not= value])))}))
+                      ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
+                      (let [cast-value-if-needed (if (date-field-id? field-id) (fn [value]
+                                                                                 `(raw ~(format "CAST('%s' AS DATE)" value)))
+                                                     identity)]
+                        (match subclause
+                          ["NOT_NULL" _]        ['not= nil]
+                          ["IS_NULL" _]         ['=    nil]
+                          ["BETWEEN" _ min max] ['between [(cast-value-if-needed min) (cast-value-if-needed max)]]
+                          [_ _ value]           (let [value (cast-value-if-needed value)]
+                                                  (match subclause
+                                                    [">"  _ _] ['>    value]
+                                                    ["<"  _ _] ['<    value]
+                                                    [">=" _ _] ['>=   value]
+                                                    ["<=" _ _] ['<=   value]
+                                                    ["="  _ _] ['=    value]
+                                                    ["!=" _ _] ['not= value]))))}))
 
 (defmethod apply-form :filter [[_ filter-clause]]
   (match filter-clause
