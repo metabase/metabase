@@ -100,12 +100,13 @@
   "Parse a legacy `database.details.conn_str` CONNECTION-STRING and return a new-style map."
   [connection-string]
   {:pre [(string? connection-string)]}
-  (-<>> connection-string
-        (s/split <> #" ")               ; split into k=v pairs
-        (map (fn [pair]                  ; convert to {:k v} pairs
-               (let [[k v] (s/split pair #"=")]
-                 {(keyword k) v})))
-        (reduce conj {})))
+  (let [details (-<>> connection-string
+                      (s/split <> #" ")            ; split into k=v pairs
+                      (map (fn [pair]               ; convert to {:k v} pairs
+                             (let [[k v] (s/split pair #"=")]
+                               {(keyword k) v})))
+                      (reduce conj {}))]
+    (assoc details :port (Integer/parseInt (:port details)))))
 
 (defn- database->connection-details [{:keys [details]}]
   (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))

@@ -7,9 +7,10 @@
 ;; ## legacy postgres
 (expect {:user "cam"
          :dbname "fakedb"
-         :port "5432"
+         :port 5432
          :host "localhost"
-         :timezone "US/Pacific"}
+         :timezone "US/Pacific"
+         :conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
   (convert-details-when-legacy
    :postgres
    {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"
@@ -21,7 +22,7 @@
    :postgres
    {:ssl false
     :host "localhost"
-    :port "5432"
+    :port 5432
     :dbname "ryde"
     :user "cam"
     :conn_str "host=localhost port=5432 dbname=ryde user=cam"}))
