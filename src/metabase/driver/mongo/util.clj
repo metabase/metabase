@@ -5,6 +5,28 @@
             [monger.core :as mg]
             [metabase.driver :as driver]))
 
+(defn- details-map->connection-string
+  [{:keys [user password host port dbname]}]
+  {:pre [host
+         dbname]}
+  (str "mongodb://"
+       user
+       (when password
+         (assert user "Can't have a password without a user!")
+         (str ":" password))
+       (when user "@")
+       host
+       (when port
+         (str ":" port))
+       "/"
+       dbname))
+
+(defn- is-new-style-details?
+  "Is DETAILS-MAP a new-style map (i.e., are its values broken out, rather than passed as a combined `conn_str`)?"
+  [details-map]
+  {:pre [(map? details-map)]}
+  (:dbname details-map)) ; just look for the new-style :dbname as evidence
+
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -14,8 +36,10 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [connection-string (if (map? database) (-> database :details :conn_str)
-                              database)
+  (let [connection-string (cond
+                            (string? database)                           database
+                            (is-new-style-details? (:details database)) (details-map->connection-string (:details database))
+                            :else                                       (:conn_str (:details database)))
         _ (assert (string? connection-string) (str "with-mongo-connection failed: connection string is must be a string, got: " connection-string))
         {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))

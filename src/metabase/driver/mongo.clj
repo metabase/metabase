@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.interface :refer :all]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])))
+                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type details-map->connection-string]])))
 
 (declare driver)
 
@@ -50,20 +50,8 @@
              :ok)
          1.0)))
 
-  (can-connect-with-details? [this {:keys [user password host port dbname]}]
-    (assert (and host
-                 dbname))
-    (can-connect? this (str "mongodb://"
-                            user
-                            (when password
-                              (assert user "Can't have a password without a user!")
-                              (str ":" password))
-                            (when user "@")
-                            host
-                            (when port
-                              (str ":" port))
-                            "/"
-                            dbname)))
+  (can-connect-with-details? [this details]
+    (can-connect? this {:details details}))
 
 ;;; ### QP
   (process-query [_ query]
