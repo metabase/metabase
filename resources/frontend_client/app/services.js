@@ -604,21 +604,21 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             name: 'H2',
             fields: [{
                 displayName: "Connection String",
-                fieldName: "connectionString",
+                fieldName: "db",
                 placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
             }],
             parseDetails: function(details) {
                 // Check for new-style details
-                if (details.connectionString) return details;
+                if (details.db) return details;
 
                 // Otherwise parse legacy details
                 return {
-                    connectionString: details.conn_str
+                    db: details.conn_str
                 };
             },
             buildDetails: function(details) {
                 // add conn_str for backwards-compatibility
-                details.conn_str = details.connectionString;
+                details.conn_str = details.db;
                 return details;
             }
         },

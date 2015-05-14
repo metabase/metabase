@@ -1,6 +1,5 @@
 (ns metabase.driver.h2
-  (:require [clojure.set :as set]
-            [korma.db :as kdb]
+  (:require [korma.db :as kdb]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as generic-sql]))
 
@@ -11,8 +10,9 @@
                       :db-type :h2          ; what are we using this for again (?)
                       :make-pool? false)))
 
-(defn- database->connection-details [database]
-  (set/rename-keys (:details database) {:conn_str :db}))
+(defn- database->connection-details [{:keys [details]}]
+  {:db (or (:db details)          ; new-style connection details call it 'db'
+           (:conn_str details))}) ; legacy instead calls is 'conn_str'
 
 
 ;; ## SYNCING
