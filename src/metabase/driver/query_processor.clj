@@ -170,7 +170,7 @@
   [results]
   {:pre [(map? results)
          (sequential? (:rows results))]}
-  (assoc results :rows (take max-result-rows (:rows results))))
+  (update-in results [:rows] (partial take max-result-rows)))
 
 
 ;; ### ADD-ROW-COUNT-AND-STATUS
