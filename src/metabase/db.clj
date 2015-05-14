@@ -103,12 +103,14 @@
   (log/info "Setting up DB specs...")
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
+
     ;; Test DB connection and throw exception if we have any troubles connecting
     (log/info "Verifying Database Connection ...")
     (assert (db-can-connect? {:engine (config/config-kw :mb-db-type)
                               :details {:conn_str (metabase-db-conn-str)}})
             "Unable to connect to Metabase DB.")
     (log/info "Verify Database Connection ... CHECK")
+
     ;; Run through our DB migration process and make sure DB is fully prepared
     (if auto-migrate
       (migrate jdbc-db :up)
@@ -123,8 +125,13 @@
                     "Once you're database is updated try running the application again.\n"))
         (throw (java.lang.Exception. "Database requires manual upgrade."))))
     (log/info "Database Migrations Current ... CHECK")
+
     ;; Establish our 'default' Korma DB Connection
-    (default-connection (create-db korma-db))))
+    (default-connection (create-db korma-db))
+
+    ;; Perform ghetto "data migration" to update any old-style database connection strings. This is temporary until everyone's DBs are updated
+    ;; Resolve at runtime to avoid circular deps
+    ((u/runtime-resolved-fn 'metabase.db.migrate-details 'convert-legacy-database-connection-details))))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?

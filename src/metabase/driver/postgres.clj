@@ -90,14 +90,14 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- is-legacy-conn-details?
+(defn is-legacy-conn-details?
   "Is DETAILS-MAP a legacy map (i.e., does it only contain `conn_str`)?"
   [details-map]
   {:pre [(map? details-map)]}
   (not (:dbname details-map)))
 
-(defn- parse-legacy-conn-str
-  "Parse a legacy `database.details.conn_str` CONNECTION-STRING."
+(defn parse-legacy-conn-str
+  "Parse a legacy `database.details.conn_str` CONNECTION-STRING and return a new-style map."
   [connection-string]
   {:pre [(string? connection-string)]}
   (-<>> connection-string
