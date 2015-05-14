@@ -180,7 +180,7 @@
 
 (defn limit-max-result-rows
   "Limit the number of rows returned in RESULTS to `max-result-rows`.
-   (We want to do this here so we can put a hard limit on native SQL results and other ones where we couldn't add an implicit `:limit` clause)."
+  (We want to do this here so we can put a hard limit on native SQL results and other ones where we couldn't add an implicit `:limit` clause)."
   [results]
   {:pre [(map? results)
          (sequential? (:rows results))]}
