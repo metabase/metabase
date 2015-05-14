@@ -94,9 +94,11 @@
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
+   Specify optional param RETHROW-EXCEPTIONS if you want to handle any exceptions thrown yourself
+   (e.g., so you can pass the exception message along to the user).
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
-  [engine details-map]
+  [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine)
          (contains? (set (keys available-drivers)) engine)
          (map? details-map)]}
@@ -104,6 +106,8 @@
     (i/can-connect-with-details? (engine->driver engine) details-map)
     (catch Throwable e
       (log/error "Failed to connect to database:" (.getMessage e))
+      (when rethrow-exceptions
+        (throw e))
       false)))
 
 (def ^{:arglists '([database])} sync-database!

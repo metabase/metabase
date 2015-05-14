@@ -161,7 +161,7 @@ SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$loca
 
         function displayConnectionValidationError(error) {
             console.log(error);
-            $scope.error = "Invalid Connection String - " + error.data.message;
+            $scope.error = 'Connection failed: ' + error.data.message;
         }
 
         // now perform the connection validation
