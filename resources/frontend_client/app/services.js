@@ -718,13 +718,11 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
 
             // set default value if applicable
             if (!details[fieldName] && field.placeholderIsDefault) {
-                console.log('Setting default ', fieldName, ' -> ', field.placeholder);
                 details[fieldName] = field.placeholder;
             }
 
             // apply transformation function if applicable
             if (details[fieldName] && field.transform) {
-                console.log('Applying transform to ', fieldName, ' -> ', field.transform(details[fieldName]));
                 details[fieldName] = field.transform(details[fieldName]);
             }
         });
