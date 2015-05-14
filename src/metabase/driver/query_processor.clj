@@ -159,6 +159,20 @@
                                          rows values)]
             (assoc results :rows rows))))
 
+;; ### LIMIT-MAX-RESULT-ROWS
+
+(def ^:const max-result-rows
+  "Maximum number of rows the QP should ever return."
+  2000)
+
+(defn limit-max-result-rows
+  "Limit the number of rows returned in RESULTS to `max-result-rows`."
+  [results]
+  {:pre [(map? results)
+         (sequential? (:rows results))]}
+  (assoc results :rows (take max-result-rows (:rows results))))
+
+
 ;; ### ADD-ROW-COUNT-AND-STATUS
 
 (defn add-row-count-and-status
@@ -177,11 +191,13 @@
 (defn post-process
   "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
   [driver query results]
-  (->> (case (keyword (:type query))
-         :native results
-         :query  (let [query (:query query)]
-                   (->> results
-                        (post-process-cumulative-sum query))))
+  {:pre [(map? query)
+         (map? results)]}
+  (->> results
+       limit-max-result-rows
+       (#(case (keyword (:type query))
+           :native %
+           :query  (post-process-cumulative-sum (:query query) %)))
        add-row-count-and-status))
 
 
