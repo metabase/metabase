@@ -197,7 +197,7 @@
          (sequential? (:cols results))
          (sequential? (:rows results))]}
   (let [num-results (count (:rows results))]
-    (cond-> {:row_count (count (:rows results))
+    (cond-> {:row_count num-results
              :status    :completed
              :data      results}
       (= num-results max-result-rows) (assoc :num_results_over_limit true)))) ; so the front-end can let the user know why they're being arbitarily limited
