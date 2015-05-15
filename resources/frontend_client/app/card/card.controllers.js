@@ -193,13 +193,19 @@ CardControllers.controller('CardDetail', [
                     queryResult = result;
                     isRunning = false;
 
-                    // if this is our first run on a NEW card then try a little logic to pick a smart display for the data
-                    if (firstRunNewCard &&
+                    // try a little logic to pick a smart display for the data
+                    if (card.display !== "scalar" &&
                             queryResult.data.rows &&
                             queryResult.data.rows.length === 1 &&
                             queryResult.data.columns.length === 1) {
-                        // if we have a 1x1 data result then this should be viewed as a scalar
+                        // if we have a 1x1 data result then this should always be viewed as a scalar
                         card.display = "scalar";
+
+                    } else if (card.display === "scalar" &&
+                                queryResult.data.rows &&
+                                (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                        // any time we were a scalar and now have more than 1x1 data switch to table view
+                        card.display = "table";
 
                     } else if (dataset_query.type === "query" &&
                             dataset_query.query.aggregation &&
