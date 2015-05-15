@@ -213,44 +213,14 @@ var GuiQueryEditor = React.createClass({
                     this.props.query.query.aggregation[0] === "rows");
     },
 
-    getAggregationFields: function(aggregation) {
-
-        for (var i=0; i < this.state.options.aggregation_options.length; i++) {
-            var option = this.state.options.aggregation_options[i];
-            if (option.short === aggregation) {
-                // not exactly sure why we need the first element instead of option.fields??
-                return option.fields[0];
-            }
-        }
-    },
-
-    setAggregation: function(aggregation) {
-        var query = this.props.query,
-            queryAggregation = [aggregation];
-
-        query.query.aggregation = queryAggregation;
+    updateAggregation: function(aggregationClause) {
+        var query = this.props.query;
+        query.query.aggregation = aggregationClause;
 
         // for "rows" type aggregation we always clear out any dimensions because they don't make sense
-        if (aggregation === "rows") {
+        if (aggregationClause.length > 0 && aggregationClause[0] === "rows") {
             query.query.breakout = [];
         }
-
-        // check to see if this aggregation type requires another choice
-        _.map(this.state.options.aggregation_options, function (option) {
-            if (option.short === aggregation &&
-                option.fields.length > 0) {
-
-                // extend aggregation array by 1
-                queryAggregation[1] = null;
-            }
-        });
-
-        this.setQuery(query, true);
-    },
-
-    setAggregationTarget: function(target) {
-        var query = this.props.query;
-        query.query.aggregation[1] = target;
 
         this.setQuery(query, true);
     },
@@ -561,50 +531,12 @@ var GuiQueryEditor = React.createClass({
     renderAggregation: function() {
         // aggregation clause.  must have table details available
         if(this.state.options) {
-
-            var aggregationListOpen = true;
-            if(this.props.query.query.aggregation[0]) {
-                aggregationListOpen = false;
-            }
-
-            // if there's a value in the second aggregation slot render another selector
-            var aggregationTarget;
-            if(this.props.query.query.aggregation.length > 1) {
-                var aggregationTargetListOpen = true;
-                if(this.props.query.query.aggregation[1] !== null) {
-                    aggregationTargetListOpen = false;
-                }
-
-                aggregationTarget = (
-                    <div className="flex align-center">
-                        <span className="mx2">of</span>
-                        <SelectionModule
-                            placeholder="What attribute?"
-                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
-                            display="1"
-                            selectedValue={this.props.query.query.aggregation[1]}
-                            selectedKey="0"
-                            isInitiallyOpen={aggregationTargetListOpen}
-                            action={this.setAggregationTarget}
-                        />
-                    </div>
-                );
-            }
-
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">I want to see:</span>
-                    <SelectionModule
-                        placeholder="What data?"
-                        items={this.state.options.aggregation_options}
-                        display="name"
-                        selectedValue={this.props.query.query.aggregation[0]}
-                        selectedKey="short"
-                        isInitiallyOpen={aggregationListOpen}
-                        action={this.setAggregation}
-                    />
-                    {aggregationTarget}
-                </div>
+                <AggregationWidget
+                    aggregation={this.props.query.query.aggregation}
+                    aggregationOptions={this.state.options.aggregation_options}
+                    updateAggregation={this.updateAggregation}>
+                </AggregationWidget>
             );
         }
     },
