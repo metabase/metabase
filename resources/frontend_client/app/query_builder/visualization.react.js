@@ -12,6 +12,24 @@ var QueryVisualization = React.createClass({
         setDisplayFn: React.PropTypes.func.isRequired
     },
 
+    getDefaultProps: function() {
+        return {
+            maxTableRows: 500,
+            visualizationTypes: [
+                'scalar',
+                'table',
+                'line',
+                'bar',
+                'pie',
+                'area',
+                'timeseries',
+                'state',
+                'country',
+                'pin_map'
+            ]
+        };
+    },
+
     getInitialState: function() {
         return {
             origQuery: JSON.stringify(this.props.card.dataset_query)
@@ -26,7 +44,6 @@ var QueryVisualization = React.createClass({
             });
         }
     },
-    maxTableRows: 500,
 
     queryIsDirty: function() {
         // a query is considered dirty if ANY part of it has been changed
@@ -44,22 +61,9 @@ var QueryVisualization = React.createClass({
 
     renderVizControls: function () {
         if (this.props.result && this.props.result.error === undefined) {
-            var types = [
-                'scalar',
-                'table',
-                'line',
-                'bar',
-                'pie',
-                'area',
-                'timeseries',
-                'state',
-                'country',
-                'pin_map'
-            ];
-
             var displayOptions = [];
-            for (var i = 0; i < types.length; i++) {
-                var val = types[i];
+            for (var i = 0; i < this.props.visualizationTypes.length; i++) {
+                var val = this.props.visualizationTypes[i];
                 displayOptions.push(
                     <option key={i} value={val}>{val}</option>
                 );
@@ -153,11 +157,11 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    if(this.props.result.data.rows.length > this.maxTableRows) {
+                    if(this.props.result.data.rows.length > this.props.maxTableRows) {
                         rowMaxMessage = (
                             <div className="mt1">
                                 <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
-                                Previewing <b>{this.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                                Previewing <b>{this.props.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
                             </div>
                         );
                     }
@@ -165,7 +169,7 @@ var QueryVisualization = React.createClass({
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.maxTableRows} />
+                            maxRows={this.props.maxTableRows} />
                     );
 
                 } else {
