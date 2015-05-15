@@ -129,9 +129,12 @@
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (let [table_ids (sel :many :id Table :db_id id :active true)]
-    (-> (sel :many Field :table_id [in table_ids] :special_type "id")
-        (hydrate :table))))
+  (let [table_ids (sel :many :id Table :db_id id :active true)
+        fields (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+                   (hydrate :table))]
+    (sort-by (fn [field]
+               (:name (:table field)))
+             fields)))
 
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
