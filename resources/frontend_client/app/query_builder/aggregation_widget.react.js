@@ -1,5 +1,5 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
+/*global _, DateFilter, SelectionModule, CloseIcon*/
 
 var AggregationWidget = React.createClass({
     displayName: 'AggregationWidget',

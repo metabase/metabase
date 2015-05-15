@@ -1,5 +1,5 @@
 'use strict';
-/*global _, cx, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
+/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
