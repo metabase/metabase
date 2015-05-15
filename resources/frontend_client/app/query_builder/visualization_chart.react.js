@@ -4,12 +4,12 @@
 var QueryVisualizationChart = React.createClass({
     displayName: 'QueryVisualizationChart',
     propTypes: {
-        visualizationSettingsApi: React.PropTypes.func.isRequired,
+        visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         data: React.PropTypes.object
     },
 
-    getInitialState: function () {
+    getInitialState: function() {
         return {
             chartId: Math.floor((Math.random() * 698754) + 1)
         };
@@ -27,16 +27,41 @@ var QueryVisualizationChart = React.createClass({
         }
     },
 
-    componentDidMount: function () {
+    componentDidMount: function() {
         this.renderChart();
     },
 
-    componentDidUpdate: function () {
+    componentDidUpdate: function() {
         this.renderChart();
     },
 
     renderChart: function () {
         if (this.props.data) {
+            // validate the shape of the data against our chosen display and if we don't have appropriate data
+            // then lets inform the user that this isn't going to work so they can do something better
+            var dataError;
+            if (this.props.card.display === "pin_map" &&
+                    !this.hasLatitudeAndLongitudeColumns(this.props.data.cols)) {
+                dataError = "Bummer.  We can't actually do a pin map for this data because we require both a latitude and longitude column.";
+            } else if (this.props.data.columns && this.props.data.columns.length < 2) {
+                dataError = "Doh!  The data from your query doesn't fit the chosen display choice.  This visualization requires at least 2 columns of data.";
+
+            } else if ((this.props.card.display === "line" || this.props.card.display === "area") &&
+                            this.props.data.rows && this.props.data.rows.length < 2) {
+                dataError = "No dice.  We only have 1 data point to show and that's not enough for a line chart.";
+            }
+
+            if (dataError) {
+                this.setState({
+                    error: dataError
+                });
+                return;
+            } else {
+                this.setState({
+                    error: null
+                });
+            }
+
             try {
                 // always ensure we have the most recent visualization settings to use for rendering
                 var card = this.props.card;
@@ -78,7 +103,7 @@ var QueryVisualizationChart = React.createClass({
         }
     },
 
-    render: function () {
+    render: function() {
         // rendering a chart of some type
         var titleId = 'card-title--'+this.state.chartId;
         var innerId = 'card-inner--'+this.state.chartId;

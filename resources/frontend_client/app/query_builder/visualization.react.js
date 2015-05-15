@@ -6,7 +6,7 @@ var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
-        visualizationSettingsApi: React.PropTypes.func.isRequired,
+        visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired
@@ -50,6 +50,55 @@ var QueryVisualization = React.createClass({
         return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
     },
 
+    hasLatitudeAndLongitudeColumns: function(columnDefs) {
+        var hasLatitude = false,
+            hasLongitude = false;
+        columnDefs.forEach(function(col, index) {
+            if (col.special_type &&
+                    col.special_type === "latitude") {
+                hasLatitude = true;
+
+            } else if (col.special_type &&
+                    col.special_type === "longitude") {
+                hasLongitude = true;
+            }
+        });
+
+        return (hasLatitude && hasLongitude);
+    },
+
+    isSensibleChartDisplay: function(display) {
+        var data = (this.props.result) ? this.props.result.data : null;
+
+        if (display === "table") {
+            // table is always appropriate
+            return true;
+
+        } else if (display === "scalar" && data &&
+                    data.rows && data.rows.length === 1 &&
+                    data.cols && data.cols.length === 1) {
+            // a 1x1 data set is appropriate for a scalar
+            return true;
+
+        } else if (display === "pin_map" && data && this.hasLatitudeAndLongitudeColumns(data.cols)) {
+            // when we have a latitude and longitude a pin map is cool
+            return true;
+
+        } else if ((display === "line" || display === "area") && data &&
+                    data.rows && data.rows.length > 1 &&
+                    data.cols && data.cols.length > 1) {
+            // if we have 2x2 or more then that's enough to make a line/area chart
+            return true;
+
+        } else if (this.isChartDisplay(display) && data &&
+                    data.cols && data.cols.length > 1) {
+            // general check for charts is that they require 2 columns
+            return true;
+        }
+
+        return false;
+    },
+
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
     },
@@ -64,9 +113,17 @@ var QueryVisualization = React.createClass({
             var displayOptions = [];
             for (var i = 0; i < this.props.visualizationTypes.length; i++) {
                 var val = this.props.visualizationTypes[i];
-                displayOptions.push(
-                    <option key={i} value={val}>{val}</option>
-                );
+
+                if (this.isSensibleChartDisplay(val)) {
+                    displayOptions.push(
+                        <option key={i} value={val}>{val}</option>
+                    );
+                } else {
+                    // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
+                    displayOptions.push(
+                        <option key={i+'_'} value={val}>{val} (not sensible)</option>
+                    );
+                }
             }
 
             return (
