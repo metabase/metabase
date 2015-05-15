@@ -197,14 +197,24 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
 
-    hasValidAggregation: function() {
-        var aggregationComplete = false;
-        if (this.props.query.query.aggregation !== undefined &&
-            this.props.query.query.aggregation[0] !== null &&
-            this.props.query.query.aggregation[1] !== null) {
-            aggregationComplete = true;
+    hasEmptyAggregation: function() {
+        var aggregation = this.props.query.query.aggregation;
+        if (aggregation !== undefined &&
+                aggregation.length > 0 &&
+                aggregation[0] !== null) {
+            return false;
         }
-        return aggregationComplete;
+        return true;
+    },
+
+    hasValidAggregation: function() {
+        var aggregation = this.props.query.query.aggregation;
+        if (aggregation !== undefined &&
+                ((aggregation.length === 1 && aggregation[0] !== null) ||
+                 (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
+            return true;
+        }
+        return false;
     },
 
     isBareRowsAggregation: function() {
@@ -497,7 +507,7 @@ var GuiQueryEditor = React.createClass({
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.state.options &&
                 this.state.options.breakout_options.fields.length > 0 &&
-                this.hasValidAggregation()) {
+                !this.hasEmptyAggregation()) {
 
             // only render a label for our breakout if we have a valid breakout clause already
             var breakoutLabel;
@@ -661,7 +671,7 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderLimitAndSort: function() {
-        if (this.state.options && this.hasValidAggregation() &&
+        if (this.state.options && !this.hasEmptyAggregation() &&
                 (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
 
             var limitSection;
