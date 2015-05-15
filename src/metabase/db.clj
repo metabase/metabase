@@ -122,7 +122,7 @@
                     "Please execute the following sql commands on your database before proceeding.\n\n"
                     sql
                     "\n\n"
-                    "Once you're database is updated try running the application again.\n"))
+                    "Once your database is updated try running the application again.\n"))
         (throw (java.lang.Exception. "Database requires manual upgrade."))))
     (log/info "Database Migrations Current ... CHECK")
 
