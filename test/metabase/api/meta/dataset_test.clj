@@ -36,7 +36,6 @@
      :row_count 0
      :result_rows 0
      :status "failed"
-     :query_id nil
      :version 0
      :json_query $
      :started_at $

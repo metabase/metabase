@@ -18,10 +18,6 @@ Card.config(['$routeProvider', function($routeProvider) {
         templateUrl: '/app/card/partials/card_list.html',
         controller: 'CardList'
     });
-    $routeProvider.when('/:orgSlug/card/create/:queryId', {
-        templateUrl: '/app/card/partials/card_detail.html',
-        controller: 'CardDetail'
-    });
     $routeProvider.when('/:orgSlug/card/create/', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'

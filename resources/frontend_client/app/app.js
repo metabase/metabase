@@ -28,7 +28,6 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.organization',
     'corvusadmin.databases',
     'corvusadmin.people',
-    'corvusadmin.query',
     'superadmin.settings',
     'superadmin.organization'
 ]);

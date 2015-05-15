@@ -2,7 +2,7 @@
 /*global _, document, confirm, QueryHeader, NativeQueryEditor, GuiQueryEditor, ResultQueryEditor, QueryVisualization*/
 
 //  Card Controllers
-var CardControllers = angular.module('corvus.card.controllers', ['corvusadmin.query.services']);
+var CardControllers = angular.module('corvus.card.controllers', []);
 
 CardControllers.controller('CardList', ['$scope', '$location', 'Card', function($scope, $location, Card) {
 
@@ -65,8 +65,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', '$q', 'Card', 'Dashboard', 'Query', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, $q, Card, Dashboard, Query, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$scope', '$routeParams', '$location', '$q', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($scope, $routeParams, $location, $q, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         // =====  Controller local objects
 
@@ -272,13 +272,6 @@ CardControllers.controller('CardDetail', [
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
-            } else if (card.dataset_query && card.dataset_query.type === "result") {
-                // TODO: legacy stuff to be EOLed
-                var queryLink = "/"+$scope.currentOrg.slug+"/admin/query/"+card.dataset_query.result.query_id+"/modify";
-                var resultEditorModel = {
-                    queryLink: queryLink
-                };
-                React.render(new ResultQueryEditor(resultEditorModel), document.getElementById('react_qb_editor'));
             } else {
                 React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
             }
@@ -338,36 +331,6 @@ CardControllers.controller('CardDetail', [
 
             } else if ($routeParams.clone) {
                 loadCardAndRender($routeParams.cardId, true);
-
-            } else if ($routeParams.queryId) {
-                // @legacy ----------------------
-                // someone looking to create a card from a query
-                Query.get({
-                    'queryId': $routeParams.queryId
-                }, function (query) {
-                    card.organization = $scope.currentOrg.id;
-                    card.name = query.name;
-                    card.dataset_query = {
-                        'database': query.database.id,
-                        'type': 'result',
-                        'result': {
-                            'query_id': query.id
-                        }
-                    };
-                    cardJson = JSON.stringify(card);
-
-                    editorModel.runFn(card.dataset_query);
-
-                    renderAll();
-
-                }, function (error) {
-                    if (error.status == 404) {
-                        $location.path('/');
-                        return;
-                    }
-                    // TODO: need to handle this better
-                    console.log('error getting query', error);
-                });
 
             } else {
                 // starting a new card
