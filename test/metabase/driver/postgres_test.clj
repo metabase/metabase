@@ -37,9 +37,6 @@
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
 (expect
     {:user "camsaul"
-     :host "localhost"
-     :port "5432"
-     :db "bird_sightings"
      :classname "org.postgresql.Driver"
      :subprotocol "postgresql"
      :subname "//localhost:5432/bird_sightings"
@@ -54,17 +51,14 @@
 (expect
     {:ssl true
      :make-pool? true
-     :db "bird_sightings"
      :sslmode "require"
      :classname "org.postgresql.Driver"
-     :port "5432"
      :subprotocol "postgresql"
-     :host "localhost"
      :user "camsaul"
      :sslfactory "org.postgresql.ssl.NonValidatingFactory"
      :subname "//localhost:5432/bird_sightings"}
   (connection-details->connection-spec {:ssl    true
                                         :host   "localhost"
-                                        :port   "5432"
+                                        :port   5432
                                         :dbname "bird_sightings"
                                         :user   "camsaul"}))
