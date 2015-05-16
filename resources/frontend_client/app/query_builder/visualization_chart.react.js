@@ -20,7 +20,8 @@ var QueryVisualizationChart = React.createClass({
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
         if (this.state.error === nextState.error &&
                 this.props.data == nextProps.data &&
-                this.props.card.display === nextProps.card.display) {
+                this.props.card.display === nextProps.card.display &&
+                JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings)) {
             return false;
         } else {
             return true;
@@ -64,15 +65,20 @@ var QueryVisualizationChart = React.createClass({
 
             try {
                 // always ensure we have the most recent visualization settings to use for rendering
-                var card = this.props.card;
-                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(card.visualization_settings, card.display);
-                card.visualization_settings = vizSettings;
+                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(this.props.card.visualization_settings, this.props.card.display);
+
+                // be as immutable as possible and build a card like structure used for charting
+                var cardIsh = {
+                    name: this.props.card.name,
+                    display: this.props.card.display,
+                    visualization_settings: vizSettings
+                }
 
                 if (this.props.card.display === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
 
                     // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    card.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(card.visualization_settings, this.props.data.cols);
+                    cardIsh.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(cardIsh.visualization_settings, this.props.data.cols);
 
                     // these are example callback functions that could be passed into the renderer
                     // var updateMapCenter = function(lat, lon) {
@@ -90,10 +96,10 @@ var QueryVisualizationChart = React.createClass({
                         // do nothing for now
                     };
 
-                    CardRenderer[this.props.card.display](this.state.chartId, this.props.card, no_op, no_op);
+                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, no_op, no_op);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.data);
+                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
                 }
             } catch (err) {
                 this.setState({

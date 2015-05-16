@@ -9,7 +9,8 @@ var QueryVisualization = React.createClass({
         visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
-        setDisplayFn: React.PropTypes.func.isRequired
+        setDisplayFn: React.PropTypes.func.isRequired,
+        setChartColorFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
@@ -103,12 +104,55 @@ var QueryVisualization = React.createClass({
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function (event) {
+    setDisplay: function(event) {
         // notify our parent about our change
         this.props.setDisplayFn(event.target.value);
     },
 
-    renderVizControls: function () {
+    setChartColor: function(color) {
+        // tell parent about our new color
+        this.props.setChartColorFn(color);
+    },
+
+    renderChartColorPicker: function() {
+        if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
+            var colors = this.props.visualizationSettingsApi.getDefaultColorHarmony();
+            var colorItems = [];
+            for (var i=0; i < colors.length; i++) {
+                var color = colors[i];
+                var localStyles = {
+                    "backgroundColor": color
+                };
+
+                colorItems.push((
+                    <li key={i} className="CardSettings-colorBlock" style={localStyles} onClick={this.setChartColor.bind(null, color)}></li>
+                ));
+            }
+
+            var colorPickerButton = "chart color";
+
+            var tetherOptions = {
+                attachment: 'bottom left',
+                targetAttachment: 'top right',
+                targetOffset: '14px 0'
+            };
+
+            return (
+                <PopoverTrigger button={colorPickerButton}>
+                    <Popover tetherOptions={tetherOptions} className="PopoverBody PopoverBody--withArrow">
+                        <ol className="">
+                            {colorItems}
+                        </ol>
+                    </Popover>
+                </PopoverTrigger>
+            );
+
+        } else {
+            return false;
+        }
+    },
+
+    renderVizControls: function() {
         if (this.props.result && this.props.result.error === undefined) {
             var displayOptions = [];
             for (var i = 0; i < this.props.visualizationTypes.length; i++) {
@@ -134,6 +178,7 @@ var QueryVisualization = React.createClass({
                             {displayOptions}
                         </select>
                     </label>
+                    {this.renderChartColorPicker()}
                 </div>
             );
         } else {
@@ -141,7 +186,7 @@ var QueryVisualization = React.createClass({
         }
     },
 
-    loader: function () {
+    loader: function() {
         var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
         return (
             <div className="Loading-indicator">
@@ -153,7 +198,7 @@ var QueryVisualization = React.createClass({
         );
     },
 
-    render: function () {
+    render: function() {
         var viz,
             queryModified,
             rowMaxMessage;

@@ -449,6 +449,10 @@ CardServices.service('VisualizationSettings', [function() {
         'pin_map': ['global', 'columns', 'chart', 'map']
     };
 
+    this.getDefaultColor = function() {
+        return DEFAULT_COLOR;
+    };
+
     this.getDefaultColorHarmony = function() {
         return DEFAULT_COLOR_HARMONY;
     };
