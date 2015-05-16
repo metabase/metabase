@@ -318,6 +318,8 @@ CardServices.service('VisualizationSettings', [function() {
         '#7cb5ec'
     ];
 
+    var DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[2];
+
     /* *** visualization settings ***
      *
      * This object defines default settings for card visualizations (i.e. charts, maps, etc).
@@ -397,7 +399,7 @@ CardServices.service('VisualizationSettings', [function() {
             'labels_step': null
         },
         'line': {
-            'lineColor': '#5c98ce',
+            'lineColor': DEFAULT_COLOR,
             'colors': DEFAULT_COLOR_HARMONY,
             'lineWidth': 2,
             'step': false,
@@ -409,7 +411,7 @@ CardServices.service('VisualizationSettings', [function() {
             'yAxis_columns': []
         },
         'area': {
-            'fillColor': '#5c98ce',
+            'fillColor': DEFAULT_COLOR,
             'fillOpacity': 0.75
         },
         'pie': {
@@ -421,7 +423,7 @@ CardServices.service('VisualizationSettings', [function() {
         },
         'bar': {
             'colors': DEFAULT_COLOR_HARMONY,
-            'color': "#7cb5ec"
+            'color': DEFAULT_COLOR
         },
         'map': {
             'latitude_source_table_field_id': null,
