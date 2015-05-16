@@ -1,6 +1,9 @@
 'use strict';
 /*global setTimeout, clearTimeout, ReactCSSTransitionGroup, Saver, ActionButton, Popover, DownloadIcon, QueryModeToggle, AddToDashboard*/
 
+var cx = React.addons.classSet,
+    ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
 var QueryHeader = React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
