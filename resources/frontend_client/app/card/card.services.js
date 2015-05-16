@@ -490,8 +490,9 @@ CardServices.service('VisualizationSettings', [function() {
     };
 
     this.getSettingsForVisualization = function(dbSettings, visualization) {
-        var groups = _.union(_.keys(dbSettings), this.getSettingsGroupsForVisualization(visualization));
-        return this.getSettingsForGroups(dbSettings, groups);
+        var settings = angular.copy(dbSettings);
+        var groups = _.union(_.keys(settings), this.getSettingsGroupsForVisualization(visualization));
+        return this.getSettingsForGroups(settings, groups);
     };
 
     //Clean visualization settings to only keep the settings that are "dirty".
