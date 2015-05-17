@@ -461,7 +461,10 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderFilterButton: function() {
-        if (this.props.query.query.source_table && this.getFilters().length === 0) {
+        if (this.props.query.query.source_table &&
+                this.getFilters().length === 0 &&
+                this.state.options &&
+                this.state.options.fields.length > 0) {
             return (
                 <a className="ml2" onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
