@@ -138,13 +138,13 @@ var QueryVisualization = React.createClass({
             };
 
             return (
-                <PopoverTrigger button={colorPickerButton}>
-                    <Popover tetherOptions={tetherOptions} className="PopoverBody PopoverBody--withArrow">
-                        <ol className="">
-                            {colorItems}
-                        </ol>
-                    </Popover>
-                </PopoverTrigger>
+                <PopoverWithTrigger className="PopoverBody"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={colorPickerButton}>
+                    <ol className="p1">
+                        {colorItems}
+                    </ol>
+                </PopoverWithTrigger>
             );
 
         } else {
