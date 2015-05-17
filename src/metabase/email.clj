@@ -11,6 +11,7 @@
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port "SMTP port." "587")
+(defsetting email-smtp-security "SMTP secure connection protocol. (tls, ssl, or none)" "none")
 
 ;; ## PUBLIC INTERFACE
 
@@ -43,10 +44,14 @@
     (when-not (email-smtp-password)
       (throw (Exception. "SMTP password is not set.")))
     ;; Now send the email
-    (let [{error :error error-message :message} (*send-email-fn* {:host (email-smtp-host)
-                                                                  :user (email-smtp-username)
-                                                                  :pass (email-smtp-password)
-                                                                  :port (Integer/parseInt (email-smtp-port))}
+    (let [{error :error error-message :message} (*send-email-fn* (-> {:host (email-smtp-host)
+                                                                      :user (email-smtp-username)
+                                                                      :pass (email-smtp-password)
+                                                                      :port (Integer/parseInt (email-smtp-port))}
+                                                                     (merge (case (keyword (email-smtp-security))
+                                                                              :tls {:tls true}
+                                                                              :ssl {:ssl true}
+                                                                              {})))
                                                                  {:from    (email-from-address)
                                                                   :to      recipients
                                                                   :subject subject
