@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, CardRenderer, QueryVisualizationTable, QueryVisualizationChart*/
+/*global cx, CardRenderer, PopoverWithTrigger, QueryVisualizationTable, QueryVisualizationChart*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 

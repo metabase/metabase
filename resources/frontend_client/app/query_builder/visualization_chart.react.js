@@ -72,7 +72,7 @@ var QueryVisualizationChart = React.createClass({
                     name: this.props.card.name,
                     display: this.props.card.display,
                     visualization_settings: vizSettings
-                }
+                };
 
                 if (this.props.card.display === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
