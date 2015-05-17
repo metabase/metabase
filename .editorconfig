@@ -1,13 +1,15 @@
-# corvus editor config settings
+# Metabase EditorConfig settings
 # http://editorconfig.org/
 
-#use the top most editor config file
+# use the top most editor config file
 root = true
 
 [*]
 indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
+charset = utf-8
+end_of_line = lf
 
 [Makefile]
 indent_style = tab

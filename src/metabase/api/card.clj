@@ -85,7 +85,7 @@
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (del Card :id id))
+  (cascade-delete Card :id id))
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"

@@ -142,6 +142,4 @@ Once's this repo is made public, this Clojars badge will work and show the statu
 
 ## License
 
-Copyright © 2015 FIXME
-
-Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.
+Copyright © 2015 Metabase, Inc.

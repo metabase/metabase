@@ -33,3 +33,7 @@
              :creator      (delay (sel :one User :id creator_id))
              :organization (delay (sel :one Org :id organization_id)))
       assoc-permissions-sets))
+
+(defmethod pre-cascade-delete Card [_ {:keys [id]}]
+  (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
+  (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id))

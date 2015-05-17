@@ -130,8 +130,8 @@
   [id]
   (read-check Database id)
   (let [table_ids (sel :many :id Table :db_id id :active true)]
-    (-> (sel :many Field :table_id [in table_ids] :special_type "id")
-        (hydrate :table))))
+    (sort-by #(:name (:table %)) (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+                                     (hydrate :table)))))
 
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
