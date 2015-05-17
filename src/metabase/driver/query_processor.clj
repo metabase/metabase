@@ -200,7 +200,7 @@
     (cond-> {:row_count num-results
              :status    :completed
              :data      results}
-      (= num-results max-result-rows) (assoc :num_results_over_limit true)))) ; so the front-end can let the user know why they're being arbitarily limited
+      (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))) ; so the front-end can let the user know why they're being arbitarily limited
 
 ;; ### POST-PROCESS
 
