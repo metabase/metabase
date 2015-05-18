@@ -586,11 +586,11 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 displayName: "Use a secure connection (SSL)?",
                 fieldName: "ssl",
                 choices: [{
-                    name: 'Yes <3',
+                    name: 'Yes',
                     value: true,
                     selectionAccent: 'active'
                 }, {
-                    name: 'No :/',
+                    name: 'No',
                     value: false,
                     selectionAccent: 'danger'
                 }]
