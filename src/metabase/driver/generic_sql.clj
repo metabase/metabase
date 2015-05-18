@@ -5,8 +5,7 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :refer :all]
                              [sync :as driver-sync])
-            (metabase.driver.generic-sql [connection :as connection]
-                                         [query-processor :as qp]
+            (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])))
 
 (defrecord SqlDriver [column->base-type
@@ -15,13 +14,15 @@
                       sql-string-length-fn]
   IDriver
   ;; Connection
-  (can-connect? [_ database]
-    (connection/test-connection (-> database
-                                    database->connection-details
-                                    connection-details->connection-spec)))
+  (can-connect? [this database]
+    (can-connect-with-details? this (database->connection-details database)))
 
   (can-connect-with-details? [_ details]
-    (connection/test-connection (connection-details->connection-spec details)))
+    (let [connection (connection-details->connection-spec details)]
+      (= 1 (-> (exec-raw connection "SELECT 1" :results)
+               first
+               vals
+               first))))
 
   ;; Query Processing
   (process-query [_ query]

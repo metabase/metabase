@@ -18,9 +18,6 @@
                                 <a class="block link py1 px1" href="#" ng-if="!cardSettings || cardSettings.allowSend" cv-send-card-modal card="card">Send</a>
                             </li>
                             <li>
-                                <a class="block link py1 px1" href="/api/query/{{card.dataset_query.result.query_id}}/csv?name={{getEncodedCardName()}}" target="_self" ng-if="card.dataset_query.type == 'result' && (!cardDataEmpty) && (!sqlError)">Download Data</a>
-                            </li>
-                            <li>
                                 <a class="block link py1 px1" ng-href="/api/meta/dataset/csv/?query={{getEncodedQuery()}}" target="_self" ng-if="card.dataset_query.type == 'query' && (!cardDataEmpty) && (!sqlError)">Download Data</a>
                             </li>
                         </span>

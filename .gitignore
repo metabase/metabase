@@ -11,8 +11,6 @@ pom.xml.asc
 /.lein-failures
 /.lein-repl-history
 /.nrepl-port
-.hgignore
-.hg/
 .idea/
 /docs
 profiles.clj

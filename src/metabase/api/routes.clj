@@ -5,9 +5,6 @@
                           [dash :as dash]
                           [notify :as notify]
                           [org :as org]
-                          [qs :as qs]
-                          [query :as query]
-                          [result :as result]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -42,9 +39,6 @@
   (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/org"          [] (+auth org/routes))
-  (context "/qs"           [] (+auth qs/routes))
-  (context "/query"        [] (+auth query/routes))
-  (context "/result"       [] (+auth result/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)

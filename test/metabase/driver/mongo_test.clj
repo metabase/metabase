@@ -64,8 +64,17 @@
 
 ;; ## Tests for connection functions
 
+;; legacy
 (expect-when-testing-mongo true
-  (driver/can-connect? @mongo-test-db))
+  (driver/can-connect? {:engine  :mongo
+                        :details {:conn_str "mongodb://localhost:27017/metabase-test"}}))
+
+;; new-style
+(expect-when-testing-mongo true
+  (driver/can-connect? {:engine  :mongo
+                        :details {:host   "localhost"
+                                  :dbname "metabase-test"
+                                  :port   27017}}))
 
 (expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo

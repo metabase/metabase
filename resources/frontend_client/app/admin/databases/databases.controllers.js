@@ -44,50 +44,24 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
-    function($scope, $routeParams, $location, Metabase) {
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore',
+    function($scope, $routeParams, $location, Metabase, CorvusCore) {
 
-        // takes in our API form database details and parses them into a map of usable form field values
-        var parseDetails = function(engine, details) {
-            var map = {};
-            if (engine === 'postgres') {
-                details.conn_str.split(' ').forEach(function (val) {
-                    var split = val.split('=');
-                    if (split.length === 2) {
-                        map[split[0]] = split[1];
-                    }
-                });
-            } else if (engine === 'h2') {
-                map.file = details.conn_str.substring(5);
-            }
+        $scope.ENGINES = CorvusCore.ENGINES;
 
-            return map;
-        };
-
-        // takes in a map of our form field values and builds them into our API form database details
-        var buildDetails = function(engine, details) {
-            var conn_str;
-            if (engine === 'postgres') {
-                conn_str = "host="+details.host+" port="+details.port+" dbname="+details.dbname+" user="+details.user+" password="+details.pass;
-            } else if (engine === 'h2') {
-                conn_str = "file:"+details.file;
-            } else {
-                conn_str = "";
-            }
-
-            return {
-                'conn_str': conn_str
-            };
+        // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
+        $scope.hiddenFields = {
+            ssl: true
         };
 
         // update an existing Database
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
-            database.details = buildDetails(database.engine, details);
-            Metabase.db_update(database, function (updated_database) {
+            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            Metabase.db_update(database, function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
-            }, function (error) {
+            }, function(error) {
                 $scope.$broadcast("form:api-error", error);
             });
         };
@@ -96,19 +70,33 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var create = function(database, details) {
             $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
-            database.details = buildDetails(database.engine, details);
-            Metabase.db_create(database, function (new_database) {
+            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            Metabase.db_create(database, function(new_database) {
                 $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
-            }, function (error) {
+            }, function(error) {
                 $scope.$broadcast("form:api-error", error);
             });
         };
 
+        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
         $scope.save = function(database, details) {
             if ($routeParams.databaseId) {
                 update(database, details);
             } else {
-                create(database, details);
+                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
+                details.ssl = true;
+
+                // add 'engine' to the request body
+                details.engine = database.engine;
+
+                Metabase.validate_connection(details, function() {
+                    console.log('Successfully connected with SSL. Setting SSL = true.');
+                    create(database, details);
+                }, function() {
+                    console.log('Unable to connect with SSL. Setting SSL = false.');
+                    details.ssl = false;
+                    create(database, details);
+                });
             }
         };
 
@@ -121,9 +109,9 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         // load our form input data
-        Metabase.db_form_input(function (form_input) {
+        Metabase.db_form_input(function(form_input) {
             $scope.form_input = form_input;
-        }, function (error) {
+        }, function(error) {
             console.log('error getting database form_input', error);
         });
 
@@ -131,10 +119,11 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // load existing database for editing
             Metabase.db_get({
                 'dbId': $routeParams.databaseId
-            }, function (database) {
+            }, function(database) {
+                $scope.hiddenFields = null;
                 $scope.database = database;
-                $scope.details = parseDetails(database.engine, database.details);
-            }, function (error) {
+                $scope.details = $scope.ENGINES[database.engine].parseDetails(database.details);
+            }, function(error) {
                 console.log('error loading database', error);
                 if (error.status == 404) {
                     $location.path('/admin/databases/');
@@ -143,9 +132,9 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         } else {
             // prepare an empty database for creation
             $scope.database = {
-                "name": "",
-                "engine": 'postgres',
-                "details": {}
+                name: '',
+                engine: 'postgres',
+                details: {}
             };
             $scope.details = {};
         }
@@ -158,9 +147,9 @@ DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$l
 
         Metabase.db_get({
             'dbId': $routeParams.databaseId
-        }, function (database) {
+        }, function(database) {
             $scope.database = database;
-        }, function (error) {
+        }, function(error) {
             console.log('error loading database', error);
             if (error.status == 404) {
                 $location.path('/admin/databases/');
@@ -169,9 +158,9 @@ DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$l
 
         Metabase.db_tables({
             'dbId': $routeParams.databaseId
-        }, function (tables) {
+        }, function(tables) {
             $scope.tables = tables;
-        }, function (error) {
+        }, function(error) {
 
         });
     }
@@ -218,11 +207,11 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         $scope.inlineSave = function() {
             if ($scope.table) {
-                Metabase.table_update($scope.table, function (result) {
+                Metabase.table_update($scope.table, function(result) {
                     // there is a difference between the output of table/:id and table/:id/query_metadata
                     // so we don't actually want to overwrite $scope.table with this data in this case
                     //$scope.table = result;
-                }, function (error) {
+                }, function(error) {
                     console.log('error updating table', error);
                 });
             }

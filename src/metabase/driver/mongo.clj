@@ -24,9 +24,10 @@
   [table]
   (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (r/map keys)
-         (r/map set)
-         (r/reduce set/union))))
+         (take 10000)                      ; it's probably enough to only consider the first 10,000 docs in the collection instead of iterating over potentially millions of them
+         (map keys)
+         (map set)
+         (reduce set/union))))
 
 (defn- field->base-type
   "Determine the base type of FIELD in the most ghetto way possible, via `values->base-type`."
@@ -49,20 +50,8 @@
              :ok)
          1.0)))
 
-  (can-connect-with-details? [this {:keys [user password host port dbname]}]
-    (assert (and host
-                 dbname))
-    (can-connect? this (str "mongodb://"
-                            user
-                            (when password
-                              (assert user "Can't have a password without a user!")
-                              (str ":" password))
-                            (when user "@")
-                            host
-                            (when port
-                              (str ":" port))
-                            "/"
-                            dbname)))
+  (can-connect-with-details? [this details]
+    (can-connect? this {:details details}))
 
 ;;; ### QP
   (process-query [_ query]

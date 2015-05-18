@@ -77,124 +77,105 @@ SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'i
     }
 ]);
 
-SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
+SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore', function($scope, $routeParams, $location, Metabase, CorvusCore) {
 
-    // TODO - we should be getting all this info from the api
+    $scope.ENGINES = CorvusCore.ENGINES;
 
-    var defaultPorts = {
-        'MySql': 3306,
-        'Postgres': 5432,
-        'Mongo': 27017,
-        "RedShift": 5439,
-        'Druid': 8083
-    };
-
-    $scope.engines = [{
-        'id': 'postgres',
-        'name': 'Postgres'
-    }, {
-        'id': 'h2',
-        'name': 'H2'
-    }, {
-        'id': 'mysql',
-        'name': 'MySQL'
-    }];
-
-    $scope.connection = {};
+    $scope.details = {};
 
     // assume we have a new connection since this is the setup process
     var newConnection = true;
     $scope.breadcrumb = 'Add connection';
 
+    // hide the SSL field when creating a new DB until we auto-infer SSL support
+    $scope.hiddenFields = {
+        ssl: true
+    };
+
     if ($routeParams.dbId) {
         newConnection = false;
+        $scope.hiddenFields = null;
         Metabase.db_get({
             'dbId': $routeParams.dbId
         }, function(result) {
             $scope.database = result;
             $scope.breadcrumb = result.name;
-            $scope.connection = parseConnectionString(result.details.conn_str);
-            $scope.connection.engine = result.engine;
+            $scope.details = $scope.ENGINES[result.engine].parseDetails(result.details);
         }, function(error) {
             console.log('error', error);
         });
     } else {
-        var connectionType = 'Postgres';
-        $scope.connection = {
-            host: "localhost",
-            port: defaultPorts[connectionType],
-            engine: 'postgres'
+        $scope.details = {
+            host: 'localhost',
+            port: '5432',
+            ssl: false
         };
-    }
-
-    function parseConnectionString(connectionString) {
-        // connection strings take the form of
-        // 'host="<value>" post="<value" dbname="<value>" user="<value>" password="<value>"'
-
-        var parsedConnection = {};
-        var string = connectionString.split(" ");
-
-        for (var s in string) {
-            var connectionDetail = string[s].split("=");
-            parsedConnection[connectionDetail[0]] = connectionDetail[1];
-        }
-
-        return parsedConnection;
-    }
-
-    function buildConnectionString(values) {
-        // connection strings take the form of
-        // 'host="<value>" post="<value" dbname="<value>" user="<value>" password="<value>"'
-
-        var connectionStringElements = ['host', 'port', 'dbname', 'user', 'password'],
-            conn_str = '';
-
-        for (var element in connectionStringElements) {
-            conn_str = conn_str + ' ' + connectionStringElements[element] + '=' + values[connectionStringElements[element]];
-        }
-
-        return conn_str;
+        $scope.database = {
+            engine: 'postgres',
+            details: $scope.details
+        };
     }
 
     $scope.setConnectionEngine = function(engine) {
-        $scope.connection.engine = engine;
+        $scope.database.engine = engine;
     };
 
+    // Call API to determine whether connection is valid. If so, save the DB.
     $scope.submit = function() {
-        var database = {
-            org: $scope.currentOrg.id,
-            name: $scope.connection.dbname,
-            engine: $scope.connection.engine,
-            details: {
-                conn_str: buildConnectionString($scope.connection)
-            }
-        };
+        // add engine to the request body
+        $scope.details.engine = $scope.database.engine;
 
-        function success(result) {
-            $location.path('/setup/data');
+        function validateConnectionDetails(onConnectionValidationFailed) {
+            console.log('attempting to connect with SSL set to: ', $scope.details.ssl);
+
+            Metabase.validate_connection($scope.details, function() {
+                // Connection valid, save the DB
+                console.log('connection successful.');
+
+                var engine = $scope.database.engine,
+                    database = {
+                        org: $scope.currentOrg.id,
+                        name: $scope.database.name,
+                        engine: engine,
+                        details: $scope.ENGINES[engine].buildDetails($scope.details)
+                    };
+
+                function onCreateOrUpdateDBSuccess(result) {
+                    $location.path('/setup/data');
+                }
+
+                function onCreateOrUpdateDBError(err) {
+                    $scope.error = err;
+                    console.log('error', err);
+                }
+
+                if (newConnection) {
+                    Metabase.db_create(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
+                } else {
+                    // add the id since we're updating
+                    database.id = $scope.database.id;
+                    Metabase.db_update(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
+                }
+            }, onConnectionValidationFailed);
         }
 
-        function error(err) {
-            $scope.error = err;
-            console.log('error', err);
-        }
-
-        // api needs a int
-        $scope.connection.port = parseInt($scope.connection.port);
-        // Validate the connection string
-        Metabase.validate_connection($scope.connection, function(result) {
-            if (newConnection) {
-                Metabase.db_create(database, success, error);
-            } else {
-                // add the id since we're updating
-                database.id = $scope.database.id;
-                Metabase.db_update(database, success, error);
-            }
-
-        }, function(error) {
+        function displayConnectionValidationError(error) {
             console.log(error);
-            $scope.error = "Invalid Connection String - " + error.data.message;
-        });
+            $scope.error = 'Connection failed: ' + error.data.message;
+        }
+
+        // now perform the connection validation
+        if (newConnection) {
+            // if this is a new connection we'll try SSL first and if that fails we'll retry without it
+            $scope.details.ssl = true;
+            validateConnectionDetails(function(error) {
+                // try again without SSL
+                $scope.details.ssl = false;
+                validateConnectionDetails(displayConnectionValidationError);
+            });
+        } else {
+            validateConnectionDetails(displayConnectionValidationError);
+        }
     };
 }]);
 

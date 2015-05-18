@@ -1,5 +1,5 @@
 'use strict';
-/*global _, cx, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
+/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -197,14 +197,24 @@ var GuiQueryEditor = React.createClass({
         this.setQuery(query, true);
     },
 
-    hasValidAggregation: function() {
-        var aggregationComplete = false;
-        if (this.props.query.query.aggregation !== undefined &&
-            this.props.query.query.aggregation[0] !== null &&
-            this.props.query.query.aggregation[1] !== null) {
-            aggregationComplete = true;
+    hasEmptyAggregation: function() {
+        var aggregation = this.props.query.query.aggregation;
+        if (aggregation !== undefined &&
+                aggregation.length > 0 &&
+                aggregation[0] !== null) {
+            return false;
         }
-        return aggregationComplete;
+        return true;
+    },
+
+    hasValidAggregation: function() {
+        var aggregation = this.props.query.query.aggregation;
+        if (aggregation !== undefined &&
+                ((aggregation.length === 1 && aggregation[0] !== null) ||
+                 (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
+            return true;
+        }
+        return false;
     },
 
     isBareRowsAggregation: function() {
@@ -213,44 +223,14 @@ var GuiQueryEditor = React.createClass({
                     this.props.query.query.aggregation[0] === "rows");
     },
 
-    getAggregationFields: function(aggregation) {
-
-        for (var i=0; i < this.state.options.aggregation_options.length; i++) {
-            var option = this.state.options.aggregation_options[i];
-            if (option.short === aggregation) {
-                // not exactly sure why we need the first element instead of option.fields??
-                return option.fields[0];
-            }
-        }
-    },
-
-    setAggregation: function(aggregation) {
-        var query = this.props.query,
-            queryAggregation = [aggregation];
-
-        query.query.aggregation = queryAggregation;
+    updateAggregation: function(aggregationClause) {
+        var query = this.props.query;
+        query.query.aggregation = aggregationClause;
 
         // for "rows" type aggregation we always clear out any dimensions because they don't make sense
-        if (aggregation === "rows") {
+        if (aggregationClause.length > 0 && aggregationClause[0] === "rows") {
             query.query.breakout = [];
         }
-
-        // check to see if this aggregation type requires another choice
-        _.map(this.state.options.aggregation_options, function (option) {
-            if (option.short === aggregation &&
-                option.fields.length > 0) {
-
-                // extend aggregation array by 1
-                queryAggregation[1] = null;
-            }
-        });
-
-        this.setQuery(query, true);
-    },
-
-    setAggregationTarget: function(target) {
-        var query = this.props.query;
-        query.query.aggregation[1] = target;
 
         this.setQuery(query, true);
     },
@@ -481,7 +461,10 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderFilterButton: function() {
-        if (this.props.query.query.source_table && this.getFilters().length === 0) {
+        if (this.props.query.query.source_table &&
+                this.getFilters().length === 0 &&
+                this.state.options &&
+                this.state.options.fields.length > 0) {
             return (
                 <a className="ml2" onClick={this.addFilter}>
                     <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
@@ -497,7 +480,7 @@ var GuiQueryEditor = React.createClass({
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.state.options &&
                 this.state.options.breakout_options.fields.length > 0 &&
-                this.hasValidAggregation()) {
+                !this.hasEmptyAggregation()) {
 
             // only render a label for our breakout if we have a valid breakout clause already
             var breakoutLabel;
@@ -561,50 +544,12 @@ var GuiQueryEditor = React.createClass({
     renderAggregation: function() {
         // aggregation clause.  must have table details available
         if(this.state.options) {
-
-            var aggregationListOpen = true;
-            if(this.props.query.query.aggregation[0]) {
-                aggregationListOpen = false;
-            }
-
-            // if there's a value in the second aggregation slot render another selector
-            var aggregationTarget;
-            if(this.props.query.query.aggregation.length > 1) {
-                var aggregationTargetListOpen = true;
-                if(this.props.query.query.aggregation[1] !== null) {
-                    aggregationTargetListOpen = false;
-                }
-
-                aggregationTarget = (
-                    <div className="flex align-center">
-                        <span className="mx2">of</span>
-                        <SelectionModule
-                            placeholder="What attribute?"
-                            items={this.getAggregationFields(this.props.query.query.aggregation[0])}
-                            display="1"
-                            selectedValue={this.props.query.query.aggregation[1]}
-                            selectedKey="0"
-                            isInitiallyOpen={aggregationTargetListOpen}
-                            action={this.setAggregationTarget}
-                        />
-                    </div>
-                );
-            }
-
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">I want to see:</span>
-                    <SelectionModule
-                        placeholder="What data?"
-                        items={this.state.options.aggregation_options}
-                        display="name"
-                        selectedValue={this.props.query.query.aggregation[0]}
-                        selectedKey="short"
-                        isInitiallyOpen={aggregationListOpen}
-                        action={this.setAggregation}
-                    />
-                    {aggregationTarget}
-                </div>
+                <AggregationWidget
+                    aggregation={this.props.query.query.aggregation}
+                    aggregationOptions={this.state.options.aggregation_options}
+                    updateAggregation={this.updateAggregation}>
+                </AggregationWidget>
             );
         }
     },
@@ -661,7 +606,7 @@ var GuiQueryEditor = React.createClass({
     },
 
     renderLimitAndSort: function() {
-        if (this.state.options && this.hasValidAggregation() &&
+        if (this.state.options && !this.hasEmptyAggregation() &&
                 (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
 
             var limitSection;

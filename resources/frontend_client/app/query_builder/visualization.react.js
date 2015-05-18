@@ -177,6 +177,16 @@ var QueryVisualization = React.createClass({
                             data={this.props.result.data} />
                     );
                 }
+
+                // check if the query result was truncated and let the user know about it if so
+                if (this.props.result.data.rows_truncated && !rowMaxMessage) {
+                    rowMaxMessage = (
+                        <div className="mt1">
+                            <span className="Badge Badge--headsUp mr2">Too many rows!</span>
+                            Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
+                        </div>
+                    );
+                }
             }
         }
 

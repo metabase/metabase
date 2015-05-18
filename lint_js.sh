@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Simple shell script for running jshint and nicely formatting the output
+# Simple shell script for running jshint and nicely formatting the output :heart_eyes_cat:
 
 JS_HINT=./node_modules/jsxhint/cli.js
 JS_HINT_OPTS='--config .jshintrc'

@@ -56,18 +56,18 @@
 (defendpoint POST "/validate"
   "Validate that we can connect to a `Database`."
   [:as {{:keys [host port engine] :as details} :body}]
-  {host Required
-   port Required}
-  (let [details (assoc details :engine (keyword engine))
+  (let [engine           (keyword engine)
+        details          (assoc details :engine engine)
         response-invalid (fn [field m] {:status 400 :body {:valid false
                                                           field m        ; work with the new {:field error-message} format
                                                           :message m}})] ; but be backwards-compatible with the UI as it exists right now
     (try
       (cond
-        (driver/can-connect-with-details? (keyword engine) details) {:valid true}
-        (u/host-port-up? host port)                                 (response-invalid :dbname "Invalid connection details")
-        (u/host-up? host)                                           (response-invalid :port "Invalid port")
-        :else                                                       (response-invalid :host "Host not reachable"))
+        (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}
+        (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
+        (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
+        host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
+        :else                                                                 (response-invalid :db     "Unable to connect to database."))
       (catch Throwable e
         (response-invalid :dbname (.getMessage e))))))
 
@@ -130,8 +130,8 @@
   [id]
   (read-check Database id)
   (let [table_ids (sel :many :id Table :db_id id :active true)]
-    (-> (sel :many Field :table_id [in table_ids] :special_type "id")
-        (hydrate :table))))
+    (sort-by #(:name (:table %)) (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+                                     (hydrate :table)))))
 
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."

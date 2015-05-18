@@ -32,9 +32,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     initPromise = deferred.promise;
 
                     // just make sure we grab the current user
-                    service.refreshCurrentUser().then(function (user) {
+                    service.refreshCurrentUser().then(function(user) {
                         deferred.resolve();
-                    }, function (error) {
+                    }, function(error) {
                         deferred.resolve();
                     });
                 }
@@ -63,7 +63,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             refreshCurrentUser: function() {
 
                 // this is meant to be called once on app startup
-                var userRefresh = User.current(function (result) {
+                var userRefresh = User.current(function(result) {
                     service.model.currentUser = result;
 
                     // add isMember(orgSlug) method to the object
@@ -101,7 +101,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                     $rootScope.$broadcast('appstate:user', result);
 
-                }, function (error) {
+                }, function(error) {
                     console.log('unable to get current user', error);
                 });
 
@@ -167,9 +167,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                currentUserPromise.then(function (user) {
+                currentUserPromise.then(function(user) {
                     service.routeChangedImpl(event);
-                }, function (error) {
+                }, function(error) {
                     service.routeChangedImpl(event);
                 });
             },
@@ -446,6 +446,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'id': 'zip_code',
         'name': 'Zip Code'
     }];
+
     this.field_field_types = [{
         'id': 'info',
         'name': 'Information'
@@ -519,6 +520,215 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
 
     // this just makes it easier to access the current user
     this.currentUser = User.current;
+
+    // The various DB engines we support <3
+    // TODO - this should probably come back from the API, no?
+    //
+    // NOTE:
+    // A database's connection details is stored in a JSON map in the field database.details.
+    // Originially, this map was expected to contain a single key called 'conn_str' that combined all of a database's connection details.
+    // In real life, both the backend and frontend need access to the individual values, and have implemented complicated logic to parse conn_str.
+    // Thus, we are moving towards saving the connection details in a 'new-style' broken-out map, instead of as 'legacy' map containing just a combined conn_str.
+    //
+    // Until this is fully supported by the backend(s), we can save the connection details with both the 'new-style' broken-out values, and the combined conn_str
+    // to ensure backwards-compatibility. Until this transition is complete, however, we'll still need to handle legacy maps containing just 'conn_str'.
+    //
+    // ENGINE DICT FORMAT:
+    // *  name         - human-facing name to use for this DB engine
+    // *  buildDetails - take a 'new-style' details map and add 'conn_str' for backwards compatibility, if needed
+    // *  parseDetails - take a details map and parse 'conn_str' if it's a legacy map. Otherwise we can return the map as-is
+    // *  fields       - array of available fields to display when a user adds/edits a DB of this type. Each field should be a dict of the format below:
+    //
+    // FIELD DICT FORMAT:
+    // *  displayName          - user-facing name for the Field
+    // *  fieldName            - name used for the field in a database details dict
+    // *  transform            - function to apply to this value before passing to the API, such as 'parseInt'. (default: none)
+    // *  placeholder          - placeholder value that should be used in text input for this field (default: none)
+    // *  placeholderIsDefault - if true, use the value of 'placeholder' as the default value of this field if none is specified (default: false)
+    //                           (if you set this, don't set 'required', or user will still have to add a value for the field)
+    // *  required             - require the user to enter a value for this field? (default: false)
+    // *  choices              - array of possible values for this field. If provided, display a button toggle instead of a text input.
+    //                           Each choice should be a dict of the format below: (optional)
+    //
+    // CHOICE DICT FORMAT:
+    // *  name            - User-facing name for the choice.
+    // *  value           - Value to use for the choice in the database connection details dict.
+    // *  selectionAccent - What accent type should be applied to the field when its value is chosen? Either 'active' (currently green), or 'danger' (currently red).
+    this.ENGINES = {
+        postgres: {
+            name: 'Postgres',
+            fields: [{
+                displayName: "Host",
+                fieldName: "host",
+                placeholder: "localhost",
+                placeholderIsDefault: true
+            }, {
+                displayName: "Port",
+                fieldName: "port",
+                transform: parseInt,
+                placeholder: "5432",
+                placeholderIsDefault: true
+            }, {
+                displayName: "Database name",
+                fieldName: "dbname",
+                placeholder: "birds_of_the_world",
+                required: true
+            }, {
+                displayName: "Database username",
+                fieldName: "user",
+                placeholder: "What username do you use to login to the database?",
+                required: true
+            }, {
+                displayName: "Database password",
+                fieldName: "pass",
+                placeholder: "*******"
+            }, {
+                displayName: "Use a secure connection (SSL)?",
+                fieldName: "ssl",
+                choices: [{
+                    name: 'Yes <3',
+                    value: true,
+                    selectionAccent: 'active'
+                }, {
+                    name: 'No :/',
+                    value: false,
+                    selectionAccent: 'danger'
+                }]
+            }],
+            parseDetails: function(details) {
+                // Check for new-style details
+                if (details.dbname) return details;
+
+                // Otherwise parse legacy details
+                var map = {
+                    ssl: details.ssl
+                };
+                details.conn_str.split(' ').forEach(function(val) {
+                    var split = val.split('=');
+                    if (split.length === 2) {
+                        map[split[0]] = split[1];
+                    }
+                });
+                return map;
+            },
+            buildDetails: function(details) {
+                // add conn_str for backwards-compatibility
+                details.conn_str =
+                    "host=" + details.host +
+                    " port=" + details.port +
+                    " dbname=" + details.dbname +
+                    " user=" + details.user +
+                    (details.pass ? (" password=" + details.pass) : '');
+                return details;
+            }
+        },
+        h2: {
+            name: 'H2',
+            fields: [{
+                displayName: "Connection String",
+                fieldName: "db",
+                placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+            }],
+            parseDetails: function(details) {
+                // Check for new-style details
+                if (details.db) return details;
+
+                // Otherwise parse legacy details
+                return {
+                    db: details.conn_str
+                };
+            },
+            buildDetails: function(details) {
+                // add conn_str for backwards-compatibility
+                details.conn_str = details.db;
+                return details;
+            }
+        },
+        mongo: {
+            name: 'MongoDB',
+            fields: [{
+                displayName: "Host",
+                fieldName: "host",
+                placeholder: "localhost",
+                placeholderIsDefault: true
+            }, {
+                displayName: "Port",
+                fieldName: "port",
+                transform: parseInt,
+                placeholder: "27017"
+            }, {
+                displayName: "Database name",
+                fieldName: "dbname",
+                placeholder: "carrierPigeonDeliveries",
+                required: true
+            }, {
+                displayName: "Database username",
+                fieldName: "user",
+                placeholder: "What username do you use to login to the database?"
+            }, {
+                displayName: "Database password",
+                fieldName: "pass",
+                placeholder: "******"
+            }],
+            parseDetails: function(details) {
+                // check for new-style details
+                if (details.dbname) return details;
+
+                // otherwise parse legacy details
+                var regex = /^mongodb:\/\/(?:([^@:]+)(?::([^@:]+))?@)?([^\/:@]+)(?::([\d]+))?\/([^\/]+)$/gm, // :scream:
+                    matches = regex.exec(details.conn_str);
+                return {
+                    user: matches[1],
+                    pass: matches[2],
+                    host: matches[3],
+                    port: matches[4],
+                    dbname: matches[5]
+                };
+            },
+            buildDetails: function(details) {
+                // add conn_str for backwards-compatibility
+                var connStr = "mongodb://";
+                if (details.user) {
+                    connStr += details.user;
+                    if (details.pass) {
+                        connStr += ":" + details.pass;
+                    }
+                    connStr += "@";
+                }
+                connStr += details.host;
+                if (details.port) {
+                    connStr += ":" + details.port;
+                }
+                connStr += "/" + details.dbname;
+
+                details.conn_str = connStr;
+                return details;
+            }
+        }
+    };
+
+    // Prepare database details before being sent to the API.
+    // This includes applying 'transform' functions and adding default values where applicable.
+    this.prepareDatabaseDetails = function(details) {
+        if (!details.engine) throw "Missing key 'engine' in database request details; please add this as API expects it in the request body.";
+
+        // iterate over each field definition
+        this.ENGINES[details.engine].fields.forEach(function(field) {
+            var fieldName = field.fieldName;
+
+            // set default value if applicable
+            if (!details[fieldName] && field.placeholderIsDefault) {
+                details[fieldName] = field.placeholder;
+            }
+
+            // apply transformation function if applicable
+            if (details[fieldName] && field.transform) {
+                details[fieldName] = field.transform(details[fieldName]);
+            }
+        });
+
+        return details;
+    };
 }]);
 
 CorvusServices.service('CorvusAlert', [function() {
@@ -677,7 +887,7 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
             ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
         delete: {
-            method: 'DELETE',
+            method: 'DELETE'
         },
         forgot_password: {
             url: '/api/session/forgot_password',
@@ -749,8 +959,8 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Organization', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/org/:orgId', {}, {
         form_input: {
-            url:'/api/org/form_input',
-            method:'GET'
+            url: '/api/org/form_input',
+            method: 'GET'
         },
         list: {
             url: '/api/org/',
