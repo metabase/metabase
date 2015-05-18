@@ -1,15 +1,34 @@
 'use strict';
-/*global cx, CardRenderer, QueryVisualizationTable, QueryVisualizationChart*/
+/*global cx, CardRenderer, PopoverWithTrigger, QueryVisualizationTable, QueryVisualizationChart*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 var QueryVisualization = React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
-        visualizationSettingsApi: React.PropTypes.func.isRequired,
+        visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
-        setDisplayFn: React.PropTypes.func.isRequired
+        setDisplayFn: React.PropTypes.func.isRequired,
+        setChartColorFn: React.PropTypes.func.isRequired
+    },
+
+    getDefaultProps: function() {
+        return {
+            maxTableRows: 500,
+            visualizationTypes: [
+                'scalar',
+                'table',
+                'line',
+                'bar',
+                'pie',
+                'area',
+                'timeseries',
+                'state',
+                'country',
+                'pin_map'
+            ]
+        };
     },
 
     getInitialState: function() {
@@ -26,43 +45,133 @@ var QueryVisualization = React.createClass({
             });
         }
     },
-    maxTableRows: 500,
 
     queryIsDirty: function() {
         // a query is considered dirty if ANY part of it has been changed
         return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
     },
 
+    hasLatitudeAndLongitudeColumns: function(columnDefs) {
+        var hasLatitude = false,
+            hasLongitude = false;
+        columnDefs.forEach(function(col, index) {
+            if (col.special_type &&
+                    col.special_type === "latitude") {
+                hasLatitude = true;
+
+            } else if (col.special_type &&
+                    col.special_type === "longitude") {
+                hasLongitude = true;
+            }
+        });
+
+        return (hasLatitude && hasLongitude);
+    },
+
+    isSensibleChartDisplay: function(display) {
+        var data = (this.props.result) ? this.props.result.data : null;
+
+        if (display === "table") {
+            // table is always appropriate
+            return true;
+
+        } else if (display === "scalar" && data &&
+                    data.rows && data.rows.length === 1 &&
+                    data.cols && data.cols.length === 1) {
+            // a 1x1 data set is appropriate for a scalar
+            return true;
+
+        } else if (display === "pin_map" && data && this.hasLatitudeAndLongitudeColumns(data.cols)) {
+            // when we have a latitude and longitude a pin map is cool
+            return true;
+
+        } else if ((display === "line" || display === "area") && data &&
+                    data.rows && data.rows.length > 1 &&
+                    data.cols && data.cols.length > 1) {
+            // if we have 2x2 or more then that's enough to make a line/area chart
+            return true;
+
+        } else if (this.isChartDisplay(display) && data &&
+                    data.cols && data.cols.length > 1) {
+            // general check for charts is that they require 2 columns
+            return true;
+        }
+
+        return false;
+    },
+
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function (event) {
+    setDisplay: function(event) {
         // notify our parent about our change
         this.props.setDisplayFn(event.target.value);
     },
 
-    renderVizControls: function () {
-        if (this.props.result && this.props.result.error === undefined) {
-            var types = [
-                'scalar',
-                'table',
-                'line',
-                'bar',
-                'pie',
-                'area',
-                'timeseries',
-                'state',
-                'country',
-                'pin_map'
-            ];
+    setChartColor: function(color) {
+        // tell parent about our new color
+        this.props.setChartColorFn(color);
+    },
 
+    renderChartColorPicker: function() {
+        if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
+            var colors = this.props.visualizationSettingsApi.getDefaultColorHarmony();
+            var colorItems = [];
+            for (var i=0; i < colors.length; i++) {
+                var color = colors[i];
+                var localStyles = {
+                    "backgroundColor": color
+                };
+
+                colorItems.push((
+                    <li key={i} className="CardSettings-colorBlock" style={localStyles} onClick={this.setChartColor.bind(null, color)}></li>
+                ));
+            }
+
+            var colorPickerButton = (
+                <a className="Button">
+                    Change color
+                </a>
+            );
+
+            var tetherOptions = {
+                attachment: 'middle left',
+                targetAttachment: 'middle right',
+                targetOffset: '0 12px'
+            };
+
+            return (
+                <PopoverWithTrigger className="PopoverBody"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={colorPickerButton}>
+                    <ol className="p1">
+                        {colorItems}
+                    </ol>
+                </PopoverWithTrigger>
+            );
+
+        } else {
+            return false;
+        }
+    },
+
+    renderVizControls: function() {
+        if (this.props.result && this.props.result.error === undefined) {
             var displayOptions = [];
-            for (var i = 0; i < types.length; i++) {
-                var val = types[i];
-                displayOptions.push(
-                    <option key={i} value={val}>{val}</option>
-                );
+            for (var i = 0; i < this.props.visualizationTypes.length; i++) {
+                var val = this.props.visualizationTypes[i];
+
+                if (this.isSensibleChartDisplay(val)) {
+                    displayOptions.push(
+                        <option key={i} value={val}>{val}</option>
+                    );
+                } else {
+                    // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
+                    displayOptions.push(
+                        <option key={i+'_'} value={val}>{val} (not sensible)</option>
+                    );
+                }
             }
 
             return (
@@ -73,6 +182,7 @@ var QueryVisualization = React.createClass({
                             {displayOptions}
                         </select>
                     </label>
+                    {this.renderChartColorPicker()}
                 </div>
             );
         } else {
@@ -80,7 +190,7 @@ var QueryVisualization = React.createClass({
         }
     },
 
-    loader: function () {
+    loader: function() {
         var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
         return (
             <div className="Loading-indicator">
@@ -92,7 +202,7 @@ var QueryVisualization = React.createClass({
         );
     },
 
-    render: function () {
+    render: function() {
         var viz,
             queryModified,
             rowMaxMessage;
@@ -153,11 +263,11 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    if(this.props.result.data.rows.length > this.maxTableRows) {
+                    if(this.props.result.data.rows.length > this.props.maxTableRows) {
                         rowMaxMessage = (
                             <div className="mt1">
                                 <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
-                                Previewing <b>{this.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                                Previewing <b>{this.props.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
                             </div>
                         );
                     }
@@ -165,7 +275,7 @@ var QueryVisualization = React.createClass({
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.maxTableRows} />
+                            maxRows={this.props.maxTableRows} />
                     );
 
                 } else {
