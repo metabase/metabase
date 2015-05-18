@@ -129,12 +129,16 @@ var QueryVisualization = React.createClass({
                 ));
             }
 
-            var colorPickerButton = "chart color";
+            var colorPickerButton = (
+                <a className="Button">
+                    Change color
+                </a>
+            );
 
             var tetherOptions = {
-                attachment: 'bottom left',
-                targetAttachment: 'top right',
-                targetOffset: '14px 0'
+                attachment: 'middle left',
+                targetAttachment: 'middle right',
+                targetOffset: '0 12px'
             };
 
             return (
