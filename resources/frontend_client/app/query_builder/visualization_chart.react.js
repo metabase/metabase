@@ -4,12 +4,12 @@
 var QueryVisualizationChart = React.createClass({
     displayName: 'QueryVisualizationChart',
     propTypes: {
-        visualizationSettingsApi: React.PropTypes.func.isRequired,
+        visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         data: React.PropTypes.object
     },
 
-    getInitialState: function () {
+    getInitialState: function() {
         return {
             chartId: Math.floor((Math.random() * 698754) + 1)
         };
@@ -20,34 +20,65 @@ var QueryVisualizationChart = React.createClass({
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
         if (this.state.error === nextState.error &&
                 this.props.data == nextProps.data &&
-                this.props.card.display === nextProps.card.display) {
+                this.props.card.display === nextProps.card.display &&
+                JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings)) {
             return false;
         } else {
             return true;
         }
     },
 
-    componentDidMount: function () {
+    componentDidMount: function() {
         this.renderChart();
     },
 
-    componentDidUpdate: function () {
+    componentDidUpdate: function() {
         this.renderChart();
     },
 
     renderChart: function () {
         if (this.props.data) {
+            // validate the shape of the data against our chosen display and if we don't have appropriate data
+            // then lets inform the user that this isn't going to work so they can do something better
+            var dataError;
+            if (this.props.card.display === "pin_map" &&
+                    !this.hasLatitudeAndLongitudeColumns(this.props.data.cols)) {
+                dataError = "Bummer.  We can't actually do a pin map for this data because we require both a latitude and longitude column.";
+            } else if (this.props.data.columns && this.props.data.columns.length < 2) {
+                dataError = "Doh!  The data from your query doesn't fit the chosen display choice.  This visualization requires at least 2 columns of data.";
+
+            } else if ((this.props.card.display === "line" || this.props.card.display === "area") &&
+                            this.props.data.rows && this.props.data.rows.length < 2) {
+                dataError = "No dice.  We only have 1 data point to show and that's not enough for a line chart.";
+            }
+
+            if (dataError) {
+                this.setState({
+                    error: dataError
+                });
+                return;
+            } else {
+                this.setState({
+                    error: null
+                });
+            }
+
             try {
                 // always ensure we have the most recent visualization settings to use for rendering
-                var card = this.props.card;
-                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(card.visualization_settings, card.display);
-                card.visualization_settings = vizSettings;
+                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(this.props.card.visualization_settings, this.props.card.display);
+
+                // be as immutable as possible and build a card like structure used for charting
+                var cardIsh = {
+                    name: this.props.card.name,
+                    display: this.props.card.display,
+                    visualization_settings: vizSettings
+                };
 
                 if (this.props.card.display === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
 
                     // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    card.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(card.visualization_settings, this.props.data.cols);
+                    cardIsh.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(cardIsh.visualization_settings, this.props.data.cols);
 
                     // these are example callback functions that could be passed into the renderer
                     // var updateMapCenter = function(lat, lon) {
@@ -65,10 +96,10 @@ var QueryVisualizationChart = React.createClass({
                         // do nothing for now
                     };
 
-                    CardRenderer[this.props.card.display](this.state.chartId, this.props.card, no_op, no_op);
+                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, no_op, no_op);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    CardRenderer[this.props.card.display](this.state.chartId, this.props.card, this.props.data);
+                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
                 }
             } catch (err) {
                 this.setState({
@@ -78,7 +109,7 @@ var QueryVisualizationChart = React.createClass({
         }
     },
 
-    render: function () {
+    render: function() {
         // rendering a chart of some type
         var titleId = 'card-title--'+this.state.chartId;
         var innerId = 'card-inner--'+this.state.chartId;

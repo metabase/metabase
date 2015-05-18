@@ -97,7 +97,7 @@ CardControllers.controller('CardDetail', [
                 name: null,
                 public_perms: 0,
                 display: "table",
-                visualization_settings: VisualizationSettings.getSettingsForVisualization({}, "table"),
+                visualization_settings: {},
                 dataset_query: {},
             },
             cardJson = JSON.stringify(card);
@@ -193,13 +193,19 @@ CardControllers.controller('CardDetail', [
                     queryResult = result;
                     isRunning = false;
 
-                    // if this is our first run on a NEW card then try a little logic to pick a smart display for the data
-                    if (firstRunNewCard &&
+                    // try a little logic to pick a smart display for the data
+                    if (card.display !== "scalar" &&
                             queryResult.data.rows &&
                             queryResult.data.rows.length === 1 &&
                             queryResult.data.columns.length === 1) {
-                        // if we have a 1x1 data result then this should be viewed as a scalar
+                        // if we have a 1x1 data result then this should always be viewed as a scalar
                         card.display = "scalar";
+
+                    } else if (card.display === "scalar" &&
+                                queryResult.data.rows &&
+                                (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                        // any time we were a scalar and now have more than 1x1 data switch to table view
+                        card.display = "table";
 
                     } else if (dataset_query.type === "query" &&
                             dataset_query.query.aggregation &&
@@ -242,6 +248,33 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             setDisplayFn: function(type) {
                 card.display = type;
+
+                renderAll();
+            },
+            setChartColorFn: function(color) {
+                var vizSettings = card.visualization_settings;
+
+                // if someone picks the default color then clear any color settings
+                if (color === VisualizationSettings.getDefaultColor()) {
+                    // NOTE: this only works if setting color is the only option we allow
+                    card.visualization_settings = {};
+
+                } else {
+                    // this really needs to be better
+                    var lineSettings = (vizSettings.line) ? vizSettings.line : {};
+                    var areaSettings = (vizSettings.area) ? vizSettings.area : {};
+                    var barSettings = (vizSettings.bar) ? vizSettings.bar : {};
+
+                    lineSettings.lineColor = color;
+                    lineSettings.marker_fillColor = color;
+                    lineSettings.marker_lineColor = color;
+                    areaSettings.fillColor = color;
+                    barSettings.color = color;
+
+                    vizSettings.line = lineSettings;
+                    vizSettings.area = areaSettings;
+                    vizSettings.bar = barSettings;
+                }
 
                 renderAll();
             }
