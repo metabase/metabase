@@ -40,6 +40,7 @@
    java.sql.Date                :DateField
    java.sql.Timestamp           :DateTimeField
    java.util.Date               :DateField
+   java.util.UUID               :TextField
    org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
 
 ;; ## Driver Lookup
