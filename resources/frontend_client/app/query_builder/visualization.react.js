@@ -23,7 +23,6 @@ var QueryVisualization = React.createClass({
                 'bar',
                 'pie',
                 'area',
-                'timeseries',
                 'state',
                 'country',
                 'pin_map'
