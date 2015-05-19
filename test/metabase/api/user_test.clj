@@ -5,14 +5,11 @@
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             [metabase.middleware.auth :as auth]
-            (metabase.models [org-perm :refer [OrgPerm]]
-                             [session :refer [Session]]
+            (metabase.models [session :refer [Session]]
                              [user :refer [User]])
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
             [metabase.test-data :refer :all]
             [metabase.test-data.create :refer [create-user]]))
-
-(def rasta-org-perm-id (delay (sel :one :id OrgPerm :organization_id @org-id :user_id (user->id :rasta))))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -84,18 +81,7 @@
            :is_active true
            :is_staff true
            :is_superuser false
-           :id $
-           :org_perms [{:organization {:inherits true
-                                       :report_timezone nil
-                                       :logo_url nil
-                                       :description nil
-                                       :name "Test Organization"
-                                       :slug "test"
-                                       :id @org-id}
-                        :organization_id @org-id
-                        :user_id $id
-                        :admin true
-                        :id @rasta-org-perm-id}]})
+           :id $})
   ((user->client :rasta) :get 200 "user/current"))
 
 

@@ -11,7 +11,6 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test-data :refer [org-id]]
             [metabase.test-data.data :as data]))
 
 (declare load-data
@@ -46,7 +45,6 @@
            "Why are we attempting to use the Mongo test Database when we're not testing against mongo?")
    (let [db (or (sel :one Database :name mongo-test-db-name)
                 (let [db (ins Database
-                           :organization_id @org-id
                            :name mongo-test-db-name
                            :engine :mongo
                            :details {:conn_str mongo-test-db-conn-str})]

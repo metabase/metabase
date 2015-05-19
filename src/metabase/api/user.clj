@@ -23,10 +23,9 @@
 
 
 (defendpoint GET "/current"
-  "Fetch the current user, their `OrgPerms`, and associated `Orgs`."
+  "Fetch the current `User`."
   []
-  (->404 @*current-user*
-         (hydrate [:org_perms :organization])))
+  (->404 @*current-user*))
 
 
 (defendpoint GET "/:id"

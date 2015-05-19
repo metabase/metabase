@@ -8,7 +8,6 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
-                             [org :refer [Org]]
                              [table :refer [Table] :as table])
             [metabase.driver :as driver]))
 
@@ -18,13 +17,10 @@
   (checkp-contains? table/entity-types symb (keyword value)))
 
 (defendpoint GET "/"
-  "Get all `Tables` for an `Org`."
-  [org]
-  {org Required}
-  (read-check Org org)
-  (let [db-ids (sel :many :id Database :organization_id org)]
-    (-> (sel :many Table :active true :db_id [in db-ids] (order :name :ASC))
-        (hydrate :db))))
+  "Get all `Tables`."
+  []
+  (-> (sel :many Table :active true (order :name :ASC))
+      (hydrate :db)))
 
 
 (defendpoint GET "/:id"

@@ -12,8 +12,7 @@
 
 ;; ## Helper fns
 (defn post-card [card-name]
-  ((user->client :rasta) :post 200 "card" {:organization @org-id
-                                           :name card-name
+  ((user->client :rasta) :post 200 "card" {:name card-name
                                            :public_perms 0
                                            :can_read true
                                            :can_write true
@@ -33,13 +32,12 @@
          false]
   (with-temp Card [{:keys [id]} {:name                   (random-name)
                                  :public_perms           common/perms-none
-                                 :organization_id        @org-id
                                  :creator_id             (user->id :crowberto)
                                  :display                :table
                                  :dataset_query          {}
                                  :visualization_settings {}}]
     (let [can-see-card? (fn [user]
-                          (contains? (->> ((user->client user) :get 200 "card" :org @org-id :f :all)
+                          (contains? (->> ((user->client user) :get 200 "card" :f :all)
                                           (map :id)
                                           set)
                                      id))]
@@ -52,7 +50,7 @@
 (let [card-name (random-name)]
   (expect-eval-actual-first (match-$ (sel :one Card :name card-name)
                               {:description nil
-                               :organization_id @org-id
+                               :organization_id nil
                                :name card-name
                                :creator_id (user->id :rasta)
                                :updated_at $
@@ -78,15 +76,8 @@
         {:description nil
          :can_read true
          :can_write true
-         :organization_id @org-id
+         :organization_id nil
          :name card-name
-         :organization {:inherits true
-                        :report_timezone nil
-                        :logo_url nil
-                        :description nil
-                        :name "Test Organization"
-                        :slug "test"
-                        :id @org-id}
          :creator_id (user->id :rasta)
          :updated_at $
          :dataset_query {:type "query"

@@ -2,40 +2,33 @@
   "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
-            [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [org :refer [Org]])
-            [metabase.util :as u]))
+                             [dashboard-card :refer [DashboardCard]])))
 
 (defendpoint GET "/"
-  "Get `Dashboards` for an `Org`. With filter option `f` (default `all`), restrict results as follows:
+  "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
-  *  `all` - Return all `Dashboards` for `Org`.
-  *  `mine` - Return `Dashboards` created by the current user for `Org`."
-  [org f]
-  {org Required, f FilterOptionAllOrMine}
-  (read-check Org org)
+  *  `all` - Return all `Dashboards`.
+  *  `mine` - Return `Dashboards` created by the current user."
+  [f]
+  {f FilterOptionAllOrMine}
   (-> (case (or f :all)
-        :all  (sel :many Dashboard :organization_id org (where (or {:creator_id *current-user-id*}
-                                                                   {:public_perms [> common/perms-none]})))
-        :mine (sel :many Dashboard :organization_id org :creator_id *current-user-id*))
-      (hydrate :creator :organization)))
+        :all  (sel :many Dashboard (where (or {:creator_id *current-user-id*}
+                                              {:public_perms [> common/perms-none]})))
+        :mine (sel :many Dashboard :creator_id *current-user-id*))
+      (hydrate :creator)))
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [organization name public_perms] :as body} :body}]
+  [:as {{:keys [name public_perms] :as body} :body}]
   {name         [Required NonEmptyString]
-   organization Required
    public_perms [Required PublicPerms]}
-  (read-check Org organization) ; any user who has permissions for this Org can make a dashboard
   (ins Dashboard
-    :organization_id organization
     :name name
     :public_perms public_perms
     :creator_id *current-user-id*))
@@ -45,7 +38,7 @@
   [id]
   (let-404 [db (-> (sel :one Dashboard :id id)
                    read-check
-                   (hydrate :creator :organization [:ordered_cards [:card :creator]] :can_read :can_write))]
+                   (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 
 (defendpoint PUT "/:id"
