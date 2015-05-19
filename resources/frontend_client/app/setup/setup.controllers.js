@@ -4,7 +4,7 @@ var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metab
 
 SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
     function($scope, $routeParams, $location, $timeout, ipCookie, Organization, AppState, Setup, Metabase, CorvusCore) {
-        $scope.activeStep = "user";
+        $scope.activeStep = "database";
         $scope.completedSteps = {
             user: false,
             database: false

@@ -8,6 +8,8 @@
   --headsup-color: #F5A623;
 
   --error-color: #EF8C8C;
+
+  --body-text: #8E9BA9;
 }
 
 .text-white {
@@ -57,6 +59,10 @@
 
 .bg-headsup {
   background-color: var(--headsup-color);
+}
+
+.text-body {
+    color: var(--body-text);
 }
 
 /* grey */

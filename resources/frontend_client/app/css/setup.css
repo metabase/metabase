@@ -1,3 +1,4 @@
+/*
 .Setup {
     background: #FBFCFD;
     height: 100%:
@@ -159,8 +160,10 @@
     color: #777;
     opacity: 0;
 }
+*/
 
 /* only show connection input labels that have focus */
+/*
 .Connection-input:focus + .Connection-label {
     opacity: 1;
 }
@@ -240,4 +243,21 @@
 .SetupIntro {
     max-width: 30rem;
     font-size: 1rem;
+}
+*/
+
+.WelcomeMessage {
+    margin-top: 4em;
+    margin-bottom: 4em;
+}
+
+.WelcomeMessage-title {
+    font-weight: 100;
+    font-size: 2.286em;
+    line-height: 2.786em;
+}
+
+.WelcomeMessage-subTitle {
+    font-size: 1.2em;
+    line-height: 1.4em;
 }
