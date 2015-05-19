@@ -1,23 +1,12 @@
-<style type="text/css">
-    .Setup--section {
-        margin-top: 10px;
-        margin-left: 10px;
-        margin-right: 10px;
-        padding: 10px;
-        border: 4px solid lightgray;
-        min-height: 50px;
-    }
-    .Setup--active {
-        border: 4px solid blue;
-    }
-    .Setup--completed {
-        border: 4px solid #9CC177;
-    }
-</style>
-
-<div class="wrapper">
-    <section class="Setup--section" ng-class="{ 'Setup--active' : activeStep == 'user', 'Setup--completed' : completedSteps.user }">
-            <h3>1. User</h3>
+<div class="SetupSteps wrapper">
+    <section class="SetupStep bordered rounded shadowed relative" ng-class="{ 'SetupStep--active' : activeStep == 'user', 'SetupStep--completed' : completedSteps.user }">
+            <div>
+                <span class="SetupStep-indicator flex layout-centered absolute bordered">
+                    <span class="SetupStep-number">1</span>
+                    <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
+                </span>
+                <h3 class="SetupStep-title ml4 text-brand">What should we call you?</h3>
+            </div>
             <form class="Form-new" name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
                 <div class="Form-field" mb-form-field="first_name">
                     <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
@@ -66,8 +55,14 @@
           </div>
     </section>
 
-    <section class="Setup--section" ng-class="{ 'Setup--active' : activeStep == 'database', 'Setup--completed' : completedSteps.database }">
-        <h3>2. Database</h3>
+    <section class="SetupStep bordered rounded shadowed relative" ng-class="{ 'SetupStep--active' : activeStep == 'database', 'SetupStep--completed' : completedSteps.database }">
+        <div>
+            <span class="SetupStep-indicator flex layout-centered absolute bordered">
+                <span class="SetupStep-number">2</span>
+                <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
+            </span>
+            <h3 class="ml4 text-brand">Add your first database</h3>
+        </div>
         <div ng-controller="DatabaseEdit" ng-if="activeStep == 'database'">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
                 <!-- Form -->
@@ -84,7 +79,14 @@
         </div>
     </section>
 
-    <section class="Setup--section" ng-class="{ 'Setup--active' : activeStep == 'finish' }" >
-        <h3>3. Finish</h3>
+    <section class="SetupStep SetupStep--active bordered rounded shadowed flex layout-centered flex-column relative" ng-if="activeStep == 'finish'">
+        <h3 class="text-brand">You're all set!</h3>
+        <div class="bordered rounded p2 text-brand flex justify-center">
+            <cv-loading-icon class="inline-block mr2"></cv-loading-icon>
+            Importing data and doing a bit of science.
+        </div>
+        <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
+
+        <button class="Button Button--primary">Take me to my data</button>
     </section>
 </div>
