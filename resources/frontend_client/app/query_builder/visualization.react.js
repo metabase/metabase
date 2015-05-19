@@ -15,7 +15,7 @@ var QueryVisualization = React.createClass({
 
     getDefaultProps: function() {
         return {
-            maxTableRows: 500,
+            tableRowsPerPage: 100,
             visualizationTypes: [
                 'scalar',
                 'table',
@@ -33,7 +33,8 @@ var QueryVisualization = React.createClass({
 
     getInitialState: function() {
         return {
-            origQuery: JSON.stringify(this.props.card.dataset_query)
+            origQuery: JSON.stringify(this.props.card.dataset_query),
+            tablePage: 1
         };
     },
 
@@ -41,7 +42,8 @@ var QueryVisualization = React.createClass({
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                origQuery: JSON.stringify(nextProps.card.dataset_query)
+                origQuery: JSON.stringify(nextProps.card.dataset_query),
+                tablePage: 1
             });
         }
     },
@@ -112,6 +114,12 @@ var QueryVisualization = React.createClass({
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
+    },
+
+    setPage: function(page) {
+        this.setState({
+            tablePage: page
+        });
     },
 
     renderChartColorPicker: function() {
@@ -205,7 +213,7 @@ var QueryVisualization = React.createClass({
     render: function() {
         var viz,
             queryModified,
-            rowMaxMessage;
+            pagingControls;
 
         if (!this.props.result) {
             viz = (
@@ -263,11 +271,30 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    if(this.props.result.data.rows.length > this.props.maxTableRows) {
-                        rowMaxMessage = (
+                    // TODO: check if we have a truncated result set and let the user know if that's the case
+
+                    if(this.props.result.data.rows.length > this.props.tableRowsPerPage) {
+                        // we need to show some paging controls
+                        var nextButton,
+                            prevButton,
+                            offset = ((this.state.tablePage - 1) * this.props.tableRowsPerPage) + 1,
+                            limit = (this.state.tablePage * this.props.tableRowsPerPage);
+
+                        if (limit > this.props.result.data.rows.length) {
+                            limit = this.props.result.data.rows.length;
+                        }
+
+                        if (this.state.tablePage > 1) {
+                            prevButton = (<a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a>);
+                        }
+
+                        if ((this.props.result.data.rows.length - (this.state.tablePage * this.props.tableRowsPerPage)) > 0) {
+                            nextButton = (<a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a>);
+                        }
+
+                        pagingControls = (
                             <div className="mt1">
-                                <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
-                                Previewing <b>{this.props.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                                {prevButton} <b>{offset}</b> - <b>{limit}</b> / <b>{this.props.result.data.rows.length}</b> {nextButton}
                             </div>
                         );
                     }
@@ -275,7 +302,8 @@ var QueryVisualization = React.createClass({
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.props.maxTableRows} />
+                            maxRows={this.props.tableRowsPerPage}
+                            page={this.state.tablePage} />
                     );
 
                 } else {
@@ -289,8 +317,8 @@ var QueryVisualization = React.createClass({
                 }
 
                 // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !rowMaxMessage) {
-                    rowMaxMessage = (
+                if (this.props.result.data.rows_truncated && !pagingControls) {
+                    pagingControls = (
                         <div className="mt1">
                             <span className="Badge Badge--headsUp mr2">Too many rows!</span>
                             Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
@@ -332,7 +360,7 @@ var QueryVisualization = React.createClass({
                 </ReactCSSTransitionGroup>
                 <div className="VisualizationSettings QueryBuilder-section clearfix">
                     <div className="float-right">
-                        {rowMaxMessage}
+                        {pagingControls}
                     </div>
                     {this.renderVizControls()}
                 </div>

@@ -9,7 +9,8 @@ var QueryVisualizationTable = React.createClass({
 
     getDefaultProps: function() {
         return {
-            maxRows: null
+            maxRows: 100,
+            page: 1
         };
     },
 
@@ -18,13 +19,16 @@ var QueryVisualizationTable = React.createClass({
             return false;
         }
 
-        var rowLimit = this.props.data.rows.length;
-        if (this.props.maxRows && this.props.data.rows.length > this.props.maxRows) {
-            rowLimit = this.props.maxRows;
+        // remember that page numbers begin with 1 but our data indexes begin with 0, so account for that
+        var offset = ((this.props.page - 1) * this.props.maxRows),
+            limit = (this.props.page * this.props.maxRows) - 1;
+
+        if (limit > this.props.data.rows.length) {
+            limit = this.props.data.rows.length;
         }
 
         var tableRows = [];
-        for (var i=0; i < rowLimit; i++) {
+        for (var i=offset; i < limit; i++) {
             var row = this.props.data.rows[i];
 
             var rowCols = [];
