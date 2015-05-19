@@ -6,18 +6,12 @@ var Setup = angular.module('corvus.setup', [
 ]);
 
 Setup.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/setup/data', {
-        templateUrl: '/app/setup/partials/setup_data.html',
-        controller: 'SetupData'
+    $routeProvider.when('/setup/welcome', {
+        templateUrl: '/app/setup/partials/setup_welcome.html'
     });
 
-    $routeProvider.when('/setup/data/add', {
-        templateUrl: '/app/setup/partials/setup_connection.html',
-        controller: 'SetupConnection'
-    });
-
-    $routeProvider.when('/setup/data/:dbId', {
-        templateUrl: '/app/setup/partials/setup_connection.html',
-        controller: 'SetupConnection'
+    $routeProvider.when('/setup/info', {
+        templateUrl: '/app/setup/partials/setup_info.html',
+        controller: 'SetupInfo'
     });
 }]);

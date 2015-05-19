@@ -67,19 +67,26 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         // create a new Database
-        var create = function(database, details) {
+        var create = function(database, details, redirectToDetail) {
             $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
             Metabase.db_create(database, function(new_database) {
-                $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+                if (redirectToDetail) {
+                    $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+                }
+                $scope.$broadcast("form:api-success", "Successfully created!");
+                $scope.$emit("database:created", new_database);
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
             });
         };
 
         // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
-        $scope.save = function(database, details) {
+        $scope.save = function(database, details, redirectToDetail) {
+            if (arguments.length < 3) {
+                redirectToDetail = true;
+            }
             if ($routeParams.databaseId) {
                 update(database, details);
             } else {
@@ -91,11 +98,11 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
                 Metabase.validate_connection(details, function() {
                     console.log('Successfully connected with SSL. Setting SSL = true.');
-                    create(database, details);
+                    create(database, details, redirectToDetail);
                 }, function() {
                     console.log('Unable to connect with SSL. Setting SSL = false.');
                     details.ssl = false;
-                    create(database, details);
+                    create(database, details, redirectToDetail);
                 });
             }
         };
@@ -133,8 +140,9 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // prepare an empty database for creation
             $scope.database = {
                 name: '',
-                engine: 'postgres',
-                details: {}
+                engine: null,
+                details: {},
+                created: false
             };
             $scope.details = {};
         }

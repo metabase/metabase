@@ -16,6 +16,7 @@
         'Grid',
         'List',
         'Loading',
+        'Logo',
         'Search',
         'Star'
     ];

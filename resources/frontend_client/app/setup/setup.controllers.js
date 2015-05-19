@@ -2,23 +2,23 @@
 
 var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services', 'corvus.setup.services']);
 
-SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams', 'AppState',
-    function($scope, $location, $routeParams, AppState) {
+SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
+    function($scope, $routeParams, $location, $timeout, ipCookie, Organization, AppState, Setup, Metabase, CorvusCore) {
+        $scope.activeStep = "user";
+        $scope.completedSteps = {
+            user: false,
+            database: false
+        };
 
-        // The only thing this controller does is grab the setup token from the url and store it in our AppState
-        // then we begin the actual setup workflow by sending the user to /setup/
-
-        AppState.model.setupToken = $routeParams.setupToken;
-
-        $location.path('/setup/');
-    }
-]);
-
-SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup',
-    function($scope, $location, $timeout, ipCookie, Organization, AppState, Setup) {
+        $scope.$on("database:created", function(event, database) {
+            $timeout(function() {
+                $scope.activeStep = "finish";
+                $scope.completedSteps.database = true;
+            });
+        });
 
         $scope.createOrgAndUser = function() {
-
+            console.log("$scope.newUser.email", $scope.newUser.email)
             // start off by creating the first user of the system
             // NOTE: this should both create the user AND log us in and return a session id
             Setup.create_user({
@@ -62,7 +62,9 @@ SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'i
                         AppState.switchOrg(org.slug);
 
                         // we should be good to carry on with setting up data at this point
-                        $location.path('/setup/data/');
+                        // $location.path('/setup/data/');
+                        $scope.activeStep = "database";
+                        $scope.completedSteps.user = true;
 
                     }, function(error) {
                         $scope.error = error.data;
@@ -76,122 +78,3 @@ SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'i
         };
     }
 ]);
-
-SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore', function($scope, $routeParams, $location, Metabase, CorvusCore) {
-
-    $scope.ENGINES = CorvusCore.ENGINES;
-
-    $scope.details = {};
-
-    // assume we have a new connection since this is the setup process
-    var newConnection = true;
-    $scope.breadcrumb = 'Add connection';
-
-    // hide the SSL field when creating a new DB until we auto-infer SSL support
-    $scope.hiddenFields = {
-        ssl: true
-    };
-
-    if ($routeParams.dbId) {
-        newConnection = false;
-        $scope.hiddenFields = null;
-        Metabase.db_get({
-            'dbId': $routeParams.dbId
-        }, function(result) {
-            $scope.database = result;
-            $scope.breadcrumb = result.name;
-            $scope.details = $scope.ENGINES[result.engine].parseDetails(result.details);
-        }, function(error) {
-            console.log('error', error);
-        });
-    } else {
-        $scope.details = {
-            host: 'localhost',
-            port: '5432',
-            ssl: false
-        };
-        $scope.database = {
-            engine: 'postgres',
-            details: $scope.details
-        };
-    }
-
-    $scope.setConnectionEngine = function(engine) {
-        $scope.database.engine = engine;
-    };
-
-    // Call API to determine whether connection is valid. If so, save the DB.
-    $scope.submit = function() {
-        // add engine to the request body
-        $scope.details.engine = $scope.database.engine;
-
-        function validateConnectionDetails(onConnectionValidationFailed) {
-            console.log('attempting to connect with SSL set to: ', $scope.details.ssl);
-
-            Metabase.validate_connection($scope.details, function() {
-                // Connection valid, save the DB
-                console.log('connection successful.');
-
-                var engine = $scope.database.engine,
-                    database = {
-                        org: $scope.currentOrg.id,
-                        name: $scope.database.name,
-                        engine: engine,
-                        details: $scope.ENGINES[engine].buildDetails($scope.details)
-                    };
-
-                function onCreateOrUpdateDBSuccess(result) {
-                    $location.path('/setup/data');
-                }
-
-                function onCreateOrUpdateDBError(err) {
-                    $scope.error = err;
-                    console.log('error', err);
-                }
-
-                if (newConnection) {
-                    Metabase.db_create(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
-                } else {
-                    // add the id since we're updating
-                    database.id = $scope.database.id;
-                    Metabase.db_update(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
-                }
-            }, onConnectionValidationFailed);
-        }
-
-        function displayConnectionValidationError(error) {
-            console.log(error);
-            $scope.error = 'Connection failed: ' + error.data.message;
-        }
-
-        // now perform the connection validation
-        if (newConnection) {
-            // if this is a new connection we'll try SSL first and if that fails we'll retry without it
-            $scope.details.ssl = true;
-            validateConnectionDetails(function(error) {
-                // try again without SSL
-                $scope.details.ssl = false;
-                validateConnectionDetails(displayConnectionValidationError);
-            });
-        } else {
-            validateConnectionDetails(displayConnectionValidationError);
-        }
-    };
-}]);
-
-SetupControllers.controller('SetupData', ['$scope', 'Metabase', function($scope, Metabase) {
-    $scope.$watch('currentOrg', function(org) {
-        if (!org) return;
-
-        Metabase.db_list({
-                'orgId': org.id
-            },
-            function(result) {
-                $scope.databases = result;
-            },
-            function(error) {
-                console.log('error', error);
-            }
-        );
-    });
-}]);
