@@ -1,0 +1,90 @@
+{
+  "databaseChangeLog": [
+    {
+      "changeSet": {
+        "id": "6",
+        "author": "agilliland",
+        "changes": [
+          {
+            "dropNotNullConstraint": {
+              "tableName": "metabase_database",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "metabase_database",
+              "constraintName": "fk_database_ref_organization_id"
+            }
+          },
+          {
+            "dropNotNullConstraint": {
+              "tableName": "report_card",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "report_card",
+              "constraintName": "fk_card_ref_organization_id"
+            }
+          },
+          {
+            "dropNotNullConstraint": {
+              "tableName": "report_dashboard",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "report_dashboard",
+              "constraintName": "fk_dashboard_ref_organization_id"
+            }
+          },
+          {
+            "dropNotNullConstraint": {
+              "tableName": "report_emailreport",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "report_emailreport",
+              "constraintName": "fk_emailreport_ref_organization_id"
+            }
+          },
+          {
+            "dropNotNullConstraint": {
+              "tableName": "report_emailreportexecutions",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "report_emailreportexecutions",
+              "constraintName": "fk_emailreportexecutions_ref_organization_id"
+            }
+          },
+          {
+            "dropNotNullConstraint": {
+              "tableName": "annotation_annotation",
+              "columnDataType": "int",
+              "columnName": "organization_id"
+            }
+          },
+          {
+            "dropForeignKeyConstraint": {
+              "baseTableName": "annotation_annotation",
+              "constraintName": "fk_annotation_ref_organization_id"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
