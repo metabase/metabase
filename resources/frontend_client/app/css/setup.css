@@ -1,3 +1,7 @@
+:root {
+    --indicator-size: 3.000em; /* ~ 42 px */
+    --indicator-border-radius: 99px;
+}
 .WelcomeMessage {
     margin-top: 4em;
     margin-bottom: 4em;
@@ -32,21 +36,14 @@
 }
 
 .SetupStep-indicator {
-    left: -1em;
-    width: 2em;
-    height: 2em;
-    border-radius: 99px;
+    left: calc((var(--indicator-size) / 2) * -1);
+    width: var(--indicator-size);
+    height: var(--indicator-size);
+    border-radius: var(--indicator-border-radius);
+    /* need to set font size to */
     font-size: 1em;
     line-height: 1;
     background-color: #fff;
-}
-
-.SetupStep-title {
-
-}
-
-.SetupStep-number {
-
 }
 
 .SetupStep-check {
