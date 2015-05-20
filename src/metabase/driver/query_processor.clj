@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.models.field :refer [Field field->fk-table]])
+            [metabase.models.field :refer [Field field->fk-table]]
+            [metabase.util :as u])
   (:import [metabase.driver.interface QPField QPValue]))
 
 (declare get-special-column-info
