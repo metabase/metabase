@@ -120,7 +120,7 @@
   (filter:or                 [this subclauses])
   (filter:simple             [this subclause])
 
-  (filter-subclause:inside   [this & {:keys [^QPField lat-field ^QPField lon-field ^QPValue lat-min ^QPValue lat-max ^QPValue lon-min ^QPValue lon-max]}])
+  (filter-subclause:inside   [this {:keys [^QPField lat, ^QPValue lat-min, ^QPValue lat-max, ^QPField lon, ^QPValue lon-min, ^QPValue lon-max]}])
   (filter-subclause:not-null [this ^QPField field])
   (filter-subclause:null     [this ^QPField field])
   (filter-subclause:between  [this ^QPField field ^QPValue min ^QPValue max])

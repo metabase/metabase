@@ -194,7 +194,7 @@
     (i/create-native-query-processor driver database-id raw-query)))
 
 
-;; ## StructuredQuery Processor
+;; ## Structured Query Processor
 
 (defn- resolve-field ^QPField [^Integer field-id]
   (let [field (sel :one :fields [Field :name :base_type] :id field-id)]
@@ -211,24 +211,82 @@
 
 (defn- process-aggregation [qp clause]
   (match clause
-    ["rows"]  (i/aggregation:rows qp)
-    ["count"] (i/aggregation:rows-count qp)))
+    ["rows"]              (i/aggregation:rows        qp)
+    ["count"]             (i/aggregation:rows-count  qp)
+    ["avg" field-id]      (i/aggregation:avg         qp (resolve-field field-id))
+    ["count" field-id]    (i/aggregation:field-count qp (resolve-field field-id))
+    ["distinct" field-id] (i/aggregation:distinct    qp (resolve-field field-id))
+    ["stddev" field-id]   (i/aggregation:stddev      qp (resolve-field field-id))
+    ["sum" field-id]      (i/aggregation:sum         qp (resolve-field field-id))
+    ["cum_sum" field-id]  (i/aggregation:cum-sum     qp (resolve-field field-id))))
 
+;; ## Breakout
+
+(defn- process-breakout [qp field-ids]
+  (i/breakout qp (mapv resolve-field field-ids)))
+
+;; ## Fields
+
+(defn- process-fields [qp field-ids]
+  (i/fields-clause qp (mapv resolve-field field-ids)))
 
 ;; ### Filter
 
 (defn- process-filter-subclause [qp subclause]
   (match subclause
-    ["BETWEEN" field-id min max] (with-resolved-field [field field-id]
-                                   (i/filter-subclause:between qp field (resolve-value min) (resolve-value max)))))
+    ["INSIDE" lat-field-id lon-field-id
+     lat-max lon-min lat-min lon-max] (with-resolved-field [lat-field lat-field-id]
+                                        (with-resolved-field [lon-field lon-field-id]
+                                          (i/filter-subclause:inside qp {:lat     lat-field
+                                                                         :lat-min (resolve-value lat-min)
+                                                                         :lat-max (resolve-value lat-max)
+                                                                         :lon     lon-field
+                                                                         :lon-min (resolve-value lon-min)
+                                                                         :lon-max (resolve-value lon-max)})))
+     ["NOT_NULL" field-id]            (i/filter-subclause:not-null qp (resolve-field field-id))
+     ["IS_NULL"  field-id]            (i/filter-subclause:null     qp (resolve-field field-id))
+     ["BETWEEN"  field-id min max]    (with-resolved-field [field field-id]
+                                        (i/filter-subclause:between qp field (resolve-value min) (resolve-value max)))
+     ["="  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:=  qp field (resolve-value value)))
+     ["!=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:!= qp field (resolve-value value)))
+     ["<"  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:<  qp field (resolve-value value)))
+     [">"  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:>  qp field (resolve-value value)))
+     ["<=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:<= qp field (resolve-value value)))
+     [">=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:>= qp field (resolve-value value)))))
 
 (defn- process-filter [qp clause]
   (match clause
     ["AND" & subclauses] (i/filter:and qp (mapv (partial process-filter-subclause qp)
-                                              subclauses))
+                                                subclauses))
     ["OR"  & subclauses] (i/filter:or  qp (mapv (partial process-filter-subclause qp)
-                                              subclauses))
+                                                subclauses))
     subclause            (i/filter:simple qp (process-filter-subclause qp subclause))))
+
+;; ## ORDER_BY
+
+(defn- process-order-by [qp subclauses]
+  (i/order-by qp (mapv (fn [[field-id asc-desc]]
+                         (with-resolved-field [field field-id]
+                           (case asc-desc
+                             "ascending"  (i/order-by-subclause:asc  qp field)
+                             "descending" (i/order-by-subclause:desc qp field))))
+                       subclauses)))
+
+;; ## PAGE
+
+(defn- process-page [qp {:keys [page items]}]
+  {:pre [(integer? page)
+         (> page 0)
+         (integer? items)]}
+  (i/limit-clause qp items)
+  (i/offset-clause qp (* (- page 1)
+                         items)))
 
 ;; ## PROCESS
 
@@ -239,7 +297,12 @@
     (doseq [[clause-name clause-value] query]
       (match clause-name
         :aggregation  (process-aggregation qp clause-value)
-        :filter       (process-filter qp clause-value)
+        :breakout     (process-breakout    qp clause-value)
+        :fields       (process-fields      qp clause-value)
+        :filter       (process-filter      qp clause-value)
+        :limit        (i/limit-clause      qp clause-value)
+        :order_by     (process-order-by    qp clause-value)
+        :page         (process-page        qp clause-value)
         :source_table nil))
     (i/eval-structured-query qp))
 
