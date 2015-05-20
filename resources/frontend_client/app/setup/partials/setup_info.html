@@ -69,7 +69,7 @@
 
                 <!-- Bottom Actions -->
                 <div class="Form-actions">
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details, false)" ng-disabled="!form.$valid || !database.engine">
+                    <button class="Button" mb-action-button="saveNoRedirect" success-text="Saved!" failed-text="Failed!" active-text="Validating " ng-disabled="!form.$valid || !database.engine">
                         Save
                     </button>
                     <mb-form-message></mb-form-message>
