@@ -22,18 +22,13 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
             database: false
         };
 
+        if (AppState.model.currentUser) {
+            $location.path('/');
+        }
+
         $scope.newUser = {};
 
-        $scope.setActiveStep = function(name) {
-            console.log(name);
-            if (name === "user") {
-                $scope.activeStep = "user";
-            } else if (name === "database" && $scope.completedSteps.user) {
-                $scope.activeStep = "database";
-            } else if (name === "finish" && $scope.completedSteps.user && $scope.completedSteps.database) {
-                $scope.activeStep = "finish";
-            }
-        }
+
 
         $scope.$on("database:created", function(event, database) {
             $timeout(function() {
