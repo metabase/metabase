@@ -110,7 +110,6 @@
   (aggregation:distinct      [this ^QPField field])
   (aggregation:stddev        [this ^QPField field])
   (aggregation:sum           [this ^QPField field])
-  (aggregation:cum-sum       [this ^QPField field])
 
   (breakout                  [this fields])
 

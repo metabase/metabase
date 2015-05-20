@@ -217,8 +217,7 @@
     ["count" field-id]    (i/aggregation:field-count qp (resolve-field field-id))
     ["distinct" field-id] (i/aggregation:distinct    qp (resolve-field field-id))
     ["stddev" field-id]   (i/aggregation:stddev      qp (resolve-field field-id))
-    ["sum" field-id]      (i/aggregation:sum         qp (resolve-field field-id))
-    ["cum_sum" field-id]  (i/aggregation:cum-sum     qp (resolve-field field-id))))
+    ["sum" field-id]      (i/aggregation:sum         qp (resolve-field field-id))))
 
 ;; ## Breakout
 
@@ -294,17 +293,18 @@
   StructuredQuery
   (process [query qp]
     {:pre [(:aggregation query)]}
-    (doseq [[clause-name clause-value] query]
-      (match clause-name
-        :aggregation  (process-aggregation qp clause-value)
-        :breakout     (process-breakout    qp clause-value)
-        :fields       (process-fields      qp clause-value)
-        :filter       (process-filter      qp clause-value)
-        :limit        (i/limit-clause      qp clause-value)
-        :order_by     (process-order-by    qp clause-value)
-        :page         (process-page        qp clause-value)
-        :source_table nil))
-    (i/eval-structured-query qp))
+    (when-not (zero? (:source_table query))
+      (doseq [[clause-name clause-value] query]
+        (match clause-name
+          :aggregation  (process-aggregation qp clause-value)
+          :breakout     (process-breakout    qp clause-value)
+          :fields       (process-fields      qp clause-value)
+          :filter       (process-filter      qp clause-value)
+          :limit        (i/limit-clause      qp clause-value)
+          :order_by     (process-order-by    qp clause-value)
+          :page         (process-page        qp clause-value)
+          :source_table nil))
+      (i/eval-structured-query qp)))
 
   NativeQuery
   (process [_ qp]
