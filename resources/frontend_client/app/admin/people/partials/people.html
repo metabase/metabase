@@ -1,6 +1,6 @@
 <div class="wrapper">
     <section class="PageHeader clearfix">
-        <a class="Button Button--primary float-right" cv-org-href="/admin/people/add">Add person</a>
+        <a class="Button Button--primary float-right" href="/admin/people/add">Add person</a>
         <h2 class="PageTitle">People</h2>
     </section>
 
@@ -13,17 +13,17 @@
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="perm in people">
+                <tr ng-repeat="user in people">
                     <td>
-                        {{perm.user.common_name}} <span ng-show="perm.admin" class="AdminBadge">Admin</span>
+                        {{user.common_name}} <span ng-show="user.is_superuser" class="AdminBadge">Admin</span>
                     </td>
                     <td class="Table-actions">
-                        <button class="Button" ng-click="toggle(perm.user.id)">
-                            <span ng-show="perm.admin">Revoke</span>
-                            <span ng-show="!perm.admin">Grant</span>
+                        <button class="Button" ng-click="toggle(user.id)">
+                            <span ng-show="user.is_superuser">Revoke</span>
+                            <span ng-show="!user.is_superuser">Grant</span>
                             admin
                         </button>
-                        <button class="Button Button--danger" ng-click="delete(perm.user.id)" delete-confirm>Remove</button>
+                        <button class="Button Button--danger" ng-click="delete(user.id)" delete-confirm>Remove</button>
                     </td>
                 </tr>
             </tbody>

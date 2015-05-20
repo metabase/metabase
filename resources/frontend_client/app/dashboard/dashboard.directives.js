@@ -42,7 +42,6 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
                     var existingDashboardsById = {};
 
                     Dashboard.list({
-                        'orgId': $scope.card.organization.id,
                         'filterMode': 'all'
                     }, function(result) {
                         if (result && !result.error) {
@@ -63,7 +62,6 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
                         } else if ($scope.card) {
                             // populate a new Dash object
                             var newDash = {
-                                'organization': $scope.card.organization.id,
                                 'name': $scope.addToDashForm.newDashName,
                                 'public_perms': 0
                             };

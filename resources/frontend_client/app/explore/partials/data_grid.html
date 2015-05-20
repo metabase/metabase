@@ -138,7 +138,7 @@
             <tbody>
                 <tr ng-repeat="row in data.rows track by $index">
                     <td ng-repeat="coldef in table_metadata.fields track by $index" ng-if="coldef.preview_display">
-                        <a ng-if="isLinkable(coldef)" cv-org-href="{{buildEntityLink(coldef, row[coldef.colindex])}}">{{row[coldef.colindex]}}</a>
+                        <a ng-if="isLinkable(coldef)" href="{{buildEntityLink(coldef, row[coldef.colindex])}}">{{row[coldef.colindex]}}</a>
                         <span ng-if="!isLinkable(coldef)">
                             <span ng-if="isNumber(coldef)">{{row[coldef.colindex] | number : 2}}</span>
                             <span ng-if="!isNumber(coldef)">{{row[coldef.colindex] | limitTo : 24}}</span>

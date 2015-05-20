@@ -14,15 +14,15 @@ var Card = angular.module('corvus.card', [
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/:orgSlug/card/', {
+    $routeProvider.when('/card/', {
         templateUrl: '/app/card/partials/card_list.html',
         controller: 'CardList'
     });
-    $routeProvider.when('/:orgSlug/card/create/', {
+    $routeProvider.when('/card/create/', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
-    $routeProvider.when('/:orgSlug/card/:cardId', {
+    $routeProvider.when('/card/:cardId', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });

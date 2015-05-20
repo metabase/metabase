@@ -19,7 +19,7 @@
             <li class="List-item List-section" ng-repeat="dash in dashboards | filter:searchFilter">
                 <span class="List-timeStamp float-right">{{dash.updated_at | date : 'MMM d, y, hh:mm a'}}</span>
                 <h3>
-                    <a class="link text-normal" cv-org-href="/dash/{{dash.id}}">{{dash.name}}</a>
+                    <a class="link text-normal" href="/dash/{{dash.id}}">{{dash.name}}</a>
                 </h3>
                 <p>{{dash.description}}</p>
                 {{dash.creator.common_name}}

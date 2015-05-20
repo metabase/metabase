@@ -37,7 +37,7 @@
                     </div>
                     <ul class="float-left ml4">
                         <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
+                            <a class="NavItem NavItem-withIcon" href="/dash/" selectable-nav-item="dashboards">
                                 <div class="IconWrapper">
                                     <cv-dashboards-icon></cv-dashboards-icon>
                                 </div>
@@ -45,7 +45,7 @@
                             </a>
                         </li>
                         <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
+                            <a class="NavItem NavItem-withIcon" href="/card/" selectable-nav-item="cards">
                                 <div class="IconWrapper">
                                     <cv-cards-icon></cv-cards-icon>
                                 </div>
@@ -53,7 +53,7 @@
                             </a>
                         </li>
                         <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
+                            <a class="NavItem NavItem-withIcon" href="/explore/" selectable-nav-item="explore">
                                 <div class="IconWrapper">
                                     <cv-explore-icon></cv-explore-icon>
                                 </div>
@@ -70,8 +70,7 @@
                             </a>
                             <ul class="Dropdown-content right">
                                 <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-                                <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
-                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/superadmin/">Site Administration</a></li>
+                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/admin/">Administration</a></li>
                                 <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
                             </ul>
                         </li>
@@ -103,44 +102,18 @@
                     <!-- admin sections -->
                     <ul class="ml4 flex flex-full">
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/org')}" cv-org-href="/admin/org/">
-                                <span class="NavItem-text">Organization</span>
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
+                                <span class="NavItem-text">Settings</span>
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" href="/admin/people/">
                                 <span class="NavItem-text">People</span>
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases/">
+                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
                                 <span class="NavItem-text">Databases</span>
-                            </a>
-                        </li>
-                    </ul>
-
-                    <!-- user profile dropdown -->
-                    <mb-profile-link user="user" context="nav"></mb-profile-link>
-                </div>
-            </nav>
-
-            <!-- SITE ADMINISTRATION (SUPER ADMIN) NAV -->
-            <nav class="AdminNav" ng-show="nav === 'superadmin'">
-                <div class="wrapper flex align-center">
-                    <div class="NavTitle flex align-center">
-                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
-                        <span class="NavItem-text ml1">Site Administration</span>
-                    </div>
-
-                    <ul class="ml4 flex flex-full">
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/settings')}" href="/superadmin/settings/">
-                                <span class="NavItem-text">Global Settings</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">
-                                <span class="NavItem-text">Organizations</span>
                             </a>
                         </li>
                     </ul>
