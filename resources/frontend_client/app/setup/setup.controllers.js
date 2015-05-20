@@ -23,7 +23,6 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
         };
 
         $scope.newUser = {};
-        $scope.userOrgName = "";
 
         $scope.setActiveStep = function(name) {
             console.log(name);
@@ -107,13 +106,13 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
             if (AppState.model.currentOrg) {
                 return Organization.update({
                     'id': AppState.model.currentOrg.id,
-                    'name': $scope.userOrgName,
-                    'slug': $scope.userOrgName
+                    'name': $scope.newUser.orgName,
+                    'slug': $scope.newUser.orgName
                 }).$promise;
             } else {
                 return Organization.create({
-                    'name': $scope.userOrgName,
-                    'slug': $scope.userOrgName
+                    'name': $scope.newUser.orgName,
+                    'slug': $scope.newUser.orgName
                 }).$promise.then(function(org) {
                     console.log('first org created', org);
 
@@ -125,8 +124,6 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
         }
 
         $scope.createOrgAndUser = function() {
-            console.log("currentOrg", AppState.model.currentOrg);
-            console.log("currentUser", AppState.model.currentUser);
             // start off by creating the first user of the system
             // NOTE: this should both create the user AND log us in and return a session id
             createOrUpdateUser().then(function() {

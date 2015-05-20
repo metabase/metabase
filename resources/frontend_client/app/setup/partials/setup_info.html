@@ -1,6 +1,6 @@
 <div class="SetupSteps wrapper wrapper-max-sm">
     <section class="SetupStep bordered rounded relative" ng-class="{ 'SetupStep--active' : activeStep == 'user', 'SetupStep--completed' : completedSteps.user }">
-            <div class="flex align-center py2" ng-click="setActiveStep('user')">
+            <div class="flex align-center py2" ng-click="activeStep = 'user'">
                 <span class="SetupStep-indicator flex layout-centered absolute bordered">
                     <span class="SetupStep-number">1</span>
                     <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
@@ -40,7 +40,7 @@
 
                 <div class="Form-field" mb-form-field="organization">
                     <mb-form-label display-name="Organization name" field-name="password"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Organization name" ng-model="userOrgName" autofocus required>
+                    <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Organization name" ng-model="newUser.orgName" autofocus required>
                     <span class="Form-charm"></span>
                 </div>
 
@@ -56,7 +56,7 @@
     </section>
 
     <section class="SetupStep bordered border-dashed rounded relative" ng-class="{ 'SetupStep--active' : activeStep == 'database', 'SetupStep--completed' : completedSteps.database }">
-        <div class="flex align-center py2" ng-click="setActiveStep('database')">
+        <div class="flex align-center py2">
             <span class="SetupStep-indicator flex layout-centered absolute bordered">
                 <span class="SetupStep-number">2</span>
                 <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
