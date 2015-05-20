@@ -1,5 +1,5 @@
-<div class="SetupSteps wrapper wrapper-max-sm">
-    <section class="SetupStep bordered rounded relative" ng-class="{ 'SetupStep--active' : activeStep == 'user', 'SetupStep--completed' : completedSteps.user }">
+<div class="SetupSteps flex flex-column layout-centered wrapper wrapper-max-sm">
+    <section class="SetupStep bordered rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
             <div class="flex align-center py2">
                 <span class="SetupStep-indicator flex layout-centered absolute bordered">
                     <span class="SetupStep-number">1</span>
@@ -9,14 +9,8 @@
             </div>
             <form class="Form-new" name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
                 <div class="Form-field" mb-form-field="first_name">
-                    <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="first_name" placeholder="John" ng-model="newUser.first_name" required autofocus />
-                    <span class="Form-charm"></span>
-                </div>
-
-                <div class="Form-field" mb-form-field="last_name">
-                    <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="last_name" placeholder="Doe" ng-model="newUser.last_name" required />
+                    <mb-form-label display-name="Your name" field-name="name"></mb-form-label>
+                    <input class="Form-input Form-offset full" name="name" placeholder="Johnny Appleseed" ng-model="newUser.name" required autofocus />
                     <span class="Form-charm"></span>
                 </div>
 
@@ -39,14 +33,14 @@
                 </div>
 
                 <div class="Form-field" mb-form-field="organization">
-                    <mb-form-label display-name="Organization name" field-name="password"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Organization name" ng-model="userOrgName" autofocus required>
+                    <mb-form-label display-name="Your company or team name" field-name="password"></mb-form-label>
+                    <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Department of awesome" ng-model="userOrgName" autofocus required>
                     <span class="Form-charm"></span>
                 </div>
 
                 <div class="Form-actions">
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(newUser)" ng-disabled="!form.$valid">
-                        Create
+                        Next
                     </button>
                 </div>
             </form>
@@ -55,7 +49,7 @@
           </div>
     </section>
 
-    <section class="SetupStep bordered border-dashed rounded relative" ng-class="{ 'SetupStep--active' : activeStep == 'database', 'SetupStep--completed' : completedSteps.database }">
+    <section class="SetupStep bordered border-dashed rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'database', 'SetupStep--completed shadowed' : completedSteps.database }">
         <div class="flex align-center py2">
             <span class="SetupStep-indicator flex layout-centered absolute bordered">
                 <span class="SetupStep-number">2</span>

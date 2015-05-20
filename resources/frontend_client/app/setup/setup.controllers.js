@@ -4,6 +4,7 @@ var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metab
 
 SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
     function($scope, $routeParams, $location, $timeout, ipCookie, Organization, AppState, Setup, Metabase, CorvusCore) {
+
         $scope.activeStep = "user";
         $scope.completedSteps = {
             user: false,
@@ -18,15 +19,17 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
         });
 
         $scope.createOrgAndUser = function() {
-            console.log("$scope.newUser.email", $scope.newUser.email)
-
+            var name = $scope.newUser.name.split(' ')
+            var firstName = name[0];
+            var lastName = name[1];
+            debugger;
             // start off by creating the first user of the system
             // NOTE: this should both create the user AND log us in and return a session id
             Setup.create_user({
                 'token': AppState.model.setupToken,
                 'email': $scope.newUser.email,
-                'first_name': $scope.newUser.firstName,
-                'last_name': $scope.newUser.lastName,
+                'first_name': firstName,
+                'last_name': lastName,
                 'password': $scope.newUser.password
             }, function(result) {
                 // result should have a single :id value which is our new session id

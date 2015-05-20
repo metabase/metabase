@@ -1,6 +1,9 @@
 :root {
     --form-padding: 1em;
     --form-input-placeholder-color: #C0C0C0;
+    --form-input-size: 1.571rem;
+
+    --form-label-color: #949494;
 }
 
 /* TODO: deprecate this base object, it shouldn't be this specific */
@@ -16,7 +19,7 @@
 /* TODO: combine this and the scoped version */
 .Form-label {
   display: block;
-  color: #777;
+  color: var(--form-label-color);
   font-size: 1.2rem;
 }
 
@@ -42,10 +45,11 @@
 .Form-input {
     padding-top: 0.8em;
     padding-bottom: 0.8em;
-    font-size: 1.185em;
+    font-size: var(--form-input-size);
     border: none;
     background-color: transparent;
     transition: color .3s linear;
+    font-family: var(--default-font-family);
 }
 
 .Form-input:focus {
@@ -53,7 +57,7 @@
 }
 
 .Form-offset {
-    padding-left: 2.25rem;
+    padding-left: 2.4rem;
 }
 
 .Form-charm {

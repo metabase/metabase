@@ -21,9 +21,12 @@
 .SetupSteps {
 }
 
+.SetupNav {
+    border-bottom: 1px solid #f5f5f5;
+}
+
 .SetupStep {
-    margin-top: 3em;
-    margin-bottom: 3em;
+    margin-bottom: 1.714em;
     background-color: var(--alt-bg-color);
 }
 
@@ -40,8 +43,7 @@
     width: var(--indicator-size);
     height: var(--indicator-size);
     border-radius: var(--indicator-border-radius);
-    /* need to set font size to */
-    font-size: 1em;
+    font-weight: bold;
     line-height: 1;
     background-color: #fff;
 }
