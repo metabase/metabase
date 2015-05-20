@@ -1,3 +1,9 @@
+<!-- SETUP NAV -->
+<nav class="SetupNav text-brand py4 flex layout-centered">
+    <cv-logo-icon class="mr2" width="41" height="51"></cv-logo-icon>
+    metabase
+</nav>
+
 <div class="SetupSteps flex flex-column layout-centered wrapper wrapper-max-sm">
     <section class="SetupStep bordered rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
             <div class="flex align-center py4" ng-click="activeStep = 'user'">
@@ -71,7 +77,7 @@
 
                 <!-- Bottom Actions -->
                 <div class="Form-actions">
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details, false)" ng-disabled="!form.$valid || !database.engine">
+                    <button class="Button" mb-action-button="saveNoRedirect" success-text="Saved!" failed-text="Failed!" active-text="Validating " ng-disabled="!form.$valid || !database.engine">
                         Save
                     </button>
                     <mb-form-message></mb-form-message>
@@ -88,7 +94,7 @@
         </div>
         <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
 
-        <button class="Button Button--primary">Take me to my data</button>
+        <a class="Button Button--primary" href="/">Take me to my data</a>
     </section>
 
 </div>

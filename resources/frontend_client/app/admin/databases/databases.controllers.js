@@ -58,11 +58,12 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_update(database, function(updated_database) {
+            return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
@@ -71,7 +72,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_create(database, function(new_database) {
+            return Metabase.db_create(database).$promise.then(function(new_database) {
                 if (redirectToDetail) {
                     $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
                 }
@@ -79,16 +80,16 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 $scope.$emit("database:created", new_database);
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
-        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
-        $scope.save = function(database, details, redirectToDetail) {
-            if (arguments.length < 3) {
+        var save = function(database, details, redirectToDetail) {
+            if (redirectToDetail === undefined) {
                 redirectToDetail = true;
             }
             if ($routeParams.databaseId) {
-                update(database, details);
+                return update(database, details);
             } else {
                 // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
                 details.ssl = true;
@@ -96,16 +97,30 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 // add 'engine' to the request body
                 details.engine = database.engine;
 
-                Metabase.validate_connection(details, function() {
-                    console.log('Successfully connected with SSL. Setting SSL = true.');
-                    create(database, details, redirectToDetail);
-                }, function() {
-                    console.log('Unable to connect with SSL. Setting SSL = false.');
+                return Metabase.validate_connection(details).$promise.catch(function() {
+                    console.log('Unable to connect with SSL. Trying with SSL = false.');
                     details.ssl = false;
-                    create(database, details, redirectToDetail);
+                    return Metabase.validate_connection(details).$promise;
+                }).then(function() {
+                    console.log("simulating timeout")
+                    console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
+                    return create(database, details, redirectToDetail);
+                }).catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
                 });
             }
         };
+
+        $scope.save = save;
+
+        $scope.saveAndRedirect = function() {
+            return save($scope.database, $scope.details, true)
+        }
+
+        $scope.saveNoRedirect = function() {
+            return save($scope.database, $scope.details, false)
+        }
 
         $scope.sync = function() {
             var call = Metabase.db_sync_metadata({
