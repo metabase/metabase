@@ -6,6 +6,12 @@ var Setup = angular.module('corvus.setup', [
 ]);
 
 Setup.config(['$routeProvider', function($routeProvider) {
+
+    $routeProvider.when('/setup/init/:setupToken', {
+        template: '',
+        controller: 'SetupInit'
+    });
+
     $routeProvider.when('/setup/welcome', {
         templateUrl: '/app/setup/partials/setup_welcome.html'
     });
