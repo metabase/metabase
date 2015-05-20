@@ -4,9 +4,12 @@
             [korma.core :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [interface :refer :all]
+                             [query-processor]
                              [sync :as driver-sync])
             (metabase.driver.generic-sql [query-processor :as qp]
-                                         [util :refer :all])))
+                                         [query-processor-2 :as qp2]
+                                         [util :refer :all]))
+  (:import [metabase.driver.generic_sql.query_processor_2 GenericSQLQueryProcessor]))
 
 (defrecord SqlDriver [column->base-type
                       connection-details->connection-spec
@@ -90,4 +93,17 @@
                                           (aggregate (count :*) :count)
                                           (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
                               0)]
-            (float (/ url-count total-non-null-count)))))))
+            (float (/ url-count total-non-null-count))))))
+
+  ;; ## -------------------- Query Processor 2.0 --------------------
+
+  IQueryProcessorFactory
+  (create-native-query-processor [this database-id native-query]
+    ;; TODO !
+    )
+
+  (create-structured-query-processor [_ database-id source-table-id query]
+    (qp2/->GenericSQLQueryProcessor database-id
+                                    source-table-id
+                                    query
+                                    (atom []))))

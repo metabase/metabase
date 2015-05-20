@@ -1,6 +1,8 @@
 (ns metabase.driver.interface
   "Protocols that DB drivers implement. Thus, the interface such drivers provide.")
 
+(set! *warn-on-reflection* true)
+
 ;; ## IDriver Protocol
 
 (defprotocol IDriver
@@ -33,8 +35,8 @@
   (table-pks [this table]
     "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).")
 
-  ;; Query Processing
-  (process-query [this query]
+  ;; Query Processing DEPRECATED!
+  (process-query ^:deprecated [this query]
     "Process a native or structured query.
      (Don't use this directly; instead, use `metabase.driver/process-query`,
      which does things like preprocessing before calling the appropriate implementation.)"))
@@ -80,3 +82,77 @@
    If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
   (field-percent-urls [this field]
     "Return the percentage of non-nil values of textual FIELD that are valid URLs."))
+
+
+;; # ---------------------------------------- Query Processor 3.0 Interface ----------------------------------------
+
+;; ## Types + Records
+
+(deftype QPField [^Integer id
+                  ^String name
+                  ^clojure.lang.Keyword base-type])
+
+(deftype QPValue [value
+                  ^clojure.lang.Keyword base-type])
+
+
+(defprotocol IQueryProcessor
+  "Methods that both structured + native query processors should implement."
+  (annotate-results [this results]))
+
+;; ## IStructuredQueryProcessor
+
+(defprotocol IStructuredQueryProcessor
+  (aggregation:rows          [this])
+  (aggregation:rows-count    [this])
+  (aggregation:avg           [this ^QPField field])
+  (aggregation:field-count   [this ^QPField field])
+  (aggregation:distinct      [this ^QPField field])
+  (aggregation:stddev        [this ^QPField field])
+  (aggregation:sum           [this ^QPField field])
+  (aggregation:cum-sum       [this ^QPField field])
+
+  (breakout                  [this fields])
+
+  (fields-clause             [this fields])
+
+  (filter:and                [this subclauses])
+  (filter:or                 [this subclauses])
+  (filter:simple             [this subclause])
+
+  (filter-subclause:inside   [this & {:keys [^QPField lat-field ^QPField lon-field ^QPValue lat-min ^QPValue lat-max ^QPValue lon-min ^QPValue lon-max]}])
+  (filter-subclause:not-null [this ^QPField field])
+  (filter-subclause:null     [this ^QPField field])
+  (filter-subclause:between  [this ^QPField field ^QPValue min ^QPValue max])
+  (filter-subclause:=        [this ^QPField field ^QPValue value])
+  (filter-subclause:!=       [this ^QPField field ^QPValue value])
+  (filter-subclause:<        [this ^QPField field ^QPValue value])
+  (filter-subclause:>        [this ^QPField field ^QPValue value])
+  (filter-subclause:<=       [this ^QPField field ^QPValue value])
+  (filter-subclause:>=       [this ^QPField field ^QPValue value])
+
+  (limit-clause              [this ^Integer limit])
+
+  (order-by                  [this subclauses])
+
+  (order-by-subclause:asc    [this ^QPField field])
+  (order-by-subclause:desc   [this ^QPField field])
+
+  ;; PAGE can just be implemented as limit + offset
+  (offset-clause             [this ^Integer offset])
+
+  (eval-structured-query     [this]))
+
+
+;; ## INativeQueryProcessor
+
+(defprotocol INativeQueryProcessor
+  (eval-native-query [this]))
+
+
+;; ## IQueryProcessorFactory
+
+(defprotocol IQueryProcessorFactory
+  "Drivers should *definitely* implement this!"
+  (create-native-query-processor     [this, ^Integer database-id, ^String native-query])
+  (create-structured-query-processor [this, ^Integer database-id, ^Integer source-table-id, query]))
