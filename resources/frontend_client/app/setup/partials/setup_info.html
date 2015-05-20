@@ -1,6 +1,6 @@
 <div class="SetupSteps wrapper">
     <section class="SetupStep bordered rounded shadowed relative" ng-class="{ 'SetupStep--active' : activeStep == 'user', 'SetupStep--completed' : completedSteps.user }">
-            <div>
+            <div ng-click="setActiveStep('user')">
                 <span class="SetupStep-indicator flex layout-centered absolute bordered">
                     <span class="SetupStep-number">1</span>
                     <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
@@ -56,7 +56,7 @@
     </section>
 
     <section class="SetupStep bordered rounded shadowed relative" ng-class="{ 'SetupStep--active' : activeStep == 'database', 'SetupStep--completed' : completedSteps.database }">
-        <div>
+        <div ng-click="setActiveStep('database')">
             <span class="SetupStep-indicator flex layout-centered absolute bordered">
                 <span class="SetupStep-number">2</span>
                 <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
@@ -70,7 +70,7 @@
 
                 <!-- Bottom Actions -->
                 <div class="Form-actions">
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details, false)" ng-disabled="!form.$valid">
+                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details, false)" ng-disabled="!form.$valid || !database.engine">
                         Save
                     </button>
                     <mb-form-message></mb-form-message>
@@ -89,4 +89,5 @@
 
         <button class="Button Button--primary">Take me to my data</button>
     </section>
+
 </div>
