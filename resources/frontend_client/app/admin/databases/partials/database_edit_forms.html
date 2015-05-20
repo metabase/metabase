@@ -4,9 +4,9 @@
         <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
         <ul ng-show="!database.engine">
             <li ng-repeat="(type, properties) in ENGINES">
-                <button ng-click="database.engine = type">
+                <div ng-click="database.engine = type">
                     {{properties.name}}
-                </button>
+                </div>
             </li>
         </ul>
         <div ng-show="database.engine">

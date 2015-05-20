@@ -28,6 +28,9 @@
 .SetupStep {
     margin-bottom: 1.714em;
     background-color: var(--alt-bg-color);
+    transition: background .3s linear;
+    transition: background .3s linear;
+    flex: 1;
 }
 
 .SetupStep.SetupStep--active {
@@ -36,6 +39,7 @@
 
 .SetupStep.SetupStep--completed {
     color: var(--success-color);
+    background-color: #fff;
 }
 
 .SetupStep-indicator {
