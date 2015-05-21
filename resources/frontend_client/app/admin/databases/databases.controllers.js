@@ -3,6 +3,48 @@
 
 var DatabasesControllers = angular.module('corvusadmin.databases.controllers', ['corvus.metabase.services']);
 
+DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$routeParams', '$location', 'Metabase',
+    function($scope, $route, $routeParams, $location, Metabase) {
+        $scope.pane = "data";
+
+        $scope.tableFields = {};
+
+        Metabase.db_get({
+            'dbId': $routeParams.databaseId
+        }, function(database) {
+            $scope.database = database;
+        }, function(error) {
+            console.log('error loading database', error);
+            if (error.status == 404) {
+                $location.path('/admin/databases');
+            }
+        });
+
+        Metabase.db_tables({
+            'dbId': $routeParams.databaseId
+        }).$promise.then(function(tables) {
+            $scope.tables = tables;
+            $scope.tables.forEach(function(table) {
+                Metabase.table_query_metadata({
+                    'tableId': table.id
+                }, function(result) {
+                    $scope.tableFields[table.id] = result;
+                }, function(error) {
+                    console.log(error);
+                });
+            });
+            if ($routeParams.tableId !== undefined) {
+                $scope.currentTable = tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
+                if (!$scope.currentTable) {
+                    $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
+                }
+            }
+        }, function(error) {
+
+        });
+    }
+]);
+
 DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
 
     $scope.delete = function(databaseId) {

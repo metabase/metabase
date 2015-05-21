@@ -139,7 +139,45 @@
     transition: opacity .2s linear;
 }
 
+.DatabaseListItem .h4 {
+    line-height: 0.8em;
+}
+
+.DatabaseListItem--active {
+    background-color: rgb(227,238,250);
+}
+.DatabaseListItem--active .h4, .DatabaseListItem--active .h5, .DatabaseListItem--active .h6 {
+    color: rgb(74,144,226) !important;
+}
+
 /* TODO: this is for the ace editor and should be handled without an ID */
 #id_sql {
     height: 200px;
+}
+
+.DatabaseTablesAdmin {
+    /*min-height: 800px;*/
+}
+
+.DatabaseTablesAdminSidebar {
+    /*min-width: 415px;*/
+}
+
+.DatabaseTablesAdmin .editable-click {
+    font-size: 0.8em;
+    border-bottom: none;
+    font-style: normal;
+}
+.DatabaseTablesAdmin .editable-click:hover, .DatabaseTablesAdmin .editable-empty:hover {
+    color: inherit !important;
+    font-style: normal;
+}
+
+.DatabaseTablesAdmin .editable-empty {
+    font-style: normal;
+}
+
+.Select--unselected {
+    /*border-color: rgb(194,216,242) !important;*/
+    border-style: dotted !important;
 }

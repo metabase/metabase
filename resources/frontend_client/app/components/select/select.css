@@ -60,6 +60,43 @@
    box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
 }
 
+.Select--blue select {
+    color: rgb(78,146,223);
+    border-color: rgb(195,216,241);
+    background-color: rgb(227,238,249);
+}
+.Select--blue:after {
+    border-top: .3rem solid rgb(78,146,223);
+}
+.Select--blue:before {
+    border-bottom: .3rem solid rgb(78,146,223);
+}
+
+.Select--purple select {
+    color: rgb(168,138,195);
+    border-color: rgb(203,186,219);
+    background-color: rgb(231,223,239);
+}
+.Select--purple:after {
+    border-top: .3rem solid rgb(168,138,195);
+}
+.Select--purple:before {
+    border-bottom: .3rem solid rgb(168,138,195);
+}
+
+.Select--small select {
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+    font-size: 0.7em;
+    line-height: 1.5em;
+}
+.Select--small:after {
+    margin-top: -.1rem;
+    right: 0.5em;
+}
+.Select--small:before {
+    border-bottom: none;
+}
+
 .Select select:focus {
   outline: none;
 }

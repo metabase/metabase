@@ -70,6 +70,7 @@
   border-bottom: none;
   border-right: none;
   border-radius: 0;
+  box-shadow: none;
 }
 
 .Button-group .Button--active {
@@ -79,6 +80,20 @@
 
 .Button-group .Button:first-child {
   border-left: none;
+}
+
+.Button-group--blue {
+  border-color: rgb(194,216,242);
+}
+
+.Button-group--blue .Button {
+  background-color: #fff;
+  color: rgb(147,155,178);
+}
+
+.Button-group--blue .Button--active {
+  background-color: rgb(227,238,250);
+  color: rgb(74,144,226);
 }
 
 .Button:disabled {

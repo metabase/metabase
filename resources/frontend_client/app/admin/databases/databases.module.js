@@ -29,4 +29,17 @@ AdminDatabases.config(['$routeProvider', function ($routeProvider) {
         templateUrl: '/app/admin/databases/partials/database_table_field.html',
         controller: 'DatabaseTableField'
     });
+
+    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/tables', {
+        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
+        controller: 'DatabaseMasterDetail'
+    });
+    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/tables/:tableId', {
+        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
+        controller: 'DatabaseMasterDetail'
+    });
+    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/settings', {
+        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
+        controller: 'DatabaseMasterDetail'
+    });
 }]);
