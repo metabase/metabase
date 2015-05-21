@@ -1,16 +1,34 @@
 (ns metabase.driver.generic-sql.query-processor-2
+  (:refer-clojure :exclude [format])
   (:require [korma.core :refer :all]
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
             [metabase.driver.generic-sql.util :as gsu]
             [metabase.driver.interface :refer :all])
   (:import [metabase.driver.interface QPField QPValue]))
 
+(set! *warn-on-reflection* true)
+
 ;;# ---------------------------------------- GenericSQL Structured QP ----------------------------------------
 
+(defprotocol IGenericSQLStructuredQueryProcessorFormat
+  "Protocol for defining how QL fields + values should be formatted when inserting into a resulting korma form."
+  (format [this]
+    "Return a form suitable for inclusion in a korma form."))
+
+(extend-protocol IGenericSQLStructuredQueryProcessorFormat
+  QPField
+  (format [this]
+    (if (contains? #{:DateField :DateTimeField} (.base_type this)) `(raw ~(clojure.core/format "CAST(\"%s\" AS DATE)" (.name this)))
+        (keyword (.name this))))
+
+  QPValue
+  (format [this]
+    (if (contains? #{:DateField :DateTimeField} (.base_type this)) `(raw ~(clojure.core/format "CAST('%s' AS DATE)" (.value this)))
+        (.value this))))
+
+
 (defprotocol IGenericSQLQueryProcessor
-  (emit! [this form])
-  (format-field [this ^QPField field])
-  (format-value [this ^QPValue value]))
+  (emit! [this form]))
 
 (deftype GenericSQLQueryProcessor [database-id
                                    source-table-id
@@ -19,14 +37,6 @@
   IGenericSQLQueryProcessor
   (emit! [_ form]
     (swap! processed-forms conj form))
-
-  (format-field [this field]
-    (if (contains? #{:DateField :DateTimeField} (.base_type ^QPField field)) `(raw ~(format "CAST(\"%s\" AS DATE)" (.name ^QPField field)))
-        (keyword (.name ^QPField field))))
-
-  (format-value [this value]
-    (if (contains? #{:DateField :DateTimeField} (.base_type ^QPValue value)) `(raw ~(format "CAST('%s' AS DATE)" (.value ^QPValue value)))
-        (.value ^QPValue value)))
 
   IStructuredQueryProcessor
   (eval-structured-query [_]
@@ -43,19 +53,19 @@
     (emit! this `(aggregate (~'count :*) :count)))
 
   (aggregation:avg [this field]
-    (emit! this `(aggregate (~'avg ~(format-field this field)) :avg)))
+    (emit! this `(aggregate (~'avg ~(format field)) :avg)))
 
   (aggregation:field-count [this field]
-    (emit! this `(aggregate (~'count ~(format-field this field)) :count)))
+    (emit! this `(aggregate (~'count ~(format field)) :count)))
 
   (aggregation:distinct [this field]
-    (emit! this `(aggregate (~'count (sqlfn :DISTINCT ~(format-field this field)) :count))))
+    (emit! this `(aggregate (~'count (sqlfn :DISTINCT ~(format field)) :count))))
 
   (aggregation:stddev [this field]
-    (emit! this `(fields [(sqlfn :stddev ~(format-field this field)) :stddev])))
+    (emit! this `(fields [(sqlfn :stddev ~(format field)) :stddev])))
 
   (aggregation:sum [this field]
-    (emit! this `(aggregate (~'sum ~(format-field this field)) :sum)))
+    (emit! this `(aggregate (~'sum ~(format field)) :sum)))
 
   ;; -------------------- BREAKOUT --------------------
 
@@ -63,17 +73,17 @@
     ;; We want to add any fields included in the breakout clause that are *not* included in the fields clause to the fields clause
     ;; Get the IDs of the fields in the fields clause
     (let [fields-clause-field-ids (set (:fields query))]
-      (emit! this `(group ~@(map (partial format-field this)
+      (emit! this `(group ~@(map (partial format)
                                  fields)))
       (emit! this `(fields ~@(map (fn [^QPField field]
                                     (when-not (contains? fields-clause-field-ids (.id field))
-                                      (format-field this field)))
+                                      (format field)))
                                   fields)))))
 
   ;; -------------------- FIELDS --------------------
 
   (fields-clause [this fields]
-    (emit! this `(fields ~@(map (partial format-field this)
+    (emit! this `(fields ~@(map (partial format)
                                 fields))))
 
   ;; -------------------- FILTER --------------------
@@ -90,38 +100,38 @@
   ;; -------------------- FILTER SUBCLAUSES --------------------
 
   (filter-subclause:inside [this {:keys [lat, lat-min, lat-max, lon, lon-min, lon-max]}]
-    `(~'and ~@[{(format-field this lat) ['< (format-value this lat-max)]}
-               {(format-field this lat) ['> (format-value this lat-min)]}
-               {(format-field this lon) ['< (format-value this lon-max)]}
-               {(format-field this lon) ['> (format-value this lon-min)]}]))
+    `(~'and ~@[{(format lat) ['< (format lat-max)]}
+               {(format lat) ['> (format lat-min)]}
+               {(format lon) ['< (format lon-max)]}
+               {(format lon) ['> (format lon-min)]}]))
 
   (filter-subclause:not-null [this field]
-    {(format-field this field) ['not= nil]})
+    {(format field) ['not= nil]})
 
   (filter-subclause:null [this field]
-    {(format-field this field) ['= nil]})
+    {(format field) ['= nil]})
 
   (filter-subclause:between [this field min max]
-    {(format-field this field) ['between [(format-value this min)
-                                          (format-value this max)]]})
+    {(format field) ['between [(format min)
+                               (format max)]]})
 
   (filter-subclause:=  [this field value]
-    {(format-field this field) ['= (format-value this value)]})
+    {(format field) ['= (format value)]})
 
   (filter-subclause:!= [this field value]
-    {(format-field this field) ['not= (format-value this value)]})
+    {(format field) ['not= (format value)]})
 
   (filter-subclause:<  [this field value]
-    {(format-field this field) ['< (format-value this value)]})
+    {(format field) ['< (format value)]})
 
   (filter-subclause:>  [this field value]
-    {(format-field this field) ['> (format-value this value)]})
+    {(format field) ['> (format value)]})
 
   (filter-subclause:<= [this field value]
-    {(format-field this field) ['<= (format-value this value)]})
+    {(format field) ['<= (format value)]})
 
   (filter-subclause:>= [this field value]
-    {(format-field this field) ['>= (format-value this value)]})
+    {(format field) ['>= (format value)]})
 
   ;; -------------------- LIMIT --------------------
 
@@ -133,10 +143,10 @@
   (order-by [_ _]) ; Since we emit [multiple] korma order forms directly from the subclauses there's nothing to do here :)
 
   (order-by-subclause:asc [this field]
-    (emit! this `(order ~(format-field this field) :ASC)))
+    (emit! this `(order ~(format field) :ASC)))
 
   (order-by-subclause:desc [this field]
-    (emit! this `(order ~(format-field this field) :DESC)))
+    (emit! this `(order ~(format field) :DESC)))
 
   ;; -------------------- OFFSET --------------------
 
