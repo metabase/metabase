@@ -14,6 +14,14 @@ var QueryVisualizationTable = React.createClass({
         };
     },
 
+    isSortable: function() {
+        return (this.props.setSortFn !== undefined);
+    },
+
+    setSort: function(fieldId) {
+        this.props.setSortFn(fieldId);
+    },
+
     render: function() {
         if(!this.props.data) {
             return false;
@@ -41,11 +49,15 @@ var QueryVisualizationTable = React.createClass({
             tableRows.push((<tr>{rowCols}</tr>));
         }
 
-        var tableHeaders = this.props.data.columns.map(function (column, idx) {
-            var colVal = (column !== null) ? column.toString() : null;
-            return (
-                <th>{colVal}</th>
-            );
+        var component = this;
+        var tableHeaders = this.props.data.cols.map(function (column, idx) {
+            var colVal = (column !== null) ? column.name.toString() : null;
+
+            if (component.isSortable()) {
+                return (<th onClick={component.setSort.bind(null, column.id)}>{colVal}</th>);
+            } else {
+                return (<th>{colVal}</th>);
+            }
         });
 
         return (

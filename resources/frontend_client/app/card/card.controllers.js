@@ -277,6 +277,28 @@ CardControllers.controller('CardDetail', [
                 }
 
                 renderAll();
+            },
+            setSortFn: function(fieldId) {
+                // for now, just put this into the query and re-run
+
+                // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
+                if (card.dataset_query.type === "query") {
+                    var sortClause = [fieldId, "ascending"];
+                    if (card.dataset_query.query.order_by !== undefined &&
+                            card.dataset_query.query.order_by.length > 0 &&
+                            card.dataset_query.query.order_by[0].length > 0 &&
+                            card.dataset_query.query.order_by[0][0] === fieldId &&
+                            card.dataset_query.query.order_by[0][1] === "ascending") {
+                        // someone triggered another sort on the same column, so flip the sort direction
+                        sortClause = [fieldId, "descending"];
+                    }
+
+                    // set clause
+                    card.dataset_query.query.order_by = [sortClause];
+
+                    // run updated query
+                    editorModel.runFn(card.dataset_query);
+                }
             }
         };
 

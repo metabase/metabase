@@ -10,7 +10,8 @@ var QueryVisualization = React.createClass({
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired,
-        setChartColorFn: React.PropTypes.func.isRequired
+        setChartColorFn: React.PropTypes.func.isRequired,
+        setSortFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
@@ -303,7 +304,8 @@ var QueryVisualization = React.createClass({
                         <QueryVisualizationTable
                             data={this.props.result.data}
                             maxRows={this.props.tableRowsPerPage}
-                            page={this.state.tablePage} />
+                            page={this.state.tablePage}
+                            setSortFn={this.props.setSortFn} />
                     );
 
                 } else {
