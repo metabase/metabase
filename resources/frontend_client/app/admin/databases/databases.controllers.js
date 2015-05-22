@@ -102,7 +102,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     details.ssl = false;
                     return Metabase.validate_connection(details).$promise;
                 }).then(function() {
-                    console.log("simulating timeout")
+                    console.log("simulating timeout");
                     console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
                     return create(database, details, redirectToDetail);
                 }).catch(function(error) {
@@ -115,11 +115,11 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         $scope.save = save;
 
         $scope.saveAndRedirect = function() {
-            return save($scope.database, $scope.details, true)
+            return save($scope.database, $scope.details, true);
         }
 
         $scope.saveNoRedirect = function() {
-            return save($scope.database, $scope.details, false)
+            return save($scope.database, $scope.details, false);
         }
 
         $scope.sync = function() {
