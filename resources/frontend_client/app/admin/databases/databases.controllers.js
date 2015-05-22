@@ -102,7 +102,6 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     details.ssl = false;
                     return Metabase.validate_connection(details).$promise;
                 }).then(function() {
-                    console.log("simulating timeout");
                     console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
                     return create(database, details, redirectToDetail);
                 }).catch(function(error) {
