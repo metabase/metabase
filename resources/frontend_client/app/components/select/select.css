@@ -10,17 +10,16 @@
   position: relative;
   display: inline-block;
   color: var(--select-text-color);
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 }
 
 /* custom arrows */
 .Select:before,
 .Select:after {
   content: '';
-  position: absolute;
-
-  top: 50%;
-  right: 1rem;
-
+  align-self: center;
   width: 0;
   height: 0;
   pointer-events: none; /* no clicks since arrow is just for appearance */
