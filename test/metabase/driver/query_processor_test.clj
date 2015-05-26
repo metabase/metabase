@@ -130,7 +130,7 @@
   (case col
     :id   {:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
            :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
+    :name {:extra_info {} :special_type :name, :base_type :TextField, :description nil, :name (format-name "name")
            :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### checkins
@@ -296,10 +296,8 @@
             [4 "Asian"]
             [5 "BBQ"]]
      :columns (->columns "id" "name")
-     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
-             :table_id (id :categories), :id (id :categories :id)}
-            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
-             :table_id (id :categories), :id (id :categories :name)}]}
+     :cols [(categories-col :id)
+            (categories-col :name)]}
   {:source_table (id :categories)
    :aggregation ["rows"]
    :page {:items 5

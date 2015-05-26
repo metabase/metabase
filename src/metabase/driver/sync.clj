@@ -1,6 +1,7 @@
 (ns metabase.driver.sync
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.math.numeric-tower :as math]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as k]
@@ -356,8 +357,11 @@
         float       #{:DecimalField :FloatField}
         int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
         text        #{:CharField :TextField}
-        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]  ; tuples of [pattern set-of-valid-base-types special-type]
-                                         [#"^.*_lon$"       float       :longitude] ; we'll consider a nil set-of-valid-base-types to mean "match any base type"
+        ;; tuples of [pattern set-of-valid-base-types special-type]
+        ;; * Convert field name to lowercase before matching against a pattern
+        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
+        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
+                                         [#"^.*_lon$"       float       :longitude]
                                          [#"^.*_lng$"       float       :longitude]
                                          [#"^.*_long$"      float       :longitude]
                                          [#"^.*_longitude$" float       :longitude]
@@ -368,7 +372,7 @@
                                          [#"^active$"       bool-or-int :category]
                                          [#"^city$"         text        :city]
                                          [#"^country$"      text        :country]
-                                         [#"^countryCode$"  text        :country]
+                                         [#"^countrycode$"  text        :country]
                                          [#"^currency$"     int-or-text :category]
                                          [#"^first_name$"   text        :name]
                                          [#"^full_name$"    text        :name]
@@ -392,17 +396,20 @@
                                          [#"^type$"         int-or-text :category]
                                          [#"^url$"          text        :url]
                                          [#"^zip_code$"     int-or-text :zip_code]
-                                         [#"^zipCode$"      int-or-text :zip_code]]]
+                                         [#"^zipcode$"      int-or-text :zip_code]]]
     ;; Check that all the pattern tuples are valid
     (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
       (assert (u/regex? name-pattern))
       (assert (every? (partial contains? field/base-types) base-types))
       (assert (contains? field/special-types special-type)))
-    (fn [field]
+
+    (fn [{base-type :base_type, field-name :name}]
+      {:pre [(string? field-name)
+             (keyword? base-type)]}
       (m/find-first (fn [[name-pattern valid-base-types _]]
                       (and (or (nil? valid-base-types)
-                               (contains? valid-base-types (:base_type field)))
-                           (re-matches name-pattern (:name field))))
+                               (contains? valid-base-types base-type))
+                           (re-matches name-pattern (s/lower-case field-name))))
                     pattern+base-types+special-type))))
 
 (defn auto-assign-field-special-type-by-name!
