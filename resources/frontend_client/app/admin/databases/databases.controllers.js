@@ -5,13 +5,13 @@ var DatabasesControllers = angular.module('corvusadmin.databases.controllers', [
 
 DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$routeParams', '$location', 'Metabase',
     function($scope, $route, $routeParams, $location, Metabase) {
-        $scope.pane = "data";
-
+        $scope.pane = "settings";
         $scope.tableFields = {};
 
+        // mildly hacky way to prevent reloading controllers as the URL changes
         var lastRoute = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
-            if (lastRoute.$$route.originalPath === $route.current.$$route.originalPath) {
+            if ($route.current.$$route.controller === "DatabaseMasterDetail") {
                 var params = $route.current.params;
                 $route.current = lastRoute;
                 angular.forEach(params, function(value, key) {
@@ -23,9 +23,9 @@ DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$r
 
         $scope.routeParams = $routeParams;
         $scope.$watch("routeParams", function() {
-            console.log("refreshing DatabaseMasterDetail", $routeParams.databaseId, $routeParams.tableId);
+            $scope.pane = $routeParams.mode;
             loadData();
-        }, true)
+        }, true);
 
         function loadData() {
             Metabase.db_get({

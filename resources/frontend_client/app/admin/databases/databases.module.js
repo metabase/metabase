@@ -30,15 +30,11 @@ AdminDatabases.config(['$routeProvider', function ($routeProvider) {
         controller: 'DatabaseTableField'
     });
 
-    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/tables', {
+    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/:mode', {
         templateUrl: '/app/admin/databases/partials/database_master_detail.html',
         controller: 'DatabaseMasterDetail'
     });
-    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/tables/:tableId', {
-        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
-        controller: 'DatabaseMasterDetail'
-    });
-    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/settings', {
+    $routeProvider.when('/:orgSlug/admin/databases/:databaseId/:mode/:tableId', {
         templateUrl: '/app/admin/databases/partials/database_master_detail.html',
         controller: 'DatabaseMasterDetail'
     });
