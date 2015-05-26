@@ -87,13 +87,12 @@
             </div>
         </section>
 
-        <section class="SetupCompleted SetupStep SetupStep--active bordered rounded shadowed relative p4" ng-if="activeStep == 'finish'">
-            <h3 class="text-brand">You're all set!</h3>
-            <div class="bordered rounded p2 text-brand flex justify-center">
-                Importing data and doing a bit of science.
-            </div>
-            <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
-            <a class="Button Button--primary" href="/">Take me to my data</a>
+        <section class="SetupCompleted SetupStep SetupStep--active flex flex-column layout-centered bordered rounded shadowed relative p4" ng-if="activeStep == 'finish'">
+            <h3 class="SetupStep-title text-brand">You're all set!</h3>
+            <p class="text-body m0">Your data is being imported and analyzed.</p>
+            <p class="text-body">(This can take a while depending on the size of your data, but any data that's finished importing can be accessed immediately.)</p>
+            <a class="Button Button--primary mt3" href="/">Take me to my data</a>
         </section>
     </div>
+    <div ng-include="'/app/setup/partials/setup_help.html'"></div>
 </div>

@@ -31,10 +31,9 @@
 }
 
 .SetupStep {
+    color: var(--brand-color);
     margin-bottom: 1.714em;
-    background-color: var(--alt-bg-color);
-    transition: background .3s linear;
-    transition: background .3s linear;
+    background-color: #EDF2F8;
     flex: 1;
     border: 1px dashed #e8e8e8;
 }
@@ -89,6 +88,15 @@
 
 .SetupCompleted {
     text-align: center;
+}
+
+.SetupCompleted .SetupStep-title {
+    font-size: 2.000em;
+    line-height: 2.000em;
+}
+
+.SetupHelp {
+    color: var(--body-text-color);
 }
 
 .DatabaseEngine {

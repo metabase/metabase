@@ -16,7 +16,7 @@ SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams',
 
 SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'User', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
     function($scope, $routeParams, $location, $timeout, ipCookie, Organization, User, AppState, Setup, Metabase, CorvusCore) {
-        $scope.activeStep = "database";
+        $scope.activeStep = "user";
         $scope.completedSteps = {
             user: false,
             database: false

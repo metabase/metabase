@@ -129,6 +129,11 @@
     align-items: center;
 }
 
+.FormTitleSeparator {
+    position: relative;
+    border-bottom: 1px solid #e8e8e8;
+}
+
 ::-webkit-input-placeholder { /* WebKit browsers */
     color: var(--form-input-placeholder-color);
 }

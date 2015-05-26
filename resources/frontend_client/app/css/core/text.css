@@ -40,6 +40,6 @@
 /* larger text size used for descriptions  */
 .text-body {
   font-size: 1.286em;
-  line-height: 1.857em;
+  line-height: 1.457em;
   color: var(--body-text-color); /* TODO - is this bad? */
 }
