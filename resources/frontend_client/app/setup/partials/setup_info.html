@@ -1,100 +1,101 @@
 <!-- SETUP NAV -->
 <nav class="SetupNav text-brand py4 flex layout-centered">
     <cv-logo-icon class="mr2" width="41" height="51"></cv-logo-icon>
-    metabase
+    <span class="Setup-brandWordMark">metabase</span>
 </nav>
 
-<div class="SetupSteps flex flex-column layout-centered wrapper wrapper-max-sm">
-    <section class="SetupStep bordered rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
-            <div class="flex align-center py4" ng-click="activeStep = 'user'">
+<div class="wrapper flex flex-column layout-centered wrapper wrapper-max-sm">
+    <div class="SetupSteps">
+        <section class="SetupStep bordered rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
+                <div class="flex align-center py4" ng-click="activeStep = 'user'">
+                    <span class="SetupStep-indicator flex layout-centered absolute bordered">
+                        <span class="SetupStep-number">1</span>
+                        <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
+                    </span>
+                    <h3 class="SetupStep-title ml4 text-brand">What should we call you?</h3>
+                </div>
+                <form class="Form-new" name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
+                    <div class="Form-field Grid" mb-form-field="first_name">
+                        <div>
+                            <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
+                            <input class="Form-input Form-offset full" name="name" placeholder="Johnny" ng-model="newUser.first_name" required autofocus />
+                            <span class="Form-charm"></span>
+                        </div>
+                        <div>
+                            <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
+                            <input class="Form-input Form-offset" name="name" placeholder="Appleseed" ng-model="newUser.last_name" required />
+                            <span class="Form-charm"></span>
+                        </div>
+                    </div>
+
+                    <div class="Form-field" mb-form-field="email">
+                        <mb-form-label display-name="Email" field-name="email"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="email" placeholder="johndoe@mycompany.com" ng-model="newUser.email" required />
+                        <span class="Form-charm"></span>
+                    </div>
+
+                    <div class="Form-field" mb-form-field="password">
+                        <mb-form-label display-name="Create a password - Must be 8 characters long and include one upper case letter, one a number and one special character" field-name="password"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="password" type="password" placeholder="Shhh..." ng-model="newUser.password" required>
+                        <span class="Form-charm"></span>
+                    </div>
+
+                    <div class="Form-field" mb-form-field="repeated_password">
+                        <mb-form-label display-name="Verify your new password" field-name="password"></mb-form-label>
+                        <input class="Form-input Form-offset full" type="password" placeholder="Please type it again so we can verify it" ng-model="newUser.repeated_password" required>
+                        <span class="Form-charm"></span>
+                    </div>
+
+                    <div class="Form-field" mb-form-field="organization">
+                        <mb-form-label display-name="Your organization or company name" field-name="organization"></mb-form-label>
+                        <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Department of awesome" ng-model="newUser.orgName" autofocus required>
+                        <span class="Form-charm"></span>
+                    </div>
+
+                    <div class="Form-actions">
+                        <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(newUser)" ng-disabled="!form.$valid">
+                            Next
+                        </button>
+                    </div>
+                </form>
+              <div class="bg-error text-white p2 rounded" ng-show="error">
+                  {{error}}
+              </div>
+        </section>
+
+        <section class="SetupStep bordered border-dashed rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'database', 'SetupStep--completed shadowed' : completedSteps.database }">
+            <div class="flex align-center py4">
                 <span class="SetupStep-indicator flex layout-centered absolute bordered">
-                    <span class="SetupStep-number">1</span>
+                    <span class="SetupStep-number">2</span>
                     <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
                 </span>
-                <h3 class="SetupStep-title ml4 text-brand">What should we call you?</h3>
+                <h3 class="ml4 text-brand">Add your first database</h3>
             </div>
-            <form class="Form-new" name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
-                <div class="Form-field Grid" mb-form-field="first_name">
-                    <div>
-                        <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="name" placeholder="Johnny" ng-model="newUser.first_name" required autofocus />
-                        <span class="Form-charm"></span>
+            <div ng-controller="DatabaseEdit" ng-if="activeStep == 'database'">
+                <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+                    <!-- Form -->
+                    <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'"></div>
+
+                    <!-- Bottom Actions -->
+                    <div class="Form-actions">
+                        <button class="Button" mb-action-button="saveNoRedirect" success-text="Saved!" failed-text="Failed!" active-text="Validating " ng-disabled="!form.$valid || !database.engine">
+                            Save
+                        </button>
+                        <mb-form-message></mb-form-message>
                     </div>
-                    <div>
-                        <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
-                        <input class="Form-input Form-offset" name="name" placeholder="Appleseed" ng-model="newUser.last_name" required />
-                        <span class="Form-charm"></span>
-                    </div>
-                </div>
+                </form>
+            </div>
+        </section>
 
-                <div class="Form-field" mb-form-field="email">
-                    <mb-form-label display-name="Email" field-name="email"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="email" placeholder="johndoe@mycompany.com" ng-model="newUser.email" required />
-                    <span class="Form-charm"></span>
-                </div>
+        <section class="SetupStep SetupStep--active bordered rounded shadowed flex layout-centered flex-column relative" ng-if="activeStep == 'finish'">
+            <h3 class="text-brand">You're all set!</h3>
+            <div class="bordered rounded p2 text-brand flex justify-center">
+                <cv-loading-icon class="inline-block mr2"></cv-loading-icon>
+                Importing data and doing a bit of science.
+            </div>
+            <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
 
-                <div class="Form-field" mb-form-field="password">
-                    <mb-form-label display-name="Create a password - Must be 8 characters long and include one upper case letter, one a number and one special character" field-name="password"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="password" type="password" placeholder="Shhh..." ng-model="newUser.password" required>
-                    <span class="Form-charm"></span>
-                </div>
-
-                <div class="Form-field" mb-form-field="repeated_password">
-                    <mb-form-label display-name="Verify your new password" field-name="password"></mb-form-label>
-                    <input class="Form-input Form-offset full" type="password" placeholder="Please type it again so we can verify it" ng-model="newUser.repeated_password" required>
-                    <span class="Form-charm"></span>
-                </div>
-
-                <div class="Form-field" mb-form-field="organization">
-                    <mb-form-label display-name="Your organization or company name" field-name="organization"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="organization" type="text" placeholder="Department of awesome" ng-model="newUser.orgName" autofocus required>
-                    <span class="Form-charm"></span>
-                </div>
-
-                <div class="Form-actions">
-                    <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(newUser)" ng-disabled="!form.$valid">
-                        Next
-                    </button>
-                </div>
-            </form>
-          <div class="bg-error text-white p2 rounded" ng-show="error">
-              {{error}}
-          </div>
-    </section>
-
-    <section class="SetupStep bordered border-dashed rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'database', 'SetupStep--completed shadowed' : completedSteps.database }">
-        <div class="flex align-center py4">
-            <span class="SetupStep-indicator flex layout-centered absolute bordered">
-                <span class="SetupStep-number">2</span>
-                <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
-            </span>
-            <h3 class="ml4 text-brand">Add your first database</h3>
-        </div>
-        <div ng-controller="DatabaseEdit" ng-if="activeStep == 'database'">
-            <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <!-- Form -->
-                <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'"></div>
-
-                <!-- Bottom Actions -->
-                <div class="Form-actions">
-                    <button class="Button" mb-action-button="saveNoRedirect" success-text="Saved!" failed-text="Failed!" active-text="Validating " ng-disabled="!form.$valid || !database.engine">
-                        Save
-                    </button>
-                    <mb-form-message></mb-form-message>
-                </div>
-            </form>
-        </div>
-    </section>
-
-    <section class="SetupStep SetupStep--active bordered rounded shadowed flex layout-centered flex-column relative" ng-if="activeStep == 'finish'">
-        <h3 class="text-brand">You're all set!</h3>
-        <div class="bordered rounded p2 text-brand flex justify-center">
-            <cv-loading-icon class="inline-block mr2"></cv-loading-icon>
-            Importing data and doing a bit of science.
-        </div>
-        <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
-
-        <a class="Button Button--primary" href="/">Take me to my data</a>
-    </section>
-
+            <a class="Button Button--primary" href="/">Take me to my data</a>
+        </section>
+    </div>
 </div>

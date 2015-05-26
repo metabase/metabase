@@ -19,10 +19,15 @@
 }
 
 .SetupSteps {
+    margin-top: 5.000em;
 }
 
 .SetupNav {
     border-bottom: 1px solid #f5f5f5;
+}
+
+.Setup-brandWordMark {
+    font-size: 1.688em;
 }
 
 .SetupStep {
