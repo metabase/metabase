@@ -16,19 +16,31 @@ SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams',
 
 SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'User', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
     function($scope, $routeParams, $location, $timeout, ipCookie, Organization, User, AppState, Setup, Metabase, CorvusCore) {
-        $scope.activeStep = "user";
+        $scope.activeStep = "database";
         $scope.completedSteps = {
             user: false,
             database: false
         };
 
+        $scope.userStepText = 'What should we call you?';
+        $scope.databaseStepText = 'Add your first database';
+
+        // if we have a user, make the welcome text more welcomeing
+        if($scope.completedSteps.user) {
+            $scope.userStepText = 'Welcome ' + AppState.model.currentUser.first_name + ', nice to meet you!';
+        }
+
+        if($scope.completedSteps.database) {
+            $scope.databaseStepText = 'Connected to your data.'
+        }
+
+        // redirect back to home if the user has already set up the product,
+        // indicated by the presence of a currentUser
         if (AppState.model.currentUser) {
             $location.path('/');
         }
 
         $scope.newUser = {};
-
-
 
         $scope.$on("database:created", function(event, database) {
             $timeout(function() {

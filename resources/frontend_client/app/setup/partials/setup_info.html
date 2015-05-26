@@ -5,16 +5,16 @@
 </nav>
 
 <div class="wrapper flex flex-column layout-centered wrapper wrapper-max-sm">
-    <div class="SetupSteps">
-        <section class="SetupStep bordered rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
-                <div class="flex align-center py4" ng-click="activeStep = 'user'">
+    <div class="SetupSteps full">
+        <section class="SetupStep rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
+                <div class="flex align-center py3" ng-click="activeStep = 'user'">
                     <span class="SetupStep-indicator flex layout-centered absolute bordered">
                         <span class="SetupStep-number">1</span>
                         <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
                     </span>
-                    <h3 class="SetupStep-title ml4 text-brand">What should we call you?</h3>
+                    <h3 class="SetupStep-title ml4">{{userStepText}}</h3>
                 </div>
-                <form class="Form-new" name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
+                <form name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
                     <div class="Form-field Grid" mb-form-field="first_name">
                         <div>
                             <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
@@ -63,16 +63,16 @@
               </div>
         </section>
 
-        <section class="SetupStep bordered border-dashed rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'database', 'SetupStep--completed shadowed' : completedSteps.database }">
-            <div class="flex align-center py4">
+        <section class="SetupStep rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'database', 'SetupStep--completed shadowed' : completedSteps.database }">
+            <div class="flex align-center py3">
                 <span class="SetupStep-indicator flex layout-centered absolute bordered">
                     <span class="SetupStep-number">2</span>
                     <cv-check-icon class="SetupStep-check" width="16px" height="16px"></cv-check-icon>
                 </span>
-                <h3 class="ml4 text-brand">Add your first database</h3>
+                <h3 class="SetupStep-title ml4">{{databaseStepText}}</h3>
             </div>
             <div ng-controller="DatabaseEdit" ng-if="activeStep == 'database'">
-                <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+                <form name="form" novalidate>
                     <!-- Form -->
                     <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'"></div>
 
@@ -87,14 +87,12 @@
             </div>
         </section>
 
-        <section class="SetupStep SetupStep--active bordered rounded shadowed flex layout-centered flex-column relative" ng-if="activeStep == 'finish'">
+        <section class="SetupCompleted SetupStep SetupStep--active bordered rounded shadowed relative p4" ng-if="activeStep == 'finish'">
             <h3 class="text-brand">You're all set!</h3>
             <div class="bordered rounded p2 text-brand flex justify-center">
-                <cv-loading-icon class="inline-block mr2"></cv-loading-icon>
                 Importing data and doing a bit of science.
             </div>
             <p class="text-body">(This may take a little while depending on the size of your data, but you can start exploring  any data we’ve finished importing right away.)</p>
-
             <a class="Button Button--primary" href="/">Take me to my data</a>
         </section>
     </div>

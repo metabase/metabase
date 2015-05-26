@@ -36,15 +36,19 @@
     transition: background .3s linear;
     transition: background .3s linear;
     flex: 1;
+    border: 1px dashed #e8e8e8;
 }
 
 .SetupStep.SetupStep--active {
     background-color: #fff;
+    border-style: solid;
+    color: var(--brand-color);
 }
 
 .SetupStep.SetupStep--completed {
     color: var(--success-color);
     background-color: #fff;
+    border-style: solid;
 }
 
 .SetupStep-indicator {
@@ -62,13 +66,17 @@
     display: none;
 }
 
+.SetupStep-title {
+    color: currentColor; /* use the color of the parent to power the header text */
+}
+
 .SetupStep.SetupStep--active  .SetupStep-indicator {
     color: var(--brand-color);
 }
 
 .SetupStep.SetupStep--completed .SetupStep-indicator {
     border-color: #9CC177;
-    background-color: currentColor;
+    background-color: #C8E1B0;
 }
 
 .SetupStep.SetupStep--completed .SetupStep-check {
@@ -77,4 +85,48 @@
 
 .SetupStep.SetupStep--completed .SetupStep-number {
     display: none;
+}
+
+.SetupCompleted {
+    text-align: center;
+}
+
+.DatabaseEngine {
+    position: relative;
+    font-size: 1.137em;
+    padding-top: 0.875em;
+    padding-bottom: 0.875em;
+    padding-left: 3em;
+    line-height: 2em;
+}
+
+.DatabaseEngine:hover {
+    color: var(--brand-color);
+    cursor: pointer;
+}
+
+.DatabaseEngine:before {
+    position: absolute;
+    left: 0;
+    content: '';
+    display: inline-block;
+    width: 2em;
+    height: 2em;
+    border-radius: 99px;
+    border: 1px solid currentColor;
+}
+
+.DatabaseEngine-check {
+    display: none;
+    position: absolute;
+    left: 0.6em;
+    top: 1em;
+}
+
+.DatabaseEngine:hover .DatabaseEngine-check {
+    display: block;
+}
+
+.DatabaseEngine.DatabaseEngine--selected .DatabaseEngine-check {
+    display: block;
 }
