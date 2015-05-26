@@ -1,5 +1,5 @@
 'use strict';
-/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
+/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, Icon*/
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -710,7 +710,7 @@ var GuiQueryEditor = React.createClass({
     toggleIcon: function () {
         if(this.state.isOpen) {
             return (
-                <ExpandIcon width="16px" height="16px" />
+                <Icon name='expand' width="16px" height="16px" />
             );
         } else {
             return (
