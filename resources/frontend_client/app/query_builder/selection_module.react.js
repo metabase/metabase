@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SearchBar, CloseIcon, Icon*/
+/*global cx, OnClickOutside, SearchBar, Icon*/
 
 var SelectionModule = React.createClass({
     displayName:'SelectionModule',
@@ -143,7 +143,7 @@ var SelectionModule = React.createClass({
         if(this.props.remove) {
             remove = (
                 <div onClick={this.props.remove.bind(null, this.props.index)}>
-                    <CloseIcon className="ml2" width="12px" height="12px" />
+                    <Icon name='close' className="ml2" width="12px" height="12px" />
                 </div>
             );
         }

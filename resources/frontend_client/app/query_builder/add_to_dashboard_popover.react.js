@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, Icon, CloseIcon*/
+/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, Icon */
 
 var AddToDashboardPopover = React.createClass({
     displayName: 'AddToDashboardPopover',
@@ -186,7 +186,7 @@ var AddToDashboardPopover = React.createClass({
                 <div className="Form-offset flex align-center mr4">
                     <h3 className="flex-full">Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
-                        <CloseIcon width="12px" height="12px"/>
+                        <Icon name='close' width="12px" height="12px"/>
                     </a>
                 </div>
 

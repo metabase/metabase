@@ -7,6 +7,8 @@ var Icon = React.createClass({
     },
     iconPaths: {
         check: 'M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z ',
+        close: 'M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z ',
+
     },
     getDefaultProps: function () {
        return {
@@ -18,7 +20,7 @@ var Icon = React.createClass({
     },
     render: function () {
         return (
-            <svg viewbox="0 0 32 32" {... this.props}>
+            <svg viewBox="0 0 32 32" {... this.props}>
                 <path d={this.iconPaths[this.props.name]}/>
             </svg>
         );
