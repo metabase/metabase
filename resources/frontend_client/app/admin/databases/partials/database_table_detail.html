@@ -38,12 +38,14 @@
                     </div>
                 </div>
 
-                <div class="float-right flex">
-                    <label class="Select Select--small Select--blue  mx1">
-                        <select ng-model="field.field_type" ng-change="inlineSaveField($index)" ng-options="spec_type.id as spec_type.name for spec_type in utils.field_field_types">
-                        </select>
-                    </label>
-                    <div class="text-right">
+                <div class="float-right">
+                    <div class="inline-block flex align-top">
+                        <label class="Select Select--small Select--blue  mx1">
+                            <select ng-model="field.field_type" ng-change="inlineSaveField($index)" ng-options="spec_type.id as spec_type.name for spec_type in utils.field_field_types">
+                            </select>
+                        </label>
+                    </div>
+                    <div class="inline-block">
                         <div>
                             <label class="Select Select--small Select--purple mx1">
                                 <select ng-model="field.special_type" ng-change="inlineSpecialTypeChange($index)" ng-options="spec_type.id as spec_type.name for spec_type in utils.field_special_types">
