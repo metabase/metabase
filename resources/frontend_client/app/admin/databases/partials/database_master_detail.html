@@ -1,27 +1,28 @@
-
-<section class="mx4 my4">
-    <div class="pl1 py2 float-left">
-        <h3 class="">{{database.name}}</h2>
-    </div>
-    <div class="py2 float-right">
-        <div class="Button-group Button-group--blue text-uppercase text-bold">
-            <a class="Button" ng-class="{ 'Button--active': pane == 'data' }" ng-click="pane = 'data'">Data</a>
-            <a class="Button" ng-class="{ 'Button--active': pane == 'connection' }" ng-click="pane = 'connection'">Connection Details</a>
+<div class="wrapper">
+    <section class="mx4 my4 clearfix">
+        <div class="pl1 py2 float-left">
+            <h3 class="">{{database.name}}</h2>
         </div>
-    </div>
-</section>
+        <div class="py2 float-right">
+            <div class="Button-group Button-group--blue text-uppercase text-bold">
+                <a class="Button" ng-class="{ 'Button--active': pane == 'data' }" ng-click="pane = 'data'">Data</a>
+                <a class="Button" ng-class="{ 'Button--active': pane == 'connection' }" ng-click="pane = 'connection'">Connection Details</a>
+            </div>
+        </div>
+    </section>
 
-<section class="DatabaseTablesAdmin bordered rounded shadowed mx4 flex" ng-show="pane == 'data'">
+    <section class="DatabaseTablesAdmin bordered rounded shadowed mx4 flex" ng-show="pane == 'data'">
 
-    <div class="DatabaseTablesAdminSidebar border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
-    </div>
+        <div class="DatabaseTablesAdminSidebar border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
+        </div>
 
-    <div class="DatabaseTableAdmin flex-full" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
+        <div class="DatabaseTableAdmin flex-full" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
 
-    </div>
-</section>
+        </div>
+    </section>
 
-<section class="mx4 my2" ng-show="pane == 'connection'" ng-controller="DatabaseEdit">
-    <div class="Grid Grid--gutters Grid--full" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
-    </div>
-</section>
+    <section class="mx4" ng-show="pane == 'connection'" ng-controller="DatabaseEdit">
+        <div class="Grid Grid--gutters Grid--full" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
+        </div>
+    </section>
+</div>
