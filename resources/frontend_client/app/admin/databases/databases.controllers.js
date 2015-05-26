@@ -116,11 +116,11 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
         $scope.saveAndRedirect = function() {
             return save($scope.database, $scope.details, true);
-        }
+        };
 
         $scope.saveNoRedirect = function() {
             return save($scope.database, $scope.details, false);
-        }
+        };
 
         $scope.sync = function() {
             var call = Metabase.db_sync_metadata({

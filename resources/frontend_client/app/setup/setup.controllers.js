@@ -31,7 +31,7 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
         }
 
         if($scope.completedSteps.database) {
-            $scope.databaseStepText = 'Connected to your data.'
+            $scope.databaseStepText = 'Connected to your data.';
         }
 
         // redirect back to home if the user has already set up the product,
