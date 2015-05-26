@@ -9,39 +9,59 @@ DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$r
 
         $scope.tableFields = {};
 
-        Metabase.db_get({
-            'dbId': $routeParams.databaseId
-        }, function(database) {
-            $scope.database = database;
-        }, function(error) {
-            console.log('error loading database', error);
-            if (error.status == 404) {
-                $location.path('/admin/databases');
-            }
-        });
-
-        Metabase.db_tables({
-            'dbId': $routeParams.databaseId
-        }).$promise.then(function(tables) {
-            $scope.tables = tables;
-            $scope.tables.forEach(function(table) {
-                Metabase.table_query_metadata({
-                    'tableId': table.id
-                }, function(result) {
-                    $scope.tableFields[table.id] = result;
-                }, function(error) {
-                    console.log(error);
+        var lastRoute = $route.current;
+        $scope.$on('$locationChangeSuccess', function (event) {
+            if (lastRoute.$$route.originalPath === $route.current.$$route.originalPath) {
+                var params = $route.current.params;
+                $route.current = lastRoute;
+                angular.forEach(params, function(value, key) {
+                    $route.current.params[key] = value;
+                    $routeParams[key] = value;
                 });
-            });
-            if ($routeParams.tableId !== undefined) {
-                $scope.currentTable = tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
-                if (!$scope.currentTable) {
-                    $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
-                }
             }
-        }, function(error) {
-
         });
+
+        $scope.routeParams = $routeParams;
+        $scope.$watch("routeParams", function() {
+            console.log("refreshing DatabaseMasterDetail", $routeParams.databaseId, $routeParams.tableId);
+            loadData();
+        }, true)
+
+        function loadData() {
+            Metabase.db_get({
+                'dbId': $routeParams.databaseId
+            }).$promise.then(function(database) {
+                $scope.database = database;
+            }).catch(function(error) {
+                console.log('error loading database', error);
+                if (error.status == 404) {
+                    $location.path('/admin/databases');
+                }
+            });
+
+            Metabase.db_tables({
+                'dbId': $routeParams.databaseId
+            }).$promise.then(function(tables) {
+                $scope.tables = tables;
+                $scope.tables.forEach(function(table) {
+                    Metabase.table_query_metadata({
+                        'tableId': table.id
+                    }, function(result) {
+                        $scope.tableFields[table.id] = result;
+                    }, function(error) {
+                        console.log(error);
+                    });
+                });
+                if ($routeParams.tableId !== undefined) {
+                    $scope.currentTable = tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
+                    if (!$scope.currentTable) {
+                        $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
+                    }
+                }
+            }).catch(function(error) {
+                console.warn("error loading tables", error)
+            });
+        }
     }
 ]);
 
@@ -382,20 +402,27 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
             }
         };
 
+        function loadData() {
+            Metabase.table_query_metadata({
+                'tableId': $routeParams.tableId
+            }, function(result) {
+                $scope.table = result;
+                $scope.fields = $scope.table.fields;
+                $scope.getIdFields();
+                $scope.decorateWithTargets();
+            }, function(error) {
+                console.log(error);
+                if (error.status == 404) {
+                    $location.path('/');
+                }
+            });
+        }
 
-        Metabase.table_query_metadata({
-            'tableId': $routeParams.tableId
-        }, function(result) {
-            $scope.table = result;
-            $scope.fields = $scope.table.fields;
-            $scope.getIdFields();
-            $scope.decorateWithTargets();
-        }, function(error) {
-            console.log(error);
-            if (error.status == 404) {
-                $location.path('/');
-            }
-        });
+        $scope.routeParams = $routeParams;
+        $scope.$watch("routeParams", function() {
+            console.log("refreshing DatabaseTable", $routeParams.databaseId, $routeParams.tableId);
+            loadData();
+        }, true)
     }
 ]);
 

@@ -11,7 +11,7 @@
     </div>
 </section>
 
-<section class="DatabaseTablesAdmin bordered rounded shadowed mx4 flex" ng-if="pane == 'data'">
+<section class="DatabaseTablesAdmin bordered rounded shadowed mx4 flex" ng-show="pane == 'data'">
 
     <div class="DatabaseTablesAdminSidebar border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
     </div>
@@ -21,7 +21,7 @@
     </div>
 </section>
 
-<section class="mx4 my2" ng-if="pane == 'connection'" ng-controller="DatabaseEdit">
+<section class="mx4 my2" ng-show="pane == 'connection'" ng-controller="DatabaseEdit">
     <div class="Grid Grid--gutters Grid--full" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
     </div>
 </section>
