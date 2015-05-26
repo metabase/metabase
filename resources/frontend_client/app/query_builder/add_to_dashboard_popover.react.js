@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, CheckIcon, CloseIcon*/
+/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, Icon, CloseIcon*/
 
 var AddToDashboardPopover = React.createClass({
     displayName: 'AddToDashboardPopover',
@@ -111,7 +111,7 @@ var AddToDashboardPopover = React.createClass({
                 dashboardsList.push(
                     (
                         <li className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
-                            <CheckIcon width="12px" height="12px" />
+                            <Icon name='check' width="12px" height="12px" />
                     	    <span className="SelectionModule-display">{dash.name}</span>
                         </li>
                     )
@@ -229,7 +229,7 @@ var AddToDashboardPopover = React.createClass({
     renderSuccess: function(message, link) {
         return (
             <div className="Success py4 flex flex-column align-center text-success">
-                <CheckIcon width="64px" height="64px" />
+                <Icon name='check' width="64px" height="64px" />
                 <div className="AddToDashSuccess ">{message}</div>
                 <a href={link}>Let me check it out.</a>
             </div>

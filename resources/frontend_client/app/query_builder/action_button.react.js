@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, CheckIcon*/
+/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, Icon*/
 
 var ActionButton = React.createClass({
     displayName: 'ActionButton',
@@ -69,7 +69,7 @@ var ActionButton = React.createClass({
         } else if (this.state.result === "success") {
             return (
                 <span>
-                    <CheckIcon width="12px" height="12px" />
+                    <Icon name='check' width="12px" height="12px" />
                     {this.props.successText}
                 </span>
             );
