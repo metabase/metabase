@@ -714,7 +714,7 @@ var GuiQueryEditor = React.createClass({
             );
         } else {
             return (
-                <ExpandIcon width="16px" height="16px" />
+                <Icon name='expand' width="16px" height="16px" />
             );
         }
     },
