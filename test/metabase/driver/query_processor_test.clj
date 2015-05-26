@@ -111,7 +111,7 @@
                   :table_id (id :venues)
                   :id (id :venues :latitude)}
     :name        {:extra_info {}
-                  :special_type nil
+                  :special_type :name
                   :base_type :TextField
                   :description nil
                   :name (format-name "name")
