@@ -1,5 +1,5 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
+/*global DateFilter, SelectionModule, Icon */
 
 var SortWidget = React.createClass({
     displayName: 'SortWidget',
@@ -75,7 +75,7 @@ var SortWidget = React.createClass({
                 </div>
 
                 <a onClick={this.props.removeSort.bind(null, this.props.index)}>
-                    <CloseIcon width="12px" height="12px" />
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );
