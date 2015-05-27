@@ -2,20 +2,22 @@
     <cv-search-icon class="ml2 text-grey-2" width="18" height="18"></cv-search-icon>
     <input class="Form-input Form-input--medium mx1" type="text" placeholder="Search for a table name" value="" ng-model="tableSearchText" autofocus>
 </div>
-<ul class="DatabaseList p2">
-    <li ng-show="!tables">
+<div class="DatabaseList">
+    <ul class="p2">
+        <li ng-show="!tables">
             <cv-loading-icon></cv-loading-icon>
             <h3>Loading ...</h3>
-    </li>
-    <li class="DatabaseListItem rounded px2 pb2 pt1" ng-class="{ 'DatabaseListItem--active': table.id == currentTable.id }" ng-repeat="table in tables | filter:tableSearchText">
-        <a class="link link--nohover" cv-org-href="/admin/databases/{{database.id}}/tables/{{table.id}}">
-            <div>
-                <div class="h4 text-bold">{{table.name}}</div>
+        </li>
+        <li class="DatabaseListItem rounded px2 pb2 pt1" ng-class="{ 'DatabaseListItem--active': table.id == currentTable.id }" ng-repeat="table in tables | filter:tableSearchText">
+            <a class="link link--nohover" cv-org-href="/admin/databases/{{database.id}}/tables/{{table.id}}">
                 <div>
-                    <span class="h5 text-bold">{{tableFields[table.id].fields.length}}</span>
-                    <span class="h6 text-uppercase">fields</span>
+                    <div class="h4 text-bold">{{table.name}}</div>
+                    <div>
+                        <span class="h5 text-bold">{{tableFields[table.id].fields.length}}</span>
+                        <span class="h6 text-uppercase">fields</span>
+                    </div>
                 </div>
-            </div>
-        </a>
-    </li>
-</ul>
+            </a>
+        </li>
+    </ul>
+</div>

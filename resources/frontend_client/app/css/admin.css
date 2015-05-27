@@ -139,6 +139,17 @@
     transition: opacity .2s linear;
 }
 
+.DatabaseList,
+.TableFieldList {
+    padding-bottom: 3em;
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 100%;
+    overflow-y: scroll;
+}
+
+
 .DatabaseListItem .h4 {
     line-height: 0.8em;
 }
@@ -155,8 +166,16 @@
     height: 200px;
 }
 
+.DatabaseTablesAdmin {
+    overflow: hidden;
+}
+
 .TableField {
     border-top: 1px solid #F0F0F0;
+}
+
+.TableFieldList {
+    overflow-y: scroll;
 }
 
 .DatabaseTablesAdmin .editable-click {
@@ -174,6 +193,5 @@
 }
 
 .Select--unselected {
-    /*border-color: rgb(194,216,242) !important;*/
     border-style: dotted !important;
 }

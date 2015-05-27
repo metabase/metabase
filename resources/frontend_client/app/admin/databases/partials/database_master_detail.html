@@ -10,10 +10,10 @@
     </section>
 
     <section class="DatabaseTablesAdmin Grid bordered rounded shadowed flex-full mb4" ng-show="pane == 'tables'">
-        <div class="DatabaseTablesAdminSidebar Grid-cell Cell--1of3 border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
+        <div class="DatabaseTablesAdminSidebar relative Grid-cell Cell--1of3 border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
         </div>
 
-        <div class="DatabaseTableAdmin Grid-cell" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
+        <div class="DatabaseTableAdmin relative Grid-cell" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
         </div>
     </section>
 
