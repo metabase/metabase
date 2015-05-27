@@ -19,7 +19,8 @@
             [metabase.util :as u])
   (:import (com.mongodb CommandResult
                         DBApiLayer)
-           (clojure.lang PersistentArrayMap)))
+           (clojure.lang PersistentArrayMap)
+           (org.bson.types ObjectId)))
 
 (declare apply-clause
          annotate-native-results
@@ -300,17 +301,25 @@
 (defclause :fields field-ids
   `[(fields ~(mapv field-id->kw field-ids))])
 
-(def ^:private field-id-is-date-field?
-  (memoize
-   (fn [field-id]
-     (contains? #{:DateField :DateTimeField}
-                (sel :one :field [Field :base_type] :id field-id)))))
+(def ^:private field-id->casting-fn
+  "Return a fn that should be used to cast values that match/filter against `Field` with FIELD-ID."
+  (let [->ObjectId (fn [^String value]
+                     `(ObjectId. ~value))]
+    (memoize
+     (fn [field-id]
+       (let [{base-type :base_type, field-name :name} (sel :one [Field :base_type :name] :id field-id)]
+         (cond
+           (contains? #{:DateField :DateTimeField} base-type) u/parse-date-yyyy-mm-dd
+           (and (= field-name "_id")
+                (= base-type  :UnknownField))                 ->ObjectId
+           :else                                              identity))))))
 
-(defn- parse-date-if-needed
-  "Dates come back from the frontend as `YYYY-MM-DD` strings, so convert them to `java.util.Date` if needed."
-  [field-id value]
-  (if (field-id-is-date-field? field-id) (u/parse-date-yyyy-mm-dd value)
-      value))
+(defn- cast-value-if-needed
+  "*  Convert dates (which come back as `YYYY-MM-DD` strings) to `java.util.Date`
+   *  Convert ID strings to `ObjectId`
+   *  Return other values as-is"
+  [field-id ^String value]
+  ((field-id->casting-fn field-id) value))
 
 ;; ### filter
 ;; !!! SPECIAL CASE - the results of this clause are bound to *constraints*, which is used differently
@@ -328,26 +337,26 @@
   {(field-id->kw field-id) {$exists true}})
 
 (defclause :filter ["BETWEEN" field-id min max]
-  {(field-id->kw field-id) {$gte (parse-date-if-needed field-id min)
-                            $lte (parse-date-if-needed field-id max)}})
+  {(field-id->kw field-id) {$gte (cast-value-if-needed field-id min)
+                            $lte (cast-value-if-needed field-id max)}})
 
 (defclause :filter ["=" field-id value]
-  {(field-id->kw field-id) (parse-date-if-needed field-id value)})
+  {(field-id->kw field-id) (cast-value-if-needed field-id value)})
 
 (defclause :filter ["!=" field-id value]
-  {(field-id->kw field-id) {$ne (parse-date-if-needed field-id value)}})
+  {(field-id->kw field-id) {$ne (cast-value-if-needed field-id value)}})
 
 (defclause :filter ["<" field-id value]
-  {(field-id->kw field-id) {$lt (parse-date-if-needed field-id value)}})
+  {(field-id->kw field-id) {$lt (cast-value-if-needed field-id value)}})
 
 (defclause :filter [">" field-id value]
-  {(field-id->kw field-id) {$gt (parse-date-if-needed field-id value)}})
+  {(field-id->kw field-id) {$gt (cast-value-if-needed field-id value)}})
 
 (defclause :filter ["<=" field-id value]
-  {(field-id->kw field-id) {$lte (parse-date-if-needed field-id value)}})
+  {(field-id->kw field-id) {$lte (cast-value-if-needed field-id value)}})
 
 (defclause :filter [">=" field-id value]
-  {(field-id->kw field-id) {$gte (parse-date-if-needed field-id value)}})
+  {(field-id->kw field-id) {$gte (cast-value-if-needed field-id value)}})
 
 (defclause :filter ["AND" & subclauses]
   {$and (mapv #(apply-clause [:filter %]) subclauses)})
