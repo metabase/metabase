@@ -1,4 +1,4 @@
-<div class="wrapper">
+<div class="wrapper full-height flex flex-column">
     <section class="my3 clearfix">
         <div class="py2 float-right">
             <div class="Button-group Button-group--blue text-uppercase text-bold">
@@ -9,8 +9,7 @@
         <h3 class="py2">{{database.name}}</h2>
     </section>
 
-    <section class="DatabaseTablesAdmin Grid bordered rounded shadowed" ng-show="pane == 'tables'">
-
+    <section class="DatabaseTablesAdmin Grid bordered rounded shadowed flex-full mb4" ng-show="pane == 'tables'">
         <div class="DatabaseTablesAdminSidebar Grid-cell Cell--1of3 border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
         </div>
 
