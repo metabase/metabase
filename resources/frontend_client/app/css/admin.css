@@ -155,12 +155,8 @@
     height: 200px;
 }
 
-.DatabaseTablesAdmin {
-    /*min-height: 800px;*/
-}
-
-.DatabaseTablesAdminSidebar {
-    /*min-width: 415px;*/
+.TableField {
+    border-top: 1px solid #F0F0F0;
 }
 
 .DatabaseTablesAdmin .editable-click {
