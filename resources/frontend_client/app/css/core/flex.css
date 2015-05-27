@@ -12,6 +12,10 @@
     align-items: center;
 }
 
+.justify-center {
+    justify-content: center;
+}
+
 .align-start {
     align-items: flex-start;
 }
@@ -19,4 +23,3 @@
 .align-self-end {
     align-self: flex-end;
 }
-

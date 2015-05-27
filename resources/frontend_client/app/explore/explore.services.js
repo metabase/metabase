@@ -184,25 +184,27 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             'name': "NEAR",
             'verbose_name': "Near - (Lat, Long), Max Distance",
             'validArgumentsFilters': [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument]
-        },
-        'STARTS_WITH': {
-            'name': "STARTS_WITH",
-            'verbose_name': "Starts with - ",
-            'validArgumentsFilters': [freeformArgument]
-        },
-        'CONTAINS': {
-            'name': "CONTAINS",
-            'verbose_name': "Contains the substring - ",
-            'validArgumentsFilters': [freeformArgument]
         }
+        // TODO - These are not yet implemented on the backend
+        // Once we do that we should re-enable these
+        // 'STARTS_WITH': {
+        //     'name': "STARTS_WITH",
+        //     'verbose_name': "Starts with - ",
+        //     'validArgumentsFilters': [freeformArgument]
+        // },
+        // 'CONTAINS': {
+        //     'name': "CONTAINS",
+        //     'verbose_name': "Contains the substring - ",
+        //     'validArgumentsFilters': [freeformArgument]
+        // }
     };
 
 
     var BaseOperators = ['IS', 'IS_NOT', 'IS_NULL', 'IS_NOT_NULL'];
 
     var AdditionalOperators = {
-        'CharField': ['STARTS_WITH', 'CONTAINS'],
-        'TextField': ['STARTS_WITH', 'CONTAINS'],
+        // 'CharField': ['STARTS_WITH', 'CONTAINS'],
+        // 'TextField': ['STARTS_WITH', 'CONTAINS'],
         'IntegerField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
         'BigIntegerField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
         'DecimalField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],

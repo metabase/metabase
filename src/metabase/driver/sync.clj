@@ -122,9 +122,12 @@
   "Update the row count of TABLE if it has changed."
   [table]
   {:pre [(integer? (:id table))]}
-  (let [table-row-count (queries/table-row-count table)]
-    (when-not (= (:rows table) table-row-count)
-      (upd Table (:id table) :rows table-row-count))))
+  (try
+    (let [table-row-count (queries/table-row-count table)]
+      (when-not (= (:rows table) table-row-count)
+        (upd Table (:id table) :rows table-row-count)))
+    (catch Throwable e
+      (log/error (color/red (format "Unable to update row_count for %s: %s" (:name table) (.getMessage e)))))))
 
 
 ;; ### 2) sync-table-active-fields-and-pks!

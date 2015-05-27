@@ -58,46 +58,75 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_update(database, function(updated_database) {
+            return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
         // create a new Database
-        var create = function(database, details) {
+        var create = function(database, details, redirectToDetail) {
             $scope.$broadcast("form:reset");
             database.org = $scope.currentOrg.id;
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_create(database, function(new_database) {
-                $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+            return Metabase.db_create(database).$promise.then(function(new_database) {
+                if (redirectToDetail) {
+                    $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+                }
+                $scope.$broadcast("form:api-success", "Successfully created!");
+                $scope.$emit("database:created", new_database);
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
-        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
-        $scope.save = function(database, details) {
+        var save = function(database, details, redirectToDetail) {
+            if (redirectToDetail === undefined) {
+                redirectToDetail = true;
+            }
+
+            // validate_connection needs engine so add it to request body
+            details.engine = database.engine;
+
+            // for an existing DB check that connection is valid before save
             if ($routeParams.databaseId) {
-                update(database, details);
+                return Metabase.validate_connection(details).$promise.catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
+                }).then(function() {
+                    return update(database, details);
+                });
+
+            // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
             } else {
-                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
                 details.ssl = true;
 
-                // add 'engine' to the request body
-                details.engine = database.engine;
-
-                Metabase.validate_connection(details, function() {
-                    console.log('Successfully connected with SSL. Setting SSL = true.');
-                    create(database, details);
-                }, function() {
-                    console.log('Unable to connect with SSL. Setting SSL = false.');
+                return Metabase.validate_connection(details).$promise.catch(function() {
+                    console.log('Unable to connect with SSL. Trying with SSL = false.');
                     details.ssl = false;
-                    create(database, details);
+                    return Metabase.validate_connection(details).$promise;
+                }).then(function() {
+                    console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
+                    return create(database, details, redirectToDetail);
+                }).catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
                 });
             }
+        };
+
+        $scope.save = save;
+
+        $scope.saveAndRedirect = function() {
+            return save($scope.database, $scope.details, true);
+        };
+
+        $scope.saveNoRedirect = function() {
+            return save($scope.database, $scope.details, false);
         };
 
         $scope.sync = function() {
@@ -133,8 +162,9 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // prepare an empty database for creation
             $scope.database = {
                 name: '',
-                engine: 'postgres',
-                details: {}
+                engine: null,
+                details: {},
+                created: false
             };
             $scope.details = {};
         }

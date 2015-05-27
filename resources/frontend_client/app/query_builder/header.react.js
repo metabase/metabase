@@ -1,5 +1,5 @@
 'use strict';
-/*global setTimeout, clearTimeout, Saver, ActionButton, Popover, DownloadIcon, QueryModeToggle, AddToDashboard*/
+/*global setTimeout, clearTimeout, Saver, ActionButton, Popover, Icon, QueryModeToggle, AddToDashboard*/
 
 var cx = React.addons.classSet,
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -171,11 +171,11 @@ var QueryHeader = React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <DownloadIcon>
+                    <Icon name='download'>
                         <Popover>
                             <span>Download data</span>
                         </Popover>
-                    </DownloadIcon>
+                    </Icon>
                 </a>
             );
         }
