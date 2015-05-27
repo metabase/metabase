@@ -1,7 +1,6 @@
 :root {
   --default-font-family: "Lato";
-  --default-font-size: 0.875em;
-  --large-font-size: 1em;
+  --default-font-size: 1em;
 }
 
 html {
@@ -17,13 +16,7 @@ body {
     display: flex;
     flex-direction: column;
     text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: subpixel-antialiased;
-}
-
-@media screen and (--breakpoint-min-xl) {
-    body {
-        font-size: var(--large-font-size);
-    }
+    -webkit-font-smoothing: antialiased;
 }
 
 /*

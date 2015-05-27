@@ -27,8 +27,9 @@
   [v]
   (if-not v :UnknownField
           (or (driver/class->base-type (type v))
-              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
-                                                      (str (type v))))))))
+              (do (log/warn (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
+                                    (str (type v))))
+                  :UnknownField))))
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."

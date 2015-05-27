@@ -21,11 +21,16 @@
                 <div class="col col-sm-12 mt4" ng-if="show_non_entities[dbId]">
                     <h5 class="text-bold mb2" ng-if="database.entities.length > 0">Other tables</h5>
                     <ul>
-                        <li class="border-bottom py1" ng-repeat="table in database.non_entities" ng-if="table.rows > 0">
+                        <li class="border-bottom py1" ng-repeat="table in database.non_entities">
                             <div class="clearfix">
                                 <span class="float-right text-grey-3 mt1">{{table.rows}} rows</span>
                                 <h4 class="text-normal inline-block">
-                                    <a class="link" cv-org-href="/explore/table/{{table.id}}">{{table.name}}</a>
+                                    <a ng-if="table.rows > 0" class="link" cv-org-href="/explore/table/{{table.id}}">
+                                        {{table.name}}
+                                    </a>
+                                    <span ng-if="table.rows === 0">
+                                        {{table.name}}
+                                    </span>
                                 </h4>
                             </div>
                             <p class="text-grey-3 m0 pb1" ng-if="table.description">{{table.description}}</p>

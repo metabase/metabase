@@ -1,31 +1,50 @@
+:root {
+    --sm-width: 752px;
+    --md-width: 940px;
+    --lg-width: 1140px;
+    --xl-width: 1540px;
+}
 .wrapper {
   width: 100%;
   margin: 0 auto;
+  padding-left: 1em;
+  padding-right: 1em;
 }
 
 @media screen and (--breakpoint-min-sm) {
   .wrapper {
-    max-width: 640px;
+    max-width: var(--sm-width);
   }
 }
 
 @media screen and (--breakpoint-min-md) {
   .wrapper {
-    max-width: 940px;
+    max-width: var(--md-width);
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
   .wrapper {
-    max-width: 1140px;
+    max-width: var(--lg-width);
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
   .wrapper {
-    max-width: 1540px;
+    max-width: var(--xl-width);
   }
 }
+
+/*
+    max-width utils
+    these classes allow you to keep a wrapper from extending beyond a certain size
+*/
+.wrapper.wrapper-max-sm { max-width: var(--sm-width); }
+.wrapper.wrapper-max-md { max-width: var(--md-width); }
+.wrapper.wrapper-max-lg { max-width: var(--lg-width); }
+.wrapper.wrapper-max-xl { max-width: var(--xl-width); }
 
 .row {
   margin-left: -1em;

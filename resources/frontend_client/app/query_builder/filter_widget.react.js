@@ -1,5 +1,5 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
+/*global DateFilter, SelectionModule, Icon */
 
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
@@ -280,7 +280,7 @@ var FilterWidget = React.createClass({
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
                 <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
-                    <CloseIcon width="12px" height="12px" />
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );

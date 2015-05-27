@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, AddToDashIcon, ReactCSSTransitionGroup*/
+/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, Icon, ReactCSSTransitionGroup*/
 
 var AddToDashboard = React.createClass({
     displayName: 'AddToDashboard',
@@ -52,7 +52,7 @@ var AddToDashboard = React.createClass({
         return (
             <span>
                 <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
-                    <AddToDashIcon />
+                    <Icon name='addtodash' />
                 </a>
                 <ReactCSSTransitionGroup transitionName="Transition-popover">
                     {this.addToDash()}

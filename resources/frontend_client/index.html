@@ -150,23 +150,6 @@
                 </div>
             </nav>
 
-            <!-- SETUP NAV -->
-            <nav class="SetupNav" ng-show="nav === 'setup'">
-                <div class="SetupWrapper py4">
-                    <span class="SetupOrg">
-                        {{currentOrg.name}}
-                    </span>
-                    <span class="SetupUser float-right Dropdown" dropdown on-toggle="toggled(open)">
-                        <div dropdown-toggle>
-                            {{user.email}}
-                            <cv-chevron-down-icon class="ml1" width="10px" height="10px"></cv-chevron-down-icon>
-                          </div>
-                        <ul class="Dropdown-content right">
-                          <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
-                        </ul>
-                    </span>
-                </div>
-            </nav>
         </div>
 
         <div class="MainContent flex flex-column full-height" ng-view></div>
@@ -218,7 +201,7 @@
     <script>
         WebFont.load({
           google: {
-            families: ['Lato:n2,n4,n7']
+            families: ['Lato:n1,n2,n4,n7']
           }
         });
       </script>

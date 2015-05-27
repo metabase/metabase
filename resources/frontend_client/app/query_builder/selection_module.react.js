@@ -1,5 +1,5 @@
 'use strict';
-/*global cx, OnClickOutside, SearchBar, CloseIcon, CheckIcon*/
+/*global cx, OnClickOutside, SearchBar, Icon*/
 
 var SelectionModule = React.createClass({
     displayName:'SelectionModule',
@@ -77,7 +77,7 @@ var SelectionModule = React.createClass({
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
-                        <CheckIcon width="12px" height="12px" />
+                        <Icon name='check' width="12px" height="12px" />
                         <span className="SelectionModule-display">
                             {display}
                         </span>
@@ -143,7 +143,7 @@ var SelectionModule = React.createClass({
         if(this.props.remove) {
             remove = (
                 <div onClick={this.props.remove.bind(null, this.props.index)}>
-                    <CloseIcon className="ml2" width="12px" height="12px" />
+                    <Icon name='close' className="ml2" width="12px" height="12px" />
                 </div>
             );
         }
