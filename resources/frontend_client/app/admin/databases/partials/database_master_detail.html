@@ -9,12 +9,12 @@
         <h3 class="py2">{{database.name}}</h2>
     </section>
 
-    <section class="DatabaseTablesAdmin bordered rounded shadowed flex" ng-show="pane == 'tables'">
+    <section class="DatabaseTablesAdmin Grid bordered rounded shadowed" ng-show="pane == 'tables'">
 
-        <div class="DatabaseTablesAdminSidebar border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
+        <div class="DatabaseTablesAdminSidebar Grid-cell Cell--1of3 border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
         </div>
 
-        <div class="DatabaseTableAdmin flex-full" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
+        <div class="DatabaseTableAdmin Grid-cell" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
         </div>
     </section>
 
