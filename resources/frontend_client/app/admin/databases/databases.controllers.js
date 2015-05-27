@@ -88,14 +88,22 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             if (redirectToDetail === undefined) {
                 redirectToDetail = true;
             }
-            if ($routeParams.databaseId) {
-                return update(database, details);
-            } else {
-                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
-                details.ssl = true;
 
-                // add 'engine' to the request body
-                details.engine = database.engine;
+            // validate_connection needs engine so add it to request body
+            details.engine = database.engine;
+
+            // for an existing DB check that connection is valid before save
+            if ($routeParams.databaseId) {
+                return Metabase.validate_connection(details).$promise.catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
+                }).then(function() {
+                    return update(database, details);
+                });
+
+            // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
+            } else {
+                details.ssl = true;
 
                 return Metabase.validate_connection(details).$promise.catch(function() {
                     console.log('Unable to connect with SSL. Trying with SSL = false.');
