@@ -6,14 +6,14 @@
             [metabase.driver :as driver]))
 
 (defn- details-map->connection-string
-  [{:keys [user password host port dbname]}]
+  [{:keys [user pass host port dbname]}]
   {:pre [host
          dbname]}
   (str "mongodb://"
        user
-       (when password
+       (when pass
          (assert user "Can't have a password without a user!")
-         (str ":" password))
+         (str ":" pass))
        (when user "@")
        host
        (when port
