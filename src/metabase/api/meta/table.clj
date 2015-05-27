@@ -24,7 +24,12 @@
   (read-check Org org)
   (let [db-ids (sel :many :id Database :organization_id org)]
     (-> (sel :many Table :active true :db_id [in db-ids] (order :name :ASC))
-        (hydrate :db))))
+        (hydrate :db)
+        ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
+        (#(map (fn [{:keys [rows] :as table}]
+                 (cond-> table
+                   (not rows) (assoc :rows 0)))
+               %)))))
 
 
 (defendpoint GET "/:id"
