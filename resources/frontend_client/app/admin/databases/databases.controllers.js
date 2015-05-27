@@ -59,7 +59,7 @@ DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$r
                     }
                 }
             }).catch(function(error) {
-                console.warn("error loading tables", error)
+                console.warn("error loading tables", error);
             });
         }
     }
