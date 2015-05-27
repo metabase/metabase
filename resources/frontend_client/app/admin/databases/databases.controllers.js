@@ -420,9 +420,8 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         $scope.routeParams = $routeParams;
         $scope.$watch("routeParams", function() {
-            console.log("refreshing DatabaseTable", $routeParams.databaseId, $routeParams.tableId);
             loadData();
-        }, true)
+        }, true);
     }
 ]);
 
