@@ -7,55 +7,12 @@
     </section>
 
     <section class="Grid Grid--gutters Grid--full">
-        <!-- form -->
         <div class="Grid-cell Cell--2of3">
             <form class="Form-new bordered rounded shadowed" name="form" novalidate>
-                <div class="Form-field" mb-form-field="engine">
-                    <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
-                    <label class="Select Form-offset">
-                        <select name="engine" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in form_input.engines"></select>
-                    </label>
-                </div>
+                <!-- Form -->
+                <div ng-include="'/app/admin/databases/partials/database_edit_forms.html'"></div>
 
-                <div class="Form-field" mb-form-field="engine">
-                    <mb-form-label display-name="Name" field-name="name"></mb-form-label>
-                    <input class="Form-input Form-offset full" name="name" placeholder="How would you like to refer to this database?" ng-model="database.name" required autofocus />
-                    <span class="Form-charm"></span>
-                </div>
-
-                <!-- TODO: database type dependent inputs -->
-                <div class="FormInputGroup" ng-show="database.engine == 'postgres'">
-                    <div class="Form-field" mb-form-field="host">
-                        <mb-form-label display-name="Host" field-name="host"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="host" placeholder="localhost" ng-model="details.host" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="port">
-                        <mb-form-label display-name="Port" field-name="port"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="port" placeholder="5432" ng-model="details.port" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="dbname">
-                        <mb-form-label display-name="Database name" field-name="dbname"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="dbname" placeholder="What is the name of your database?" ng-model="details.dbname" />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="user">
-                        <mb-form-label display-name="Database username" field-name="user"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="user" placeholder="What username do you use to login to the database?" ng-model="details.user" required />
-                        <span class="Form-charm"></span>
-                    </div>
-
-                    <div class="Form-field" mb-form-field="pass">
-                        <mb-form-label display-name="Database password" field-name="pass"></mb-form-label>
-                        <input class="Form-input Form-offset full" name="pass" placeholder="*******" ng-model="details.pass" />
-                        <span class="Form-charm"></span>
-                    </div>
-                </div>
-
+                <!-- Bottom Actions -->
                 <div class="Form-actions">
                     <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details)" ng-disabled="!form.$valid">
                         Save
@@ -65,7 +22,7 @@
             </form>
         </div>
 
-        <!-- actions -->
+        <!-- Sidebar Actions -->
         <div class="Grid-cell Cell--1of3" ng-if="database.id">
             <div class="Actions">
                 <h3>Actions</h3>
@@ -81,4 +38,4 @@
             </div>
         </div>
     </section>
-</div><!-- wrapper -->
+</div>

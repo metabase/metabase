@@ -27,8 +27,9 @@
   [v]
   (if-not v :UnknownField
           (or (driver/class->base-type (type v))
-              (throw (ApiException. (int 500) (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
-                                                      (str (type v))))))))
+              (do (log/warn (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
+                                    (str (type v))))
+                  :UnknownField))))
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
@@ -51,21 +52,15 @@
                                                     (log/debug "Setting timezone to:" timezone)
                                                     (jdbc/db-do-prepared conn set-timezone-sql)))
                                                 (jdbc/query conn sql :as-arrays? true))]
-         {:status :completed
-          :row_count (count rows)
-          :data {:rows rows
-                 :columns columns
-                 :cols (map (fn [column first-value]
-                              {:name column
-                               :base_type (value->base-type first-value)})
-                            columns first-row)}})
+         {:rows rows
+          :columns columns
+          :cols (map (fn [column first-value]
+                       {:name column
+                        :base_type (value->base-type first-value)})
+                     columns first-row)})
        (catch java.sql.SQLException e
-         {:status :failed
-          :error (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
-                          (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                          second)             ; so just return the part of the exception that is relevant
-                     (.getMessage e))})))
-
-(def db (delay (-> (sel :one Database :id 1)
-                   db->korma-db
-                   korma.db/get-connection)))
+         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+                                        (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
+                                        second)             ; so just return the part of the exception that is relevant
+                                   (.getMessage e))]
+           (throw (Exception. message))))))

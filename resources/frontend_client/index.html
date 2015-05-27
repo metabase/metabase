@@ -21,8 +21,11 @@
             <!-- MAIN NAV -->
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
-                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)">
-                        <span dropdown-toggle ng-if="user.is_multi_org">
+                    <div class="NavItem float-left" ng-if="!user.is_multi_org">
+                        <span class="NavItem-text">{{currentOrg.name}}</span>
+                    </div>
+                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
+                        <span dropdown-toggle>
                             <span class="NavItem-text" ng-bind="currentOrg.name"></span>
                             <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
                         </span>
@@ -114,11 +117,6 @@
                                 <span class="NavItem-text">Databases</span>
                             </a>
                         </li>
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/query')}" cv-org-href="/admin/query/run">
-                                <span class="NavItem-text">SQL Query</span>
-                            </a>
-                        </li>
                     </ul>
 
                     <!-- user profile dropdown -->
@@ -152,28 +150,9 @@
                 </div>
             </nav>
 
-            <!-- SETUP NAV -->
-            <nav class="SetupNav" ng-show="nav === 'setup'">
-                <div class="SetupWrapper py4">
-                    <span class="SetupOrg">
-                        {{currentOrg.name}}
-                    </span>
-                    <span class="SetupUser float-right Dropdown" dropdown on-toggle="toggled(open)">
-                        <div dropdown-toggle>
-                            {{user.email}}
-                            <cv-chevron-down-icon class="ml1" width="10px" height="10px"></cv-chevron-down-icon>
-                          </div>
-                        <ul class="Dropdown-content right">
-                          <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
-                        </ul>
-                    </span>
-                </div>
-            </nav>
         </div>
 
-        <div class="MainContent full-height">
-            <div class="full-height" ng-view></div>
-        </div>
+        <div class="MainContent flex flex-column full-height" ng-view></div>
     </body>
 
     <!-- JS INCLUDES -->
@@ -222,7 +201,7 @@
     <script>
         WebFont.load({
           google: {
-            families: ['Lato:n1,n4,n7']
+            families: ['Lato:n1,n2,n4,n7']
           }
         });
       </script>
@@ -231,7 +210,7 @@
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
     m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js <http://www.google-analytics.com/analytics.js>','ga');
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
     ga('create', 'UA-60817802-1', 'auto');
     ga('send', 'pageview');

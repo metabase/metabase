@@ -1,152 +1,286 @@
 'use strict';
-/*global DateFilter, SelectionModule*/
+/*global DateFilter, SelectionModule, Icon */
 
 var FilterWidget = React.createClass({
     displayName: 'FilterWidget',
     propTypes: {
-        field: React.PropTypes.number, // the id of the field
+        filter: React.PropTypes.array.isRequired,
         filterFieldList: React.PropTypes.array.isRequired,
         index: React.PropTypes.number.isRequired,
-        operator: React.PropTypes.string,
-        operatorList: React.PropTypes.array.isRequired,
-        updateFilter: React.PropTypes.func.isRequired, // a function to update the
-        valueFields: React.PropTypes.array.isRequired
+        updateFilter: React.PropTypes.func.isRequired,
+        removeFilter: React.PropTypes.func.isRequired
     },
-    sectionClassName: 'FilterSection',
-    _updateTextFilterValue: function (index) {
-        var value = this.refs.textFilterValue.getDOMNode().value;
-        // we always know the index will 2 for the value of a filter
-        this.props.updateFilter(value, 2, index);
+
+    getDefaultProps: function() {
+        return {
+            sectionClassName: 'Filter-section'
+        };
     },
-    _isOpen: function (value) {
-        if (value !== undefined) {
-            return true;
-        } else {
-            return false;
+
+    componentWillMount: function() {
+        this.componentWillReceiveProps(this.props);
+    },
+
+    componentWillReceiveProps: function(newProps) {
+        var operator = newProps.filter[0],      // name of the operator
+            field = newProps.filter[1],         // id of the field
+            values = null;                       // filtering value
+
+        if (newProps.filter.length > 2) {
+            values = [];
+
+            for (var i=2; i < newProps.filter.length; i++) {
+                var valuesIdx = i - 2;
+
+                values[valuesIdx] = null;
+                if (newProps.filter[i] !== null) {
+                    // always cast the underlying value to a string, otherwise we get strange behavior on dealing with input
+                    values[valuesIdx] = newProps.filter[i].toString();
+                }
+            }
+        }
+
+        // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
+        var fieldDef;
+        for(var j in newProps.filterFieldList) {
+            if(newProps.filterFieldList[j].id === field) {
+                fieldDef = newProps.filterFieldList[j];
+            }
+        }
+
+        // once we know our field we can pull out the list of possible operators to filter on
+        // also, if we know the operator then we can pull out the possible values for the field (if available)
+        // TODO: why is fieldValues a function of the operator?
+        var operatorList = [],
+            fieldValues;
+        if (fieldDef) {
+            for(var idx in fieldDef.operators_lookup) {
+                var operatorDef = fieldDef.operators_lookup[idx];
+                operatorList.push(operatorDef);
+
+                if(operatorDef.name === operator) {
+                    // this is structured strangely
+                    fieldValues = operatorDef.fields[0];
+                }
+            }
+        }
+
+        // this converts our fieldValues into things that are safe for us to work with through HTML
+        // it also filters out values like NULL which we don't want in our value options
+        if (fieldValues && fieldValues.values) {
+            var safeValues = [];
+            for (var idx2 in fieldValues.values) {
+                var fieldValue = fieldValues.values[idx2];
+
+                var safeValue = {};
+                for(var key in fieldValue) {
+                    // NOTE: we specifically prevent any keys which are NULL values because those should be expressed using IS_NULL or NOT_NULL operators
+                    if (fieldValue[key] !== undefined && fieldValue[key] !== null) {
+                        safeValue[key] = fieldValue[key].toString();
+                    }
+                }
+
+                if (Object.getOwnPropertyNames(safeValue).length > 0) {
+                    safeValues.push(safeValue);
+                }
+            }
+
+            fieldValues.values = safeValues;
+        }
+
+        this.setState({
+            field: field,
+            operator: operator,
+            operatorList: operatorList,
+            values: values,
+            fieldValues: fieldValues,
+            fieldDef: fieldDef
+        });
+    },
+
+    setField: function(value, index, filterListIndex) {
+        // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
+        // make sense once you've changed the field, so starting fresh is the most sensible thing to do
+        if (this.state.field !== value) {
+            var filter = [null, value, null];
+            this.props.updateFilter(this.props.index, filter);
         }
     },
-    _operatorList: function () {
-        return (
-            <div className={this.sectionClassName}>
-                <SelectionModule
-                    placeholder="..."
-                    items={this.props.operatorList}
-                    display='verbose_name'
-                    selectedValue={this.props.operator}
-                    selectedKey='name'
-                    index={0}
-                    isInitiallyOpen={this._isOpen()}
-                    parentIndex={this.props.index}
-                    action={this.props.updateFilter}
-                />
-            </div>
-        );
+
+    setOperator: function(value, index, filterListIndex) {
+        // different operators will lead to different filter scenarios, so handle that here
+        var operatorInfo = this.state.fieldDef.operators_lookup[value];
+        var filter = this.props.filter;
+
+        if (operatorInfo.validArgumentsFilters.length !== this.props.filter.length) {
+            // looks like our new filter operator expects a different length filter from our current
+            filter = [];
+            for(var i=0; i < operatorInfo.validArgumentsFilters.length + 2; i++) {
+                filter[i] = null;
+            }
+
+            // anything after 2 positions is going to be variable
+            for (var j=0; j < filter.length; j++) {
+                if (this.props.filter.length >= j+1) {
+                    filter[j] = this.props.filter[j];
+                }
+            }
+
+            // make sure we set the updated operator
+            filter[0] = value;
+
+        } else {
+            filter[0] = value;
+        }
+
+        this.props.updateFilter(this.props.index, filter);
     },
-    _fieldList: function () {
+
+    setValue: function(value, index, filterListIndex) {
+        var filter = this.props.filter;
+
+        // value casting.  we need the value in the filter to be of the proper type
+        if (this.state.fieldDef.base_type === "IntegerField") {
+            value = parseInt(value);
+        } else if (this.state.fieldDef.base_type === "BooleanField") {
+            value = (value.toLowerCase() === "true") ? true : false;
+        } else if (this.state.fieldDef.base_type === "FloatField") {
+            value = parseFloat(value);
+        }
+
+        // TODO: we may need to do some date formatting work on DateTimeField and DateField
+
+        if (value !== undefined) {
+            filter[index] = value;
+            this.props.updateFilter(this.props.index, filter);
+        }
+    },
+
+    setDateValue: function (index, date) {
+        this.setValue(date.format('YYYY-MM-DD'), index, this.props.index);
+    },
+
+    setTextValue: function(index) {
+        var value = this.refs.textFilterValue.getDOMNode().value;
+        // we always know the index will be 2 for the value of a filter
+        this.setValue(value, index, this.props.index);
+    },
+
+    renderFieldList: function() {
         return (
-            <div className={this.sectionClassName}>
+            <div className={this.props.sectionClassName}>
                 <SelectionModule
-                    action={this.props.updateFilter}
+                    action={this.setField}
                     display='name'
                     index={1}
                     items={this.props.filterFieldList}
                     placeholder="Filter by..."
-                    selectedValue={this.props.field}
+                    selectedValue={this.state.field}
                     selectedKey='id'
-                    isInitiallyOpen={this._isOpen()}
+                    isInitiallyOpen={this.state.field === null}
                     parentIndex={this.props.index}
                 />
             </div>
         );
     },
-    _getSafeValues: function () {
-        return this.props.valueFields.values.map(function(value) {
-            var safeValues = {};
-            for(var key in value) {
-                safeValues[key] = value[key].toString();
-            }
-            return safeValues;
-        });
-    },
-    _filterValue: function () {
-        var valueHtml,
-            isOpen = true;
 
-        if(this.props.valueFields) {
-
-            if(this.props.valueFields.values) {
-                // do some fixing up of the values so we can display true / false without causing "return true" or "return false"
-                var values = this._getSafeValues();
-
-                if(this.props.value) {
-                    isOpen = false;
-                }
-
-                valueHtml = (
-                    <SelectionModule
-                        action={this.props.updateFilter}
-                        display='name'
-                        index='2'
-                        items={values}
-                        isInitiallyOpen={isOpen}
-                        placeholder="..."
-                        selectedValue={this.props.value}
-                        selectedKey='key'
-                        parentIndex={this.props.index}
-                    />
-                );
-            } else {
-                switch(this.props.valueFields.type) {
-                    case 'date':
-                        valueHtml = (
-                            <DateFilter
-                                date={this.props.value}
-                                onChange={
-                                    function (date) {
-                                        this.props.updateFilter(
-                                            date.format('YYYY-MM-DD'),
-                                            2,
-                                            this.props.index
-                                        );
-                                    }.bind(this)
-                                }
-                            />
-                        );
-                        break;
-                    default:
-                        valueHtml = (
-                            <input
-                                className="input"
-                                type="text"
-                                defaultValue={this.props.value}
-                                onChange={this._updateTextFilterValue.bind(null, this.props.index)}
-                                ref="textFilterValue"
-                                placeholder="What value?"
-                            />
-                        );
-                }
-            }
+    renderOperatorList: function() {
+        // if we don't know our field yet then don't render anything
+        if (this.state.field === null) {
+            return false;
         }
+
         return (
-            <div className="FilterSection">
-                {valueHtml}
+            <div className={this.props.sectionClassName}>
+                <SelectionModule
+                    placeholder="..."
+                    items={this.state.operatorList}
+                    display='verbose_name'
+                    selectedValue={this.state.operator}
+                    selectedKey='name'
+                    index={0}
+                    isInitiallyOpen={this.state.operator === null}
+                    parentIndex={this.props.index}
+                    action={this.setOperator}
+                />
             </div>
         );
     },
-    render: function () {
-        var closeStyle = {
-                fill: '#ddd'
-            };
 
+    renderFilterValue: function() {
+        // if we don't know our field AND operator yet then don't render anything
+        if (this.state.field === null || this.state.operator === null) {
+            return false;
+        }
+
+        // the first 2 positions of the filter are always for fieldId + fieldOperator
+        var numValues = this.props.filter.length - 2;
+
+        var filterValueInputs = [];
+        for (var i=0; i < numValues; i++) {
+            var filterIndex = i + 2;
+            var filterValue = this.state.values[i];
+
+            var valueHtml;
+            if(this.state.fieldValues) {
+                if(this.state.fieldValues.values) {
+                    valueHtml = (
+                        <SelectionModule
+                            action={this.setValue}
+                            display='name'
+                            index={filterIndex}
+                            items={this.state.fieldValues.values}
+                            isInitiallyOpen={filterValue === null && i === 0}
+                            placeholder="..."
+                            selectedValue={filterValue}
+                            selectedKey='key'
+                            parentIndex={filterValue}
+                        />
+                    );
+                } else {
+                    switch(this.state.fieldValues.type) {
+                        case 'date':
+                            valueHtml = (
+                                <DateFilter
+                                    date={filterValue}
+                                    index={filterIndex}
+                                    onChange={this.setDateValue}
+                                />
+                            );
+                            break;
+                        default:
+                            valueHtml = (
+                                <input
+                                    className="input"
+                                    type="text"
+                                    value={filterValue}
+                                    onChange={this.setTextValue.bind(null, filterIndex)}
+                                    ref="textFilterValue"
+                                    placeholder="What value?"
+                                />
+                            );
+                    }
+                }
+            }
+
+            filterValueInputs[i] = (
+                <div className="FilterSection">
+                    {valueHtml}
+                </div>
+            );
+        }
+
+        return filterValueInputs;
+    },
+
+    render: function() {
         return (
-            <div className="QueryFilter relative inline-block">
-                {this._fieldList()}
-                {this._operatorList()}
-                {this._filterValue()}
-                <a className="RemoveTrigger" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <svg className="geomicon" data-icon="close" viewBox="0 0 32 32" style={closeStyle} width="16px" height="16px">
-                        <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                    </svg>
+            <div className="Query-filter">
+                {this.renderFieldList()}
+                {this.renderOperatorList()}
+                {this.renderFilterValue()}
+                <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );

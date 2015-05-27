@@ -103,3 +103,39 @@
     border-color: var(--success-button-color);
     color: #fff;
 }
+
+/* toggle button */
+.Button-toggle {
+    color: #797979;
+    display: flex;
+    line-height: 1;
+    border: 1px solid #ddd;
+    border-radius: 40px;
+    width: 3rem;
+    transition: background .2s linear .2s, border .2s linear .2s;
+}
+
+.Button-toggleIndicator {
+    margin-left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: 1px solid #ddd;
+    border-radius: 99px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
+    transition: margin .3s linear;
+    background-color: #fff;
+}
+
+.Button-toggle.Button--toggled .Button-toggleIndicator {
+    margin-left: 50%;
+    transition: margin .3s linear;
+}
+
+.Button-toggle.Button--toggled {
+    color: var(--brand-color);
+    background-color: var(--brand-color);
+    border-color: var(--brand-color);
+    transition: background .2s linear .2s, border .2s linear .2s;
+}

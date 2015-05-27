@@ -2,12 +2,10 @@
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [cheshire.core :as cheshire]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
-                             [query-processor :as qp]
-                             [result :as result])
+                             [query-processor :as qp])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.util :as u]))
@@ -41,6 +39,8 @@
    java.math.BigInteger         :BigIntegerField
    java.sql.Date                :DateField
    java.sql.Timestamp           :DateTimeField
+   java.util.Date               :DateField
+   java.util.UUID               :TextField
    org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
 
 ;; ## Driver Lookup
@@ -84,44 +84,63 @@
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
-  (i/can-connect? (engine->driver (:engine database)) database))
+  {:pre [(map? database)]}
+  (try
+    (i/can-connect? (engine->driver (:engine database)) database)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      false)))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
+   Specify optional param RETHROW-EXCEPTIONS if you want to handle any exceptions thrown yourself
+   (e.g., so you can pass the exception message along to the user).
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
-  [engine details-map]
-  (i/can-connect-with-details? (engine->driver engine) details-map))
+  [engine details-map & [rethrow-exceptions]]
+  {:pre [(keyword? engine)
+         (contains? (set (keys available-drivers)) engine)
+         (map? details-map)]}
+  (try
+    (i/can-connect-with-details? (engine->driver engine) details-map)
+    (catch Throwable e
+      (log/error "Failed to connect to database:" (.getMessage e))
+      (when rethrow-exceptions
+        (throw e))
+      false)))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
+      {:pre [(map? database)]}
       (time (-sync-database! (engine->driver (:engine database)) database)))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
   (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
     (fn [table]
+      {:pre [(map? table)]}
       (-sync-table! (database-id->driver (:db_id table)) table))))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (binding [qp/*query* query]
-    (i/process-query (database-id->driver (:database query))
-                     (qp/preprocess query))))
+  {:pre [(map? query)]}
+  (try
+    (binding [qp/*query* query]
+      (let [driver  (database-id->driver (:database query))
+            query   (qp/preprocess query)
+            results (binding [qp/*query* query]
+                      (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
+        (qp/post-process driver query results)))
+    (catch Throwable e
+      (.printStackTrace e)
+      {:status :failed
+       :error  (.getMessage e)})))
 
 
 ;; ## Query Execution Stuff
-
-(defn- execute-query
-  "Process and run a query and return results."
-  [{:keys [type] :as query}]
-  (case (keyword type)
-    :native (process-query query)
-    :query (process-query query)
-    :result (result/process-and-run query)))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -136,21 +155,16 @@
 
   Possible caller-options include:
 
-    :executed_by [int]               (user_id of caller)
-    :saved_query [{}]                (dictionary representing Query model)
-    :synchronously [true|false]      (default true)
-    :cache_result [true|false]       (default false)"
-  {:arglists '([query caller-options])}
-  [query {:keys [executed_by synchronously saved_query]
-          :or {synchronously true}
-          :as caller-options}]
+    :executed_by [int]               (user_id of caller)"
+  {:arglists '([query options])}
+  [query {:keys [executed_by]
+          :as options}]
   {:pre [(integer? executed_by)]}
-  (let [options (merge {:cache_result false} caller-options)
-        query-execution {:uuid (.toString (java.util.UUID/randomUUID))
+  (let [query-execution {:uuid (.toString (java.util.UUID/randomUUID))
                          :executor_id executed_by
                          :json_query query
-                         :query_id (:id saved_query)
-                         :version (get saved_query :version 0)
+                         :query_id nil
+                         :version 0
                          :status :starting
                          :error ""
                          :started_at (u/new-sql-timestamp)
@@ -161,34 +175,18 @@
                          :result_data "{}"
                          :raw_query ""
                          :additional_info ""}]
-    (if synchronously
-      (-dataset-query query options query-execution)
-      ;; TODO - this is untested/used.  determine proper way to place execution on background thread
-      (let [query-execution (-> (save-query-execution query-execution)
-                                ;; this is a bit lame, but to avoid having the delay fns in the dictionary we are
-                                ;; trimming them right here.  maybe there is a better way?
-                                (select-keys [:id :uuid :executor :query_id :version :status :started_at]))]
-        ;; run the query, but do it on another thread
-        (future (-dataset-query query options query-execution))
-        ;; this ensures the currently saved query-execution is what gets returned
-        query-execution))))
-
-(defn -dataset-query
-  "Execute a query and record the outcome.  Entire execution is wrapped in a try-catch to prevent Exceptions
-  from leaking outside the function call."
-  [query options query-execution]
-  (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
-    (try
-      (let [query-result (execute-query query)]
-        (when-not (contains? query-result :status)
-          (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result))
-          (throw (Exception. ^String (get query-result :error "general error"))))
-        (query-complete query-execution query-result (:cache_result options)))
-      (catch Exception ex
-        (log/warn ex)
-        (query-fail query-execution (.getMessage ex))))))
-
+    (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
+      (try
+        (let [query-result (process-query query)]
+          (when-not (contains? query-result :status)
+            (throw (Exception. "invalid response from database driver. no :status provided")))
+          (when (= :failed (:status query-result))
+            (throw (Exception. ^String (get query-result :error "general error"))))
+          (query-complete query-execution query-result))
+        (catch Exception ex
+          (log/warn ex)
+          (.printStackTrace ex)
+          (query-fail query-execution (.getMessage ex)))))))
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"
@@ -211,16 +209,13 @@
 
 (defn query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
-  [query-execution query-result cache-result]
+  [query-execution query-result]
   ;; record our query execution and format response
   (-> (u/assoc* query-execution
                    :status :completed
                    :finished_at (u/new-sql-timestamp)
                    :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
-                   :result_rows (get query-result :row_count 0)
-                   :result_data (if cache-result
-                                  (cheshire/generate-string (:data query-result))
-                                  "{}"))
+                   :result_rows (get query-result :row_count 0))
       (dissoc :start_time_millis)
       (save-query-execution)
       ;; at this point we've saved and we just need to massage things into our final response format

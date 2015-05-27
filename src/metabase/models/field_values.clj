@@ -2,7 +2,6 @@
   (:require [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [metabase.db :refer :all]
-            [metabase.db.metadata-queries :as metadata]
             [metabase.util :as u]))
 
 ;; ## Entity + DB Multimethods
@@ -36,6 +35,9 @@
   (or (contains? #{:category :city :state :country} (keyword special_type))
       (= (keyword base_type) :BooleanField)))
 
+(def ^:private field-distinct-values
+  (u/runtime-resolved-fn 'metabase.db.metadata-queries 'field-distinct-values))
+
 (defn create-field-values
   "Create `FieldValues` for a `Field`."
   {:arglists '([field]
@@ -46,7 +48,7 @@
   (log/debug (format "Creating FieldValues for Field %d..." field-id))
   (ins FieldValues
     :field_id field-id
-    :values (metadata/field-distinct-values field)
+    :values (field-distinct-values field)
     :human_readable_values human-readable-values))
 
 (defn create-field-values-if-needed

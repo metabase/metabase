@@ -9,7 +9,7 @@
 
 var CardDirectives = angular.module('corvus.card.directives', []);
 
-CardDirectives.directive('cvCard', ['Card', 'Metabase', 'CorvusAlert', 'Query', 'QueryResult', 'VisualizationSettings', '$timeout', function(Card, Metabase, CorvusAlert, Query, QueryResult, VisualizationSettings, $timeout) {
+CardDirectives.directive('cvCard', ['Card', 'Metabase', 'CorvusAlert', 'VisualizationSettings', '$timeout', function(Card, Metabase, CorvusAlert, VisualizationSettings, $timeout) {
 
     var DATA_TIMEOUT_DELAY_IN_MS = 1000;
 
@@ -261,24 +261,8 @@ CardDirectives.directive('cvCard', ['Card', 'Metabase', 'CorvusAlert', 'Query', 
             } else {
                 scope.cardDataEmpty = true;
 
-                //if card is backed by SQL query, find out why there is no data
-                if (scope.card.dataset_query.type == 'result') {
-                    Query.results({
-                        'queryId': scope.card.dataset_query.result.query_id
-                    }, function(results) {
-                        if (results[0]) {
-                            QueryResult.response({
-                                'resultId': results[0].id
-                            }, function(queryResponse) {
-                                if (queryResponse) {
-                                    scope.sqlError = queryResponse.sql_error;
-                                }
-                            });
-                        }
-
-                    });
-                    //if card is backed by structured query, check to see if the table is empty
-                } else if (scope.card.dataset_query.type == 'query') {
+                // if card is backed by structured query, check to see if the table is empty
+                if (scope.card.dataset_query.type == 'query') {
                     Metabase.table_get({
                         'tableId': scope.card.dataset_query.query.source_table
                     }, function(source_table) {
@@ -551,19 +535,3 @@ CardDirectives.directive('cvCardFavoriteButton', ['Card', function(Card) {
         link: link
     };
 }]);
-
-CardDirectives.directive('queryBuilder', function() {
-    return {
-        link: function(scope, element) {
-            scope.$on('query:updated', function () {
-                renderReact();
-            });
-
-            function renderReact() {
-                React.render(new QueryBuilder({
-                    model: scope.model
-                }), document.getElementById('react'));
-            }
-        }
-    };
-});

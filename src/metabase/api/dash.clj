@@ -30,7 +30,7 @@
 (defendpoint POST "/"
   "Create a new `Dashboard`."
   [:as {{:keys [organization name public_perms] :as body} :body}]
-  {name         Required
+  {name         [Required NonEmptyString]
    organization Required
    public_perms [Required PublicPerms]}
   (read-check Org organization) ; any user who has permissions for this Org can make a dashboard
@@ -63,7 +63,7 @@
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
-  (del Dashboard :id id))
+  (cascade-delete Dashboard :id id))
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."

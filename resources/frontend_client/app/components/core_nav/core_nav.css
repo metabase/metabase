@@ -3,7 +3,7 @@
   --core-nav-text-color: #8691AC;
   --core-nav-selected-text-color: #4A90E2;
   --core-nav-border-radius: 4px;
-  --core-nav-border-color: #E4E4E4;
+  --core-nav-border-color: #F2F2F2;
   --nav-item-text-color: #8691AC;
   --brand-text-color: #333;
 }
@@ -87,10 +87,27 @@
   display: inline-block;
   text-decoration: none;
   color: var(--nav-item-text-color);
-  padding: 1em 0.5em;
+  padding: 0.5em 0.5em;
   font-size: 0.9em;
   text-rendering: optimizeLegibility;
   position: relative;
+}
+
+/* this is jank */
+.NavItem .IconWrapper svg {
+    width: 24px;
+    height: 24px;
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .NavItem {
+        padding-top: 1em;
+        padding-bottom: 1em;
+    }
+    .NavItem .IconWrapper svg {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 .NavItem-withIcon {
@@ -107,10 +124,10 @@
     content: '';
     display: block;
     position: absolute;
-    bottom: 0;
+    bottom: -1px;
     width: 100%;
     background-color: var(--core-nav-text-color);
-    height: 4px;
+    height: 1px;
     left: 0;
     opacity: 0;
     transition: opacity .2s ease-in;

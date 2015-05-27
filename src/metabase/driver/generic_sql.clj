@@ -5,26 +5,24 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :refer :all]
                              [sync :as driver-sync])
-            (metabase.driver.generic-sql [connection :as connection]
-                                         [query-processor :as qp]
+            (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])))
 
 (defrecord SqlDriver [column->base-type
-                     connection-details->connection-spec
-                     database->connection-details
-                     sql-string-length-fn]
+                      connection-details->connection-spec
+                      database->connection-details
+                      sql-string-length-fn]
   IDriver
   ;; Connection
-  (can-connect? [_ database]
-    (try (connection/test-connection (-> database
-                                         database->connection-details
-                                         connection-details->connection-spec))
-         (catch Throwable e
-           (log/error "Failed to connect to database:" (.getMessage e))
-           false)))
+  (can-connect? [this database]
+    (can-connect-with-details? this (database->connection-details database)))
 
   (can-connect-with-details? [_ details]
-    (connection/test-connection (connection-details->connection-spec details)))
+    (let [connection (connection-details->connection-spec details)]
+      (= 1 (-> (exec-raw connection "SELECT 1" :results)
+               first
+               vals
+               first))))
 
   ;; Query Processing
   (process-query [_ query]
@@ -88,7 +86,8 @@
                                            (aggregate (count :*) :count)
                                            (where {(keyword (:name field)) [not= nil]})) first :count)]
       (if (= total-non-null-count 0) 0.0
-          (let [url-count (-> (select korma-table
-                                      (aggregate (count :*) :count)
-                                      (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)]
+          (let [url-count (or (-> (select korma-table
+                                          (aggregate (count :*) :count)
+                                          (where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
+                              0)]
             (float (/ url-count total-non-null-count)))))))

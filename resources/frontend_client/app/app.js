@@ -28,7 +28,6 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.organization',
     'corvusadmin.databases',
     'corvusadmin.people',
-    'corvusadmin.query',
     'superadmin.settings',
     'superadmin.organization'
 ]);
@@ -57,16 +56,6 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         redirectTo: function(routeParams, path, search) {
             return '/auth/login';
         }
-    });
-
-    $routeProvider.when('/setup/', {
-        templateUrl: '/app/setup/partials/setup_intro.html',
-        controller: 'SetupIntro'
-    });
-
-    $routeProvider.when('/setup/init/:setupToken', {
-        template: '',
-        controller: 'SetupInit'
     });
 
     $routeProvider.when('/superadmin/', {

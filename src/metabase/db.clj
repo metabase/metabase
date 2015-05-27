@@ -74,12 +74,6 @@
                       (config/config-str :mb-db-user)
                       (config/config-str :mb-db-pass))))
 
-(defn test-db-conn
-  "Simple test of a JDBC connection."
-  [jdbc-db]
-  (let [result (first (jdbc/query jdbc-db ["select 7 as num"] :row-fn :num))]
-    (assert (= 7 result) "JDBC Connection Test FAILED")))
-
 
 ;; ## MIGRATE
 
@@ -98,17 +92,25 @@
 (def ^:private setup-db-has-been-called?
   (atom false))
 
+(def ^:private db-can-connect? (u/runtime-resolved-fn 'metabase.driver 'can-connect?))
+
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [auto-migrate]
       :or {auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
+  (log/info "Setting up DB specs...")
   (let [jdbc-db (setup-jdbc-db)
         korma-db (setup-korma-db)]
+
     ;; Test DB connection and throw exception if we have any troubles connecting
-    (test-db-conn jdbc-db)
+    (log/info "Verifying Database Connection ...")
+    (assert (db-can-connect? {:engine (config/config-kw :mb-db-type)
+                              :details {:conn_str (metabase-db-conn-str)}})
+            "Unable to connect to Metabase DB.")
     (log/info "Verify Database Connection ... CHECK")
+
     ;; Run through our DB migration process and make sure DB is fully prepared
     (if auto-migrate
       (migrate jdbc-db :up)
@@ -120,11 +122,16 @@
                     "Please execute the following sql commands on your database before proceeding.\n\n"
                     sql
                     "\n\n"
-                    "Once you're database is updated try running the application again.\n"))
+                    "Once your database is updated try running the application again.\n"))
         (throw (java.lang.Exception. "Database requires manual upgrade."))))
     (log/info "Database Migrations Current ... CHECK")
+
     ;; Establish our 'default' Korma DB Connection
-    (default-connection (create-db korma-db))))
+    (default-connection (create-db korma-db))
+
+    ;; Perform ghetto "data migration" to update any old-style database connection strings. This is temporary until everyone's DBs are updated
+    ;; Resolve at runtime to avoid circular deps
+    ((u/runtime-resolved-fn 'metabase.db.migrate-details 'convert-legacy-database-connection-details))))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
@@ -277,7 +284,7 @@
     (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
     (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, or `:id->fields`.
+  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, or `:id->fields`.
 
     ;; Only return IDs of objects.
     (sel :one :id User :email \"cam@metabase.com\") -> 120
@@ -296,6 +303,11 @@
     ;; Return a map of field value -> ID. Duplicates will be discarded!
     (sel :many :field->id [User :first_name])
       -> {\"Cam\" 1, \"Sameer\" 2}
+
+    ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
+    (sel :many :field->obj [Table :name] :db_id 1)
+      -> {\"venues\" {:id 1, :name \"venues\", ...}
+          \"users\"  {:id 2, :name \"users\", ...}}
 
     ;; Return a map of ID -> specified fields
     (sel :many :id->fields [User :first_name :last_name])
@@ -345,6 +357,11 @@
                            (map (fn [{id# :id field-val# field#}]
                                   {field-val# id#}))
                            (into {})))
+        :field->obj `(let [[entity# field#] ~entity]
+                       (->> (sel :many entity# ~@forms)
+                            (map (fn [obj#]
+                                   {(field# obj#) obj#}))
+                            (into {})))
         :fields `(let [[~'_ & fields# :as entity#] ~entity]
                    (map #(select-keys % fields#)
                         (sel :many entity# ~@forms)))

@@ -318,6 +318,8 @@ CardServices.service('VisualizationSettings', [function() {
         '#7cb5ec'
     ];
 
+    var DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[2];
+
     /* *** visualization settings ***
      *
      * This object defines default settings for card visualizations (i.e. charts, maps, etc).
@@ -397,7 +399,7 @@ CardServices.service('VisualizationSettings', [function() {
             'labels_step': null
         },
         'line': {
-            'lineColor': '#5c98ce',
+            'lineColor': DEFAULT_COLOR,
             'colors': DEFAULT_COLOR_HARMONY,
             'lineWidth': 2,
             'step': false,
@@ -409,7 +411,7 @@ CardServices.service('VisualizationSettings', [function() {
             'yAxis_columns': []
         },
         'area': {
-            'fillColor': '#5c98ce',
+            'fillColor': DEFAULT_COLOR,
             'fillOpacity': 0.75
         },
         'pie': {
@@ -421,7 +423,7 @@ CardServices.service('VisualizationSettings', [function() {
         },
         'bar': {
             'colors': DEFAULT_COLOR_HARMONY,
-            'color': "#7cb5ec"
+            'color': DEFAULT_COLOR
         },
         'map': {
             'latitude_source_table_field_id': null,
@@ -445,6 +447,10 @@ CardServices.service('VisualizationSettings', [function() {
         'country': ['global', 'columns', 'chart', 'map'],
         'state': ['global', 'columns', 'chart', 'map'],
         'pin_map': ['global', 'columns', 'chart', 'map']
+    };
+
+    this.getDefaultColor = function() {
+        return DEFAULT_COLOR;
     };
 
     this.getDefaultColorHarmony = function() {
@@ -490,8 +496,9 @@ CardServices.service('VisualizationSettings', [function() {
     };
 
     this.getSettingsForVisualization = function(dbSettings, visualization) {
-        var groups = _.union(_.keys(dbSettings), this.getSettingsGroupsForVisualization(visualization));
-        return this.getSettingsForGroups(dbSettings, groups);
+        var settings = angular.copy(dbSettings);
+        var groups = _.union(_.keys(settings), this.getSettingsGroupsForVisualization(visualization));
+        return this.getSettingsForGroups(settings, groups);
     };
 
     //Clean visualization settings to only keep the settings that are "dirty".
@@ -537,4 +544,44 @@ CardServices.service('VisualizationSettings', [function() {
 
         return defaults;
     };
+
+    this.setLatitudeAndLongitude = function(settings, columnDefs) {
+        // latitude
+        var latitudeColumn,
+            latitudeColumnIndex;
+        columnDefs.forEach(function(col, index) {
+            if (col.special_type &&
+                    col.special_type === "latitude" &&
+                    latitudeColumn === undefined) {
+                latitudeColumn = col;
+                latitudeColumnIndex = index;
+            }
+        });
+
+        // longitude
+        var longitudeColumn,
+            longitudeColumnIndex;
+        columnDefs.forEach(function(col, index) {
+            if (col.special_type &&
+                    col.special_type === "longitude" &&
+                    longitudeColumn === undefined) {
+                longitudeColumn = col;
+                longitudeColumnIndex = index;
+            }
+        });
+
+        if (latitudeColumn && longitudeColumn) {
+            var settingsWithLatAndLon = angular.copy(settings);
+
+            settingsWithLatAndLon.map.latitude_source_table_field_id = latitudeColumn.id;
+            settingsWithLatAndLon.map.latitude_dataset_col_index = latitudeColumnIndex;
+            settingsWithLatAndLon.map.longitude_source_table_field_id = longitudeColumn.id;
+            settingsWithLatAndLon.map.longitude_dataset_col_index = longitudeColumnIndex;
+
+            return settingsWithLatAndLon;
+        } else {
+            return settings;
+        }
+    };
+
 }]);

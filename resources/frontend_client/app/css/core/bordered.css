@@ -40,3 +40,7 @@
 .borderless {
   border: none !important;
 }
+
+.border-dashed {
+  border-style: dashed;
+}

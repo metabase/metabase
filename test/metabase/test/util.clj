@@ -114,6 +114,9 @@
       field-avg-length field-percent-urls)"
   {:arglists '([namespace-symb & fn-symbs])}
   [namespc fn-name & more]
+  {:pre [(symbol? namespc)
+         (symbol? fn-name)
+         (every? symbol? more)]}
   `(do (def ~fn-name (ns-resolve '~namespc '~fn-name))
        ~(when (seq more)
           `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))
