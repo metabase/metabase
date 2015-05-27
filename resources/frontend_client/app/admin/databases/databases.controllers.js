@@ -3,8 +3,8 @@
 
 var DatabasesControllers = angular.module('corvusadmin.databases.controllers', ['corvus.metabase.services']);
 
-DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$routeParams', '$location', 'Metabase',
-    function($scope, $route, $routeParams, $location, Metabase) {
+DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$routeParams', '$location', '$q', 'Metabase',
+    function($scope, $route, $routeParams, $location, $q, Metabase) {
         $scope.pane = "settings";
         $scope.tableFields = {};
 
@@ -28,39 +28,48 @@ DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$r
         }, true);
 
         function loadData() {
-            Metabase.db_get({
-                'dbId': $routeParams.databaseId
-            }).$promise.then(function(database) {
-                $scope.database = database;
-            }).catch(function(error) {
-                console.log('error loading database', error);
+            loadDatabase()
+            .then(function() {
+                return updateTable();
+            })
+            .catch(function(error) {
+                console.log('error loading data', error);
                 if (error.status == 404) {
                     $location.path('/admin/databases');
                 }
             });
+        }
 
-            Metabase.db_tables({
-                'dbId': $routeParams.databaseId
-            }).$promise.then(function(tables) {
-                $scope.tables = tables;
-                $scope.tables.forEach(function(table) {
-                    Metabase.table_query_metadata({
-                        'tableId': table.id
-                    }, function(result) {
-                        $scope.tableFields[table.id] = result;
-                    }, function(error) {
-                        console.log(error);
-                    });
-                });
-                if ($routeParams.tableId !== undefined) {
-                    $scope.currentTable = tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
-                    if (!$scope.currentTable) {
-                        $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
-                    }
+        function loadDatabase() {
+            if ($scope.database && $scope.database.id == $routeParams.databaseId) {
+                return $q.all([]); // just return an empty promise if we already loaded this db
+            } else {
+                return $q.all([
+                    Metabase.db_get({ 'dbId': $routeParams.databaseId }).$promise
+                    .then(function(database) {
+                        $scope.database = database;
+                    }),
+                    Metabase.db_tables({ 'dbId': $routeParams.databaseId }).$promise
+                    .then(function(tables) {
+                        $scope.tables = tables;
+                        return $q.all(tables.map(function(table) {
+                            return Metabase.table_query_metadata({ 'tableId': table.id }).$promise
+                            .then(function(result) {
+                                $scope.tableFields[table.id] = result;
+                            });
+                        }));
+                    })
+                ]);
+            }
+        }
+
+        function updateTable() {
+            if ($routeParams.tableId !== undefined) {
+                $scope.currentTable = $scope.tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
+                if (!$scope.currentTable) {
+                    $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
                 }
-            }).catch(function(error) {
-                console.warn("error loading tables", error);
-            });
+            }
         }
     }
 ]);
