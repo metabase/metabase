@@ -10,188 +10,144 @@ SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams',
 
         AppState.model.setupToken = $routeParams.setupToken;
 
-        $location.path('/setup/');
+        $location.path('/setup/welcome');
     }
 ]);
 
-SetupControllers.controller('SetupIntro', ['$scope', '$location', '$timeout', 'ipCookie', 'Organization', 'AppState', 'Setup',
-    function($scope, $location, $timeout, ipCookie, Organization, AppState, Setup) {
+SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'User', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
+    function($scope, $routeParams, $location, $timeout, ipCookie, Organization, User, AppState, Setup, Metabase, CorvusCore) {
+        $scope.activeStep = "user";
+        $scope.completedSteps = {
+            user: false,
+            database: false
+        };
+
+        $scope.userStepText = 'What should we call you?';
+        $scope.databaseStepText = 'Add your first database';
+
+        // if we have a user, make the welcome text more welcomeing
+        if($scope.completedSteps.user) {
+            $scope.userStepText = 'Welcome ' + AppState.model.currentUser.first_name + ', nice to meet you!';
+        }
+
+        if($scope.completedSteps.database) {
+            $scope.databaseStepText = 'Connected to your data.';
+        }
+
+        // redirect back to home if the user has already set up the product,
+        // indicated by the presence of a currentUser
+        if (AppState.model.currentUser) {
+            $location.path('/');
+        }
+
+        $scope.newUser = {};
+
+        $scope.$on("database:created", function(event, database) {
+            $timeout(function() {
+                $scope.activeStep = "finish";
+                $scope.completedSteps.database = true;
+            });
+        });
+
+        var oldPassword = null;
+        function createOrUpdateUser() {
+            if (AppState.model.currentUser) {
+                return User.update({
+                    'id': AppState.model.currentUser.id,
+                    'email': $scope.newUser.email,
+                    'first_name': $scope.newUser.first_name,
+                    'last_name': $scope.newUser.last_name
+                }).$promise.then(function(user) {
+                    if (!oldPassword) {
+                        $scope.newUser.password = "";
+                        $scope.newUser.repeated_password = "";
+                    } else {
+                        return User.update_password({
+                            'id': AppState.model.currentUser.id,
+                            'password': $scope.newUser.password,
+                            'old_password': oldPassword
+                        }).$promise;
+                    }
+                }).then(function() {
+                    // record the last known password in case the user goes back to edit it
+                    oldPassword = $scope.newUser.password;
+                });
+            } else {
+                return Setup.create_user({
+                    'token': AppState.model.setupToken,
+                    'email': $scope.newUser.email,
+                    'first_name': $scope.newUser.first_name,
+                    'last_name': $scope.newUser.last_name,
+                    'password': $scope.newUser.password
+                }).$promise.then(function(user) {
+                    console.log('first user created', user);
+
+                    // record the last known password in case the user goes back to edit it
+                    oldPassword = $scope.newUser.password;
+
+                    // result should have a single :id value which is our new session id
+                    var sessionId = user.id;
+
+                    // we've now used the setup token for all it's worth, so lets actively purge it now
+                    AppState.model.setupToken = null;
+
+                    // TODO - this session cookie code needs to be somewhere easily reusable
+                    var isSecure = ($location.protocol() === "https") ? true : false;
+                    ipCookie('metabase.SESSION_ID', sessionId, {
+                        path: '/',
+                        expires: 14,
+                        secure: isSecure
+                    });
+
+                    // send a login notification event
+                    $scope.$emit('appstate:login', sessionId);
+
+                    // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+                    return $timeout(function(){}, 1000);
+                });
+            }
+        }
+
+        function createOrUpdateOrg() {
+            // TODO - we need some logic to slugify the name specified.  can't have spaces, caps, etc.
+            if (AppState.model.currentOrg) {
+                return Organization.update({
+                    'id': AppState.model.currentOrg.id,
+                    'name': $scope.newUser.orgName,
+                    'slug': $scope.newUser.orgName
+                }).$promise;
+            } else {
+                return Organization.create({
+                    'name': $scope.newUser.orgName,
+                    'slug': $scope.newUser.orgName
+                }).$promise.then(function(org) {
+                    console.log('first org created', org);
+
+                    // switch the org
+                    // TODO - make sure this is up to snuff from a security standpoint
+                    AppState.switchOrg(org.slug);
+                });
+            }
+        }
 
         $scope.createOrgAndUser = function() {
-
             // start off by creating the first user of the system
             // NOTE: this should both create the user AND log us in and return a session id
-            Setup.create_user({
-                'token': AppState.model.setupToken,
-                'email': $scope.newUser.email,
-                'first_name': $scope.newUser.firstName,
-                'last_name': $scope.newUser.lastName,
-                'password': $scope.newUser.password
-            }, function(result) {
-                // result should have a single :id value which is our new session id
-                var sessionId = result.id;
+            createOrUpdateUser().then(function() {
+                // now that we should be logged in and our session cookie is established, lets do the rest of the work
+                // create our first Organization
+                return createOrUpdateOrg();
+            }).then(function() {
+                // reset error in case there were previous errors
+                $scope.error = null;
 
-                // we've now used the setup token for all it's worth, so lets actively purge it now
-                AppState.model.setupToken = null;
-
-                // TODO - this session cookie code needs to be somewhere easily reusable
-                var isSecure = ($location.protocol() === "https") ? true : false;
-                ipCookie('metabase.SESSION_ID', sessionId, {
-                    path: '/',
-                    expires: 14,
-                    secure: isSecure
-                });
-
-                // send a login notification event
-                $scope.$emit('appstate:login', sessionId);
-
-                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-                $timeout(function() {
-                    // now that we should be logged in and our session cookie is established, lets do the rest of the work
-
-                    // create our first Organization
-                    // TODO - we need some logic to slugify the name specified.  can't have spaces, caps, etc.
-                    Organization.create({
-                        'name': $scope.userOrgName,
-                        'slug': $scope.userOrgName
-                    }, function(org) {
-                        console.log('first org created', org);
-
-                        // switch the org
-                        // TODO - make sure this is up to snuff from a security standpoint
-                        AppState.switchOrg(org.slug);
-
-                        // we should be good to carry on with setting up data at this point
-                        $location.path('/setup/data/');
-
-                    }, function(error) {
-                        $scope.error = error.data;
-                        console.log('error creating organization', error);
-                    });
-                }, 300);
-            }, function(error) {
+                // we should be good to carry on with setting up data at this point
+                $scope.activeStep = "database";
+                $scope.completedSteps.user = true;
+            }).catch(function(error) {
+                console.log('error with initial', error);
                 $scope.error = error.data;
-                console.log('error with initial user creation', error);
             });
         };
     }
 ]);
-
-SetupControllers.controller('SetupConnection', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore', function($scope, $routeParams, $location, Metabase, CorvusCore) {
-
-    $scope.ENGINES = CorvusCore.ENGINES;
-
-    $scope.details = {};
-
-    // assume we have a new connection since this is the setup process
-    var newConnection = true;
-    $scope.breadcrumb = 'Add connection';
-
-    // hide the SSL field when creating a new DB until we auto-infer SSL support
-    $scope.hiddenFields = {
-        ssl: true
-    };
-
-    if ($routeParams.dbId) {
-        newConnection = false;
-        $scope.hiddenFields = null;
-        Metabase.db_get({
-            'dbId': $routeParams.dbId
-        }, function(result) {
-            $scope.database = result;
-            $scope.breadcrumb = result.name;
-            $scope.details = $scope.ENGINES[result.engine].parseDetails(result.details);
-        }, function(error) {
-            console.log('error', error);
-        });
-    } else {
-        $scope.details = {
-            host: 'localhost',
-            port: '5432',
-            ssl: false
-        };
-        $scope.database = {
-            engine: 'postgres',
-            details: $scope.details
-        };
-    }
-
-    $scope.setConnectionEngine = function(engine) {
-        $scope.database.engine = engine;
-    };
-
-    // Call API to determine whether connection is valid. If so, save the DB.
-    $scope.submit = function() {
-        // add engine to the request body
-        $scope.details.engine = $scope.database.engine;
-
-        function validateConnectionDetails(onConnectionValidationFailed) {
-            console.log('attempting to connect with SSL set to: ', $scope.details.ssl);
-
-            Metabase.validate_connection($scope.details, function() {
-                // Connection valid, save the DB
-                console.log('connection successful.');
-
-                var engine = $scope.database.engine,
-                    database = {
-                        org: $scope.currentOrg.id,
-                        name: $scope.database.name,
-                        engine: engine,
-                        details: $scope.ENGINES[engine].buildDetails($scope.details)
-                    };
-
-                function onCreateOrUpdateDBSuccess(result) {
-                    $location.path('/setup/data');
-                }
-
-                function onCreateOrUpdateDBError(err) {
-                    $scope.error = err;
-                    console.log('error', err);
-                }
-
-                if (newConnection) {
-                    Metabase.db_create(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
-                } else {
-                    // add the id since we're updating
-                    database.id = $scope.database.id;
-                    Metabase.db_update(database, onCreateOrUpdateDBSuccess, onCreateOrUpdateDBError);
-                }
-            }, onConnectionValidationFailed);
-        }
-
-        function displayConnectionValidationError(error) {
-            console.log(error);
-            $scope.error = 'Connection failed: ' + error.data.message;
-        }
-
-        // now perform the connection validation
-        if (newConnection) {
-            // if this is a new connection we'll try SSL first and if that fails we'll retry without it
-            $scope.details.ssl = true;
-            validateConnectionDetails(function(error) {
-                // try again without SSL
-                $scope.details.ssl = false;
-                validateConnectionDetails(displayConnectionValidationError);
-            });
-        } else {
-            validateConnectionDetails(displayConnectionValidationError);
-        }
-    };
-}]);
-
-SetupControllers.controller('SetupData', ['$scope', 'Metabase', function($scope, Metabase) {
-    $scope.$watch('currentOrg', function(org) {
-        if (!org) return;
-
-        Metabase.db_list({
-                'orgId': org.id
-            },
-            function(result) {
-                $scope.databases = result;
-            },
-            function(error) {
-                console.log('error', error);
-            }
-        );
-    });
-}]);
