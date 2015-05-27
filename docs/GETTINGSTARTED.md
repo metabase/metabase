@@ -1,6 +1,6 @@
 # Before you start
 
-This guide assumes you have a database you have access to and it is set up correctly. If not, please follow the instructions in the [Installation Guide](docs/INSTALLATION.md)
+This guide assumes you have a database you have access to and it is set up correctly. If not, please follow the instructions in the [Installation Guide](INSTALLATION.md)
 
 # Understanding what data you have
 
