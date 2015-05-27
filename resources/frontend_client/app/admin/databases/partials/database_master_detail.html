@@ -1,27 +1,24 @@
 <div class="wrapper">
-    <section class="mx4 my4 clearfix">
-        <div class="pl1 py2 float-left">
-            <h3 class="">{{database.name}}</h2>
-        </div>
+    <section class="my3 clearfix">
         <div class="py2 float-right">
             <div class="Button-group Button-group--blue text-uppercase text-bold">
                 <a class="Button" ng-class="{ 'Button--active': pane == 'tables' }" cv-org-href="/admin/databases/{{database.id}}/tables/{{currentTable.id}}">Data</a>
                 <a class="Button" ng-class="{ 'Button--active': pane == 'settings' }" cv-org-href="/admin/databases/{{database.id}}/settings">Connection Details</a>
             </div>
         </div>
+        <h3 class="py2">{{database.name}}</h2>
     </section>
 
-    <section class="DatabaseTablesAdmin bordered rounded shadowed mx4 flex" ng-show="pane == 'tables'">
+    <section class="DatabaseTablesAdmin bordered rounded shadowed flex" ng-show="pane == 'tables'">
 
         <div class="DatabaseTablesAdminSidebar border-right" ng-include="'/app/admin/databases/partials/database_table_list.html'">
         </div>
 
         <div class="DatabaseTableAdmin flex-full" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
-
         </div>
     </section>
 
-    <section class="mx4" ng-show="pane == 'settings'" ng-controller="DatabaseEdit">
+    <section ng-show="pane == 'settings'" ng-controller="DatabaseEdit">
         <div class="Grid Grid--gutters Grid--full" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
         </div>
     </section>
