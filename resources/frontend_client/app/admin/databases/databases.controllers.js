@@ -78,24 +78,38 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             });
         };
 
-        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
         $scope.save = function(database, details) {
-            if ($routeParams.databaseId) {
-                update(database, details);
-            } else {
-                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
-                details.ssl = true;
+            // validate_connection needs the engine, so add it to what will become the request body
+            details.engine = database.engine;
 
-                // add 'engine' to the request body
-                details.engine = database.engine;
+            // for an existing DB check that the new settings are valid before saving
+            if ($routeParams.databaseId) {
+                Metabase.validate_connection(details, function() {
+                    update(database, details);
+                }, function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                });
+
+            // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL & try again
+            } else {
+                details.ssl = true;
 
                 Metabase.validate_connection(details, function() {
                     console.log('Successfully connected with SSL. Setting SSL = true.');
                     create(database, details);
                 }, function() {
                     console.log('Unable to connect with SSL. Setting SSL = false.');
+
+                    // try to connect again without SSL
                     details.ssl = false;
-                    create(database, details);
+
+                    Metabase.validate_connection(details, function() {
+                        console.log('Successfully connected without SSL.');
+                        create(database, details);
+                    }, function(error) {
+                        // connection failed, display an error instead of saving
+                        $scope.$broadcast("form:api-error", error);
+                    });
                 });
             }
         };
