@@ -8,15 +8,9 @@
             <cv-loading-icon class="text-brand"></cv-loading-icon>
             <h3>Loading ...</h3>
         </li>
-        <li class="DatabaseListItem AdminHoverItem rounded px2 pb2 pt1 text-grey-4" ng-class="{ 'DatabaseListItem--active': table.id == currentTable.id }" ng-repeat="table in tables | filter:tableSearchText">
+        <li class="DatabaseListItem AdminHoverItem rounded py1 px2 text-grey-4" ng-class="{ 'DatabaseListItem--active': table.id == currentTable.id }" ng-repeat="table in tables | filter:tableSearchText">
             <a class="link link--nohover text-current" cv-org-href="/admin/databases/{{database.id}}/tables/{{table.id}}">
-                <div>
-                    <div class="h4 text-bold">{{table.name}}</div>
-                    <div>
-                        <span class="h5 text-bold">{{tableFields[table.id].fields.length}}</span>
-                        <span class="h6 text-uppercase">fields</span>
-                    </div>
-                </div>
+                <h4>{{table.name}}</h4>
             </a>
         </li>
     </ul>
