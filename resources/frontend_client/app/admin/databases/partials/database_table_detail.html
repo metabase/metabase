@@ -54,7 +54,7 @@
                         </div>
                         <div>
                             <label class="Select  Select--small mx1" ng-if="field.special_type=='fk'">
-                                <select ng-change="inlineChangeFKTarget($index)" ng-options="idf.id as idf.displayName for idf in idfields">
+                                <select ng-model="field.target_id" ng-change="inlineChangeFKTarget($index)" ng-options="idf.id as idf.displayName for idf in idfields">
                                     <option value="" disabled selected>Target Field</option>
                                 </select>
                             </label>
