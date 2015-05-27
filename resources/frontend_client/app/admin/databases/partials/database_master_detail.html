@@ -2,8 +2,8 @@
     <section class="my3 clearfix">
         <div class="py2 float-right">
             <div class="Button-group Button-group--blue text-uppercase text-bold">
-                <a class="Button" ng-class="{ 'Button--active': pane == 'tables' }" cv-org-href="/admin/databases/{{database.id}}/tables/{{currentTable.id}}">Data</a>
-                <a class="Button" ng-class="{ 'Button--active': pane == 'settings' }" cv-org-href="/admin/databases/{{database.id}}/settings">Connection Details</a>
+                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'tables' }" cv-org-href="/admin/databases/{{database.id}}/tables/{{currentTable.id}}">Data</a>
+                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'settings' }" cv-org-href="/admin/databases/{{database.id}}/settings">Connection Details</a>
             </div>
         </div>
         <h3 class="py2">{{database.name}}</h2>
@@ -14,6 +14,9 @@
         </div>
 
         <div class="DatabaseTableAdmin relative Grid-cell" ng-controller="DatabaseTable" ng-if="currentTable" ng-include="'/app/admin/databases/partials/database_table_detail.html'">
+        </div>
+        <div class="Grid-cell flex layout-centered relative" ng-if="!currentTable">
+            <h2 class="text-grey-3">Select any table to see its schema and add or edit metadata.</h2>
         </div>
     </section>
 

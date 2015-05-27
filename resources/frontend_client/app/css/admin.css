@@ -37,6 +37,12 @@
     display: none;
 }
 
+/* utility to get a simple common hover state for admin items */
+.AdminHoverItem:hover {
+    background-color: #F3F8FD;
+    transition: background .2s linear;
+}
+
 .UserNick {
     border-width: 1px;
     border-style: solid;
@@ -130,6 +136,7 @@
     padding: 1em;
 }
 
+/* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
     background-color: rgba(74, 144, 226, 0.04);
 }
@@ -149,16 +156,13 @@
     overflow-y: scroll;
 }
 
-
 .DatabaseListItem .h4 {
     line-height: 0.8em;
 }
 
-.DatabaseListItem--active {
+.DatabaseListItem.DatabaseListItem--active {
     background-color: rgb(227,238,250);
-}
-.DatabaseListItem--active .h4, .DatabaseListItem--active .h5, .DatabaseListItem--active .h6 {
-    color: rgb(74,144,226) !important;
+    color: rgb(74,144,226);
 }
 
 /* TODO: this is for the ace editor and should be handled without an ID */
@@ -171,11 +175,12 @@
 }
 
 .TableField {
-    border-top: 1px solid #F0F0F0;
+    border-bottom: 1px solid #F0F0F0;
+    padding-left: 3em;
 }
 
-.TableFieldList {
-    overflow-y: scroll;
+.TableField-name {
+    color: #676C72;
 }
 
 .DatabaseTablesAdmin .editable-click {
