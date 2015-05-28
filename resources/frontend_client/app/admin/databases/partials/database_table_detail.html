@@ -17,8 +17,8 @@
     </div>
 </div>
 <div class="TableFieldList" mb-scroll-shadow>
-    <ul as-sortable="dragControlListeners" ng-model="fields">
-        <li class="TableField AdminHoverItem py2 pr4 relative" ng-repeat="field in table.fields" as-sortable-item>
+    <ul as-sortable="dragControlListeners" ng-model="table.fields">
+        <li class="TableField AdminHoverItem py2 pr4 relative" ng-repeat="field in table.fields track by field.id" as-sortable-item>
             <div class="Drag-handle" title="Reorder" as-sortable-item-handle>
                 <svg width="9" height="36">
                     <rect class="Dragger" fill="url(#dragger)" width="6" height="42">
