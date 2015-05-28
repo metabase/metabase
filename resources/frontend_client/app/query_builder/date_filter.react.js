@@ -1,7 +1,7 @@
 'use strict';
 /*global moment, DatePicker*/
 
-var DateFilter = React.createClass({
+export default React.createClass({
     displayName: 'DateFilter',
     propTypes: {
         date: React.PropTypes.string,

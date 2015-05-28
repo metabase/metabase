@@ -1,9 +1,14 @@
 'use strict';
-/*global cx, CardRenderer, PopoverWithTrigger, QueryVisualizationTable, QueryVisualizationChart*/
 
+import { CardRenderer } from '../card/card.charting';
+import PopoverWithTrigger from './popover_with_trigger.react';
+import QueryVisualizationTable from './visualization_table.react';
+import QueryVisualizationChart from './visualization_chart.react';
+
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
-var QueryVisualization = React.createClass({
+export default React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
         visualizationSettingsApi: React.PropTypes.object.isRequired,

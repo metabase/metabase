@@ -1,7 +1,10 @@
 'use strict';
-/*global DateFilter, SelectionModule, Icon */
 
-var SortWidget = React.createClass({
+import DateFilter from './date_filter.react';
+import Icon from './icon.react';
+import SelectionModule from './search_bar.react';
+
+export default React.createClass({
     displayName: 'SortWidget',
     propTypes: {
         sort: React.PropTypes.array.isRequired,

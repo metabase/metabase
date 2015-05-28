@@ -1,7 +1,11 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
+/*global OnClickOutside*/
 
-var QueryModeToggle = React.createClass({
+import SelectionModule from './selection_module.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'QueryModeToggle',
     propTypes: {
         currentQueryMode: React.PropTypes.string.isRequired,

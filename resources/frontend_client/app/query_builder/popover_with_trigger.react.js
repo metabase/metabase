@@ -1,5 +1,9 @@
 'use strict';
-/*global document, cx, PopoverContent, Tether*/
+/*global document, Tether*/
+
+import PopoverContent from './popover_content.react'
+
+var cx = React.addons.classSet;
 
 var PopoverWithTrigger = React.createClass({
     displayName: 'PopoverWithTrigger',

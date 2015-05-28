@@ -1,7 +1,8 @@
 'use strict';
-/*global CardRenderer*/
 
-var QueryVisualizationChart = React.createClass({
+import { CardRenderer } from '../card/card.charting';
+
+export default React.createClass({
     displayName: 'QueryVisualizationChart',
     propTypes: {
         visualizationSettingsApi: React.PropTypes.object.isRequired,

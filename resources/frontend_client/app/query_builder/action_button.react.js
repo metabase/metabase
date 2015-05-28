@@ -1,7 +1,11 @@
 'use strict';
-/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, Icon*/
+/*global setTimeout, clearTimeout, OnClickOutside*/
 
-var ActionButton = React.createClass({
+import Icon from './icon.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'ActionButton',
     propTypes: {
         actionFn: React.PropTypes.func.isRequired

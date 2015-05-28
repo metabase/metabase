@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, SearchBar, Icon*/
+/*global OnClickOutside*/
 
-var SelectionModule = React.createClass({
+import Icon from './icon.react';
+import SearchBar from './search_bar.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName:'SelectionModule',
     propTypes: {
         action: React.PropTypes.func.isRequired,

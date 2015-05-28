@@ -1,7 +1,13 @@
 'use strict';
-/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, Icon */
+/*global OnClickOutside*/
 
-var AddToDashboardPopover = React.createClass({
+import FormField from './form_field.react';
+import Icon from './icon.react';
+
+var cx = React.addons.classSet;
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'AddToDashboardPopover',
     propTypes: {
         card: React.PropTypes.object.isRequired,

@@ -1,9 +1,19 @@
 'use strict';
-/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, Icon*/
+/*global _*/
 
+import AggregationWidget from './aggregation_widget.react';
+import DatabaseSelector from './database_selector.react';
+import FilterWidget from './filter_widget.react';
+import Icon from './icon.react';
+import LimitWidget from './limit_widget.react';
+import RunButton from './run_button.react';
+import SelectionModule from './selection_module.react';
+import SortWidget from './sort_widget.react';
+
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
-var GuiQueryEditor = React.createClass({
+export default React.createClass({
     displayName: 'GuiQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,

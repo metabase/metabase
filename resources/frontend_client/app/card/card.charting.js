@@ -565,7 +565,7 @@ function GeoHeatmapChartRenderer(id, card, result) {
         });
 }
 
-var CardRenderer = {
+export var CardRenderer = {
     /// get the size render settings for card if applicable
     _getSizeSettings: function(cardOrDimension) {
         if (typeof cardOrDimension === "object") {

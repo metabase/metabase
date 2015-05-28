@@ -1,30 +1,31 @@
 {
-    "name": "corvus",
-    "private": true,
-    "version": "0.0.0",
-    "description": "Expa Analytics",
-    "repository": "https://github.com/expa/data",
-    "license": "private",
-    "engines": {
-        "node": "0.10.25"
-    },
-    "dependencies": {
-        "bower": "1.3.12",
-        "gulp": "^3.8.8",
-        "gulp-concat": "^2.4.0",
-        "gulp-myth": "^1.0.1",
-        "gulp-jsx": "^0.7.0",
-        "gulp-react": "^2.0.0"
-    },
-    "devDependencies": {
-        "http-server": "^0.6.1",
-        "jsxhint": "0.13.3",
-        "karma": "~0.10",
-        "karma-junit-reporter": "^0.2.2",
-        "protractor": "~0.20.1",
-        "shelljs": "^0.2.6"
-    },
-    "scripts": {
-        "postinstall": "./node_modules/bower/bin/bower install --allow-root --config.interactive=false"
-    }
+  "name": "corvus",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Expa Analytics",
+  "repository": "https://github.com/expa/data",
+  "license": "private",
+  "engines": {
+    "node": "0.10.25"
+  },
+  "dependencies": {
+    "bower": "1.3.12",
+    "gulp": "^3.8.8",
+    "gulp-concat": "^2.4.0",
+    "gulp-jsx": "^0.7.0",
+    "gulp-myth": "^1.0.1",
+    "gulp-react": "^2.0.0",
+    "react": "^0.12.2"
+  },
+  "devDependencies": {
+    "http-server": "^0.6.1",
+    "jsxhint": "0.13.3",
+    "karma": "~0.10",
+    "karma-junit-reporter": "^0.2.2",
+    "protractor": "~0.20.1",
+    "shelljs": "^0.2.6"
+  },
+  "scripts": {
+    "postinstall": "./node_modules/bower/bin/bower install --allow-root --config.interactive=false"
+  }
 }

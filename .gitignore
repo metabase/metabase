@@ -22,3 +22,4 @@ profiles.clj
 /resources/frontend_client/app/dist/
 /node_modules/
 /.js_hint_output/
+/.babel_cache

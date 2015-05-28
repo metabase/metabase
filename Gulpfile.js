@@ -3,14 +3,16 @@
 var gulp = require('gulp'),
     concat = require('gulp-concat'),
     react = require('gulp-react'),
-    myth = require('gulp-myth');
+    myth = require('gulp-myth'),
+    webpack = require('gulp-webpack');
 
 var basePath = 'resources/frontend_client/app/';
 
 var SRC = {
     css: [basePath + 'css/**/*.css', basePath + 'components/**/*.css'],
     jsx: [basePath + 'query_builder/*.js'],
-    appJS: [basePath + '**/*.js', '!' + basePath + 'bower_components/**/*.js', '!' + basePath + 'dist/*.js', '!' + basePath + 'query_builder/*.js', '!' + basePath + '/test/**/*.js']
+    appJS: [basePath + '**/*.js', '!' + basePath + 'bower_components/**/*.js', '!' + basePath + 'dist/*.js', '!' + basePath + 'query_builder/*.js', '!' + basePath + '/test/**/*.js'],
+    js: [basePath + '**/*.js', '!' + basePath + 'bower_components/**/*.js', '!' + basePath + 'dist/*.js', '!' + basePath + '/test/**/*.js']
 };
 
 var DEST = {
@@ -60,3 +62,14 @@ gulp.task('watch', function(){
 gulp.task('build', ['css', 'jsx', 'build-js']);
 
 gulp.task('default', ['build', 'watch']);
+
+gulp.task("webpack", function() {
+    return gulp.src(SRC.js)
+        .pipe(webpack(require("./webpack.config")))
+        .pipe(gulp.dest(DEST.js));
+});
+
+gulp.task("webpack-watch", function() {
+    gulp.watch(SRC.js, ["webpack"]);
+    gulp.watch(SRC.css, ['css']);
+});

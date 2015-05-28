@@ -1,10 +1,17 @@
 'use strict';
-/*global setTimeout, clearTimeout, Saver, ActionButton, Popover, Icon, QueryModeToggle, AddToDashboard*/
+/*global setTimeout, clearTimeout*/
 
-var cx = React.addons.classSet,
-    ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+import ActionButton from './action_button.react';
+import AddToDashboard from './add_to_dashboard.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+import QueryModeToggle from './query_mode_toggle.react';
+import Saver from './saver.react';
 
-var QueryHeader = React.createClass({
+var cx = React.addons.classSet;
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
