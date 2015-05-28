@@ -1,145 +1,74 @@
 [![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
-## Install Prerequisites
+# Overview
 
-1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. Node.js for npm (http://nodejs.org/)
-3. Leiningen (http://leiningen.org/)
+Metabase Report server is an easy way to generate charts and dashboards, ask simple ad hoc queries without using SQL, and see detailed information about rows in your Database. You can set it up in under 5 minutes, and then give yourself and others a place to ask simple questions and understand the data your application is generating. It is not tied to any specific framework and can be used out of the box with minimal configuration. 
 
+With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface. 
 
-## Build
+# What it isn't
 
-Install clojure + npm/bower requirements with
+The Report Server does not deal with getting data into a database or data warehouse or with transforming your data into a representation that lets you answer specific questions. Most sophisticated installations will have separate Ingestion processes that get data from third parties, event collectors or database snapshots into a Data Warehouse as well as Transformation Processes that join, denormalize, enrich or otherwise get your data into a shape that more convenient for use in analytics. 
 
-    lein deps
-    lein npm
+The report server does not collect web page views or mobile events, though it can help you understand conversion funnels, cohort retention and use behavior in general once you have collected these events into a database. 
 
-Build the application JS and CSS with
+See the [Data Warehouse Guide](docs/DATAWAREHOUSING.md) for more information and advice.
 
-    lein gulp
+# Security Disclosure
 
-When developing the frontend client, you'll want to watch for changes,
-so run the default gulp task.
+Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a github issue.
 
-    ./node_modules/gulp/bin/gulp.js
+# Installation
 
+To run the Report server you will need to have a Java Runtime installed. As a quick check to see if you system already has one, try 
 
-## Usage
+    java -version
 
-Then run the HTTP server with
+If you see something like 
 
-    lein ring server
+    java version "1.8.0_31"
+    Java(TM) SE Runtime Environment (build 1.8.0_31-b13)
+    Java HotSpot(TM) 64-Bit Server VM (build 25.31-b07, mixed mode)
 
+you are good to go. Otherwise, download the Java Runtime Environment at http://java.com/
 
-## Unit Tests / Linting
+To install the Query Server, go to the [Metabase Download Page](http://www.metabase.com/download) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
 
-Check that the project can compile successfully with
+    java -jar metabase.jar    
 
-    lein uberjar
+On the first run of the Report Server, the command line invocation will output a line like
 
-Run the linters with
+    http://localhost:3000/setup/init/XXXXX
 
-    lein eastwood                        # Clojure linters
-    lein bikeshed --max-line-length 240
-    ./lint_js.sh                         # JavaScript linter
+where XXXXX is a randomly generated token that can only be used to set up your first account for that particular installation. Once you have created that account, the token (and that URL) will no longer work. 
 
-Run unit tests with
+On logging in, you will be asked a set of questions that will set up a user account, and then you can add a database connection. For this to work you will need to get some information about which database you want to connect to, such as the Host Name and Port that it is running on, the Database Name and the User and Password that you will be using. 
 
-    lein test
+Once you have added this connection, you will be taken into the app and you'll be ready to ask your first question. 
 
-By default, the tests only run against the `generic-sql` dataset (an H2 test database).
-You can run specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
+For more information or troubleshooting, check out the [Installation Guide](docs/INSTALLATION.md)
 
-    MB_TEST_DATASETS=generic-sql,mongo lein test
+# Getting Started
 
-At the time of this writing, the valid datasets are `generic-sql` and `mongo`.
+Follow our [Getting Started](docs/GETTINGSTARTED.md) guide to learn how to use the Report Server.
 
+# Contributing
 
-## Documentation
+To get started with a development installation of the Query Server and learn more about contributing, please follow the instructions at our [Developers Guide](docs/DEVELOPERS.md). 
 
-#### Instant Cheatsheet
+# Extending and Deep Integrations
 
-Start up an instant cheatsheet for the project + dependencies by running
+Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
 
-    lein instant-cheatsheet
-
-#### Marginalia
-
-Available at http://metabase.github.io/metabase-init/.
-
-You can generate and view documentation with
-
-    lein marg
-    open ./docs/uberdoc.html
-
-You can update the GitHub pages documentation using
-
-    make dox
-
-You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
-
-## Migration Summary
-
-    lein migration-summary
-
-Will give you a list of all tables + fields in the Metabase DB.
-
-## Bootstrapping (for Development)
-
-To quickly get your dev environment set up, use the `bootstrap` function to create a new User and Organization.
-Open a REPL in Emacs or with `lein repl` and enter the following:
-
-```clojure
-(use 'metabase.db)
-(setup-db)
-(use 'metabase.bootstrap)
-(bootstrap)
-```
-
-You'll be walked through the steps to get started.
-
-## API Client (for Development)
-
-You can make API calls from the REPL using `metabase.http-client`:
-
-```clojure
-(use 'metabase.http-client)
-(defn cl [& args]
-  (-> (apply client {:email "crowberto@metabase.com", :password "blackjet"} args)
-      clojure.pprint/pprint))
-(cl :get "user/current")
-;; -> {:email "crowbetro@metabase.com",
-;;     :first_name "Crowbero",
-;;     :last_login #inst "2015-03-13T22:55:05.390000000-00:00",
-;;     ...}
-```
-
-## Developing with Emacs
-
-`.dir-locals.el` contains some Emacs Lisp that tells `clojure-mode` how to indent Metabase macros and which arguments are docstrings. Whenever this file is updated,
-Emacs will ask you if the code is safe to load. You can answer `!` to save it as safe.
-
-By default, Emacs will insert this code as a customization at the bottom of your `init.el`.
-You'll probably want to tell Emacs to store customizations in a different file. Add the following to your `init.el`:
-
-```emacs-lisp
-(setq custom-file (concat user-emacs-directory ".custom.el")) ; tell Customize to save customizations to ~/.emacs.d/.custom.el
-(ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
-  (load-file custom-file))
-```
-
-## Checking for Out-of-Date Dependencies
-
-    lein ancient                   # list all out-of-date dependencies
-    lein ancient latest lein-ring  # list latest version of artifact lein-ring
-
-Will give you a list of out-of-date dependencies.
-
-Once's this repo is made public, this Clojars badge will work and show the status as well:
-
-[![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
+* Build moderation interfaces
+* Export subsets of your users to third party marketing automation software
+* Provide a specialized customer lookup application for the people in your company
 
 
-## License
+# License
 
-Copyright © 2015 Metabase, Inc.
+Unless otherwise noted, all Metabase Report Server source files are made available under the terms of the GNU Affero General Public License (AGPL). 
+
+See individual files for details.
+
+Copyright © 2015 Metabase, Inc

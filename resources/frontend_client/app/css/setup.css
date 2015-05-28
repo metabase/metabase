@@ -1,243 +1,140 @@
-.Setup {
-    background: #FBFCFD;
-    height: 100%:
+:root {
+    --indicator-size: 3.000em; /* ~ 42 px */
+    --indicator-border-radius: 99px;
+}
+.WelcomeMessage {
+    margin-top: 4em;
+    margin-bottom: 4em;
+}
+
+.WelcomeMessage-title {
+    font-weight: 100;
+    font-size: 2.286em;
+    line-height: 2.786em;
+}
+
+.WelcomeMessage-subTitle {
+    font-size: 1.2em;
+    line-height: 1.4em;
+}
+
+.SetupSteps {
+    margin-top: 5.000em;
 }
 
 .SetupNav {
-    font-size: 0.85em;
-    background: #fff;
-    color: #686868;
+    border-bottom: 1px solid #f5f5f5;
 }
 
-.SetupWrapper {
-    max-width: 80%;
-    margin: 0 auto;
+.Setup-brandWordMark {
+    font-size: 1.688em;
 }
 
-.SetupIntro-heading {
+.SetupStep {
     color: var(--brand-color);
-    margin: 0;
+    margin-bottom: 1.714em;
+    background-color: #EDF2F8;
+    flex: 1;
+    border: 1px dashed #e8e8e8;
 }
 
-.SetupIntro-subHeading {
-    margin: 0.45em 0 1em;
-    color: #989898;
-    font-size: 0.85em;
-}
-
-.SetupOffset {
-    margin-top: -2em;
-}
-
-.SetupStage {
-    border-top: 1px solid #E8E8E9;
-}
-
-.SetupFooter {
-    color: #DBDBDB;
-    font-size: 0.85em;
-    width: 100%;
-    position: absolute;
-    bottom: 0;
-}
-
-.SetupNav-item {
-    font-size: 1em;
-    display: inline-block;
-    text-decoration: none;
-    margin: 0 4em;
-}
-
-.SetupNav-item.complete {
-    color: #A8C28E;
-}
-
-.SetupNav-item a {
-    text-decoration: none;
-}
-
-.SetupSubNav {
-    background: #fff;
-    padding: 1em 0 2em;
-    border-bottom: 1px solid #ddd;
-}
-
-@media screen and (--breakpoint-min-xl) {
-    .SetupWrapper {
-        max-width: 100em;
-    }
-}
-
-.Connections {
-    margin-top: 2em;
-}
-
-.Connection-type {
-    border: 1px solid #ddd;
-    padding: 4em;
-    border-radius: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-}
-
-.Connection-icon {
-    text-align: center;
-}
-
-.Connection-type .Connection-engine {
-    text-align: center;
-}
-
-.Connection-typeNew {
-    border-style: dashed;
-}
-
-.Connection-name {
-    font-size: 1.2em;
-    text-align: center;
+.SetupStep.SetupStep--active {
+    background-color: #fff;
+    border-style: solid;
     color: var(--brand-color);
 }
 
-.Connection-typeNew .Connection-name {
-    padding: 0;
+.SetupStep.SetupStep--completed {
+    color: var(--success-color);
+    background-color: #fff;
+    border-style: solid;
 }
 
-.Connection-type:hover {
-    background-color: var(--brand-color);
+.SetupStep-indicator {
+    left: calc((var(--indicator-size) / 2) * -1);
+    width: var(--indicator-size);
+    height: var(--indicator-size);
+    border-radius: var(--indicator-border-radius);
+    font-weight: bold;
+    line-height: 1;
+    background-color: #fff;
+}
+
+.SetupStep-check {
+    color: #fff;
+    display: none;
+}
+
+.SetupStep-title {
+    color: currentColor; /* use the color of the parent to power the header text */
+}
+
+.SetupStep.SetupStep--active  .SetupStep-indicator {
+    color: var(--brand-color);
+}
+
+.SetupStep.SetupStep--completed .SetupStep-indicator {
+    border-color: #9CC177;
+    background-color: #C8E1B0;
+}
+
+.SetupStep.SetupStep--completed .SetupStep-check {
+    display: block;
+}
+
+.SetupStep.SetupStep--completed .SetupStep-number {
+    display: none;
+}
+
+.SetupCompleted {
+    text-align: center;
+}
+
+.SetupCompleted .SetupStep-title {
+    font-size: 2.000em;
+    line-height: 2.000em;
+}
+
+.SetupHelp {
+    color: var(--body-text-color);
+}
+
+.DatabaseEngine {
+    position: relative;
+    font-size: 1.137em;
+    padding-top: 0.875em;
+    padding-bottom: 0.875em;
+    padding-left: 3em;
+    line-height: 2em;
+}
+
+.DatabaseEngine:hover {
+    color: var(--brand-color);
     cursor: pointer;
-    color: #fff;
-    border-color: var(--brand-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .32);
-    transition: background .2s linear, border .2s linear, color .2s linear;
 }
 
-.Connection-type:hover .Connection-name {
-    color: #fff;
-}
-
-.Connection-typeDisabled {
-    opacity: 0.4;
-}
-
-.Connection-success {
-    color: #A8C28E;
-    border: 1px solid #A8C28E;
-    border-radius: 99px;
+.DatabaseEngine:before {
+    position: absolute;
+    left: 0;
+    content: '';
+    display: inline-block;
     width: 2em;
     height: 2em;
-    float: right;
-}
-
-.Connection-input {
-    font-family: "Lato";
-    font-size: 0.85em;
-    display: block;
-    border: none;
-    padding: 0.5em 0;
-    border-bottom: 1px solid #ddd;
-    margin-bottom: 0.25em;
-    color: #222;
-}
-
-.Connection-input:focus {
-    outline: none;
-    border-bottom-color: var(--brand-color);
-    transition: border .3s linear;
-}
-
-@media screen and (--breakpoint-min-lg) {
-    .Connection-input {
-        font-size: 1.185em;
-    }
-}
-
-.Connection-label {
-    font-size: 0.75em;
-    color: #777;
-    opacity: 0;
-}
-
-/* only show connection input labels that have focus */
-.Connection-input:focus + .Connection-label {
-    opacity: 1;
-}
-
-.Connection-label.Connection--error {
-    color: red;
-    opacity: 1;
-}
-
-
-.Connection-enginePicker {
-    margin-bottom: 1.5em;
-    padding-bottom: 1em;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.Connection-enginePicker .Connection-engine {
-    display: inline-block;
-    padding: 1em 1em    1em 0;
-    margin-right: 1em;
-}
-
-.Connection-enginePicker .Connection-engine:hover {
-    cursor: pointer;
-}
-
-.Connection-engineSelected {
-    color: var(--brand-color);
-}
-
-.AdminContent {
-    border: 1px solid #D7D7D7;
-    background: #fff;
-    border-radius: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-    max-width: 50em;
-    margin: 0 auto 4em;
-}
-
-.SetupBar {
-    background: #fff;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    border-top: 1px solid #ddd;
-    padding: 1em 0;
-    text-align: center;
-}
-
-.SetupBreadcrumbs {
-    font-size: 1.2em;
-    display: flex;
-    align-items: flex-start;
-}
-
-.SetupBreadcrumbs:last-child {
-    color: var(--brand-color);
-}
-
-
-.Breadcrumb-separator {
-    width: 1.4em;
-    height: 1.4em;
-    background: #fff;
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0,0, .12);
     border-radius: 99px;
-    display: flex;
+    border: 1px solid currentColor;
 }
 
-
-.Breadcrumb {
-    text-decoration: none;
+.DatabaseEngine-check {
+    display: none;
+    position: absolute;
+    left: 0.6em;
+    top: 1em;
 }
 
-.SetupIntro {
-    max-width: 30rem;
-    font-size: 1rem;
+.DatabaseEngine:hover .DatabaseEngine-check {
+    display: block;
+}
+
+.DatabaseEngine.DatabaseEngine--selected .DatabaseEngine-check {
+    display: block;
 }

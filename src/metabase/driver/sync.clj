@@ -1,9 +1,11 @@
 (ns metabase.driver.sync
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.math.numeric-tower :as math]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as k]
+            [medley.core :as m]
             [metabase.db :refer :all]
             (metabase.driver [interface :refer :all]
                              [query-processor :as qp])
@@ -13,7 +15,8 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
-(declare mark-category-field!
+(declare auto-assign-field-special-type-by-name!
+         mark-category-field!
          mark-no-preview-display-field!
          mark-url-field!
          sync-database-active-tables!
@@ -122,9 +125,12 @@
   "Update the row count of TABLE if it has changed."
   [table]
   {:pre [(integer? (:id table))]}
-  (let [table-row-count (queries/table-row-count table)]
-    (when-not (= (:rows table) table-row-count)
-      (upd Table (:id table) :rows table-row-count))))
+  (try
+    (let [table-row-count (queries/table-row-count table)]
+      (when-not (= (:rows table) table-row-count)
+        (upd Table (:id table) :rows table-row-count)))
+    (catch Throwable e
+      (log/error (color/red (format "Unable to update row_count for %s: %s" (:name table) (.getMessage e)))))))
 
 
 ;; ### 2) sync-table-active-fields-and-pks!
@@ -242,7 +248,8 @@
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
-                 (mark-no-preview-display-field! driver)))
+                 (mark-no-preview-display-field! driver)
+                 auto-assign-field-special-type-by-name!))
 
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
@@ -342,3 +349,78 @@
         (log/info (format "Field '%s.%s' has an average length of %d. Not displaying it in previews." (:name @(:table field)) (:name field) avg-len))
         (upd Field (:id field) :preview_display false)
         (assoc field :preview_display false)))))
+
+
+;; ### auto-assign-field-special-type-by-name!
+
+(def ^{:arglists '([field])}
+  field->name-inferred-special-type
+  "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
+  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
+        float       #{:DecimalField :FloatField}
+        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
+        text        #{:CharField :TextField}
+        ;; tuples of [pattern set-of-valid-base-types special-type]
+        ;; * Convert field name to lowercase before matching against a pattern
+        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
+        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
+                                         [#"^.*_lon$"       float       :longitude]
+                                         [#"^.*_lng$"       float       :longitude]
+                                         [#"^.*_long$"      float       :longitude]
+                                         [#"^.*_longitude$" float       :longitude]
+                                         [#"^.*_rating$"    int-or-text :category]
+                                         [#"^.*_type$"      int-or-text :category]
+                                         [#"^.*_url$"       text        :url]
+                                         [#"^_latitude$"    float       :latitude]
+                                         [#"^active$"       bool-or-int :category]
+                                         [#"^city$"         text        :city]
+                                         [#"^country$"      text        :country]
+                                         [#"^countrycode$"  text        :country]
+                                         [#"^currency$"     int-or-text :category]
+                                         [#"^first_name$"   text        :name]
+                                         [#"^full_name$"    text        :name]
+                                         [#"^gender$"       int-or-text :category]
+                                         [#"^id$"           nil         :id]
+                                         [#"^last_name$"    text        :name]
+                                         [#"^lat$"          float       :latitude]
+                                         [#"^latitude$"     float       :latitude]
+                                         [#"^lon$"          float       :longitude]
+                                         [#"^lng$"          float       :longitude]
+                                         [#"^long$"         float       :longitude]
+                                         [#"^longitude$"    float       :longitude]
+                                         [#"^name$"         text        :name]
+                                         [#"^postalCode$"   int-or-text :zip_code]
+                                         [#"^postal_code$"  int-or-text :zip_code]
+                                         [#"^rating$"       int-or-text :category]
+                                         [#"^role$"         int-or-text :category]
+                                         [#"^sex$"          int-or-text :category]
+                                         [#"^state$"        text        :state]
+                                         [#"^status$"       int-or-text :category]
+                                         [#"^type$"         int-or-text :category]
+                                         [#"^url$"          text        :url]
+                                         [#"^zip_code$"     int-or-text :zip_code]
+                                         [#"^zipcode$"      int-or-text :zip_code]]]
+    ;; Check that all the pattern tuples are valid
+    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+      (assert (u/regex? name-pattern))
+      (assert (every? (partial contains? field/base-types) base-types))
+      (assert (contains? field/special-types special-type)))
+
+    (fn [{base-type :base_type, field-name :name}]
+      {:pre [(string? field-name)
+             (keyword? base-type)]}
+      (m/find-first (fn [[name-pattern valid-base-types _]]
+                      (and (or (nil? valid-base-types)
+                               (contains? valid-base-types base-type))
+                           (re-matches name-pattern (s/lower-case field-name))))
+                    pattern+base-types+special-type))))
+
+(defn auto-assign-field-special-type-by-name!
+  "If FIELD doesn't have a special type, but has a name that matches a known pattern like `latitude`, mark it as having the specified special type."
+  [field]
+  (when-not (:special_type field)
+    (when-let [[pattern _ special-type] (field->name-inferred-special-type field)]
+      (log/info (format "%s '%s.%s' matches '%s'. Setting special_type to '%s'."
+                        (name (:base_type field)) (:name @(:table field)) (:name field) pattern (name special-type)))
+      (upd Field (:id field) :special_type special-type)
+      (assoc field :special_type special-type))))

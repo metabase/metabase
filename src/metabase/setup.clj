@@ -3,6 +3,16 @@
 (def ^:private setup-token
   (atom nil))
 
+(defn token-value
+  "Return the value of the setup token, if any."
+  []
+  @setup-token)
+
+(defn token-exists?
+  "Return `true` if a setup token exists."
+  []
+  (boolean @setup-token))
+
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
    Returns boolean `true` if supplied token matches `@setup-token`, `false` otherwise."

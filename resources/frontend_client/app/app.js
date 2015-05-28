@@ -56,16 +56,6 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         }
     });
 
-    $routeProvider.when('/setup/', {
-        templateUrl: '/app/setup/partials/setup_intro.html',
-        controller: 'SetupIntro'
-    });
-
-    $routeProvider.when('/setup/init/:setupToken', {
-        template: '',
-        controller: 'SetupInit'
-    });
-
     $routeProvider.when('/admin/', {
         redirectTo: function(routeParams, path, search) {
             return '/admin/settings';

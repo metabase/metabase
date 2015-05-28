@@ -12,7 +12,7 @@ pom.xml.asc
 /.lein-repl-history
 /.nrepl-port
 .idea/
-/docs
+/docs/uberdoc.html
 profiles.clj
 /*.h2.db
 /*.mv.db

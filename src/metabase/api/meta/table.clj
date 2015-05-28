@@ -20,7 +20,12 @@
   "Get all `Tables`."
   []
   (-> (sel :many Table :active true (order :name :ASC))
-      (hydrate :db)))
+      (hydrate :db)
+      ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
+      (#(map (fn [table]
+               (cond-> table
+                 (not (:rows table)) (assoc :rows 0)))
+         %))))
 
 
 (defendpoint GET "/:id"
