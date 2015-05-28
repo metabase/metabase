@@ -103,10 +103,14 @@ CorvusDirectives.directive('mbScrollShadow', [function (){
             // grab the raw dom element to check its scroll top
             var raw = element[0];
             element.on('scroll', function () {
-                raw.scrollTop > 0 ? element.addClass('ScrollShadow') : element.removeClass('ScrollShadow');
+                if(raw.scrollTop > 0) {
+                    element.addClass('ScrollShadow');
+                } else {
+                    element.removeClass('ScrollShadow');
+                }
             });
         }
-    }
+    };
 }]);
 
 CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
