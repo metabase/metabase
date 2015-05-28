@@ -77,7 +77,7 @@
          (match-$ (sel :one Field :id (field->id :categories :name))
            {:description nil
             :table_id (table->id :categories)
-            :special_type nil
+            :special_type "name"
             :name "NAME"
             :updated_at $
             :active true
@@ -122,7 +122,7 @@
                 (match-$ (sel :one Field :id (field->id :categories :name))
                   {:description nil
                    :table_id (table->id :categories)
-                   :special_type nil
+                   :special_type "name"
                    :name "NAME"
                    :updated_at $
                    :active true
