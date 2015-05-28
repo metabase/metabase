@@ -6,10 +6,9 @@
             [metabase.setup :as setup]))
 
 
-(let [redirect-to-setup? (fn [{:keys [uri]}]                                 ; If we have a setup token present and the user requests a _page_ other than /setup/
-                           (and (setup/token-exists?)                        ; redirect them
-                                (not (or (re-matches #"^/favicon.ico$" uri)
-                                         (re-matches #"^/setup/.*$" uri)))))
+(let [redirect-to-setup? (fn [{:keys [uri]}]                      ; Redirect naughty users who try to visit a page other than setup
+                           (and (setup/token-exists?)             ; if setup is not yet complete
+                                (re-matches #"^/setup/.*$" uri)))
       index (fn [request]
               (if (redirect-to-setup? request) (resp/redirect "/setup/welcome")
                   (resp/resource-response "frontend_client/index.html")))]
