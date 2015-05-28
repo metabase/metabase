@@ -200,3 +200,8 @@
 .Select--unselected {
     border-style: dotted !important;
 }
+
+.ScrollShadow {
+    border-top: 1px solid rgba(0, 0, 0, .05);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, .12);
+}
