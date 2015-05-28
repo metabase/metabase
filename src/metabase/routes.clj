@@ -10,7 +10,7 @@
                            (and (setup/token-exists?)             ; if setup is not yet complete
                                 (re-matches #"^/setup/.*$" uri)))
       index (fn [request]
-              (if (redirect-to-setup? request) (resp/redirect "/setup/welcome")
+              (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))
                   (resp/resource-response "frontend_client/index.html")))]
   (defroutes routes
     (GET "/" [] index)                                     ; ^/$           -> index.html
