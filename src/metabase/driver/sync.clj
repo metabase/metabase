@@ -110,7 +110,7 @@
   ;; Now sync all active fields
   (let [tables-count (count active-tables)
         finished-tables-count (atom 0)]
-    (doseq [table active-tables]
+    (u/pdoseq [table active-tables]
       (log/debug (color/green (format "Syncing metadata for %s.%s..." (:name @(:db table)) (:name table))))
       (sync-table-fields-metadata! driver table)
       (swap! finished-tables-count inc)
