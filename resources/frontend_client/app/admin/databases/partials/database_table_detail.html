@@ -26,6 +26,8 @@
             </div>
             <div class="Grid">
                 <div class="Grid-cell">
+                    <input ng-model="field.preview_display" type="checkbox" ng-change="inlineSaveField($index)">
+
                     <h3 class="TableField-name inline-block">
                         {{field.name}}
                     </h3>
