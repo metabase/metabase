@@ -39,7 +39,7 @@
   {field_type FieldType
    special_type FieldSpecialType}
   (write-check Field id)
-  (check-500 (upd-non-nil-keys Field id
+  (check-500 (upd Field id
                :field_type      field_type
                :special_type    special_type
                :preview_display preview_display
