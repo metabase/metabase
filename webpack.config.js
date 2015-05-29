@@ -1,3 +1,6 @@
+"use strict";
+/* global __dirname */
+
 var webpack = require('webpack');
 var webpackPostcssTools = require('webpack-postcss-tools');
 
@@ -19,7 +22,7 @@ var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH +
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
-    for (name in cssMaps) _.extend(cssMaps[name], map[name]);
+    for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
 });
 
 module.exports = {
@@ -83,4 +86,4 @@ module.exports = {
     devtool: 'source-map'
     // Eval source map doesn't work with CSS but is faster to build
     // devtool: 'eval-source-map'
-}
+};
