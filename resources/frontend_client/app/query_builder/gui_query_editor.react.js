@@ -175,7 +175,6 @@ var GuiQueryEditor = React.createClass({
                     this.props.query.query.breakout[0] !== null);
     },
 
-    /// If we can sort by the aggregate field return the user-facing name for the sort option. Otherwise return null
     canSortByAggregateField: function() {
         const VALID_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
 
