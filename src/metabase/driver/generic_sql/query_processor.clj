@@ -177,17 +177,16 @@
     (->> order-by-pairs
          (map (fn [pair] (when-not (vector? pair) (throw (Exception. "order_by clause must consists of pairs like [field_id \"ascending\"]"))) pair))
          (mapv (fn [[field-id asc-desc]]
-                 {:pre [(or (integer? field-id)
-                            (= field-id "$$aggregation"))
-                        (string? asc-desc)]}
-                 `(order ~(if (integer? field-id) (field-id->kw field-id)
-                              (let [[ag] (:aggregation (:query qp/*query*))]
-                                `(raw ~(case ag
-                                         "avg"      "\"avg\"" ; based on the type of the aggregation
-                                         "count"    "\"count\"" ; make sure we ask the DB to order by the
-                                         "distinct" "\"count\"" ; name of the aggregate field
-                                         "stddev"   "\"stddev\""
-                                         "sum"      "\"sum\""))))
+                 {:pre [(string? asc-desc)]}
+                 `(order ~(cond
+                            (integer? field-id)          (field-id->kw field-id)
+                            (= field-id "$$aggregation") (let [[ag] (:aggregation (:query qp/*query*))]
+                                                           `(raw ~(case ag
+                                                                    "avg"      "\"avg\"" ; based on the type of the aggregation
+                                                                    "count"    "\"count\"" ; make sure we ask the DB to order by the
+                                                                    "distinct" "\"count\"" ; name of the aggregate field
+                                                                    "stddev"   "\"stddev\""
+                                                                    "sum"      "\"sum\""))))
                          ~(case asc-desc
                             "ascending" :ASC
                             "descending" :DESC)))))))
