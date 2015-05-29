@@ -670,7 +670,7 @@
           [1 22]
           [2 59]]
    :cols [(venue-col :price)
-          {:base_type :IntegerField, :special_type :id, :name "count", :id nil, :table_id nil, :description nil}]}
+          {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
   {:source_table (id :venues)
    :aggregation  ["distinct" (id :venues :id)]
    :breakout     [(id :venues :price)]
@@ -681,10 +681,10 @@
 (qp-expect-with-datasets #{:generic-sql}
   {:columns [(format-name "price")
              "avg"]
-   :rows [[4 53]
-          [1 32]
+   :rows [[3 22]
           [2 28]
-          [3 22]]
+          [1 32]
+          [4 53]]
    :cols [(venue-col :price)
           {:base_type :IntegerField, :special_type :fk, :name "avg", :id nil, :table_id nil, :description nil}]}
   {:source_table (id :venues)
