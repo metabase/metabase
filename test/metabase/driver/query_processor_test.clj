@@ -5,7 +5,7 @@
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
             (metabase.models [table :refer [Table]])
-            [metabase.test.data.datasets :as datasets :refer [*dataset* expect-with-all-datasets]]))
+            [metabase.test.data.datasets :as datasets :refer [*dataset*]]))
 
 ;; ##  Dataset-Independent Data Fns
 
@@ -42,16 +42,33 @@
 
 ;; ### Helper Fns + Macros
 
+(defmacro qp-expect-with-datasets
+  "Slightly more succinct way of writing QP tests. Adds standard boilerplate to run QP tests against DATASETS."
+  [datasets {:keys [rows] :as data} query]
+  {:pre [(set? datasets)
+         (map? data)
+         (sequential? rows)
+         (map? query)]}
+  `(datasets/expect-with-datasets ~datasets
+     {:status :completed
+      :row_count ~(count rows)
+      :data      ~data}
+     (driver/process-query
+      {:type     :query
+       :database (db-id)
+       :query    ~query})))
+
 (defmacro qp-expect-with-all-datasets
-  "Slightly more succinct way of writing QP tests. Adds standard boilerplate to actual/expected forms."
+  "Like `qp-expect-with-datasets`, but tests against *all* datasets."
   [data query]
-  `(expect-with-all-datasets
+  `(datasets/expect-with-all-datasets
        {:status :completed
         :row_count ~(count (:rows data))
         :data ~data}
      (driver/process-query {:type :query
                             :database (db-id)
                             :query ~query})))
+
 
 (defn ->columns
   "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
@@ -516,7 +533,7 @@
 
 ;; ## EMPTY QUERY
 ;; Just don't barf
-(expect-with-all-datasets
+(datasets/expect-with-all-datasets
     {:status :completed
      :row_count 0
      :data {:rows [], :columns [], :cols []}}
@@ -608,3 +625,84 @@
  {:source_table (id :venues)
   :breakout     [(id :venues :price)]
   :aggregation  ["cum_sum" (id :venues :id)]})
+
+
+;;; ## order_by aggregate fields (SQL-only for the time being)
+
+;;; ### order_by aggregate ["count"]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "count"]
+   :rows [[4 6]
+          [3 13]
+          [1 22]
+          [2 59]]
+   :cols [(venue-col :price)
+          {:base_type :IntegerField, :special_type :number, :description nil, :table_id nil, :name "count", :id nil}]}
+  {:source_table (id :venues)
+   :aggregation  ["count"]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+
+;;; ### order_by aggregate ["sum" field-id]
+(qp-expect-with-datasets #{:generic-nsql}
+  {:columns [(format-name "price")
+             "sum"]
+   :rows [[2 (->sum-type 2855)]
+          [1 (->sum-type 1211)]
+          [3 (->sum-type 615)]
+          [4 (->sum-type 369)]]
+   :cols [(venue-col :price)
+          {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :venues)
+   :aggregation  ["sum" (id :venues :id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "descending"]]})
+
+
+;;; ### order_by aggregate ["distinct" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "count"]
+   :rows [[4 6]
+          [3 13]
+          [1 22]
+          [2 59]]
+   :cols [(venue-col :price)
+          {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :venues)
+   :aggregation  ["distinct" (id :venues :id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+
+;;; ### order_by aggregate ["avg" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "avg"]
+   :rows [[3 22]
+          [2 28]
+          [1 32]
+          [4 53]]
+   :cols [(venue-col :price)
+          {:base_type :IntegerField, :special_type :fk, :name "avg", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :venues)
+   :aggregation  ["avg" (id :venues :category_id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+;;; ### order_by aggregate ["stddev" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "stddev"]
+   :rows [[3 26.19160170741759]
+          [1 24.112111881665186]
+          [2 21.418692164795292]
+          [4 14.788509052639485]]
+   :cols [(venue-col :price)
+          {:base_type :IntegerField, :special_type :fk, :name "stddev", :id nil, :table_id nil, :description nil}]}
+  {:source_table (id :venues)
+   :aggregation  ["stddev" (id :venues :category_id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "descending"]]})
