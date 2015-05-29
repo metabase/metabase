@@ -642,7 +642,7 @@
   {:source_table (id :venues)
    :aggregation  ["count"]
    :breakout     [(id :venues :price)]
-   :order_by     [["$$aggregation" "ascending"]]})
+   :order_by     [[["aggregation" 0] "ascending"]]})
 
 
 ;;; ### order_by aggregate ["sum" field-id]
@@ -658,7 +658,7 @@
   {:source_table (id :venues)
    :aggregation  ["sum" (id :venues :id)]
    :breakout     [(id :venues :price)]
-   :order_by     [["$$aggregation" "descending"]]})
+   :order_by     [[["aggregation" 0] "descending"]]})
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
@@ -674,7 +674,7 @@
   {:source_table (id :venues)
    :aggregation  ["distinct" (id :venues :id)]
    :breakout     [(id :venues :price)]
-   :order_by     [["$$aggregation" "ascending"]]})
+   :order_by     [[["aggregation" 0] "ascending"]]})
 
 
 ;;; ### order_by aggregate ["avg" field-id]
@@ -690,7 +690,7 @@
   {:source_table (id :venues)
    :aggregation  ["avg" (id :venues :category_id)]
    :breakout     [(id :venues :price)]
-   :order_by     [["$$aggregation" "ascending"]]})
+   :order_by     [[["aggregation" 0] "ascending"]]})
 
 ;;; ### order_by aggregate ["stddev" field-id]
 (qp-expect-with-datasets #{:generic-sql}
@@ -705,4 +705,4 @@
   {:source_table (id :venues)
    :aggregation  ["stddev" (id :venues :category_id)]
    :breakout     [(id :venues :price)]
-   :order_by     [["$$aggregation" "descending"]]})
+   :order_by     [[["aggregation" 0] "descending"]]})

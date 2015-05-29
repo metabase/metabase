@@ -360,7 +360,7 @@ var GuiQueryEditor = React.createClass({
 
             if (this.canSortByAggregateField()) {
                 breakoutFieldList.push({
-                    id: '$$aggregation',
+                    id: ["aggregation",  0],
                     name: this.props.query.query.aggregation[0] // e.g. "sum"
                 });
             }
