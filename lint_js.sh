@@ -3,7 +3,7 @@
 # Simple shell script for running jshint and nicely formatting the output :heart_eyes_cat:
 
 JS_HINT=./node_modules/jsxhint/cli.js
-JS_HINT_OPTS='--babel --config .jshintrc'
+JS_HINT_OPTS='--babel --es6module --config .jshintrc'
 JS_FILES=`find resources/frontend_client/app -name "*.js" | grep -v bower_components | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
 
 BOLD='\033[1;30m'
