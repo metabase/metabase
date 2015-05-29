@@ -175,6 +175,13 @@ var GuiQueryEditor = React.createClass({
                     this.props.query.query.breakout[0] !== null);
     },
 
+    /// If we can sort by the aggregate field return the user-facing name for the sort option. Otherwise return null
+    canSortByAggregateField: function() {
+        const VALID_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+
+        return this.hasValidBreakout() && VALID_AGGREGATION_TYPES.has(this.props.query.query.aggregation[0]);
+    },
+
     addDimension: function() {
         var query = this.props.query;
         query.query.breakout.push(null);
@@ -351,6 +358,13 @@ var GuiQueryEditor = React.createClass({
                     }
                 }
             }.bind(this));
+
+            if (this.canSortByAggregateField()) {
+                breakoutFieldList.push({
+                    id: '$$aggregation',
+                    name: this.props.query.query.aggregation[0] // e.g. "sum"
+                });
+            }
 
             return breakoutFieldList;
         } else {
