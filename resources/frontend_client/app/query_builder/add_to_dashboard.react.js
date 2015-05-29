@@ -1,5 +1,4 @@
 'use strict';
-/*global OnClickOutside*/
 
 import AddToDashboardPopover from './add_to_dashboard_popover.react';
 import Icon from './icon.react';

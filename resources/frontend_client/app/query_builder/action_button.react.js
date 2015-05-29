@@ -1,5 +1,5 @@
 'use strict';
-/*global setTimeout, clearTimeout, OnClickOutside*/
+/*global setTimeout, clearTimeout*/
 
 import Icon from './icon.react';
 

@@ -1,11 +1,9 @@
 'use strict';
 /*global setTimeout*/
 /*global $*/
-/*global CardRenderer*/
 /* global React */
-/* global document */
-/* global QueryBuilder */
 
+import { CardRenderer } from './card.charting';
 
 var CardDirectives = angular.module('corvus.card.directives', []);
 

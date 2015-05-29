@@ -3,9 +3,7 @@
 
 import PopoverContent from './popover_content.react'
 
-var cx = React.addons.classSet;
-
-var PopoverWithTrigger = React.createClass({
+export default React.createClass({
     displayName: 'PopoverWithTrigger',
 
     getInitialState: function() {

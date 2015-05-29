@@ -1,9 +1,10 @@
 'use strict';
+/*global OnClickOutside*/
 
 // this feels a little silly, but we have this component ONLY so that we can add the OnClickOutside functionality on an
 // arbitrary set of html content.  I wish we could do that more easily
 
-var PopoverContent = React.createClass({
+export default React.createClass({
     displayName: 'PopoverContent',
     mixins: [OnClickOutside],
 

@@ -1,8 +1,6 @@
 'use strict';
-/*global OnClickOutside*/
 
 var cx = React.addons.classSet;
-
 
 export default React.createClass({
     displayName: 'FormField',

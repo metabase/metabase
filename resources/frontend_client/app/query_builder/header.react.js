@@ -8,7 +8,6 @@ import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
-var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({

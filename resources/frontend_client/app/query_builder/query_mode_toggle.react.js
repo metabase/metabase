@@ -1,5 +1,4 @@
 'use strict';
-/*global OnClickOutside*/
 
 import SelectionModule from './selection_module.react';
 
