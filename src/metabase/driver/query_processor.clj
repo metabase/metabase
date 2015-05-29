@@ -4,16 +4,14 @@
             [clojure.tools.logging :as log]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.models.field :refer [Field field->fk-table]]))
+            [metabase.models.field :refer [Field field->fk-table]]
+            [metabase.util :as u])
+  (:import [metabase.driver.interface QPField QPValue]))
 
-(declare add-implicit-breakout-order-by
-         add-implicit-limit
-         get-special-column-info
-         preprocess-cumulative-sum
-         preprocess-structured
-         remove-empty-clauses)
+(declare get-special-column-info
+         query-dict->Query)
 
-;; # CONSTANTS
+;; # ---------------------------------------- CONSTANTS + DYNAMIC VARS ----------------------------------------
 
 (def ^:const empty-response
   "An empty response dictionary to return when there's no query to run."
@@ -23,10 +21,7 @@
   "Maximum number of rows the QP should ever return."
   10000)
 
-
-;; # DYNAMIC VARS
-
-(def ^:dynamic *query*
+(def ^:deprecated ^:dynamic *query*
   "The query we're currently processing (i.e., the body of the query API call)."
   nil)
 
@@ -35,31 +30,49 @@
   false)
 
 
-;; # PREPROCESSOR
+;; # ---------------------------------------- PIPELINE ----------------------------------------
 
-(defn preprocess
-  "Preprocess QUERY dict, applying various driver-independent transformations to it before it is passed to specific driver query processor implementations."
-  [{query-type :type :as query}]
-  (case (keyword query-type)
-    :query (preprocess-structured query)
-    :native query))
+;; ## Pipeline Protocol Definitions
 
-(defn preprocess-structured
-  "Preprocess a strucuted QUERY dict."
-  [query]
-  (let [preprocessed-query (update-in query [:query] #(->> %
-                                                           remove-empty-clauses
-                                                           add-implicit-breakout-order-by
-                                                           add-implicit-limit
-                                                           preprocess-cumulative-sum))]
-    (when-not *disable-qp-logging*
-      (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
-                                     (with-out-str (clojure.pprint/pprint preprocessed-query)) "\n"
-                                     "*******************************************************\n")))
-    preprocessed-query))
+(defprotocol IPreprocessQuery
+  (preprocess [query]))
+
+(defprotocol ICreateQueryProcessor
+  (create-qp [query ^IQueryProcessorFactory driver, ^Integer database-id]))
+
+(defprotocol IProcessQuery
+  (process [query qp]))
+
+(defprotocol IAnnotateQueryResults
+  (annotate-results [query qp results]))
+
+(defprotocol IPostProcessQuery
+  (post-process [query results]))
+
+;; ## Process-Query
+
+(defn process-query [driver {database-id :database :as query-dict}]
+  {:pre [(integer? database-id)]}
+  (let [query  (->> (query-dict->Query query-dict)  ; [1]
+                    preprocess)                     ; [2]
+        qp     (create-qp query driver database-id)]
+    (->> (process query qp)                         ; [3]
+         (annotate-results query qp)                ; [4]
+         (post-process query))))                    ; [5]
 
 
-;; ## PREPROCESSOR FNS
+;; # ---------------------------------------- CONVERT QUERY DICT TO TYPED QUERY [1] ----------------------------------------
+
+(defrecord StructuredQuery [])
+(defrecord NativeQuery     [])
+
+(defn query-dict->Query [query-dict]
+  (case (keyword (:type query-dict))
+    :query  (map->StructuredQuery query-dict)
+    :native (map->NativeQuery     query-dict)))
+
+
+;; # ---------------------------------------- PREPROCESS [2] ----------------------------------------
 
 ;; ### REMOVE-EMPTY-CLAUSES
 (def ^:const clause->empty-forms
@@ -147,82 +160,166 @@
       ;; Otherwise if this isn't a cum_sum query return it as-is
       :else               query)))
 
+;; ## PREPROCESS
 
-;; # POSTPROCESSOR
+(extend-protocol IPreprocessQuery
+  NativeQuery
+  (preprocess [query]
+    query)
 
-;; ### POST-PROCESS-CUMULATIVE-SUM
-
-(defn post-process-cumulative-sum
-  "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  {:arglists '([query results])}
-  [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
-  (if-not cum-sum-field results
-          (let [ ;; Determine the index of the field we need to cumulative sum
-                cum-sum-field-index (->> cols
-                                         (map-indexed (fn [i {field-name :name, field-id :id}]
-                                                        (when (or (= field-name "sum")
-                                                                  (= field-id cum-sum-field))
-                                                          i)))
-                                         (filter identity)
-                                         first)
-                _                   (assert (integer? cum-sum-field-index))
-                ;; Now make a sequence of cumulative sum values for each row
-                values              (->> rows
-                                         (map #(nth % cum-sum-field-index))
-                                         (reductions +))
-                ;; Update the values in each row
-                rows                (map (fn [row value]
-                                           (assoc (vec row) cum-sum-field-index value))
-                                         rows values)]
-            (assoc results :rows rows))))
-
-;; ### LIMIT-MAX-RESULT-ROWS
-
-(defn limit-max-result-rows
-  "Limit the number of rows returned in RESULTS to `max-result-rows`.
-  (We want to do this here so we can put a hard limit on native SQL results and other ones where we couldn't add an implicit `:limit` clause)."
-  [results]
-  {:pre [(map? results)
-         (sequential? (:rows results))]}
-  (update-in results [:rows] (partial take max-result-rows)))
+  StructuredQuery
+  (preprocess [this]
+    (->> (:query this)
+         remove-empty-clauses
+         add-implicit-breakout-order-by
+         add-implicit-limit
+         preprocess-cumulative-sum
+         map->StructuredQuery)))
 
 
-;; ### ADD-ROW-COUNT-AND-STATUS
+;; # ---------------------------------------- PROCESS [3] ----------------------------------------
 
-(defn add-row-count-and-status
-  "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
-  [results]
-  {:pre [(map? results)
-         (sequential? (:columns results))
-         (sequential? (:cols results))
-         (sequential? (:rows results))]}
-  (let [num-results (count (:rows results))]
-    (cond-> {:row_count num-results
-             :status    :completed
-             :data      results}
-      (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))) ; so the front-end can let the user know why they're being arbitarily limited
+;; ## CREATE-QP
 
-;; ### POST-PROCESS
+(extend-protocol ICreateQueryProcessor
+  StructuredQuery
+  (create-qp [{source-table-id :source_table, :as query} driver database-id]
+    {:pre [(integer? source-table-id)
+           (integer? database-id)]}
+    (i/create-structured-query-processor driver database-id source-table-id query))
 
-(defn post-process
-  "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
-  [driver query results]
-  {:pre [(map? query)
-         (map? results)]}
-  (->> results
-       limit-max-result-rows
-       (#(case (keyword (:type query))
-           :native %
-           :query  (post-process-cumulative-sum (:query query) %)))
-       add-row-count-and-status))
+  NativeQuery
+  (create-qp [{{raw-query :query} :native} driver database-id]
+    {:pre [(string? raw-query)
+           (integer? database-id)]}
+    (i/create-native-query-processor driver database-id raw-query)))
 
 
-;; # COMMON ANNOTATION FNS
+;; ## Structured Query Processor
+
+(defn- resolve-field ^QPField [^Integer field-id]
+  (let [field (sel :one :fields [Field :name :base_type] :id field-id)]
+    (i/->QPField field-id (:name field) (:base_type field))))
+
+(defmacro ^:private with-resolved-field [[field-binding field-id] & body]
+  `(let [~field-binding (resolve-field ~field-id)
+         ~'resolve-value (fn ^QPValue [value#]
+                           (i/->QPValue value# (.base_type ~field-binding)))]
+     ~@body))
+
+
+;; ### Aggregation
+
+(defn- process-aggregation [qp clause]
+  (match clause
+    ["rows"]              (i/aggregation:rows        qp)
+    ["count"]             (i/aggregation:rows-count  qp)
+    ["avg" field-id]      (i/aggregation:avg         qp (resolve-field field-id))
+    ["count" field-id]    (i/aggregation:field-count qp (resolve-field field-id))
+    ["distinct" field-id] (i/aggregation:distinct    qp (resolve-field field-id))
+    ["stddev" field-id]   (i/aggregation:stddev      qp (resolve-field field-id))
+    ["sum" field-id]      (i/aggregation:sum         qp (resolve-field field-id))))
+
+;; ## Breakout
+
+(defn- process-breakout [qp field-ids]
+  (i/breakout qp (mapv resolve-field field-ids)))
+
+;; ## Fields
+
+(defn- process-fields [qp field-ids]
+  (i/fields-clause qp (mapv resolve-field field-ids)))
+
+;; ### Filter
+
+(defn- process-filter-subclause [qp subclause]
+  (match subclause
+    ["INSIDE" lat-field-id lon-field-id
+     lat-max lon-min lat-min lon-max] (with-resolved-field [lat-field lat-field-id]
+                                        (with-resolved-field [lon-field lon-field-id]
+                                          (i/filter-subclause:inside qp {:lat     lat-field
+                                                                         :lat-min (resolve-value lat-min)
+                                                                         :lat-max (resolve-value lat-max)
+                                                                         :lon     lon-field
+                                                                         :lon-min (resolve-value lon-min)
+                                                                         :lon-max (resolve-value lon-max)})))
+     ["NOT_NULL" field-id]            (i/filter-subclause:not-null qp (resolve-field field-id))
+     ["IS_NULL"  field-id]            (i/filter-subclause:null     qp (resolve-field field-id))
+     ["BETWEEN"  field-id min max]    (with-resolved-field [field field-id]
+                                        (i/filter-subclause:between qp field (resolve-value min) (resolve-value max)))
+     ["="  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:=  qp field (resolve-value value)))
+     ["!=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:!= qp field (resolve-value value)))
+     ["<"  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:<  qp field (resolve-value value)))
+     [">"  field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:>  qp field (resolve-value value)))
+     ["<=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:<= qp field (resolve-value value)))
+     [">=" field-id value]            (with-resolved-field [field field-id]
+                                        (i/filter-subclause:>= qp field (resolve-value value)))))
+
+(defn- process-filter [qp clause]
+  (match clause
+    ["AND" & subclauses] (i/filter:and qp (mapv (partial process-filter-subclause qp)
+                                                subclauses))
+    ["OR"  & subclauses] (i/filter:or  qp (mapv (partial process-filter-subclause qp)
+                                                subclauses))
+    subclause            (i/filter:simple qp (process-filter-subclause qp subclause))))
+
+;; ## ORDER_BY
+
+(defn- process-order-by [qp subclauses]
+  (i/order-by qp (mapv (fn [[field-id asc-desc]]
+                         (with-resolved-field [field field-id]
+                           (case asc-desc
+                             "ascending"  (i/order-by-subclause:asc  qp field)
+                             "descending" (i/order-by-subclause:desc qp field))))
+                       subclauses)))
+
+;; ## PAGE
+
+(defn- process-page [qp {:keys [page items]}]
+  {:pre [(integer? page)
+         (> page 0)
+         (integer? items)]}
+  (i/limit-clause qp items)
+  (i/offset-clause qp (* (- page 1)
+                         items)))
+
+;; ## PROCESS
+
+(extend-protocol IProcessQuery
+  StructuredQuery
+  (process [query qp]
+    {:pre [(:aggregation query)]}
+    (when-not (zero? (:source_table query))
+      (doseq [[clause-name clause-value] query]
+        (match clause-name
+          :aggregation  (process-aggregation qp clause-value)
+          :breakout     (process-breakout    qp clause-value)
+          :fields       (process-fields      qp clause-value)
+          :filter       (process-filter      qp clause-value)
+          :limit        (i/limit-clause      qp clause-value)
+          :order_by     (process-order-by    qp clause-value)
+          :page         (process-page        qp clause-value)
+          :source_table nil))
+      (i/eval-structured-query qp)))
+
+  NativeQuery
+  (process [_ qp]
+    (i/eval-native-query qp)))
+
+
+;; # ---------------------------------------- ANNOTATE-RESULTS [4] ----------------------------------------
+
+;; ## Annotation Helper Fns
 
 (defn get-column-info
   "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
    information about special columns such as `count` via `get-special-column-info`."
-  [{{table-id :source_table} :query, :as query} column-names]
+  [{table-id :source_table, :as query} column-names]
   {:pre [(integer? table-id)
          (every? string? column-names)]}
   (let [columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
@@ -250,7 +347,6 @@
 (defn get-special-column-info
   "Get info like `:base_type` and `:special_type` for a special aggregation column like `count` or `sum`."
   [query column-name]
-  {:pre [(:query query)]}
   (merge {:name column-name
           :id nil
           :table_id nil
@@ -258,7 +354,7 @@
          (let [aggregation-type   (keyword column-name)                              ; For aggregations of a specific Field (e.g. `sum`)
                field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
            (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
-                                       :id (-> query :query :aggregation second))    ; will be the same.)
+                                       :id (-> query :aggregation second))           ; will be the same.)
                (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
                  :count {:base_type :IntegerField                                    ; just return hardcoded type info
                          :special_type :number})))))
@@ -325,3 +421,106 @@
     (catch Exception e
       (.printStackTrace e)
       (log/error (.getMessage e)))))
+
+
+;; ## ANNOTATE-RESULTS
+
+(extend-protocol IAnnotateQueryResults
+  StructuredQuery
+  (annotate-results [query qp results]
+    {:pre [(not (:query query))]}
+    (i/annotate-results qp results))
+
+  NativeQuery
+  (annotate-results [query qp results]
+    (i/annotate-results qp results)))
+
+
+;; # ---------------------------------------- POST-PROCESS [5] ----------------------------------------
+
+;; ### POST-PROCESS-CUMULATIVE-SUM
+
+(defn post-process-cumulative-sum
+  "Cumulative sum the values of the aggregate `Field` in RESULTS."
+  {:arglists '([query results])}
+  [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
+  (if-not cum-sum-field results
+          (let [ ;; Determine the index of the field we need to cumulative sum
+                cum-sum-field-index (->> cols
+                                         (map-indexed (fn [i {field-name :name, field-id :id}]
+                                                        (when (or (= field-name "sum")
+                                                                  (= field-id cum-sum-field))
+                                                          i)))
+                                         (filter identity)
+                                         first)
+                _                   (assert (integer? cum-sum-field-index))
+                ;; Now make a sequence of cumulative sum values for each row
+                values              (->> rows
+                                         (map #(nth % cum-sum-field-index))
+                                         (reductions +))
+                ;; Update the values in each row
+                rows                (map (fn [row value]
+                                           (assoc (vec row) cum-sum-field-index value))
+                                         rows values)]
+            (assoc results :rows rows))))
+
+;; ### LIMIT-MAX-RESULT-ROWS
+
+(defn limit-max-result-rows
+  "Limit the number of rows returned in RESULTS to `max-result-rows`.
+  (We want to do this here so we can put a hard limit on native SQL results and other ones where we couldn't add an implicit `:limit` clause)."
+  [results]
+  {:pre [(map? results)
+         (sequential? (:rows results))]}
+  (update-in results [:rows] (partial take max-result-rows)))
+
+
+;; ### ADD-ROW-COUNT-AND-STATUS
+
+(defn add-row-count-and-status
+  "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
+  [results]
+  {:pre [(map? results)
+         (sequential? (:columns results))
+         (sequential? (:cols results))
+         (sequential? (:rows results))]}
+  (let [num-results (count (:rows results))]
+    (cond-> {:row_count num-results
+             :status    :completed
+             :data      results}
+      (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))) ; so the front-end can let the user know why they're being arbitarily limited
+
+;; ## POST-PROCESS
+
+(extend-protocol IPostProcessQuery
+  NativeQuery
+  (post-process [_ results]
+    (->> results
+         limit-max-result-rows
+         add-row-count-and-status))
+
+  StructuredQuery
+  (post-process [query results]
+    (->> results
+         limit-max-result-rows
+         (post-process-cumulative-sum query)
+         add-row-count-and-status)))
+
+
+;; # ---------------------------------------- TEST DATA ----------------------------------------
+
+(def process-query-2 (u/runtime-resolved-fn 'metabase.driver.query-processor.parse 'process-query-2))
+
+(def test-query {:database 33,
+                 :type "query",
+                 :query
+                 {:source_table 85,
+                  :aggregation ["count"],
+                  :breakout [],
+                  :filter ["AND" ["BETWEEN" 409 "2015-01-01" "2015-05-01"]]}})
+
+(def driver-process-query
+  (u/runtime-resolved-fn 'metabase.driver 'process-query))
+
+(defn x []
+  (driver-process-query test-query))

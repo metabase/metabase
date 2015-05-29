@@ -17,6 +17,7 @@
    *  `:columns` ordered sequence of column names
    *  `:cols` ordered sequence of information about each column, such as `:base_type` and `:special_type`"
   [query results]
+  {:pre [(not (:query query))]}
   (let [column-names    (get-column-names query results)
         column-name-kws (map keyword column-names)]
     {:rows (->> results
@@ -34,7 +35,7 @@
   "Get an ordered seqences of column names for the results.
    If a `fields` clause was specified in the Query Dict, we want to return results in the same order."
   [query results]
-  (let [field-ids (-> query :query :fields)
+  (let [field-ids (-> query :fields)
         fields-clause-fields (when-not (or (empty? field-ids)
                                            (= field-ids [nil]))
                                (let [field-id->name (->> (sel :many [Field :id :name :base_type]

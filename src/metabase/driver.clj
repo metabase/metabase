@@ -128,12 +128,7 @@
   [query]
   {:pre [(map? query)]}
   (try
-    (binding [qp/*query* query]
-      (let [driver  (database-id->driver (:database query))
-            query   (qp/preprocess query)
-            results (binding [qp/*query* query]
-                      (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
-        (qp/post-process driver query results)))
+    (qp/process-query (database-id->driver (:database query)) query)
     (catch Throwable e
       (.printStackTrace e)
       {:status :failed
