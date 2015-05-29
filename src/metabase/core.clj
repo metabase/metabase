@@ -9,6 +9,7 @@
             (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
+            [metabase.models.setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.routes :as routes]
             [metabase.setup :as setup]
@@ -21,6 +22,10 @@
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])))
+
+;; ## CONFIG
+
+(defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
 
 (def app

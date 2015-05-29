@@ -5,6 +5,8 @@ var DatabasesControllers = angular.module('corvusadmin.databases.controllers', [
 
 DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
 
+    $scope.databases = [];
+
     $scope.delete = function(databaseId) {
         if ($scope.databases) {
 
@@ -20,27 +22,10 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
         }
     };
 
-    $scope.$watch('currentOrg', function(org) {
-        if (org) {
-            $scope.databases = [];
-
-            Metabase.db_list({
-                'orgId': org.id
-            }, function(databases) {
-                // if we are an org that 'inherits' lets only show our our own dbs in this view
-                if (org.inherits) {
-                    var dm = _.filter(databases, function(database) {
-                        return database.organization.id === org.id;
-                    });
-                    $scope.databases = dm;
-                } else {
-
-                    $scope.databases = databases;
-                }
-            }, function(error) {
-                console.log('error getting database list', error);
-            });
-        }
+    Metabase.db_list(function(databases) {
+        $scope.databases = databases;
+    }, function(error) {
+        console.log('error getting database list', error);
     });
 }]);
 
@@ -70,11 +55,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         // create a new Database
         var create = function(database, details, redirectToDetail) {
             $scope.$broadcast("form:reset");
-            database.org = $scope.currentOrg.id;
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
             return Metabase.db_create(database).$promise.then(function(new_database) {
                 if (redirectToDetail) {
-                    $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+                    $location.path('/admin/databases/' + new_database.id);
                 }
                 $scope.$broadcast("form:api-success", "Successfully created!");
                 $scope.$emit("database:created", new_database);

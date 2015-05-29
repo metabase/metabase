@@ -8,9 +8,9 @@
 
 <div class="wrapper">
     <section class="Breadcrumbs">
-        <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/databases/">Databases</a>
+        <a class="Breadcrumb Breadcrumb--path" href="/admin/databases/">Databases</a>
         <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
-        <a class="Breadcrumb Breadcrumb--path" cv-org-href="/admin/databases/{{table.db.id}}/tables/">{{table.db.name}}</a>
+        <a class="Breadcrumb Breadcrumb--path" href="/admin/databases/{{table.db.id}}/tables/">{{table.db.name}}</a>
         <cv-chevron-right-icon class="Breadcrumb-divider" width="12px" height="12px"></cv-chevron-right-icon>
         <h2 class="Breadcrumb Breadcrumb--page">{{table.name}}</h2>
     </section>
@@ -61,7 +61,7 @@
                         <div>
                             <input ng-model="field.preview_display" type="checkbox" ng-change="inlineSaveField($index)">
                             <h3 class="text-bold inline-block">
-                                <a class="link mr1" cv-org-href="/admin/databases/field/{{field.id}}">{{field.name}}</a>
+                                <a class="link mr1" href="/admin/databases/field/{{field.id}}">{{field.name}}</a>
                             </h3>
 
                             <label class="Select mx1">

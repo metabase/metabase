@@ -13,12 +13,18 @@ SettingsAdminServices.factory('SettingsAdminServices', ['$resource', function($r
         // POST endpoint handles create + update in this case
         put: {
             url: '/api/setting/:key',
-            method: 'PUT'
+            method: 'PUT',
+            params: {
+                key: '@key'
+            }
         },
 
         delete: {
             url: '/api/setting/:key',
-            method: 'DELETE'
+            method: 'DELETE',
+            params: {
+                key: '@key'
+            }
         }
     });
 }]);

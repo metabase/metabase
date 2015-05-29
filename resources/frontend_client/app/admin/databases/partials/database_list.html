@@ -1,6 +1,6 @@
 <div class="wrapper">
     <section class="PageHeader clearfix">
-        <a class="Button Button--primary float-right" cv-org-href="/admin/databases/create">Add database</a>
+        <a class="Button Button--primary float-right" href="/admin/databases/create">Add database</a>
         <h2 class="PageTitle">Databases</h2>
     </section>
 
@@ -22,14 +22,14 @@
                 </tr>
                 <tr ng-repeat="database in databases">
                     <td>
-                        <a class="text-bold link" cv-org-href="/admin/databases/{{database.id}}">{{database.name}}</a>
+                        <a class="text-bold link" href="/admin/databases/{{database.id}}">{{database.name}}</a>
                     </td>
                     <td>
                         {{database.engine}}
                     </td>
                     <td class="Table-actions">
                         <!-- TODO: sync now button? -->
-                        <a class="Button" cv-org-href="/admin/databases/{{database.id}}/tables/">Tables</a>
+                        <a class="Button" href="/admin/databases/{{database.id}}/tables/">Tables</a>
                         <button class="Button Button--danger" ng-click="delete(database.id)" delete-confirm>Delete</button>
                     </td>
                 </tr>
