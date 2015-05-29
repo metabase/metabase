@@ -19,8 +19,14 @@
 (expect (get auth/response-unauthentic :body) (http/client :get 401 "user/current"))
 
 
+;; ## Helper Fns
+(defn create-user-api [user-name]
+  ((user->client :crowberto) :post 200 "user" {:first_name user-name
+                                               :last_name  user-name
+                                               :email      (str user-name "@metabase.com")}))
+
 ;; ## GET /api/user
-;; Check that superusers can get a list of all Users
+;; Check that superusers can get a list of all active Users
 (expect
     #{(match-$ (fetch-user :crowberto)
         {:common_name "Crowberto Corv"
@@ -31,15 +37,6 @@
          :last_login $
          :first_name "Crowberto"
          :email "crowberto@metabase.com"})
-      (match-$ (fetch-user :trashbird)
-        {:common_name "Trash Bird"
-         :date_joined $
-         :last_name "Bird"
-         :id $
-         :is_superuser false
-         :last_login $
-         :first_name "Trash"
-         :email "trashbird@metabase.com"})
       (match-$ (fetch-user :lucky)
         {:common_name "Lucky Pigeon"
          :date_joined $
@@ -68,6 +65,45 @@
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :get 403 "user"))
+
+
+;; ## POST /api/user
+;; Test that we can create a new User
+(let [rand-name (random-name)]
+  (expect-eval-actual-first
+    (match-$ (sel :one User :first_name rand-name)
+      {:id $
+       :email $
+       :first_name rand-name
+       :last_name rand-name
+       :date_joined $
+       :last_login $
+       :common_name $
+       :is_superuser false})
+    (create-user-api rand-name)))
+
+;; Check that non-superusers are denied access
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 "user" {:first_name "whatever"
+                                           :last_name "whatever"
+                                           :email "whatever@whatever.com"}))
+
+;; Test input validations
+(expect {:errors {:first_name "field is a required param."}}
+  ((user->client :crowberto) :post 400 "user" {}))
+
+(expect {:errors {:last_name "field is a required param."}}
+  ((user->client :crowberto) :post 400 "user" {:first_name "whatever"}))
+
+(expect {:errors {:email "field is a required param."}}
+  ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
+                                               :last_name "whatever"}))
+
+(expect {:errors {:email "Invalid value 'whatever' for 'email': Not a valid email address."}}
+  ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
+                                               :last_name "whatever"
+                                               :email "whatever"}))
+
 
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
@@ -114,6 +150,10 @@
            :common_name "Rasta Toucan"})
   ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
 
+;; We should get a 404 when trying to access a disabled account
+(expect "Not found."
+  ((user->client :crowberto) :get 404 (str "user/" (user->id :trashbird))))
+
 
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
@@ -137,6 +177,10 @@
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird)) {:email "toucan@metabase.com"}))
+
+;; We should get a 404 when trying to access a disabled account
+(expect "Not found."
+  ((user->client :crowberto) :put 404 (str "user/" (user->id :trashbird)) {:email "toucan@metabase.com"}))
 
 
 ;; ## PUT /api/user/:id/password
@@ -176,3 +220,16 @@
 (expect "password mismatch"
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "whateverUP12!!"
                                                                                  :old_password "mismatched"}))
+
+
+;; ## DELETE /api/user/:id
+;; Disable a user account
+(let [rand-name (random-name)]
+  (expect-eval-actual-first
+    {:success true}
+    (let [user (create-user-api rand-name)]
+      ((user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {}))))
+
+;; Check that a non-superuser CANNOT update someone else's password
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :delete 403 (format "user/%d" (user->id :rasta)) {}))
