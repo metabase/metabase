@@ -182,7 +182,7 @@
                             (integer? field-id)          (field-id->kw field-id)
                             (= field-id "$$aggregation") (let [[ag] (:aggregation (:query qp/*query*))]
                                                            `(raw ~(case ag
-                                                                    "avg"      "\"avg\"" ; based on the type of the aggregation
+                                                                    "avg"      "\"avg\""   ; based on the type of the aggregation
                                                                     "count"    "\"count\"" ; make sure we ask the DB to order by the
                                                                     "distinct" "\"count\"" ; name of the aggregate field
                                                                     "stddev"   "\"stddev\""
