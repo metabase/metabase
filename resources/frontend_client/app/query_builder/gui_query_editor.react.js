@@ -176,9 +176,9 @@ var GuiQueryEditor = React.createClass({
     },
 
     canSortByAggregateField: function() {
-        const VALID_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+        const SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
 
-        return this.hasValidBreakout() && VALID_AGGREGATION_TYPES.has(this.props.query.query.aggregation[0]);
+        return this.hasValidBreakout() && SORTABLE_AGGREGATION_TYPES.has(this.props.query.query.aggregation[0]);
     },
 
     addDimension: function() {
