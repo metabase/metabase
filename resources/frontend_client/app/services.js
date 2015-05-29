@@ -781,6 +781,10 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
 
 CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/user/:userId', {}, {
+        create: {
+            url: '/api/user',
+            method: 'POST'
+        },
         list: {
             url: '/api/user/',
             method: 'GET',
@@ -810,6 +814,12 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             method: 'PUT',
             params: {
                 'userId': '@id'
+            }
+        },
+        delete: {
+            method: 'DELETE',
+            params: {
+                'userId': '@userId'
             }
         }
     });

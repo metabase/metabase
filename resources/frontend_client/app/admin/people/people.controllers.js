@@ -61,7 +61,7 @@ PeopleControllers.controller('PeopleList', ['$scope', 'User',
                 userId: userId
             }, function(result) {
                 for (var i = 0; i < $scope.people.length; i++) {
-                    if($scope.people[i].user.id === userId) {
+                    if($scope.people[i].id === userId) {
                         $scope.people.splice(i, 1);
                         break;
                     }
