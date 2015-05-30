@@ -11,6 +11,9 @@ a:hover { color: color(var(--default-link-color) shade(5%)); }
 .link:hover {
   text-decoration: underline;
 }
+.link--nohover:hover {
+  text-decoration: none;
+}
 
 .psdisabled {
   color: #A4A4A4;

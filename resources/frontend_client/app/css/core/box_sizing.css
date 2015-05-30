@@ -1,4 +1,5 @@
 /* set main elements to box-sizing border-box for more reliable box model calc */
+body,
 div,
 nav,
 article,

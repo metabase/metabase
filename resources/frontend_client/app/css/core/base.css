@@ -1,6 +1,7 @@
 :root {
   --default-font-family: "Lato";
   --default-font-size: 1em;
+  --default-font-color: #727479;
 }
 
 html {
@@ -10,8 +11,8 @@ html {
 body {
     font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
     font-size: var(--default-font-size);
+    color: var(--default-font-color);
     margin: 0;
-    box-sizing: border-box;
     height: 100%; /* ensure the entire page will fill the window */
     display: flex;
     flex-direction: column;
