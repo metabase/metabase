@@ -94,11 +94,13 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                currentUserPromise.then(function(user) {
-                    service.routeChangedImpl(event);
-                }, function(error) {
-                    service.routeChangedImpl(event);
-                });
+                if (currentUserPromise) {
+                    currentUserPromise.then(function(user) {
+                        service.routeChangedImpl(event);
+                    }, function(error) {
+                        service.routeChangedImpl(event);
+                    });
+                }
             },
 
             routeChangedImpl: function(event) {
