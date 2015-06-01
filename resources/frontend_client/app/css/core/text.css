@@ -43,3 +43,7 @@
   line-height: 1.457em;
   color: var(--body-text-color); /* TODO - is this bad? */
 }
+
+.text-current {
+    color: currentColor;
+}

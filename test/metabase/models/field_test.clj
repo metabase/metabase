@@ -10,7 +10,8 @@
     [nil
      75
      :done]
-  (let [set-field-special-type (fn [special-type]
+  (let [orig-special-type      (sel :one :field [Field :special_type] :id (field->id :categories :name))
+        set-field-special-type (fn [special-type]
                                  (upd Field (field->id :categories :name) :special_type special-type))
         sel-field-values-count (fn []
                                  (some-> (sel :one FieldValues :field_id (field->id :categories :name))
@@ -25,5 +26,5 @@
          (Thread/sleep 250)                 ; wait 250ms for the FieldValues object to get asynchronously created
          (sel-field-values-count))
      (do (del-field-values)                 ; put things back how we found them
-         (set-field-special-type nil)
+         (set-field-special-type orig-special-type)
          :done)]))

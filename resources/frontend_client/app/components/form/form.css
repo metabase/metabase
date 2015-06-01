@@ -2,6 +2,8 @@
     --form-padding: 1em;
     --form-input-placeholder-color: #C0C0C0;
     --form-input-size: 1.571rem;
+    --form-input-size-medium: 1.25rem;
+    --form-input-size-small: 1.0rem;
 
     --form-label-color: #949494;
     --form-offset: 2.4rem;
@@ -52,6 +54,14 @@
     background-color: transparent;
     transition: color .3s linear;
     font-family: var(--default-font-family);
+}
+
+.Form-input--medium {
+    font-size: var(--form-input-size-medium);
+}
+
+.Form-input--small {
+    font-size: var(--form-input-size-small);
 }
 
 .Form-input:focus {
