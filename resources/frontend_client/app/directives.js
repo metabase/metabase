@@ -48,6 +48,23 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
+CorvusDirectives.directive('mbScrollShadow', [function (){
+    return {
+        restrict: 'A',
+        link: function (scope, element, attr) {
+            // grab the raw dom element to check its scroll top
+            var raw = element[0];
+            element.on('scroll', function () {
+                if(raw.scrollTop > 0) {
+                    element.addClass('ScrollShadow');
+                } else {
+                    element.removeClass('ScrollShadow');
+                }
+            });
+        }
+    };
+}]);
+
 CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
 
     return {

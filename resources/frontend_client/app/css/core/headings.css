@@ -1,23 +1,15 @@
 :root {
   --default-header-margin: 0.5em;
-  --default-header-text-color: #727479;
 }
 
-h1,
-.h1,
-h2,
-.h2,
-h3,
-.h3,
-h4,
-.h4,
-h5,
-.h5,
-h6,
-.h6 {
+h1, .h1,
+h2, .h2,
+h3, .h3,
+h4, .h4,
+h5, .h5,
+h6, .h6 {
   margin-top: var(--default-header-margin);
   margin-bottom: var(--default-header-margin);
-  color: var(--default-header-text-color);
 }
 
 .h1 { font-size: 2em; }

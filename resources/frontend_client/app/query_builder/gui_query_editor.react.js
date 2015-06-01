@@ -175,6 +175,12 @@ var GuiQueryEditor = React.createClass({
                     this.props.query.query.breakout[0] !== null);
     },
 
+    canSortByAggregateField: function() {
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+
+        return this.hasValidBreakout() && SORTABLE_AGGREGATION_TYPES.has(this.props.query.query.aggregation[0]);
+    },
+
     addDimension: function() {
         var query = this.props.query;
         query.query.breakout.push(null);
@@ -351,6 +357,13 @@ var GuiQueryEditor = React.createClass({
                     }
                 }
             }.bind(this));
+
+            if (this.canSortByAggregateField()) {
+                breakoutFieldList.push({
+                    id: ["aggregation",  0],
+                    name: this.props.query.query.aggregation[0] // e.g. "sum"
+                });
+            }
 
             return breakoutFieldList;
         } else {

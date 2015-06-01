@@ -1,0 +1,17 @@
+<div class="border-bottom py1">
+    <cv-search-icon class="ml2 text-grey-2" width="18" height="18"></cv-search-icon>
+    <input class="Form-input Form-input--medium mx1" type="text" placeholder="Search for a table name" value="" ng-model="tableSearchText" autofocus>
+</div>
+<div class="DatabaseList" mb-scroll-shadow>
+    <ul class="p2">
+        <li class="flex flex-column layout-centered full-height text-grey-3" ng-show="!tables">
+            <cv-loading-icon class="text-brand"></cv-loading-icon>
+            <h3>Loading ...</h3>
+        </li>
+        <li class="DatabaseListItem AdminHoverItem rounded py1 px2 text-grey-4" ng-class="{ 'DatabaseListItem--active': t.id == table.id }" ng-repeat="t in tables | filter:tableSearchText">
+            <a class="link link--nohover text-current" cv-org-href="/admin/databases/{{database.id}}/tables/{{t.id}}">
+                <h4>{{t.name}}</h4>
+            </a>
+        </li>
+    </ul>
+</div>
