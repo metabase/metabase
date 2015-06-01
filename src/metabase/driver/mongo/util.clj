@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             [monger.core :as mg]
             [metabase.driver :as driver]))
@@ -11,12 +12,12 @@
          dbname]}
   (str "mongodb://"
        user
-       (when pass
-         (assert user "Can't have a password without a user!")
+       (when-not (s/blank? pass)
+         (assert (not (s/blank? user)) "Can't have a password without a user!")
          (str ":" pass))
-       (when user "@")
+       (when-not (s/blank? user) "@")
        host
-       (when port
+       (when-not (s/blank? (str port))
          (str ":" port))
        "/"
        dbname))
