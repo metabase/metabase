@@ -9,7 +9,7 @@
             <h3>Loading ...</h3>
         </li>
         <li class="DatabaseListItem AdminHoverItem rounded py1 px2 text-grey-4" ng-class="{ 'DatabaseListItem--active': t.id == table.id }" ng-repeat="t in tables | filter:tableSearchText">
-            <a class="link link--nohover text-current" cv-org-href="/admin/databases/{{database.id}}/tables/{{t.id}}">
+            <a class="link link--nohover text-current" href="/admin/databases/{{database.id}}/tables/{{t.id}}">
                 <h4>{{t.name}}</h4>
             </a>
         </li>
