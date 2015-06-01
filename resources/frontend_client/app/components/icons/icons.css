@@ -5,3 +5,20 @@
 .IconWrapper {
   font-size: 0;
 }
+
+/* add to any icon directive or element you'd like to have a circular border */
+.IconCircled {
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 99px;
+    display: flex;
+}
+
+.IconCircled svg {
+    margin: 0.425rem;
+    flex: 1;
+}
+
+/* add to any element you'd like to have the icon show up on hover */
+.IconShowHover svg       { opacity: 0; }
+.IconShowHover:hover svg { opacity: 1; }
