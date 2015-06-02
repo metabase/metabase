@@ -5,7 +5,6 @@
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
             (metabase.models [table :refer [Table]])
-            [metabase.test-data.data :refer [timestamp]]
             [metabase.test.data.datasets :as datasets :refer [*dataset*]]))
 
 ;; ##  Dataset-Independent Data Fns
@@ -751,21 +750,21 @@
   :cols [(users-col :id)
          (users-col :last_login)
          (users-col :name)]
-  :rows [[ 1 (timestamp 2014 4 1 1 30)   "Plato Yeshua"]
-         [ 2 (timestamp 2014 12 5 7 15)  "Felipinho Asklepios"]
-         [ 3 (timestamp 2014 11 6 8 15)  "Kaneonuskatew Eiran"]
-         [ 4 (timestamp 2014 1 1 0 30)   "Simcha Yan"]
-         [ 5 (timestamp 2014 10 3 10 30) "Quentin Sören"]
-         [ 6 (timestamp 2014 8 2 5 30)   "Shad Ferdynand"]
-         [ 7 (timestamp 2014 8 2 2 30)   "Conchúr Tihomir"]
-         [ 8 (timestamp 2014 2 1 2 15)   "Szymon Theutrich"]
-         [ 9 (timestamp 2014 4 3 2 30)   "Nils Gotam"]
-         [10 (timestamp 2014 7 3 12 30)  "Frans Hevel"]
-         [11 (timestamp 2014 11 1)       "Spiros Teofil"]
-         [12 (timestamp 2014 7 2 18 30)  "Kfir Caj"]
-         [13 (timestamp 2014 8 1 3 30)   "Dwight Gresham"]
-         [14 (timestamp 2014 10 3 6 45)  "Broen Olujimi"]
-         [15 (timestamp 2014 8 1 5 45)   "Rüstem Hebel"]]}
+  :rows [[ 1 #inst "2014-04-01T08:30:00.000000000-00:00" "Plato Yeshua"]
+         [ 2 #inst "2014-12-05T15:15:00.000000000-00:00" "Felipinho Asklepios"]
+         [ 3 #inst "2014-11-06T16:15:00.000000000-00:00" "Kaneonuskatew Eiran"]
+         [ 4 #inst "2014-01-01T08:30:00.000000000-00:00" "Simcha Yan"]
+         [ 5 #inst "2014-10-03T17:30:00.000000000-00:00" "Quentin Sören"]
+         [ 6 #inst "2014-08-02T12:30:00.000000000-00:00" "Shad Ferdynand"]
+         [ 7 #inst "2014-08-02T09:30:00.000000000-00:00" "Conchúr Tihomir"]
+         [ 8 #inst "2014-02-01T10:15:00.000000000-00:00" "Szymon Theutrich"]
+         [ 9 #inst "2014-04-03T09:30:00.000000000-00:00" "Nils Gotam"]
+         [10 #inst "2014-07-03T19:30:00.000000000-00:00" "Frans Hevel"]
+         [11 #inst "2014-11-01T07:00:00.000000000-00:00" "Spiros Teofil"]
+         [12 #inst "2014-07-03T01:30:00.000000000-00:00" "Kfir Caj"]
+         [13 #inst "2014-08-01T10:30:00.000000000-00:00" "Dwight Gresham"]
+         [14 #inst "2014-10-03T13:45:00.000000000-00:00" "Broen Olujimi"]
+         [15 #inst "2014-08-01T12:45:00.000000000-00:00" "Rüstem Hebel"]]}
  {:source_table (id :users)
   :aggregation  ["rows"]
   :order_by     [[(id :users :id) "ascending"]]})
