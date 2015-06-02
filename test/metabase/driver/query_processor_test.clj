@@ -765,14 +765,3 @@
  {:source_table (id :users)
   :aggregation  ["rows"]
   :order_by     [[(id :users :id) "ascending"]]})
-
-(defn x []
-  (datasets/with-dataset
-    :generic-sql
-    (driver/process-query
-     {:type :query,
-      :database (db-id),
-      :query
-      {:source_table (id :users),
-       :aggregation ["rows"],
-       :order_by [[(id :users :id) "ascending"]]}})))
