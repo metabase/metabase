@@ -39,9 +39,7 @@
                 <ul id="dashboard_list">
                     <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
                         <a class="DashCard-remove" ng-click="removeCard(index)">
-                            <span class="DashCard-removeIcon">
-                                <cv-close-icon width="12px" height="12px"></cv-close-icon>
-                            </span>
+                            <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
                         </a>
                         <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
                     </li>

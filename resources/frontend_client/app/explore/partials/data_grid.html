@@ -32,7 +32,7 @@
                     <li class="Pill Pill--filled mr1 inline-block clearfix" ng-repeat="filter in queryFilters() track by $index">
                         <span>{{getFilterColumnName(filter)}}: {{filter[2]}}</span>
                         <a class="Pill-action" href="#" ng-click="removeFilter($index)">
-                            <cv-close-icon width="12px" height="12px"></cv-close-icon>
+                            <mb-icon name="close" width="12px" height="12px"></mb-icon>
                         </a>
                     </li>
             </ul>
