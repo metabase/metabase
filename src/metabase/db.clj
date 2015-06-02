@@ -304,6 +304,10 @@
     (sel :many :field->id [User :first_name])
       -> {\"Cam\" 1, \"Sameer\" 2}
 
+    ;; Return a map of field value -> field value.
+    (sel :many :field->field [User :first_name :last_name])
+      -> {\"Cam\" \"Saul\", \"Rasta\" \"Toucan\", ...}
+
     ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
     (sel :many :field->obj [Table :name] :db_id 1)
       -> {\"venues\" {:id 1, :name \"venues\", ...}
@@ -357,6 +361,11 @@
                            (map (fn [{id# :id field-val# field#}]
                                   {field-val# id#}))
                            (into {})))
+        :field->field `(let [[entity# field1# field2#] ~entity]
+                         (->> (sel :many entity# ~@forms)
+                              (map (fn [obj#]
+                                     {(field1# obj#) (field2# obj#)}))
+                              (into {})))
         :field->obj `(let [[entity# field#] ~entity]
                        (->> (sel :many entity# ~@forms)
                             (map (fn [obj#]

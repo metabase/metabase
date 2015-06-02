@@ -156,9 +156,10 @@
          :users
          :rows
          (map second)
+         (map format-inst)
          set
          sort
-         (mapv format-inst))))
+         vec)))
 
 ;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
