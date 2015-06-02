@@ -159,7 +159,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                     element.text(successText);
                     element.removeClass('Button--waiting');
                     element.addClass('Button--success');
-                    var checkIcon = angular.element('<cv-check-icon width="12px" height="12px"></cv-check-icon>');
+                    var checkIcon = angular.element('<mb-icon name="check" width="12px" height="12px"></mb-icon>');
                     element.prepend(checkIcon);
                     $compile(checkIcon)(scope);
 
