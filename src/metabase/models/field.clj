@@ -61,10 +61,11 @@
     :UnknownField})
 
 (def ^:const field-types
-  "Not sure what this is for"
-  #{:metric
-    :dimension
-    :info})
+  "Possible values for `Field` `:field_type`"
+  #{:metric      ; A number that can be added, graphed, etc.
+    :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
+    :info        ; Non-numerical value that is not meant to be used
+    :sensitive}) ; A Field that should *never* be shown *anywhere*
 
 (defentity Field
   (table :metabase_field)

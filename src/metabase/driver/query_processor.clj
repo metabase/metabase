@@ -187,6 +187,45 @@
   (update-in results [:rows] (partial take max-result-rows)))
 
 
+;; ### STRIP-SENSITIVE-FIELDS
+
+;; TODO - is this *really* the easiest way to do this? I would have thought there'd already be functionality for this somewhere
+(defn- strip-indecies
+  "Remove items at INDECIES from COLL.
+
+    (strip-indecies #{1 3} [:a :b :c :d :e]) -> [:a :c :e]"
+  [indecies coll]
+  {:pre [(set? indecies)
+         (every? integer? indecies)
+         (sequential? coll)]}
+  (let [results (transient [])]
+    (dorun (map-indexed (fn [i val]
+                          (when-not (contains? indecies i)
+                            (conj! results val)))
+                        coll))
+    (persistent! results)))
+
+(defn strip-sensitive-fields
+  "Remove data that belongs to a `Field` whose `field_type` is `:sensitive`."
+  [{:keys [cols columns rows] :as results}]
+  ;; Get a set of indecies of every Field whose field_type is :sensitive
+  (let [sensitive-field-indecies (->> (map-indexed (fn [i {:keys [field_type]}]
+                                                     {:pre [(keyword? field_type)]}
+                                                     (when (= field_type :sensitive)
+                                                       i))
+                                                   cols)
+                                      (filter identity)
+                                      set)]
+    (if-not (seq sensitive-field-indecies)
+      ;; If there are no sensitive fields we don't need to modify the data in any way, return as is
+      results
+      ;; Otherwise pass all of results through strip-indencies to remove the data in the corresponding columns
+      {:cols    (strip-indecies sensitive-field-indecies cols)
+       :columns (strip-indecies sensitive-field-indecies columns)
+       :rows    (map (partial strip-indecies sensitive-field-indecies)
+                     rows)})))
+
+
 ;; ### ADD-ROW-COUNT-AND-STATUS
 
 (defn add-row-count-and-status
@@ -202,6 +241,7 @@
              :data      results}
       (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))) ; so the front-end can let the user know why they're being arbitarily limited
 
+
 ;; ### POST-PROCESS
 
 (defn post-process
@@ -214,6 +254,7 @@
        (#(case (keyword (:type query))
            :native %
            :query  (post-process-cumulative-sum (:query query) %)))
+       strip-sensitive-fields
        add-row-count-and-status))
 
 
@@ -225,13 +266,12 @@
   [{{table-id :source_table} :query, :as query} column-names]
   {:pre [(integer? table-id)
          (every? string? column-names)]}
-  (let [columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
+  (let [columns (->> (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :field_type] ; lookup columns with matching names for this Table
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
-                            {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
-                                      (assoc :extra_info (if-let [fk-table (field->fk-table column)]
-                                                           {:target_table_id (:id fk-table)}
-                                                           {})))}))
+                            {name (assoc column :extra_info (if-let [fk-table (field->fk-table column)]
+                                                              {:target_table_id (:id fk-table)}
+                                                              {}))}))
                      (into {}))]
     (->> column-names
          (map (fn [column-name]
@@ -244,6 +284,7 @@
                      :table_id     nil
                      :description  nil
                      :base_type    :UnknownField
+                     :field_type   :info
                      :special_type nil})))))))
 
 
@@ -255,13 +296,14 @@
           :id nil
           :table_id nil
           :description nil}
-         (let [aggregation-type   (keyword column-name)                              ; For aggregations of a specific Field (e.g. `sum`)
-               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
-           (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
-                                       :id (-> query :query :aggregation second))    ; will be the same.)
-               (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
-                 :count {:base_type :IntegerField                                    ; just return hardcoded type info
-                         :special_type :number})))))
+         (let [aggregation-type   (keyword column-name)                                          ; For aggregations of a specific Field (e.g. `sum`)
+               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)]             ; lookup the field we're aggregating and return its
+           (if field-aggregation? (sel :one :fields [Field :base_type :special_type :field_type] ; type info. (The type info of the aggregate result
+                                       :id (-> query :query :aggregation second))                ; will be the same.)
+               (case aggregation-type                                                            ; Otherwise for general aggregations such as `count`
+                 :count {:base_type    :IntegerField                                             ; just return hardcoded type info
+                         :special_type :number
+                         :field_type   :metric})))))
 
 (def ^:dynamic *uncastify-fn*
   "Function that should be called to transform a column name from the set of results to one that matches a `Field` in the DB.

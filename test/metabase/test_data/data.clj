@@ -10,23 +10,27 @@
   ([year month day]
    (timestamp year month day 0 0)))
 
-;; [name last_login]
+
+;; [name last_login password]
+;; We generate a random password for every user because this is a "sensitive" field that should
+;; *never* come back from the API. EVER! So the values shouldn't matter <3
 (defonce ^:private users
-  [["Plato Yeshua" (timestamp 2014 4 1 1 30)]
-   ["Felipinho Asklepios" (timestamp 2014 12 5 7 15)]
-   ["Kaneonuskatew Eiran" (timestamp 2014 11 6 8 15)]
-   ["Simcha Yan" (timestamp 2014 1 1 0 30)]
-   ["Quentin Sören" (timestamp 2014 10 3 10 30)]
-   ["Shad Ferdynand" (timestamp 2014 8 2 5 30)]
-   ["Conchúr Tihomir" (timestamp 2014 8 2 2 30)]
-   ["Szymon Theutrich" (timestamp 2014 2 1 2 15)]
-   ["Nils Gotam" (timestamp 2014 4 3 2 30)]
-   ["Frans Hevel" (timestamp 2014 7 3 12 30)]
-   ["Spiros Teofil" (timestamp 2014 11 1)]
-   ["Kfir Caj" (timestamp 2014 7 2 18 30)]
-   ["Dwight Gresham" (timestamp 2014 8 1 3 30)]
-   ["Broen Olujimi" (timestamp 2014 10 3 6 45)]
-   ["Rüstem Hebel" (timestamp 2014 8 1 5 45)]])
+  (let [rando-password (fn [] (str (java.util.UUID/randomUUID)))]
+    [["Plato Yeshua"        (timestamp 2014 4 1 1 30)   (rando-password)]
+     ["Felipinho Asklepios" (timestamp 2014 12 5 7 15)  (rando-password)]
+     ["Kaneonuskatew Eiran" (timestamp 2014 11 6 8 15)  (rando-password)]
+     ["Simcha Yan"          (timestamp 2014 1 1 0 30)   (rando-password)]
+     ["Quentin Sören"       (timestamp 2014 10 3 10 30) (rando-password)]
+     ["Shad Ferdynand"      (timestamp 2014 8 2 5 30)   (rando-password)]
+     ["Conchúr Tihomir"     (timestamp 2014 8 2 2 30)   (rando-password)]
+     ["Szymon Theutrich"    (timestamp 2014 2 1 2 15)   (rando-password)]
+     ["Nils Gotam"          (timestamp 2014 4 3 2 30)   (rando-password)]
+     ["Frans Hevel"         (timestamp 2014 7 3 12 30)  (rando-password)]
+     ["Spiros Teofil"       (timestamp 2014 11 1)       (rando-password)]
+     ["Kfir Caj"            (timestamp 2014 7 2 18 30)  (rando-password)]
+     ["Dwight Gresham"      (timestamp 2014 8 1 3 30)   (rando-password)]
+     ["Broen Olujimi"       (timestamp 2014 10 3 6 45)  (rando-password)]
+     ["Rüstem Hebel"        (timestamp 2014 8 1 5 45)   (rando-password)]]))
 
 ;; name
 (defonce ^:private categories
@@ -1216,7 +1220,10 @@
   {:users {:fields [{:name :name
                      :type "VARCHAR(254)"}
                     {:name :last_login
-                     :type "TIMESTAMP"}]
+                     :type "TIMESTAMP"}
+                    {:name :password
+                     :type "VARCHAR(254)"
+                     :field-type :sensitive}]
            :rows users}
    :categories {:fields [{:name :name
                           :type "VARCHAR(254)"}]

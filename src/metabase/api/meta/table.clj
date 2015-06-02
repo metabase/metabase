@@ -54,7 +54,7 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (sel :many Field :table_id id :active true (order :name :ASC)))
+  (sel :many Field :table_id id, :active true, (order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

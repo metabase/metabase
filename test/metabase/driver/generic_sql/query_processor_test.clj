@@ -32,6 +32,7 @@
                 :columns ["stddev"]
                 :cols [{:base_type :FloatField
                         :special_type :latitude
+                        :field_type :info
                         :name "stddev"
                         :id nil
                         :table_id nil

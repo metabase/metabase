@@ -1,6 +1,6 @@
 (ns metabase.setup)
 
-(def ^:private setup-token
+(defonce ^:private setup-token
   (atom nil))
 
 (defn token-value

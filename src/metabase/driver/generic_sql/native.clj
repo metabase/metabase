@@ -55,8 +55,9 @@
          {:rows rows
           :columns columns
           :cols (map (fn [column first-value]
-                       {:name column
-                        :base_type (value->base-type first-value)})
+                       {:name       column
+                        :base_type  (value->base-type first-value)
+                        :field_type :info})
                      columns first-row)})
        (catch java.sql.SQLException e
          (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
