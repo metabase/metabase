@@ -764,7 +764,8 @@
          [11 "Spiros Teofil"       (timestamp 2014 11 1)]
          [12 "Kfir Caj"            (timestamp 2014 7 2 18 30)]
          [13 "Dwight Gresham"      (timestamp 2014 8 1 3 30)]
-         [14 "Broen Olujimi"       (timestamp 2014 10 3 6 45)]]}
+         [14 "Broen Olujimi"       (timestamp 2014 10 3 6 45)]
+         [15 "Rüstem Hebel"        (timestamp 2014 8 1 5 45)]]}
  {:source_table (id :users)
   :aggregation  ["rows"]
   :order_by     [[(id :users :id) "ascending"]]})
