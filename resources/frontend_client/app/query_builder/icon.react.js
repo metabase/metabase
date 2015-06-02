@@ -1,4 +1,5 @@
 'use strict';
+/* global ICON_PATHS */
 
 var Icon = React.createClass({
     displayName: 'Icon',
