@@ -37,6 +37,9 @@
 (defn id-field-type []
   (datasets/id-field-type *dataset*))
 
+(defn timestamp-field-type []
+  (datasets/timestamp-field-type *dataset*))
+
 
 ;; ## Dataset-Independent QP Tests
 
@@ -214,7 +217,7 @@
                  :id (id :users :name)}
     :last_login {:extra_info {}
                  :special_type :category
-                 :base_type :DateTimeField
+                 :base_type (timestamp-field-type)
                  :description nil
                  :field_type :info
                  :name (format-name "last_login")
