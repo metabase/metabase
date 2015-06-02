@@ -27,7 +27,7 @@
                     <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
                         <span dropdown-toggle>
                             <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                         </span>
                         <ul class="Dropdown-content">
                             <li ng-repeat="organization in userMemberOf">
@@ -66,7 +66,7 @@
                             <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
                                 <span class="NavItem-text" ng-if="!user.first_name">Me</span>
                                 <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
-                                <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                                <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                             </a>
                             <ul class="Dropdown-content right">
                                 <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
@@ -91,7 +91,7 @@
                         <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
                         <span dropdown-toggle>
                             <span class="NavItem-text">{{currentOrg.name}} Admin</span>
-                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                         </span>
                         <ul class="Dropdown-content left">
                             <li ng-repeat="organization in userMemberOf">
