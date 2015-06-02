@@ -10,6 +10,7 @@
                              [table :refer [Table]])
             [metabase.test.data.datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
             [metabase.test-data :refer :all]
+            [metabase.test-data.data :as data]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 
@@ -143,6 +144,22 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :categories))))
 
 
+(def ^:private user-last-login-date-strs
+  "In an effort to be really annoying, the date strings returned by the API are different on Circle than they are locally.
+   Generate strings like '2014-01-01' at runtime so we get matching values."
+  (let [format-inst (fn [^java.util.Date inst]
+                      (format "%d-%02d-%02d"
+                              (+ (.getYear inst) 1900)
+                              (+ (.getMonth inst) 1)
+                              (.getDate inst)))]
+    (->> data/test-data
+         :users
+         :rows
+         (map second)
+         set
+         sort
+         (mapv format-inst))))
+
 ;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
@@ -222,18 +239,7 @@
        :id (table->id :users)
        :db_id @db-id
        :field_values {(keyword (str (field->id :users :last_login)))
-                      ["2014-01-01"
-                       "2014-02-01"
-                       "2014-04-01"
-                       "2014-04-03"
-                       "2014-07-02"
-                       "2014-07-03"
-                       "2014-08-01"
-                       "2014-08-02"
-                       "2014-10-03"
-                       "2014-11-01"
-                       "2014-11-06"
-                       "2014-12-05"]
+                      user-last-login-date-strs
 
                       (keyword (str (field->id :users :name)))
                       ["Broen Olujimi"
@@ -319,18 +325,7 @@
        :id (table->id :users)
        :db_id @db-id
        :field_values {(keyword (str (field->id :users :last_login)))
-                      ["2014-01-01"
-                       "2014-02-01"
-                       "2014-04-01"
-                       "2014-04-03"
-                       "2014-07-02"
-                       "2014-07-03"
-                       "2014-08-01"
-                       "2014-08-02"
-                       "2014-10-03"
-                       "2014-11-01"
-                       "2014-11-06"
-                       "2014-12-05"]
+                      user-last-login-date-strs
 
                       (keyword (str (field->id :users :name)))
                       ["Broen Olujimi"
