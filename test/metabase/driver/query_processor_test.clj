@@ -751,21 +751,21 @@
   :cols [(users-col :id)
          (users-col :last_login)
          (users-col :name)]
-  :rows [[ 1 "Plato Yeshua"        (timestamp 2014 4 1 1 30)]
-         [ 2 "Felipinho Asklepios" (timestamp 2014 12 5 7 15)]
-         [ 3 "Kaneonuskatew Eiran" (timestamp 2014 11 6 8 15)]
-         [ 4 "Simcha Yan"          (timestamp 2014 1 1 0 30)]
-         [ 5 "Quentin Sören"       (timestamp 2014 10 3 10 30)]
-         [ 6 "Shad Ferdynand"      (timestamp 2014 8 2 5 30)]
-         [ 7 "Conchúr Tihomir"     (timestamp 2014 8 2 2 30)]
-         [ 8 "Szymon Theutrich"    (timestamp 2014 2 1 2 15)]
-         [ 9 "Nils Gotam"          (timestamp 2014 4 3 2 30)]
-         [10 "Frans Hevel"         (timestamp 2014 7 3 12 30)]
-         [11 "Spiros Teofil"       (timestamp 2014 11 1)]
-         [12 "Kfir Caj"            (timestamp 2014 7 2 18 30)]
-         [13 "Dwight Gresham"      (timestamp 2014 8 1 3 30)]
-         [14 "Broen Olujimi"       (timestamp 2014 10 3 6 45)]
-         [15 "Rüstem Hebel"        (timestamp 2014 8 1 5 45)]]}
+  :rows [[ 1 (timestamp 2014 4 1 1 30)   "Plato Yeshua"]
+         [ 2 (timestamp 2014 12 5 7 15)  "Felipinho Asklepios"]
+         [ 3 (timestamp 2014 11 6 8 15)  "Kaneonuskatew Eiran"]
+         [ 4 (timestamp 2014 1 1 0 30)   "Simcha Yan"]
+         [ 5 (timestamp 2014 10 3 10 30) "Quentin Sören"]
+         [ 6 (timestamp 2014 8 2 5 30)   "Shad Ferdynand"]
+         [ 7 (timestamp 2014 8 2 2 30)   "Conchúr Tihomir"]
+         [ 8 (timestamp 2014 2 1 2 15)   "Szymon Theutrich"]
+         [ 9 (timestamp 2014 4 3 2 30)   "Nils Gotam"]
+         [10 (timestamp 2014 7 3 12 30)  "Frans Hevel"]
+         [11 (timestamp 2014 11 1)       "Spiros Teofil"]
+         [12 (timestamp 2014 7 2 18 30)  "Kfir Caj"]
+         [13 (timestamp 2014 8 1 3 30)   "Dwight Gresham"]
+         [14 (timestamp 2014 10 3 6 45)  "Broen Olujimi"]
+         [15 (timestamp 2014 8 1 5 45)   "Rüstem Hebel"]]}
  {:source_table (id :users)
   :aggregation  ["rows"]
   :order_by     [[(id :users :id) "ascending"]]})
