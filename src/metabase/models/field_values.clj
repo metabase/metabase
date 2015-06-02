@@ -29,11 +29,13 @@
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type] :as field}]
-  {:pre [(contains? field :base_type)
+  [{:keys [field_type base_type special_type] :as field}]
+  {:pre [field_type
+         (contains? field :base_type)
          (contains? field :special_type)]}
-  (or (contains? #{:category :city :state :country} (keyword special_type))
-      (= (keyword base_type) :BooleanField)))
+  (and (not= (keyword field_type) :sensitive)
+       (or (contains? #{:category :city :state :country} (keyword special_type))
+           (= (keyword base_type) :BooleanField))))
 
 (def ^:private field-distinct-values
   (u/runtime-resolved-fn 'metabase.db.metadata-queries 'field-distinct-values))
