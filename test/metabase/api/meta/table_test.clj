@@ -133,7 +133,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "TextField"})]
-       :field_values nil
+       :field_values {}
        :rows 75
        :updated_at $
        :entity_name nil
