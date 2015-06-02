@@ -1,6 +1,6 @@
 (ns metabase.test-data.data)
 
-(defn- timestamp
+(defn timestamp
   "Return a new `java.sql.Timestamp` with YEAR MONTH and DAY."
   ([year month day hour minute]
    (-> (java.util.Date. (- year 1900) (- month 1) day)
