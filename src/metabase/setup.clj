@@ -1,4 +1,6 @@
-(ns metabase.setup)
+(ns metabase.setup
+  (:require [metabase.db :as db]
+            [metabase.models.user :refer [User]]))
 
 (defonce ^:private setup-token
   (atom nil))
@@ -8,10 +10,11 @@
   []
   @setup-token)
 
-(defn token-exists?
-  "Return `true` if a setup token exists."
+(defn incomplete?
+  "Return `true` if a setup token exists and no `Users` exist in the DB."
   []
-  (boolean @setup-token))
+  (and @setup-token
+       (not (db/exists? User))))
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.

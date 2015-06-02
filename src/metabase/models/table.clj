@@ -26,6 +26,7 @@
                                (let [field-ids (sel :many :field [Field :id]
                                                     :table_id id
                                                     :active true
+                                                    :field_type [not= "sensitive"]
                                                     (order :position :asc)
                                                     (order :name :asc))]
                                  (->> (sel :many FieldValues :field_id [in field-ids])
