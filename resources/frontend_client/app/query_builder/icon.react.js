@@ -17,7 +17,7 @@ var Icon = React.createClass({
         // handle multi path icons which appear as non strings
         if(typeof(iconPath) != 'string') {
             // create a path for each path present
-            path = ICON_PATHS.map(function (path) {
+            path = iconPath.map(function (path) {
                return (<path d={path} /> );
             });
         } else {
