@@ -145,7 +145,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                 element.addClass('Button--waiting');
 
                 // activate spinner
-                var loadingIcon = angular.element('<cv-loading-icon width="12px" height="12px"></cv-loading-icon>');
+                var loadingIcon = angular.element('<mb-loading-icon width="12px" height="12px"></mb-loading-icon>');
                 element.append(loadingIcon);
                 $compile(loadingIcon)(scope);
 

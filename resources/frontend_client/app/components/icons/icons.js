@@ -2,12 +2,20 @@
 
 /* global ICON_PATHS */
 
+/*
+    GENERIC ICONS
+
+    usage:
+    <mb-icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>"
+*/
+
+
 angular.module('corvus.components')
     .directive('mbIcon', function () {
 
         return {
             restrict: 'E',
-            template: '<svg viewBox="0 0 32 32" ng-attr-width="{{width}}" ng-attr-height="{{height}}" fill="currentcolor"><path ng-attr-d="{{path}}" /></svg>',
+            template: '<svg class="Icon" id="{{name}}" viewBox="0 0 32 32" ng-attr-width="{{width}}" ng-attr-height="{{height}}" fill="currentcolor"><path ng-attr-d="{{path}}" /></svg>',
             scope: {
                 width: '@?',  // a value in PX to define the width of the icon
                 height: '@?', // a value in PX to define the height of the icon
@@ -24,3 +32,40 @@ angular.module('corvus.components')
             }
         };
     });
+
+/* SPECIALTY ICONS */
+
+(function() {
+    /* generic function to use for width and height defaults */
+    function iconCompile(element, attrs, defaultWidth, defaultHeight) {
+        attrs.width = attrs.width || '32px';
+        attrs.height = attrs.height || '32px';
+    }
+
+    var ICON_SCOPE = {
+        width: '@?',  // a value in PX to define the width of the icon
+        height: '@?', // a value in PX to define the height of the icon
+    };
+
+
+    angular.module('corvus.components')
+        .directive('mbLogoIcon', function () {
+            return {
+                restrict: 'E',
+                templateUrl: '/app/components/icons/logo.html',
+                scope: ICON_SCOPE,
+                compile: iconCompile
+            };
+        });
+
+    angular.module('corvus.components')
+        .directive('mbLoadingIcon', function () {
+            return {
+                restrict: 'E',
+                templateUrl: '/app/components/icons/loading.html',
+                scope: ICON_SCOPE,
+                compile: iconCompile
+            };
+        });
+
+}());
