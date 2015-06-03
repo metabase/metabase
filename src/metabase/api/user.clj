@@ -39,7 +39,7 @@
 (defendpoint GET "/current"
   "Fetch the current `User`."
   []
-  (->404 @*current-user*))
+  (check-404 @*current-user*))
 
 
 (defendpoint GET "/:id"

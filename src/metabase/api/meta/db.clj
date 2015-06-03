@@ -64,7 +64,7 @@
 (defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (->404 (sel :one Database :id id)))
+  (check-404 (sel :one Database :id id)))
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
