@@ -8,6 +8,7 @@
 
 (declare add-implicit-breakout-order-by
          add-implicit-limit
+         add-implicit-fields
          get-special-column-info
          preprocess-cumulative-sum
          preprocess-structured
@@ -51,6 +52,7 @@
                                                            remove-empty-clauses
                                                            add-implicit-breakout-order-by
                                                            add-implicit-limit
+                                                           add-implicit-fields
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -102,12 +104,27 @@
 ;;; ### ADD-IMPLICIT-LIMIT
 
 (defn add-implicit-limit
-  "Add an implicit limit clause to queries with `rows` aggregations."
+  "Add an implicit `limit` clause to queries with `rows` aggregations."
   [{:keys [limit aggregation] :as query}]
   (if (and (= aggregation ["rows"])
            (not limit))
     (assoc query :limit max-result-rows)
     query))
+
+
+;;; ### ADD-IMPLICIT-FIELDS
+
+(defn add-implicit-fields
+  "Add an implicit `fields` clause to queries with `rows` aggregations."
+  [{:keys [fields aggregation source_table] :as query}]
+  (if (or (not= aggregation ["rows"])
+          fields)
+    ;; If we're not doing a "rows" aggregation or the fields clause was specified return the query as-is
+    query
+    ;; Otherwise we need to look up the Fields for the Table in question so we don't return ones that are supposed to be hidden
+    (let [fields (sel :many :id Field :table_id source_table, :active true, :preview_display true, :field_type [not= "sensitive"])]
+      (assoc query
+             :fields fields))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
