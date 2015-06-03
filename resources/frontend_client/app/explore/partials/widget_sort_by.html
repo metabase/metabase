@@ -4,7 +4,7 @@
         <ul>
             <li class="py1 clearfix" ng-repeat="sortByColumn in order_by">
                 <a class="text-grey-2 float-right" ng-if="!readonly" href="#" ng-click="removeSortBy($index)">
-                    <cv-close-icon width="16px" height="16px"></cv-close-icon>
+                    <mb-icon name="close" width="16px" height="16px"></mb-icon>
                 </a>
                 <label class="Select" for="id_sort_by_field">
                     <select id="id_sort_by_field" ng-model="sortByColumn[0]" ng-options="field.id as field.name for field in table.fields"

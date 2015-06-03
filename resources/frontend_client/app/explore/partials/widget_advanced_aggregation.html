@@ -21,7 +21,7 @@
         <ul id="breakout_list">
             <li class="py1 block clearfix" ng-repeat="breakout_field in query.breakout track by $index">
                 <a class="text-grey-2 float-right" href="#" ng-if="!readonly" ng-click="removeDimension($index)">
-                    <cv-close-icon class="mt1" width="16px" height="16px"></cv-close-icon>
+                    <mb-icon name="close" class="mt1" width="16px" height="16px"></mb-icon>
                 </a>
                 <label class="Select">
                     <select ng-model="query.breakout[$index]" ng-options="br[0] as br[1] for br in table.breakout_options.fields" ng-disabled="readonly">
