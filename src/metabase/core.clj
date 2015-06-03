@@ -59,7 +59,8 @@
                            setup-url
                            "\n\n"))
     ;; Attempt to browse URL on user's system; this will just fail silently if we can't do it
-    (browse-url setup-url)))
+    ;(browse-url setup-url)
+    ))
 
 
 (defn init
