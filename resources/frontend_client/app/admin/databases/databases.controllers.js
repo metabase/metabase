@@ -229,12 +229,6 @@ DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$l
                     Metabase.db_tables({ 'dbId': $routeParams.databaseId }).$promise
                     .then(function(tables) {
                         $scope.tables = tables;
-                        return $q.all(tables.map(function(table) {
-                            return Metabase.table_query_metadata({ 'tableId': table.id }).$promise
-                            .then(function(result) {
-                                $scope.tableFields[table.id] = result;
-                            });
-                        }));
                     })
                 ]);
             }
@@ -261,7 +255,8 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         function loadData() {
             Metabase.table_query_metadata({
-                'tableId': $routeParams.tableId
+                'tableId': $routeParams.tableId,
+                'include_sensitive_fields': true
             }, function(result) {
                 $scope.table = result;
                 $scope.getIdFields();

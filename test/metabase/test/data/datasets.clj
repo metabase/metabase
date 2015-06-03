@@ -28,7 +28,9 @@
     "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
   (id-field-type [this]
-    "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`)."))
+    "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`).")
+  (timestamp-field-type [this]
+    "Return the `base_type` of a `TIMESTAMP` `Field` like `users.last_login`."))
 
 
 ;; # Implementations
@@ -56,7 +58,9 @@
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
   (id-field-type [_]
-    :IntegerField))
+    :IntegerField)
+  (timestamp-field-type [_]
+    :DateField))
 
 
 ;; ## Generic SQL
@@ -79,7 +83,9 @@
   (format-name [_ table-or-field-name]
     (clojure.string/upper-case table-or-field-name))
   (id-field-type [_]
-    :BigIntegerField))
+    :BigIntegerField)
+  (timestamp-field-type [_]
+    :DateTimeField))
 
 
 ;; # Concrete Instances

@@ -339,6 +339,7 @@
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
          (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
+;; ^ !!! WHY AREN'T WE RE-THROWING THESE EXCEPTIONS ??????
 
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
@@ -356,6 +357,15 @@
   "Param must be a boolean (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with boolean? symb value "value must be a boolean."))
+
+(defannotation String->Boolean
+  "Param is converted from `\"true\"` or `\"false\"` to the corresponding boolean."
+  [symb value :nillable]
+  (cond
+    (= value "true")  true
+    (= value "false") false
+    (nil? value)      nil
+    :else             (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid boolean." value)))))
 
 (defannotation Dict
   "Param must be a dictionary (this does *not* cast the param)."

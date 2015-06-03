@@ -120,7 +120,7 @@
 (expect-when-testing-mongo
     [#{:_id :name}
      #{:_id :date :venue_id :user_id}
-     #{:_id :name :last_login}
+     #{:_id :name :last_login :password}
      #{:_id :name :longitude :latitude :price :category_id}]
   (->> table-names
        (map table-name->fake-table)
@@ -151,7 +151,7 @@
 (expect-when-testing-mongo
     [{"_id" :IntegerField, "name" :TextField}
      {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}
-     {"_id" :IntegerField, "name" :TextField, "last_login" :DateField}
+     {"_id" :IntegerField, "password" :TextField, "name" :TextField, "last_login" :DateField}
      {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}]
   (->> table-names
        (map table-name->fake-table)
@@ -169,29 +169,33 @@
 
 ;; Test that Tables got synced correctly, and row counts are correct
 (expect-when-testing-mongo
-    [{:rows 75, :active true, :name "categories"}
+    [{:rows 75,   :active true, :name "categories"}
      {:rows 1000, :active true, :name "checkins"}
-     {:rows 15, :active true, :name "users"}
-     {:rows 100, :active true, :name "venues"}]
+     {:rows 15,   :active true, :name "users"}
+     {:rows 100,  :active true, :name "venues"}]
   (sel :many :fields [Table :name :active :rows] :db_id @mongo-test-db-id (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
-    [[{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]]
+    [[{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type nil,        :base_type :DateField,    :name "date"}
+      {:special_type :category,  :base_type :IntegerField, :name "user_id"}
+      {:special_type nil,        :base_type :IntegerField, :name "venue_id"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :category,  :base_type :DateField,    :name "last_login"}
+      {:special_type :category,  :base_type :TextField,    :name "name"}
+      {:special_type :category,  :base_type :TextField,    :name "password"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :category,  :base_type :IntegerField, :name "category_id"}
+      {:special_type :latitude,  :base_type :FloatField,   :name "latitude"}
+      {:special_type :longitude, :base_type :FloatField,   :name "longitude"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}
+      {:special_type :category,  :base_type :IntegerField, :name "price"}]]
   (let [table->fields (fn [table-name]
                         (sel :many :fields [Field :name :base_type :special_type]
                              :active true
-                             :table_id (table-name->id :users)
+                             :table_id (sel :one :id Table :db_id @mongo-test-db-id, :name (name table-name))
                              (k/order :name)))]
     (map table->fields table-names)))

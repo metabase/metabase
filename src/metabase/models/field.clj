@@ -61,10 +61,11 @@
     :UnknownField})
 
 (def ^:const field-types
-  "Not sure what this is for"
-  #{:metric
-    :dimension
-    :info})
+  "Possible values for `Field` `:field_type`"
+  #{:metric      ; A number that can be added, graphed, etc.
+    :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
+    :info        ; Non-numerical value that is not meant to be used
+    :sensitive}) ; A Field that should *never* be shown *anywhere*
 
 (defentity Field
   (table :metabase_field)
@@ -118,8 +119,9 @@
 (defmethod post-update Field [_ {:keys [id] :as field}]
   ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
   (when (or (contains? field :base_type)
-            (contains? field :special_type))
-    (future (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type] :id id)))))
+            (contains? field :special_type)
+            (contains? field :field_type))
+    (future (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type :field_type] :id id)))))
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
   (cascade-delete ForeignKey (where (or (= :origin_id id)

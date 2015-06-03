@@ -448,14 +448,17 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     }];
 
     this.field_field_types = [{
-        'id': 'info',
-        'name': 'Information'
+        id: 'info',
+        name: 'Information'
     }, {
-        'id': 'metric',
-        'name': 'Metric'
+        id: 'metric',
+        name: 'Metric'
     }, {
-        'id': 'dimension',
-        'name': 'Dimension'
+        id: 'dimension',
+        name: 'Dimension'
+    }, {
+        id: 'sensitive',
+        name: 'Sensitive Information'
     }];
 
     this.boolean_types = [{
