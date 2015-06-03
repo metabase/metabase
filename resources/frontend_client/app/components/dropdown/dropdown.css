@@ -12,7 +12,6 @@
   z-index: 20;
   position: absolute;
   top: 40px;
-  padding: 1em;
   min-width: 200px;
   margin-top: 18px;
   border: 1px solid var(--dropdown-border-color);
@@ -20,6 +19,8 @@
   border-radius: 4px;
   box-shadow: 0 0 2px rgba(0, 0, 0, .12);
   background-clip: padding-box;
+  padding-top: 1em;
+  padding-bottom: 1em;
 }
 
 .Dropdown-content:before {
@@ -45,4 +46,14 @@
 .Dropdown-item {
     padding-top: 1em;
     padding-bottom: 1em;
+    padding-left: 2em;
+    padding-right: 2em;
+}
+
+.Dropdown-item:hover {
+    background-color: var(--brand-color);
+}
+
+.Dropdown-item:hover a {
+    color: #fff;
 }
