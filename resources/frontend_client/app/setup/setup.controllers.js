@@ -106,7 +106,7 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
                     return $timeout(function(){}, 1000);
                 });
             }
-        };
+        }
 
         function setSiteName() {
             return SettingsAdminServices.put({
@@ -115,7 +115,7 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
             }).$promise.then(function(success) {
                 // anything we need to do here?
             });
-        };
+        }
 
         $scope.createOrgAndUser = function() {
             // start off by creating the first user of the system
