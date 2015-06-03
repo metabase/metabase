@@ -185,3 +185,179 @@ ExploreControllers.controller('ExploreEntityDetail', ['$scope', '$routeParams', 
         }
     };
 }]);
+<<<<<<< HEAD
+=======
+
+
+ExploreControllers.controller('ExploreTableCohorts', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusFormGenerator', function($scope, $routeParams, $location, Metabase, CorvusFormGenerator) {
+
+    // $scope.table
+    // $scope.cohortsData
+
+    $scope.cohortsInput = {};
+    $scope.isTableCohortsCompatible = true;
+    $scope.validActivityValues = [];
+
+    var getValidValuesForField = function(fieldId) {
+        if (!$scope.fields) {
+            return [];
+        }
+        for (var i = 0; i < $scope.fields.length; i++) {
+            var currentField = $scope.fields[i];
+            if (currentField.id == fieldId) {
+                for (var p = 0; p < currentField.valid_operators.length; p++) {
+                    var currentOperator = currentField.valid_operators[p];
+                    if (currentOperator.name == "=") {
+                        for (var q = 0; q < currentOperator.fields.length; q++) {
+                            if (currentOperator.fields[q].type == "select") {
+                                return currentOperator.fields[q].values;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return [];
+    };
+
+    if ($routeParams.tableId) {
+        Metabase.table_query_metadata({
+            'tableId': $routeParams.tableId
+        }, function(result) {
+            // Decorate with valid operators
+            $scope.table = CorvusFormGenerator.addValidOperatorsToFields(result);
+
+            // get the fields for this table
+            $scope.fields = result.fields;
+
+            // separate out foreign key fields as user ids
+            $scope.userIdFields = [];
+            for (var i = 0; i < result.fields.length; i++) {
+                if (result.fields[i].special_type == 'fk') {
+                    $scope.userIdFields.push(result.fields[i]);
+                }
+            }
+            //choose sensible default or disallow cohorts
+            if ($scope.userIdFields.length > 0) {
+                $scope.cohortsInput.field2 = $scope.userIdFields[0].id;
+            } else {
+                console.log('no user id field');
+                $scope.isTableCohortsCompatible = false;
+            }
+
+            // separate out date fields
+            $scope.dateFields = [];
+            for (i = 0; i < result.fields.length; i++) {
+                if (result.fields[i].base_type == 'DateTimeField' || result.fields[i].base_type == 'DateField' || result.fields[i].base_type == 'BigIntegerField') {
+                    $scope.dateFields.push(result.fields[i]);
+                }
+            }
+            //choose sensible default or disallow cohorts
+            if ($scope.dateFields.length > 0) {
+                $scope.cohortsInput.field = $scope.dateFields[0].id;
+            } else {
+                console.log('no date field');
+                $scope.isTableCohortsCompatible = false;
+            }
+
+            // separate out activity fields
+            $scope.activityFields = [];
+            for (i = 0; i < result.fields.length; i++) {
+                if (result.fields[i].special_type == 'category') {
+                    $scope.activityFields.push(result.fields[i]);
+                }
+            }
+            //choose sensible default or disallow cohorts
+            if ($scope.activityFields.length > 0) {
+                $scope.cohortsInput.field3 = $scope.activityFields[0].id;
+            } else {
+                console.log('no activity field');
+                $scope.isTableCohortsCompatible = false;
+            }
+
+            //when we have a value for activity field (field3),
+            //choose defaults for start and end activity
+            $scope.$watch("cohortsInput.field3", function(value) {
+                if (value) {
+                    $scope.validActivityValues = getValidValuesForField(value);
+                    if ($scope.validActivityValues.length > 1) {
+                        var startIndex = 0;
+                        while (!$scope.validActivityValues[startIndex]) {
+                            startIndex++;
+                        }
+                        $scope.cohortsInput.field4 = $scope.validActivityValues[startIndex];
+                        $scope.cohortsInput.field5 = $scope.validActivityValues[startIndex + 1];
+                    } else {
+                        console.log('no start and end activity values for field ' + value + ":");
+                        console.log($scope.validActivityValues);
+                        $scope.isTableCohortsCompatible = false;
+                    }
+                }
+            });
+
+            //set "time window" default to "day"
+            $scope.cohortsInput.field6 = "day";
+
+            //set "survival or abandonment" default to survival
+            $scope.cohortsInput.field7 = "survival";
+
+            $scope.$watch("cohortsInput", function(value) {
+                if (value) {
+                    if (value.field && value.field2 && value.field3 && value.field4 && value.field5 && value.field6 && value.field7) {
+                        $scope.executeCohorts($scope.cohortsInput);
+                        console.log("ready");
+                    }
+                }
+            });
+
+        });
+    }
+
+    $scope.executeCohorts = function(input) {
+        $scope.running = true;
+
+        // execute the search
+        //input.type = 'cohorts';
+        //input.database = $scope.table.db.id;
+        var query = {
+            'type': 'cohorts',
+            'database': $scope.table.db.id,
+            'cohorts': input
+        };
+        Metabase.dataset(query, function(result) {
+            $scope.cohortsData = result;
+            $scope.running = false;
+        });
+    };
+}]);
+
+ExploreControllers.controller('ExploreTableSegment', ['$scope', '$routeParams', '$location', 'Metabase', function($scope, $routeParams, $location, Metabase) {
+
+    // $scope.table
+    // $scope.cohortsData
+
+    if ($routeParams.tableId) {
+        Metabase.table_get({
+            'tableId': $routeParams.tableId
+        }, function(result) {
+            $scope.table = result;
+        }, function(error) {
+            console.log(error);
+            if (error.status == 404) {
+                $location.path('/');
+            }
+        });
+    }
+
+    $scope.createSegment = function(segment) {
+        segment.tableId = $routeParams.tableId;
+        Metabase.table_createsegment(segment, function(result) {
+            if (result && !result.error) {
+                $location.path('/' + $scope.currentOrg.slug + '/explore/table/' + $routeParams.tableId);
+            } else {
+                console.log(result);
+            }
+        });
+    };
+}]);
+>>>>>>> 07004d6... first steps wip

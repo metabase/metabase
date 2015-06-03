@@ -15,50 +15,37 @@
     </head>
 
     <body ng-controller="Corvus">
-
         <div ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
-            <nav class="CoreNav clearfix" ng-show="nav === 'main'">
-                <div class="col col-sm-12">
-                    <div class="NavItem float-left">
-                        <span class="NavItem-text">{{siteName}}</span>
+            <nav class="CoreNav" ng-show="nav === 'main'">
+                <div class="wrapper flex align-center">
+                    <mb-logo-icon class="text-brand mr2j"></mb-logo-icon>
+                    <a class="NavItem-text" href="/">{{siteName}}</a>
+                    <div class="DashboardDropdown Dropdown" dropdown on-toggle="toggled(open)">
+                        <a class="NavItem NavItem-withIcon flex align-center" selectable-nav-item="settings" dropdown-toggle>
+                            <mb-icon name="dashboards"></mb-icon>
+                            Dashboards
+                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
+                        </a>
+                        <ul class="Dropdown-content" ng-controller="DashList">
+                            <li class="Dropdown-item" ng-repeat="dash in dashboards">
+                                <a class="link text-normal" cv-org-href="/dash/{{dash.id}}">{{dash.name}}</a>
+                                <span class="Badge">{{dash.public_perms}}</span>
+                            </li>
+                        </ul>
                     </div>
-
-                    <ul class="float-left ml4">
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" href="/dash/" selectable-nav-item="dashboards">
-                                <mb-icon class="IconWrapper" name="dashboards"/></mb-icon>
-                                <span class="NavItem-text">Dashboards</span>
-                            </a>
-                        </li>
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" href="/card/" selectable-nav-item="cards">
-                                <mb-icon class="IconWrapper" name="cards"></mb-icon>
-                                <span class="NavItem-text">Cards</span>
-                            </a>
-                        </li>
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" href="/explore/" selectable-nav-item="explore">
-                                <mb-icon class="IconWrapper" name="explore"></mb-icon>
-                                <span class="NavItem-text">Explore</span>
-                            </a>
-                        </li>
-                    </ul>
-
-                    <ul class="float-right">
-                        <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
-                            <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
-                                <span class="NavItem-text" ng-if="!user.first_name">Me</span>
-                                <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
-                                <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
-                            </a>
-                            <ul class="Dropdown-content right">
-                                <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/admin/">Administration</a></li>
-                                <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
-                            </ul>
-                        </li>
-                    </ul>
+                    <div class="Dropdown" dropdown on-toggle="toggled(open)">
+                        <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
+                            <span class="NavItem-text" ng-if="!user.first_name">Me</span>
+                            <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
+                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                        </a>
+                        <ul class="Dropdown-content right">
+                            <li><a class="link" href="/user/edit_current">Account Settings</a></li>
+                            <li><a class="link" href="/auth/logout">Logout</a></li>
+                        </ul>
+                    </div>
+                    <a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a>
                 </div>
             </nav>
 

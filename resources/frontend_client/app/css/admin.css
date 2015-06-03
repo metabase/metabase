@@ -38,6 +38,7 @@
 }
 
 /* utility to get a simple common hover state for admin items */
+.HoverItem:hover,
 .AdminHoverItem:hover {
     background-color: #F3F8FD;
     transition: background .2s linear;

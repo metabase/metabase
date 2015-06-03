@@ -1,0 +1,13 @@
+.Greeting {
+    margin-top: 3em;
+    margin-bottom: 3em;
+}
+
+.Greeting-title,
+.Greeting-subtitle {
+    font-weight: 100;
+}
+
+.DashboardDropdown .Dropdown-content {
+    top: 63px;
+}
