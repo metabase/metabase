@@ -2,6 +2,7 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
+            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.models.field :refer [Field field->fk-table]]))
@@ -121,7 +122,8 @@
     ;; If we're doing a "rows" aggregation with no breakout or fields clauses add one that will exclude Fields that are supposed to be hidden
     (and (= aggregation ["rows"])
          (not breakout)
-         (not fields))            (assoc :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true, :field_type [not= "sensitive"]))))
+         (not fields))            (assoc :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
+                                                      :field_type [not= "sensitive"], (order :position :asc), (order :id :desc)))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
