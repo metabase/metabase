@@ -1,56 +1,70 @@
 'use strict';
+/* global ICON_PATHS */
 
-// wrap in a closure so we don't expose any of these functions to the outside world
+/*
+    GENERIC ICONS
+
+    USAGE:
+        Angular: <mb-icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE"></mb-icon>
+        React: <Icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>" />
+*/
+
+angular.module('corvus.components')
+    .directive('mbIcon', function () {
+
+        return {
+            restrict: 'E',
+            template: '<svg class="Icon" id="{{name}}" viewBox="0 0 32 32" ng-attr-width="{{width}}" ng-attr-height="{{height}}" fill="currentcolor"><path ng-attr-d="{{path}}" /></svg>',
+            scope: {
+                width: '@?',  // a value in PX to define the width of the icon
+                height: '@?', // a value in PX to define the height of the icon
+                name: '@',    // the name of the icon to be referended from the ICON_PATHS object
+                path: '@'
+            },
+            compile: function (element, attrs) {
+                var icon = ICON_PATHS[attrs.name];
+
+                // set defaults for width/height in case no width or height are specified
+                attrs.width = attrs.width || '32px';
+                attrs.height = attrs.height || '32px';
+                attrs.path = icon;
+            }
+        };
+    });
+
+/* SPECIALTY ICONS */
+
 (function() {
-    // define our icons. currently uppercase to handle directive names properly
-    var icons = [
-        'Add',
-        'Cards',
-        'Close',
-        'ChevronDown',
-        'ChevronRight',
-        'Check',
-        'Dashboards',
-        'Explore',
-        'Gear',
-        'Grid',
-        'List',
-        'Loading',
-        'Logo',
-        'Search',
-        'Star'
-    ];
-
-    // ensure icons have proper defaults during the compile step if none are supplied
-    function iconCompile (element, attrs) {
-        var defaultWidth = '32px',
-            defaultHeight = '32px';
-
-        attrs.width = attrs.width || defaultWidth;
-        attrs.height = attrs.height || defaultHeight;
+    /* generic function to use for width and height defaults */
+    function iconCompile(element, attrs, defaultWidth, defaultHeight) {
+        attrs.width = attrs.width || '32px';
+        attrs.height = attrs.height || '32px';
     }
 
-    // generate the directive
-    function generateIconDirective (name) {
-        var templatePrefix = '/app/components/icons/';
+    var ICON_SCOPE = {
+        width: '@?',  // a value in PX to define the width of the icon
+        height: '@?', // a value in PX to define the height of the icon
+    };
 
-        return angular.module('corvus.components')
-                    .directive('cv' + name + 'Icon', function () {
-                        return {
-                            restrict: 'E',
-                            templateUrl: templatePrefix + name.toLowerCase() + '.html',
-                            scope: {
-                                width: '@?', // a value in PX to define the width of the icon
-                                height: '@?' // a value in PX to define the height of the icon
-                            },
-                            compile: iconCompile
-                        };
-                    });
-    }
 
-    // for every defined icon, generate a directive
-    for(var icon in icons) {
-        generateIconDirective(icons[icon]);
-    }
+    angular.module('corvus.components')
+        .directive('mbLogoIcon', function () {
+            return {
+                restrict: 'E',
+                templateUrl: '/app/components/icons/logo.html',
+                scope: ICON_SCOPE,
+                compile: iconCompile
+            };
+        });
+
+    angular.module('corvus.components')
+        .directive('mbLoadingIcon', function () {
+            return {
+                restrict: 'E',
+                templateUrl: '/app/components/icons/loading.html',
+                scope: ICON_SCOPE,
+                compile: iconCompile
+            };
+        });
 
 }());

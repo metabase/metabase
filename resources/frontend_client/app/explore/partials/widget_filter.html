@@ -5,7 +5,7 @@
             <li class="FilterClause py1 clearfix" ng-repeat="table_filter in wrapped_filters()">
                 <div ng-if="table_filter != 'AND'">
                     <a class="text-grey-2 float-right" ng-if="!readonly" href="#" ng-click="removeFilter($index)">
-                        <cv-close-icon width="16px" height="16px"></cv-close-icon>
+                        <mb-icon name="close" width="16px" height="16px"></mb-icon>
                     </a>
                     <label class="Select" for="id_filtered_field">
                         <select id="id_filtered_field" ng-model="table_filter[1]" ng-options="field.id as field.name for field in table.fields" ng-disabled="readonly">

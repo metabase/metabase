@@ -580,7 +580,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 required: true
             }, {
                 displayName: "Database password",
-                fieldName: "pass",
+                fieldName: "password",
                 placeholder: "*******"
             }, {
                 displayName: "Use a secure connection (SSL)?",
