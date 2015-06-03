@@ -11,7 +11,8 @@
 (defrecord SqlDriver [column->base-type
                       connection-details->connection-spec
                       database->connection-details
-                      sql-string-length-fn]
+                      sql-string-length-fn
+                      timezone->set-timezone-sql]
   IDriver
   ;; Connection
   (can-connect? [this database]
