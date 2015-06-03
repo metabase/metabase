@@ -1,6 +1,11 @@
 'use strict';
 /*jslint browser:true */
-/*global document,$,jQuery,_,google,d3,crossfilter,dc,console,vs*/
+/*global document,_,google,console,vs*/
+
+import $ from 'jquery';
+import d3 from 'd3';
+import crossfilter from 'crossfilter';
+import dc from 'dc';
 
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT

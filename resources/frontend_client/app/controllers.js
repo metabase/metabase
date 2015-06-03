@@ -1,8 +1,6 @@
 'use strict';
 /*jslint browser:true*/
 /*jslint devel:true */
-/*global _*/
-/*global $*/
 
 // Global Controllers
 var CorvusControllers = angular.module('corvus.controllers', ['corvus.services', 'corvus.navbar.directives']);

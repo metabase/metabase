@@ -1,5 +1,14 @@
 'use strict';
-/*global moment, DatePicker*/
+
+/*global window,moment*/
+
+// import compiled version, webpack doesn't seem to be running JSX transforms on node_modules
+// css imported in init.css
+import DatePicker from 'react-datepicker/react-datepicker';
+
+// DatePicker depedencies :(
+window.Tether = require('tether/tether');
+window.moment = require('moment');
 
 export default React.createClass({
     displayName: 'DateFilter',

@@ -1,5 +1,6 @@
 'use strict';
-/*global OnClickOutside*/
+
+import OnClickOutside from 'react-onclickoutside';
 
 import FormField from './form_field.react';
 

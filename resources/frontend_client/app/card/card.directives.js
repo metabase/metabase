@@ -1,7 +1,7 @@
 'use strict';
-/*global setTimeout*/
-/*global $*/
-/* global React */
+/*global setTimeout, React */
+
+import $ from 'jquery';
 
 import { CardRenderer } from './card.charting';
 

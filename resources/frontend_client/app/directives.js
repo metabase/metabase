@@ -1,14 +1,10 @@
+'use strict';
+
 /*jslint browser:true */
 /*jslint devel:true */
-/*global _*/
-/*global CardRenderer*/
-/*global $*/
 /*global ace*/
 
-'use strict';
 /* Directives */
-
-
 var CorvusDirectives = angular.module('corvus.directives', []);
 
 CorvusDirectives.directive('deleteConfirm', [function() {

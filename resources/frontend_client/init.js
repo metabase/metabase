@@ -31,16 +31,5 @@ import 'ace-builds/src-min-noconflict/snippets/sql';
 window.React = require('react');
 require('react/addons');
 
-// react 3rd-party:
-window.OnClickOutside = require('react-onclickoutside');
-window.DatePicker = require('react-datepicker/react-datepicker'); // compiled version
-window.Tether = require('tether/tether'); // DatePicker depedency
-
-// d3
-window.dc = require('dc'); // also imports 'd3' and 'crossfilter' as globals
-
-// misc
+// misc:
 window._ = require('underscore');
-window.$ = require('jquery');
-
-window.moment = require('moment');

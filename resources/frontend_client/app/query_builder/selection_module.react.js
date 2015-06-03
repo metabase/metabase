@@ -1,5 +1,6 @@
 'use strict';
-/*global OnClickOutside*/
+
+import OnClickOutside from 'react-onclickoutside';
 
 import Icon from './icon.react';
 import SearchBar from './search_bar.react';

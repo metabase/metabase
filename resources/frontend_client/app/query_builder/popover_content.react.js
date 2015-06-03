@@ -1,5 +1,6 @@
 'use strict';
-/*global OnClickOutside*/
+
+import OnClickOutside from 'react-onclickoutside';
 
 // this feels a little silly, but we have this component ONLY so that we can add the OnClickOutside functionality on an
 // arbitrary set of html content.  I wish we could do that more easily
