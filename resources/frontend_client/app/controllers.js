@@ -10,6 +10,7 @@ var CorvusControllers = angular.module('corvus.controllers', ['corvus.services',
 CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, CorvusCore, CorvusAlert, AppState) {
 
     var clearState = function() {
+        $scope.siteName = undefined;
         $scope.user = undefined;
         $scope.userIsSuperuser = false;
     };
@@ -22,6 +23,11 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     $scope.userIsSuperuser = false;
 
     $scope.alerts = CorvusAlert.alerts;
+
+    $scope.$on("appstate:site-settings", function(event, settings) {
+        // change in global settings
+        $scope.siteName = settings['site-name'].value;
+    });
 
     $scope.$on("appstate:user", function(event, user) {
         // change in current user

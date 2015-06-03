@@ -5,8 +5,8 @@
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User',
-    function($rootScope, $q, $location, $timeout, ipCookie, Session, User) {
+CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
+    function($rootScope, $q, $location, $timeout, ipCookie, Session, User, Settings) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -19,6 +19,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             model: {
                 setupToken: null,
                 currentUser: null,
+                siteSettings: null,
                 appContext: 'unknown'
             },
 
@@ -27,6 +28,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 if (!initPromise) {
                     var deferred = $q.defer();
                     initPromise = deferred.promise;
+
+                    // grab our global settings
+                    service.refreshSiteSettings();
 
                     // just make sure we grab the current user
                     service.refreshCurrentUser().then(function(user) {
@@ -42,6 +46,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             clearState: function() {
                 currentUserPromise = null;
                 service.model.currentUser = null;
+                service.model.siteSettings = null;
 
                 // clear any existing session cookies if they exist
                 ipCookie.remove('metabase.SESSION_ID');
@@ -64,6 +69,23 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 currentUserPromise = userRefresh.$promise;
 
                 return currentUserPromise;
+            },
+
+            refreshSiteSettings: function() {
+
+                var settingsRefresh = Settings.list(function(result) {
+
+                    var settings = _.indexBy(result, 'key');
+
+                    service.model.siteSettings = settings;
+
+                    $rootScope.$broadcast('appstate:site-settings', settings);
+
+                }, function(error) {
+                    console.log('unable to get site settings', error);
+                });
+
+                return settingsRefresh.$promise;
             },
 
             // This function performs whatever state cleanup and next steps are required when a user tries to access
@@ -822,6 +844,33 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             method: 'DELETE',
             params: {
                 'userId': '@userId'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Settings', ['$resource', function($resource) {
+    return $resource('/api/setting', {}, {
+        list: {
+            url: '/api/setting',
+            method: 'GET',
+            isArray: true
+        },
+
+        // POST endpoint handles create + update in this case
+        put: {
+            url: '/api/setting/:key',
+            method: 'PUT',
+            params: {
+                key: '@key'
+            }
+        },
+
+        delete: {
+            url: '/api/setting/:key',
+            method: 'DELETE',
+            params: {
+                key: '@key'
             }
         }
     });

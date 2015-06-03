@@ -21,20 +21,10 @@
             <!-- MAIN NAV -->
             <nav class="CoreNav clearfix" ng-show="nav === 'main'">
                 <div class="col col-sm-12">
-                    <div class="NavItem float-left" ng-if="!user.is_multi_org">
-                        <span class="NavItem-text">{{currentOrg.name}}</span>
+                    <div class="NavItem float-left">
+                        <span class="NavItem-text">{{siteName}}</span>
                     </div>
-                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
-                        <span dropdown-toggle>
-                            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-                        </span>
-                        <ul class="Dropdown-content">
-                            <li ng-repeat="organization in userMemberOf">
-                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
-                            </li>
-                        </ul>
-                    </div>
+
                     <ul class="float-left ml4">
                         <li class="inline-block">
                             <a class="NavItem NavItem-withIcon" href="/dash/" selectable-nav-item="dashboards">
@@ -61,6 +51,7 @@
                             </a>
                         </li>
                     </ul>
+
                     <ul class="float-right">
                         <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
                             <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
