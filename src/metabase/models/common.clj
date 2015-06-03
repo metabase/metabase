@@ -44,7 +44,7 @@
          public_perms    500 "Can't check user permissions: object doesn't have :public_perms.")
   (cond (:is_superuser *current-user*)   #{:read :write}    ; superusers have full access to everything
         (= creator_id *current-user-id*) #{:read :write}    ; if user created OBJ they have all permissions
-        (>= perms-read public_perms)     #{:read}           ; if the object is public then everyone gets :read
+        (<= perms-read public_perms)     #{:read}           ; if the object is public then everyone gets :read
         :else                            #{}))              ; default is user has no permissions a.k.a private
 
 (defn user-can?
