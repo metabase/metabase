@@ -116,10 +116,11 @@
 
 (defn add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
-  [{:keys [fields aggregation source_table] :as query}]
+  [{:keys [fields aggregation breakout source_table] :as query}]
   (cond-> query
-    ;; If we're doing a "rows" aggregation with no fields clause add one that will exclude Fields that are supposed to be hidden
+    ;; If we're doing a "rows" aggregation with no breakout or fields clauses add one that will exclude Fields that are supposed to be hidden
     (and (= aggregation ["rows"])
+         (not breakout)
          (not fields))            (assoc :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true, :field_type [not= "sensitive"]))))
 
 
