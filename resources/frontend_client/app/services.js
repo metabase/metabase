@@ -204,10 +204,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'name': 'Private'
     }, {
         'id': 1,
-        'name': 'Others can read'
-    }, {
-        'id': 2,
-        'name': 'Others can read and modify'
+        'name': 'Public (others can read)'
     }];
 
     this.permName = function(permId) {
