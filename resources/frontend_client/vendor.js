@@ -14,7 +14,7 @@ import 'angular-sanitize';
 import 'angular-bootstrap';
 import 'angular-cookie';
 import 'angular-gridster';
-// import 'angular-http-auth'; // not in npm and no package.json: https://github.com/witoldsz/angular-http-auth/pull/100
+import 'angular-http-auth/src/http-auth-interceptor'; // currently pulled from unofficial fork: https://github.com/witoldsz/angular-http-auth/pull/100
 import 'angular-readable-time/angular-readable-time';
 import 'angular-xeditable/dist/js/xeditable';
 import 'ng-sortable/dist/ng-sortable';

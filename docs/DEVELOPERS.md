@@ -9,20 +9,21 @@
 
 ## Build
 
-Install clojure + npm/bower requirements with
+Install clojure + npm requirements with
 
     lein deps
     lein npm
 
 Build the application JS and CSS with
 
-    lein gulp
+    lein webpack
 
 When developing the frontend client, you'll want to watch for changes,
-so run the default gulp task.
+so run webpack with the '-w' flag.
 
-    ./node_modules/gulp/bin/gulp.js
+    ./node_modules/webpack/bin/webpack.js -w
 
+Note that changes to CSS variables will only be picked up when webpack is restarted.
 
 ## Usage
 

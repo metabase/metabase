@@ -13,8 +13,8 @@ var glob = require('glob');
 
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
-// All JS files except bower_components, dist, and test
-var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + '{bower_components,dist,test}/**/*.js' });
+// All JS files except dist and test
+var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + '{dist,test}/**/*.js' });
 // All CSS files in app/css and app/components
 var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH + 'components/**/*.css'));
 
@@ -51,7 +51,8 @@ module.exports = {
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
-            // { test: /\.css$/, loader: 'style-loader!css-loader!rework-loader' }
+        ],
+        noParse: [
         ]
     },
 
@@ -77,12 +78,6 @@ module.exports = {
             path: ['resources/frontend_client/app/css']
         }
     },
-
-    // rework: {
-    //     use: [
-    //         myth({ variables: maps.vars, customMedia: maps.media })
-    //     ]
-    // },
 
     // SourceMaps
     // Normal source map works better but takes longer to build

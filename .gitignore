@@ -18,7 +18,6 @@ profiles.clj
 /*.mv.db
 /*.lock.db
 /*.trace.db
-/resources/frontend_client/app/bower_components
 /resources/frontend_client/app/dist/
 /node_modules/
 /.js_hint_output/
