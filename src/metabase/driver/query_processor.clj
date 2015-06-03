@@ -117,14 +117,10 @@
 (defn add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [{:keys [fields aggregation source_table] :as query}]
-  (if (or (not= aggregation ["rows"])
-          fields)
-    ;; If we're not doing a "rows" aggregation or the fields clause was specified return the query as-is
-    query
-    ;; Otherwise we need to look up the Fields for the Table in question so we don't return ones that are supposed to be hidden
-    (let [fields (sel :many :id Field :table_id source_table, :active true, :preview_display true, :field_type [not= "sensitive"])]
-      (assoc query
-             :fields fields))))
+  (cond-> query
+    ;; If we're doing a "rows" aggregation with no fields clause add one that will exclude Fields that are supposed to be hidden
+    (and (= aggregation ["rows"])
+         (not fields))            (assoc :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true, :field_type [not= "sensitive"]))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
