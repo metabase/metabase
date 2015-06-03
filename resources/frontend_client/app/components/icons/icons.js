@@ -1,14 +1,13 @@
 'use strict';
-
 /* global ICON_PATHS */
 
 /*
     GENERIC ICONS
 
-    usage:
-    <mb-icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>"
+    USAGE:
+        Angular: <mb-icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE"></mb-icon>
+        React: <Icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>" />
 */
-
 
 angular.module('corvus.components')
     .directive('mbIcon', function () {
