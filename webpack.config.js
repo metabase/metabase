@@ -4,7 +4,7 @@
 var webpack = require('webpack');
 var webpackPostcssTools = require('webpack-postcss-tools');
 
-var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
+// var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var NgAnnotatePlugin = require('ng-annotate-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 
@@ -29,8 +29,11 @@ module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
+        init: __dirname + '/resources/frontend_client/init.js',
         app: JS_SRC,
-        styles: CSS_SRC
+        styles: [
+            __dirname + '/resources/frontend_client/init.css'
+        ].concat(CSS_SRC)
     },
 
     // output to "dist"
@@ -58,7 +61,7 @@ module.exports = {
         new NgAnnotatePlugin({ add: true }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
-        new CommonsChunkPlugin('common.js'),
+        // new CommonsChunkPlugin('common.js'),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
         new ExtractTextPlugin('styles.css')
     ],
@@ -83,7 +86,7 @@ module.exports = {
 
     // SourceMaps
     // Normal source map works better but takes longer to build
-    devtool: 'source-map'
+    // devtool: 'source-map'
     // Eval source map doesn't work with CSS but is faster to build
     // devtool: 'eval-source-map'
 };
