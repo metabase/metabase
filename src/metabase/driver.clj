@@ -128,7 +128,8 @@
   [query]
   {:pre [(map? query)]}
   (try
-    (binding [qp/*query* query]
+    (binding [qp/*query* query
+              qp/*internal-context* (atom {})]
       (let [driver  (database-id->driver (:database query))
             query   (qp/preprocess query)
             results (binding [qp/*query* query]
