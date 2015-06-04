@@ -338,7 +338,7 @@
   [symb value :nillable]
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
-         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
+         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb)))) ; TODO - why aren't we re-throwing these exceptions ?
 
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
@@ -346,6 +346,15 @@
   (try (clojure.walk/keywordize-keys (json/parse-string value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
+
+(defannotation String->Boolean
+  "Param is converted from `\"true\"` or `\"false\"` to the corresponding boolean."
+  [symb value :nillable]
+  (cond
+    (= value "true")  true
+    (= value "false") false
+    (nil? value)      nil
+    :else             (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid boolean." value)))))
 
 (defannotation Integer
   "Param must be an integer (this does *not* cast the param)."

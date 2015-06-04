@@ -12,21 +12,22 @@
 
 ;; [name last_login]
 (defonce ^:private users
-  [["Plato Yeshua" (timestamp 2014 4 1 1 30)]
-   ["Felipinho Asklepios" (timestamp 2014 12 5 7 15)]
-   ["Kaneonuskatew Eiran" (timestamp 2014 11 6 8 15)]
-   ["Simcha Yan" (timestamp 2014 1 1 0 30)]
-   ["Quentin Sören" (timestamp 2014 10 3 10 30)]
-   ["Shad Ferdynand" (timestamp 2014 8 2 5 30)]
-   ["Conchúr Tihomir" (timestamp 2014 8 2 2 30)]
-   ["Szymon Theutrich" (timestamp 2014 2 1 2 15)]
-   ["Nils Gotam" (timestamp 2014 4 3 2 30)]
-   ["Frans Hevel" (timestamp 2014 7 3 12 30)]
-   ["Spiros Teofil" (timestamp 2014 11 1)]
-   ["Kfir Caj" (timestamp 2014 7 2 18 30)]
-   ["Dwight Gresham" (timestamp 2014 8 1 3 30)]
-   ["Broen Olujimi" (timestamp 2014 10 3 6 45)]
-   ["Rüstem Hebel" (timestamp 2014 8 1 5 45)]])
+  (let [rando-password (fn [] (str (java.util.UUID/randomUUID)))]
+    [["Plato Yeshua"        #inst "2014-04-01T08:30:00.000000000-00:00" (rando-password)]
+     ["Felipinho Asklepios" #inst "2014-12-05T15:15:00.000000000-00:00" (rando-password)]
+     ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15:00.000000000-00:00" (rando-password)]
+     ["Simcha Yan"          #inst "2014-01-01T08:30:00.000000000-00:00" (rando-password)]
+     ["Quentin Sören"       #inst "2014-10-03T17:30:00.000000000-00:00" (rando-password)]
+     ["Shad Ferdynand"      #inst "2014-08-02T12:30:00.000000000-00:00" (rando-password)]
+     ["Conchúr Tihomir"     #inst "2014-08-02T09:30:00.000000000-00:00" (rando-password)]
+     ["Szymon Theutrich"    #inst "2014-02-01T10:15:00.000000000-00:00" (rando-password)]
+     ["Nils Gotam"          #inst "2014-04-03T09:30:00.000000000-00:00" (rando-password)]
+     ["Frans Hevel"         #inst "2014-07-03T19:30:00.000000000-00:00" (rando-password)]
+     ["Spiros Teofil"       #inst "2014-11-01T07:00:00.000000000-00:00" (rando-password)]
+     ["Kfir Caj"            #inst "2014-07-03T01:30:00.000000000-00:00" (rando-password)]
+     ["Dwight Gresham"      #inst "2014-08-01T10:30:00.000000000-00:00" (rando-password)]
+     ["Broen Olujimi"       #inst "2014-10-03T13:45:00.000000000-00:00" (rando-password)]
+     ["Rüstem Hebel"        #inst "2014-08-01T12:45:00.000000000-00:00" (rando-password)]]))
 
 ;; name
 (defonce ^:private categories
@@ -1216,7 +1217,10 @@
   {:users {:fields [{:name :name
                      :type "VARCHAR(254)"}
                     {:name :last_login
-                     :type "TIMESTAMP"}]
+                     :type "TIMESTAMP"}
+                    {:name :password
+                     :type "VARCHAR(254)"
+                     :field-type :sensitive}]
            :rows users}
    :categories {:fields [{:name :name
                           :type "VARCHAR(254)"}]

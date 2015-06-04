@@ -726,8 +726,8 @@
    :breakout     [(id :venues :price)]
    :order_by     [[["aggregation" 0] "descending"]]})
 
-;;; ### make sure that rows where preview_display = false don't get displayed
 
+;;; ### make sure that rows where preview_display = false don't get displayed
 (datasets/expect-with-all-datasets
  [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
   (set (->columns "category_id" "name" "latitude" "id" "longitude"))
@@ -746,3 +746,38 @@
         (get-col-names))
     (do (upd Field (id :venues :price) :preview_display true)
         (get-col-names))]))
+
+
+;;; ## :sensitive fields
+;;; Make sure :sensitive information fields are never returned by the QP
+(datasets/expect-with-all-datasets
+ {:status :completed,
+  :row_count 15
+  :data {:columns (->columns "id" "last_login" "name")
+         :cols [(users-col :id)
+                (users-col :last_login)
+                (users-col :name)],
+         :rows [[1 "Plato Yeshua"]
+                [2 "Felipinho Asklepios"]
+                [3 "Kaneonuskatew Eiran"]
+                [4 "Simcha Yan"]
+                [5 "Quentin Sören"]
+                [6 "Shad Ferdynand"]
+                [7 "Conchúr Tihomir"]
+                [8 "Szymon Theutrich"]
+                [9 "Nils Gotam"]
+                [10 "Frans Hevel"]
+                [11 "Spiros Teofil"]
+                [12 "Kfir Caj"]
+                [13 "Dwight Gresham"]
+                [14 "Broen Olujimi"]
+                [15 "Rüstem Hebel"]]}}
+ ;; Filter out the timestamps from the results since they're hard to test :/
+ (-> (driver/process-query
+      {:type :query,
+       :database (db-id),
+       :query
+       {:source_table (id :users),
+        :aggregation ["rows"],
+        :order_by [[(id :users :id) "ascending"]]}})
+     (update-in [:data :rows] (partial mapv (partial filterv #(not (isa? (type %) java.util.Date)))))))

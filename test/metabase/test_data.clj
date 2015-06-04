@@ -28,6 +28,7 @@
 ;;    *  id
 ;;    *  name
 ;;    *  last_login
+;;    *  password (sensitive)
 ;; *  categories - 75 rows
 ;;    *  id
 ;;    *  name
