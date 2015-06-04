@@ -42,7 +42,7 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
                     var existingDashboardsById = {};
 
                     Dashboard.list({
-                        'filterMode': 'all'
+                        'filterMode': 'mine'
                     }, function(result) {
                         if (result && !result.error) {
                             $scope.dashboards = result;

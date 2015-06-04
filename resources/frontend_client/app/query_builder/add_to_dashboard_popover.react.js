@@ -25,7 +25,7 @@ var AddToDashboardPopover = React.createClass({
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
-            'filterMode': 'all'
+            'filterMode': 'mine'
         }, function(result) {
             component.setState({
                 dashboards: result
