@@ -38,6 +38,9 @@
 (defn id-field-type []
   (datasets/id-field-type *dataset*))
 
+(defn timestamp-field-type []
+  (datasets/timestamp-field-type *dataset*))
+
 
 ;; ## Dataset-Independent QP Tests
 
@@ -87,7 +90,7 @@
   []
   (->columns "id" "category_id" "price" "longitude" "latitude" "name"))
 
-(defn venue-col
+(defn venues-col
   "Return column information for the `venues` column named by keyword COL."
   [col]
   (case col
@@ -139,7 +142,7 @@
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
   []
-  (mapv venue-col [:id :category_id :price :longitude :latitude :name]))
+  (mapv venues-col [:id :category_id :price :longitude :latitude :name]))
 
 ;; #### categories
 (defn categories-col
@@ -204,11 +207,51 @@
                  :id (id :users :name)}
     :last_login {:extra_info {}
                  :special_type :category
-                 :base_type :DateTimeField
+                 :base_type (timestamp-field-type)
                  :description nil
                  :name (format-name "last_login")
                  :table_id (id :users)
                  :id (id :users :last_login)}))
+
+
+;;; #### aggregate columns
+
+(defn aggregate-col
+  "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to pass the `Field` in question as well.
+
+    (aggregate-col :count)
+    (aggregate-col :avg (venues-col :id))"
+  {:arglists '([ag-col-kw] [ag-col-kw field])}
+  ([ag-col-kw]
+   (case ag-col-kw
+     :count  {:base_type :IntegerField
+              :special_type :number
+              :name "count"
+              :id nil
+              :table_id nil
+              :description nil}))
+  ([ag-col-kw {:keys [base_type special_type]}]
+   {:pre [base_type
+          special_type]}
+   (case ag-col-kw
+     :avg    {:base_type base_type
+              :special_type special_type
+              :name "avg"
+              :id nil
+              :table_id nil
+              :description nil}
+     :stddev {:base_type base_type
+              :special_type special_type
+              :name "stddev"
+              :id nil
+              :table_id nil
+              :description nil}
+     :sum   {:base_type base_type
+             :special_type special_type
+             :name "sum"
+             :id nil
+             :table_id nil
+             :description nil})))
 
 
 ;; # THE TESTS THEMSELVES (!)
@@ -217,12 +260,7 @@
 (qp-expect-with-all-datasets
     {:rows [[100]]
      :columns ["count"]
-     :cols [{:base_type :IntegerField
-             :special_type :number
-             :name "count"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :count)]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["count"]
@@ -233,12 +271,7 @@
 (qp-expect-with-all-datasets
     {:rows [[203]]
      :columns ["sum"]
-     :cols [{:base_type :IntegerField
-             :special_type :category
-             :name "sum"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :sum (venues-col :price))]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["sum" (id :venues :price)]
@@ -250,12 +283,7 @@
 (qp-expect-with-all-datasets
     {:rows [[35.50589199999998]]
      :columns ["avg"]
-     :cols [{:base_type :FloatField
-             :special_type :latitude
-             :name "avg"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :avg (venues-col :latitude))]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["avg" (id :venues :latitude)]
@@ -267,12 +295,7 @@
 (qp-expect-with-all-datasets
     {:rows [[15]]
      :columns ["count"]
-     :cols [{:base_type :IntegerField
-             :special_type :number
-             :name "count"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :count)]}
   {:source_table (id :checkins)
    :filter [nil nil]
    :aggregation ["distinct" (id :checkins :user_id)]
@@ -408,12 +431,7 @@
 (qp-expect-with-all-datasets
  {:rows [[29]]
   :columns ["count"]
-  :cols [{:base_type :IntegerField
-          :special_type :number
-          :name "count"
-          :id nil
-          :table_id nil
-          :description nil}]}
+  :cols [(aggregate-col :count)]}
  {:source_table (id :checkins)
   :filter ["AND" ["BETWEEN" (id :checkins :date) "2015-04-01" "2015-05-01"]]
   :aggregation ["count"]})
@@ -470,8 +488,8 @@
             ["Krua Siri" 9]
             ["Fred 62" 10]],
      :columns (->columns "name" "id")
-     :cols [(venue-col :name)
-            (venue-col :id)]}
+     :cols [(venues-col :name)
+            (venues-col :id)]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["rows"]
@@ -489,7 +507,7 @@
      :columns [(format-name "user_id")
                "count"]
      :cols [(checkins-col :user_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :filter [nil nil]
    :aggregation ["count"]
@@ -506,7 +524,7 @@
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :limit 10
    :aggregation ["count"]
@@ -522,7 +540,7 @@
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :limit 10
    :aggregation ["count"]
@@ -572,7 +590,7 @@
 (qp-expect-with-all-datasets
     {:rows [[(->sum-type 120)]]
      :columns ["sum"]
-     :cols [{:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+     :cols [(aggregate-col :sum (users-col :id))]}
   {:source_table (id :users)
    :aggregation ["cum_sum" (id :users :id)]})
 
@@ -607,7 +625,7 @@
   :columns [(format-name "name")
             "sum"]
   :cols [(users-col :name)
-         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+         (aggregate-col :sum (users-col :id))]}
  {:source_table (id :users)
   :breakout [(id :users :name)]
   :aggregation ["cum_sum" (id :users :id)]})
@@ -617,8 +635,8 @@
 (qp-expect-with-all-datasets
  {:columns [(format-name "price")
             "sum"]
-  :cols [(venue-col :price)
-         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]
+  :cols [(venues-col :price)
+         (aggregate-col :sum (venues-col :id))]
   :rows [[1 (->sum-type 1211)]
          [2 (->sum-type 4066)]
          [3 (->sum-type 4681)]
@@ -638,8 +656,8 @@
           [3 13]
           [1 22]
           [2 59]]
-   :cols [(venue-col :price)
-          {:base_type :IntegerField, :special_type :number, :description nil, :table_id nil, :name "count", :id nil}]}
+   :cols [(venues-col :price)
+          (aggregate-col :count)]}
   {:source_table (id :venues)
    :aggregation  ["count"]
    :breakout     [(id :venues :price)]
@@ -654,8 +672,8 @@
           [1 (->sum-type 1211)]
           [3 (->sum-type 615)]
           [4 (->sum-type 369)]]
-   :cols [(venue-col :price)
-          {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+   :cols [(venues-col :price)
+          (aggregate-col :sum (venues-col :id))]}
   {:source_table (id :venues)
    :aggregation  ["sum" (id :venues :id)]
    :breakout     [(id :venues :price)]
@@ -670,8 +688,8 @@
           [3 13]
           [1 22]
           [2 59]]
-   :cols [(venue-col :price)
-          {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+   :cols [(venues-col :price)
+          (aggregate-col :count)]}
   {:source_table (id :venues)
    :aggregation  ["distinct" (id :venues :id)]
    :breakout     [(id :venues :price)]
@@ -686,8 +704,8 @@
           [2 28]
           [1 32]
           [4 53]]
-   :cols [(venue-col :price)
-          {:base_type :IntegerField, :special_type :fk, :name "avg", :id nil, :table_id nil, :description nil}]}
+   :cols [(venues-col :price)
+          (aggregate-col :avg (venues-col :category_id))]}
   {:source_table (id :venues)
    :aggregation  ["avg" (id :venues :category_id)]
    :breakout     [(id :venues :price)]
@@ -701,8 +719,8 @@
           [1 24.112111881665186]
           [2 21.418692164795292]
           [4 14.788509052639485]]
-   :cols [(venue-col :price)
-          {:base_type :IntegerField, :special_type :fk, :name "stddev", :id nil, :table_id nil, :description nil}]}
+   :cols [(venues-col :price)
+          (aggregate-col :stddev (venues-col :category_id))]}
   {:source_table (id :venues)
    :aggregation  ["stddev" (id :venues :category_id)]
    :breakout     [(id :venues :price)]
