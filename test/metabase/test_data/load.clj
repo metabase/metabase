@@ -158,12 +158,6 @@
 (def ^:private table->id (u/runtime-resolved-fn 'metabase.test-data 'table->id))
 (def ^:private field->id (u/runtime-resolved-fn 'metabase.test-data 'field->id))
 
-(defn- set-types! [table-kw {field-kw :name special-type :special-type, field-type :field-type}]
-  {:post [(true? %)]}
-  (if-not special-type true
-          (do (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
-              (upd Field (field->id table-kw field-kw) :special_type (name special-type)))))
-
 (defn- set-types! [table-kw {field-kw :name, special-type :special-type, field-type :field-type}]
   (when special-type
     (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
