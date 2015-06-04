@@ -36,6 +36,10 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
+(def ^:dynamic *internal-context*
+  "A neat place to store 'notes-to-self': things individual implementations don't need to know about, like if the `fields` clause was added implicitly."
+  (atom nil))
+
 
 ;; # PREPROCESSOR
 
@@ -118,12 +122,15 @@
 (defn add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [{:keys [fields aggregation breakout source_table] :as query}]
-  (cond-> query
+  (if-not (and (= aggregation ["rows"])
+               (not breakout)
+               (not fields))
+    query
     ;; If we're doing a "rows" aggregation with no breakout or fields clauses add one that will exclude Fields that are supposed to be hidden
-    (and (= aggregation ["rows"])
-         (not breakout)
-         (not fields))            (assoc :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
-                                                      :field_type [not= "sensitive"], (order :position :asc), (order :id :desc)))))
+    (do (swap! *internal-context* assoc :fields-is-implicit true)
+        (println "---------------------------------------- INTERNAL CONTEXT >>>> " @*internal-context*)
+        (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
+                                  :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -147,7 +154,7 @@
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? (-> query
                                       (dissoc :breakout)
-                                      (assoc :cum_sum     ag-field
+                                      (assoc :cum_sum     ag-field     ; TODO - move this to *internal-context* instead?
                                              :aggregation ["rows"]
                                              :fields      [ag-field]))
 
@@ -318,8 +325,7 @@
                                                                  (:id %))
                                                       (contains? (set field-field-ids)
                                                                  (:id %)))))
-                                    (sort-by (fn [{:keys [position id]}]
-                                               [position (when id (- id))])))]
+                                    (sort-by :position))]
     (->> (concat breakout-fields field-fields other-fields)
          (map :castified)
          (filter identity))))
@@ -335,9 +341,10 @@
   [{{source-table :source_table, breakout-field-ids :breakout, field-field-ids :fields} :query} castified-field-names]
   {:post [(every? keyword? %)]}
   (try
+    (println "FIELDS-IS-IMPLICIT? >>>>" @*internal-context*)
     (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
                     breakout-field-ids
-                    field-field-ids
+                    (when-not (:fields-is-implicit @*internal-context*) field-field-ids)
                     castified-field-names)
     (catch Exception e
       (.printStackTrace e)
