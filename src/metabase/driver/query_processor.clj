@@ -318,7 +318,8 @@
                                                                  (:id %))
                                                       (contains? (set field-field-ids)
                                                                  (:id %)))))
-                                    (sort-by :position))]
+                                    (sort-by (fn [{:keys [position id]}]
+                                               [position (when id (- id))])))]
     (->> (concat breakout-fields field-fields other-fields)
          (map :castified)
          (filter identity))))
