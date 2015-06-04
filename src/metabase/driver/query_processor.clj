@@ -128,7 +128,6 @@
     query
     ;; If we're doing a "rows" aggregation with no breakout or fields clauses add one that will exclude Fields that are supposed to be hidden
     (do (swap! *internal-context* assoc :fields-is-implicit true)
-        (println "---------------------------------------- INTERNAL CONTEXT >>>> " @*internal-context*)
         (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
                                   :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
 
@@ -341,7 +340,6 @@
   [{{source-table :source_table, breakout-field-ids :breakout, field-field-ids :fields} :query} castified-field-names]
   {:post [(every? keyword? %)]}
   (try
-    (println "FIELDS-IS-IMPLICIT? >>>>" @*internal-context*)
     (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
                     breakout-field-ids
                     (when-not (:fields-is-implicit @*internal-context*) field-field-ids)
