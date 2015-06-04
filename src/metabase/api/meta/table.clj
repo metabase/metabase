@@ -54,15 +54,25 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (sel :many Field :table_id id :active true (order :name :ASC)))
+  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
-   Returns DB, fields, field FKs, and field values."
-  [id]
+   Returns DB, fields, field FKs, and field values.
+
+  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case
+  will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
+  [id include_sensitive_fields]
+  {include_sensitive_fields String->Boolean}
   (->404 (sel :one Table :id id)
          read-check
-         (hydrate :db [:fields [:target]] :field_values)))
+         (hydrate :db [:fields [:target]] :field_values)
+         (update-in [:fields] (if include_sensitive_fields
+                                ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                                identity
+                                ;; Otherwise filter out all :sensitive fields
+                                (partial filter (fn [{:keys [field_type]}]
+                                                  (not= (keyword field_type) :sensitive)))))))
 
 (defendpoint GET "/:id/fks"
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."

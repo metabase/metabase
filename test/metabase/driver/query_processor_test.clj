@@ -726,8 +726,8 @@
    :breakout     [(id :venues :price)]
    :order_by     [[["aggregation" 0] "descending"]]})
 
-;;; ### make sure that rows where preview_display = false don't get displayed
 
+;;; ### make sure that rows where preview_display = false don't get displayed
 (datasets/expect-with-all-datasets
  [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
   (set (->columns "category_id" "name" "latitude" "id" "longitude"))
@@ -746,3 +746,32 @@
         (get-col-names))
     (do (upd Field (id :venues :price) :preview_display true)
         (get-col-names))]))
+
+
+;;; ## :sensitive fields
+;;; Make sure :sensitive information fields are never returned by the QP
+(qp-expect-with-all-datasets
+ {:columns (->columns "id"
+                      "last_login"
+                      "name")
+  :cols [(users-col :id)
+         (users-col :last_login)
+         (users-col :name)]
+  :rows [[ 1 #inst "2014-04-01T08:30:00.000000000-00:00" "Plato Yeshua"]
+         [ 2 #inst "2014-12-05T15:15:00.000000000-00:00" "Felipinho Asklepios"]
+         [ 3 #inst "2014-11-06T16:15:00.000000000-00:00" "Kaneonuskatew Eiran"]
+         [ 4 #inst "2014-01-01T08:30:00.000000000-00:00" "Simcha Yan"]
+         [ 5 #inst "2014-10-03T17:30:00.000000000-00:00" "Quentin Sören"]
+         [ 6 #inst "2014-08-02T12:30:00.000000000-00:00" "Shad Ferdynand"]
+         [ 7 #inst "2014-08-02T09:30:00.000000000-00:00" "Conchúr Tihomir"]
+         [ 8 #inst "2014-02-01T10:15:00.000000000-00:00" "Szymon Theutrich"]
+         [ 9 #inst "2014-04-03T09:30:00.000000000-00:00" "Nils Gotam"]
+         [10 #inst "2014-07-03T19:30:00.000000000-00:00" "Frans Hevel"]
+         [11 #inst "2014-11-01T07:00:00.000000000-00:00" "Spiros Teofil"]
+         [12 #inst "2014-07-03T01:30:00.000000000-00:00" "Kfir Caj"]
+         [13 #inst "2014-08-01T10:30:00.000000000-00:00" "Dwight Gresham"]
+         [14 #inst "2014-10-03T13:45:00.000000000-00:00" "Broen Olujimi"]
+         [15 #inst "2014-08-01T12:45:00.000000000-00:00" "Rüstem Hebel"]]}
+ {:source_table (id :users)
+  :aggregation  ["rows"]
+  :order_by     [[(id :users :id) "ascending"]]})

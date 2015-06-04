@@ -456,6 +456,9 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     }, {
         'id': 'dimension',
         'name': 'Dimension'
+    }, {
+        'id': 'sensitive',
+        'name': 'Sensitive Information'
     }];
 
     this.boolean_types = [{
