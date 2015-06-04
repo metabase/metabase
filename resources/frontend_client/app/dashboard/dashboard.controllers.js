@@ -7,6 +7,8 @@ var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard', function($scope, $location, Dashboard) {
     var sort;
 
+    $scope.current = 'data';
+
     // $scope.dashboards: the list of dashboards being displayed
 
     $scope.deleteDash = function(dashId) {

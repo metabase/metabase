@@ -14,44 +14,50 @@
         </div>
     </div>
 
-    <div class="wrapper" ng-if="dashboardLoaded && !dashboardLoadError">
-        <header class="py2 px2 clearfix">
-            <div class="float-right">
-                <!-- <a class="Button" ng-click="toggleSubscribe()" ng-if="dashboard">{{toggleSubscribeButtonText()}}</a> -->
-                <div class="mx1 inline-block">
-                    <label class="Select">
-                        <select class="block" ng-model="dashboard.public_perms" ng-change="inlineSave(dashboard)" ng-options="perm.id as perm.name for perm in utils.perms" ng-disabled="!dashboard.can_write">
-                        </select>
-                    </label>
+    <div ng-if="dashboardLoaded && !dashboardLoadError">
+        <header class="clearfix border-bottom">
+            <div class="wrapper">
+                <div class="Entity">
+                    <h1 class="Entity-title">{{dashboard.name}}</h1>
+                    <span class="Entity-attribution">
+                        Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>
+                    </span>
                 </div>
+
                 <a class="Button borderless" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
                     <mb-icon name="grid" width="16px" height="16px"></mb-icon>
                     <span class="px1">{{editingText}}</span>
                 </a>
             </div>
-            <h3 class="inline-block" editable-text="dashboard.name" onaftersave="inlineSave(dashboard)" ng-if="dashboard.can_write">{{dashboard.name}}</h3>
-            <h3 class="inline-block" ng-if="!dashboard.can_write">{{dashboard.name}}</h3>
-            <p>
-                <span ng-if="!dashEdit">{{dashboard.description}} <span ng-if="dashboard.can_write && dashboard.description">-- <a href="" ng-click="toggleDashEdit()">Edit</a></span></span>
-                <span ng-if="dashEdit"><input class="input" type="text" size="140" ng-model="dashboard.description" /> <a class="Button Button--primary" ng-click="inlineSave(dashboard)">Save</a> <a class="Button" ng-click="toggleDashEdit()">Cancel</a></span>
-            </p>
         </header>
 
-        <div class="text-centered my4 py4" ng-if="dashboardLoaded && !dashboardLoadError && !dashcards.length > 0">
-            <h1 class="text-normal text-grey-2 mt4 pt4">No cards have been added to this dashboard.</h1>
-            <a class="Button Button--primary" href="/card/create">Create Card</a>
-        </div>
+        <div class="wrapper full-height">
 
-        <div gridster="gridsterOptions">
-            <div ng-class="editingClass">
-                <ul id="dashboard_list">
-                    <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
-                        <a class="DashCard-remove" ng-click="removeCard(index)">
-                            <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
-                        </a>
-                        <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
-                    </li>
-                </ul>
+            <div class="flex layout-centered text-centered full-height">
+                <div ng-if="!dashboardLoaded">
+                    <div class="text-brand">
+                        <mb-loading-icon></mb-loading-icon>
+                        <h1 class="text-normal text-grey-2">Loading...</h1>
+                    </div>
+                </div>
+
+                <div ng-if="dashboardLoaded && !dashcards.length > 0">
+                    <h1 class="text-normal text-grey-2">This dashboard doesn't have any data yet.</h1>
+                    <a class="Button Button--primary" href="/card/create">Ask a question</a>
+                </div>
+            </div>
+
+            <div gridster="gridsterOptions" ng-hide="!dashcards.length">
+                <div ng-class="editingClass">
+                    <ul id="dashboard_list">
+                        <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
+                            <a class="DashCard-remove" ng-click="removeCard(index)">
+                                <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
+                            </a>
+                            <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

@@ -51,9 +51,6 @@
 }
 
 .Dropdown-item:hover {
-    background-color: var(--brand-color);
-}
-
-.Dropdown-item:hover a {
     color: #fff;
+    background-color: var(--brand-color);
 }

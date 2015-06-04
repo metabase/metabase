@@ -11,6 +11,20 @@
   padding-right: 1em;
 }
 
+@media screen and (--breakpoint-min-sm) {
+    .wrapper {
+        padding-left: 2em;
+        padding-right: 2em;
+    }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .wrapper {
+        padding-left: 3em;
+        padding-right: 3em;
+    }
+}
+
 @media screen and (--breakpoint-min-xl) {
     .wrapper {
         max-width: var(--xl-width);
