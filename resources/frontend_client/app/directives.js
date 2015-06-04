@@ -97,7 +97,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                 element.addClass('Button--waiting');
 
                 // activate spinner
-                var loadingIcon = angular.element('<cv-loading-icon width="12px" height="12px"></cv-loading-icon>');
+                var loadingIcon = angular.element('<mb-loading-icon width="12px" height="12px"></mb-loading-icon>');
                 element.append(loadingIcon);
                 $compile(loadingIcon)(scope);
 
@@ -111,7 +111,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                     element.text(successText);
                     element.removeClass('Button--waiting');
                     element.addClass('Button--success');
-                    var checkIcon = angular.element('<cv-check-icon width="12px" height="12px"></cv-check-icon>');
+                    var checkIcon = angular.element('<mb-icon name="check" width="12px" height="12px"></mb-icon>');
                     element.prepend(checkIcon);
                     $compile(checkIcon)(scope);
 
@@ -175,7 +175,7 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                                 '<span class="UserNick">' +
                                     '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
                                 '</span>' +
-                                '<cv-chevron-down-icon class="Dropdown-chevron ml1" width="8px" height="8px"></cv-chevron-down-icon>' +
+                                '<mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>' +
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
                                 '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +

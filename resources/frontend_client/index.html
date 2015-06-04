@@ -28,25 +28,19 @@
                     <ul class="float-left ml4">
                         <li class="inline-block">
                             <a class="NavItem NavItem-withIcon" href="/dash/" selectable-nav-item="dashboards">
-                                <div class="IconWrapper">
-                                    <cv-dashboards-icon></cv-dashboards-icon>
-                                </div>
+                                <mb-icon class="IconWrapper" name="dashboards"/></mb-icon>
                                 <span class="NavItem-text">Dashboards</span>
                             </a>
                         </li>
                         <li class="inline-block">
                             <a class="NavItem NavItem-withIcon" href="/card/" selectable-nav-item="cards">
-                                <div class="IconWrapper">
-                                    <cv-cards-icon></cv-cards-icon>
-                                </div>
+                                <mb-icon class="IconWrapper" name="cards"></mb-icon>
                                 <span class="NavItem-text">Cards</span>
                             </a>
                         </li>
                         <li class="inline-block">
                             <a class="NavItem NavItem-withIcon" href="/explore/" selectable-nav-item="explore">
-                                <div class="IconWrapper">
-                                    <cv-explore-icon></cv-explore-icon>
-                                </div>
+                                <mb-icon class="IconWrapper" name="explore"></mb-icon>
                                 <span class="NavItem-text">Explore</span>
                             </a>
                         </li>
@@ -57,7 +51,7 @@
                             <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
                                 <span class="NavItem-text" ng-if="!user.first_name">Me</span>
                                 <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
-                                <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
+                                <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                             </a>
                             <ul class="Dropdown-content right">
                                 <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
@@ -72,22 +66,9 @@
             <!-- ADMIN NAV -->
             <nav class="AdminNav" ng-show="nav === 'admin'">
                 <div class="wrapper flex align-center">
-                    <!-- org title -->
-                    <div class="NavTitle flex align-center" ng-if="!user.is_multi_org">
-                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
-                        <span class="NavItem-text">{{currentOrg.name}} Admin</span>
-                    </div>
-                    <div class="NavTitle flex align-center Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
-                        <cv-gear-icon class="AdminGear" width="22px" height="22px"></cv-gear-icon>
-                        <span dropdown-toggle>
-                            <span class="NavItem-text">{{currentOrg.name}} Admin</span>
-                            <cv-chevron-down-icon width="8px" height="8px"></cv-chevron-down-icon>
-                        </span>
-                        <ul class="Dropdown-content left">
-                            <li ng-repeat="organization in userMemberOf">
-                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug, true)">{{organization.name}}</a>
-                            </li>
-                        </ul>
+                    <div class="NavTitle flex align-center">
+                        <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
+                        <span class="NavItem-text ml1">Site Administration</span>
                     </div>
 
                     <!-- admin sections -->
@@ -111,24 +92,6 @@
 
                     <!-- user profile dropdown -->
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
-                </div>
-            </nav>
-
-            <!-- SETUP NAV -->
-            <nav class="SetupNav" ng-show="nav === 'setup'">
-                <div class="SetupWrapper py4">
-                    <span class="SetupOrg">
-                        {{currentOrg.name}}
-                    </span>
-                    <span class="SetupUser float-right Dropdown" dropdown on-toggle="toggled(open)">
-                        <div dropdown-toggle>
-                            {{user.email}}
-                            <cv-chevron-down-icon class="ml1" width="10px" height="10px"></cv-chevron-down-icon>
-                          </div>
-                        <ul class="Dropdown-content right">
-                          <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
-                        </ul>
-                    </span>
                 </div>
             </nav>
         </div>

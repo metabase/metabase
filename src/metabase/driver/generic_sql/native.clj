@@ -10,18 +10,6 @@
             [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.database :refer [Database]]))
 
-(def ^:dynamic *timezone->set-timezone-sql*
-  " This function is called whenever `timezone` is specified in a native query, at the beginning of
-   the DB transaction.
-
-   If implemented, it should take a timestamp like `\"US/Pacific\"` and return a SQL
-   string that can be executed to set the timezone within the context of a transaction,
-   e.g. `\"SET LOCAL timezone to 'US/Pacific'\"`.
-
-   Because not all DB engines support timestamps (e.g., H2), the default implementation is a no-op.
-   Engines that *do* support timestamps (e.g., Postgres) should override this function."
-  (fn [_]))
-
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
@@ -48,9 +36,9 @@
                                                 ;; If timezone is specified in the Query and the driver supports setting the timezone then execute SQL to set it
                                                 (when-let [timezone (or (-> query :native :timezone)
                                                                         (driver/report-timezone))]
-                                                  (when-let [set-timezone-sql (*timezone->set-timezone-sql* timezone)]
+                                                  (when-let [timezone->set-timezone-sql (:timezone->set-timezone-sql (driver/database-id->driver database-id))]
                                                     (log/debug "Setting timezone to:" timezone)
-                                                    (jdbc/db-do-prepared conn set-timezone-sql)))
+                                                    (jdbc/db-do-prepared conn (timezone->set-timezone-sql timezone))))
                                                 (jdbc/query conn sql :as-arrays? true))]
          {:rows rows
           :columns columns

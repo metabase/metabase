@@ -5,9 +5,9 @@
             [metabase.api.routes :as api]
             [metabase.setup :as setup]))
 
-
-(let [redirect-to-setup? (fn [{:keys [uri]}]                      ; Redirect naughty users who try to visit a page other than setup
-                           (and (setup/token-exists?)             ; if setup is not yet complete
+;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
+(let [redirect-to-setup? (fn [{:keys [uri]}]
+                           (and (setup/incomplete?)
                                 (not (re-matches #"^/setup/.*$" uri))))
       index (fn [request]
               (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))

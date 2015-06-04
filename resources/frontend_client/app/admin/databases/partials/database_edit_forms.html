@@ -4,7 +4,7 @@
         <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
         <ul class="Form-offset full mt2" ng-show="!database.engine">
             <li class="DatabaseEngine" ng-repeat="(type, properties) in ENGINES">
-                <cv-check-icon class="DatabaseEngine-check" width="16px" height="16px"></cv-check-icon>
+                <mb-icon name="check" class="DatabaseEngine-check" width="16px" height="16px"></mb-icon>
                 <div ng-click="database.engine = type">
                     {{properties.name}}
                 </div>
@@ -12,9 +12,9 @@
         </ul>
         <div class="Form-offset mr4" ng-show="database.engine">
             <div class="DatabaseEngine DatabaseEngine--selected flex align-center">
-                <cv-check-icon class="DatabaseEngine-check" width="16px" height="16px"></cv-check-icon>
+                <mb-icon name="check" class="DatabaseEngine-check" width="16px" height="16px"></mb-icon>
                 <span class="flex-full">{{database.engine}}</span>
-                <cv-close-icon width="16px" height="16px" ng-click="database.engine = null"></cv-close-icon>
+                <mb-icon name="close" width="16px" height="16px" ng-click="database.engine = null"></mb-icon>
             </div>
         </div>
     </div>

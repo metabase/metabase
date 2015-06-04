@@ -439,7 +439,8 @@
   [entity & {:as kwargs}]
   `(not (empty? (select (entity->korma ~entity)
                         (fields [:id])
-                        (where ~kwargs)
+                        ~@(when (seq kwargs)
+                            `[(where ~kwargs)])
                         (limit 1)))))
 
 ;; ## CASADE-DELETE

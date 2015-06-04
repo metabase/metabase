@@ -4,7 +4,8 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
-            (metabase.models [table :refer [Table]])
+            (metabase.models [field :refer [Field]]
+                             [table :refer [Table]])
             [metabase.test.data.datasets :as datasets :refer [*dataset*]]))
 
 ;; ##  Dataset-Independent Data Fns
@@ -706,3 +707,24 @@
    :aggregation  ["stddev" (id :venues :category_id)]
    :breakout     [(id :venues :price)]
    :order_by     [[["aggregation" 0] "descending"]]})
+
+;;; ### make sure that rows where preview_display = false don't get displayed
+
+(datasets/expect-with-all-datasets
+ [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
+  (set (->columns "category_id" "name" "latitude" "id" "longitude"))
+  (set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))]
+ (let [get-col-names (fn [] (-> (driver/process-query {:database (db-id)
+                                                       :type     "query"
+                                                       :query    {:aggregation  ["rows"]
+                                                                  :source_table (id :venues)
+                                                                  :order_by     [[(id :venues :id) "ascending"]]
+                                                                  :limit        1}})
+                                :data
+                                :columns
+                                set))]
+   [(get-col-names)
+    (do (upd Field (id :venues :price) :preview_display false)
+        (get-col-names))
+    (do (upd Field (id :venues :price) :preview_display true)
+        (get-col-names))]))

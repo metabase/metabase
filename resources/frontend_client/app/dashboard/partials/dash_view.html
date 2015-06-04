@@ -10,7 +10,7 @@
                     </label>
                 </div>
                 <a class="Button borderless" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
-                    <cv-grid-icon width="16px" height="16px"></cv-grid-icon>
+                    <mb-icon name="grid" width="16px" height="16px"></mb-icon>
                     <span class="px1">{{editingText}}</span>
                 </a>
             </div>
@@ -24,7 +24,7 @@
 
         <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
             <div class="my4 py4 text-brand">
-                <cv-loading-icon></cv-loading-icon>
+                <mb-loading-icon></mb-loading-icon>
                 <h1 class="text-normal text-grey-2">Loading...</h1>
             </div>
         </div>
@@ -39,9 +39,7 @@
                 <ul id="dashboard_list">
                     <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
                         <a class="DashCard-remove" ng-click="removeCard(index)">
-                            <span class="DashCard-removeIcon">
-                                <cv-close-icon width="12px" height="12px"></cv-close-icon>
-                            </span>
+                            <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
                         </a>
                         <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
                     </li>
