@@ -276,8 +276,8 @@ var QueryVisualization = React.createClass({
 
                     if(this.props.result.data.rows.length > this.props.tableRowsPerPage) {
                         // we need to show some paging controls
-                        var nextButton,
-                            prevButton,
+                        var hasPrev = (this.state.tablePage > 1),
+                            hasNext = ((this.props.result.data.rows.length - (this.state.tablePage * this.props.tableRowsPerPage)) > 0),
                             offset = ((this.state.tablePage - 1) * this.props.tableRowsPerPage) + 1,
                             limit = (this.state.tablePage * this.props.tableRowsPerPage);
 
@@ -285,17 +285,24 @@ var QueryVisualization = React.createClass({
                             limit = this.props.result.data.rows.length;
                         }
 
-                        if (this.state.tablePage > 1) {
-                            prevButton = (<a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a>);
-                        }
-
-                        if ((this.props.result.data.rows.length - (this.state.tablePage * this.props.tableRowsPerPage)) > 0) {
-                            nextButton = (<a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a>);
+                        var pagingButtons;
+                        if (!hasPrev && !hasNext) {
+                            // no actual paging required
+                            pagingButtons = (<span><span>prev</span> <span>next</span></span>);
+                        } else if (!hasPrev && hasNext) {
+                            // only NEXT button is active
+                            pagingButtons = (<span><span>prev</span> <a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a></span>);
+                        } else if (hasPrev && !hasNext) {
+                            // only PREV button is active
+                            pagingButtons = (<span><a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a> <span>next</span></span>);
+                        } else {
+                            // both PREV and NEXT are active
+                            pagingButtons = (<span><a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a> <a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a></span>);
                         }
 
                         pagingControls = (
                             <div className="mt1">
-                                {prevButton} <b>{offset}</b> - <b>{limit}</b> / <b>{this.props.result.data.rows.length}</b> {nextButton}
+                                <b>{offset}</b> - <b>{limit}</b> of <b>{this.props.result.data.rows.length}</b> {pagingButtons}
                             </div>
                         );
                     }
