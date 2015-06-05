@@ -3,14 +3,12 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
-            (metabase.models [org-perm :refer [OrgPerm]])
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
 
 (defentity User
   (table :core_user)
-  (has-many OrgPerm {:fk :user_id})
   (assoc :hydration-keys #{:author :creator :user}))
 
 ;; fields to return for Users other `*than current-user*`
@@ -29,23 +27,9 @@
           [:is_active
            :is_staff])) ; but not `password` !
 
-(defn user-perms-for-org
-  "Return the permissions level User with USER-ID has for Org with ORG-ID.
-
-     nil      -> no permissions
-     :default -> default permissions
-     :admin   -> admin permissions"
-  [user-id org-id]
-  (when-let [{superuser? :is_superuser} (sel :one [User :is_superuser] :id user-id)]
-    (if superuser? :admin
-        (when-let [{admin? :admin} (sel :one [OrgPerm :admin] :user_id user-id :organization_id org-id)]
-          (if admin? :admin :default)))))
-
-(defmethod post-select User [_ {:keys [id] :as user}]
+(defmethod post-select User [_ user]
   (-> user
-      (assoc :org_perms     (delay (sel :many OrgPerm :user_id id))
-             :perms-for-org (memoize (partial user-perms-for-org id))
-             :common_name   (str (:first_name user) " " (:last_name user)))))
+      (assoc :common_name   (str (:first_name user) " " (:last_name user)))))
 
 (defmethod pre-insert User [_ {:keys [email password] :as user}]
   (assert (u/is-email? email))
@@ -69,7 +53,6 @@
   user)
 
 (defmethod pre-cascade-delete User [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.org-perm/OrgPerm :user_id id)
   (cascade-delete 'metabase.models.session/Session :user_id id))
 
 
@@ -103,13 +86,3 @@
       :password password
       :reset_token nil
       :reset_triggered nil)))
-
-
-(defn users-for-org
-  "Selects the ID and NAME for all users available to the given org-id."
-  [org-id]
-  (->>
-    (sel :many [User :id :first_name :last_name]
-      (where {:id [in (subselect OrgPerm (fields :user_id) (where {:organization_id org-id}))]}))
-    (map #(select-keys % [:id :common_name]))
-    (map #(clojure.set/rename-keys % {:common_name :name}))))

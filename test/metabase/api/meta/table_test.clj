@@ -32,7 +32,7 @@
                             {:name (datasets/format-name *dataset* "users"),      :db_id db-id, :active true, :rows   15, :id (datasets/table-name->id *dataset* :users)}
                             {:name (datasets/format-name *dataset* "venues"),     :db_id db-id, :active true, :rows  100, :id (datasets/table-name->id *dataset* :venues)}])))
                      @datasets/test-dataset-names))
-  (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
+  (->> ((user->client :rasta) :get 200 "meta/table")
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
        set))
 
@@ -48,7 +48,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "VENUES"
        :rows 100
@@ -102,7 +102,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "CATEGORIES"
        :fields [(match-$ (sel :one Field :id (field->id :categories :id))
@@ -417,7 +417,7 @@
                            :created_at $
                            :db (match-$ @test-db
                                  {:description nil,
-                                  :organization_id 1,
+                                  :organization_id nil,
                                   :name "Test Database",
                                   :updated_at $,
                                   :id $,
@@ -456,7 +456,7 @@
   {:result "success"}
   (let [categories-id-field (sel :one Field :table_id (table->id :categories) :name "ID")
         categories-name-field (sel :one Field :table_id (table->id :categories) :name "NAME")
-        api-response ((user->client :rasta) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
+        api-response ((user->client :crowberto) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
                        {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
     (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))

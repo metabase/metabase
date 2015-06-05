@@ -30,12 +30,10 @@ ReserveServices.service('Reserve', ['$resource', '$q', 'Metabase',
         var USER_FIRST_NAME_FIELD_NAME = "firstName";
         var USER_LAST_NAME_FIELD_NAME = "lastName";
 
-        this.queryInfo = function(orgId){
+        this.queryInfo = function() {
             var deferred = $q.defer();
             var queryInfo = {};
-            Metabase.db_list({
-                'orgId': orgId
-            }, function(dbs){
+            Metabase.db_list(function(dbs){
                 dbs.forEach(function(db){
                     if(db.name == RESERVE_DB_NAME){
                         queryInfo.database = db.id;

@@ -39,33 +39,6 @@
              *current-user* (delay (sel :one 'metabase.models.user/User :id ~user-id))]
      ~@body))
 
-(defn current-user-perms-for-org
-  "TODO - A very similar implementation exists in `metabase.models`. Find some way to combine them."
-  [org-id]
-  (when *current-user-id*
-    (let [[{org-id :id
-            [{admin? :admin}] :org-perms}] (select (-> (entity->korma 'metabase.models.org/Org)                ; this is a complicated join but Org permissions checking
-                                                       (entity-fields [:id]))                                  ; is a very common case so optimization is worth it here
-                                                   (where {:id org-id})
-                                                   (with (-> (entity->korma 'metabase.models.org-perm/OrgPerm)
-                                                             (entity-fields [:admin]))
-                                                         (where {:organization_id org-id
-                                                                 :user_id *current-user-id*})))
-            superuser? (sel :one :field ['metabase.models.user/User :is_superuser] :id *current-user-id*)]
-      (check-404 org-id)
-      (cond
-        superuser?      :admin
-        admin?          :admin
-        (false? admin?) :default ; perm still exists but admin = false
-        :else           nil))))
-
-(defmacro org-perms-case
-  "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
-   Case will be `nil`, `:default`, or `:admin`."
-  [org-id & body]
-  `(case (current-user-perms-for-org ~org-id)
-     ~@body))
-
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
 
@@ -469,9 +442,7 @@
       (check-403 @~'can_read)
       obj#))
   ([entity id]
-   (if (= (name entity) "Org")
-     `(check-403 (current-user-perms-for-org ~id)) ; current-user-perms-for-org is faster, optimize this common usage
-     `(read-check (sel :one ~entity :id ~id)))))
+   `(read-check (sel :one ~entity :id ~id))))
 
 (defmacro write-check
   "Checks that `@can_write` is true for this object."
@@ -480,6 +451,4 @@
       (check-403 @~'can_write)
       obj#))
   ([entity id]
-   (if (= (name entity) "Org")
-     `(check-403 (= (current-user-perms-for-org ~id) :admin))
-     `(write-check (sel :one ~entity :id ~id)))))
+   `(write-check (sel :one ~entity :id ~id))))

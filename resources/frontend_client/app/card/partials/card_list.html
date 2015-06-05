@@ -2,7 +2,7 @@
     <div class="col col-sm-12">
         <div class="py2 clearfix">
             <div class="float-right">
-                <a class="Button Button--primary" cv-org-href="/card/create">Create Card</a>
+                <a class="Button Button--primary" href="/card/create">Create Card</a>
             </div>
             <h2>Cards</h2>
         </div>
@@ -29,11 +29,11 @@
                 <li class="List-item List-section" ng-repeat="card in cards | filter:searchFilter ">
                     <div class="float-right my2">
                         <span class="List-timeStamp">{{card.updated_at | date : 'MMM d, y, hh:mm a'}}</span>
-                        <a class="Button mx2" cv-org-href="{{'/card/create?clone=' + card.id}}">Clone</a>
+                        <a class="Button mx2" href="{{'/card/create?clone=' + card.id}}">Clone</a>
                         <a class="Button Button--remove" href="#" ng-click="deleteCard(card.id)" delete-confirm>Delete</a>
                     </div>
                     <h3>
-                        <a class="text-normal link" cv-org-href="/card/{{card.id}}">{{card.name}}</a>
+                        <a class="text-normal link" href="/card/{{card.id}}">{{card.name}}</a>
                     </h3>
                     <h5>Created by: {{card.creator.common_name}}</h5>
                 </li>

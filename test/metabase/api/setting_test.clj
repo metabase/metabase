@@ -26,8 +26,12 @@
         (fetch-all-settings)))
 
 ;; Check that a non-superuser can't read settings
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "setting"))
+(expect
+  [{:value nil
+    :key "site-name"
+    :description "The name used for this instance of Metabase."
+    :default "Metabase"}]
+  ((user->client :rasta) :get 200 "setting"))
 
 
 ;; ## GET /api/setting/:key

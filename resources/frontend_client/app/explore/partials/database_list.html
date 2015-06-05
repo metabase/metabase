@@ -13,7 +13,7 @@
                     <li class="border-bottom py2" ng-repeat="table in database.entities">
                         <span class="float-right text-grey-3 mt2">{{table.rows}} rows</span>
                         <h3 class="text-normal text-brand mt2 mb0">
-                            <a class="link" cv-org-href="/explore/table/{{table.id}}">{{table.entity_name}}</a>
+                            <a class="link" href="/explore/table/{{table.id}}">{{table.entity_name}}</a>
                         </h3>
                         <p class="text-grey-3 mt1">{{table.description}}</p>
                     </li>
@@ -25,7 +25,7 @@
                             <div class="clearfix">
                                 <span class="float-right text-grey-3 mt1">{{table.rows}} rows</span>
                                 <h4 class="text-normal inline-block">
-                                    <a ng-if="table.rows > 0" class="link" cv-org-href="/explore/table/{{table.id}}">
+                                    <a ng-if="table.rows > 0" class="link" href="/explore/table/{{table.id}}">
                                         {{table.name}}
                                     </a>
                                     <span ng-if="table.rows === 0">

@@ -12,7 +12,7 @@
                         <li>
                             <a class="block link py1 px1" href="#" ng-if="!cardSettings || cardSettings.allowAddToDash" cv-add-to-dashboard-modal card="card">Add to Dashboard</a>
                             <li>
-                                <a class="block link py1 px1" cv-org-href="/card/{{card.id}}" ng-if="card.can_write">Modify Card</a>
+                                <a class="block link py1 px1" href="/card/{{card.id}}" ng-if="card.can_write">Modify Card</a>
                             </li>
                             <li>
                                 <a class="block link py1 px1" href="#" ng-if="!cardSettings || cardSettings.allowSend" cv-send-card-modal card="card">Send</a>
@@ -26,7 +26,7 @@
             </div>
             <h3 class="text-normal my1">
                 <a class="Card-title link" href="#" ng-if="(!cardSettings || cardSettings.allowTitleEdits) && card.can_write" editable-text="card.name" onaftersave="inlineSave(card)">{{card.name}}</a>
-                <a class="Card-title link" cv-org-href="/card/{{card.id}}" ng-if="(!cardSettings || !cardSettings.allowTitleEdits)">{{card.name}}</a>
+                <a class="Card-title link" href="/card/{{card.id}}" ng-if="(!cardSettings || !cardSettings.allowTitleEdits)">{{card.name}}</a>
             </h3>
         </div>
     </div>

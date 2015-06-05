@@ -1,10 +1,8 @@
 (ns metabase.models.card
-  (:require [cheshire.core :as cheshire]
-            [korma.core :refer :all]
-            [metabase.api.common :refer [*current-user-id* org-perms-case]]
+  (:require [korma.core :refer :all]
+            [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [org :refer [Org]]
                              [user :refer [User]])))
 
 (def ^:const display-types
@@ -28,10 +26,9 @@
   timestamped
   (assoc :hydration-keys #{:card}))
 
-(defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
+(defmethod post-select Card [_ {:keys [creator_id] :as card}]
   (-> (assoc card
-             :creator      (delay (sel :one User :id creator_id))
-             :organization (delay (sel :one Org :id organization_id)))
+             :creator      (delay (sel :one User :id creator_id)))
       assoc-permissions-sets))
 
 (defmethod pre-cascade-delete Card [_ {:keys [id]}]

@@ -35,7 +35,7 @@
              [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
                                                 ;; If timezone is specified in the Query and the driver supports setting the timezone then execute SQL to set it
                                                 (when-let [timezone (or (-> query :native :timezone)
-                                                                        (-> @(:organization database) :report_timezone))]
+                                                                        (driver/report-timezone))]
                                                   (when-let [timezone->set-timezone-sql (:timezone->set-timezone-sql (driver/database-id->driver database-id))]
                                                     (log/debug "Setting timezone to:" timezone)
                                                     (jdbc/db-do-prepared conn (timezone->set-timezone-sql timezone))))

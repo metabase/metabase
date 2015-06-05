@@ -2,8 +2,8 @@
     <section class="my3 clearfix">
         <div class="py2 float-right">
             <div class="Button-group Button-group--blue text-uppercase text-bold">
-                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'tables' }" cv-org-href="/admin/databases/{{database.id}}/tables/{{table.id}}">Data</a>
-                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'settings' }" cv-org-href="/admin/databases/{{database.id}}/settings">Connection Details</a>
+                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'tables' }" href="/admin/databases/{{database.id}}/tables/{{table.id}}">Data</a>
+                <a class="Button AdminHoverItem" ng-class="{ 'Button--active': pane == 'settings' }" href="/admin/databases/{{database.id}}/settings">Connection Details</a>
             </div>
         </div>
         <h3 class="py2">{{database.name}}</h2>

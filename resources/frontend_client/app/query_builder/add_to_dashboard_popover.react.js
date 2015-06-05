@@ -25,8 +25,7 @@ var AddToDashboardPopover = React.createClass({
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
-            'orgId': this.props.card.organization.id,
-            'filterMode': 'all'
+            'filterMode': 'mine'
         }, function(result) {
             component.setState({
                 dashboards: result
@@ -86,7 +85,6 @@ var AddToDashboardPopover = React.createClass({
 
         // populate a new Dash object
         var newDash = {
-            'organization': this.props.card.organization.id,
             'name': (name && name.length > 0) ? name : null,
             'description': (description && description.length > 0) ? name : null,
             'public_perms': 0
@@ -245,13 +243,13 @@ var AddToDashboardPopover = React.createClass({
             content = this.renderCreateDashboardForm();
         } else if (this.state.newDashSuccess) {
             dashDetails = this.state.newDashSuccess;
-            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashLink = "/dash/"+dashDetails.id;
 
             content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink);
 
         } else if (this.state.existingDashSuccess) {
             dashDetails = this.state.existingDashSuccess;
-            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashLink = "/dash/"+dashDetails.id;
 
             content = this.renderSuccess(this.props.card.name + " was added to " + dashDetails.name, dashLink);
         } else {

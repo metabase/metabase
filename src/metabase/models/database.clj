@@ -1,7 +1,8 @@
 (ns metabase.models.database
   (:require [korma.core :refer :all]
+            [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer :all]
-            [metabase.models.org :refer [Org org-can-read org-can-write]]))
+            [metabase.models.common :refer [assoc-permissions-sets]]))
 
 
 (defentity Database
@@ -12,21 +13,10 @@
   (assoc :hydration-keys #{:database
                            :db}))
 
-(defmethod post-select Database [_ {:keys [organization_id] :as db}]
+(defmethod post-select Database [_ db]
   (assoc db
-         :organization (delay (sel :one Org :id organization_id))
-         :can_read     (delay (org-can-read organization_id))
-         :can_write    (delay (org-can-write organization_id))))
+         :can_read     (delay true)
+         :can_write    (delay (:is_superuser @*current-user*))))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
   (cascade-delete 'metabase.models.table/Table :db_id id))
-
-(defn databases-for-org
-  "Selects the ID and NAME for all databases available to the given org-id."
-  [org-id]
-  (when-let [org (sel :one Org :id org-id)]
-    (if (:inherits org)
-      ;; inheriting orgs see ALL databases
-      (sel :many [Database :id :name] (order :name :ASC))
-      ;; otherwise filter by org-id
-      (sel :many [Database :id :name] :organization_id org-id (order :name :ASC)))))

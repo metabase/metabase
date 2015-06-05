@@ -1,16 +1,21 @@
 (ns metabase.driver
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [medley.core :refer :all]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
+            [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u]))
 
 (declare -dataset-query query-fail query-complete save-query-execution)
+
+;; ## CONFIG
+
+(defsetting report-timezone "Connection timezone to use when executing queries.  Defaults to system timezone.")
+
 
 ;; ## Constants
 

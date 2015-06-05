@@ -11,54 +11,6 @@
 
 var CorvusDirectives = angular.module('corvus.directives', []);
 
-CorvusDirectives.directive('cvOrgHref', ['AppState',
-    function(AppState) {
-        return {
-            restrict: 'A',
-            priority: 99,
-            link: function(scope, element, attr) {
-
-                var buildPath = function(org, path) {
-                    var href;
-                    if (path.slice(0, 1) != '/') {
-                        // path doesn't begin with a slash, so put it in ourselves
-                        href = '/' + org.slug + '/' + path;
-                    } else {
-                        href = '/' + org.slug + path;
-                    }
-
-                    // TODO: the line below was part of the angular ng-href definition,
-                    // but caused an error for me so i commented it out :(
-
-                    // on IE, if "ng:src" directive declaration is used and "src" attribute doesn't exist
-                    // then calling element.setAttribute('src', 'foo') doesn't do anything, so we need
-                    // to set the property as well to achieve the desired effect.
-                    // we use attr[attrName] value since $set can sanitize the url.
-                    //if (msie && 'href') element.prop('href', href);
-
-                    return href;
-                };
-
-                // we are dependent on the value of our attribute, so begin by observing it
-                attr.$observe('cvOrgHref', function(path) {
-                    if (!path) {
-                        attr.$set('href', null);
-                        return;
-                    }
-
-                    if (AppState.model.currentOrg) {
-                        attr.$set('href', buildPath(AppState.model.currentOrg, path));
-                    }
-
-                    scope.$on('appstate:organization', function (event, org) {
-                        attr.$set('href', buildPath(org, path));
-                    });
-                });
-            }
-        };
-    }
-]);
-
 CorvusDirectives.directive('deleteConfirm', [function() {
     return {
         priority: 1,
@@ -192,14 +144,12 @@ NavbarDirectives.directive('mbProfileLink', [function () {
 
     function link($scope, element, attr) {
 
-        $scope.userIsAdmin = false;
         $scope.userIsSuperuser = false;
 
         $scope.$watch('user', function (user) {
             if (!user) return;
 
             // extract a couple informational pieces about user
-            $scope.userIsAdmin = user.adminOf();
             $scope.userIsSuperuser = user.is_superuser;
 
             // determine initials for profile logo
@@ -229,10 +179,8 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
                                 '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
-                                '<li><a class="link" ng-if="userIsAdmin && context == \'main\'" cv-org-href="/admin/">Admin</a></li>' +
-                                '<li><a class="link" ng-if="userIsAdmin && context == \'admin\'" cv-org-href="/">Exit Admin</a></li>' +
-                                '<li><a class="link" ng-if="userIsSuperuser && context != \'superadmin\'" href="/superadmin/">Site Administration</a></li>' +
-                                '<li><a class="link" ng-if="userIsSuperuser && context == \'superadmin\'" href="/">Exit Site Administration</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context != \'admin\'" href="/admin/">Administration</a></li>' +
+                                '<li><a class="link" ng-if="userIsSuperuser && context == \'admin\'" href="/">Exit Administration</a></li>' +
                                 '<li><a class="link" href="/auth/logout">Logout</a></li>' +
                             '</ul>' +
                         '</li>' +

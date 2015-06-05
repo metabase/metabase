@@ -6,7 +6,6 @@
             (metabase [db :refer :all]
                       [http-client :as http])
             (metabase.models [field :refer [Field]]
-                             [org-perm :refer [OrgPerm]]
                              [table :refer [Table]]
                              [user :refer [User]])
             [metabase.test-data.load :as load])
@@ -84,22 +83,9 @@
   (sel :one Table :id (table->id table-name)))
 
 
-;; ## Test Organization
-
-(def test-org
-  "The test Organization."
-  (delay (setup-db-if-needed :auto-migrate true)
-         (load/test-org)))
-
-(def org-id
-  "The ID of the test Organization."
-  (delay (assert @test-org)
-         (:id @test-org)))
-
-
 ;; ## Test Users
 ;;
-;; These users have permissions for the Test Org. They are lazily created as needed.
+;; These users have permissions for the Test. They are lazily created as needed.
 ;; Three test users are defined:
 ;; *  rasta     - an admin
 ;; *  crowberto - an admin + superuser
@@ -164,12 +150,6 @@
                   ;; If we got a 401 unauthenticated clear the tokens cache + recur
                   (do (reset! tokens {})
                       (apply call-client args))))))))
-
-(defn user->org-perm
-  "Return the `OrgPerm` for User with USERNAME for the Test Org."
-  [username]
-  {:pre [(contains? usernames username)]}
-  (sel :one OrgPerm :organization_id @org-id :user_id (user->id username)))
 
 
 ;; ## Temporary Tables / Etc.
@@ -282,7 +262,7 @@
   (set (keys user->info)))
 
 (defn- fetch-or-create-user
-  "Create User + OrgPerms if they don't already exist and return User."
+  "Create User if they don't already exist and return User."
   [& {:keys [email first last password admin superuser active]
       :or {admin false
            superuser false
@@ -293,15 +273,12 @@
          (string? password)
          (medley/boolean? admin)
          (medley/boolean? superuser)]}
-  (let [org @test-org]                 ; we're derefing test-org here to force lazy loading of DB
-    (or (sel :one User :email email)
-        (let [user (ins User
-                     :email email
-                     :first_name first
-                     :last_name last
-                     :password password
-                     :is_superuser superuser
-                     :is_active active)]
-          (or (exists? OrgPerm :organization_id (:id org) :user_id (:id user))
-              (ins OrgPerm :organization_id (:id org) :user_id (:id user) :admin admin))
-          user))))
+  (or (sel :one User :email email)
+      (let [user (ins User
+                   :email email
+                   :first_name first
+                   :last_name last
+                   :password password
+                   :is_superuser superuser
+                   :is_active active)]
+        user)))

@@ -24,7 +24,7 @@
                         :details $
                         :updated_at $
                         :name "Test Database"
-                        :organization_id @org-id
+                        :organization_id nil
                         :description nil})
                  :name "USERS"
                  :rows 15
@@ -74,7 +74,7 @@
        :preview_display true
        :created_at $
        :base_type "FloatField"})
-  ((user->client :rasta) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
+  ((user->client :crowberto) :put 200 (format "meta/field/%d" (field->id :venues :latitude)) {:special_type :fk}))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
@@ -116,10 +116,10 @@
         :updated_at $
         :created_at $
         :id $})]
-  [((user->client :rasta) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price)) {:values_map {:1 "$"
-                                                                                                                       :2 "$$"
-                                                                                                                       :3 "$$$"
-                                                                                                                       :4 "$$$$"}})
+  [((user->client :crowberto) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price)) {:values_map {:1 "$"
+                                                                                                                           :2 "$$"
+                                                                                                                           :3 "$$$"
+                                                                                                                           :4 "$$$$"}})
    ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))])
 
 ;; Check that we can unset values
@@ -136,13 +136,13 @@
                                                                                            :2 "$$"
                                                                                            :3 "$$$"
                                                                                            :4 "$$$$"})
-       ((user->client :rasta) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price))
+       ((user->client :crowberto) :post 200 (format "meta/field/%d/value_map_update" (field->id :venues :price))
         {:values_map {}}))
    ((user->client :rasta) :get 200 (format "meta/field/%d/values" (field->id :venues :price)))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
 (expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
-  ((user->client :rasta) :post 400 (format "meta/field/%d/value_map_update" (field->id :venues :id))
+  ((user->client :crowberto) :post 400 (format "meta/field/%d/value_map_update" (field->id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"
                  :3 "$$$"

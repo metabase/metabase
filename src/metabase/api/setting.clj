@@ -5,10 +5,12 @@
             (metabase.models [setting :as setting])))
 
 (defendpoint GET "/"
-  "Get all `Settings` and their values. You must be a superuser to do this."
+  "Get all `Settings` and their values. Superusers get all settings, normal users get public settings only."
   []
-  (check-superuser)
-  (setting/all-with-descriptions))
+  (if (:is_superuser @*current-user*)
+    (setting/all-with-descriptions)
+    ;; TODO - we could make this a little more dynamic
+    (filter #(= (:key %) :site-name) (setting/all-with-descriptions))))
 
 (defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
