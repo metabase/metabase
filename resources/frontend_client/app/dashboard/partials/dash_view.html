@@ -1,6 +1,19 @@
 <div class="Dashboard">
     <div class="wrapper">
-        <header class="py2 px2 clearfix">
+        <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
+            <div class="my4 py4 text-brand">
+                <mb-loading-icon></mb-loading-icon>
+                <h1 class="text-normal text-grey-2">Loading...</h1>
+            </div>
+        </div>
+
+        <div class="text-centered my4 py4" ng-if="dashboardLoaded && dashboardLoadError">
+            <div class="my4 py4 text-error">
+                <h1 class="text-error text-grey-2">{{dashboardLoadError}}</h1>
+            </div>
+        </div>
+
+        <header class="py2 px2 clearfix" ng-if="dashboardLoaded && !dashboardLoadError">
             <div class="float-right">
 	            <!-- <a class="Button" ng-click="toggleSubscribe()" ng-if="dashboard">{{toggleSubscribeButtonText()}}</a> -->
                 <div class="mx1 inline-block">
@@ -22,14 +35,7 @@
             </p>
         </header>
 
-        <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
-            <div class="my4 py4 text-brand">
-                <mb-loading-icon></mb-loading-icon>
-                <h1 class="text-normal text-grey-2">Loading...</h1>
-            </div>
-        </div>
-
-        <div class="text-centered my4 py4" ng-if="dashboardLoaded && !dashcards.length > 0">
+        <div class="text-centered my4 py4" ng-if="dashboardLoaded && !dashboardLoadError && !dashcards.length > 0">
             <h1 class="text-normal text-grey-2 mt4 pt4">No cards have been added to this dashboard.</h1>
             <a class="Button Button--primary" href="/card/create">Create Card</a>
         </div>
