@@ -30,14 +30,14 @@
                         </a>
                         <ul class="Dropdown-content" ng-controller="DashList">
                             <li ng-repeat="dash in dashboards">
-                                <a class="Dropdown-item text-white block text-normal" cv-org-href="/dash/{{dash.id}}">
+                                <a class="Dropdown-item link block text-normal" cv-org-href="/dash/{{dash.id}}">
                                     {{dash.name}}
                                     <span class="Badge">{{dash.public_perms}}</span>
                                 </a>
                             </li>
                         </ul>
                     </div>
-                    <div class="Dropdown" dropdown on-toggle="toggled(open)">
+                    <div class="UserDropdown Dropdown" dropdown on-toggle="toggled(open)">
                         <a class="NavItem text-white" selectable-nav-item="settings" dropdown-toggle>
                             <span class="NavItem-text" ng-if="!user.first_name">Me</span>
                             <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>

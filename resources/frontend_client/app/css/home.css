@@ -1,11 +1,11 @@
 .Greeting {
-    margin-top: 6em;
-    margin-bottom: 6em;
-    font-size: 1.5375em;
+    padding-top: 6em;
+    padding-bottom: 6em;
 }
 
 .Greeting-title,
 .Greeting-subtitle {
+    font-size: 1.5375em;
     font-weight: 100;
 }
 
@@ -13,15 +13,14 @@
     opacity: 0.575;
 }
 
-.DashboardDropdown .Dropdown-content {
-    top: 63px;
+.DashboardDropdown {
+
 }
 
+.UserDropdown {
+    margin-left: auto;
+}
 
-.Entity {}
-
-.Entity-title {}
-
-.Entity-attribution {}
-
-.Entity-editLink {}
+.Entity-title {
+    font-size: 1.456em;
+}

@@ -57,7 +57,7 @@
     <div ng-if="!cardDataEmpty && !cardRenderingError && !cardData.error" ng-switch="card.display">
 
         <div ng-switch-when="scalar" class="Card--scalar">
-            <h1 class="Card-scalarValue text-normal px1">{{cardData.rows[0][0]}}</h1>
+            <h1 class="Card-scalarValue text-normal">{{cardData.rows[0][0]}}</h1>
         </div>
 
         <div ng-switch-when="table" class="Card--table scroll-x scroll-y" id="{{chartId}}">

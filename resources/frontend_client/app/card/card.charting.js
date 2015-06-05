@@ -313,6 +313,7 @@ function applyChartColors(dcjsChart, card) {
 
 function applyChartTooltips(dcjsChart, card) {
     // set the title (tooltip) function for points / bars on the chart
+    console.log('tip tip tip');
     return dcjsChart.title(function(d) {
         var commasFormatter = d3.format(",.0f");
         return d.key + ": " + commasFormatter(d.value);

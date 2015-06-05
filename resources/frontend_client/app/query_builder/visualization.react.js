@@ -326,7 +326,7 @@ export default React.createClass({
         });
 
         return (
-            <div className="relative full flex flex-column">
+            <div className="wrapper relative full flex flex-column">
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {queryModified}
                 </ReactCSSTransitionGroup>

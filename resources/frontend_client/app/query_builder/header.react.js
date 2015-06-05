@@ -197,7 +197,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="QueryHeader QueryBuilder-section flex align-center">
+            <div className="QueryHeader QueryBuilder-section wrapper flex align-center">
                 <div className="QueryHeader-details">
                     <h1 className="QueryName">{title}</h1>
                     {this.permissions()}

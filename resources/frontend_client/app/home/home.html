@@ -1,69 +1,70 @@
-<div class="wrapper">
-
-    <div class="Greeting">
-        <h2 class="Greeting-title">Good morning, Kyle</h2>
-        <h2 class="Greeting-subtitle">What do you want to know?</h2>
-    </div>
-
-    <div class="flex">
-        <a class="inline-block" href="#" ng-click="current = 'data'">I have a new question</a>
-        <a class="inline-block" href="#" ng-click="current = null">An existing question</a>
-    </div>
-
-    <div class="mt4" ng-controller="CardList" ng-if="current != 'data'">
-        <div class="Button-group">
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">Popular</a>
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">Mine</a>
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'fav' }" ng-click="filter('fav')">Favorite</a>
-        </div>
-
-        <div ng-if="!cards">
-            <h1 clas="text-normal text-centered">Loading ...</h1>
-        </div>
-
-        <ul>
-            <li class="HoverItem" ng-repeat="card in cards | filter:searchFilter ">
-                <h2><a class="text-normal link" cv-org-href="/card/{{card.id}}">{{card.name}}</a></h2>
-                <h5>Asked by: {{card.creator.common_name}}</h5>
-            </li>
-        </ul>
-    </div>
-
-    <div ng-controller="ExploreDatabaseList" ng-if="current === 'data'">
-        <h1>Your data</h1>
-
-        <div ng-repeat="(dbId, database) in databases">
-            <div class="mt2 py2 clearfix">
-                <h2>{{currentDB.name}}</h2>
+<div>
+    <div class="Greeting border-bottom">
+        <div class="Grid wrapper">
+            <div class="Grid-cell">
+                <h1 class="Greeting-title">Good morning, Kyle</h1>
+                <h1 class="Greeting-subtitle">What do you want to know?</h1>
             </div>
-            <ul class="clearfix">
-                <li class="py4" ng-repeat="table in database.entities">
-                    <span class="float-right text-grey-3 mt2">{{table.rows}} rows</span>
-                    <h3 class="text-normal text-brand mt2 mb0">
-                        <a class="link" cv-org-href="/card/create">{{table.entity_name}}</a>
-                    </h3>
-                    <p class="text-grey-3 mt1">{{table.description}}</p>
+            <div class="Grid-cell">
+                <a class="inline-block" href="#" ng-click="current = 'data'">I have a new question</a>
+                <a class="inline-block" href="#" ng-click="current = null">An existing question</a>
+                <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">Popular</a>
+                <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">Mine</a>
+                <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'fav' }" ng-click="filter('fav')">Favorite</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <div class="mt4" ng-controller="CardList" ng-if="current != 'data'">
+
+            <div ng-if="!cards">
+                <h1 clas="text-normal text-centered">Loading ...</h1>
+            </div>
+
+            <ul>
+                <li class="HoverItem" ng-repeat="card in cards | filter:searchFilter ">
+                    <h2><a class="text-normal link" cv-org-href="/card/{{card.id}}">{{card.name}}</a></h2>
+                    <h5>Asked by: {{card.creator.common_name}}</h5>
                 </li>
             </ul>
-            <div>
-                <h5 class="text-bold mb2" ng-if="database.entities.length > 0">Other tables</h5>
-                <ul>
-                    <li class="border-bottom py3" ng-repeat="table in database.non_entities">
-                        <div class="clearfix">
-                            <span class="float-right text-grey-3 mt1">{{table.rows}} Total</span>
-                            <h4 class="text-normal inline-block">
-                                <a ng-if="table.rows > 0" class="link" cv-org-href="/card/create">
-                                    {{table.name}}
-                                </a>
-                                <span ng-if="table.rows === 0">
-                                    {{table.name}}
-                                </span>
-                            </h4>
-                        </div>
-                        <p class="text-grey-3 m0 pb1" ng-if="table.description">{{table.description}}</p>
+        </div>
+
+        <div ng-controller="ExploreDatabaseList" ng-if="current === 'data'">
+
+            <div ng-repeat="(dbId, database) in databases">
+                <div class="mt2 py2 clearfix">
+                    <h2>{{currentDB.name}}</h2>
+                </div>
+                <ul class="clearfix">
+                    <li class="py4" ng-repeat="table in database.entities">
+                        <span class="float-right text-grey-3 mt2">{{table.rows}} rows</span>
+                        <h3 class="text-normal text-brand mt2 mb0">
+                            <a class="link" cv-org-href="/card/create">{{table.entity_name}}</a>
+                        </h3>
+                        <p class="text-grey-3 mt1">{{table.description}}</p>
                     </li>
                 </ul>
-            </div>
-          </div>
+                <div>
+                    <h5 class="text-bold mb2" ng-if="database.entities.length > 0">Other tables</h5>
+                    <ul>
+                        <li class="border-bottom py3" ng-repeat="table in database.non_entities">
+                            <div class="clearfix">
+                                <span class="float-right text-grey-3 mt1">{{table.rows}} Total</span>
+                                <h4 class="text-normal inline-block">
+                                    <a ng-if="table.rows > 0" class="link" cv-org-href="/card/create">
+                                        {{table.name}}
+                                    </a>
+                                    <span ng-if="table.rows === 0">
+                                        {{table.name}}
+                                    </span>
+                                </h4>
+                            </div>
+                            <p class="text-grey-3 m0 pb1" ng-if="table.description">{{table.description}}</p>
+                        </li>
+                    </ul>
+                </div>
+              </div>
+        </div>
     </div>
 </div>
