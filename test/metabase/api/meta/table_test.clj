@@ -174,7 +174,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "USERS"
        :fields [(match-$ (sel :one Field :id (field->id :users :id))
@@ -274,7 +274,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "USERS"
        :fields [(match-$ (sel :one Field :id (field->id :users :id))
