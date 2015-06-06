@@ -375,6 +375,10 @@ function lineAndBarOnRender(dcjsChart, card) {
         });
 
     } catch (e) {}
+
+    // adjust the margins to fit the Y-axis tick label sizes, and rerender
+    dcjsChart.margins().left = dcjsChart.select(".axis.y")[0][0].getBBox().width + 20;
+    dcjsChart.render();
 }
 
 
