@@ -26,9 +26,8 @@
                 </div>
 
             <div class="flex-align-right">
-                <a class="Button flex align-center" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
+                <a ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
                     <mb-icon name="grid" width="16px" height="16px"></mb-icon>
-                    <span class="px1">{{editingText}}</span>
                 </a>
             </div>
         </header>
@@ -62,4 +61,7 @@
             </div>
         </div>
     </div>
+</div>
+
+<div ng-if="editing">
 </div>

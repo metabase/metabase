@@ -24,13 +24,13 @@
                     </a>
                     <div class="DashboardDropdown Dropdown ml4" dropdown on-toggle="toggled(open)">
                         <a class="NavItem NavItem-withIcon text-white flex align-center" dropdown-toggle>
-                            <mb-icon name="dashboards"></mb-icon>
+                            <mb-icon name="dashboards" width="28px" height="28px"></mb-icon>
                             Dashboards
                             <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                         </a>
                         <ul class="Dropdown-content" ng-controller="DashList">
                             <li ng-repeat="dash in dashboards">
-                                <a class="Dropdown-item link block text-normal" cv-org-href="/dash/{{dash.id}}">
+                                <a class="Dropdown-item link block text-normal" href="/dash/{{dash.id}}">
                                     {{dash.name}}
                                     <span class="Badge">{{dash.public_perms}}</span>
                                 </a>

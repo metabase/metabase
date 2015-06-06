@@ -50,6 +50,10 @@
     padding-right: 2em;
 }
 
+.Dropdown .Dropdown-item .link:hover {
+    text-decoration: none;
+}
+
 .Dropdown-item:hover {
     color: #fff;
     background-color: var(--brand-color);

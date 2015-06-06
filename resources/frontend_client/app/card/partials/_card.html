@@ -94,15 +94,6 @@
             <div id="{{'card-title--' + chartId}}" class="text-centered"></div>
             <div id="{{'card-inner--' + chartId}}" class="card-inner"></div>
         </div>
-
-        <div class="Card-footing py1 px2 clearfix" id="{{chartId + '_footing'}}">
-            <a class="Card-dataSource float-right" ng-if="dataset_info.title" href="{{dataset_info.link}}">{{dataset_info.title}}</a>
-            <div class="py1" ng-if="card.creator && ((card.creator.last_name && card.creator.first_name) || card.creator.email)">
-                By:
-                <span ng-if="card.creator.first_name && card.creator.last_name">{{card.creator.first_name}} {{card.creator.last_name}}</span>
-                <span ng-if="(!(card.creator.first_name && card.creator.last_name)) && card.creator.email">{{card.creator.email}}</span>
-            </div>
-        </div>
     </div>
 
 </div>
