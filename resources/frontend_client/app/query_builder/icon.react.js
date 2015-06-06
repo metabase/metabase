@@ -1,5 +1,6 @@
 'use strict';
-/* global ICON_PATHS */
+
+import ICON_PATHS from 'metabase/icon_paths';
 
 export default React.createClass({
     displayName: 'Icon',

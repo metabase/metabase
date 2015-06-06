@@ -56,6 +56,12 @@ module.exports = {
         ]
     },
 
+    resolve: {
+        alias: {
+            'metabase': __dirname + '/resources/frontend_client/app'
+        }
+    },
+
     plugins: [
         // Automatically annotates angular functions (from "function($foo) {}" to "['$foo', function($foo) {}]")
         // so minification doesn't break dependency injections
