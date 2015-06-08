@@ -14,7 +14,7 @@ var glob = require('glob');
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
 // All JS files except dist and test
-var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + '{dist,test}/**/*.js' });
+var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + '{bower_components,dist,test}/**/*.js' });
 // All CSS files in app/css and app/components
 var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH + 'components/**/*.css'));
 
