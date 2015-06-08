@@ -53,12 +53,48 @@ module.exports = {
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
+            /node_modules\/(angular|ng-|ace|react|moment|underscore|jquery|d3|crossfilter)/ // doesn't include 'dc' and 'tether' due to use of 'require'
         ]
     },
 
     resolve: {
+        modulesDirectories: [],
         alias: {
-            'metabase': __dirname + '/resources/frontend_client/app'
+            'metabase':             __dirname + '/resources/frontend_client/app',
+
+            // angular
+            'angular':              __dirname + '/node_modules/angular/angular.min.js',
+            'angular-animate':      __dirname + '/node_modules/angular-animate/angular-animate.min.js',
+            'angular-cookies':      __dirname + '/node_modules/angular-cookies/angular-cookies.min.js',
+            'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
+            'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
+            'angular-sanitize':     __dirname + '/node_modules/angular-sanitize/angular-sanitize.min.js',
+            // angular 3rd-party
+            'angular-bootstrap':    __dirname + '/node_modules/angular-bootstrap/dist/ui-bootstrap-tpls.min.js',
+            'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
+            'angular-gridster':     __dirname + '/node_modules/angular-gridster/dist/angular-gridster.min.js',
+            'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
+            'angular-readable-time':__dirname + '/node_modules/angular-readable-time/angular-readable-time.min.js',
+            'angular-xeditable':    __dirname + '/node_modules/angular-xeditable/dist/js/xeditable.min.js',
+            'ng-sortable':          __dirname + '/node_modules/ng-sortable/dist/ng-sortable.min.js',
+            'angularytics':         __dirname + '/node_modules/angularytics/dist/angularytics.min.js',
+            'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
+            // ace
+            'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
+            'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
+            'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
+            'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
+            // react
+            'react':                __dirname + '/node_modules/react/dist/react-with-addons.js',
+            'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
+            'react-datepicker':     __dirname + '/node_modules/react-datepicker/react-datepicker.js',
+            'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
+            'tether':               __dirname + '/node_modules/tether/tether.min.js',
+            'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
+            'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
+            'd3':                   __dirname + '/node_modules/d3/d3.min.js',
+            'crossfilter':          __dirname + '/node_modules/crossfilter/crossfilter.min.js',
+            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
         }
     },
 

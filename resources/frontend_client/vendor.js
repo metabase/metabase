@@ -5,7 +5,7 @@
 // angular:
 import 'angular';
 import 'angular-animate';
-import 'angular-cookies/angular-cookies';
+import 'angular-cookies';
 import 'angular-resource';
 import 'angular-route';
 import 'angular-sanitize';
@@ -14,22 +14,21 @@ import 'angular-sanitize';
 import 'angular-bootstrap';
 import 'angular-cookie';
 import 'angular-gridster';
-import 'angular-http-auth/src/http-auth-interceptor'; // currently pulled from unofficial fork: https://github.com/witoldsz/angular-http-auth/pull/100
-import 'angular-readable-time/angular-readable-time';
-import 'angular-xeditable/dist/js/xeditable';
-import 'ng-sortable/dist/ng-sortable';
+import 'angular-http-auth'; // currently pulled from unofficial fork: https://github.com/witoldsz/angular-http-auth/pull/100
+import 'angular-readable-time';
+import 'angular-xeditable';
+import 'ng-sortable';
 import 'angularytics';
 
 // ace:
 import 'angular-ui-ace';
-import 'ace-builds/src-min-noconflict/ace';
-import 'ace-builds/src-min-noconflict/ext-language_tools';
-import 'ace-builds/src-min-noconflict/mode-sql';
-import 'ace-builds/src-min-noconflict/snippets/sql';
+import 'ace/ace';
+import 'ace/ext-language_tools';
+import 'ace/mode-sql';
+import 'ace/snippets/sql';
 
 // react:
 window.React = require('react');
-require('react/addons');
 
 // misc:
 window._ = require('underscore');
