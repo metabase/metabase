@@ -36,7 +36,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     function isDimension(field) {
-        return isDate(field) || isCategory(field);
+        return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']);
     }
 
 
