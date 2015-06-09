@@ -11,7 +11,7 @@
    (timestamp year month day 0 0)))
 
 ;; [name last_login]
-(defonce ^:private users
+(defonce users
   (let [rando-password (fn [] (str (java.util.UUID/randomUUID)))]
     [["Plato Yeshua"        #inst "2014-04-01T08:30:00.000000000-00:00" (rando-password)]
      ["Felipinho Asklepios" #inst "2014-12-05T15:15:00.000000000-00:00" (rando-password)]
@@ -30,7 +30,7 @@
      ["Rüstem Hebel"        #inst "2014-08-01T12:45:00.000000000-00:00" (rando-password)]]))
 
 ;; name
-(defonce ^:private categories
+(defonce categories
   [["African"]
    ["American"]
    ["Artisan"]
@@ -108,7 +108,7 @@
    ["Winery"]])
 
 ;; [name lat lon price category_id]
-(defonce ^:private venues
+(defonce venues
   [["Red Medicine" 10.0646 -165.374 3 4]
    ["Stout Burgers & Beers" 34.0996 -118.329 2 11]
    ["The Apple Pan" 34.0406 -118.428 2 11]
@@ -211,7 +211,7 @@
    ["Mohawk Bend" 34.0777 -118.265 2 46]])
 
 ;; [user_id venue_id timestamp]
-(defonce ^:private checkins
+(defonce checkins
   [[5 12 (timestamp 2014 4 7)]
    [1 31 (timestamp 2014 9 18)]
    [8 56 (timestamp 2014 9 15)]

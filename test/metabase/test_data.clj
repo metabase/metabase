@@ -8,7 +8,9 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]]
                              [user :refer [User]])
-            [metabase.test-data.load :as load])
+            [metabase.test.data :refer :all]
+            (metabase.test.data [data :as data]
+                                [h2 :as h2]))
   (:import com.metabase.corvus.api.ApiException))
 
 (declare fetch-or-create-user
@@ -20,34 +22,9 @@
 
 ;; # PUBLIC FUNCTIONS / VARS
 
-;; ## Test Database / Tables / Fields
-;;
-;; Data is structured as follows:
-;; *  users - 15 rows
-;;    *  id
-;;    *  name
-;;    *  last_login
-;;    *  password (sensitive)
-;; *  categories - 75 rows
-;;    *  id
-;;    *  name
-;; *  venues - 100 rows
-;;    *  id
-;;    *  name
-;;    *  latitude
-;;    *  longitude
-;;    *  price           number of $$$. 0 if unknown, otherwise between 1-4.
-;;    *  category_id
-;; *  checkins - 1000 rows
-;;    *  id
-;;    *  user_id
-;;    *  venue_id
-;;    *  date
-
 (def test-db
   "The test `Database` object."
-  (delay (setup-db-if-needed :auto-migrate true)
-         (load/test-db)))
+  (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
 
 (def db-id
   "The ID of the test `Database`."
@@ -154,6 +131,7 @@
 
 ;; ## Temporary Tables / Etc.
 
+;; DEPRECATED ! Need to rewrite this to use the new TableDefinition stuff
 (defmacro with-temp-table
   "Execute BODY with a temporary Table that will be dropped afterward.
    The korma entity representing the Table is bound to TABLE-BINDING.
@@ -171,17 +149,17 @@
                                      (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
                               (interpose ", ")
                               (reduce str))]
-    `(load/with-test-db
-       (k/exec-raw load/*test-db* (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
-       (k/exec-raw load/*test-db* (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
-       (let [~table-binding (-> (k/create-entity ~table-name)
-                                (k/database load/*test-db*))]
-         (try
-           ~@body
-           (catch Throwable e#
-             (println "E: " e#))
-           (finally
-             (k/exec-raw load/*test-db* (format "DROP TABLE \"%s\";" ~table-name))))))))
+    `(do (get-or-create-database! (h2/dataset-loader) data/test-data)
+         (h2/exec-sql data/test-data (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
+         (h2/exec-sql data/test-data (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
+         (let [~table-binding (h2/korma-entity (map->TableDefinition {:table-name ~table-name})
+                                               data/test-data)]
+           (try
+             ~@body
+             (catch Throwable e#
+               (println "E: " e#))
+             (finally
+               (h2/exec-sql data/test-data (format "DROP TABLE \"%s\";" ~table-name))))))))
 
 
 ;; # INTERNAL
@@ -209,11 +187,9 @@
     :private true}
   tables
   (delay
-   @test-db ; force lazy evaluation of Test DB
-    (map-table-kws (fn [table-kw]
-                     (->> (-> table-kw name .toUpperCase)
-                          (sel :one [Table :id] :db_id @db-id :name)
-                          :id)))))
+   @test-db                         ; force lazy evaluation of Test DB
+   (map-table-kws (fn [table-kw]
+                    (sel :one :id Table, :db_id @db-id, :name (-> table-kw name .toUpperCase))))))
 
 (def
   ^{:doc "A map of Table name keywords -> map of Field name keywords -> Field IDs.
