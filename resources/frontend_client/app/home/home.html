@@ -51,7 +51,7 @@
                                 </span>
                             </div>
                             <div class="flex flex-align-right">
-                                <mb-icon class="text-grey-1 mr4" name="star" width="18px" height="18px" ng-click="console.log('derp');"></mb-icon>
+                                <mb-icon class="text-grey-1 mr4" name="star" width="18px" height="18px" ng-click="toggleFavorite(card.id, $event)"></mb-icon>
                                 <mb-icon class="text-grey-1 flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
                             </div>
                         </a>
@@ -72,7 +72,7 @@
                         </span>
                         <ul class="Dropdown-content">
                             <li ng-repeat="(id, db) in databases">
-                                <a class="Dropdown-item h6 block" ng-click="selectCurrentDB(id)">
+                                <a class="Dropdown-item block" ng-click="selectCurrentDB(id)">
                                     {{db.name}}
                                 </a>
                             </li>
