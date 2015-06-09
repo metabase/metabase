@@ -1,9 +1,9 @@
 {
-  "name": "corvus",
+  "name": "metabase",
   "private": true,
   "version": "0.0.0",
-  "description": "Expa Analytics",
-  "repository": "https://github.com/expa/data",
+  "description": "Metabase Analytics Report Server",
+  "repository": "https://github.com/metabase/metabase-init",
   "license": "private",
   "engines": {
     "node": "0.10.25"
