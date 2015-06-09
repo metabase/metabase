@@ -4,12 +4,11 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
-            [metabase.test-data :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [random-name expect-eval-actual-first]]))
 
 ;; ## POST /api/session
 ;; Test that we can login

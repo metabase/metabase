@@ -10,9 +10,9 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [user :refer [User]])
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]))
 
 ;; # DASHBOARD LIFECYCLE
 

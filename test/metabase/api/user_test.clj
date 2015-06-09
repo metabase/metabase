@@ -7,9 +7,9 @@
             [metabase.middleware.auth :as auth]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same

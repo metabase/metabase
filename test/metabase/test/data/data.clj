@@ -1,7 +1,7 @@
 (ns metabase.test.data.data
   "The `DatabaseDefinition` and data of the primary test dataset."
-  (:require [metabase.test.data :refer :all]
-            [metabase.test-data.data :as test-data])
+  (:require [metabase.test-data.data :as test-data]
+            [metabase.test.data.interface :refer :all])
   (:import metabase.test.data.interface.DatabaseDefinition))
 
 ;; ## Test Database / Tables / Fields

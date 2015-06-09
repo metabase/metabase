@@ -4,9 +4,9 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first]]
-            [metabase.test-data :refer :all]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.

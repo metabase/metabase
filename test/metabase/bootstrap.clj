@@ -1,9 +1,9 @@
 (ns metabase.bootstrap
   "Functions for creating new Orgs/Users from the command-line / REPL."
-  (:require (metabase [db :refer :all]
-                      [test-data :as data])
+  (:require [metabase.db :refer :all]
             (metabase.models [database :refer [Database]]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.test.data :refer :all]))
 
 (declare bootstrap-user
          prompt-read-line

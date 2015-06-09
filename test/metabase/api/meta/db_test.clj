@@ -5,9 +5,9 @@
             [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])
+            [metabase.test.data :refer :all]
             (metabase.test.data [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
 
 ;; HELPER FNS

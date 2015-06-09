@@ -10,8 +10,8 @@
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
-            [metabase.test-data :refer :all]
-            [metabase.test.util :refer [resolve-private-fns]]))
+            (metabase.test [data :refer :all]
+                           [util :refer [resolve-private-fns]])))
 
 (def users-table
   (delay (sel :one Table :name "USERS")))

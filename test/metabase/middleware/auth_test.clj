@@ -5,8 +5,8 @@
             [metabase.api.common :refer [*current-user-id* *current-user*]]
             [metabase.middleware.auth :refer :all]
             [metabase.models.session :refer [Session]]
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test-data :refer :all]
             [metabase.util :as util]))
 
 ;;  ===========================  TEST wrap-sessionid middleware  ===========================

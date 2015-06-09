@@ -2,9 +2,9 @@
   (:require [expectations :refer :all]
             [medley.core :as m]
             [metabase.models.hydrate :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test-data :refer :all]
-            [metabase.test.util :refer :all]))
+            (metabase.test [data :refer :all]
+                           [util :refer :all])
+            [metabase.test.data.users :refer :all]))
 
 (def d1 (delay 1))
 (def d2 (delay 2))

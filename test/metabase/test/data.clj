@@ -5,42 +5,15 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
-                             [field :refer [Field] :as field])
-            [metabase.test.data.interface :refer :all])
+                             [field :refer [Field] :as field]
+                             [table :refer [Table]])
+            (metabase.test.data [data :as data]
+                                [h2 :as h2]
+                                [interface :refer :all]))
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
                                          TableDefinition)))
-
-;; ## Functions for Creating New Definitions
-
-(defn create-field-definition
-  "Create a new `FieldDefinition`; verify its values."
-  ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
-  (assert (contains? field/base-types base-type))
-  (when field-type
-    (assert (contains? field/field-types field-type)))
-  (when special-type
-    (assert (contains? field/special-types special-type)))
-  (map->FieldDefinition field-definition-map))
-
-(defn create-table-definition
-  "Convenience for creating a `TableDefinition`."
-  ^TableDefinition [^String table-name field-definition-maps rows]
-  (map->TableDefinition {:table-name          table-name
-                         :rows                rows
-                         :field-definitions   (mapv create-field-definition field-definition-maps)
-                         :database-definition (promise)}))
-
-(defn create-database-definition
-  "Convenience for creating a new `DatabaseDefinition`."
-  ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
-  {:pre [(string? database-name)
-         (not (s/blank? database-name))]}
-  (map->DatabaseDefinition {:database-name     database-name
-                            :table-definitions (mapv (partial apply create-table-definition)
-                                                     table-name+field-definition-maps+rows)}))
-
 
 ;; ## Loading / Deleting Test Datasets
 
@@ -104,4 +77,78 @@
   (drop-physical-db! dataset-loader database-definition))
 
 
-;; ## Helper Functions for Writing Tests
+;; ## Helper Functions for Using the Default (H2) Dataset For Writing Tests
+
+(def test-db
+  "The test `Database` object."
+  (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
+
+(def db-id
+  "The ID of the test `Database`."
+  (delay (assert @test-db)
+         (:id @test-db)))
+
+(def ^{:arglists '([[table-name]])}
+  table->id
+  "Return the ID of a Table with TABLE-NAME.
+
+    (table->id :venues) -> 12"
+  (memoize
+   (fn [table-name]
+     {:pre [(keyword? table-name)]
+      :post [(integer? %)
+             (not (zero? %))]}
+     (sel :one :id Table :name (s/upper-case (name table-name)), :db_id @db-id))))
+
+(def ^{:arglists '([table-name field-name])}
+  field->id
+  "Return the ID of a Field with FIELD-NAME belonging to Table with TABLE-NAME.
+
+    (field->id :checkins :venue_id) -> 4"
+  (memoize
+   (fn [table-name field-name]
+     {:pre [(keyword? table-name)
+            (keyword? field-name)]
+      :post [(integer? %)
+             (not (zero? %))]}
+     (sel :one :id Field :name (s/upper-case (name field-name)), :table_id (table->id table-name)))))
+
+(defn table-name->table
+  "Fetch `Table` with TABLE-NAME."
+  [table-name]
+  {:pre [(keyword? table-name)]
+   :post [(map? %)]}
+  (sel :one Table :id (table->id (s/upper-case (name table-name)))))
+
+
+;; ## TODO! with-temp-table and related macros
+
+;; DEPRECATED ! Need to rewrite this to use the new TableDefinition stuff
+;; (defmacro with-temp-table
+;;   "Execute BODY with a temporary Table that will be dropped afterward.
+;;    The korma entity representing the Table is bound to TABLE-BINDING.
+;;    FIELDS-MAP should be a map of FIELD-NAME -> SQL-TYPE.
+
+;;     (with-temp-table [table {:name \"VARCHAR(254)\"}]
+;;       (insert table (values [{:name \"A\"}
+;;                              {:name \"B\"}]))
+;;       (select table values (where {:name \"A\"})))"
+;;   [[table-binding fields-map] & body]
+;;   {:pre [(map? fields-map)]}
+;;   (let [table-name (name (gensym "TABLE__"))
+;;         formatted-fields (->> fields-map
+;;                               (map (fn [[field-name field-type]]
+;;                                      (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
+;;                               (interpose ", ")
+;;                               (reduce str))]
+;;     `(do (get-or-create-database! (h2/dataset-loader) data/test-data)
+;;          (h2/exec-sql data/test-data (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
+;;          (h2/exec-sql data/test-data (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
+;;          (let [~table-binding (h2/korma-entity (map->TableDefinition {:table-name ~table-name})
+;;                                                data/test-data)]
+;;            (try
+;;              ~@body
+;;              (catch Throwable e#
+;;                (println "E: " e#))
+;;              (finally
+;;                (h2/exec-sql data/test-data (format "DROP TABLE \"%s\";" ~table-name))))))))

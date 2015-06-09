@@ -5,9 +5,9 @@
                                                    setting-exists?
                                                    test-setting-1
                                                    test-setting-2]])
-            [metabase.test.data.users :refer :all]
-            [metabase.test-data :refer :all]
-            [metabase.test.util :refer :all]))
+            (metabase.test [data :refer :all]
+                           [util :refer :all])
+            [metabase.test.data.users :refer :all]))
 
 ;; ## Helper Fns
 (defn fetch-all-settings  []

@@ -80,3 +80,33 @@
 
   (drop-physical-table! [this ^DatabaseDefinition database-definition, ^TableDefinition table-definition]
     "Drop the DBMS table/collection/etc. associated with TABLE-DEFINITION."))
+
+
+;; ## Helper Functions for Creating New Definitions
+
+(defn create-field-definition
+  "Create a new `FieldDefinition`; verify its values."
+  ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
+  (assert (contains? field/base-types base-type))
+  (when field-type
+    (assert (contains? field/field-types field-type)))
+  (when special-type
+    (assert (contains? field/special-types special-type)))
+  (map->FieldDefinition field-definition-map))
+
+(defn create-table-definition
+  "Convenience for creating a `TableDefinition`."
+  ^TableDefinition [^String table-name field-definition-maps rows]
+  (map->TableDefinition {:table-name          table-name
+                         :rows                rows
+                         :field-definitions   (mapv create-field-definition field-definition-maps)
+                         :database-definition (promise)}))
+
+(defn create-database-definition
+  "Convenience for creating a new `DatabaseDefinition`."
+  ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
+  {:pre [(string? database-name)
+         (not (s/blank? database-name))]}
+  (map->DatabaseDefinition {:database-name     database-name
+                            :table-definitions (mapv (partial apply create-table-definition)
+                                                     table-name+field-definition-maps+rows)}))

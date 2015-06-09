@@ -9,7 +9,7 @@
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
-            [metabase.test-data :refer :all]
+            [metabase.test.data :refer :all]
             [metabase.test.util :refer [resolve-private-fns]]))
 
 (def users-table
