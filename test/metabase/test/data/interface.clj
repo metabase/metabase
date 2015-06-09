@@ -25,8 +25,6 @@
 
 ;; ## IDatasetLoader
 
-(println "DEFINING IDATASETLOADER...")
-
 (defprotocol IDatasetLoader
   (engine [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")

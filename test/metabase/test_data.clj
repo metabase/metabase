@@ -24,8 +24,7 @@
 
 (def test-db
   "The test `Database` object."
-  (delay (assert (satisfies? metabase.test.data.interface/IDatasetLoader (h2/dataset-loader)))
-         (get-or-create-database! (h2/dataset-loader) data/test-data)))
+  (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
 
 (def db-id
   "The ID of the test `Database`."

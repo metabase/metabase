@@ -69,7 +69,6 @@
 
 ;; ## Public Concrete DatasetLoader instance
 
-(println "In metabase.test.data.h2...")
 (defrecord H2DatasetLoader [])
 (extend-protocol IDatasetLoader
   H2DatasetLoader
@@ -136,10 +135,6 @@
      (format "DROP TABLE IF EXISTS \"%s\";" (s/upper-case (:table-name table-definition))))))
 
 (defn dataset-loader []
-  (println "CREATING DATASET LOADER...")
   (let [loader (->H2DatasetLoader)]
-    (println "EXTENDERS: " (extenders IDatasetLoader))
-    (assert (extends? IDatasetLoader (type loader)))
     (assert (satisfies? IDatasetLoader loader))
-    (println "<< OK >>")
     loader))

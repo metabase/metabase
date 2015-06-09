@@ -28,13 +28,12 @@
 ;;    *  venue_id
 ;;    *  date
 
-(println "Loading metabase.test.data.data...")
 (def ^DatabaseDefinition test-data
   (create-database-definition
    "Test Database"
    ["users" [{:field-name "name"
               :base-type  :CharField}
-             {:field-name "timestamp"
+             {:field-name "last_login"
               :base-type  :DateTimeField}
              {:field-name "password"
               :base-type  :CharField
