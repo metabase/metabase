@@ -26,6 +26,7 @@
 ;; ## IDatasetLoader
 
 (defprotocol IDatasetLoader
+  "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields."
   (engine [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
