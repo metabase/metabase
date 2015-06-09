@@ -59,6 +59,6 @@
     background-color: var(--brand-color);
 }
 
-.Dropdown-item .link:hover {
+.Dropdown .Dropdown-item:hover {
     text-decoration: none;
 }

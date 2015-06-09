@@ -372,7 +372,7 @@ function lineAndBarOnRender(dcjsChart, card) {
         var customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, function(colorStr) {
-            return 'stroke:' + colorStr + ';';
+            return 'stroke:' + '#ddd' + ';';
         });
 
     } catch (e) {}

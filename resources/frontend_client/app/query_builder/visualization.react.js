@@ -322,7 +322,6 @@ export default React.createClass({
             'full': true,
             'flex': true,
             'flex-full': true,
-            'QueryBuilder-section': true
         });
 
         return (

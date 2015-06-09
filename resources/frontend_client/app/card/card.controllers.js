@@ -70,9 +70,6 @@ CardControllers.controller('CardDetail', [
 
         // =====  Controller local objects
 
-        console.log('route params', $routeParams);
-
-
         var newQueryTemplates = {
             "query": {
                 database: parseInt($routeParams.db) || null,

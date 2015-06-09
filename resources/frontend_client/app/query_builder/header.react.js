@@ -198,13 +198,18 @@ export default React.createClass({
 
         return (
             <div className="QueryHeader QueryBuilder-section wrapper flex align-center">
-                <div className="QueryHeader-details">
-                    <h1 className="QueryName">{title}</h1>
-                    {this.permissions()}
-                    {editButton}
+                <div className="Entity">
+                    <div className="flex align-center">
+                        <h1 className="Entity-title">{title}</h1>
+                        {this.permissions()}
+                        {editButton}
+                    </div>
+                    <div className="Entity-attribution">
+                        Asked by User
+                    </div>
                 </div>
 
-                <div className="QueryHeader-actions">
+                <div className="QueryHeader-actions flex-align-right">
                     <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                         {saveButton}
                     </ReactCSSTransitionGroup>

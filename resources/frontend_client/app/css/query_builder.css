@@ -42,33 +42,18 @@
 .QueryHeader-actions {
     display: flex;
     align-items: center;
-    flex: 0 0 50%;
-}
-
-.QueryHeader-actions {
-    justify-content: flex-end;
 }
 
 .Icon-download,
 .Icon-addToDash {
     fill: #919191;
     transition: fill .3s linear;
-    width: 24px;
-    height: 24px;
 }
 
 .Icon-download:hover,
 .Icon-addToDash:hover {
     fill: var(--brand-color);
     transition: fill .3s linear;
-}
-
-@media screen and (--breakpoint-min-xl) {
-    .Icon-download,
-    .Icon-addToDash {
-        width: 32px;
-        height: 32px;
-    }
 }
 
 /* a section of the graphical query itself */

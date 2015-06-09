@@ -1,12 +1,21 @@
 .Greeting {
-    padding-top: 6em;
-    padding-bottom: 6em;
+    padding-top: 2em;
+    padding-bottom: 2em;
 }
-
 .Greeting-title,
 .Greeting-subtitle {
-    font-size: 1.9375em;
     font-weight: 100;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Greeting {
+        padding-top: 6em;
+        padding-bottom: 6em;
+    }
+    .Greeting-title,
+    .Greeting-subtitle {
+        font-size: 1.9375em;
+    }
 }
 
 .Greeting-subtitle {
@@ -17,17 +26,6 @@
     margin-left: auto;
 }
 
-.Entity-title {
-    font-size: 1.456em;
-}
-
-.Entity-attribution {
-    font-weight: bold;
-    color: rgba(0, 0, 0, .24);
-}
-
-.Home {
-}
 /* on the homepage, the wrapper should only be as wide as our largest size */
 .Home .wrapper {
     max-width: var(--xl-width);
@@ -56,7 +54,6 @@
 .HomeSubNav {
     padding-top: 1.345em;
     padding-bottom: 1.345em;
-    font-size: 1.235em;
 }
 
 .DashboardDropdown .Dropdown-content {
@@ -75,8 +72,37 @@
 
 .DBItem {
     text-decoration: none;
+    margin-left: -1em;
+    margin-right: -1em;
 }
 
 .TableRows {
     color: #ddd;
+}
+
+.TableRows h1 {
+    font-weight: 100;
+    font-size: 1em;
+}
+
+.Entity-title {
+    font-size: 1.4em;
+    margin-bottom: 0.45rem;
+    color: #797979;
+}
+
+.Entity-attribution {
+    display: block;
+}
+
+.Entity--card {
+    border: 1px solid #ddd;
+    padding-left: 2em;
+    padding-right: 2em;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.Entity--card:hover {
+    border-color: red;
 }
