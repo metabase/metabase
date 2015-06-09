@@ -72,12 +72,13 @@ CardControllers.controller('CardDetail', [
 
         console.log('route params', $routeParams);
 
+
         var newQueryTemplates = {
             "query": {
-                database: $routeParams.db || null,
+                database: parseInt($routeParams.db) || null,
                 type: "query",
                 query: {
-                    source_table: $routeParams.table || null,
+                    source_table: parseInt($routeParams.table) || null,
                     aggregation: [null],
                     breakout: [],
                     filter: []
@@ -146,7 +147,7 @@ CardControllers.controller('CardDetail', [
                         queryTemplate.database = card.dataset_query.database;
                     } else if (databases && databases.length > 0) {
                         // TODO: be smarter about this and use the most recent or popular db
-                        queryTemplate.database = databases[0].id;
+                        queryTemplate.database = parseInt($routeParams.db) || databases[0].id;
                     }
 
 
