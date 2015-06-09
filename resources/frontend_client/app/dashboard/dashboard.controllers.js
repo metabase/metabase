@@ -186,6 +186,7 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
     };
 
     $scope.dashboardLoaded = false;
+    $scope.dashboardLoadError = null;
 
 
     if ($routeParams.dashId) {
@@ -200,9 +201,14 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
             $scope.dashboardLoaded = true;
 
         }, function (error) {
-            console.log(error);
+            $scope.dashboardLoaded = true;
+
             if (error.status == 404) {
                 $location.path('/');
+            } else if (error.message) {
+                $scope.dashboardLoadError = error.message;
+            } else {
+                $scope.dashboardLoadError = "Hmmm.  We had a problem loading this dashboard for some reason :(";
             }
         });
     }

@@ -1,8 +1,23 @@
-<div class="Dashboard">
-    <div class="wrapper">
+<div class="Dashboard full-height">
+    <div class="wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
+        <div class="full-height text-centered flex layout-centered">
+            <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
+        </div>
+    </div>
+
+    <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
+        <div class="wrapper">
+            <div class="my4 py4 text-brand">
+                <mb-loading-icon></mb-loading-icon>
+                <h1 class="text-normal text-grey-2">Loading...</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper" ng-if="dashboardLoaded && !dashboardLoadError">
         <header class="py2 px2 clearfix">
             <div class="float-right">
-	            <!-- <a class="Button" ng-click="toggleSubscribe()" ng-if="dashboard">{{toggleSubscribeButtonText()}}</a> -->
+                <!-- <a class="Button" ng-click="toggleSubscribe()" ng-if="dashboard">{{toggleSubscribeButtonText()}}</a> -->
                 <div class="mx1 inline-block">
                     <label class="Select">
                         <select class="block" ng-model="dashboard.public_perms" ng-change="inlineSave(dashboard)" ng-options="perm.id as perm.name for perm in utils.perms" ng-disabled="!dashboard.can_write">
@@ -22,14 +37,7 @@
             </p>
         </header>
 
-        <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
-            <div class="my4 py4 text-brand">
-                <mb-loading-icon></mb-loading-icon>
-                <h1 class="text-normal text-grey-2">Loading...</h1>
-            </div>
-        </div>
-
-        <div class="text-centered my4 py4" ng-if="dashboardLoaded && !dashcards.length > 0">
+        <div class="text-centered my4 py4" ng-if="dashboardLoaded && !dashboardLoadError && !dashcards.length > 0">
             <h1 class="text-normal text-grey-2 mt4 pt4">No cards have been added to this dashboard.</h1>
             <a class="Button Button--primary" href="/card/create">Create Card</a>
         </div>
