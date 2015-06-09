@@ -1,5 +1,5 @@
 :root {
-  --dropdown-border-color: #d9d9d9;
+  --dropdown-border-color: rgba(0, 0, 0, 0.064);
 }
 
 .Dropdown {
@@ -44,10 +44,10 @@
 }
 
 .Dropdown-item {
-    padding-top: 1em;
-    padding-bottom: 1em;
-    padding-left: 2em;
-    padding-right: 2em;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
 }
 
 .Dropdown .Dropdown-item .link:hover {
@@ -57,4 +57,8 @@
 .Dropdown-item:hover {
     color: #fff;
     background-color: var(--brand-color);
+}
+
+.Dropdown-item .link:hover {
+    text-decoration: none;
 }

@@ -70,12 +70,14 @@ CardControllers.controller('CardDetail', [
 
         // =====  Controller local objects
 
+        console.log('route params', $routeParams);
+
         var newQueryTemplates = {
             "query": {
-                database: null,
+                database: $routeParams.db || null,
                 type: "query",
                 query: {
-                    source_table: null,
+                    source_table: $routeParams.table || null,
                     aggregation: [null],
                     breakout: [],
                     filter: []

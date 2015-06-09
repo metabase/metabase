@@ -1,68 +1,88 @@
-<div class="border-bottom">
-    <div class="wrapper">
-        <div class="Greeting" ng-controller="HomeGreeting">
-            <h1 class="Greeting-title">Good morning, Kyle</h1>
-            <h1 class="Greeting-subtitle">What do you want to know?</h1>
-        </div>
-        <div>
-            <a class="inline-block" href="#" ng-click="current = 'data'">I have a new question</a>
-            <a class="inline-block" href="#" ng-click="current = null">An existing question</a>
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'all' }" ng-click="filter('all')">Popular</a>
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'mine' }" ng-click="filter('mine')">Mine</a>
-            <a class="Button" ng-class="{ 'Button--selected' : filterMode == 'fav' }" ng-click="filter('fav')">Favorite</a>
-        </div>
-    </div>
-</div>
-
-<div class="wrapper">
-    <div class="mt4" ng-controller="CardList" ng-if="current != 'data'">
-
-        <div ng-if="!cards">
-            <h1 clas="text-normal text-centered">Loading ...</h1>
-        </div>
-
-        <ul>
-            <li class="HoverItem" ng-repeat="card in cards | filter:searchFilter ">
-                <h2><a class="text-normal link" href="/card/{{card.id}}">{{card.name}}</a></h2>
-                <h5>Asked by: {{card.creator.common_name}}</h5>
-            </li>
-        </ul>
-    </div>
-
-    <div ng-controller="ExploreDatabaseList" ng-if="current === 'data'">
-
-        <div ng-repeat="(dbId, database) in databases">
-            <div class="mt2 py2 clearfix">
-                <h2>{{currentDB.name}}</h2>
+<div class="Home" ng-controller="Home">
+    <div class="bg-brand text-white border-bottom">
+        <div class="wrapper">
+            <div class="Greeting" ng-controller="HomeGreeting">
+                <h1 class="Greeting-title">{{greeting}}</h1>
+                <h1 class="Greeting-subtitle">{{subheading}}</h1>
             </div>
-            <ul class="clearfix">
-                <li class="py4" ng-repeat="table in database.entities">
-                    <span class="float-right text-grey-3 mt2">{{table.rows}} rows</span>
-                    <h3 class="text-normal text-brand mt2 mb0">
-                        <a class="link" href="/card/create">{{table.entity_name}}</a>
-                    </h3>
-                    <p class="text-grey-3 mt1">{{table.description}}</p>
+            <div class="mb4">
+                <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">I have a new question</a>
+                <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+            </div>
+        </div>
+    </div>
+
+    <div ng-controller="CardList" ng-if="currentView != 'data'">
+        <div class="HomeSubNav border-bottom">
+            <div class="wrapper flex">
+                <a class="QuestionFilter flex align-center mr2" ng-click="filter('all')" ng-class="{'QuestionFilter--active': filterMode === 'all'}">
+                    <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
+                    Popular
+                </a>
+                <a class="QuestionFilter flex align-center mr2" ng-click="filter('mine')" ng-class="{'QuestionFilter--active': filterMode === 'mine'}">
+                    <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
+                    Mine
+                </a>
+                <a class="QuestionFilter flex align-center mr2" ng-click="filter('fav')" ng-class="{'QuestionFilter--active': filterMode === 'fav'}">
+                    <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
+                    Favorite
+                </a>
+            </div>
+        </div>
+
+        <div class="wrapper">
+            <div ng-if="!cards">
+                <h1 clas="text-normal text-centered">Loading ...</h1>
+            </div>
+
+            <ul>
+                <li ng-repeat="card in cards | filter:searchFilter">
+                    <div class="HoverItem inline-block">
+                        <h2>
+                            <a class="text-normal link" href="/card/{{card.id}}">{{card.name}}</a>
+                        </h2>
+                        <h5>Asked by: {{card.creator.common_name}}</h5>
+                    </div>
                 </li>
             </ul>
-            <div>
-                <h5 class="text-bold mb2" ng-if="database.entities.length > 0">Other tables</h5>
-                <ul>
-                    <li class="border-bottom py3" ng-repeat="table in database.non_entities">
-                        <div class="clearfix">
-                            <span class="float-right text-grey-3 mt1">{{table.rows}} Total</span>
-                            <h4 class="text-normal inline-block">
-                                <a ng-if="table.rows > 0" class="link" href="/card/create">
-                                    {{table.name}}
+        </div>
+    </div>
+
+    <div ng-if="currentView === 'data'" ng-controller="ExploreDatabaseList">
+        <div class="HomeSubNav border-bottom mb2">
+            <div class="wrapper">
+                Data source:
+                <div class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
+                    <div class="DataSourceDropdown-title text-brand" dropdown-toggle>
+                        {{currentDB.name}}
+                        <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
+                        </span>
+                        <ul class="Dropdown-content">
+                            <li ng-repeat="(id, db) in databases">
+                                <a class="Dropdown-item block" ng-click="selectCurrentDB(id)">
+                                    {{db.name}}
                                 </a>
-                                <span ng-if="table.rows === 0">
-                                    {{table.name}}
-                                </span>
-                            </h4>
-                        </div>
-                        <p class="text-grey-3 m0 pb1" ng-if="table.description">{{table.description}}</p>
-                    </li>
-                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-          </div>
+        </div>
+        <ol class="wrapper" ng-if="tables">
+            <li ng-repeat="table in tables" ng-if="table.rows > 0">
+                <a class="DBItem HoverItem flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
+                    <h1 class="text-brand">{{table.name}}</h1>
+                    <div class="TableRows flex-align-right text-right">
+                        <h1>
+                            {{table.rows}}
+                        </h1>
+                        <div class="text-uppercase ">total</div>
+                    </div>
+                </a>
+            </li>
+        </ol>
+        <div ng-if="tables.length === 0">
+            <h2>No data is avaliable for this database</h2>
+        </div>
     </div>
 </div>
