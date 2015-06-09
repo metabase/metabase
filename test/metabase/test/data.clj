@@ -5,55 +5,12 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
-                             [field :refer [Field] :as field]
-                             [table :refer [Table]])
+                             [field :refer [Field] :as field])
             [metabase.test.data.interface :refer :all])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
                                          TableDefinition)))
-
-;; # Extra functionality for definition types
-;; TODO - move these to interface?
-;; TODO - one common "metabase-instance" method?
-
-(defprotocol IFieldDefinition
-  "Convenience methods provided by `FieldDefinition`."
-  (metabase-field [this table]
-    "Return the Metabase `Field` associated with this field definition and Metabase TABLE."))
-
-(extend-type FieldDefinition
-  IFieldDefinition
-  (metabase-field [this table]
-    (sel :one Field :table_id (:id table), :name [in #{(s/lower-case (:field-name this)) ; HACKY!
-                                                       (s/upper-case (:field-name this))}])))
-
-
-(defprotocol ITableDefinition
-  "Convenience methods provided by `TableDefinition`."
-  (metabase-table [this database]
-    "Return the Metabase `Table` associated with this table definition and Metabase DATABASE."))
-
-(extend-type TableDefinition
-  ITableDefinition
-  (metabase-table [this database]
-    (sel :one Table :db_id (:id database), :name [in #{(s/lower-case (:table-name this)) ; HACKY!
-                                                       (s/upper-case (:table-name this))}])))
-
-
-(defprotocol IDatabaseDefinition
-  "Convenience methods provided by `DatabaseDefinition`."
-  (metabase-database [this ^Keyword engine]
-    "Return the Metabase `Database` associated with this database definition."))
-
-(extend-type DatabaseDefinition
-  IDatabaseDefinition
-
-  (metabase-database [this engine]
-    (assert (keyword? engine))
-    (setup-db-if-needed :auto-migrate true)
-    (sel :one Database :name (:database-name this) :engine (name engine))))
-
 
 ;; ## Functions for Creating New Definitions
 
@@ -70,19 +27,19 @@
 (defn create-table-definition
   "Convenience for creating a `TableDefinition`."
   ^TableDefinition [^String table-name field-definition-maps rows]
-  (map->TableDefinition {:table-name        table-name
-                         :rows              rows
-                         :field-definitions (mapv create-field-definition field-definition-maps)}))
+  (map->TableDefinition {:table-name          table-name
+                         :rows                rows
+                         :field-definitions   (mapv create-field-definition field-definition-maps)
+                         :database-definition (promise)}))
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
   ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
   {:pre [(string? database-name)
          (not (s/blank? database-name))]}
-  (map->DatabaseDefinition
-   {:database-name     database-name
-    :table-definitions (mapv (partial apply create-table-definition)
-                             table-name+field-definition-maps+rows)}))
+  (map->DatabaseDefinition {:database-name     database-name
+                            :table-definitions (mapv (partial apply create-table-definition)
+                                                     table-name+field-definition-maps+rows)}))
 
 
 ;; ## Public-Facing Fns
@@ -91,7 +48,7 @@
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`."
   [dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
   (let [engine (engine dataset-loader)]
-    (or (metabase-database database-definition engine)
+    (or (metabase-instance database-definition engine)
         (do
           ;; Create the database
           (log/info (format "Creating %s Database %s..." (name engine) database-name))
@@ -118,11 +75,11 @@
             (log/info "Adding schema metadata...")
             (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
               (let [table-name (:table-name table-definition)
-                    table      (delay (let [table (metabase-table table-definition db)]
+                    table      (delay (let [table (metabase-instance table-definition db)]
                                         (assert table)
                                         table))]
                 (doseq [{:keys [field-name field-type special-type], :as field-definition} (:field-definitions table-definition)]
-                  (let [field (delay (let [field (metabase-field field-definition @table)]
+                  (let [field (delay (let [field (metabase-instance field-definition @table)]
                                        (assert field)
                                        field))]
                     (when field-type
@@ -140,7 +97,7 @@
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS."
   [dataset-loader ^DatabaseDefinition database-definition]
   ;; Delete the Metabase Database and associated objects
-  (cascade-delete (metabase-database database-definition (engine dataset-loader)))
+  (cascade-delete (metabase-instance database-definition (engine dataset-loader)))
 
     ;; now delete the DBMS database
   (drop-physical-db! dataset-loader database-definition))

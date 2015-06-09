@@ -1,5 +1,9 @@
 (ns metabase.test.data.interface
-  (:require [clojure.string :as s])
+  (:require [clojure.string :as s]
+            [metabase.db :refer :all]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field] :as field]
+                             [table :refer [Table]]))
   (:import clojure.lang.Keyword))
 
 (defprotocol IEscapedName
@@ -21,6 +25,30 @@
   IEscapedName
   (escaped-name [_]
     (s/replace database-name #"\s+" "_")))
+
+
+(defprotocol IMetabaseInstance
+  (metabase-instance [this context]
+    "Return the Metabase object associated with this definition, if applicable. CONTEXT should be the parent
+     object of the Metabase object to return (e.g., a pass a `Table` to a `FieldDefintion`). For a `DatabaseDefinition`,
+     pass the engine keyword."))
+
+(extend-protocol IMetabaseInstance
+  FieldDefinition
+  (metabase-instance [this table]
+    (sel :one Field :table_id (:id table), :name [in #{(s/lower-case (:field-name this)) ; HACKY!
+                                                       (s/upper-case (:field-name this))}]))
+
+  TableDefinition
+  (metabase-instance [this database]
+    (sel :one Table :db_id (:id database), :name [in #{(s/lower-case (:table-name this))
+                                                       (s/upper-case (:table-name this))}]))
+
+  DatabaseDefinition
+  (metabase-instance [this engine-kw]
+    (assert (keyword? engine-kw))
+    (setup-db-if-needed :auto-migrate true)
+    (sel :one Database :name (:database-name this) :engine (name engine-kw))))
 
 
 ;; ## IDatasetLoader
