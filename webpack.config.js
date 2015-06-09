@@ -45,9 +45,8 @@ module.exports = {
     module: {
         loaders: [
             // JavaScript
-            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: {
-                cacheDirectory: '.babel_cache'
-            }},
+            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
+            { test: /\.js$/, exclude: /node_modules/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }

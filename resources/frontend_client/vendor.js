@@ -28,7 +28,9 @@ import 'ace/mode-sql';
 import 'ace/snippets/sql';
 
 // react:
-window.React = require('react');
+import React from 'react';
+window.React = React;
 
 // misc:
-window._ = require('underscore');
+import _ from 'underscore';
+window._ = _;
