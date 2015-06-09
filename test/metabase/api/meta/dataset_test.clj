@@ -4,6 +4,7 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]
             [metabase.test-data :refer :all]))
 

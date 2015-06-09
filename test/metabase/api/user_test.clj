@@ -7,7 +7,7 @@
             [metabase.middleware.auth :as auth]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
-            [metabase.test.data.users :refer [create-user]]
+            [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
             [metabase.test-data :refer :all]))
 

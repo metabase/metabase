@@ -45,7 +45,8 @@
 ;; ## Loading / Deleting Test Datasets
 
 (defn get-or-create-database!
-  "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`."
+  "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
+   DATASET-LOADER should be an object that implements `IDatasetLoader`."
   [dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
   (let [engine (engine dataset-loader)]
     (or (metabase-instance database-definition engine)
@@ -93,10 +94,14 @@
             db)))))
 
 (defn remove-database!
-  "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS."
+  "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
+   DATASET-LOADER should be an object that implements `IDatasetLoader`."
   [dataset-loader ^DatabaseDefinition database-definition]
   ;; Delete the Metabase Database and associated objects
   (cascade-delete (metabase-instance database-definition (engine dataset-loader)))
 
     ;; now delete the DBMS database
   (drop-physical-db! dataset-loader database-definition))
+
+
+;; ## Helper Functions for Writing Tests

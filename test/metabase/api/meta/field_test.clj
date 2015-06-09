@@ -4,6 +4,7 @@
             (metabase.models [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [table :refer [Table]])
+            [metabase.test.data.users :refer :all]
             [metabase.test-data :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 

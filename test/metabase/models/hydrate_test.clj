@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [medley.core :as m]
             [metabase.models.hydrate :refer :all]
+            [metabase.test.data.users :refer :all]
             [metabase.test-data :refer :all]
             [metabase.test.util :refer :all]))
 
