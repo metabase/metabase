@@ -2,10 +2,17 @@
 /*jslint browser:true */
 /*global document,_,google,console,vs*/
 
-import $ from 'jquery';
 import d3 from 'd3';
-import crossfilter from 'crossfilter';
 import dc from 'dc';
+
+// JSXHint workarounds: https://github.com/STRML/JSXHint/issues/69
+import _$ from 'jquery';
+var $ = _$;
+import _crossfilter from 'crossfilter';
+var crossfilter = _crossfilter;
+
+// var crossfilter = require('crossfilter');
+// var $ = require('jquery');
 
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT

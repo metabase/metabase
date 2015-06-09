@@ -121,11 +121,10 @@ export default React.createClass({
     },
 
     canRun: function() {
-        var canRun = false;
         if (this.hasValidAggregation()) {
-            canRun = true;
+            return true;
         }
-        return canRun;
+        return false;
     },
 
     runQuery: function() {

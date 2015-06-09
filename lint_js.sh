@@ -3,8 +3,8 @@
 # Simple shell script for running jshint and nicely formatting the output :heart_eyes_cat:
 
 JS_HINT=./node_modules/jsxhint/cli.js
-JS_HINT_OPTS='--babel --es6module --config .jshintrc'
-JS_FILES=`find resources/frontend_client/app -name "*.js" | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
+JS_HINT_OPTS='--babel --es6module --verbose --config .jshintrc'
+JS_FILES=`find resources/frontend_client/app -name "*.js" | grep -v bower_components | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
 
 BOLD='\033[1;30m'
 RED='\033[0;31m' # \e doesn't work on OS X but \033 works on either
