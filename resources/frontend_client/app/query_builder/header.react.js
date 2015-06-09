@@ -205,7 +205,7 @@ export default React.createClass({
                         {editButton}
                     </div>
                     <div className="Entity-attribution">
-                        Asked by User
+                        Asked by
                     </div>
                 </div>
 
@@ -215,6 +215,9 @@ export default React.createClass({
                     </ReactCSSTransitionGroup>
                     <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                         {downloadButton}
+                    </ReactCSSTransitionGroup>
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        <Icon name="star" width="24px" height="24px"></Icon>
                     </ReactCSSTransitionGroup>
                     <AddToDashboard
                         card={this.props.card}

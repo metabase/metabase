@@ -1,11 +1,11 @@
 <div class="Home full-height" ng-controller="Home">
     <div class="bg-brand text-white border-bottom">
-        <div class="wrapper">
-            <div class="Greeting" ng-controller="HomeGreeting">
+        <div class="Grid align-center wrapper">
+            <div class="Greeting Grid-cell" ng-controller="HomeGreeting">
                 <div class="Greeting-title">{{greeting}}</div>
                 <div class="Greeting-subtitle">{{subheading}}</div>
             </div>
-            <div class="Grid mb4">
+            <div class="Grid-cell flex-align-right">
                 <a class="HomeTab Grid-cell" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">I have a new question</a>
                 <a class="HomeTab Grid-cell" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
             </div>
@@ -13,10 +13,10 @@
     </div>
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">
-        <div class="HomeSubNav border-bottom">
+        <div class="HomeSubNav bg-white border-bottom">
             <div class="wrapper flex">
                 <a class="QuestionFilter flex align-center mr2" ng-click="filter('all')" ng-class="{'QuestionFilter--active': filterMode === 'all'}">
-                    <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
+                    <mb-icon class="mr1" name="popular" width="32px" height="32px"></mb-icon>
                     Popular
                 </a>
                 <a class="QuestionFilter flex align-center mr2" ng-click="filter('mine')" ng-class="{'QuestionFilter--active': filterMode === 'mine'}">
@@ -31,21 +31,29 @@
         </div>
 
         <div class="wrapper">
-            <div ng-if="!cards">
-                <h1 class="text-normal text-centered">Loading ...</h1>
+            <div ng-if="!cards" class="text-brand">
+                <mb-loading-icon></mb-loading-icon>
             </div>
 
             <div class="Grid">
                 <ul class="Grid-cell mt4">
                     <li ng-repeat="card in cards | filter:searchFilter">
-                        <a href="/card/{{card.id}}" class="Entity Entity--card block  mb2 p2">
-                            <div class="flex align-center">
-                                <h2 class="Entity-title">{{card.name}}</h2>
-                                <span class="Badge Badge--permissions ml2" ng-if="card.public_perms === 0">Private</span>
+                        <a href="/card/{{card.id}}" class="Entity flex align-center no-decoration mb2 p2 border-bottom">
+                            <div class="flex flex-column">
+                                <div class="flex align-center">
+                                    <h4 class="Entity-title">{{card.name}}</h4>
+                                    <span class="Badge Badge--permissions ml2" ng-if="card.public_perms === 0">
+                                        <mb-icon name="lock" width="12px" height="12px"></mb-icon>
+                                    </span>
+                                </div>
+                                <span class="Entity-attribution">
+                                    Asked by: {{card.creator.common_name}}
+                                </span>
                             </div>
-                            <span class="Entity-attribution">
-                                Asked by: {{card.creator.common_name}}
-                            </span>
+                            <div class="flex flex-align-right">
+                                <mb-icon class="text-grey-1 mr4" name="star" width="18px" height="18px" ng-click="console.log('derp');"></mb-icon>
+                                <mb-icon class="text-grey-1 flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
+                            </div>
                         </a>
                     </li>
                 </ul>
@@ -76,13 +84,17 @@
         <div>
             <ul class="wrapper" ng-if="tables">
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
-                    <a class="DBItem p3 HoverItem flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
-                        <div class="text-brand">{{table.name}}</div>
-                        <div class="TableRows flex-align-right text-right">
-                            <h1>
-                                {{table.rows}}
-                            </h1>
-                            <div class="text-uppercase ">total</div>
+                    <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
+                        <div class="flex flex-column">
+                            <h2 class="text-brand">{{table.name}}</h2>
+                            {{table.description}}
+                        </div>
+                        <div class="flex flex-align-right align-center">
+                            <div class="text-right text-grey-3 mr2">
+                                <h3>{{table.rows}}</h3>
+                                <h6 class="text-uppercase ">total</h6>
+                            </div>
+                            <mb-icon class="text-grey-1" name="chevronright" width="18px" height="18px"></mb-icon>
                         </div>
                     </a>
                 </li>

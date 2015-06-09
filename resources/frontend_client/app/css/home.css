@@ -1,6 +1,6 @@
 .Greeting {
-    padding-top: 2em;
-    padding-bottom: 2em;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
 }
 .Greeting-title,
 .Greeting-subtitle {
@@ -20,10 +20,6 @@
 
 .Greeting-subtitle {
     opacity: 0.575;
-}
-
-.UserDropdown {
-    margin-left: auto;
 }
 
 /* on the homepage, the wrapper should only be as wide as our largest size */
@@ -70,38 +66,25 @@
     color: var(--brand-color);
 }
 
-.DBItem {
-    text-decoration: none;
-    margin-left: -1em;
-    margin-right: -1em;
-}
-
 .TableRows {
-    color: #ddd;
-}
-
-.TableRows h1 {
-    font-weight: 100;
-    font-size: 1em;
+    border: 1px solid #ddd;
+    padding: 2em;
+    border-radius: 4px;
+    color: var(--brand-color);
 }
 
 .Entity-title {
-    font-size: 1.4em;
+    font-size: 1.24em;
     margin-bottom: 0.45rem;
     color: #797979;
 }
 
 .Entity-attribution {
     display: block;
+    color: #ADADAD;
+    margin-bottom: 0.5em;
 }
 
-.Entity--card {
-    border: 1px solid #ddd;
-    padding-left: 2em;
-    padding-right: 2em;
-    border-radius: 4px;
-    text-decoration: none;
-}
 
 .Entity--card:hover {
     border-color: red;

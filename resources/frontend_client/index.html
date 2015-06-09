@@ -29,14 +29,16 @@
                         </a>
                         <ul class="Dropdown-content" ng-controller="DashList">
                             <li ng-repeat="dash in dashboards">
-                                <a class="Dropdown-item link block text-normal" href="/dash/{{dash.id}}">
+                                <a class="Dropdown-item link flex align-center text-normal" href="/dash/{{dash.id}}">
                                     {{dash.name}}
-                                    <span class="Badge Badge--permissions" ng-if="dash.public_perms === 0">Private</span>
+                                    <span class="Badge Badge--permissions flex flex-align-right align-center" ng-if="dash.public_perms === 0">
+                                        <mb-icon name="lock" width="12px" height="12px">
+                                    </span>
                                 </a>
                             </li>
                         </ul>
                     </div>
-                    <div class="UserDropdown Dropdown" dropdown on-toggle="toggled(open)">
+                    <div class="UserDropdown Dropdown flex-align-right" dropdown on-toggle="toggled(open)">
                         <a class="NavItem text-white" selectable-nav-item="settings" dropdown-toggle>
                             <span ng-if="!user.first_name">Me</span>
                             <span ng-if="user.first_name">{{user.first_name}}</span>

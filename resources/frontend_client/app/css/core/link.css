@@ -2,6 +2,10 @@
   --default-link-color: #4A90E2;
 }
 
+.no-decoration {
+    text-decoration: none;
+}
+
 .link {
   text-decoration: none;
   color: var(--default-link-color);

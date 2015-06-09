@@ -13,6 +13,7 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 
     // $scope.cards: the list of cards being displayed
 
+    // TODO - transition this to the card settings modal.
     $scope.deleteCard = function(cardId) {
         Card.delete({
             'cardId': cardId

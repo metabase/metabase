@@ -1,5 +1,4 @@
 <div class="Dashboard full-height">
-<<<<<<< HEAD
     <div class="wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
         <div class="full-height text-centered flex layout-centered">
             <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
@@ -16,7 +15,7 @@
     </div>
 
     <div ng-if="dashboardLoaded && !dashboardLoadError">
-        <header class="clearfix border-bottom">
+        <header class="border-bottom">
             <div class="wrapper">
                 <div class="Entity">
                     <h1 class="Entity-title">{{dashboard.name}}</h1>
@@ -25,10 +24,11 @@
                     </span>
                 </div>
 
-            <div class="flex-align-right">
-                <a ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
-                    <mb-icon name="grid" width="16px" height="16px"></mb-icon>
-                </a>
+                <div class="flex-align-right">
+                    <a ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
+                        <mb-icon name="grid" width="16px" height="16px"></mb-icon>
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -48,17 +48,18 @@
                 </div>
             </div>
 
-        <div gridster="gridsterOptions">
-            <div ng-class="editingClass">
-                <ul id="dashboard_list">
-                    <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
-                        <a class="DashCard-remove" ng-click="removeCard(index)">
-                            <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
-                        </a>
-                        <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
-                    </li>
-                </ul>
-            </div>
+            <div gridster="gridsterOptions">
+                <div ng-class="editingClass">
+                    <ul id="dashboard_list">
+                        <li class="Dash-card" gridster-item="dashcard" ng-repeat="(index, dashcard) in dashcards">
+                            <a class="DashCard-remove" ng-click="removeCard(index)">
+                                <mb-icon name="close" class="DashCard-removeIcon"  width="12px" height="12px"></mb-icon>
+                            </a>
+                            <cv-card card="dashcard.card" card-data="dashcard.cardData.data" card-settings="cardSettings" index="index" wait-for-gridster />
+                        </li>
+                    </ul>
+                </div>
+            </div><!-- end gridsterOptions -->
         </div>
     </div>
 </div>

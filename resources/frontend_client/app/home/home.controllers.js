@@ -21,7 +21,8 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
 
     function buildGreeting (greetingOptions, personalization) {
         // TODO - this can result in an undefined thing
-        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 0 + 1) + 0);
+        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1) + 0);
+        console.log(greetingOptions, randomGreetingIndex);
         var greeting = greetingOptions[randomGreetingIndex];
 
         if(personalization) {
