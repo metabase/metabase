@@ -37,13 +37,7 @@
 .block        { display: block; }
 .inline-block { display: inline-block; }
 
-.table {
-  display: table;
-}
-
-.table-cell {
-  display: table-cell;
-}
+.table { display: table; }
 
 .full {
   width: 100%;
@@ -71,16 +65,3 @@
 .right  { right: 0; }
 .bottom { bottom: 0; }
 .left   { left: 0; }
-
-.layout-centered {
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-column {
-  flex-direction: column;
-}
-
-.flex-row {
-  flex-direction: row;
-}

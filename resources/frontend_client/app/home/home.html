@@ -1,13 +1,17 @@
 <div class="Home full-height" ng-controller="Home">
     <div class="bg-brand text-white border-bottom">
-        <div class="Grid align-center wrapper">
-            <div class="Greeting Grid-cell" ng-controller="HomeGreeting">
-                <div class="Greeting-title">{{greeting}}</div>
-                <div class="Greeting-subtitle">{{subheading}}</div>
+        <div class="Grid Grid--full Grid--gutters large-Grid--1of2 align-center wrapper">
+            <div class="Grid-cell" ng-controller="HomeGreeting">
+                <div class="Greeting">
+                    <div class="Greeting-title">{{greeting}}</div>
+                    <div class="Greeting-subtitle">{{subheading}}</div>
+                </div>
             </div>
-            <div class="Grid-cell flex-align-right">
-                <a class="HomeTab Grid-cell" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">I have a new question</a>
-                <a class="HomeTab Grid-cell" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+            <div class="Grid-cell">
+                <div class="flex-align-right">
+                    <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">I have a new question</a>
+                    <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+                </div>
             </div>
         </div>
     </div>

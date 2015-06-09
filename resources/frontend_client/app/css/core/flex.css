@@ -27,3 +27,16 @@
 .flex-align-right {
     margin-left: auto;
 }
+
+.layout-centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
+}

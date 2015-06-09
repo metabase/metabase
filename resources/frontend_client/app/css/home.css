@@ -2,19 +2,17 @@
     padding-top: 2rem;
     padding-bottom: 2rem;
 }
+
 .Greeting-title,
 .Greeting-subtitle {
     font-weight: 100;
+    font-size: 1.9375em;
 }
 
 @media screen and (--breakpoint-min-xl) {
     .Greeting {
         padding-top: 6em;
         padding-bottom: 6em;
-    }
-    .Greeting-title,
-    .Greeting-subtitle {
-        font-size: 1.9375em;
     }
 }
 

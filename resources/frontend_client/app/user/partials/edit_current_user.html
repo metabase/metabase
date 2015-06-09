@@ -1,26 +1,30 @@
+<div class="border-bottom">
+    <div class="wrapper">
+        <h2>Account settings</h2>
+    </div>
+</div>
 <div class="wrapper">
-    <div class="my3 col col-md-12 clearfix">
-    	<div class="Button-group col col-md-4 offset-md-4">
-            <div class="row">
-                <a class="Button col col-md-6 text-centered"
-                    ng-click="setTabFocus('details')"
-                    ng-class="{ 'Button--selected' : tab_focus == 'details' }">
-                    User Details
-                </a>
-
-                <a class="Button col col-md-6 text-centered"
-                    ng-click="setTabFocus('password')"
-                    ng-class="{ 'Button--selected' : tab_focus == 'password' }">
-                    Password
-                </a>
+    <div class="Grid">
+        <div class="Grid-cell">
+            <div ng-if="tab_focus == 'details'">
+                <ng-include src="'/app/user/partials/user_edit.html'"></ng-include>
+            </div>
+            <div class="clearfix" ng-if="tab_focus == 'password'">
+                <ng-include src="'/app/user/partials/password_edit.html'"></ng-include>
             </div>
         </div>
-    </div>
+        <div class="Grid-cell">
+            <a class="rouded p4 block"
+                ng-click="setTabFocus('details')"
+                ng-class="{ 'bg-brand text-white' : tab_focus == 'details' }">
+                User Details
+            </a>
 
-    <div class="clearfix" ng-if="tab_focus == 'details'">
-    	<ng-include src="'/app/user/partials/user_edit.html'"></ng-include>
-    </div>
-    <div class="clearfix" ng-if="tab_focus == 'password'">
-    	<ng-include src="'/app/user/partials/password_edit.html'"></ng-include>
+            <a class="rounded p4 block"
+                ng-click="setTabFocus('password')"
+                ng-class="{ 'bg-brand text-white' : tab_focus == 'password' }">
+                Password
+            </a>
+        </div>
     </div>
 </div>
