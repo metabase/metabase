@@ -5,11 +5,10 @@
             [clojure.string :as s]
             (korma [core :as k]
                    [db :as kdb])
-            [metabase.test.data :refer :all])
-  (:import (metabase.test.data DatasetLoader
-                               DatabaseDefinition
-                               FieldDefinition
-                               TableDefinition)))
+            [metabase.test.data.interface :refer :all])
+  (:import (metabase.test.data.interface DatabaseDefinition
+                                         FieldDefinition
+                                         TableDefinition)))
 
 ;; ## DatabaseDefinition extensions
 
@@ -30,7 +29,7 @@
 (extend-protocol IH2DatabaseDefinition
   DatabaseDefinition
   (filename [this]
-    (format "%s/target/%s" (System/getProperty "user.dir") (escaped-database-name this)))
+    (format "%s/target/%s" (System/getProperty "user.dir") (escaped-name this)))
 
   (connection-details [this]
     {:db (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" (filename this))})
@@ -70,15 +69,17 @@
 
 ;; ## Public Concrete DatasetLoader instance
 
-(defrecord H2DatasetLoaderDelegate []
-  IDatasetLoaderDelegate
+(println "In metabase.test.data.h2...")
+(defrecord H2DatasetLoader [])
+(extend-protocol IDatasetLoader
+  H2DatasetLoader
   (engine [_]
     :h2)
 
-  (database-definition->connection-details [this database-definition]
+  (database->connection-details [_ database-definition]
     (connection-details database-definition))
 
-  (drop-database! [this database-definition]
+  (drop-database! [_ database-definition]
     (let [file (io/file (format "%s.mv.db" (filename database-definition)))]
       (when (.exists file)
         (.delete file))))
@@ -119,7 +120,7 @@
                        field-name
                        dest-table-name))))))))
 
-  (load-table-data! [this database-definition table-definition]
+  (load-table-data! [_ database-definition table-definition]
     (log/info (format "Loading data for %s..." (:table-name table-definition)))
     (let [rows              (:rows table-definition)
           fields-for-insert (map :field-name (:field-definitions table-definition))]
@@ -129,13 +130,16 @@
                                    rows))))
       (log/info (format "Inserted %d rows." (count rows)))))
 
-  (drop-table! [this database-definition table-definition]
+  (drop-table! [_ database-definition table-definition]
     (exec-sql
      database-definition
      (format "DROP TABLE IF EXISTS \"%s\";" (s/upper-case (:table-name table-definition))))))
 
-(println "Loading metabase.test.data.h2...")
-(defn dataset-loader
-  "Return a new DatasetLoader for loading a dataset into H2."
-  ^DatasetLoader []
-  (->DatasetLoader ^H2DatasetLoaderDelegate (->H2DatasetLoaderDelegate)))
+(defn dataset-loader []
+  (println "CREATING DATASET LOADER...")
+  (let [loader (->H2DatasetLoader)]
+    (println "EXTENDERS: " (extenders IDatasetLoader))
+    (assert (extends? IDatasetLoader (type loader)))
+    (assert (satisfies? IDatasetLoader loader))
+    (println "<< OK >>")
+    loader))

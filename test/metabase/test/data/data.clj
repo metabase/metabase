@@ -2,7 +2,7 @@
   "The `DatabaseDefinition` and data of the primary test dataset."
   (:require [metabase.test.data :refer :all]
             [metabase.test-data.data :as test-data])
-  (:import metabase.test.data.DatabaseDefinition))
+  (:import metabase.test.data.interface.DatabaseDefinition))
 
 ;; ## Test Database / Tables / Fields
 ;;
@@ -29,7 +29,7 @@
 ;;    *  date
 
 (println "Loading metabase.test.data.data...")
-(defonce ^:const ^DatabaseDefinition test-data
+(def ^DatabaseDefinition test-data
   (create-database-definition
    "Test Database"
    ["users" [{:field-name "name"

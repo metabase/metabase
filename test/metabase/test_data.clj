@@ -24,7 +24,8 @@
 
 (def test-db
   "The test `Database` object."
-  (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
+  (delay (assert (satisfies? metabase.test.data.interface/IDatasetLoader (h2/dataset-loader)))
+         (get-or-create-database! (h2/dataset-loader) data/test-data)))
 
 (def db-id
   "The ID of the test `Database`."
@@ -132,34 +133,34 @@
 ;; ## Temporary Tables / Etc.
 
 ;; DEPRECATED ! Need to rewrite this to use the new TableDefinition stuff
-(defmacro with-temp-table
-  "Execute BODY with a temporary Table that will be dropped afterward.
-   The korma entity representing the Table is bound to TABLE-BINDING.
-   FIELDS-MAP should be a map of FIELD-NAME -> SQL-TYPE.
+;; (defmacro with-temp-table
+;;   "Execute BODY with a temporary Table that will be dropped afterward.
+;;    The korma entity representing the Table is bound to TABLE-BINDING.
+;;    FIELDS-MAP should be a map of FIELD-NAME -> SQL-TYPE.
 
-    (with-temp-table [table {:name \"VARCHAR(254)\"}]
-      (insert table (values [{:name \"A\"}
-                             {:name \"B\"}]))
-      (select table values (where {:name \"A\"})))"
-  [[table-binding fields-map] & body]
-  {:pre [(map? fields-map)]}
-  (let [table-name (name (gensym "TABLE__"))
-        formatted-fields (->> fields-map
-                              (map (fn [[field-name field-type]]
-                                     (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
-                              (interpose ", ")
-                              (reduce str))]
-    `(do (get-or-create-database! (h2/dataset-loader) data/test-data)
-         (h2/exec-sql data/test-data (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
-         (h2/exec-sql data/test-data (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
-         (let [~table-binding (h2/korma-entity (map->TableDefinition {:table-name ~table-name})
-                                               data/test-data)]
-           (try
-             ~@body
-             (catch Throwable e#
-               (println "E: " e#))
-             (finally
-               (h2/exec-sql data/test-data (format "DROP TABLE \"%s\";" ~table-name))))))))
+;;     (with-temp-table [table {:name \"VARCHAR(254)\"}]
+;;       (insert table (values [{:name \"A\"}
+;;                              {:name \"B\"}]))
+;;       (select table values (where {:name \"A\"})))"
+;;   [[table-binding fields-map] & body]
+;;   {:pre [(map? fields-map)]}
+;;   (let [table-name (name (gensym "TABLE__"))
+;;         formatted-fields (->> fields-map
+;;                               (map (fn [[field-name field-type]]
+;;                                      (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
+;;                               (interpose ", ")
+;;                               (reduce str))]
+;;     `(do (get-or-create-database! (h2/dataset-loader) data/test-data)
+;;          (h2/exec-sql data/test-data (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
+;;          (h2/exec-sql data/test-data (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
+;;          (let [~table-binding (h2/korma-entity (map->TableDefinition {:table-name ~table-name})
+;;                                                data/test-data)]
+;;            (try
+;;              ~@body
+;;              (catch Throwable e#
+;;                (println "E: " e#))
+;;              (finally
+;;                (h2/exec-sql data/test-data (format "DROP TABLE \"%s\";" ~table-name))))))))
 
 
 ;; # INTERNAL
