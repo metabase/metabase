@@ -5,114 +5,14 @@
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 
 DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard', function($scope, $location, Dashboard) {
-    var sort;
+    $scope.dashboards = [];
 
-    $scope.current = 'data';
-
-    // $scope.dashboards: the list of dashboards being displayed
-
-    $scope.deleteDash = function(dashId) {
-        Dashboard.delete({
-            'dashId': dashId
-        }, function(result) {
-            $scope.dashboards = _.filter($scope.dashboards, function(dashboard){
-                return dashboard.id != dashId;
-            });
-            $scope.searchFilter = undefined;
-        });
-    };
-
-    $scope.inlineSave = function(dash, idx) {
-        Dashboard.update(dash, function(result) {
-            if (result && !result.error) {
-                $scope.dashboards[idx] = result;
-            } else {
-                return "error";
-            }
-        });
-    };
-
-    $scope.filter = function(filterMode) {
-        $scope.filterMode = filterMode;
-
-        Dashboard.list({
-            'filterMode': filterMode
-        }, function (dashes) {
-            $scope.dashboards = dashes;
-
-            sort = undefined;
-            $scope.sort(sort, false);
-        }, function (error) {
-            console.log('error getting dahsboards list', error);
-        });
-    };
-
-    $scope.sort = function(sortMode) {
-        // if someone asks for the same sort mode again, reverse the order
-        if (sortMode && sortMode == sort) {
-            $scope.dashboards.reverse();
-            sort = undefined;
-            return;
-        }
-
-        sort = sortMode;
-        if (!sort) {
-            sort = 'name';
-        }
-
-        if ('date' == sortMode) {
-            $scope.dashboards.sort(function(a, b) {
-                a = new Date(a.updated_at);
-                b = new Date(b.updated_at);
-                return a > b ? -1 : a < b ? 1 : 0;
-            });
-        } else if ('owner' == sortMode) {
-            $scope.dashboards.sort(function(a, b) {
-                return a.creator.email.localeCompare(b.creator.email);
-            });
-        } else {
-            // default mode is by dashboard name
-            $scope.dashboards.sort(function(a, b) {
-                return a.name.localeCompare(b.name);
-            });
-        }
-    };
-
-    // default view on page load is to show all dashboards
-    $scope.filter('all');
-}]);
-
-DashboardControllers.controller('DashListForCard', ['$scope', '$routeParams', '$location', 'Dashboard', 'Card', function($scope, $routeParams, $location, Dashboard, Card) {
-    var sort;
-
-    // $scope.dashboards: the list of dashboards being displayed
-
-    $scope.filter = function(filterMode) {
-        Dashboard.for_card({
-            'filterMode': filterMode,
-            'cardId': $routeParams.cardId
-        }, function(result) {
-            $scope.dashboards = result;
-        }, function(errorResponse) {
-            console.dir(errorResponse);
-            throw "unable to get card dashboards for card " + $routeParams.cardId + "; status: " + errorResponse.status + " (" + errorResponse.statusText + "); see log above for details";
-        });
-    };
-
-    // default view on page load is to show all dashboards
-    $scope.filter('all');
-
-    Card.get({
-        cardId: $routeParams.cardId
-    }, function(card) {
-        $scope.cardName = card.name;
-    }, function(errorResponse) {
-        console.dir(errorResponse);
-        if (errorResponse.status == 404) {
-            $location.path('/');
-        } else {
-            throw "unable to get card name for card " + $routeParams.cardId + "; status: " + errorResponse.status + " (" + errorResponse.statusText + "); see log above for details";
-        }
+    Dashboard.list({
+        'filterMode': 'all'
+    }, function (dashes) {
+        $scope.dashboards = dashes;
+    }, function (error) {
+        console.log('error getting dahsboards list', error);
     });
 }]);
 
@@ -269,33 +169,5 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
             $scope.dashEdit = !$scope.dashEdit;
             origDescription = $scope.dashboard.description;
         }
-    };
-
-    $scope.toggleCardSendModal = function(idx) {
-
-        // toggle display
-        $scope.modalShown = !$scope.modalShown;
-        $scope.sendCardId = $scope.dashboard.ordered_cards[idx].card;
-        $scope.sendCardTitle = $scope.dashboard.ordered_cards[idx].card;
-    };
-
-    $scope.cardSent = function() {
-        $scope.alertInfo('Your card was successfully sent!');
-    };
-
-    $scope.toggleSubscribeButtonText = function() {
-        if(!$scope.dashboard){
-            return;
-        }
-        return $scope.dashboard.is_subscriber ? 'Unsubscribe' : 'Subscribe';
-    };
-
-    $scope.toggleSubscribe = function() {
-        var action = $scope.dashboard.is_subscriber ? 'unsubscribe' : 'subscribe';
-        Dashboard[action]({
-            'dashId': $routeParams.dashId
-        }, function(result) {
-            $scope.dashboard.is_subscriber = !$scope.dashboard.is_subscriber;
-        });
     };
 }]);
