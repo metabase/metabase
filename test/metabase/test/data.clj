@@ -42,7 +42,7 @@
                                                      table-name+field-definition-maps+rows)}))
 
 
-;; ## Public-Facing Fns
+;; ## Loading / Deleting Test Datasets
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`."
@@ -91,7 +91,6 @@
 
             (log/info "Finished.")
             db)))))
-
 
 (defn remove-database!
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS."

@@ -1,9 +1,8 @@
-(ns metabase.test-data.create
-  "Helper functions for creating instances of various metabase models."
-  (:require [medley.core :as medley]
+(ns metabase.test.data.users
+  "Code related to creating / managing fake `Users` for testing purposes."
+  (:require [medley.core :as m]
             [metabase.db :refer :all]
             (metabase.models [user :refer [User]])
-            [metabase.test-data :refer :all]
             [metabase.test.util :refer [random-name]]))
 
 (defn create-user
@@ -15,4 +14,4 @@
                   :email (.toLowerCase ^String (str first-name "@metabase.com"))
                   :password first-name}]
     (->> (merge defaults kwargs)
-         (medley/mapply ins User))))
+         (m/mapply ins User))))

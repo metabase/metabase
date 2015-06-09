@@ -7,9 +7,9 @@
             [metabase.test-data :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
+            [metabase.test.data.users :refer [create-user]]
             [metabase.test.util :refer [random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]
-            [metabase.test-data.create :refer [create-user]]))
+            [metabase.test-data :refer :all]))
 
 ;; ## POST /api/session
 ;; Test that we can login
