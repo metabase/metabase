@@ -69,6 +69,7 @@
 
 ;; ## Public Concrete DatasetLoader instance
 
+;; For some reason this doesn't seem to work if we define IDatasetLoader methods inline, but does work when we explicitly use extend-protocol
 (defrecord H2DatasetLoader [])
 (extend-protocol IDatasetLoader
   H2DatasetLoader
@@ -78,14 +79,14 @@
   (database->connection-details [_ database-definition]
     (connection-details database-definition))
 
-  (drop-database! [_ database-definition]
+  (drop-physical-db! [_ database-definition]
     (let [file (io/file (format "%s.mv.db" (filename database-definition)))]
       (when (.exists file)
         (.delete file))))
 
-  (create-table! [this database-definition table-definition]
+  (create-physical-table! [this database-definition table-definition]
     ;; Drop the table if it already exists
-    (drop-table! this database-definition table-definition)
+    (drop-physical-table! this database-definition table-definition)
 
     ;; Now create the new table
     (exec-sql
@@ -98,11 +99,11 @@
                   (interpose ", ")
                   (apply str)))))
 
-  (create-database! [this database-definition]
+  (create-physical-db! [this database-definition]
     ;; Create all the Tables
     (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
       (log/info (format "Creating table '%s'..." (:table-name table-definition)))
-      (create-table! this database-definition table-definition))
+      (create-physical-table! this database-definition table-definition))
 
     ;; Now add the foreign key constraints
     (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
@@ -129,7 +130,7 @@
                                    rows))))
       (log/info (format "Inserted %d rows." (count rows)))))
 
-  (drop-table! [_ database-definition table-definition]
+  (drop-physical-table! [_ database-definition table-definition]
     (exec-sql
      database-definition
      (format "DROP TABLE IF EXISTS \"%s\";" (s/upper-case (:table-name table-definition))))))

@@ -95,7 +95,7 @@
         (do
           ;; Create the database
           (log/info (format "Creating %s Database %s..." (name engine) database-name))
-          (create-database! dataset-loader database-definition)
+          (create-physical-db! dataset-loader database-definition)
 
           ;; Load data
           (log/info "Loading data...")
@@ -143,4 +143,4 @@
   (cascade-delete (metabase-database database-definition (engine dataset-loader)))
 
     ;; now delete the DBMS database
-  (drop-database! dataset-loader database-definition))
+  (drop-physical-db! dataset-loader database-definition))
