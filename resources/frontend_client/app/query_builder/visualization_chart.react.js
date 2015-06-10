@@ -103,6 +103,7 @@ export default React.createClass({
                     CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
                 }
             } catch (err) {
+                console.error(err);
                 this.setState({
                     error: (err.message || err)
                 });
