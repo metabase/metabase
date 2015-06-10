@@ -123,7 +123,7 @@
                   :id $
                   :details $
                   :updated_at $
-                  :name "Mongo Test"
+                  :name "Test Database"
                   :organization_id nil
                   :description nil}))
              (match-$ @test-db

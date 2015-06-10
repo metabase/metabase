@@ -2,6 +2,7 @@
   "Code related to creating and deleting test databases + datasets."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
@@ -25,28 +26,28 @@
     (or (metabase-instance database-definition engine)
         (do
           ;; Create the database
-          (log/info (format "Creating %s Database %s..." (name engine) database-name))
+          (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
           (create-physical-db! dataset-loader database-definition)
 
           ;; Load data
-          (log/info "Loading data...")
+          (log/info (color/blue "Loading data..."))
           (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-            (log/info (format "Loading data for Table %s..." (:table-name table-definition)))
+            (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
             (load-table-data! dataset-loader database-definition table-definition))
 
           ;; Add DB object to Metabase DB
-          (log/info "Adding DB to Metabase...")
+          (log/info (color/blue "Adding DB to Metabase..."))
           (let [db (ins Database
                      :name    database-name
                      :engine  (name engine)
                      :details (database->connection-details dataset-loader database-definition))]
 
             ;; Sync the database
-            (log/info "Syncing DB...")
+            (log/info (color/blue "Syncing DB..."))
             (driver/sync-database! db)
 
             ;; Add extra metadata like Field field-type, base-type, etc.
-            (log/info "Adding schema metadata...")
+            (log/info (color/blue "Adding schema metadata..."))
             (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
               (let [table-name (:table-name table-definition)
                     table      (delay (let [table (metabase-instance table-definition db)]
@@ -63,7 +64,7 @@
                       (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
                       (upd Field (:id @field) :special_type (name special-type)))))))
 
-            (log/info "Finished.")
+            (log/info (color/blue "Finished."))
             db)))))
 
 (defn remove-database!

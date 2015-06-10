@@ -9,9 +9,9 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            (metabase.test.data [datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
+            (metabase.test.data [data :as data]
+                                [datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
                                 [users :refer :all])
-            [metabase.test-data.data :as data]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 
@@ -154,7 +154,8 @@
                               (+ (.getMonth inst) 1)
                               (.getDate inst)))]
     (->> data/test-data
-         :users
+         :table-definitions
+         first
          :rows
          (map second)
          (map format-inst)

@@ -40,7 +40,6 @@
 (deftype MongoDriverData []
   IDataset
   (load-data! [_]
-    (mongo-data/destroy!)
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
   (db [_]

@@ -1,14 +1,14 @@
 (ns metabase.test.data.interface
+  "`Definition` types for databases, tables, fields; related protocols, helper functions.
+
+   Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
+   actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as s]
             [metabase.db :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]]))
   (:import clojure.lang.Keyword))
-
-(defprotocol IEscapedName
-  (^String escaped-name [this]
-    "Return escaped version of DATABASE-NAME suitable for use as a filename / database name / etc."))
 
 (defrecord FieldDefinition [^String  field-name
                             ^Keyword base-type
@@ -21,10 +21,17 @@
                             rows])
 
 (defrecord DatabaseDefinition [^String database-name
-                               table-definitions]
-  IEscapedName
-  (escaped-name [_]
-    (s/replace database-name #"\s+" "_")))
+                               table-definitions])
+
+
+(defprotocol IEscapedName
+  (^String escaped-name [this]
+    "Return escaped version of DATABASE-NAME suitable for use as a filename / database name / etc."))
+
+(extend-protocol IEscapedName
+  DatabaseDefinition
+  (escaped-name [this]
+    (s/replace (:database-name this) #"\s+" "_")))
 
 
 (defprotocol IMetabaseInstance
