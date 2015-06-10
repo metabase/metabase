@@ -2,7 +2,6 @@
 /*jslint browser:true*/
 /*jslint devel:true */
 /*global _*/
-/*global $*/
 
 var AuthControllers = angular.module('corvus.auth.controllers', [
     'ipCookie',

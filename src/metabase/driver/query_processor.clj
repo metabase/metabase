@@ -2,12 +2,14 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
+            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.models.field :refer [Field field->fk-table]]))
 
 (declare add-implicit-breakout-order-by
          add-implicit-limit
+         add-implicit-fields
          get-special-column-info
          preprocess-cumulative-sum
          preprocess-structured
@@ -38,6 +40,10 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
+(def ^:dynamic *internal-context*
+  "A neat place to store 'notes-to-self': things individual implementations don't need to know about, like if the `fields` clause was added implicitly."
+  (atom nil))
+
 
 ;; # PREPROCESSOR
 
@@ -55,6 +61,7 @@
                                                            remove-empty-clauses
                                                            add-implicit-breakout-order-by
                                                            add-implicit-limit
+                                                           add-implicit-fields
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -106,12 +113,27 @@
 ;;; ### ADD-IMPLICIT-LIMIT
 
 (defn add-implicit-limit
-  "Add an implicit limit clause to queries with `rows` aggregations."
+  "Add an implicit `limit` clause to queries with `rows` aggregations."
   [{:keys [limit aggregation] :as query}]
   (if (and (= aggregation ["rows"])
            (not limit))
     (assoc query :limit max-result-bare-rows)
     query))
+
+
+;;; ### ADD-IMPLICIT-FIELDS
+
+(defn add-implicit-fields
+  "Add an implicit `fields` clause to queries with `rows` aggregations."
+  [{:keys [fields aggregation breakout source_table] :as query}]
+  (if-not (and (= aggregation ["rows"])
+               (not breakout)
+               (not fields))
+    query
+    ;; If we're doing a "rows" aggregation with no breakout or fields clauses add one that will exclude Fields that are supposed to be hidden
+    (do (swap! *internal-context* assoc :fields-is-implicit true)
+        (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
+                                  :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -135,7 +157,7 @@
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? (-> query
                                       (dissoc :breakout)
-                                      (assoc :cum_sum     ag-field
+                                      (assoc :cum_sum     ag-field     ; TODO - move this to *internal-context* instead?
                                              :aggregation ["rows"]
                                              :fields      [ag-field]))
 
@@ -324,7 +346,7 @@
   (try
     (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
                     breakout-field-ids
-                    field-field-ids
+                    (when-not (:fields-is-implicit @*internal-context*) field-field-ids)
                     castified-field-names)
     (catch Exception e
       (.printStackTrace e)

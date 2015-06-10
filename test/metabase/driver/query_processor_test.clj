@@ -4,8 +4,9 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
-            (metabase.models [table :refer [Table]])
-            [metabase.test.data.datasets :as datasets :refer [*dataset* expect-with-all-datasets]]))
+            (metabase.models [field :refer [Field]]
+                             [table :refer [Table]])
+            [metabase.test.data.datasets :as datasets :refer [*dataset*]]))
 
 ;; ##  Dataset-Independent Data Fns
 
@@ -37,21 +38,41 @@
 (defn id-field-type []
   (datasets/id-field-type *dataset*))
 
+(defn timestamp-field-type []
+  (datasets/timestamp-field-type *dataset*))
+
 
 ;; ## Dataset-Independent QP Tests
 
 ;; ### Helper Fns + Macros
 
+(defmacro qp-expect-with-datasets
+  "Slightly more succinct way of writing QP tests. Adds standard boilerplate to run QP tests against DATASETS."
+  [datasets {:keys [rows] :as data} query]
+  {:pre [(set? datasets)
+         (map? data)
+         (sequential? rows)
+         (map? query)]}
+  `(datasets/expect-with-datasets ~datasets
+     {:status :completed
+      :row_count ~(count rows)
+      :data      ~data}
+     (driver/process-query
+      {:type     :query
+       :database (db-id)
+       :query    ~query})))
+
 (defmacro qp-expect-with-all-datasets
-  "Slightly more succinct way of writing QP tests. Adds standard boilerplate to actual/expected forms."
+  "Like `qp-expect-with-datasets`, but tests against *all* datasets."
   [data query]
-  `(expect-with-all-datasets
+  `(datasets/expect-with-all-datasets
        {:status :completed
         :row_count ~(count (:rows data))
         :data ~data}
      (driver/process-query {:type :query
                             :database (db-id)
                             :query ~query})))
+
 
 (defn ->columns
   "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
@@ -69,7 +90,7 @@
   []
   (->columns "id" "category_id" "price" "longitude" "latitude" "name"))
 
-(defn venue-col
+(defn venues-col
   "Return column information for the `venues` column named by keyword COL."
   [col]
   (case col
@@ -111,7 +132,7 @@
                   :table_id (id :venues)
                   :id (id :venues :latitude)}
     :name        {:extra_info {}
-                  :special_type nil
+                  :special_type :name
                   :base_type :TextField
                   :description nil
                   :name (format-name "name")
@@ -121,7 +142,7 @@
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
   []
-  (mapv venue-col [:id :category_id :price :longitude :latitude :name]))
+  (mapv venues-col [:id :category_id :price :longitude :latitude :name]))
 
 ;; #### categories
 (defn categories-col
@@ -130,7 +151,7 @@
   (case col
     :id   {:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
            :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
+    :name {:extra_info {} :special_type :name, :base_type :TextField, :description nil, :name (format-name "name")
            :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### checkins
@@ -186,11 +207,51 @@
                  :id (id :users :name)}
     :last_login {:extra_info {}
                  :special_type :category
-                 :base_type :DateTimeField
+                 :base_type (timestamp-field-type)
                  :description nil
                  :name (format-name "last_login")
                  :table_id (id :users)
                  :id (id :users :last_login)}))
+
+
+;;; #### aggregate columns
+
+(defn aggregate-col
+  "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to pass the `Field` in question as well.
+
+    (aggregate-col :count)
+    (aggregate-col :avg (venues-col :id))"
+  {:arglists '([ag-col-kw] [ag-col-kw field])}
+  ([ag-col-kw]
+   (case ag-col-kw
+     :count  {:base_type :IntegerField
+              :special_type :number
+              :name "count"
+              :id nil
+              :table_id nil
+              :description nil}))
+  ([ag-col-kw {:keys [base_type special_type]}]
+   {:pre [base_type
+          special_type]}
+   (case ag-col-kw
+     :avg    {:base_type base_type
+              :special_type special_type
+              :name "avg"
+              :id nil
+              :table_id nil
+              :description nil}
+     :stddev {:base_type base_type
+              :special_type special_type
+              :name "stddev"
+              :id nil
+              :table_id nil
+              :description nil}
+     :sum   {:base_type base_type
+             :special_type special_type
+             :name "sum"
+             :id nil
+             :table_id nil
+             :description nil})))
 
 
 ;; # THE TESTS THEMSELVES (!)
@@ -199,12 +260,7 @@
 (qp-expect-with-all-datasets
     {:rows [[100]]
      :columns ["count"]
-     :cols [{:base_type :IntegerField
-             :special_type :number
-             :name "count"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :count)]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["count"]
@@ -215,12 +271,7 @@
 (qp-expect-with-all-datasets
     {:rows [[203]]
      :columns ["sum"]
-     :cols [{:base_type :IntegerField
-             :special_type :category
-             :name "sum"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :sum (venues-col :price))]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["sum" (id :venues :price)]
@@ -232,12 +283,7 @@
 (qp-expect-with-all-datasets
     {:rows [[35.50589199999998]]
      :columns ["avg"]
-     :cols [{:base_type :FloatField
-             :special_type :latitude
-             :name "avg"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :avg (venues-col :latitude))]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["avg" (id :venues :latitude)]
@@ -249,12 +295,7 @@
 (qp-expect-with-all-datasets
     {:rows [[15]]
      :columns ["count"]
-     :cols [{:base_type :IntegerField
-             :special_type :number
-             :name "count"
-             :id nil
-             :table_id nil
-             :description nil}]}
+     :cols [(aggregate-col :count)]}
   {:source_table (id :checkins)
    :filter [nil nil]
    :aggregation ["distinct" (id :checkins :user_id)]
@@ -296,10 +337,8 @@
             [4 "Asian"]
             [5 "BBQ"]]
      :columns (->columns "id" "name")
-     :cols [{:extra_info {} :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
-             :table_id (id :categories), :id (id :categories :id)}
-            {:extra_info {} :special_type nil, :base_type :TextField, :description nil, :name (format-name "name")
-             :table_id (id :categories), :id (id :categories :name)}]}
+     :cols [(categories-col :id)
+            (categories-col :name)]}
   {:source_table (id :categories)
    :aggregation ["rows"]
    :page {:items 5
@@ -392,12 +431,7 @@
 (qp-expect-with-all-datasets
  {:rows [[29]]
   :columns ["count"]
-  :cols [{:base_type :IntegerField
-          :special_type :number
-          :name "count"
-          :id nil
-          :table_id nil
-          :description nil}]}
+  :cols [(aggregate-col :count)]}
  {:source_table (id :checkins)
   :filter ["AND" ["BETWEEN" (id :checkins :date) "2015-04-01" "2015-05-01"]]
   :aggregation ["count"]})
@@ -454,8 +488,8 @@
             ["Krua Siri" 9]
             ["Fred 62" 10]],
      :columns (->columns "name" "id")
-     :cols [(venue-col :name)
-            (venue-col :id)]}
+     :cols [(venues-col :name)
+            (venues-col :id)]}
   {:source_table (id :venues)
    :filter [nil nil]
    :aggregation ["rows"]
@@ -473,7 +507,7 @@
      :columns [(format-name "user_id")
                "count"]
      :cols [(checkins-col :user_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :filter [nil nil]
    :aggregation ["count"]
@@ -490,7 +524,7 @@
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :limit 10
    :aggregation ["count"]
@@ -506,7 +540,7 @@
                "count"]
      :cols [(checkins-col :user_id)
             (checkins-col :venue_id)
-            {:base_type :IntegerField, :special_type :number, :name "count", :id nil, :table_id nil, :description nil}]}
+            (aggregate-col :count)]}
   {:source_table (id :checkins)
    :limit 10
    :aggregation ["count"]
@@ -518,7 +552,7 @@
 
 ;; ## EMPTY QUERY
 ;; Just don't barf
-(expect-with-all-datasets
+(datasets/expect-with-all-datasets
     {:status :completed
      :row_count 0
      :data {:rows [], :columns [], :cols []}}
@@ -556,7 +590,7 @@
 (qp-expect-with-all-datasets
     {:rows [[(->sum-type 120)]]
      :columns ["sum"]
-     :cols [{:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+     :cols [(aggregate-col :sum (users-col :id))]}
   {:source_table (id :users)
    :aggregation ["cum_sum" (id :users :id)]})
 
@@ -591,7 +625,7 @@
   :columns [(format-name "name")
             "sum"]
   :cols [(users-col :name)
-         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]}
+         (aggregate-col :sum (users-col :id))]}
  {:source_table (id :users)
   :breakout [(id :users :name)]
   :aggregation ["cum_sum" (id :users :id)]})
@@ -601,8 +635,8 @@
 (qp-expect-with-all-datasets
  {:columns [(format-name "price")
             "sum"]
-  :cols [(venue-col :price)
-         {:base_type (id-field-type), :special_type :id, :name "sum", :id nil, :table_id nil, :description nil}]
+  :cols [(venues-col :price)
+         (aggregate-col :sum (venues-col :id))]
   :rows [[1 (->sum-type 1211)]
          [2 (->sum-type 4066)]
          [3 (->sum-type 4681)]
@@ -610,3 +644,140 @@
  {:source_table (id :venues)
   :breakout     [(id :venues :price)]
   :aggregation  ["cum_sum" (id :venues :id)]})
+
+
+;;; ## order_by aggregate fields (SQL-only for the time being)
+
+;;; ### order_by aggregate ["count"]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "count"]
+   :rows [[4 6]
+          [3 13]
+          [1 22]
+          [2 59]]
+   :cols [(venues-col :price)
+          (aggregate-col :count)]}
+  {:source_table (id :venues)
+   :aggregation  ["count"]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+
+;;; ### order_by aggregate ["sum" field-id]
+(qp-expect-with-datasets #{:generic-nsql}
+  {:columns [(format-name "price")
+             "sum"]
+   :rows [[2 (->sum-type 2855)]
+          [1 (->sum-type 1211)]
+          [3 (->sum-type 615)]
+          [4 (->sum-type 369)]]
+   :cols [(venues-col :price)
+          (aggregate-col :sum (venues-col :id))]}
+  {:source_table (id :venues)
+   :aggregation  ["sum" (id :venues :id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "descending"]]})
+
+
+;;; ### order_by aggregate ["distinct" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "count"]
+   :rows [[4 6]
+          [3 13]
+          [1 22]
+          [2 59]]
+   :cols [(venues-col :price)
+          (aggregate-col :count)]}
+  {:source_table (id :venues)
+   :aggregation  ["distinct" (id :venues :id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+
+;;; ### order_by aggregate ["avg" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "avg"]
+   :rows [[3 22]
+          [2 28]
+          [1 32]
+          [4 53]]
+   :cols [(venues-col :price)
+          (aggregate-col :avg (venues-col :category_id))]}
+  {:source_table (id :venues)
+   :aggregation  ["avg" (id :venues :category_id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "ascending"]]})
+
+;;; ### order_by aggregate ["stddev" field-id]
+(qp-expect-with-datasets #{:generic-sql}
+  {:columns [(format-name "price")
+             "stddev"]
+   :rows [[3 26.19160170741759]
+          [1 24.112111881665186]
+          [2 21.418692164795292]
+          [4 14.788509052639485]]
+   :cols [(venues-col :price)
+          (aggregate-col :stddev (venues-col :category_id))]}
+  {:source_table (id :venues)
+   :aggregation  ["stddev" (id :venues :category_id)]
+   :breakout     [(id :venues :price)]
+   :order_by     [[["aggregation" 0] "descending"]]})
+
+
+;;; ### make sure that rows where preview_display = false don't get displayed
+(datasets/expect-with-all-datasets
+ [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
+  (set (->columns "category_id" "name" "latitude" "id" "longitude"))
+  (set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))]
+ (let [get-col-names (fn [] (-> (driver/process-query {:database (db-id)
+                                                       :type     "query"
+                                                       :query    {:aggregation  ["rows"]
+                                                                  :source_table (id :venues)
+                                                                  :order_by     [[(id :venues :id) "ascending"]]
+                                                                  :limit        1}})
+                                :data
+                                :columns
+                                set))]
+   [(get-col-names)
+    (do (upd Field (id :venues :price) :preview_display false)
+        (get-col-names))
+    (do (upd Field (id :venues :price) :preview_display true)
+        (get-col-names))]))
+
+
+;;; ## :sensitive fields
+;;; Make sure :sensitive information fields are never returned by the QP
+(datasets/expect-with-all-datasets
+ {:status :completed,
+  :row_count 15
+  :data {:columns (->columns "id" "last_login" "name")
+         :cols [(users-col :id)
+                (users-col :last_login)
+                (users-col :name)],
+         :rows [[1 "Plato Yeshua"]
+                [2 "Felipinho Asklepios"]
+                [3 "Kaneonuskatew Eiran"]
+                [4 "Simcha Yan"]
+                [5 "Quentin Sören"]
+                [6 "Shad Ferdynand"]
+                [7 "Conchúr Tihomir"]
+                [8 "Szymon Theutrich"]
+                [9 "Nils Gotam"]
+                [10 "Frans Hevel"]
+                [11 "Spiros Teofil"]
+                [12 "Kfir Caj"]
+                [13 "Dwight Gresham"]
+                [14 "Broen Olujimi"]
+                [15 "Rüstem Hebel"]]}}
+ ;; Filter out the timestamps from the results since they're hard to test :/
+ (-> (driver/process-query
+      {:type :query,
+       :database (db-id),
+       :query
+       {:source_table (id :users),
+        :aggregation ["rows"],
+        :order_by [[(id :users :id) "ascending"]]}})
+     (update-in [:data :rows] (partial mapv (partial filterv #(not (isa? (type %) java.util.Date)))))))

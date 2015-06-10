@@ -1,7 +1,10 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
 
-var SortWidget = React.createClass({
+import DateFilter from './date_filter.react';
+import Icon from './icon.react';
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'SortWidget',
     propTypes: {
         sort: React.PropTypes.array.isRequired,
@@ -75,7 +78,7 @@ var SortWidget = React.createClass({
                 </div>
 
                 <a onClick={this.props.removeSort.bind(null, this.props.index)}>
-                    <CloseIcon width="12px" height="12px" />
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );

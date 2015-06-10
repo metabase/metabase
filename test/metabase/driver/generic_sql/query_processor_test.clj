@@ -12,7 +12,9 @@
 ;; Check that we get an error response formatted the way we'd expect
 (expect
     {:status :failed
-     :error (format "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".* FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?) LIMIT %d" max-result-rows)}
+     :error (str "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".\"ID\", CAST(\"DATE\" AS DATE), "
+                 "\"CHECKINS\".\"VENUE_ID\", \"CHECKINS\".\"USER_ID\" FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?) LIMIT "
+                 max-result-rows)}
   ;; This will print a stacktrace. Better to reassure people that that's on purpose than to make people question whether the tests are working
   (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))
       (driver/process-query {:database @db-id

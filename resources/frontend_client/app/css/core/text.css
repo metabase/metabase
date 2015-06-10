@@ -1,3 +1,6 @@
+:root {
+  --body-text-color: #8E9BA9;
+}
 /* text alignment */
 .text-centered {
   text-align: center;
@@ -16,6 +19,10 @@
 }
 
 /* text weight */
+.text-light {
+    font-weight: 100;
+}
+
 .text-normal {
   font-weight: 400;
 }
@@ -28,4 +35,15 @@
 
 .text-italic {
   font-style: italic;
+}
+
+/* larger text size used for descriptions  */
+.text-body {
+  font-size: 1.286em;
+  line-height: 1.457em;
+  color: var(--body-text-color); /* TODO - is this bad? */
+}
+
+.text-current {
+    color: currentColor;
 }

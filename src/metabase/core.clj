@@ -1,12 +1,15 @@
 (ns metabase.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
+            [clojure.java.browse :refer [browse-url]]
+            [colorize.core :as color]
             [medley.core :as medley]
             [metabase.config :as config]
             [metabase.db :as db]
             (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
+            [metabase.models.setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.routes :as routes]
             [metabase.setup :as setup]
@@ -19,6 +22,10 @@
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])))
+
+;; ## CONFIG
+
+(defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
 
 (def app
@@ -37,6 +44,24 @@
       wrap-session            ; reads in current HTTP session and sets :session/key
       wrap-gzip))             ; GZIP response if client can handle it
 
+(defn- -init-create-setup-token
+  "Create and set a new setup token, and open the setup URL on the user's system."
+  []
+  (let [setup-token (setup/token-create)
+        hostname    (or (config/config-str :mb-jetty-host) "localhost")
+        port        (config/config-int :mb-jetty-port)
+        setup-url   (str "http://"
+                         (or hostname "localhost")
+                         (when-not (= 80 port) (str ":" port))
+                         "/setup/init/"
+                         setup-token)]
+    (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
+                           setup-url
+                           "\n\n"))
+    ;; Attempt to browse URL on user's system; this will just fail silently if we can't do it
+    ;(browse-url setup-url)
+    ))
+
 
 (defn init
   "General application initialization function which should be run once at application startup."
@@ -51,17 +76,7 @@
   ;; the test we are using is if there is at least 1 User in the database
   (when-not (db/sel :one :fields [User :id])
     (log/info "Looks like this is a new installation ... preparing setup wizard")
-    (let [setup-token (setup/token-create)
-          hostname (or (config/config-str :mb-jetty-host) "localhost")
-          port (config/config-int :mb-jetty-port)
-          setup-url (str "http://"
-                         (or hostname "localhost")
-                         (when-not (= 80 port) (str ":" port))
-                         "/setup/init/"
-                         setup-token)]
-      (log/info (str "Please use the following url to setup your Metabase installation:\n\n"
-                     setup-url
-                     "\n\n"))))
+    (-init-create-setup-token))
 
   ;; Now start the task runner
   (task/start-task-runner!)

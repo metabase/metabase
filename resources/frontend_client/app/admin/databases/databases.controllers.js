@@ -5,6 +5,8 @@ var DatabasesControllers = angular.module('corvusadmin.databases.controllers', [
 
 DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
 
+    $scope.databases = [];
+
     $scope.delete = function(databaseId) {
         if ($scope.databases) {
 
@@ -20,27 +22,10 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function(
         }
     };
 
-    $scope.$watch('currentOrg', function(org) {
-        if (org) {
-            $scope.databases = [];
-
-            Metabase.db_list({
-                'orgId': org.id
-            }, function(databases) {
-                // if we are an org that 'inherits' lets only show our our own dbs in this view
-                if (org.inherits) {
-                    var dm = _.filter(databases, function(database) {
-                        return database.organization.id === org.id;
-                    });
-                    $scope.databases = dm;
-                } else {
-
-                    $scope.databases = databases;
-                }
-            }, function(error) {
-                console.log('error getting database list', error);
-            });
-        }
+    Metabase.db_list(function(databases) {
+        $scope.databases = databases;
+    }, function(error) {
+        console.log('error getting database list', error);
     });
 }]);
 
@@ -58,46 +43,74 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_update(database, function(updated_database) {
+            return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
         // create a new Database
-        var create = function(database, details) {
+        var create = function(database, details, redirectToDetail) {
             $scope.$broadcast("form:reset");
-            database.org = $scope.currentOrg.id;
             database.details = $scope.ENGINES[database.engine].buildDetails(details);
-            Metabase.db_create(database, function(new_database) {
-                $location.path('/' + $scope.currentOrg.slug + '/admin/databases/' + new_database.id);
+            return Metabase.db_create(database).$promise.then(function(new_database) {
+                if (redirectToDetail) {
+                    $location.path('/admin/databases/' + new_database.id);
+                }
+                $scope.$broadcast("form:api-success", "Successfully created!");
+                $scope.$emit("database:created", new_database);
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
 
-        // TODO - Why do we *require* a valid connection in setup, but not care about it here? :sob:
-        $scope.save = function(database, details) {
+        var save = function(database, details, redirectToDetail) {
+            if (redirectToDetail === undefined) {
+                redirectToDetail = true;
+            }
+
+            // validate_connection needs engine so add it to request body
+            details.engine = database.engine;
+
+            // for an existing DB check that connection is valid before save
             if ($routeParams.databaseId) {
-                update(database, details);
+                return Metabase.validate_connection(details).$promise.catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
+                }).then(function() {
+                    return update(database, details);
+                });
+
+            // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
             } else {
-                // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
                 details.ssl = true;
 
-                // add 'engine' to the request body
-                details.engine = database.engine;
-
-                Metabase.validate_connection(details, function() {
-                    console.log('Successfully connected with SSL. Setting SSL = true.');
-                    create(database, details);
-                }, function() {
-                    console.log('Unable to connect with SSL. Setting SSL = false.');
+                return Metabase.validate_connection(details).$promise.catch(function() {
+                    console.log('Unable to connect with SSL. Trying with SSL = false.');
                     details.ssl = false;
-                    create(database, details);
+                    return Metabase.validate_connection(details).$promise;
+                }).then(function() {
+                    console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
+                    return create(database, details, redirectToDetail);
+                }).catch(function(error) {
+                    $scope.$broadcast("form:api-error", error);
+                    throw error;
                 });
             }
+        };
+
+        $scope.save = save;
+
+        $scope.saveAndRedirect = function() {
+            return save($scope.database, $scope.details, true);
+        };
+
+        $scope.saveNoRedirect = function() {
+            return save($scope.database, $scope.details, false);
         };
 
         $scope.sync = function() {
@@ -133,42 +146,112 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // prepare an empty database for creation
             $scope.database = {
                 name: '',
-                engine: 'postgres',
-                details: {}
+                engine: null,
+                details: {},
+                created: false
             };
             $scope.details = {};
         }
     }
 ]);
 
+DatabasesControllers.controller('DatabaseMasterDetail', ['$scope', '$route', '$routeParams',
+    function($scope, $route, $routeParams) {
+        $scope.pane = 'settings';
 
-DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$location', 'Metabase',
-    function($scope, $routeParams, $location, Metabase) {
-
-        Metabase.db_get({
-            'dbId': $routeParams.databaseId
-        }, function(database) {
-            $scope.database = database;
-        }, function(error) {
-            console.log('error loading database', error);
-            if (error.status == 404) {
-                $location.path('/admin/databases/');
+        // mildly hacky way to prevent reloading controllers as the URL changes
+        var lastRoute = $route.current;
+        $scope.$on('$locationChangeSuccess', function (event) {
+            if ($route.current.$$route.controller === 'DatabaseMasterDetail') {
+                var params = $route.current.params;
+                $route.current = lastRoute;
+                angular.forEach(params, function(value, key) {
+                    $route.current.params[key] = value;
+                    $routeParams[key] = value;
+                });
             }
         });
 
-        Metabase.db_tables({
-            'dbId': $routeParams.databaseId
-        }, function(tables) {
-            $scope.tables = tables;
-        }, function(error) {
+        $scope.routeParams = $routeParams;
+        $scope.$watch('routeParams', function() {
+            $scope.pane = $routeParams.mode;
+        }, true);
+    }
+]);
 
-        });
+DatabasesControllers.controller('DatabaseTables', ['$scope', '$routeParams', '$location', '$q', 'Metabase',
+    function($scope, $routeParams, $location, $q, Metabase) {
+        $scope.tableFields = {};
+
+        $scope.routeParams = $routeParams;
+        $scope.$watch('routeParams', function() {
+            loadData();
+        }, true);
+
+        function loadData() {
+            return loadDatabase()
+            .then(function() {
+                return updateTable();
+            })
+            .catch(function(error) {
+                console.log('error loading data', error);
+                if (error.status == 404) {
+                    $location.path('/admin/databases');
+                }
+            });
+        }
+
+        function loadDatabase() {
+            if ($scope.$parent.database && $scope.$parent.database.id == $routeParams.databaseId) {
+                return $q.all([]); // just return an empty promise if we already loaded this db
+            } else {
+                return $q.all([
+                    Metabase.db_get({ 'dbId': $routeParams.databaseId }).$promise
+                    .then(function(database) {
+                        $scope.$parent.database = database;
+                    }),
+                    Metabase.db_tables({ 'dbId': $routeParams.databaseId }).$promise
+                    .then(function(tables) {
+                        $scope.tables = tables;
+                    })
+                ]);
+            }
+        }
+
+        function updateTable() {
+            if ($routeParams.tableId !== undefined) {
+                $scope.$parent.table = $scope.tables.filter(function(t) { return $routeParams.tableId == t.id; })[0];
+                if (!$scope.$parent.table) {
+                    $location.path('/admin/databases/'+$routeParams.databaseId+'/tables');
+                }
+            }
+        }
     }
 ]);
 
 
 DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$location', 'Metabase', 'ForeignKey',
     function($scope, $routeParams, $location, Metabase, ForeignKey) {
+        $scope.routeParams = $routeParams;
+        $scope.$watch('routeParams', function() {
+            loadData();
+        }, true);
+
+        function loadData() {
+            Metabase.table_query_metadata({
+                'tableId': $routeParams.tableId,
+                'include_sensitive_fields': true
+            }, function(result) {
+                $scope.table = result;
+                $scope.getIdFields();
+                $scope.decorateWithTargets();
+            }, function(error) {
+                console.log(error);
+                if (error.status == 404) {
+                    $location.path('/');
+                }
+            });
+        }
 
         $scope.getIdFields = function() {
             // fetch the ID fields
@@ -302,13 +385,11 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
 
         };
 
-        $scope.fields = [];
-
         $scope.dragControlListeners = {
             containment: '.EntityGroup',
             orderChanged: function(event) {
                 // Change order here
-                var new_order = _.map($scope.fields, function(field) {
+                var new_order = _.map($scope.table.fields, function(field) {
                     return field.id;
                 });
                 Metabase.table_reorder_fields({
@@ -317,21 +398,6 @@ DatabasesControllers.controller('DatabaseTable', ['$scope', '$routeParams', '$lo
                 });
             }
         };
-
-
-        Metabase.table_query_metadata({
-            'tableId': $routeParams.tableId
-        }, function(result) {
-            $scope.table = result;
-            $scope.fields = $scope.table.fields;
-            $scope.getIdFields();
-            $scope.decorateWithTargets();
-        }, function(error) {
-            console.log(error);
-            if (error.status == 404) {
-                $location.path('/');
-            }
-        });
     }
 ]);
 

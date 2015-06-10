@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, FormField, SelectionModule*/
 
-var Saver = React.createClass({
+import OnClickOutside from 'react-onclickoutside';
+
+import FormField from './form_field.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -87,8 +92,7 @@ var Saver = React.createClass({
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Others can read</option>),
-            (<option key="2" value={2}>Others can modify</option>)
+            (<option key="1" value={1}>Public (others can read)</option>)
         ];
 
         var formError;

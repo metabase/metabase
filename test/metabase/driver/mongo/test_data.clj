@@ -11,11 +11,10 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test-data :refer [org-id]]
             [metabase.test-data.data :as data]))
 
 (declare load-data
-         set-field-special-types!)
+         set-field-types!)
 
 ;; ## CONSTANTS
 
@@ -46,14 +45,13 @@
            "Why are we attempting to use the Mongo test Database when we're not testing against mongo?")
    (let [db (or (sel :one Database :name mongo-test-db-name)
                 (let [db (ins Database
-                           :organization_id @org-id
                            :name mongo-test-db-name
                            :engine :mongo
                            :details {:conn_str mongo-test-db-conn-str})]
                   (log/info (color/cyan "Loading Mongo test data..."))
                   (load-data)
                   (driver/sync-database! db)
-                  (set-field-special-types!)
+                  (set-field-types!)
                   (log/info (color/cyan "Done."))
                   db))]
      (assert (and (map? db)
@@ -135,13 +133,17 @@
             (catch com.mongodb.MongoException$DuplicateKey _)))
         (log/info (color/cyan (format "Loaded data for collection '%s'." (name collection))))))))
 
-(defn- set-field-special-types! []
+(defn- set-field-types! []
   (doseq [[collection-name {fields :fields}] data/test-data]
-    (doseq [{:keys [special-type] :as field} fields]
-      (when special-type
+    (doseq [{:keys [special-type field-type] :as field} fields]
+      (when (or field-type special-type)
         (let [table-id (sel :one :id Table :name (name collection-name))
               _        (assert (integer? table-id))
               field-id (sel :one :id Field :table_id table-id :name (name (:name field)))
               _        (assert (integer? table-id))]
-          (log/info (format "SET SPECIAL TYPE %s.%s -> %s..." collection-name (:name field) special-type))
-          (upd Field field-id :special_type special-type))))))
+          (when special-type
+            (log/info (format "SET SPECIAL TYPE %s.%s -> %s..." collection-name (:name field) special-type))
+            (upd Field field-id :special_type special-type))
+          (when field-type
+            (log/info (format "SET FIELD TYPE %s.%s -> %s..." collection-name (:name field) field-type))
+            (upd Field field-id :field_type field-type)))))))

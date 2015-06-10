@@ -1,6 +1,6 @@
 'use strict';
 
-var SearchBar = React.createClass({
+export default React.createClass({
     displayName: 'SearchBar',
     propTypes: {
         filter: React.PropTypes.string.isRequired,

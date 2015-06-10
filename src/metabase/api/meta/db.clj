@@ -1,9 +1,7 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :refer :all]
-            [medley.core :as medley]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -11,7 +9,6 @@
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [org :refer [Org org-can-read org-can-write]]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
@@ -21,26 +18,19 @@
   (checkp-contains? (set (map name (keys driver/available-drivers))) symb value))
 
 (defendpoint GET "/"
-  "Fetch all `Databases` for an `Org`."
-  [org]
-  {org Required}
-  (let-404 [{:keys [id inherits] :as org} (sel :one Org :id org)]
-    (read-check org)
-    (-> (sel :many Database (order :name) (where (if inherits
-                                                   {}
-                                                   {:organization_id id})))
-        (hydrate :organization))))
+  "Fetch all `Databases`."
+  []
+  (sel :many Database (order :name)))
 
 (defendpoint POST "/"
-  "Add a new `Database` for `Org`."
-  [:as {{:keys [org name engine details] :as body} :body}]
-  {org     Required
-   name    [Required NonEmptyString]
+  "Add a new `Database`."
+  [:as {{:keys [name engine details] :as body} :body}]
+  {name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
   ;; TODO - we should validate the contents of `details` here based on the engine
-  (write-check Org org)
-  (let-500 [new-db (ins Database :organization_id org :name name :engine engine :details details)]
+  (check-superuser)
+  (let-500 [new-db (ins Database :name name :engine engine :details details)]
     ;; kick off background job to gather schema metadata about our new db
     (future (driver/sync-database! new-db))
     ;; make sure we return the newly created db object
@@ -74,8 +64,7 @@
 (defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (->404 (sel :one Database :id id)
-         (hydrate :organization)))
+  (check-404 (sel :one Database :id id)))
 
 (defendpoint PUT "/:id"
   "Update a `Database`."

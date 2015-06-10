@@ -1,6 +1,12 @@
 :root {
     --form-padding: 1em;
     --form-input-placeholder-color: #C0C0C0;
+    --form-input-size: 1.571rem;
+    --form-input-size-medium: 1.25rem;
+    --form-input-size-small: 1.0rem;
+
+    --form-label-color: #949494;
+    --form-offset: 2.4rem;
 }
 
 /* TODO: deprecate this base object, it shouldn't be this specific */
@@ -16,7 +22,7 @@
 /* TODO: combine this and the scoped version */
 .Form-label {
   display: block;
-  color: #777;
+  color: var(--form-label-color);
   font-size: 1.2rem;
 }
 
@@ -40,12 +46,22 @@
 }
 
 .Form-input {
-    padding-top: 0.8em;
-    padding-bottom: 0.8em;
-    font-size: 1.185em;
+    padding-top: 0.6em;
+    padding-bottom: 0.6em;
+    font-size: var(--form-input-size);
+    line-height: 1;
     border: none;
     background-color: transparent;
     transition: color .3s linear;
+    font-family: var(--default-font-family);
+}
+
+.Form-input--medium {
+    font-size: var(--form-input-size-medium);
+}
+
+.Form-input--small {
+    font-size: var(--form-input-size-small);
 }
 
 .Form-input:focus {
@@ -53,7 +69,7 @@
 }
 
 .Form-offset {
-    padding-left: 2.25rem;
+    padding-left: var(--form-offset);
 }
 
 .Form-charm {
@@ -86,6 +102,12 @@
     background: rgba(0, 0, 0, 0.02);
 }
 
+/* ewww */
+.Form-field:hover .Form-input.ng-dirty {
+    color: #222;
+    background-color: #fff;
+}
+
 .Form-field:hover .Form-charm {
     opacity: 1;
 }
@@ -111,9 +133,15 @@
 }
 
 .Form-actions {
-    padding: 1em 2em 2em;
+    padding-left: var(--form-offset);
+    padding-bottom: var(--form-offset);
     display: flex;
     align-items: center;
+}
+
+.FormTitleSeparator {
+    position: relative;
+    border-bottom: 1px solid #e8e8e8;
 }
 
 ::-webkit-input-placeholder { /* WebKit browsers */

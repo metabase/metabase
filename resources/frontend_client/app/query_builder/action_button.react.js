@@ -1,7 +1,11 @@
 'use strict';
-/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, CheckIcon*/
+/*global setTimeout, clearTimeout*/
 
-var ActionButton = React.createClass({
+import Icon from './icon.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'ActionButton',
     propTypes: {
         actionFn: React.PropTypes.func.isRequired
@@ -69,7 +73,7 @@ var ActionButton = React.createClass({
         } else if (this.state.result === "success") {
             return (
                 <span>
-                    <CheckIcon width="12px" height="12px" />
+                    <Icon name='check' width="12px" height="12px" />
                     {this.props.successText}
                 </span>
             );

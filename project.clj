@@ -14,14 +14,14 @@
                  [org.clojure/data.csv "0.1.2"]                       ; CSV parsing / generation
                  [org.clojure/data.json "0.2.6"]                      ; JSON parsing / generation
                  [org.clojure/java.classpath "0.2.2"]
-                 [org.clojure/java.jdbc "0.3.6"]                      ; basic jdbc access from clojure
+                 [org.clojure/java.jdbc "0.3.7"]                      ; basic jdbc access from clojure
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
                  [org.clojure/tools.reader "0.9.2"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                  [org.clojure/tools.trace "0.7.8"]                    ; "tracing macros/fns to help you see what your code is doing"
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [cheshire "5.4.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
+                 [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.2.1"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.9.0"]                                   ; library for dealing with date/time
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
@@ -40,7 +40,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.6.0"]                                     ; lightweight lib of useful functions
-                 [org.liquibase/liquibase-core "3.3.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.3.5"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
@@ -87,4 +87,4 @@
                                        "-Dmb.jetty.port=3001"
                                        "-Dmb.api.key=test-api-key"]}
              :uberjar {:aot :all
-                       :prep-tasks ["npm" "gulp" "javac" "compile"]}})
+                       :prep-tasks ["npm" "webpack" "javac" "compile"]}})

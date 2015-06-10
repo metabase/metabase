@@ -1,5 +1,10 @@
 'use strict';
-/*global _, document, confirm, QueryHeader, NativeQueryEditor, GuiQueryEditor, ResultQueryEditor, QueryVisualization*/
+/*global _, document, confirm*/
+
+import GuiQueryEditor from '../query_builder/gui_query_editor.react';
+import NativeQueryEditor from '../query_builder/native_query_editor.react';
+import QueryHeader from '../query_builder/header.react';
+import QueryVisualization from '../query_builder/visualization.react';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -31,17 +36,12 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
     $scope.filter = function(filterMode) {
         $scope.filterMode = filterMode;
 
-        $scope.$watch('currentOrg', function(org) {
-            if (!org) return;
-
-            Card.list({
-                'orgId': org.id,
-                'filterMode': filterMode
-            }, function(cards) {
-                $scope.cards = cards;
-            }, function(error) {
-                console.log('error getting cards list', error);
-            });
+        Card.list({
+            'filterMode': filterMode
+        }, function(cards) {
+            $scope.cards = cards;
+        }, function(error) {
+            console.log('error getting cards list', error);
         });
     };
 
@@ -126,7 +126,7 @@ CardControllers.controller('CardDetail', [
                 cardJson = JSON.stringify(card);
 
                 // for new cards we redirect the user
-                $location.path('/' + $scope.currentOrg.slug + '/card/' + newCard.id);
+                $location.path('/card/' + newCard.id);
             },
             notifyCardUpdatedFn: function(updatedCard) {
                 cardJson = JSON.stringify(card);
@@ -356,7 +356,6 @@ CardControllers.controller('CardDetail', [
             }, function (result) {
                 if (cloning) {
                     result.id = undefined; // since it's a new card
-                    result.organization = $scope.currentOrg.id;
                     result.carddirty = true; // so it cand be saved right away
                 }
 
@@ -389,7 +388,6 @@ CardControllers.controller('CardDetail', [
 
             } else {
                 // starting a new card
-                card.organization = $scope.currentOrg.id;
 
                 // this is just an easy way to ensure defaults are all setup
                 headerModel.setQueryModeFn("query");
@@ -419,32 +417,21 @@ CardControllers.controller('CardDetail', [
             React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
         });
 
-        // TODO: we should get database list first, then do rest of setup
-        //       because without databases this UI is meaningless
-        $scope.$watch('currentOrg', function (org) {
-            // we need org always, so we just won't do anything if we don't have one
-            if (!org) {return;}
+        // TODO: while we wait for the databases list we should put something on screen
+        // grab our database list, then handle the rest
+        Metabase.db_list(function (dbs) {
+            databases = dbs;
 
-            // TODO: while we wait for the databases list we should put something on screen
+            if (dbs.length < 1) {
+                // TODO: some indication that setting up a db is required
+                return;
+            }
 
-            // grab our database list, then handle the rest
-            Metabase.db_list({
-                'orgId': org.id
-            }, function (dbs) {
-                databases = dbs;
+            // finish initializing our page and render
+            initAndRender();
 
-                if (dbs.length < 1) {
-                    // TODO: some indication that setting up a db is required
-                    return;
-                }
-
-                // finish initializing our page and render
-                initAndRender();
-
-            }, function (error) {
-                console.log('error getting database list', error);
-            });
-
+        }, function (error) {
+            console.log('error getting database list', error);
         });
     }
 ]);

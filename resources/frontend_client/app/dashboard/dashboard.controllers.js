@@ -33,20 +33,15 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
     $scope.filter = function(filterMode) {
         $scope.filterMode = filterMode;
 
-        $scope.$watch('currentOrg', function (org) {
-            if (!org) return;
+        Dashboard.list({
+            'filterMode': filterMode
+        }, function (dashes) {
+            $scope.dashboards = dashes;
 
-            Dashboard.list({
-                'orgId': org.id,
-                'filterMode': filterMode
-            }, function (dashes) {
-                $scope.dashboards = dashes;
-
-                sort = undefined;
-                $scope.sort(sort, false);
-            }, function (error) {
-                console.log('error getting dahsboards list', error);
-            });
+            sort = undefined;
+            $scope.sort(sort, false);
+        }, function (error) {
+            console.log('error getting dahsboards list', error);
         });
     };
 
@@ -68,10 +63,6 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
                 a = new Date(a.updated_at);
                 b = new Date(b.updated_at);
                 return a > b ? -1 : a < b ? 1 : 0;
-            });
-        } else if ('org' == sortMode) {
-            $scope.dashboards.sort(function(a, b) {
-                return a.organization.name.localeCompare(b.organization.name);
             });
         } else if ('owner' == sortMode) {
             $scope.dashboards.sort(function(a, b) {
@@ -123,7 +114,7 @@ DashboardControllers.controller('DashListForCard', ['$scope', '$routeParams', '$
     });
 }]);
 
-DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Organization', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Organization, Dashboard, DashCard) {
+DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {
 
     // $scope.dashboard: single Card being displayed/edited
     // $scope.error: any relevant error message to be displayed
@@ -195,6 +186,7 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
     };
 
     $scope.dashboardLoaded = false;
+    $scope.dashboardLoadError = null;
 
 
     if ($routeParams.dashId) {
@@ -209,19 +201,23 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
             $scope.dashboardLoaded = true;
 
         }, function (error) {
-            console.log(error);
+            $scope.dashboardLoaded = true;
+
             if (error.status == 404) {
                 $location.path('/');
+            } else if (error.message) {
+                $scope.dashboardLoadError = error.message;
+            } else {
+                $scope.dashboardLoadError = "Hmmm.  We had a problem loading this dashboard for some reason :(";
             }
         });
     }
 
     $scope.create = function(dashboard) {
-        dashboard.organization = $scope.currentOrg.id;
         Dashboard.create(dashboard, function(result) {
             if (result && !result.error) {
                 // just go to the new dashboard
-                $location.path('/' + $scope.currentOrg.slug + '/dash/' + result.id);
+                $location.path('/dash/' + result.id);
             } else {
                 console.log(result);
             }
@@ -232,7 +228,7 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         Dashboard.update(dashboard, function(result) {
             if (result && !result.error) {
                 // just go back to view page after a save
-                $location.path('/' + $scope.currentOrg.slug + '/dash/' + result.id);
+                $location.path('/dash/' + result.id);
             }
         });
     };

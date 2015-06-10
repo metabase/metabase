@@ -1,7 +1,9 @@
 'use strict';
-/*global _, DateFilter, SelectionModule, CloseIcon*/
+/*global _ */
 
-var AggregationWidget = React.createClass({
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'AggregationWidget',
     propTypes: {
         aggregation: React.PropTypes.array.isRequired,

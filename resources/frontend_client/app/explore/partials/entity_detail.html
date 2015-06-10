@@ -1,11 +1,8 @@
 <div>
     <div class="col col-md-12">
         <div class="row p2 border-bottom clearfix">
-            <div class="float-right mt1">
-                <a class="Button" cv-org-href="/explore/table/{{table.id}}/metadata">Metadata</a>
-            </div>
             <h2>
-                <a cv-org-href="/explore/table/{{table.id}}">
+                <a href="/explore/table/{{table.id}}">
                     <span class="text-brand inline-block" ng-if="table.entity_name">{{table.entity_name}}</span>
                     <span class="text-brand inline-block" ng-if="!table.entity_name">{{table.name}}</span>
                 </a>
@@ -48,7 +45,7 @@
                             </a>
                         </td>
                         <td ng-switch-when="fk">
-                            <a cv-org-href="{{'/explore/table/'+col.extra_info.target_table_id+'/'+entity.data.rows[0][$index]}}">
+                            <a href="{{'/explore/table/'+col.extra_info.target_table_id+'/'+entity.data.rows[0][$index]}}">
                                 {{entity.data.rows[0][$index]}}
                             </a>
                         </td>

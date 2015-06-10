@@ -25,11 +25,9 @@ var Corvus = angular.module('corvus', [
     'corvus.reserve',
     'corvus.user',
     'corvus.setup',
-    'corvusadmin.organization',
     'corvusadmin.databases',
     'corvusadmin.people',
-    'superadmin.settings',
-    'superadmin.organization'
+    'corvusadmin.settings'
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
@@ -58,39 +56,10 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
         }
     });
 
-    $routeProvider.when('/setup/', {
-        templateUrl: '/app/setup/partials/setup_intro.html',
-        controller: 'SetupIntro'
-    });
-
-    $routeProvider.when('/setup/init/:setupToken', {
-        template: '',
-        controller: 'SetupInit'
-    });
-
-    $routeProvider.when('/superadmin/', {
+    $routeProvider.when('/admin/', {
         redirectTo: function(routeParams, path, search) {
-            return '/superadmin/settings/';
+            return '/admin/settings';
         }
-    });
-
-    // TODO: we need actual homepages for orgs!
-    $routeProvider.when('/:orgSlug/', {
-        redirectTo: function(routeParams, path, search) {
-            return '/' + routeParams.orgSlug + '/dash/';
-        }
-    });
-
-    $routeProvider.when('/:orgSlug/admin/', {
-        redirectTo: function(routeParams, path, search) {
-            return '/' + routeParams.orgSlug + '/admin/org/';
-        }
-    });
-
-    // admin routes
-    $routeProvider.when('/:orgSlug/admin/test_login_form', {
-        templateUrl: '/app/admin/test_login_form.html',
-        controller: 'TestLoginForm'
     });
 
     // TODO: we need an appropriate homepage or something to show in this situation

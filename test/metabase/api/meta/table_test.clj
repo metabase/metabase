@@ -10,6 +10,7 @@
                              [table :refer [Table]])
             [metabase.test.data.datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
             [metabase.test-data :refer :all]
+            [metabase.test-data.data :as data]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
 
@@ -31,7 +32,7 @@
                             {:name (datasets/format-name *dataset* "users"),      :db_id db-id, :active true, :rows   15, :id (datasets/table-name->id *dataset* :users)}
                             {:name (datasets/format-name *dataset* "venues"),     :db_id db-id, :active true, :rows  100, :id (datasets/table-name->id *dataset* :venues)}])))
                      @datasets/test-dataset-names))
-  (->> ((user->client :rasta) :get 200 "meta/table" :org @org-id)
+  (->> ((user->client :rasta) :get 200 "meta/table")
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
        set))
 
@@ -47,7 +48,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "VENUES"
        :rows 100
@@ -77,7 +78,7 @@
          (match-$ (sel :one Field :id (field->id :categories :name))
            {:description nil
             :table_id (table->id :categories)
-            :special_type nil
+            :special_type "name"
             :name "NAME"
             :updated_at $
             :active true
@@ -90,7 +91,6 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (table->id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
-; TODO - create test which includes :field_values
 (expect
     (match-$ (sel :one Table :id (table->id :categories))
       {:description nil
@@ -102,7 +102,7 @@
               :details $
               :updated_at $
               :name "Test Database"
-              :organization_id @org-id
+              :organization_id nil
               :description nil})
        :name "CATEGORIES"
        :fields [(match-$ (sel :one Field :id (field->id :categories :id))
@@ -122,7 +122,7 @@
                 (match-$ (sel :one Field :id (field->id :categories :name))
                   {:description nil
                    :table_id (table->id :categories)
-                   :special_type nil
+                   :special_type "name"
                    :name "NAME"
                    :updated_at $
                    :active true
@@ -133,7 +133,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "TextField"})]
-       :field_values nil
+       :field_values {}
        :rows 75
        :updated_at $
        :entity_name nil
@@ -142,6 +142,210 @@
        :db_id (:id @test-db)
        :created_at $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :categories))))
+
+
+(def ^:private user-last-login-date-strs
+  "In an effort to be really annoying, the date strings returned by the API are different on Circle than they are locally.
+   Generate strings like '2014-01-01' at runtime so we get matching values."
+  (let [format-inst (fn [^java.util.Date inst]
+                      (format "%d-%02d-%02d"
+                              (+ (.getYear inst) 1900)
+                              (+ (.getMonth inst) 1)
+                              (.getDate inst)))]
+    (->> data/test-data
+         :users
+         :rows
+         (map second)
+         (map format-inst)
+         set
+         sort
+         vec)))
+
+;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
+;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
+(expect
+    (match-$ (sel :one Table :id (table->id :users))
+      {:description nil
+       :entity_type nil
+       :db (match-$ @test-db
+             {:created_at $
+              :engine "h2"
+              :id $
+              :details $
+              :updated_at $
+              :name "Test Database"
+              :organization_id nil
+              :description nil})
+       :name "USERS"
+       :fields [(match-$ (sel :one Field :id (field->id :users :id))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "id"
+                   :name "ID"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "BigIntegerField"})
+                (match-$ (sel :one Field :id (field->id :users :last_login))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "category"
+                   :name "LAST_LOGIN"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "DateTimeField"})
+                (match-$ (sel :one Field :id (field->id :users :name))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "category"
+                   :name "NAME"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})
+                (match-$ (sel :one Field :table_id (table->id :users) :name "PASSWORD")
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "category"
+                   :name "PASSWORD"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "sensitive"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})]
+       :rows 15
+       :updated_at $
+       :entity_name nil
+       :active true
+       :id (table->id :users)
+       :db_id @db-id
+       :field_values {(keyword (str (field->id :users :last_login)))
+                      user-last-login-date-strs
+
+                      (keyword (str (field->id :users :name)))
+                      ["Broen Olujimi"
+                       "Conchúr Tihomir"
+                       "Dwight Gresham"
+                       "Felipinho Asklepios"
+                       "Frans Hevel"
+                       "Kaneonuskatew Eiran"
+                       "Kfir Caj"
+                       "Nils Gotam"
+                       "Plato Yeshua"
+                       "Quentin Sören"
+                       "Rüstem Hebel"
+                       "Shad Ferdynand"
+                       "Simcha Yan"
+                       "Spiros Teofil"
+                       "Szymon Theutrich"]}
+       :created_at $})
+  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata?include_sensitive_fields=true" (table->id :users))))
+
+;;; GET api/meta/table/:id/query_metadata
+;;; Make sure that getting the User table does *not* include password info
+(expect
+    (match-$ (sel :one Table :id (table->id :users))
+      {:description nil
+       :entity_type nil
+       :db (match-$ @test-db
+             {:created_at $
+              :engine "h2"
+              :id $
+              :details $
+              :updated_at $
+              :name "Test Database"
+              :organization_id nil
+              :description nil})
+       :name "USERS"
+       :fields [(match-$ (sel :one Field :id (field->id :users :id))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "id"
+                   :name "ID"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "BigIntegerField"})
+                (match-$ (sel :one Field :id (field->id :users :last_login))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "category"
+                   :name "LAST_LOGIN"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "DateTimeField"})
+                (match-$ (sel :one Field :id (field->id :users :name))
+                  {:description nil
+                   :table_id (table->id :users)
+                   :special_type "category"
+                   :name "NAME"
+                   :updated_at $
+                   :active true
+                   :id $
+                   :field_type "info"
+                   :position 0
+                   :target nil
+                   :preview_display true
+                   :created_at $
+                   :base_type "TextField"})]
+       :rows 15
+       :updated_at $
+       :entity_name nil
+       :active true
+       :id (table->id :users)
+       :db_id @db-id
+       :field_values {(keyword (str (field->id :users :last_login)))
+                      user-last-login-date-strs
+
+                      (keyword (str (field->id :users :name)))
+                      ["Broen Olujimi"
+                       "Conchúr Tihomir"
+                       "Dwight Gresham"
+                       "Felipinho Asklepios"
+                       "Frans Hevel"
+                       "Kaneonuskatew Eiran"
+                       "Kfir Caj"
+                       "Nils Gotam"
+                       "Plato Yeshua"
+                       "Quentin Sören"
+                       "Rüstem Hebel"
+                       "Shad Ferdynand"
+                       "Simcha Yan"
+                       "Spiros Teofil"
+                       "Szymon Theutrich"]}
+       :created_at $})
+  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (table->id :users))))
 
 
 ;; ## PUT /api/meta/table/:id
@@ -213,7 +417,7 @@
                            :created_at $
                            :db (match-$ @test-db
                                  {:description nil,
-                                  :organization_id 1,
+                                  :organization_id nil,
                                   :name "Test Database",
                                   :updated_at $,
                                   :id $,
@@ -252,7 +456,7 @@
   {:result "success"}
   (let [categories-id-field (sel :one Field :table_id (table->id :categories) :name "ID")
         categories-name-field (sel :one Field :table_id (table->id :categories) :name "NAME")
-        api-response ((user->client :rasta) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
+        api-response ((user->client :crowberto) :post 200 (format "meta/table/%d/reorder" (table->id :categories))
                        {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
     (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))

@@ -2,10 +2,16 @@
   (:require [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
             [ring.util.response :as resp]
-            [metabase.api.routes :as api]))
+            [metabase.api.routes :as api]
+            [metabase.setup :as setup]))
 
-
-(let [index (fn [_] (resp/resource-response "frontend_client/index.html"))]
+;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
+(let [redirect-to-setup? (fn [{:keys [uri]}]
+                           (and (setup/incomplete?)
+                                (not (re-matches #"^/setup/.*$" uri))))
+      index (fn [request]
+              (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))
+                  (resp/resource-response "frontend_client/index.html")))]
   (defroutes routes
     (GET "/" [] index)                                     ; ^/$           -> index.html
     (context "/api" [] api/routes)                         ; ^/api/        -> API routes

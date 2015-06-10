@@ -32,7 +32,7 @@
                     <li class="Pill Pill--filled mr1 inline-block clearfix" ng-repeat="filter in queryFilters() track by $index">
                         <span>{{getFilterColumnName(filter)}}: {{filter[2]}}</span>
                         <a class="Pill-action" href="#" ng-click="removeFilter($index)">
-                            <cv-close-icon width="12px" height="12px"></cv-close-icon>
+                            <mb-icon name="close" width="12px" height="12px"></mb-icon>
                         </a>
                     </li>
             </ul>
@@ -40,7 +40,7 @@
             <!-- add filter button/dropdown -->
             <div class="Dropdown inline-block" dropdown is-open="filtersOpen">
                 <a class="Pill link mr1" href="#" dropdown-toggle ng-click="toggleNewFilters()">
-                    <cv-add-icon width="12px" height="12px"></cv-add-icon>
+                    <mb-icon name="add" width="12px" height="12px"></mb-icon>
                     Filter
                 </a>
                 <div class="Dropdown-content" ng-click="handleDropdownInput($event)">
@@ -138,7 +138,7 @@
             <tbody>
                 <tr ng-repeat="row in data.rows track by $index">
                     <td ng-repeat="coldef in table_metadata.fields track by $index" ng-if="coldef.preview_display">
-                        <a ng-if="isLinkable(coldef)" cv-org-href="{{buildEntityLink(coldef, row[coldef.colindex])}}">{{row[coldef.colindex]}}</a>
+                        <a ng-if="isLinkable(coldef)" href="{{buildEntityLink(coldef, row[coldef.colindex])}}">{{row[coldef.colindex]}}</a>
                         <span ng-if="!isLinkable(coldef)">
                             <span ng-if="isNumber(coldef)">{{row[coldef.colindex] | number : 2}}</span>
                             <span ng-if="!isNumber(coldef)">{{row[coldef.colindex] | limitTo : 24}}</span>

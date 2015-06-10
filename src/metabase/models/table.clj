@@ -26,11 +26,10 @@
                                (let [field-ids (sel :many :field [Field :id]
                                                     :table_id id
                                                     :active true
+                                                    :field_type [not= "sensitive"]
                                                     (order :position :asc)
                                                     (order :name :asc))]
-                                 (->> (sel :many FieldValues :field_id [in field-ids])
-                                      (map (fn [{:keys [field_id values]}] {field_id values}))
-                                      (apply merge))))
+                                 (sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
                :description  (u/jdbc-clob->str description)
                :pk_field     (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"}))))
                :can_read     (delay @(:can_read @(:db <>)))

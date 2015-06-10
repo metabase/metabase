@@ -1,22 +1,23 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             [monger.core :as mg]
             [metabase.driver :as driver]))
 
 (defn- details-map->connection-string
-  [{:keys [user password host port dbname]}]
+  [{:keys [user pass host port dbname]}]
   {:pre [host
          dbname]}
   (str "mongodb://"
        user
-       (when password
-         (assert user "Can't have a password without a user!")
-         (str ":" password))
-       (when user "@")
+       (when-not (s/blank? pass)
+         (assert (not (s/blank? user)) "Can't have a password without a user!")
+         (str ":" pass))
+       (when-not (s/blank? user) "@")
        host
-       (when port
+       (when-not (s/blank? (str port))
          (str ":" port))
        "/"
        dbname))

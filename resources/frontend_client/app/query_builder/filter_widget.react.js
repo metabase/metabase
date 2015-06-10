@@ -1,7 +1,10 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
 
-var FilterWidget = React.createClass({
+import DateFilter from './date_filter.react';
+import Icon from './icon.react';
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'FilterWidget',
     propTypes: {
         filter: React.PropTypes.array.isRequired,
@@ -280,7 +283,7 @@ var FilterWidget = React.createClass({
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
                 <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
-                    <CloseIcon width="12px" height="12px" />
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );

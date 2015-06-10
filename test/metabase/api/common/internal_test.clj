@@ -26,9 +26,6 @@
 (expect :int
   (arg-type :card-id))
 
-(expect :int
-  (arg-type 'org))
-
 
 ;;; TESTS FOR ROUTE-PARAM-REGEX
 

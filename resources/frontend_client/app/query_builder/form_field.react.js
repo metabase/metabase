@@ -1,7 +1,8 @@
 'use strict';
-/*global cx, OnClickOutside, SelectionModule*/
 
-var FormField = React.createClass({
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'FormField',
     propTypes: {
         fieldName: React.PropTypes.string.isRequired,

@@ -1,7 +1,6 @@
 'use strict';
-/*global */
 
-var QueryVisualizationTable = React.createClass({
+export default React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
         data: React.PropTypes.object

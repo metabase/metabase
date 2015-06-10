@@ -10,9 +10,7 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]]
-                             [org :refer [Org]]
-                             [org-perm :refer [OrgPerm]])
+                             [table :refer [Table]])
             [metabase.util :as u]))
 
 (declare add-foreign-key-constraints!
@@ -20,22 +18,12 @@
          create-and-populate-tables!)
 
 (def ^:const ^:private db-name "Test Database")
-(def ^:const ^:private org-name "Test Organization")
 (def ^:private test-db-filename
   (delay (format "%s/target/test-data" (System/getProperty "user.dir"))))
 (def test-db-connection-string
   (delay (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" @test-db-filename)))
 
 ;; # PUBLIC INTERFACE
-
-(defn test-org
-  "Returns a test `Organization` that the test database will belong to, creating it if needed."
-  []
-  (or (sel :one Org :name org-name)
-      (ins Org
-           :name org-name
-           :slug "test"
-           :inherits true)))
 
 (defn test-db
   "Returns the test `Database`.
@@ -47,7 +35,6 @@
             (create-and-populate-tables!))
           (log/info "Creating new metabase Database object...")
           (let [db (ins Database
-                     :organization_id (:id (test-org))
                      :name db-name
                      :engine :h2
                      :details {:conn_str @test-db-connection-string})]
@@ -158,15 +145,17 @@
 (def ^:private table->id (u/runtime-resolved-fn 'metabase.test-data 'table->id))
 (def ^:private field->id (u/runtime-resolved-fn 'metabase.test-data 'field->id))
 
-(defn- set-special-type! [table-kw {field-kw :name special-type :special-type}]
-  {:post [(true? %)]}
-  (if-not special-type true
-          (do (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
-              (upd Field (field->id table-kw field-kw) :special_type (name special-type)))))
+(defn- set-types! [table-kw {field-kw :name, special-type :special-type, field-type :field-type}]
+  (when special-type
+    (log/info "SET SPECIAL TYPE" table-kw field-kw "->" special-type)
+    (upd Field (field->id table-kw field-kw) :special_type (name special-type)))
+  (when field-type
+    (log/info "SET FIELD TYPE" table-kw field-kw "->" field-type)
+    (upd Field (field->id table-kw field-kw) :field_type (name field-type))))
 
 (defn- add-metadata! []
   (dorun
    (map (fn [[table-kw {:keys [fields]}]]
-          (dorun (map (partial set-special-type! table-kw)
+          (dorun (map (partial set-types! table-kw)
                       fields)))
         data/test-data)))

@@ -1,10 +1,16 @@
 'use strict';
-/*global setTimeout, clearTimeout, Saver, ActionButton, Popover, DownloadIcon, QueryModeToggle, AddToDashboard*/
+/*global setTimeout, clearTimeout*/
 
-var cx = React.addons.classSet,
-    ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+import ActionButton from './action_button.react';
+import AddToDashboard from './add_to_dashboard.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+import QueryModeToggle from './query_mode_toggle.react';
+import Saver from './saver.react';
 
-var QueryHeader = React.createClass({
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -171,11 +177,11 @@ var QueryHeader = React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <DownloadIcon>
+                    <Icon name='download'>
                         <Popover>
                             <span>Download data</span>
                         </Popover>
-                    </DownloadIcon>
+                    </Icon>
                 </a>
             );
         }

@@ -1,9 +1,19 @@
 'use strict';
-/*global _, cx, AggregationWidget, FilterWidget, LimitWidget, SortWidget, RunButton, SelectionModule, DatabaseSelector, ExpandIcon*/
+/*global _*/
 
+import AggregationWidget from './aggregation_widget.react';
+import DatabaseSelector from './database_selector.react';
+import FilterWidget from './filter_widget.react';
+import Icon from './icon.react';
+import LimitWidget from './limit_widget.react';
+import RunButton from './run_button.react';
+import SelectionModule from './selection_module.react';
+import SortWidget from './sort_widget.react';
+
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
-var GuiQueryEditor = React.createClass({
+export default React.createClass({
     displayName: 'GuiQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,
@@ -111,11 +121,10 @@ var GuiQueryEditor = React.createClass({
     },
 
     canRun: function() {
-        var canRun = false;
         if (this.hasValidAggregation()) {
-            canRun = true;
+            return true;
         }
-        return canRun;
+        return false;
     },
 
     runQuery: function() {
@@ -173,6 +182,12 @@ var GuiQueryEditor = React.createClass({
         return (this.props.query.query.breakout &&
                     this.props.query.query.breakout.length > 0 &&
                     this.props.query.query.breakout[0] !== null);
+    },
+
+    canSortByAggregateField: function() {
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+
+        return this.hasValidBreakout() && SORTABLE_AGGREGATION_TYPES.has(this.props.query.query.aggregation[0]);
     },
 
     addDimension: function() {
@@ -352,6 +367,13 @@ var GuiQueryEditor = React.createClass({
                 }
             }.bind(this));
 
+            if (this.canSortByAggregateField()) {
+                breakoutFieldList.push({
+                    id: ["aggregation",  0],
+                    name: this.props.query.query.aggregation[0] // e.g. "sum"
+                });
+            }
+
             return breakoutFieldList;
         } else {
             return [];
@@ -467,9 +489,7 @@ var GuiQueryEditor = React.createClass({
                 this.state.options.fields.length > 0) {
             return (
                 <a className="ml2" onClick={this.addFilter}>
-                    <svg className="icon" width="16px" height="16px" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M6.57883011,7.57952565 L1.18660637e-12,-4.86721774e-13 L16,-4.92050845e-13 L9.42116989,7.57952565 L9.42116989,13.5542169 L6.57883011,15 L6.57883011,7.57952565 Z"></path>
-                    </svg>
+                    <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
                     Filter {(this.state.options) ? this.state.options.name : ""}
                 </a>
             );
@@ -710,11 +730,11 @@ var GuiQueryEditor = React.createClass({
     toggleIcon: function () {
         if(this.state.isOpen) {
             return (
-                <ExpandIcon width="16px" height="16px" />
+                <Icon name='expand' width="16px" height="16px" />
             );
         } else {
             return (
-                <ExpandIcon width="16px" height="16px" />
+                <Icon name='expand' width="16px" height="16px" />
             );
         }
     },

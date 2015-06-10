@@ -1,7 +1,9 @@
 'use strict';
-/*global DateFilter, SelectionModule, CloseIcon*/
 
-var LimitWidget = React.createClass({
+import Icon from './icon.react';
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'LimitWidget',
     propTypes: {
         limit: React.PropTypes.number,
@@ -46,7 +48,7 @@ var LimitWidget = React.createClass({
                 </div>
 
                 <a onClick={this.props.removeLimit}>
-                    <CloseIcon width="12px" height="12px" />
+                    <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
         );

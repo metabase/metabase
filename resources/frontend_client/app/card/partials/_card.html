@@ -8,14 +8,14 @@
                     <h3>This card contains no data.</h3>
                     <span class="text-grey-3">Your filters may be too narrow.</span>
                 </div>
-                <a class="link" cv-org-href="/card/{{card.id}}/modify">Try removing some filters</a>
+                <a class="link" href="/card/{{card.id}}/modify">Try removing some filters</a>
             </div>
             <div ng-if="sourceTableEmpty">
-                The source dataset <a cv-org-href="/explore/table/{{sourceTable.id}}">{{sourceTable.name}}</a> is empty
+                The source dataset <a href="/explore/table/{{sourceTable.id}}">{{sourceTable.name}}</a> is empty
             </div>
             <div class="py1" ng-if="card.dataset_query.type == 'result'">
                 The SQL query backing this card returned no records.<br/>
-                <a cv-org-href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Review your query</a> to ensure that your datasets are not empty and that your WHERE clause is not too narrow.
+                <a href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Review your query</a> to ensure that your datasets are not empty and that your WHERE clause is not too narrow.
             </div>
         </div>
     </div>
@@ -27,13 +27,13 @@
                 The SQL query backing this card returned the following error:
                 <span class="block text-italic text-grey-4 my1">"{{sqlError}}"</span>
                 <div ng-if="card.dataset_query.type == 'result'">
-                    <a class="link block my4" cv-org-href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Fix Query</a>
+                    <a class="link block my4" href="/admin/query/{{card.dataset_query.result.query_id}}/modify">Fix Query</a>
                 </div>
             </div>
             <div class="py1" ng-if="missingDataset">
                 The dataset "{{missingDataset}}" backing this card is no longer available
                 <div ng-if="card.dataset_query.database">
-                    <a cv-org-href="/explore/db/{{card.dataset_query.database}}">Explore</a>
+                    <a href="/explore/db/{{card.dataset_query.database}}">Explore</a>
                 </div>
             </div>
         </div>
@@ -96,7 +96,7 @@
         </div>
 
         <div class="Card-footing py1 px2 clearfix" id="{{chartId + '_footing'}}">
-            <a class="Card-dataSource float-right" ng-if="dataset_info.title" cv-org-href="{{dataset_info.link}}">{{dataset_info.title}}</a>
+            <a class="Card-dataSource float-right" ng-if="dataset_info.title" href="{{dataset_info.link}}">{{dataset_info.title}}</a>
             <div class="py1" ng-if="card.creator && ((card.creator.last_name && card.creator.first_name) || card.creator.email)">
                 By:
                 <span ng-if="card.creator.first_name && card.creator.last_name">{{card.creator.first_name}} {{card.creator.last_name}}</span>

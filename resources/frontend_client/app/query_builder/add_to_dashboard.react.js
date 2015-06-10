@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, AddToDashIcon, ReactCSSTransitionGroup*/
 
-var AddToDashboard = React.createClass({
+import AddToDashboardPopover from './add_to_dashboard_popover.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -52,7 +57,7 @@ var AddToDashboard = React.createClass({
         return (
             <span>
                 <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
-                    <AddToDashIcon />
+                    <Icon name='addtodash' />
                 </a>
                 <ReactCSSTransitionGroup transitionName="Transition-popover">
                     {this.addToDash()}

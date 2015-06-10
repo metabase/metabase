@@ -5,12 +5,11 @@
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Organization', 'PermissionViolation',
-    function($rootScope, $routeParams, $q, $location, $timeout, ipCookie, Session, User, Organization, PermissionViolation) {
+CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
+    function($rootScope, $q, $location, $timeout, ipCookie, Session, User, Settings) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
-        // 2. appstate:organization
 
         var initPromise;
         var currentUserPromise;
@@ -20,8 +19,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             model: {
                 setupToken: null,
                 currentUser: null,
-                currentOrgSlug: null,
-                currentOrg: null,
+                siteSettings: null,
                 appContext: 'unknown'
             },
 
@@ -30,6 +28,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 if (!initPromise) {
                     var deferred = $q.defer();
                     initPromise = deferred.promise;
+
+                    // grab our global settings
+                    service.refreshSiteSettings();
 
                     // just make sure we grab the current user
                     service.refreshCurrentUser().then(function(user) {
@@ -45,19 +46,10 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
             clearState: function() {
                 currentUserPromise = null;
                 service.model.currentUser = null;
-                service.model.currentOrgSlug = null;
-                service.model.currentOrg = null;
+                service.model.siteSettings = null;
 
                 // clear any existing session cookies if they exist
                 ipCookie.remove('metabase.SESSION_ID');
-            },
-
-            setCurrentOrgCookie: function(slug) {
-                var isSecure = ($location.protocol() === "https") ? true : false;
-                ipCookie('metabase.CURRENT_ORG', slug, {
-                    path: '/',
-                    secure: isSecure
-                });
             },
 
             refreshCurrentUser: function() {
@@ -65,39 +57,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 // this is meant to be called once on app startup
                 var userRefresh = User.current(function(result) {
                     service.model.currentUser = result;
-
-                    // add isMember(orgSlug) method to the object
-                    service.model.currentUser.isMember = function(orgSlug) {
-                        return this.org_perms.some(function(org_perm) {
-                            return org_perm.organization.slug === orgSlug;
-                        });
-                    };
-
-                    // add isAdmin(orgSlug) method to the object
-                    service.model.currentUser.isAdmin = function(orgSlug) {
-                        return this.org_perms.some(function(org_perm) {
-                            return org_perm.organization.slug === orgSlug && org_perm.admin;
-                        }) || this.is_superuser;
-                    };
-
-                    // add memberOf() method to the object enumerating Organizations user is member of
-                    service.model.currentUser.memberOf = function() {
-                        return this.org_perms.map(function(org_perm) {
-                            return org_perm.organization;
-                        });
-                    };
-
-                    // add adminOf() method to the object enumerating Organizations user is admin of
-                    service.model.currentUser.adminOf = function() {
-                        return this.org_perms.filter(function(org_perm) {
-                            return org_perm.admin;
-                        }).map(function(org_perm) {
-                            return org_perm.organization;
-                        });
-                    };
-
-                    // apply a convenience variable indicating if the user is a member of multiple orgs
-                    service.model.currentUser.is_multi_org = (service.model.currentUser.memberOf().length > 1);
 
                     $rootScope.$broadcast('appstate:user', result);
 
@@ -112,51 +71,41 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                 return currentUserPromise;
             },
 
-            switchOrg: function(org_slug) {
-                Organization.get_by_slug({
-                    'slug': org_slug
-                }, function(org) {
-                    service.model.currentOrgSlug = org.slug;
-                    service.model.currentOrg = org;
-                    $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
+            refreshSiteSettings: function() {
+
+                var settingsRefresh = Settings.list(function(result) {
+
+                    var settings = _.indexBy(result, 'key');
+
+                    service.model.siteSettings = settings;
+
+                    $rootScope.$broadcast('appstate:site-settings', settings);
+
                 }, function(error) {
-                    console.log('error getting current org', error);
+                    console.log('unable to get site settings', error);
                 });
+
+                return settingsRefresh.$promise;
             },
 
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
-                service.model.currentOrgSlug = null;
-                service.model.currentOrg = null;
-
-                PermissionViolation.create({
-                    'user': user.id,
-                    'url': url
-                });
                 $location.path('/unauthorized/');
-
             },
 
             routeChanged: function(event) {
                 // establish our application context based on the route (URI)
-                // valid app contexts are: 'setup', 'auth', 'org', 'org-admin', 'site-admin', 'other', or 'unknown'
+                // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
                 var routeContext;
                 if ($location.path().indexOf('/auth/') === 0) {
                     routeContext = 'auth';
                 } else if ($location.path().indexOf('/setup/') === 0) {
                     routeContext = 'setup';
-                } else if ($location.path().indexOf('/superadmin/') === 0) {
-                    routeContext = 'site-admin';
-                } else if ($routeParams.orgSlug) {
-                    // couple of options when within an org
-                    if ($location.path().indexOf('/' + $routeParams.orgSlug + '/admin/') === 0) {
-                        routeContext = 'org-admin';
-                    } else {
-                        routeContext = 'org';
-                    }
+                } else if ($location.path().indexOf('/admin/') === 0) {
+                    routeContext = 'admin';
                 } else {
-                    routeContext = 'other';
+                    routeContext = 'main';
                 }
 
                 // if the context of the app has changed due to this route change then send out an event
@@ -167,11 +116,13 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
-                currentUserPromise.then(function(user) {
-                    service.routeChangedImpl(event);
-                }, function(error) {
-                    service.routeChangedImpl(event);
-                });
+                if (currentUserPromise) {
+                    currentUserPromise.then(function(user) {
+                        service.routeChangedImpl(event);
+                    }, function(error) {
+                        service.routeChangedImpl(event);
+                    });
+                }
             },
 
             routeChangedImpl: function(event) {
@@ -191,71 +142,13 @@ CorvusServices.factory('AppState', ['$rootScope', '$routeParams', '$q', '$locati
                     return;
                 }
 
-                var onSuperadminPage = $location.path().indexOf('/superadmin/') === 0;
-
-                // NOTE: if you try to do this outside this event you'll run into issues where $routeParams is not set.
-                //       so that's why we explicitly wait until we know when $routeParams will be available
-                if (onSuperadminPage) {
+                if ($location.path().indexOf('/admin/') === 0) {
                     // the user is trying to change to a superuser page
-
                     if (!service.model.currentUser.is_superuser) {
                         service.invalidAccess(service.model.currentUser, $location.url(), "user is not a superuser!!!");
                         return;
                     }
 
-                } else if ($routeParams.orgSlug) {
-                    // the url is telling us what Organization we are working in
-                    // PERMISSIONS CHECK!!  user must be member of this org to proceed
-                    // Making convenience vars so it's easier to scan conditions for correctness
-                    var isSuperuser = service.model.currentUser.is_superuser;
-                    var isOrgMember = service.model.currentUser.isMember($routeParams.orgSlug);
-                    var isOrgAdmin = service.model.currentUser.isAdmin($routeParams.orgSlug);
-                    var onAdminPage = $location.path().indexOf('/' + $routeParams.orgSlug + '/admin') === 0;
-
-                    if (!isSuperuser && !isOrgMember) {
-                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not authorized for this org!!!");
-                        return;
-                    } else if (onAdminPage && !isSuperuser && !isOrgAdmin) {
-                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not an admin for this org!!!");
-                        return;
-                    }
-
-                    if (service.model.currentOrgSlug != $routeParams.orgSlug) {
-                        // we just navigated to a new organization
-                        this.switchOrg($routeParams.orgSlug);
-                        service.model.currentOrgSlug = $routeParams.orgSlug;
-                        service.setCurrentOrgCookie(service.model.currentOrgSlug);
-                    }
-
-                    // if we get here it just means we navigated somewhere within the existing org, so do nothing
-
-                } else if (!service.model.currentOrgSlug) {
-                    // the url doesn't tell us what Organization this is, so lets try a different approach
-                    // Check to see if the user has a current org cookie var set
-                    var currentOrgFromCookie = ipCookie('metabase.CURRENT_ORG');
-                    if (currentOrgFromCookie) {
-                        // check to see if the org slug exists
-                        var orgsWithSlug = service.model.currentUser.org_perms.filter(function(org_perm) {
-                            return org_perm.organization.slug == currentOrgFromCookie;
-                        });
-                        if (orgsWithSlug.length > 0) {
-                            var currentOrgPerm = orgsWithSlug[0];
-                            service.model.currentOrg = currentOrgPerm.organization;
-                            service.model.currentOrgSlug = service.model.currentOrg.slug;
-                            service.setCurrentOrgCookie(service.model.currentOrgSlug);
-                            $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                            return;
-                        }
-                    }
-                    // Otherwise fall through and set the current org to the first org a user is a member of
-                    if (service.model.currentUser.org_perms.length > 0) {
-                        service.model.currentOrg = service.model.currentUser.org_perms[0].organization;
-                        service.model.currentOrgSlug = service.model.currentOrg.slug;
-                        service.setCurrentOrgCookie(service.model.currentOrgSlug);
-                        $rootScope.$broadcast('appstate:organization', service.model.currentOrg);
-                    } else {
-                        // TODO: this is a real issue.  we have a user with no organizations.  where do we send them?
-                    }
                 }
             }
         };
@@ -311,10 +204,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'name': 'Private'
     }, {
         'id': 1,
-        'name': 'Others can read'
-    }, {
-        'id': 2,
-        'name': 'Others can read and modify'
+        'name': 'Public (others can read)'
     }];
 
     this.permName = function(permId) {
@@ -456,6 +346,9 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     }, {
         'id': 'dimension',
         'name': 'Dimension'
+    }, {
+        'id': 'sensitive',
+        'name': 'Sensitive Information'
     }];
 
     this.boolean_types = [{
@@ -580,7 +473,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 required: true
             }, {
                 displayName: "Database password",
-                fieldName: "pass",
+                fieldName: "password",
                 placeholder: "*******"
             }, {
                 displayName: "Use a secure connection (SSL)?",
@@ -912,6 +805,10 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
 
 CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/user/:userId', {}, {
+        create: {
+            url: '/api/user',
+            method: 'POST'
+        },
         list: {
             url: '/api/user/',
             method: 'GET',
@@ -934,11 +831,6 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             method: 'PUT',
             params: {
                 'userId': '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         update_password: {
@@ -946,139 +838,39 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             method: 'PUT',
             params: {
                 'userId': '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
+            }
+        },
+        delete: {
+            method: 'DELETE',
+            params: {
+                'userId': '@userId'
             }
         }
     });
 }]);
 
-CoreServices.factory('Organization', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/org/:orgId', {}, {
-        form_input: {
-            url: '/api/org/form_input',
-            method: 'GET'
-        },
+CoreServices.factory('Settings', ['$resource', function($resource) {
+    return $resource('/api/setting', {}, {
         list: {
-            url: '/api/org/',
+            url: '/api/setting',
             method: 'GET',
             isArray: true
         },
-        create: {
-            url: '/api/org',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        get: {
-            url: '/api/org/:orgId',
-            method: 'GET',
-            params: {
-                orgId: '@orgId'
-            }
-        },
-        get_by_slug: {
-            url: '/api/org/slug/:slug',
-            method: 'GET',
-            params: {
-                slug: '@slug'
-            }
-        },
-        update: {
-            url: '/api/org/:orgId',
+
+        // POST endpoint handles create + update in this case
+        put: {
+            url: '/api/setting/:key',
             method: 'PUT',
             params: {
-                orgId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
+                key: '@key'
             }
         },
+
         delete: {
-            url: '/api/org/:orgId',
+            url: '/api/setting/:key',
             method: 'DELETE',
             params: {
-                orgId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        members: {
-            url: '/api/org/:orgId/members',
-            method: 'GET',
-            params: {
-                orgId: '@orgId'
-            },
-            isArray: true
-        },
-        member_create: {
-            url: '/api/org/:orgId/members',
-            method: 'POST',
-            params: {
-                orgId: '@orgId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        member_get: {
-            url: '/api/org/:orgId/members/:userId',
-            method: 'GET',
-            params: {
-                orgId: '@orgId',
-                userId: '@userId'
-            }
-        },
-        member_add: {
-            url: '/api/org/:orgId/members/:userId',
-            method: 'POST',
-            params: {
-                orgId: '@orgId',
-                userId: '@userId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        member_update: {
-            url: '/api/org/:orgId/members/:userId',
-            method: 'PUT',
-            params: {
-                orgId: '@orgId',
-                userId: '@userId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        member_remove: {
-            url: '/api/org/:orgId/members/:userId',
-            method: 'DELETE',
-            params: {
-                orgId: '@orgId',
-                userId: '@userId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
+                key: '@key'
             }
         }
     });

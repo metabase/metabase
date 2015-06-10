@@ -1,5 +1,5 @@
 (ns metabase.models.common
-  (:require [metabase.api.common :refer [*current-user-id* check org-perms-case]]
+  (:require [metabase.api.common :refer [*current-user* *current-user-id* check]]
             [metabase.util :as u]))
 
 (def timezones
@@ -38,17 +38,14 @@
     2 #{:read :write}} public_perms))
 
 (defn user-permissions
-  "Return the set of current user's permissions for some object with keys `:creator_id`, `:organization_id`, and `:public_perms`."
-  [{:keys [creator_id organization_id public_perms] :as obj}]
+  "Return the set of current user's permissions for some object with keys `:creator_id` and `:public_perms`."
+  [{:keys [creator_id public_perms] :as obj}]
   (check creator_id      500 "Can't check user permissions: object doesn't have :creator_id."
-         organization_id 500 "Can't check user permissions: object doesn't have :organization_id."
          public_perms    500 "Can't check user permissions: object doesn't have :public_perms.")
-  (if (= creator_id *current-user-id*) #{:read :write}              ; if user created OBJ they have all permissions
-      (org-perms-case (if (delay? organization_id) @organization_id
-                          organization_id)
-        nil      #{}                                                ; if user has no permissions for OBJ's Org then they have none for OBJ
-        :admin   #{:read :write}                                    ; if user is an admin they have all permissions
-        :default (public-permissions obj))))
+  (cond (:is_superuser *current-user*)   #{:read :write}    ; superusers have full access to everything
+        (= creator_id *current-user-id*) #{:read :write}    ; if user created OBJ they have all permissions
+        (<= perms-read public_perms)     #{:read}           ; if the object is public then everyone gets :read
+        :else                            #{}))              ; default is user has no permissions a.k.a private
 
 (defn user-can?
   "Check if *current-user* has a given PERMISSION for OBJ.
@@ -64,9 +61,7 @@
    *  `:can_read`
    *  `:can_write`
 
-  Note that these delays depend upon the presence of `creator_id`, `organization_id`, and `public_perms`
-  fields in OBJ. `organization_id` may be a delay in case a DB call is neccesary to determine it (e.g.
-  determining the `organization_id` of a `Query` requires fetching the corresponding `Database`."
+  Note that these delays depend upon the presence of `creator_id`, and `public_perms` fields in OBJ."
   [obj]
   (u/assoc* obj
             :public-permissions-set (delay (public-permissions <>))

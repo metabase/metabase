@@ -6,103 +6,93 @@ var PeopleControllers = angular.module('corvusadmin.people.controllers', [
     'metabase.forms'
 ]);
 
-PeopleControllers.controller('PeopleList', ['$scope', 'Organization',
-    function($scope, Organization) {
+PeopleControllers.controller('PeopleList', ['$scope', 'User',
+    function($scope, User) {
 
-        // grant admin permission for a given user
-        var grant = function(userId) {
-            Organization.member_update({
-                orgId: $scope.currentOrg.id,
-                userId: userId,
-                admin: true
-            }, function (result) {
-                $scope.people.forEach(function (perm) {
-                    if (perm.user.id === userId) {
-                        perm.admin = true;
+        // grant superuser permission for a given user
+        var grant = function(user) {
+            user.is_superuser = true;
+
+            User.update(user, function (result) {
+                $scope.people.forEach(function (u) {
+                    if (u.id === user.id) {
+                        u.is_superuser = true;
                     }
                 });
             }, function (error) {
                 console.log('error', error);
-                $scope.alertError('failed to grant admin to user');
+                $scope.alertError('failed to grant superuser to user');
             });
         };
 
-        // revoke admin permission for a given user
-        var revoke = function(userId) {
-            Organization.member_update({
-                orgId: $scope.currentOrg.id,
-                userId: userId,
-                admin: false
-            }, function (result) {
-                $scope.people.forEach(function (perm) {
-                    if (perm.user.id === userId) {
-                        perm.admin = false;
+        // revoke superuser permission for a given user
+        var revoke = function(user) {
+            user.is_superuser = false;
+
+            User.update(user, function (result) {
+                $scope.people.forEach(function (u) {
+                    if (u.id === user.id) {
+                        u.is_superuser = false;
                     }
                 });
             }, function (error) {
                 console.log('error', error);
-                $scope.alertError('failed to revoke admin from user');
+                $scope.alertError('failed to revoke superuser from user');
             });
         };
 
-        // toggle admin permission for a given user
+        // toggle superuser permission for a given user
         $scope.toggle = function(userId) {
-            $scope.people.forEach(function (perm) {
-                if (perm.user.id === userId) {
-                    if (perm.admin) {
-                        revoke(userId);
+            $scope.people.forEach(function (user) {
+                if (user.id === userId) {
+                    if (user.is_superuser) {
+                        revoke(user);
                     } else {
-                        grant(userId);
+                        grant(user);
                     }
                 }
             });
         };
 
-        // completely remove a given user (from the current org)
+        // completely remove a given user
+        // TODO: we need this api function now
         $scope.delete = function(userId) {
-            Organization.member_remove({
-                orgId: $scope.currentOrg.id,
+            User.delete({
                 userId: userId
             }, function(result) {
                 for (var i = 0; i < $scope.people.length; i++) {
-                    if($scope.people[i].user.id === userId) {
+                    if($scope.people[i].id === userId) {
                         $scope.people.splice(i, 1);
                         break;
                     }
                 }
             }, function (error) {
                 console.log('error', error);
-                $scope.alertError('failed to remove user from org');
+                $scope.alertError('failed to remove user');
             });
         };
 
-        $scope.$watch('currentOrg', function (org) {
-            if (!org) return;
-
-            Organization.members({
-                'orgId': org.id
-            }, function (result) {
-                $scope.people = result;
-            }, function (error) {
-                console.log('error', error);
-            });
-
+        User.list(function (result) {
+            $scope.people = result;
+        }, function (error) {
+            console.log('error', error);
         });
     }
 ]);
 
 
-PeopleControllers.controller('PeopleAdd', ['$scope', '$location', 'Organization',
-    function($scope, $location, Organization) {
+PeopleControllers.controller('PeopleAdd', ['$scope', '$location', 'User',
+    function($scope, $location, User) {
 
         $scope.save = function(newUser) {
             $scope.$broadcast("form:reset");
 
-            newUser.orgId = $scope.currentOrg.id;
-            newUser.admin = false;
-            Organization.member_create(newUser, function (result) {
+            newUser.is_superuser = false;
+
+            // TODO: we need this function!!
+            User.create(newUser, function (result) {
                 // just go back to people listing page for now
-                $location.path('/'+$scope.currentOrg.slug+'/admin/people/');
+                $location.path('/admin/people/');
             }, function (error) {
                 $scope.$broadcast("form:api-error", error);
             });

@@ -18,7 +18,6 @@
 ;; ## Helper Fns
 (defn create-dash [dash-name]
   ((user->client :rasta) :post 200 "dash" {:name dash-name
-                                           :organization @org-id
                                            :public_perms 0}))
 
 ;; ## POST /api/dash
@@ -27,7 +26,7 @@
   (expect-eval-actual-first
       (match-$ (sel :one Dashboard :name dash-name)
         {:description nil
-         :organization_id 1
+         :organization_id nil
          :name dash-name
          :creator_id (user->id :rasta)
          :updated_at $
@@ -47,11 +46,8 @@
       :creator         (-> (sel :one User :id (user->id :rasta))
                          (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
       :can_write       true
-      :organization_id @org-id
+      :organization_id nil
       :name            $
-      :organization    (-> @test-org
-                         (select-keys [:inherits :report_timezone :logo_url :description :name :slug :id
-                                       ]))
       :creator_id      (user->id :rasta)
       :updated_at      $
       :id              $
@@ -64,10 +60,9 @@
          false]
   (with-temp Dashboard [{:keys [id]} {:name (random-name)
                                       :public_perms common/perms-none
-                                      :organization_id @org-id
                                       :creator_id (user->id :crowberto)}]
     (let [can-see-dash? (fn [user]
-                          (contains? (->> ((user->client user) :get 200 "dash" :org @org-id :f :all)
+                          (contains? (->> ((user->client user) :get 200 "dash" :f :all)
                                           (map :id)
                                           set)
                                      id))]
@@ -121,7 +116,7 @@
                     {:description nil
                      :creator (-> (sel :one User :id (user->id :rasta))
                                   (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
-                     :organization_id @org-id
+                     :organization_id nil
                      :name $
                      :creator_id (user->id :rasta)
                      :updated_at $

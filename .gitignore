@@ -12,13 +12,13 @@ pom.xml.asc
 /.lein-repl-history
 /.nrepl-port
 .idea/
-/docs
+/docs/uberdoc.html
 profiles.clj
 /*.h2.db
 /*.mv.db
 /*.lock.db
 /*.trace.db
-/resources/frontend_client/app/bower_components
 /resources/frontend_client/app/dist/
 /node_modules/
 /.js_hint_output/
+/.babel_cache

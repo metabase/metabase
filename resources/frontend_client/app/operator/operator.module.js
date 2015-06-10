@@ -12,7 +12,7 @@ var Operator = angular.module('corvus.operator', [
 ]);
 
 Operator.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/:orgSlug/specialist/:specialistId', {templateUrl: '/app/operator/partials/specialist_detail.html', controller: 'SpecialistDetail'});
-    $routeProvider.when('/:orgSlug/specialist/', {templateUrl: '/app/operator/partials/specialist_list.html', controller: 'SpecialistList'});
-    $routeProvider.when('/:orgSlug/conversation/:conversationId', {templateUrl: '/app/operator/partials/conversation_detail.html', controller: 'ConversationDetail'});
+    $routeProvider.when('/operator/specialist/:specialistId', {templateUrl: '/app/operator/partials/specialist_detail.html', controller: 'SpecialistDetail'});
+    $routeProvider.when('/operator/specialist/', {templateUrl: '/app/operator/partials/specialist_list.html', controller: 'SpecialistList'});
+    $routeProvider.when('/operator/conversation/:conversationId', {templateUrl: '/app/operator/partials/conversation_detail.html', controller: 'ConversationDetail'});
 }]);

@@ -24,12 +24,10 @@ OperatorServices.service('Operator', ['$resource', '$q', 'Metabase', 'Query',
         var SPECIALIST_OVERVIEW_AVG_RESPONSE_TIME_QUERY = "Specialist Entity Avg Response Time Secs";
 
 
-        this.queryInfo = function(orgId) {
+        this.queryInfo = function() {
             var deferred = $q.defer();
             var queryInfo = {};
-            Metabase.db_list({
-                'orgId': orgId
-            }, function (dbs){
+            Metabase.db_list(function (dbs){
                 dbs.forEach(function(db){
                     if(db.name == OPERATOR_DB_NAME){
                         queryInfo.database = db.id;
@@ -63,7 +61,6 @@ OperatorServices.service('Operator', ['$resource', '$q', 'Metabase', 'Query',
                                                     if(field.name == MESSAGES_CONVERSATIONS_FK_NAME){
                                                         queryInfo.messages_table_conversation_fk = field.id;
                                                         Query.list({
-                                                            orgId: orgId,
                                                             filterMode: 'all'
                                                         }, function(queries){
                                                             queries.forEach(function(query){

@@ -1,6 +1,6 @@
 (ns metabase.api.meta.field
   (:require [compojure.core :refer [GET PUT POST]]
-            [medley.core :as medley]
+            [medley.core :as m]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.db.metadata-queries :as metadata]
@@ -36,14 +36,13 @@
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [field_type special_type preview_display description]} :body}]
-  {field_type FieldType
+  {field_type   FieldType
    special_type FieldSpecialType}
   (write-check Field id)
-  (check-500 (upd-non-nil-keys Field id
-               :field_type      field_type
-               :special_type    special_type
-               :preview_display preview_display
-               :description     description))
+  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description and special_type
+                                            :special_type special_type}                                              ; but field_type and preview_display must be replaced
+                                           (when field_type                   {:field_type field_type})              ; with new non-nil values
+                                           (when (not (nil? preview_display)) {:preview_display preview_display}))))
   (sel :one Field :id id))
 
 (defendpoint GET "/:id/summary"
