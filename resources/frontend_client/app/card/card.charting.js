@@ -730,8 +730,7 @@ export var CardRenderer = {
         var data = _.map(result.rows, function(row) {
             // IMPORTANT: clone the data if you are going to modify it in any way
             var tuple = row.slice(0);
-            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
             return tuple;
         });
 
@@ -807,8 +806,7 @@ export var CardRenderer = {
         var data = _.map(result.rows, function(row) {
             // IMPORTANT: clone the data if you are going to modify it in any way
             var tuple = row.slice(0);
-            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
             return tuple;
         });
 
