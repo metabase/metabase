@@ -604,7 +604,7 @@ export var CardRenderer = {
         // if we can find the chart element in the DOM then max width is parent element - parent x padding
         var chartElement = chartElementForId(id);
         if (chartElement) {
-            var parent = chartElement.parentElement.parentElement,
+            var parent = chartElement.parentElement,
                 parentHeight = getComputedHeight(parent),
                 parentPaddingTop = getComputedSizeProperty('padding-top', parent),
                 parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
@@ -628,7 +628,7 @@ export var CardRenderer = {
         // if we can find the chart element in the DOM then max width is parent element - parent x padding
         var chartElement = chartElementForId(id);
         if (chartElement) {
-            var parent = chartElement.parentElement.parentElement,
+            var parent = chartElement.parentElement,
                 parentWidth = getComputedWidth(parent),
                 parentPaddingLeft = getComputedSizeProperty('padding-left', parent),
                 parentPaddingRight = getComputedSizeProperty('padding-right', parent);
