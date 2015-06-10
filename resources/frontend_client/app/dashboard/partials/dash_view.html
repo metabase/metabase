@@ -1,4 +1,5 @@
 <div class="Dashboard full-height">
+
     <div class="wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
         <div class="full-height text-centered flex layout-centered">
             <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
@@ -18,7 +19,12 @@
         <header class="border-bottom">
             <div class="wrapper">
                 <div class="Entity">
-                    <h1 class="Entity-title">{{dashboard.name}}</h1>
+                    <div class="flex align-center">
+                        <h4 class="Entity-title">{{dashboard.name}}</h4>
+                        <span class="Badge Badge--permissions ml2" ng-if="dashboard.public_perms === 0">
+                            <mb-icon name="lock" width="12px" height="12px"></mb-icon>
+                        </span>
+                    </div>
                     <span class="Entity-attribution">
                         Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>
                     </span>

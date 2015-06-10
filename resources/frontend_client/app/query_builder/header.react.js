@@ -18,7 +18,7 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
-        downloadLink: React.PropTypes.string
+        downloadLink: React.PropTypes.string,
     },
 
     getInitialState: function() {
@@ -105,6 +105,16 @@ export default React.createClass({
         return apiCall.$promise;
     },
 
+    deleteCard: function () {
+        var card = this.props.card,
+            component = this;
+
+        var apiCall = this.props.cardApi.delete({'cardId': card.id}, function () {
+            component.props.notifyCardDeletedFn();
+        });
+
+    },
+
     setQueryMode: function(mode) {
         // we need to update our dirty state here
         var component = this;
@@ -115,23 +125,23 @@ export default React.createClass({
         });
     },
     permissions: function() {
-        var text;
+        var permission;
         switch(this.props.card.public_perms) {
             case 0:
-                text = 'Private';
+                permission = (<Icon name="lock" width="12px" height="12px"></Icon>)
                 break;
             case 1:
-                text = 'Others can read';
+                permission = 'Others can read';
                 break;
             case 2:
-                text = 'Others can modify';
+                permission = 'Others can modify';
                 break;
             default:
                 return 'Error';
         }
         return (
             <span className="Badge Badge--permissions ml2">
-                {text}
+                {permission}
             </span>
         );
     },
@@ -147,6 +157,8 @@ export default React.createClass({
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
                     className='inline-block ml1 link'
+                    canDelete={true}
+                    deleteFn={this.deleteCard}
                 />
             );
         }
@@ -160,6 +172,7 @@ export default React.createClass({
                     saveFn={this.saveCard}
                     buttonText="Save"
                     saveButtonText="Create card"
+                    canDelete={false}
                 />
             );
         } else if (this.cardIsDirty() || this.state.recentlySaved) {

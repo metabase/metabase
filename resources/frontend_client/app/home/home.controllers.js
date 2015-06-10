@@ -1,3 +1,5 @@
+'use strict';
+
 var HomeControllers = angular.module('corvus.home.controllers', []);
 
 HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {

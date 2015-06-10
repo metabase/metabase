@@ -65,3 +65,9 @@
 .right  { right: 0; }
 .bottom { bottom: 0; }
 .left   { left: 0; }
+
+@media screen and (--breakpoint-min-md) {
+    .wrapper.wrapper--trim {
+        max-width: var(--md-width);
+    }
+}

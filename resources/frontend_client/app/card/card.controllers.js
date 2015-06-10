@@ -13,19 +13,6 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 
     // $scope.cards: the list of cards being displayed
 
-    // TODO - transition this to the card settings modal.
-
-    $scope.toggleFavorite = function (id, event) {
-        // make sure we don't transition to the next page
-        event.preventDefault();
-        console.log(id);
-        Card.favorite({
-            'cardId': id
-        }, function (result) {
-            // body...
-        })
-    }
-
     $scope.deleteCard = function(cardId) {
         Card.delete({
             'cardId': cardId
@@ -172,6 +159,9 @@ CardControllers.controller('CardDetail', [
 
                     renderAll();
                 }
+            },
+            notifyCardDeletedFn: function () {
+                $location.path('/')
             }
         };
 
