@@ -1,5 +1,10 @@
 'use strict';
 
+import FixedDataTable from 'fixed-data-table';
+
+var Table = FixedDataTable.Table;
+var Column = FixedDataTable.Column;
+
 export default React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
@@ -19,6 +24,10 @@ export default React.createClass({
 
     setSort: function(fieldId) {
         this.props.setSortFn(fieldId);
+    },
+
+    rowGetter: function(rowIndex) {
+        return this.props.data.rows[rowIndex];
     },
 
     render: function() {
@@ -59,19 +68,41 @@ export default React.createClass({
             }
         });
 
+        var tableColumns = this.props.data.cols.map(function (column, idx) {
+            var colVal = (column !== null) ? column.name.toString() : null;
+
+            return (<Column label={colVal} width={100} dataKey={idx}></Column>);
+        });
+
+        // return (
+        //     <div className="QueryTable-wrapper Table-wrapper full">
+        //         <table className="QueryTable Table">
+        //             <thead>
+        //                 <tr>
+        //                     {tableHeaders}
+        //                 </tr>
+        //             </thead>
+        //             <tbody>
+        //                 {tableRows}
+        //             </tbody>
+        //         </table>
+        //     </div>
+        // );
+
         return (
-            <div className="QueryTable-wrapper Table-wrapper full">
-                <table className="QueryTable Table">
-                    <thead>
-                        <tr>
-                            {tableHeaders}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tableRows}
-                    </tbody>
-                </table>
-            </div>
+            <Table
+                rowHeight={50}
+                rowGetter={this.rowGetter}
+                rowsCount={this.props.data.rows.length}
+                width={5000}
+                height={5000}
+                headerHeight={50}>
+                <Column
+                  label="Col 1"
+                  width={3000}
+                  dataKey={0}
+                />
+            </Table>
         );
     }
 });
