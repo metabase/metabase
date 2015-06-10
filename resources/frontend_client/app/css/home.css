@@ -73,7 +73,6 @@
 
 .Entity-title {
     font-size: 1.24em;
-    margin-bottom: 0.45rem;
     color: #797979;
 }
 
@@ -83,7 +82,32 @@
     margin-bottom: 0.5em;
 }
 
+.NavItem {
+    padding: 1em;
+    border-radius: 8px;
+}
 
-.Entity--card:hover {
-    border-color: red;
+.NavItem:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+@keyframes pop {
+    0% { transform: scale(0.75) }
+   75% { transform: scale(1.0625) }
+  100% { transform: scale(1) }
+}
+
+.animate-pop {
+    animation-name: popin;
+    animation-duration: .15s;
+    animation-timing-function: ease-out;
+}
+
+.AdminLink {
+    opacity: 0.435;
+}
+
+.AdminLink:hover {
+    opacity: 1;
 }

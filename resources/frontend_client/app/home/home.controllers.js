@@ -10,13 +10,16 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
         'How\'s it going',
         'Good morning',
         'Howdy',
-        'Aloha',
         'Looking good',
+        'Greetings',
+        'Good to see you',
     ];
 
     var subheadPrefixes = [
         'What do you want to know?',
         'What\'s on your mind?',
+        'What do you want to find out?',
+        'Hodor Hodor Hodor'
     ];
 
     function buildGreeting (greetingOptions, personalization) {

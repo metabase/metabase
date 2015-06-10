@@ -1,6 +1,6 @@
 <div class="Home full-height" ng-controller="Home">
-    <div class="bg-brand text-white border-bottom">
-        <div class="Grid Grid--full Grid--gutters large-Grid--1of2 align-center wrapper">
+    <div class="bg-brand text-white border-bottom pb2">
+        <div class="Grid Grid--full large-Grid--1of2 align-center wrapper">
             <div class="Grid-cell" ng-controller="HomeGreeting">
                 <div class="Greeting">
                     <div class="Greeting-title">{{greeting}}</div>
@@ -55,7 +55,7 @@
                                 </span>
                             </div>
                             <div class="flex flex-align-right">
-                                <mb-icon class="text-grey-1 mr4" name="star" width="18px" height="18px" ng-click="toggleFavorite(card.id, $event)"></mb-icon>
+                                <mb-card-favorite-button class="mr4" card-id="card.id"></mb-card-favorite-button>
                                 <mb-icon class="text-grey-1 flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
                             </div>
                         </a>
@@ -90,7 +90,7 @@
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
                     <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
                         <div class="flex flex-column">
-                            <h2 class="text-brand">{{table.name}}</h2>
+                            <h2 class="text-brand flex-wrap">{{table.name}}</h2>
                             {{table.description}}
                         </div>
                         <div class="flex flex-align-right align-center">

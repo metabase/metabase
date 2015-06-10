@@ -469,7 +469,7 @@ CardDirectives.directive('cvLatlongHeatmap', ['CardRenderer', function(CardRende
 }]);
 
 
-CardDirectives.directive('cvCardFavoriteButton', ['Card', function(Card) {
+CardDirectives.directive('mbCardFavoriteButton', ['Card', function(Card) {
 
     function link(scope, element, attr) {
         scope.favorite = false;

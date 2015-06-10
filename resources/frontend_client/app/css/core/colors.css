@@ -7,6 +7,8 @@
   --success-color: #9CC177;
   --headsup-color: #F5A623;
 
+  --gold-color: #F9D45C;
+
   --error-color: #EF8C8C;
 }
 
@@ -57,6 +59,15 @@
 
 .bg-headsup {
   background-color: var(--headsup-color);
+}
+
+/* favorite */
+.text-gold {
+    color: var(--gold-color);
+}
+
+.bg-gold {
+    background-color: var(--gold-color);
 }
 
 /* grey */
