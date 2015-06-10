@@ -1283,40 +1283,39 @@
 ;; ## Default Dataset DatabaseDefinition
 
 (def ^DatabaseDefinition test-data
-  (create-database-definition
-   "Test Database"
-   ["users" [{:field-name "name"
-              :base-type  :CharField}
-             {:field-name "last_login"
-              :base-type  :DateTimeField}
-             {:field-name "password"
-              :base-type  :CharField
-              :field-type :sensitive}]
-    users]
-   ["categories" [{:field-name "name"
-                   :base-type  :CharField}]
-    categories]
-   ["venues" [{:field-name   "name"
-               :base-type    :CharField}
-              {:field-name   "latitude"
-               :base-type    :FloatField
-               :special-type :latitude}
-              {:field-name   "longitude"
-               :base-type    :FloatField
-               :special-type :longitude}
-              {:field-name   "price"
-               :base-type    :IntegerField
-               :special-type :category}
-              {:field-name   "category_id"
-               :base-type    :IntegerField
-               :fk           :categories}]
-    venues]
-   ["checkins" [{:field-name "user_id"
-                 :base-type  :IntegerField
-                 :fk         :users}
-                {:field-name "venue_id"
-                 :base-type  :IntegerField
-                 :fk         :venues}
-                {:field-name "date"
-                 :base-type  :DateField}]
-    checkins]))
+  (create-database-definition "Test Database"
+    ["users" [{:field-name "name"
+               :base-type  :CharField}
+              {:field-name "last_login"
+               :base-type  :DateTimeField}
+              {:field-name "password"
+               :base-type  :CharField
+               :field-type :sensitive}]
+     users]
+    ["categories" [{:field-name "name"
+                    :base-type  :CharField}]
+     categories]
+    ["venues" [{:field-name   "name"
+                :base-type    :CharField}
+               {:field-name   "latitude"
+                :base-type    :FloatField
+                :special-type :latitude}
+               {:field-name   "longitude"
+                :base-type    :FloatField
+                :special-type :longitude}
+               {:field-name   "price"
+                :base-type    :IntegerField
+                :special-type :category}
+               {:field-name   "category_id"
+                :base-type    :IntegerField
+                :fk           :categories}]
+     venues]
+    ["checkins" [{:field-name "user_id"
+                  :base-type  :IntegerField
+                  :fk         :users}
+                 {:field-name "venue_id"
+                  :base-type  :IntegerField
+                  :fk         :venues}
+                 {:field-name "date"
+                  :base-type  :DateField}]
+     checkins]))

@@ -72,7 +72,7 @@
    DATASET-LOADER should be an object that implements `IDatasetLoader`."
   [dataset-loader ^DatabaseDefinition database-definition]
   ;; Delete the Metabase Database and associated objects
-  (cascade-delete (metabase-instance database-definition (engine dataset-loader)))
+  (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
 
     ;; now delete the DBMS database
   (drop-physical-db! dataset-loader database-definition))
@@ -122,34 +122,16 @@
   (sel :one Table :id (table->id (s/upper-case (name table-name)))))
 
 
-;; ## TODO! with-temp-table and related macros
+;; ## Temporary Dataset Macros
 
-;; DEPRECATED ! Need to rewrite this to use the new TableDefinition stuff
-;; (defmacro with-temp-table
-;;   "Execute BODY with a temporary Table that will be dropped afterward.
-;;    The korma entity representing the Table is bound to TABLE-BINDING.
-;;    FIELDS-MAP should be a map of FIELD-NAME -> SQL-TYPE.
-
-;;     (with-temp-table [table {:name \"VARCHAR(254)\"}]
-;;       (insert table (values [{:name \"A\"}
-;;                              {:name \"B\"}]))
-;;       (select table values (where {:name \"A\"})))"
-;;   [[table-binding fields-map] & body]
-;;   {:pre [(map? fields-map)]}
-;;   (let [table-name (name (gensym "TABLE__"))
-;;         formatted-fields (->> fields-map
-;;                               (map (fn [[field-name field-type]]
-;;                                      (format "\"%s\" %s" (.toUpperCase ^String (name field-name)) (name field-type))))
-;;                               (interpose ", ")
-;;                               (reduce str))]
-;;     `(do (get-or-create-database! (h2/dataset-loader) data/test-data)
-;;          (h2/exec-sql data/test-data (format "DROP TABLE IF EXISTS \"%s\";" ~table-name))
-;;          (h2/exec-sql data/test-data (format "CREATE TABLE \"%s\" (%s, \"ID\" BIGINT AUTO_INCREMENT, PRIMARY KEY (\"ID\"));" ~table-name ~formatted-fields))
-;;          (let [~table-binding (h2/korma-entity (map->TableDefinition {:table-name ~table-name})
-;;                                                data/test-data)]
-;;            (try
-;;              ~@body
-;;              (catch Throwable e#
-;;                (println "E: " e#))
-;;              (finally
-;;                (h2/exec-sql data/test-data (format "DROP TABLE \"%s\";" ~table-name))))))))
+(defmacro with-temp-db
+  "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
+   the newly created `Database` bound to DB-BINDING.
+   Remove `Database` and destroy data afterward."
+  [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
+  `(let [loader# ~dataset-loader
+         dbdef# ~database-definition]
+     (try (let [~db-binding (get-or-create-database! loader# dbdef#)]
+            ~@body)
+          (finally
+            (remove-database! loader# dbdef#)))))
