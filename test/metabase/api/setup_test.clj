@@ -6,8 +6,8 @@
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
             [metabase.setup :as setup]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]))
+            (metabase.test [data :refer :all]
+                           [util :refer [match-$ random-name expect-eval-actual-first]])))
 
 
 ;; ## POST /api/setup/user

@@ -5,7 +5,7 @@
             [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer [max-result-rows]]
-            [metabase.test-data :refer [db-id table->id field->id]]))
+            [metabase.test.data :refer [db-id table->id field->id]]))
 
 ;; # ERROR RESPONSES
 
