@@ -14,8 +14,37 @@ export default React.createClass({
     getDefaultProps: function() {
         return {
             maxRows: 100,
+            minColumnWidth: 75,
             page: 1
         };
+    },
+
+    getInitialState: function() {
+        return {
+            width: 800,
+            height: 300
+        };
+    },
+
+    componentDidMount: function() {
+        this.calculateBoundaries();
+    },
+
+    componentDidUpdate: function(prevProps, prevState) {
+        this.calculateBoundaries();
+    },
+
+    calculateBoundaries: function() {
+        var element = this.getDOMNode(); //React.findDOMNode(this);
+        var width = element.parentElement.offsetWidth;
+        var height = element.parentElement.offsetHeight;
+
+        if (width !== this.state.width && height !== this.state.height) {
+            this.setState({
+                width: width,
+                height: height
+            });
+        }
     },
 
     isSortable: function() {
@@ -68,10 +97,15 @@ export default React.createClass({
             }
         });
 
+        var calcColumnWidth = 75;
+        if (this.props.data.cols.length > 0) {
+            calcColumnWidth = this.state.width / this.props.data.cols.length;
+        }
         var tableColumns = this.props.data.cols.map(function (column, idx) {
             var colVal = (column !== null) ? column.name.toString() : null;
+            var colWidth = (component.props.minColumnWidth > calcColumnWidth) ? component.props.minColumnWidth : calcColumnWidth;
 
-            return (<Column label={colVal} width={100} dataKey={idx}></Column>);
+            return (<Column label={colVal} width={colWidth} dataKey={idx}></Column>);
         });
 
         // return (
@@ -91,17 +125,13 @@ export default React.createClass({
 
         return (
             <Table
-                rowHeight={50}
+                rowHeight={35}
                 rowGetter={this.rowGetter}
                 rowsCount={this.props.data.rows.length}
-                width={5000}
-                height={5000}
-                headerHeight={50}>
-                <Column
-                  label="Col 1"
-                  width={3000}
-                  dataKey={0}
-                />
+                width={this.state.width}
+                height={this.state.height}
+                headerHeight={35}>
+                {tableColumns}
             </Table>
         );
     }
