@@ -1,7 +1,10 @@
 'use strict';
-/*global ace, RunButton, SelectionModule, DatabaseSelector*/
+/*global ace*/
 
-var NativeQueryEditor = React.createClass({
+import RunButton from './run_button.react';
+import DatabaseSelector from './database_selector.react';
+
+export default React.createClass({
     displayName: 'NativeQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,

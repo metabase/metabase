@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, FormField, SelectionModule*/
 
-var Saver = React.createClass({
+import OnClickOutside from 'react-onclickoutside';
+
+import FormField from './form_field.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,

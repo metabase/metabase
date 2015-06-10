@@ -1,5 +1,10 @@
 'use strict';
-/*global _, document, confirm, QueryHeader, NativeQueryEditor, GuiQueryEditor, ResultQueryEditor, QueryVisualization*/
+/*global _, document, confirm*/
+
+import GuiQueryEditor from '../query_builder/gui_query_editor.react';
+import NativeQueryEditor from '../query_builder/native_query_editor.react';
+import QueryHeader from '../query_builder/header.react';
+import QueryVisualization from '../query_builder/visualization.react';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);

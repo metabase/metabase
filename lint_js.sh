@@ -2,8 +2,7 @@
 
 # Simple shell script for running jshint and nicely formatting the output :heart_eyes_cat:
 
-JS_HINT=./node_modules/jsxhint/cli.js
-JS_HINT_OPTS='--config .jshintrc'
+ESLINT='./node_modules/eslint/bin/eslint.js'
 JS_FILES=`find resources/frontend_client/app -name "*.js" | grep -v bower_components | grep -v 'app/test/' | grep -v '\#' | grep -v 'app/dist/'`
 
 BOLD='\033[1;30m'
@@ -47,7 +46,7 @@ file_modified () {
 run_js_lint () {
     file=$1
     output_file=$2
-    $JS_HINT $JS_HINT_OPTS $file | perl -pe 's/^.*(line.*)$/$1/' | sort > $output_file
+    $ESLINT $file | perl -pe 's/^.*(line.*)$/$1/' | sort > $output_file
 }
 
 for file in $JS_FILES; do

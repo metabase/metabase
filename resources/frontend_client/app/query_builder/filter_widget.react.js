@@ -1,7 +1,10 @@
 'use strict';
-/*global DateFilter, SelectionModule, Icon */
 
-var FilterWidget = React.createClass({
+import DateFilter from './date_filter.react';
+import Icon from './icon.react';
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'FilterWidget',
     propTypes: {
         filter: React.PropTypes.array.isRequired,

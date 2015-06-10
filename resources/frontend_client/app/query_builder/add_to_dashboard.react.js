@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, Icon, ReactCSSTransitionGroup*/
 
-var AddToDashboard = React.createClass({
+import AddToDashboardPopover from './add_to_dashboard_popover.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {
         card: React.PropTypes.object.isRequired,

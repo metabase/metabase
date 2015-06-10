@@ -1,11 +1,7 @@
 'use strict';
-/*global setTimeout*/
-/*global $*/
-/*global CardRenderer*/
-/* global React */
-/* global document */
-/* global QueryBuilder */
+/*global setTimeout, React */
 
+import { CardRenderer } from './card.charting';
 
 var CardDirectives = angular.module('corvus.card.directives', []);
 
@@ -458,9 +454,7 @@ CardDirectives.directive('cvLatlongHeatmap', ['CardRenderer', function(CardRende
 
         scope.$watch('cvLatlongHeatmap', function(value) {
             if (value) {
-                $(function() {
-                    CardRenderer.latlongHeatmap('map-canvas', 'whatever', value);
-                });
+                CardRenderer.latlongHeatmap('map-canvas', 'whatever', value);
             }
         });
     }

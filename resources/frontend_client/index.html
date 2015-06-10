@@ -7,12 +7,11 @@
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <title>Metabase</title>
-        <link href="/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet" />
-        <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
-        <link href="/app/bower_components/react-date-picker/react-datepicker.css" rel="stylesheet" />
-        <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
-        <link rel="stylesheet" href="/app/dist/corvus.css" />
-        <script src="/app/bower_components/angular/angular.min.js"></script>
+
+        <link rel="stylesheet" href="/app/dist/styles.css"/>
+        <script charset="utf-8" src="/app/dist/styles.js"></script>
+        <script src="/app/dist/vendor.js"></script>
+        <script src="/app/dist/app.js"></script>
     </head>
 
     <body ng-controller="Corvus">
@@ -99,47 +98,6 @@
         <div class="MainContent flex flex-column full-height" ng-view></div>
     </body>
 
-    <!-- JS INCLUDES -->
-    <!-- vendor js -->
-    <script src="/app/bower_components/react/react-with-addons.min.js"></script>
-    <script src="/app/bower_components/react-onclickoutside/index.js"></script>
-    <script src="/app/bower_components/moment/min/moment.min.js"></script>
-    <script src="/app/bower_components/tether/tether.min.js"></script>
-    <script src="/app/bower_components/react-date-picker/react-datepicker.js"></script>
-
-
-    <script src="/app/bower_components/jquery/dist/jquery.min.js"></script>
-    <script src="/app/bower_components/underscore/underscore-min.js"></script>
-    <script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
-
-    <script src="/app/bower_components/angular-route/angular-route.min.js"></script>
-    <script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
-    <script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
-    <script src="/app/bower_components/angular-animate/angular-animate.min.js"></script>
-    <script src="/app/bower_components/angular-sanitize/angular-sanitize.min.js"></script>
-    <script src="/app/bower_components/angular-xeditable/dist/js/xeditable.min.js"></script>
-    <script src="/app/bower_components/angular-cookie/angular-cookie.min.js"></script>
-    <script src="/app/bower_components/javascript-detect-element-resize/detect-element-resize.js"></script>
-    <script src="/app/bower_components/angular-gridster/dist/angular-gridster.min.js"></script>
-    <script src="/app/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
-    <script src="/app/bower_components/angular-http-auth/src/http-auth-interceptor.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/ace.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/mode-sql.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/ext-language_tools.js"></script>
-    <script src="/app/bower_components/angular-ui-ace/ui-ace.min.js"></script>
-    <script src="/app/bower_components/angularytics/dist/angularytics.min.js"></script>
-    <script src="/app/bower_components/ng-sortable/dist/ng-sortable.min.js"></script>
-    <script src="/app/bower_components/angular-readable-time/angular-readable-time.min.js"></script>
-
-    <script src="/app/bower_components/d3/d3.min.js"></script>
-    <script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
-    <script src="/app/bower_components/dc.js/dc.min.js"></script>
-
-    <script src="/app/js/google_maps.js"></script>
-
-    <!-- dist app -->
-    <script src="/app/dist/app.js"></script>
-    <script src="/app/dist/query_builder.js" type="text/javascript"></script>
 
     <script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
     <script>

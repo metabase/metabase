@@ -1,6 +1,11 @@
 'use strict';
 /*jslint browser:true */
-/*global document,$,jQuery,_,google,d3,crossfilter,dc,console,vs*/
+/*global document,_,google,console,vs*/
+
+import $ from 'jquery';
+import crossfilter from 'crossfilter';
+import d3 from 'd3';
+import dc from 'dc';
 
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
@@ -565,7 +570,7 @@ function GeoHeatmapChartRenderer(id, card, result) {
         });
 }
 
-var CardRenderer = {
+export var CardRenderer = {
     /// get the size render settings for card if applicable
     _getSizeSettings: function(cardOrDimension) {
         if (typeof cardOrDimension === "object") {
