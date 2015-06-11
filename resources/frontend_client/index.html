@@ -39,11 +39,7 @@
                         </ul>
                     </div>
                     <div class="UserDropdown Dropdown flex-align-right" dropdown on-toggle="toggled(open)">
-                        <a class="NavItem text-white" selectable-nav-item="settings" dropdown-toggle>
-                            <span ng-if="!user.first_name">Me</span>
-                            <span ng-if="user.first_name">{{user.first_name}}</span>
-                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
-                        </a>
+                        <mb-profile-link class="NavItem text-white" user="user" context="nav"></mb-profile-link>
                         <ul class="Dropdown-content right">
                             <li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>
                             <li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>

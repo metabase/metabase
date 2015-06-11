@@ -174,10 +174,8 @@ NavbarDirectives.directive('mbProfileLink', [function () {
                                 '<mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>' +
                             '</a>' +
                             '<ul class="Dropdown-content right">' +
-                                '<li><a class="link" href="/user/edit_current">Account Settings</a></li>' +
-                                '<li><a class="link" ng-if="userIsSuperuser && context != \'admin\'" href="/admin/">Administration</a></li>' +
-                                '<li><a class="link" ng-if="userIsSuperuser && context == \'admin\'" href="/">Exit Administration</a></li>' +
-                                '<li><a class="link" href="/auth/logout">Logout</a></li>' +
+                                '<li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>' +
+                                '<li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>' +
                             '</ul>' +
                         '</li>' +
                     '</ul>',
