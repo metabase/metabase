@@ -40,7 +40,7 @@ module.exports = {
     // output to "dist"
     output: {
         path: __dirname + '/resources/frontend_client/app/dist',
-        filename: '[name].js'
+        filename: '[name].bundle.js'
     },
 
     module: {
@@ -105,9 +105,9 @@ module.exports = {
         // new NgAnnotatePlugin({ add: true }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
-        // new CommonsChunkPlugin('vendor', 'vendor.bundle.js'),
+        new CommonsChunkPlugin('common', 'common.bundle.js'),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
-        new ExtractTextPlugin('styles.css')
+        new ExtractTextPlugin('styles.bundle.css')
     ],
 
     // CSSNext configuration
