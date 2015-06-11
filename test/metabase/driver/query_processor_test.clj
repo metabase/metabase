@@ -790,8 +790,8 @@
 
 ;; ## Unix timestamp special type fields <3
 
-(datasets/expect-with-all-datasets
- 4
+;; There are 4 events in us-history-1607-to-1774 whose year is < 1765
+(datasets/expect-with-all-datasets 4
  (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
    (-> (driver/process-query {:database (:id db)
                               :type     :query
@@ -802,29 +802,3 @@
        :rows
        first
        first)))
-
-(defn x []
-  (datasets/with-dataset :generic-sql
-    (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
-      (-> (driver/process-query {:database (:id db)
-                                 :type     :query
-                                 :query    {:source_table (:id &events)
-                                            :aggregation  ["count"]
-                                            :filter       ["<" (:id &events.timestamp) "1765-01-01"]}})
-          :data
-          :rows
-          first
-          first))))
-
-(defn y []
-  (datasets/with-dataset :mongo
-    (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
-      (-> (driver/process-query {:database (:id db)
-                                 :type     :query
-                                 :query    {:source_table (:id &events)
-                                            :aggregation  ["count"]
-                                            :filter       ["<" (:id &events.timestamp) "1765-01-01"]}})
-          :data
-          :rows
-          first
-          first))))

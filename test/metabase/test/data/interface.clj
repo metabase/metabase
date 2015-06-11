@@ -21,7 +21,10 @@
                             rows])
 
 (defrecord DatabaseDefinition [^String database-name
-                               table-definitions])
+                               table-definitions
+                               ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
+                               ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
+                               ^Boolean short-lived?])
 
 
 (defprotocol IEscapedName

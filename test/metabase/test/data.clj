@@ -4,6 +4,7 @@
                      [walk :as walk])
             [clojure.tools.logging :as log]
             [colorize.core :as color]
+            [medley.core :as m]
             (metabase [db :refer :all]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
@@ -126,22 +127,33 @@
 
 ;; ## Temporary Dataset Macros
 
-(defn- table-id->field-name->field [table-id]
-  (->> (sel :many Field :table_id table-id)
-       (map (fn [{field-name :name, :as field}]
-              {(s/lower-case field-name) field}))
-       (into {})))
+;; The following functions are used internally by with-temp-db to implement easy Table/Field lookup
+;; with `$table` and `$table.field` forms.
 
-(defn- db-id->table-name->table [database-id]
-  (->> (sel :many Table :db_id database-id)
-       (map (fn [{table-name :name, :as table}]
-              {(s/lower-case table-name) (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))}))
-       (into {})))
+(defn- table-id->field-name->field
+  "Return a map of lowercased `Field` names -> fields for `Table` with TABLE-ID."
+  [table-id]
+  (->> (sel :many :field->obj [Field :name] :table_id table-id)
+       (m/map-keys s/lower-case)))
 
-(defn -temp-db-add-getter-delay [db]
+(defn- db-id->table-name->table
+  "Return a map of lowercased `Table` names -> Tables for `Database` with DATABASE-ID.
+   Add a delay `:field-name->field` to each Table that calls `table-id->field-name->field` for that Table."
+  [database-id]
+  (->> (sel :many :field->obj [Table :name] :db_id database-id)
+       (m/map-keys s/lower-case)
+       (m/map-vals (fn [table]
+                     (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))))))
+
+(defn -temp-db-add-getter-delay
+  "Add a delay `:table-name->table` to DB that calls `db-id->table-name->table`."
+  [db]
   (assoc db :table-name->table (delay (db-id->table-name->table (:id db)))))
 
 (defn -temp-get
+  "Internal - don't call this directly.
+   With two args, fetch `Table` with TABLE-NAME using `:table-name->table` delay on TEMP-DB.
+   With three args, fetch `Field` with FIELD-NAME by recursively fetching `Table` and using its `:field-name->field` delay."
   ([temp-db table-name]
    {:pre [(map? temp-db)
           (string? table-name)]}
@@ -150,7 +162,9 @@
    {:pre [(string? field-name)]}
    (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
 
-(defn- walk-body-parse-temp-get [db-binding body]
+(defn- walk-expand-&
+  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms."
+  [db-binding body]
   (walk/prewalk
    (fn [form]
      (or (when (symbol? form)
@@ -164,20 +178,26 @@
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
    the newly created `Database` bound to DB-BINDING.
-   Remove `Database` and destroy data afterward."
+   Remove `Database` and destroy data afterward.
+
+   Within BODY, symbols like `&table` and `&table.field` will be expanded into function calls to
+   fetch corresponding `Tables` and `Fields`. These are accessed via lazily-created maps of
+   Table/Field names to the objects themselves. To facilitate mutli-driver tests, these names are lowercased.
+
+     (with-temp-db [db (h2/dataset-loader) us-history-1607-to-1774]
+       (driver/process-quiery {:database (:id db)
+                               :type     :query
+                               :query    {:source_table (:id &events)
+                                          :aggregation  [\"count\"]
+                                          :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
   `(let [loader# ~dataset-loader
-         dbdef# ~database-definition]
+         ;; Add :short-lived? to the database definition so dataset loaders can use different connection options if desired
+         dbdef# (map->DatabaseDefinition (assoc ~database-definition :short-lived? true))]
      (try
-       (remove-database! loader# dbdef#)                           ; Remove DB if it already exists for some weird reason
+       (remove-database! loader# dbdef#)                              ; Remove DB if it already exists for some weird reason
        (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
-                             -temp-db-add-getter-delay)]
-         ~@(walk-body-parse-temp-get db-binding body))
+                             -temp-db-add-getter-delay)]              ; Add the :table-name->table delay used by -temp-get
+         ~@(walk-expand-& db-binding body))                           ; expand $table and $table.field forms into -temp-get calls
        (finally
          (remove-database! loader# dbdef#)))))
-
-(defn x []
-  (driver/process-query {:database @db-id
-                         :type :query
-                         :query {:source_table (table->id :users)
-                                 :aggregation  ["rows"]}}))
