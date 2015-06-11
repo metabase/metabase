@@ -209,6 +209,8 @@ export default React.createClass({
             );
         }
 
+        var cardCreator = (this.props.card.creator) ? this.props.card.creator.common_name : "me";
+
         return (
             <div className="QueryHeader QueryBuilder-section wrapper flex align-center">
                 <div className="Entity">
@@ -218,7 +220,7 @@ export default React.createClass({
                         {editButton}
                     </div>
                     <div className="Entity-attribution">
-                        Asked by
+                        Asked by {cardCreator}
                     </div>
                 </div>
 
