@@ -316,7 +316,9 @@ export default React.createClass({
                             data={this.props.result.data}
                             maxRows={this.props.tableRowsPerPage}
                             page={this.state.tablePage}
-                            setSortFn={this.props.setSortFn} />
+                            setSortFn={this.props.setSortFn}
+                            sort={this.props.card.dataset_query.query.order_by}
+                        />
                     );
 
                 } else {
@@ -364,18 +366,16 @@ export default React.createClass({
 
         return (
             <div className="relative full flex flex-column">
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {queryModified}
-                </ReactCSSTransitionGroup>
+                {queryModified}
                 {loading}
-                <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
+                <div className={visualizationClasses}>
                     {viz}
-                </ReactCSSTransitionGroup>
-                <div className="VisualizationSettings QueryBuilder-section clearfix">
-                    <div className="float-right">
+                </div>
+                <div className="VisualizationSettings QueryBuilder-section flex align-center">
+                    {this.renderVizControls()}
+                    <div className="flex flex-align-right">
                         {pagingControls}
                     </div>
-                    {this.renderVizControls()}
                 </div>
             </div>
         );

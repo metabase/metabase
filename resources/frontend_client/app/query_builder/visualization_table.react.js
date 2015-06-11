@@ -3,13 +3,15 @@
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
 
+var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;
 var Column = FixedDataTable.Column;
 
 export default React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
-        data: React.PropTypes.object
+        data: React.PropTypes.object,
+        sort: React.PropTypes.object
     },
 
     getDefaultProps: function() {
@@ -44,7 +46,6 @@ export default React.createClass({
         var width = element.parentElement.offsetWidth;
         var height = element.parentElement.offsetHeight;
 
-        console.log(width, height);
         if (width !== prevState.width || height !== prevState.height) {
             console.log('updating dims');
             this.setState({
@@ -79,15 +80,30 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? column.name.toString() : null,
-            headerClasses = 'MB-DataTable-header flex align-center';
+            colVal = (column !== null) ? column.name.toString() : null;
+
+
+
+        var headerClasses = cx({
+            'MB-DataTable-header' : true,
+            'flex': true,
+            'align-center': true,
+            'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
+        });
+
+        // set the initial state of the sorting indicator chevron
+        var sortChevron = (<Icon name="chevrondown" width="8px" height="8px"></Icon>);
+
+        if(this.props.sort && this.props.sort[0][1] === 'ascending') {
+            sortChevron = (<Icon name="chevronup" width="8px" height="8px"></Icon>);
+        }
 
         if (this.isSortable()) {
             return (
                 <div className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
                     {colVal}
-                    <span className="flex-align-right">
-                        <Icon name="chevrondown" width="12px" height="12px"></Icon>
+                    <span className="ml1">
+                        {sortChevron}
                     </span>
                 </div>
             );
@@ -141,7 +157,7 @@ export default React.createClass({
                 rowsCount={rowCount}
                 width={this.state.width}
                 height={this.state.height}
-                headerHeight={35}
+                headerHeight={50}
                 onColumnResizeEndCallback={component.columnResized}>
                 {tableColumns}
             </Table>
