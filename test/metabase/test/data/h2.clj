@@ -10,62 +10,57 @@
                                          FieldDefinition
                                          TableDefinition)))
 
-;; ## DatabaseDefinition extensions
+;; ## DatabaseDefinition helper functions
 
-(defprotocol IH2DatabaseDefinition
-  "Additional methods for `DatabaseDefinition` used by the H2 dataset loader."
-  (filename ^String [this]
-    "Return filename that should be used for connecting to and H2 instance of this database (not including the `.mv.db` extension).")
+(defn filename
+  "Return filename that should be used for connecting to H2 database defined by DATABASE-DEFINITION.
+   This does not include the `.mv.db` extension."
+  [^DatabaseDefinition database-definition]
+  (format "%s/target/%s" (System/getProperty "user.dir") (escaped-name database-definition)))
 
-  (connection-details [this]
-    "Return a Metabase `Database.details` for an H2 instance of this database.")
+(defn connection-details
+  "Return a Metabase `Database.details` for H2 database defined by DATABASE-DEFINITION."
+  [^DatabaseDefinition database-definition]
+  {:db (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" (filename database-definition))})
 
-  (korma-connection-pool [this]
-    "Return an H2 korma connection pool to this database.")
-
-  (exec-sql [this ^String raw-sql]
-    "Execute RAW-SQL against H2 instance of this database."))
-
-(extend-protocol IH2DatabaseDefinition
-  DatabaseDefinition
-  (filename [this]
-    (format "%s/target/%s" (System/getProperty "user.dir") (escaped-name this)))
-
-  (connection-details [this]
-    {:db (format "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" (filename this))})
-
-  (korma-connection-pool [this]
-    (kdb/create-db (kdb/h2 (assoc (connection-details this)
+(defn korma-connection-pool
+  "Return an H2 korma connection pool to H2 database defined by DATABASE-DEFINITION."
+  [^DatabaseDefinition database-definition]
+  (kdb/create-db (kdb/h2 (assoc (connection-details database-definition)
                                   :naming {:keys   s/lower-case
                                            :fields s/upper-case}))))
 
-  (exec-sql [this raw-sql]
-    (log/info raw-sql)
-    (k/exec-raw (korma-connection-pool this) raw-sql)))
+(defn exec-sql
+  "Execute RAW-SQL against H2 instance of H2 database defined by DATABASE-DEFINITION."
+  [^DatabaseDefinition database-definition ^String raw-sql]
+  (log/info raw-sql)
+  (k/exec-raw (korma-connection-pool database-definition) raw-sql))
 
 
-;; ## TableDefinition extensions
+;; ## TableDefinition helper functions
 
-(defprotocol IH2TableDefinition
-  "Additional methods for `TableDefinition` used by the H2 dataset loader."
-  (korma-entity [this ^DatabaseDefinition database-definition]))
-
-(extend-protocol IH2TableDefinition
-  TableDefinition
-  (korma-entity [this database-definition]
-    (-> (k/create-entity (:table-name this))
-        (k/database (korma-connection-pool database-definition)))))
+(defn korma-entity
+  "Return a Korma entity (e.g., one that can be passed to `select` or `sel` for the table
+   defined by TABLE-DEFINITION in the H2 database defined by DATABASE-DEFINITION."
+  [^TableDefinition table-definition ^DatabaseDefinition database-definition]
+  (-> (k/create-entity (:table-name table-definition))
+      (k/database (korma-connection-pool database-definition))))
 
 
 ;; ## Internal Stuff
 
 (def ^:private ^:const field-base-type->sql-type
   "Map of `Field.base_type` to the SQL type we should use for that column when creating a DB."
-  {:CharField     "VARCHAR(254)"
-   :DateField     "DATE"
-   :DateTimeField "TIMESTAMP"
-   :FloatField    "DOUBLE"
-   :IntegerField  "INTEGER"})
+  {:BigIntegerField "BIGINT"
+   :BooleanField    "BOOL"
+   :CharField       "VARCHAR(254)"
+   :DateField       "DATE"
+   :DateTimeField   "DATETIME"
+   :DecimalField    "DECIMAL"
+   :FloatField      "FLOAT"
+   :IntegerField    "INTEGER"
+   :TextField       "TEXT"
+   :TimeField       "TIME"})
 
 ;; ## Public Concrete DatasetLoader instance
 
@@ -121,14 +116,11 @@
                        dest-table-name))))))))
 
   (load-table-data! [_ database-definition table-definition]
-    (log/info (format "Loading data for %s..." (:table-name table-definition)))
     (let [rows              (:rows table-definition)
           fields-for-insert (map :field-name (:field-definitions table-definition))]
-
       (-> (korma-entity table-definition database-definition)
           (k/insert (k/values (map (partial zipmap fields-for-insert)
-                                   rows))))
-      (log/info (format "Inserted %d rows." (count rows)))))
+                                   rows))))))
 
   (drop-physical-table! [_ database-definition table-definition]
     (exec-sql

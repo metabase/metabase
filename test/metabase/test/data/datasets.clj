@@ -6,7 +6,9 @@
             [environ.core :refer [env]]
             [expectations :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data]
-            [metabase.test.data :as generic-sql-data]))
+            [metabase.test.data :as generic-sql-data]
+            (metabase.test.data [h2 :as h2]
+                                [mongo :as mongo])))
 
 ;; # IDataset
 
@@ -14,6 +16,8 @@
   "Functions needed to fetch test data for various drivers."
   (load-data! [this]
     "Load the test data for this dataset.")
+  (dataset-loader [this]
+    "Return a dataset loader (an object that implements `IDatasetLoader`) for this dataset/driver.")
   (db [this]
     "Return `Database` containing test data for this driver.")
   (table-name->table [this table-name]
@@ -42,6 +46,8 @@
   (load-data! [_]
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
+  (dataset-loader [_]
+    (mongo/dataset-loader))
   (db [_]
     @mongo-data/mongo-test-db)
   (table-name->table [_ table-name]
@@ -69,6 +75,8 @@
   (load-data! [_]
     @generic-sql-data/test-db
     (assert (integer? @generic-sql-data/db-id)))
+  (dataset-loader [_]
+    (h2/dataset-loader))
   (db [this]
     @generic-sql-data/test-db)
   (table-name->table [_ table-name]

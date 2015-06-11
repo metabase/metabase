@@ -11,7 +11,8 @@
             [metabase.driver.generic-sql.query-processor.annotate :as annotate]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util :as u]))
 
 
 (declare apply-form
@@ -122,6 +123,10 @@
 ;;     ["AND"
 ;;       [">" 1413 1]
 ;;       [">=" 1412 4]]
+
+(defn- field-id->special-type [field-id]
+  (sel :one :field [Field :special_type] :id field-id))
+
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
 
@@ -136,9 +141,15 @@
                                                                                 {lon-kw ['> lon-min]}]))
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
-                      (let [cast-value-if-needed (if (date-field-id? field-id) (fn [value]
-                                                                                 `(raw ~(format "CAST('%s' AS DATE)" value)))
-                                                     identity)]
+                      (let [cast-value-if-needed (cond
+                                                   (date-field-id? field-id)
+                                                   (fn [value]
+                                                     `(raw ~(format "CAST('%s' AS DATE)" value)))
+
+                                                   (= (field-id->special-type field-id) :timestamp_seconds)
+                                                   u/date-yyyy-mm-dd->unix-timestamp
+
+                                                   :else identity)]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]

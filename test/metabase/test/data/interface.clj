@@ -106,8 +106,7 @@
   ^TableDefinition [^String table-name field-definition-maps rows]
   (map->TableDefinition {:table-name          table-name
                          :rows                rows
-                         :field-definitions   (mapv create-field-definition field-definition-maps)
-                         :database-definition (promise)}))
+                         :field-definitions   (mapv create-field-definition field-definition-maps)}))
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
@@ -117,3 +116,12 @@
   (map->DatabaseDefinition {:database-name     database-name
                             :table-definitions (mapv (partial apply create-table-definition)
                                                      table-name+field-definition-maps+rows)}))
+
+(defmacro def-database-definition
+  "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."
+  [^clojure.lang.Symbol dataset-name ^String db-name & table-name+field-definition-maps+rows]
+  {:pre [(symbol? dataset-name)
+         (string? db-name)]}
+  `(def ~(vary-meta dataset-name assoc :tag DatabaseDefinition)
+     (create-database-definition ~db-name
+       ~@table-name+field-definition-maps+rows)))

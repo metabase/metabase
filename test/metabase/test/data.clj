@@ -1,10 +1,11 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure.string :as s]
+  (:require (clojure [string :as s]
+                     [walk :as walk])
             [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :refer :all]
+                      [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
@@ -33,7 +34,8 @@
           (log/info (color/blue "Loading data..."))
           (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
             (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
-            (load-table-data! dataset-loader database-definition table-definition))
+            (load-table-data! dataset-loader database-definition table-definition)
+            (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
 
           ;; Add DB object to Metabase DB
           (log/info (color/blue "Adding DB to Metabase..."))
@@ -124,6 +126,41 @@
 
 ;; ## Temporary Dataset Macros
 
+(defn- table-id->field-name->field [table-id]
+  (->> (sel :many Field :table_id table-id)
+       (map (fn [{field-name :name, :as field}]
+              {(s/lower-case field-name) field}))
+       (into {})))
+
+(defn- db-id->table-name->table [database-id]
+  (->> (sel :many Table :db_id database-id)
+       (map (fn [{table-name :name, :as table}]
+              {(s/lower-case table-name) (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))}))
+       (into {})))
+
+(defn -temp-db-add-getter-delay [db]
+  (assoc db :table-name->table (delay (db-id->table-name->table (:id db)))))
+
+(defn -temp-get
+  ([temp-db table-name]
+   {:pre [(map? temp-db)
+          (string? table-name)]}
+   (@(:table-name->table temp-db) table-name))
+  ([temp-db table-name field-name]
+   {:pre [(string? field-name)]}
+   (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
+
+(defn- walk-body-parse-temp-get [db-binding body]
+  (walk/prewalk
+   (fn [form]
+     (or (when (symbol? form)
+           (when-let [symbol-name (re-matches #"^&.+$" (name form))]
+             `(-temp-get ~db-binding ~@(-> symbol-name
+                                           (s/replace #"&" "")
+                                           (s/split #"\.")))))
+         form))
+   body))
+
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
    the newly created `Database` bound to DB-BINDING.
@@ -131,7 +168,10 @@
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
   `(let [loader# ~dataset-loader
          dbdef# ~database-definition]
-     (try (let [~db-binding (get-or-create-database! loader# dbdef#)]
-            ~@body)
-          (finally
-            (remove-database! loader# dbdef#)))))
+     (try
+       (remove-database! loader# dbdef#)                           ; Remove DB if it already exists for some weird reason
+       (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
+                             -temp-db-add-getter-delay)]
+         ~@(walk-body-parse-temp-get db-binding body))
+       (finally
+         (remove-database! loader# dbdef#)))))
