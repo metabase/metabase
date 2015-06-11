@@ -1,3 +1,5 @@
+'use strict';
+
 var Home = angular.module('corvus.home', [
     'corvus.home.controllers',
 ]);
