@@ -105,7 +105,10 @@ module.exports = {
         // new NgAnnotatePlugin({ add: true }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
-        new CommonsChunkPlugin('common', 'common.bundle.js'),
+        new CommonsChunkPlugin({
+            name: 'vendor',
+            minChunks: Infinity // (with more entries, this ensures that no other module goes into the vendor chunk)
+        }),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
         new ExtractTextPlugin('styles.bundle.css')
     ],
