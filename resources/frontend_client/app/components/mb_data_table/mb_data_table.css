@@ -5,11 +5,25 @@
     cursor: pointer;
 }
 
-.MB-DataTable-header .Icon-chevrondown       { opacity: 0; }
-.MB-DataTable-header:hover .Icon-chevrondown { opacity: 1; }
+.MB-DataTable-header .Icon       { opacity: 0; }
+.MB-DataTable-header:hover .Icon,
+.MB-DataTable-header--sorted .Icon     {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.PagingButtons {
+    border: 1px solid #ddd;
+}
+
+/* if the column is the one that is being sorted*/
+.MB-DataTable-header--sorted {
+     color: var(--brand-color);
+}
 
 /* what follows is a war crime but such is the state of FE development */
 .Visualization .public_fixedDataTable_main {
+    border-color: rgb(205, 205, 205);
 }
 
 .Visualization .public_fixedDataTableCell_main {
@@ -32,5 +46,11 @@
 
 .Visualization .public_fixedDataTable_header,
 .Visualization .public_fixedDataTable_header .public_fixedDataTableCell_main {
+    background-color: #fff;
     background-image: none;
+}
+
+.Visualization .public_fixedDataTable_header,
+.Visualization .public_fixedDataTable_header .public_fixedDataTableCell_main {
+    background-color: #fff;
 }
