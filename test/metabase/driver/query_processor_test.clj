@@ -6,7 +6,7 @@
             [metabase.driver.query-processor :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data :refer [with-temp-db temp-get]]
+            [metabase.test.data :refer [with-temp-db]]
             (metabase.test.data [dataset-definitions :refer [us-history-1607-to-1774]]
                                 [datasets :as datasets :refer [*dataset*]])))
 
