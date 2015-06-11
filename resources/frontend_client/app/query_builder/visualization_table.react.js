@@ -1,6 +1,7 @@
 'use strict';
 
 import FixedDataTable from 'fixed-data-table';
+import Icon from './icon.react';
 
 var Table = FixedDataTable.Table;
 var Column = FixedDataTable.Column;
@@ -78,12 +79,18 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? column.name.toString() : null;
+            colVal = (column !== null) ? column.name.toString() : null,
+            headerClasses = 'MB-DataTable-header flex align-center';
 
         if (this.isSortable()) {
-            return (<div onClick={this.setSort.bind(null, column.id)}>{colVal}</div>);
+            return (
+                <div className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
+                    {colVal}
+                    <Icon className="flex-align-right" name="chevrondown" width="12px" height="12px"></Icon>
+                </div>
+            );
         } else {
-            return (<div>{colVal}</div>);
+            return (<div className={headerClasses}>{colVal}</div>);
         }
     },
 
@@ -113,6 +120,7 @@ export default React.createClass({
 
             return (
                 <Column
+                    className="MB-DataTable-column"
                     width={colWidth}
                     isResizable={true}
                     headerRenderer={component.tableHeaderRenderer.bind(null, idx)}
@@ -125,6 +133,7 @@ export default React.createClass({
 
         return (
             <Table
+                className="MB-DataTable"
                 rowHeight={35}
                 rowGetter={this.rowGetter}
                 rowsCount={rowCount}
