@@ -47,7 +47,7 @@ module.exports = {
         loaders: [
             // JavaScript
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
-            { test: /\.js$/, exclude: /node_modules/, loader: 'eslint' },
+            { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
@@ -58,7 +58,7 @@ module.exports = {
     },
 
     resolve: {
-        modulesDirectories: [],
+        // modulesDirectories: [],
         alias: {
             'metabase':             __dirname + '/resources/frontend_client/app',
 

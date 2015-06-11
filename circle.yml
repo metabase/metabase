@@ -9,5 +9,5 @@ test:
     # 2) runs Eastwood linter
     # 3) runs JS linter + Bikeshed linter
     # 4) runs lein uberjar
-    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=generic-sql,mongo lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood ;; 3) ./lint_js.sh && lein bikeshed --max-line-length 240 ;; 4) CI_DISABLE_WEBPACK_MINIFICATION=1 lein uberjar ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=generic-sql,mongo lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood ;; 3) ./lint_js.sh && ./node_modules/karma/bin/karma start ./karma.conf.js --single-run && lein bikeshed --max-line-length 240 ;; 4) CI_DISABLE_WEBPACK_MINIFICATION=1 lein uberjar ;; esac:
         parallel: true
