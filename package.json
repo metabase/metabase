@@ -67,5 +67,12 @@
     "webpack": "^1.9.10",
     "webpack-postcss-tools": "^1.1.1"
   },
-  "scripts": {}
+  "scripts": {
+      "lint": "./node_modules/eslint/bin/eslint.js --ignore-pattern 'resources/frontend_client/app/{dist,test}/**/*' resources/frontend_client/app",
+      "test": "./node_modules/karma/bin/karma start --single-run",
+      "test-watch": "./node_modules/karma/bin/karma start --auto-watch",
+      "build": "./node_modules/webpack/bin/webpack.js",
+      "build-watch": "./node_modules/webpack/bin/webpack.js --watch",
+      "start": "lein ring server"
+  }
 }

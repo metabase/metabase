@@ -20,7 +20,9 @@ var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH +
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-console.warn("Warning: in weback watch mode you must restart webpack if you change any CSS variables or custom media queries");
+if (process.argv.indexOf("-w") >= 0 || process.argv.indexOf("--watch") >= 0) {
+    console.warn("Warning: in weback watch mode you must restart webpack if you change any CSS variables or custom media queries");
+}
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
