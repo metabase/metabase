@@ -24,27 +24,29 @@
     :name
     :number
     :state
+    :timestamp_seconds
     :url
     :zip_code})
 
 (def ^:const special-type->name
   "User-facing names for the `Field` special types."
-  {:avatar "Avatar Image URL"
-   :category "Category"
-   :city "City"
-   :country "Country"
-   :desc "Description"
-   :fk "Foreign Key"
-   :id "Entity Key"
-   :image "Image URL"
-   :json "Field containing JSON"
-   :latitude "Latitude"
-   :longitude "Longitude"
-   :name "Entity Name"
-   :number "Number"
-   :state "State"
-   :url "URL"
-   :zip_code "Zip Code"})
+  {:avatar            "Avatar Image URL"
+   :category          "Category"
+   :city              "City"
+   :country           "Country"
+   :desc              "Description"
+   :fk                "Foreign Key"
+   :id                "Entity Key"
+   :image             "Image URL"
+   :json              "Field containing JSON"
+   :latitude          "Latitude"
+   :longitude         "Longitude"
+   :name              "Entity Name"
+   :number            "Number"
+   :state             "State"
+   :timestamp_seconds "Timestamp - seconds since 1970"
+   :url               "URL"
+   :zip_code          "Zip Code"})
 
 (def ^:const base-types
   "Possible values for `Field` `:base_type`."
