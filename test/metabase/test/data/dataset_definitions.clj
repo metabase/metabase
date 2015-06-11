@@ -1,5 +1,5 @@
 (ns metabase.test.data.dataset-definitions
-  "Definitions of various datasets for use in tests with `with-temp-db` and the like."
+  "Definitions of various datasets for use in tests with `with-temp-db`."
   (:require [metabase.test.data.interface :refer [def-database-definition]]))
 
 ;; ## Helper Functions
@@ -19,7 +19,6 @@
 ;; ## Datasets
 
 (def-database-definition us-history-1607-to-1774
-  "us_history_1607_1774"
   ["events" [{:field-name   "name"
               :base-type    :CharField}
              {:field-name   "timestamp"

@@ -142,14 +142,10 @@
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
                       (let [cast-value-if-needed (cond
-                                                   (date-field-id? field-id)
-                                                   (fn [value]
-                                                     `(raw ~(format "CAST('%s' AS DATE)" value)))
-
-                                                   (= (field-id->special-type field-id) :timestamp_seconds)
-                                                   u/date-yyyy-mm-dd->unix-timestamp
-
-                                                   :else identity)]
+                                                   (date-field-id? field-id)            u/parse-date-yyyy-mm-dd
+                                                   (= (field-id->special-type field-id)
+                                                      :timestamp_seconds)               u/date-yyyy-mm-dd->unix-timestamp
+                                                   :else                                identity)]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]

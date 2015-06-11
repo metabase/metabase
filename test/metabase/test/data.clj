@@ -175,3 +175,9 @@
          ~@(walk-body-parse-temp-get db-binding body))
        (finally
          (remove-database! loader# dbdef#)))))
+
+(defn x []
+  (driver/process-query {:database @db-id
+                         :type :query
+                         :query {:source_table (table->id :users)
+                                 :aggregation  ["rows"]}}))
