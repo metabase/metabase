@@ -25,13 +25,15 @@
 }
 
 /* brand */
-.text-brand {
-  color: var(--brand-color);
+.text-brand,
+.text-brand-hover:hover {
+    color: var(--brand-color);
 }
 
 .bg-brand {
   background-color: var(--brand-color);
 }
+
 
 /* success */
 
@@ -62,7 +64,8 @@
 }
 
 /* favorite */
-.text-gold {
+.text-gold,
+.text-gold-hover:hover {
     color: var(--gold-color);
 }
 
@@ -72,10 +75,17 @@
 
 /* grey */
 
-.text-grey-1 { color: color(var(--base-grey) shade(10%)) }
-.text-grey-2 { color: color(var(--base-grey) shade(20%)) }
-.text-grey-3 { color: color(var(--base-grey) shade(30%)) }
-.text-grey-4 { color: color(var(--base-grey) shade(40%)) }
+.text-grey-1,
+.text-grey-1-hover:hover { color: color(var(--base-grey) shade(10%)) }
+
+.text-grey-2,
+.text-grey-2-hover:hover { color: color(var(--base-grey) shade(20%)) }
+
+.text-grey-3,
+.text-grey-3-hover:hover { color: color(var(--base-grey) shade(30%)) }
+
+.text-grey-4,
+.text-grey-4-hover:hover { color: color(var(--base-grey) shade(40%)) }
 
 .bg-grey-1 { background-color: color(var(--base-grey) shade(10%)) }
 .bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }

@@ -1,3 +1,13 @@
 <a href="#" class="animate-pop" ng-click="toggleFavorite()">
-    <mb-icon name="star" width="18px" height="18px" ng-class="{'text-grey-1' : !favorite, 'text-gold': favorite }"></mb-icon>
+    <mb-icon
+        name="star"
+        width="18px"
+        height="18px"
+        class="text-grey-1"
+        ng-class="{ 'text-grey-1 text-gold-hover' : !favorite,
+                    'text-gold text-grey-1-hover': favorite,
+                    'transition-color': true
+                    }"
+    >
+    </mb-icon>
 </a>
