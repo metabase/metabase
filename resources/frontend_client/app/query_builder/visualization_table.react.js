@@ -12,6 +12,10 @@ export default React.createClass({
         data: React.PropTypes.object
     },
 
+    // local variables
+    isColumnResizing: false,
+
+    // React lifecycle
     getDefaultProps: function() {
         return {
             maxRows: 100,
@@ -22,35 +26,72 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            width: 800,
-            height: 300
+            width: 0,
+            height: 0,
+            columnWidths: [],
+            colDefs: null
         };
     },
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillMount: function() {
+        if (this.props.data) {
+            this.setState({
+                colDefs: JSON.stringify(this.props.data.cols)
+            });
+        }
+    },
 
+    componentWillReceiveProps: function(newProps) {
+        // TODO: check if our data has changed and specifically if our columns list has changed
+        if (JSON.stringify(this.props.data.cols) !== this.state.colDefs) {
+            // if the columns have changed then reset any column widths we have setup
+            this.setState({
+                colDefs: JSON.stringify(this.props.data.cols),
+                columnWidths: this.calculateColumnWidths(newProps, this.state)
+            });
+        }
     },
 
     componentDidMount: function() {
-        this.calculateBoundaries(this.getInitialState());
+        this.calculateSizing(this.getInitialState());
     },
 
     componentDidUpdate: function(prevProps, prevState) {
-        this.calculateBoundaries(prevState);
+        this.calculateSizing(prevState);
     },
 
-    calculateBoundaries: function(prevState) {
+    calculateColumnWidths: function(props, state) {
+        var component = this,
+            calcColumnWidth = (props.data.cols.length > 0) ? state.width / props.data.cols.length : 75;
+
+        var tableColumns = this.props.data.cols.map(function (column, idx) {
+            return (component.props.minColumnWidth > calcColumnWidth) ? component.props.minColumnWidth : calcColumnWidth;
+        });
+
+        return tableColumns;
+    },
+
+    calculateSizing: function(prevState) {
         var element = this.getDOMNode(); //React.findDOMNode(this);
         var width = element.parentElement.offsetWidth;
         var height = element.parentElement.offsetHeight;
 
-        console.log(width, height);
         if (width !== prevState.width || height !== prevState.height) {
             console.log('updating dims');
-            this.setState({
+            var updatedState = {
                 width: width,
                 height: height
-            });
+            };
+
+            if (prevState.width === 0) {
+                var tableColumnWidths = this.calculateColumnWidths(this.props, this.state);
+                updatedState.columnWidths = tableColumnWidths;
+            } else {
+                // existing grid in place and we are simply resizing it, so try to maintain current sizings
+                // if the columns are the same then attempt to maintain our current sizings (map each column to a % of the total)
+            }
+
+            this.setState(updatedState);
         }
     },
 
@@ -67,14 +108,18 @@ export default React.createClass({
         return this.props.data.rows[actualIndex];
     },
 
-    cellGetter: function(cellKey, row) {
-        console.log(cellKey, row);
+    cellDataGetter: function(cellKey, row) {
         // TODO: should we be casting all values toString()?
-        // var rowVal = (row[k] !== null) ? row[k].toString() : null;
+        return(row[cellKey] !== null) ? row[cellKey].toString() : null;
     },
 
-    columnResized: function(width, columnKey) {
-        console.log('resized', width, columnKey);
+    columnResized: function(width, idx) {
+        var tableColumnWidths = this.state.columnWidths;
+        tableColumnWidths[idx] = width;
+        this.setState({
+            columnWidths: tableColumnWidths
+        });
+        this.isColumnResizing = false;
     },
 
     tableHeaderRenderer: function(columnIndex) {
@@ -84,7 +129,7 @@ export default React.createClass({
 
         if (this.isSortable()) {
             return (
-                <div className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
+                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
                     {colVal}
                     <span className="flex-align-right">
                         <Icon name="chevrondown" width="12px" height="12px"></Icon>
@@ -112,13 +157,16 @@ export default React.createClass({
         // rowCount = # of rows we intend to show
         // calcColumnWidth = the calculated pixels available for a column if all available columns are rendered
         var offset = ((this.props.page - 1) * this.props.maxRows),
-            rowCount = (limit - offset) + 1,
-            calcColumnWidth = (this.props.data.cols.length > 0) ? this.state.width / this.props.data.cols.length : 75;
+            rowCount = (limit - offset) + 1;
 
         var component = this;
         var tableColumns = this.props.data.cols.map(function (column, idx) {
             var colVal = (column !== null) ? column.name.toString() : null;
-            var colWidth = (component.props.minColumnWidth > calcColumnWidth) ? component.props.minColumnWidth : calcColumnWidth;
+            var colWidth = component.state.columnWidths[idx];
+
+            if (!colWidth) {
+                colWidth = 75;
+            }
 
             return (
                 <Column
@@ -142,6 +190,7 @@ export default React.createClass({
                 width={this.state.width}
                 height={this.state.height}
                 headerHeight={35}
+                isColumnResizing={this.isColumnResizing}
                 onColumnResizeEndCallback={component.columnResized}>
                 {tableColumns}
             </Table>
