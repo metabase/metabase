@@ -86,7 +86,9 @@ export default React.createClass({
             return (
                 <div className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
                     {colVal}
-                    <Icon className="flex-align-right" name="chevrondown" width="12px" height="12px"></Icon>
+                    <span className="flex-align-right">
+                        <Icon name="chevrondown" width="12px" height="12px"></Icon>
+                    </span>
                 </div>
             );
         } else {
