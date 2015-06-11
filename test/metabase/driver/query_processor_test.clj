@@ -797,7 +797,7 @@
                               :type     :query
                               :query    {:source_table (:id &events)
                                          :aggregation  ["count"]
-                                         :filter       ["<" (:id &events.timestamp) (metabase.util/date-yyyy-mm-dd->unix-timestamp "1765-01-01")]}})
+                                         :filter       ["<" (:id &events.timestamp) "1765-01-01"]}})
        :data
        :rows
        first
