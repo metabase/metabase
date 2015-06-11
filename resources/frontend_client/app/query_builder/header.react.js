@@ -3,6 +3,7 @@
 
 import ActionButton from './action_button.react';
 import AddToDashboard from './add_to_dashboard.react';
+import CardFavoriteButton from './card_favorite_button.react';
 import Icon from './icon.react';
 import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
@@ -209,6 +210,12 @@ export default React.createClass({
             );
         }
 
+        var cardFavorite;
+        if (!this.cardIsNew()) {
+            cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
+        }
+
+
         var cardCreator = (this.props.card.creator) ? this.props.card.creator.common_name : "me";
 
         return (
@@ -232,7 +239,7 @@ export default React.createClass({
                         {downloadButton}
                     </ReactCSSTransitionGroup>
                     <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        <Icon name="star" width="24px" height="24px"></Icon>
+                        {cardFavorite}
                     </ReactCSSTransitionGroup>
                     <AddToDashboard
                         card={this.props.card}
