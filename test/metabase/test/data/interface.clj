@@ -26,15 +26,10 @@
                                ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
                                ^Boolean short-lived?])
 
-
-(defprotocol IEscapedName
-  (^String escaped-name [this]
-    "Return escaped version of DATABASE-NAME suitable for use as a filename / database name / etc."))
-
-(extend-protocol IEscapedName
-  DatabaseDefinition
-  (escaped-name [this]
-    (s/replace (:database-name this) #"\s+" "_")))
+(defn escaped-name
+  "Return escaped version of database name suitable for use as a filename / database name / etc."
+  ^String [^DatabaseDefinition database-definition]
+  (s/replace (:database-name database-definition) #"\s+" "_"))
 
 
 (defprotocol IMetabaseInstance
