@@ -26,20 +26,26 @@ export default React.createClass({
         };
     },
 
+    componentWillReceiveProps: function(newProps) {
+
+    },
+
     componentDidMount: function() {
-        this.calculateBoundaries();
+        this.calculateBoundaries(this.getInitialState());
     },
 
     componentDidUpdate: function(prevProps, prevState) {
-        this.calculateBoundaries();
+        this.calculateBoundaries(prevState);
     },
 
-    calculateBoundaries: function() {
+    calculateBoundaries: function(prevState) {
         var element = this.getDOMNode(); //React.findDOMNode(this);
         var width = element.parentElement.offsetWidth;
         var height = element.parentElement.offsetHeight;
 
-        if (width !== this.state.width && height !== this.state.height) {
+        console.log(width, height);
+        if (width !== prevState.width || height !== prevState.height) {
+            console.log('updating dims');
             this.setState({
                 width: width,
                 height: height
@@ -56,7 +62,29 @@ export default React.createClass({
     },
 
     rowGetter: function(rowIndex) {
-        return this.props.data.rows[rowIndex];
+        var actualIndex = ((this.props.page - 1) * this.props.maxRows) + rowIndex;
+        return this.props.data.rows[actualIndex];
+    },
+
+    cellGetter: function(cellKey, row) {
+        console.log(cellKey, row);
+        // TODO: should we be casting all values toString()?
+        // var rowVal = (row[k] !== null) ? row[k].toString() : null;
+    },
+
+    columnResized: function(width, columnKey) {
+        console.log('resized', width, columnKey);
+    },
+
+    tableHeaderRenderer: function(columnIndex) {
+        var column = this.props.data.cols[columnIndex],
+            colVal = (column !== null) ? column.name.toString() : null;
+
+        if (this.isSortable()) {
+            return (<div onClick={this.setSort.bind(null, column.id)}>{colVal}</div>);
+        } else {
+            return (<div>{colVal}</div>);
+        }
     },
 
     render: function() {
@@ -65,72 +93,45 @@ export default React.createClass({
         }
 
         // remember that page numbers begin with 1 but our data indexes begin with 0, so account for that
-        var offset = ((this.props.page - 1) * this.props.maxRows),
-            limit = (this.props.page * this.props.maxRows) - 1;
-
+        // limit = end index in our data that we intend to show
+        var limit = (this.props.page * this.props.maxRows) - 1;
         if (limit > this.props.data.rows.length) {
-            limit = this.props.data.rows.length;
+            limit = this.props.data.rows.length - 1;
         }
 
-        var tableRows = [];
-        for (var i=offset; i < limit; i++) {
-            var row = this.props.data.rows[i];
-
-            var rowCols = [];
-            for (var k=0; k < row.length; k++) {
-                // TODO: should we be casting all values toString()?
-                var rowVal = (row[k] !== null) ? row[k].toString() : null;
-                rowCols.push((<td>{rowVal}</td>));
-            }
-
-            tableRows.push((<tr>{rowCols}</tr>));
-        }
+        // offset = start index in our data that we intend to show
+        // rowCount = # of rows we intend to show
+        // calcColumnWidth = the calculated pixels available for a column if all available columns are rendered
+        var offset = ((this.props.page - 1) * this.props.maxRows),
+            rowCount = (limit - offset) + 1,
+            calcColumnWidth = (this.props.data.cols.length > 0) ? this.state.width / this.props.data.cols.length : 75;
 
         var component = this;
-        var tableHeaders = this.props.data.cols.map(function (column, idx) {
-            var colVal = (column !== null) ? column.name.toString() : null;
-
-            if (component.isSortable()) {
-                return (<th onClick={component.setSort.bind(null, column.id)}>{colVal}</th>);
-            } else {
-                return (<th>{colVal}</th>);
-            }
-        });
-
-        var calcColumnWidth = 75;
-        if (this.props.data.cols.length > 0) {
-            calcColumnWidth = this.state.width / this.props.data.cols.length;
-        }
         var tableColumns = this.props.data.cols.map(function (column, idx) {
             var colVal = (column !== null) ? column.name.toString() : null;
             var colWidth = (component.props.minColumnWidth > calcColumnWidth) ? component.props.minColumnWidth : calcColumnWidth;
 
-            return (<Column label={colVal} width={colWidth} dataKey={idx}></Column>);
+            return (
+                <Column
+                    width={colWidth}
+                    isResizable={true}
+                    headerRenderer={component.tableHeaderRenderer.bind(null, idx)}
+                    cellDataGetter={component.cellDataGetter}
+                    dataKey={idx}
+                    label={colVal}>
+                </Column>
+            );
         });
-
-        // return (
-        //     <div className="QueryTable-wrapper Table-wrapper full">
-        //         <table className="QueryTable Table">
-        //             <thead>
-        //                 <tr>
-        //                     {tableHeaders}
-        //                 </tr>
-        //             </thead>
-        //             <tbody>
-        //                 {tableRows}
-        //             </tbody>
-        //         </table>
-        //     </div>
-        // );
 
         return (
             <Table
                 rowHeight={35}
                 rowGetter={this.rowGetter}
-                rowsCount={this.props.data.rows.length}
+                rowsCount={rowCount}
                 width={this.state.width}
                 height={this.state.height}
-                headerHeight={35}>
+                headerHeight={35}
+                onColumnResizeEndCallback={component.columnResized}>
                 {tableColumns}
             </Table>
         );
