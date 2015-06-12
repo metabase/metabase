@@ -1,25 +1,23 @@
 'use strict';
 
-var webpackConfig = require('./webpack.config');
+var webpackConfig = require('../../../webpack.config');
 webpackConfig.module.postLoaders = [
-    { test: /\.js$/, exclude: /(_spec|vendor|node_modules)/, loader: 'istanbul-instrumenter' }
+    { test: /\.js$/, exclude: /(\.spec\.js|vendor|node_modules)/, loader: 'istanbul-instrumenter' }
 ];
 
 module.exports = function(config) {
     config.set({
-        basePath: '',
+        basePath: '../',
         files: [
-            'resources/frontend_client/app/dist/vendor.js',
-            // 'resources/frontend_client/vendor.js',
-            'node_modules/angular-mocks/angular-mocks.js',
-            'resources/frontend_client/app/dist/app.js',
-            'resources/frontend_client/app/**/*.spec.js'
+            'app/dist/vendor.js',
+            'app/dist/app.js',
+            '../../node_modules/angular-mocks/angular-mocks.js',
+            'test/unit/**/*.spec.js'
         ],
         exclude: [
         ],
         preprocessors: {
-            'resources/frontend_client/vendor.js': ['webpack'],
-            'resources/frontend_client/app/**/*.spec.js': ['webpack']
+            'test/unit/**/*.spec.js': ['webpack']
         },
         frameworks: [
             'jasmine'
@@ -33,7 +31,7 @@ module.exports = function(config) {
             module: webpackConfig.module
         },
         coverageReporter: {
-            dir: 'coverage/',
+            dir: '../../coverage/',
             subdir: function(browser) {
                 return browser.toLowerCase().split(/[ /-]/)[0];
             },

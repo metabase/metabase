@@ -6,8 +6,8 @@ import 'metabase/metabase/metabase.services';
 describe('corvus.metabase.services', function() {
     beforeEach(angular.mock.module('corvus.metabase.services'));
 
-    describe('Metabase Service', function() {
-        it('should return current version', inject(function(Metabase, $httpBackend) {
+    describe('Metabase', function() {
+        it('should return empty list of databases', inject(function(Metabase, $httpBackend) {
             $httpBackend.expect('GET', '/api/meta/db/?org=')
                 .respond(200, '[]');
 
