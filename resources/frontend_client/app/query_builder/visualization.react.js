@@ -38,8 +38,7 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            origQuery: JSON.stringify(this.props.card.dataset_query),
-            tablePage: 1
+            origQuery: JSON.stringify(this.props.card.dataset_query)
         };
     },
 
@@ -47,8 +46,7 @@ export default React.createClass({
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                origQuery: JSON.stringify(nextProps.card.dataset_query),
-                tablePage: 1
+                origQuery: JSON.stringify(nextProps.card.dataset_query)
             });
         }
     },
@@ -119,12 +117,6 @@ export default React.createClass({
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
-    },
-
-    setPage: function(page) {
-        this.setState({
-            tablePage: page
-        });
     },
 
     renderChartColorPicker: function() {
@@ -218,7 +210,7 @@ export default React.createClass({
     render: function() {
         var viz,
             queryModified,
-            pagingControls;
+            tableFootnote;
 
         if (!this.props.result) {
             viz = (
@@ -276,46 +268,9 @@ export default React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    // TODO: check if we have a truncated result set and let the user know if that's the case
-
-                    if(this.props.result.data.rows.length > this.props.tableRowsPerPage) {
-                        // we need to show some paging controls
-                        var hasPrev = (this.state.tablePage > 1),
-                            hasNext = ((this.props.result.data.rows.length - (this.state.tablePage * this.props.tableRowsPerPage)) > 0),
-                            offset = ((this.state.tablePage - 1) * this.props.tableRowsPerPage) + 1,
-                            limit = (this.state.tablePage * this.props.tableRowsPerPage);
-
-                        if (limit > this.props.result.data.rows.length) {
-                            limit = this.props.result.data.rows.length;
-                        }
-
-                        var pagingButtons;
-                        if (!hasPrev && !hasNext) {
-                            // no actual paging required
-                            pagingButtons = (<span><span>prev</span> <span>next</span></span>);
-                        } else if (!hasPrev && hasNext) {
-                            // only NEXT button is active
-                            pagingButtons = (<span><span>prev</span> <a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a></span>);
-                        } else if (hasPrev && !hasNext) {
-                            // only PREV button is active
-                            pagingButtons = (<span><a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a> <span>next</span></span>);
-                        } else {
-                            // both PREV and NEXT are active
-                            pagingButtons = (<span><a onClick={this.setPage.bind(null, this.state.tablePage-1)}>prev</a> <a onClick={this.setPage.bind(null, this.state.tablePage+1)}>next</a></span>);
-                        }
-
-                        pagingControls = (
-                            <div className="mt1">
-                                <b>{offset}</b> - <b>{limit}</b> of <b>{this.props.result.data.rows.length}</b> {pagingButtons}
-                            </div>
-                        );
-                    }
-
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.props.tableRowsPerPage}
-                            page={this.state.tablePage}
                             setSortFn={this.props.setSortFn}
                             sort={this.props.card.dataset_query.query.order_by}
                         />
@@ -332,11 +287,20 @@ export default React.createClass({
                 }
 
                 // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !pagingControls) {
-                    pagingControls = (
+                if (this.props.result.data.rows_truncated ||
+                        (this.props.card.dataset_query.type === "query" &&
+                            this.props.card.dataset_query.query.aggregation[0] === "rows" &&
+                            this.props.result.data.rows.length === 2000)) {
+                    tableFootnote = (
                         <div className="mt1">
                             <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                            Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
+                            Result data was capped at <b>{this.props.result.row_count}</b> rows.
+                        </div>
+                    );
+                } else {
+                    tableFootnote = (
+                        <div className="mt1">
+                            Showing <b>{this.props.result.row_count}</b> rows.
                         </div>
                     );
                 }
@@ -374,7 +338,7 @@ export default React.createClass({
                 <div className="VisualizationSettings QueryBuilder-section flex align-center">
                     {this.renderVizControls()}
                     <div className="flex flex-align-right">
-                        {pagingControls}
+                        {tableFootnote}
                     </div>
                 </div>
             </div>

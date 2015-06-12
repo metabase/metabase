@@ -79,7 +79,6 @@ export default React.createClass({
         var height = element.parentElement.offsetHeight;
 
         if (width !== prevState.width || height !== prevState.height) {
-            console.log('updating dims');
             var updatedState = {
                 width: width,
                 height: height
@@ -112,7 +111,7 @@ export default React.createClass({
 
     cellDataGetter: function(cellKey, row) {
         // TODO: should we be casting all values toString()?
-        return(row[cellKey] !== null) ? row[cellKey].toString() : null;
+        return (row[cellKey] !== null) ? row[cellKey].toString() : null;
     },
 
     columnResized: function(width, idx) {
@@ -127,8 +126,6 @@ export default React.createClass({
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
             colVal = (column !== null) ? column.name.toString() : null;
-
-
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,
@@ -145,6 +142,8 @@ export default React.createClass({
         }
 
         if (this.isSortable()) {
+            // TODO: handle case where we are sorting by an aggregate column
+
             return (
                 <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
                     {colVal}
@@ -162,19 +161,6 @@ export default React.createClass({
         if(!this.props.data) {
             return false;
         }
-
-        // remember that page numbers begin with 1 but our data indexes begin with 0, so account for that
-        // limit = end index in our data that we intend to show
-        var limit = (this.props.page * this.props.maxRows) - 1;
-        if (limit > this.props.data.rows.length) {
-            limit = this.props.data.rows.length - 1;
-        }
-
-        // offset = start index in our data that we intend to show
-        // rowCount = # of rows we intend to show
-        // calcColumnWidth = the calculated pixels available for a column if all available columns are rendered
-        var offset = ((this.props.page - 1) * this.props.maxRows),
-            rowCount = (limit - offset) + 1;
 
         var component = this;
         var tableColumns = this.props.data.cols.map(function (column, idx) {
@@ -203,7 +189,7 @@ export default React.createClass({
                 className="MB-DataTable"
                 rowHeight={35}
                 rowGetter={this.rowGetter}
-                rowsCount={rowCount}
+                rowsCount={this.props.data.rows.length}
                 width={this.state.width}
                 height={this.state.height}
                 headerHeight={50}
