@@ -21,7 +21,8 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            tableRowsPerPage: 100,
+            // NOTE: this should be more dynamic from the backend, it's set based on the query lang
+            maxTableRows: 2000,
             visualizationTypes: [
                 'scalar',
                 'table',
@@ -268,9 +269,29 @@ export default React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
+                    // when we are displaying a data grid, setup a footnote which provides some row information
+                    if (this.props.result.data.rows_truncated ||
+                            (this.props.card.dataset_query.type === "query" &&
+                                this.props.card.dataset_query.query.aggregation[0] === "rows" &&
+                                this.props.result.data.rows.length === 2000)) {
+                        tableFootnote = (
+                            <div className="mt1">
+                                <span className="Badge Badge--headsUp mr2">Too many rows!</span>
+                                Result data was capped at <b>{this.props.result.row_count}</b> rows.
+                            </div>
+                        );
+                    } else {
+                        tableFootnote = (
+                            <div className="mt1">
+                                Showing <b>{this.props.result.row_count}</b> rows.
+                            </div>
+                        );
+                    }
+
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
+                            maxRows={this.props.maxTableRows}
                             setSortFn={this.props.setSortFn}
                             sort={this.props.card.dataset_query.query.order_by}
                         />
@@ -287,20 +308,11 @@ export default React.createClass({
                 }
 
                 // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated ||
-                        (this.props.card.dataset_query.type === "query" &&
-                            this.props.card.dataset_query.query.aggregation[0] === "rows" &&
-                            this.props.result.data.rows.length === 2000)) {
+                if (this.props.result.data.rows_truncated && !tableFootnote) {
                     tableFootnote = (
                         <div className="mt1">
                             <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                            Result data was capped at <b>{this.props.result.row_count}</b> rows.
-                        </div>
-                    );
-                } else {
-                    tableFootnote = (
-                        <div className="mt1">
-                            Showing <b>{this.props.result.row_count}</b> rows.
+                            Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
                         </div>
                     );
                 }
@@ -335,11 +347,11 @@ export default React.createClass({
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
-                <div className="VisualizationSettings QueryBuilder-section flex align-center">
-                    {this.renderVizControls()}
-                    <div className="flex flex-align-right">
+                <div className="VisualizationSettings QueryBuilder-section clearfix">
+                    <div className="float-right">
                         {tableFootnote}
                     </div>
+                    {this.renderVizControls()}
                 </div>
             </div>
         );
