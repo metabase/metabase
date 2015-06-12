@@ -18,10 +18,10 @@
 
    When we expand it, we get:
 
-     {:type :simple
-      :subclauses [{:type :=
+     {:compound-type :simple
+      :subclauses [{:filter-type :=
                     :field {:field-id 34
-                            :name \"TIMESTAMP\"
+                            :field-name \"TIMESTAMP\"
                             :base-type :BigIntegerField
                             :special-type :timestamp_seconds}
                     :value {:value -6626937600,
@@ -99,19 +99,19 @@
 
 ;; Field is the expansion of a Field ID in the standard QL
 (defrecord Field [field-id
-                    name
-                    base-type
-                    special-type]
+                  field-name
+                  base-type
+                  special-type]
   ICollapse
   (collapse-one [_]
     field-id))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
-(defrecord Value [value          ; e.g. parsed Date / timestamp
-                    original-value ; e.g. original YYYY-MM-DD string
-                    base-type
-                    special-type]
+(defrecord Value [value              ; e.g. parsed Date / timestamp
+                  original-value     ; e.g. original YYYY-MM-DD string
+                  base-type
+                  special-type]
   ICollapse
   (collapse-one [_]
     ;; Some preprocessing steps modify the parsed value
@@ -189,6 +189,7 @@
         (if-not (seq @*field-ids*) parsed-form ; No need to do a DB call or walk parsed-form if we didn't see any Field IDs
                 (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in @*field-ids*])
                                   (m/map-vals #(set/rename-keys % {:id           :field-id
+                                                                   :name         :field-name
                                                                    :special_type :special-type
                                                                    :base_type    :base-type})))]
                   ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
@@ -209,11 +210,11 @@
 
 ;; ### Top-Level Type
 
-(defrecord Filter [^Keyword type ; :and :or :simple
+(defrecord Filter [^Keyword compound-type ; :and :or :simple
                    subclauses]
   ICollapse
   (collapse-one [_]
-    (case type
+    (case compound-type
       :simple  (first subclauses)
       :and    `["AND" ~@subclauses]
       :or     `["OR"  ~@subclauses])))
@@ -221,33 +222,33 @@
 
 ;; ### Subclause Types
 
-(defrecord Filter:Inside [^Keyword type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
+(defrecord Filter:Inside [^Keyword filter-type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
                           lat
                           lon]
   ICollapse
   (collapse-one [_]
     ["INSIDE" (:field lat) (:field lon) (:max lat) (:min lon) (:min lat) (:max lon)]))
 
-(defrecord Filter:Between [^Keyword type
+(defrecord Filter:Between [^Keyword filter-type
                            ^Field field
-                           ^Value min
-                           ^Value max]
+                           ^Value min-val
+                           ^Value max-val]
   ICollapse
   (collapse-one [_]
-    ["BETWEEN" field min max]))
+    ["BETWEEN" field min-val max-val]))
 
-(defrecord Filter:Field+Value [^Keyword type
+(defrecord Filter:Field+Value [^Keyword filter-type
                               ^Field field
                               ^Value value]
   ICollapse
   (collapse-one [_]
-    [(s/upper-case (name type)) field value]))
+    [(s/upper-case (name filter-type)) field value]))
 
-(defrecord Filter:Field [^Keyword type
+(defrecord Filter:Field [^Keyword filter-type
                          ^Field field]
   ICollapse
   (collapse-one [_]
-    [(s/upper-case (name type)) field]))
+    [(s/upper-case (name filter-type)) field]))
 
 
 ;; ### Parsers

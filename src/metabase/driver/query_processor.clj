@@ -162,7 +162,7 @@
     (update-in query [:filter] (fn [filter-clause]
                                  (-> filter-clause
                                      expand/expand-filter
-                                     (update-in [:subclauses] #(for [{filter-type :type, {:keys [special-type]} :field, :as subclause} %]
+                                     (update-in [:subclauses] #(for [{:keys [filter-type], {:keys [special-type]} :field, :as subclause} %]
                                                                  (if (and (= filter-type :=)
                                                                           (contains? #{:timestamp_seconds
                                                                                        :timestamp_milliseconds} special-type))
