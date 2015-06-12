@@ -82,6 +82,7 @@
 (defn expand-filter
   "Expand a `filter` clause."
   [filter-clause]
+  (def _b filter-clause)
   (with-resolved-fields parse-filter filter-clause))
 
 ;; Do a breadth-first walk so we don't walk things that will be tossed anyway. Since
@@ -230,16 +231,16 @@
     ["INSIDE" (:field lat) (:field lon) (:max lat) (:min lon) (:min lat) (:max lon)]))
 
 (defrecord Filter:Between [^Keyword filter-type
-                           ^Field field
-                           ^Value min-val
-                           ^Value max-val]
+                           ^Field   field
+                           ^Value   min-val
+                           ^Value   max-val]
   ICollapse
   (collapse-one [_]
     ["BETWEEN" field min-val max-val]))
 
 (defrecord Filter:Field+Value [^Keyword filter-type
-                              ^Field field
-                              ^Value value]
+                               ^Field   field
+                               ^Value   value]
   ICollapse
   (collapse-one [_]
     [(s/upper-case (name filter-type)) field value]))
@@ -255,35 +256,35 @@
 
 (defparser parse-filter-subclause
   ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max]
-  (map->Filter:Inside {:type :inside
-                       :lat  {:field (ph lat-field)
-                              :min   (ph lat-field lat-min)
-                              :max   (ph lat-field lat-max)}
-                       :lon  {:field (ph lon-field)
-                              :min   (ph lon-field lon-min)
-                              :max   (ph lon-field lon-max)}})
+  (map->Filter:Inside {:filter-type :inside
+                       :lat         {:field (ph lat-field)
+                                     :min   (ph lat-field lat-min)
+                                     :max   (ph lat-field lat-max)}
+                       :lon         {:field (ph lon-field)
+                                     :min   (ph lon-field lon-min)
+                                     :max   (ph lon-field lon-max)}})
 
   ["BETWEEN" field-id min max]
-  (map->Filter:Between {:type  :between
-                        :field (ph field-id)
-                        :min   (ph field-id min)
-                        :max   (ph field-id max)})
+  (map->Filter:Between {:filter-type :between
+                        :field       (ph field-id)
+                        :min-val     (ph field-id min)
+                        :max-val     (ph field-id max)})
 
   [filter-type field-id val]
-  (map->Filter:Field+Value {:type  (keyword filter-type)
-                            :field (ph field-id)
-                            :value (ph field-id val)})
+  (map->Filter:Field+Value {:filter-type (keyword filter-type)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
 
   [filter-type field-id]
-  (map->Filter:Field {:type (case filter-type
-                              "NOT_NULL" :not-null
-                              "IS_NULL"  :is-null)
-                      :field (ph field-id)}))
+  (map->Filter:Field {:filter-type (case filter-type
+                                     "NOT_NULL" :not-null
+                                     "IS_NULL"  :is-null)
+                      :field       (ph field-id)}))
 
 (defparser parse-filter
-  ["AND" & subclauses] (map->Filter {:type :and
-                                     :subclauses (mapv parse-filter-subclause subclauses)})
-  ["OR" & subclauses]  (map->Filter {:type :or
-                                     :subclauses (mapv parse-filter-subclause subclauses)})
-  subclause            (map->Filter {:type :simple
-                                     :subclauses [(parse-filter-subclause subclause)]}))
+  ["AND" & subclauses] (map->Filter {:compound-type :and
+                                     :subclauses    (mapv parse-filter-subclause subclauses)})
+  ["OR" & subclauses]  (map->Filter {:compound-type :or
+                                     :subclauses    (mapv parse-filter-subclause subclauses)})
+  subclause            (map->Filter {:compound-type :simple
+                                     :subclauses    [(parse-filter-subclause subclause)]}))
