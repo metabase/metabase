@@ -65,8 +65,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', '$q', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, $q, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$scope', '$routeParams', '$location', '$q', '$window', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($scope, $routeParams, $location, $q, $window, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         // =====  Controller local objects
 
@@ -397,6 +397,11 @@ CardControllers.controller('CardDetail', [
                 renderAll();
             }
         };
+
+        // when the window is resized we need to re-render, mainly so that our visualization pane updates
+        angular.element($window).bind('resize', function() {
+            renderAll();
+        });
 
         $scope.$on('$locationChangeStart', function (event) {
             // only ask for a confirmation on unsaved changes if the question is
