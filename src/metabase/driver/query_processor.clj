@@ -3,6 +3,7 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
+            [medley.core :as m]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.models.field :refer [Field field->fk-table]]
@@ -207,6 +208,26 @@
   (update-in results [:rows] (partial take max-result-rows)))
 
 
+;;; ### CONVERT-TIMESTAMPS-TO-DATES
+
+(defn convert-timestamps-to-dates
+  "Convert the values of Unix timestamps (for `Fields` whose `:special_type` is `:timestamp_seconds` or `:timestamp_milliseconds`) to dates."
+  [{:keys [cols rows], :as results}]
+  (let [timestamp-seconds-col-indecies (u/indecies-satisfying #(= (:special_type %) :timestamp_seconds)      cols)
+        timestamp-millis-col-indecies  (u/indecies-satisfying #(= (:special_type %) :timestamp_milliseconds) cols)]
+    (if-not (or (seq timestamp-seconds-col-indecies)
+                (seq timestamp-millis-col-indecies))
+      ;; If we don't have any columns whose special type is a seconds or milliseconds timestamp return results as-is
+      results
+      ;; Otherwise go modify the results of each row
+      (update-in results [:rows] #(for [row %]
+                                    (for [[i val] (m/indexed row)]
+                                      (cond
+                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Timestamp. (* val 1000))
+                                        (contains? timestamp-millis-col-indecies i)  (java.sql.Timestamp. val)
+                                        :else                                        val)))))))
+
+
 ;; ### ADD-ROW-COUNT-AND-STATUS
 
 (defn add-row-count-and-status
@@ -234,6 +255,7 @@
        (#(case (keyword (:type query))
            :native %
            :query  (post-process-cumulative-sum (:query query) %)))
+       convert-timestamps-to-dates
        add-row-count-and-status))
 
 
