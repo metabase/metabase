@@ -21,17 +21,15 @@
                             rows])
 
 (defrecord DatabaseDefinition [^String database-name
-                               table-definitions])
+                               table-definitions
+                               ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
+                               ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
+                               ^Boolean short-lived?])
 
-
-(defprotocol IEscapedName
-  (^String escaped-name [this]
-    "Return escaped version of DATABASE-NAME suitable for use as a filename / database name / etc."))
-
-(extend-protocol IEscapedName
-  DatabaseDefinition
-  (escaped-name [this]
-    (s/replace (:database-name this) #"\s+" "_")))
+(defn escaped-name
+  "Return escaped version of database name suitable for use as a filename / database name / etc."
+  ^String [^DatabaseDefinition database-definition]
+  (s/replace (:database-name database-definition) #"\s+" "_"))
 
 
 (defprotocol IMetabaseInstance
@@ -106,8 +104,7 @@
   ^TableDefinition [^String table-name field-definition-maps rows]
   (map->TableDefinition {:table-name          table-name
                          :rows                rows
-                         :field-definitions   (mapv create-field-definition field-definition-maps)
-                         :database-definition (promise)}))
+                         :field-definitions   (mapv create-field-definition field-definition-maps)}))
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
@@ -117,3 +114,11 @@
   (map->DatabaseDefinition {:database-name     database-name
                             :table-definitions (mapv (partial apply create-table-definition)
                                                      table-name+field-definition-maps+rows)}))
+
+(defmacro def-database-definition
+  "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."
+  [^clojure.lang.Symbol dataset-name & table-name+field-definition-maps+rows]
+  {:pre [(symbol? dataset-name)]}
+  `(def ~(vary-meta dataset-name assoc :tag DatabaseDefinition)
+     (create-database-definition ~(name dataset-name)
+       ~@table-name+field-definition-maps+rows)))

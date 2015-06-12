@@ -2,73 +2,12 @@
   "Common utility functions useful throughout the codebase."
   (:require [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [medley.core :refer :all]
+            [medley.core :as m]
             [clj-time.format :as time]
             [clj-time.coerce :as coerce])
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)))
-
-(defn contains-many?
-  "Does M contain every key in KS?"
-  [m & ks]
-  (every? (partial contains? m) ks))
-
-(defn select-non-nil-keys
-  "Like `select-keys` but filters out key-value pairs whose value is nil.
-   Unlike `select-keys`, KEYS are rest args (should not be wrapped in a vector).
-   TODO: Why?"
-  [m & ks]
-  {:pre [(map? m)
-         (every? keyword? ks)]}
-  (->> (select-keys m ks)
-       (filter-vals identity)))
-
-(defmacro fn->
-  "Returns a function that threads arguments to it through FORMS via `->`."
-  [& forms]
-  `(fn [x#]
-     (-> x#
-         ~@forms)))
-
-(defmacro fn->>
-  "Returns a function that threads arguments to it through FORMS via `->>`."
-  [& forms]
-  `(fn [x#]
-     (->> x#
-          ~@forms)))
-
-(defn regex?
-  "Is ARG a regular expression?"
-  [arg]
-  (= (type arg)
-     java.util.regex.Pattern))
-
-(defn regex=
-  "Returns `true` if the literal string representations of REGEXES are exactly equal.
-
-    (= #\"[0-9]+\" #\"[0-9]+\")           -> false
-    (regex= #\"[0-9]+\" #\"[0-9]+\")      -> true
-    (regex= #\"[0-9]+\" #\"[0-9][0-9]*\") -> false (although it's theoretically true)"
-  [& regexes]
-  (->> regexes
-       (map #(.toString ^java.util.regex.Pattern %))
-       (apply =)))
-
-(defn self-mapping
-  "Given a function F that takes a single arg, return a function that will call `(f arg)` when
-  passed a non-sequential ARG, or `(map f arg)` when passed a sequential ARG.
-
-    (def f (self-mapping (fn [x] (+ 1 x))))
-    (f 2)       -> 3
-    (f [1 2 3]) -> (2 3 4)"
-  [f & args]
-  (fn [arg]
-    (if (sequential? arg) (map f arg)
-        (f arg))))
-
-;; looking for `apply-kwargs`?
-;; turns out `medley.core/mapply` does the same thingx
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -100,18 +39,27 @@
 (defn parse-iso8601
   "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
   ^java.sql.Date
-  [datetime]
+  [^String datetime]
   (some->> datetime
            (time/parse (time/formatters :date-time))
            (coerce/to-long)
            (java.sql.Date.)))
 
+(def ^:private ^java.text.SimpleDateFormat simple-date-format
+  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
-(def ^{:arglists '([date])} parse-date-yyyy-mm-dd
+(defn parse-date-yyyy-mm-dd
   "Parse a date in the `yyyy-mm-dd` format and return a `java.util.Date`."
-  (let [sdf (java.text.SimpleDateFormat. "yyyy-MM-dd")]
-    (fn [date]
-      (.parse sdf date))))
+  ^java.util.Date [^String date]
+  (.parse simple-date-format date))
+
+(defn date-yyyy-mm-dd->unix-timestamp
+  "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
+  ^Float [^String date]
+  (-> date
+      parse-date-yyyy-mm-dd
+      .getTime
+      (/ 1000)))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
@@ -279,5 +227,17 @@
        (log/error (color/red ~(format "Caught exception in %s:" f)
                              (or (.getMessage e#) e#)
                              (with-out-str (.printStackTrace e#)))))))
+
+(defn indecies-satisfying
+  "Return a set of indencies in COLL that satisfy PRED.
+
+    (indecies-satisfying keyword? ['a 'b :c 3 :e])
+      -> #{2 4}"
+  [pred coll]
+  (->> (for [[i item] (m/indexed coll)]
+         (when (pred item)
+           i))
+       (filter identity)
+       set))
 
 (require-dox-in-this-namespace)

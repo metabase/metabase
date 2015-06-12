@@ -5,7 +5,8 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.models.field :refer [Field field->fk-table]]))
+            [metabase.models.field :refer [Field field->fk-table]]
+            [metabase.util :as u]))
 
 (declare add-implicit-breakout-order-by
          add-implicit-limit
@@ -185,11 +186,8 @@
   (if-not cum-sum-field results
           (let [ ;; Determine the index of the field we need to cumulative sum
                 cum-sum-field-index (->> cols
-                                         (map-indexed (fn [i {field-name :name, field-id :id}]
-                                                        (when (or (= field-name "sum")
-                                                                  (= field-id cum-sum-field))
-                                                          i)))
-                                         (filter identity)
+                                         (u/indecies-satisfying #(or (= (:name %) "sum")
+                                                                     (= (:id %) cum-sum-field)))
                                          first)
                 _                   (assert (integer? cum-sum-field-index))
                 ;; Now make a sequence of cumulative sum values for each row
