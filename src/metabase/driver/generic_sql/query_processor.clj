@@ -141,11 +141,13 @@
                                                                                 {lon-kw ['> lon-min]}]))
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
-                      (let [cast-value-if-needed (cond
-                                                   (date-field-id? field-id)            u/parse-date-yyyy-mm-dd
-                                                   (= (field-id->special-type field-id)
-                                                      :timestamp_seconds)               u/date-yyyy-mm-dd->unix-timestamp
-                                                   :else                                identity)]
+                      (let [cast-value-if-needed (fn [v]
+                                                   (if-not (string? v) v
+                                                           (cond
+                                                             (date-field-id? field-id)            (u/parse-date-yyyy-mm-dd v)
+                                                             (= (field-id->special-type field-id)
+                                                                :timestamp_seconds)               (u/date-yyyy-mm-dd->unix-timestamp v)
+                                                             :else                                v)))]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]
