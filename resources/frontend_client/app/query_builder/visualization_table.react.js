@@ -20,9 +20,8 @@ export default React.createClass({
     // React lifecycle
     getDefaultProps: function() {
         return {
-            maxRows: 100,
-            minColumnWidth: 75,
-            page: 1
+            maxRows: 2000,
+            minColumnWidth: 75
         };
     },
 
