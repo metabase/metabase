@@ -163,7 +163,8 @@
     (route-arg-keywords \"/:id/cards\") -> [:id]"
   [route]
   (->> (re-seq #":([\w-]+)" route)
-       (map (u/fn-> second keyword))))
+       (map second)
+       (map keyword)))
 
 (defn typify-args
   "Given a sequence of keyword ARGS, return a sequence of `[:arg pattern :arg pattern ...]`

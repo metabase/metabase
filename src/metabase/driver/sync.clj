@@ -402,7 +402,7 @@
                                          [#"^zipcode$"      int-or-text :zip_code]]]
     ;; Check that all the pattern tuples are valid
     (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
-      (assert (u/regex? name-pattern))
+      (assert (= (type name-pattern) java.util.regex.Pattern))
       (assert (every? (partial contains? field/base-types) base-types))
       (assert (contains? field/special-types special-type)))
 

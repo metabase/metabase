@@ -211,7 +211,7 @@
               (mapcat ns-publics)
               vals
               (map var-get)
-              (filter (u/fn-> type (= :korma.core/Entity)))
+              (filter #(= (type %) :korma.core/Entity))
               (filter :hydration-keys)
               (mapcat (fn [{:keys [hydration-keys] :as entity}]
                         (assert (and (set? hydration-keys) (every? keyword? hydration-keys))
