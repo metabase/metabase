@@ -3,7 +3,7 @@
             [metabase.db :refer :all]
             (metabase.models [field :refer :all]
                              [field-values :refer :all])
-            [metabase.test-data :refer :all]))
+            [metabase.test.data :refer :all]))
 
 ;; Check that setting a Field's special_type to :category will cause a corresponding FieldValues to be created asynchronously
 (expect

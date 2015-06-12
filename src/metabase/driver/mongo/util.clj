@@ -33,7 +33,8 @@
   [f database]
   (let [connection-string (cond
                             (string? database)              database
-                            (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style
+                            (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style -- entire Database obj
+                            (:dbname database)              (details-map->connection-string database)            ; new-style -- connection details map only
                             (:conn_str (:details database)) (:conn_str (:details database))                      ; legacy
                             :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
@@ -55,7 +56,9 @@
 
      ;; You can use a string instead of a Database
      (with-mongo-connection [^com.mongodb.DBApiLayer conn \"mongodb://127.0.0.1:27017/test\"]
-        ...)"
+        ...)
+
+   DATABASE-OR-CONNECTION-STRING can also optionally be the connection details map on its own."
   [[binding database] & body]
   `(let [f# (fn [~binding]
               ~@body)]

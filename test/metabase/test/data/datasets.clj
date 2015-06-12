@@ -6,7 +6,7 @@
             [environ.core :refer [env]]
             [expectations :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data]
-            [metabase.test-data :as generic-sql-data]))
+            [metabase.test.data :as generic-sql-data]))
 
 ;; # IDataset
 
@@ -40,7 +40,6 @@
 (deftype MongoDriverData []
   IDataset
   (load-data! [_]
-    (mongo-data/destroy!)
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
   (db [_]
@@ -63,14 +62,14 @@
     :DateField))
 
 
-;; ## Generic SQL
+;; ## Generic SQL (H2)
 
 (deftype GenericSqlDriverData []
   IDataset
   (load-data! [_]
     @generic-sql-data/test-db
     (assert (integer? @generic-sql-data/db-id)))
-  (db [_]
+  (db [this]
     @generic-sql-data/test-db)
   (table-name->table [_ table-name]
     (generic-sql-data/table-name->table table-name))

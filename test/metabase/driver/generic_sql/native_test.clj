@@ -3,7 +3,7 @@
             [colorize.core :as color]
             [expectations :refer :all]
             [metabase.driver :as driver]
-            [metabase.test-data :refer :all]))
+            [metabase.test.data :refer :all]))
 
 ;; Just check that a basic query works
 (expect {:status :completed

@@ -5,10 +5,8 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [task :as task]
-                      [test-data :as h2-test-data])
-            [metabase.test.data.datasets :as datasets]
-            [metabase.driver.mongo.test-data :as mongo-test-data]))
+                      [task :as task])
+            [metabase.test.data.datasets :as datasets]))
 
 (declare clear-test-db)
 
