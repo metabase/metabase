@@ -1,33 +1,36 @@
 <div class="Home full-height" ng-controller="Home">
-    <div class="bg-brand text-white border-bottom pb2">
-        <div class="Grid Grid--full large-Grid--1of2 align-center wrapper">
-            <div class="Grid-cell" ng-controller="HomeGreeting">
-                <div class="Greeting">
-                    <div class="Greeting-title">{{greeting}}</div>
-                    <div class="Greeting-subtitle">{{subheading}}</div>
+    <div class="bg-brand text-white pb4 sm-pb2 lg-pb4">
+        <div class="wrapper">
+            <div class="Grid Grid--full large-Grid--1of2 align-center">
+                <div class="Grid-cell" ng-controller="HomeGreeting">
+                    <div class="Greeting">
+                        <h1 class="text-light">{{greeting}}</h1>
+                        <h2 class="Greeting-subtitle text-light">{{subheading}}</h2>
+                    </div>
                 </div>
-            </div>
-            <div class="Grid-cell flex-align-right">
-                <div class="flex">
-                    <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">I have a new question</a>
-                    <a class="HomeTab inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+                <div class="Grid-cell flex">
+                    <div class="HomeTabs p1 inline-block md-flex-align-right">
+                        <a class="HomeTab rounded p1 inline-block mr1 lg-mr2" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
+                        <a class="HomeTab rounded p1 inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">
-        <div class="HomeSubNav bg-white border-bottom">
+
+        <div class="flex align-center bg-white border-bottom">
             <div class="wrapper flex">
-                <a class="QuestionFilter flex align-center mr2" ng-click="filter('all')" ng-class="{'QuestionFilter--active': filterMode === 'all'}">
+                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('all')" ng-class="{'text-brand': filterMode === 'all'}">
                     <mb-icon class="mr1" name="popular" width="32px" height="32px"></mb-icon>
                     Popular
                 </a>
-                <a class="QuestionFilter flex align-center mr2" ng-click="filter('mine')" ng-class="{'QuestionFilter--active': filterMode === 'mine'}">
+                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('mine')" ng-class="{'text-brand': filterMode === 'mine'}">
                     <mb-icon class="mr1" name="mine" width="18px" height="18px"></mb-icon>
                     Mine
                 </a>
-                <a class="QuestionFilter flex align-center mr2" ng-click="filter('fav')" ng-class="{'QuestionFilter--active': filterMode === 'fav'}">
+                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('fav')" ng-class="{'text-brand': filterMode === 'fav'}">
                     <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
                     Favorites
                 </a>
@@ -40,23 +43,21 @@
             </div>
 
             <div class="Grid">
-                <ul class="Grid-cell mt4">
+                <ul class="Grid-cell">
                     <li ng-repeat="card in cards | filter:searchFilter">
-                        <a href="/card/{{card.id}}" class="Entity flex align-center no-decoration mb2 p2 border-bottom">
+                        <a href="/card/{{card.id}}" class="Entity flex align-center no-decoration mb2 py2 lg-p2 border-bottom">
                             <div class="flex flex-column">
                                 <div class="flex align-center">
-                                    <h4 class="Entity-title">{{card.name}}</h4>
-                                    <span class="Badge Badge--permissions ml2" ng-if="card.public_perms === 0">
-                                        <mb-icon name="lock" width="12px" height="12px"></mb-icon>
-                                    </span>
+                                    <h4 class="Entity-title break-word">{{card.name}}</h4>
+                                    <mb-icon name="lock" width="12px" height="12px" ng-if="card.public_perms === 0"></mb-icon>
                                 </div>
                                 <span class="Entity-attribution">
                                     Asked by: {{card.creator.common_name}}
                                 </span>
                             </div>
                             <div class="flex flex-align-right">
-                                <mb-card-favorite-button class="mr4" card-id="card.id"></mb-card-favorite-button>
-                                <mb-icon class="text-grey-1 flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
+                                <mb-card-favorite-button class="mr1 lg-mr4" card-id="card.id"></mb-card-favorite-button>
+                                <mb-icon class="text-grey-1 text-grey-3-hover transition-color flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
                             </div>
                         </a>
                     </li>
@@ -65,14 +66,15 @@
         </div>
     </div>
 
-    <div class="full-height" ng-if="currentView === 'data'" ng-controller="ExploreDatabaseList">
-        <div class="HomeSubNav border-bottom mb2">
+    <div ng-if="currentView === 'data'" ng-controller="ExploreDatabaseList">
+        <div class="flex py2 lg-py3 align-center border-bottom">
             <div class="wrapper">
-                Data source:
+                <span class="h2 text-grey-2">Data source:</span>
                 <div class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
                     <div class="DataSourceDropdown-title text-brand" dropdown-toggle>
-                        {{currentDB.name}}
-                        <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
+                        <span class="h2 ml1 text-brand-darken-hover transition-color cursor-pointer">
+                            {{currentDB.name}}
+                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
                         </span>
                         <ul class="Dropdown-content">
                             <li ng-repeat="(id, db) in databases">
@@ -89,12 +91,12 @@
             <ul class="wrapper" ng-if="tables">
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
                     <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
-                        <div class="flex flex-column">
-                            <h2 class="text-brand flex-wrap">{{table.name}}</h2>
+                        <div class="flex flex-column pr3 lg-pr0">
+                            <h2 class="text-light text-grey-3 text-brand-hover break-word transition-color">{{table.name}}</h2>
                             {{table.description}}
                         </div>
                         <div class="flex flex-align-right align-center">
-                            <div class="text-right text-grey-3 mr2">
+                            <div class="text-right text-brand text-brand-darken-hover mr2">
                                 <h3>{{table.rows}}</h3>
                                 <h6 class="text-uppercase ">total</h6>
                             </div>

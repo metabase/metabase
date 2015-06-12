@@ -37,5 +37,5 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
     }
 
     $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = buildGreeting(subheadPrefixes);
+    $scope.subheading = "What do you want to know?"
 }]);

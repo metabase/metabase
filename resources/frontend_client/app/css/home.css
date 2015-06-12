@@ -1,12 +1,14 @@
-.Greeting {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
+.NavItem {
+    border-radius: 8px;
 }
 
-.Greeting-title,
-.Greeting-subtitle {
-    font-weight: 100;
-    font-size: 1.9375em;
+.NavItem:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.Greeting {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
 }
 
 @media screen and (--breakpoint-min-xl) {
@@ -30,8 +32,6 @@
     text-decoration: none;
     border: 1px solid #fff;
     color: #fff;
-    padding: 1em 2em;
-    border-radius: 4px;
 }
 
 .HomeTab:hover {
@@ -45,30 +45,8 @@
     transition: background .3s linear;
 }
 
-.HomeSubNav {
-    padding-top: 1.345em;
-    padding-bottom: 1.345em;
-}
-
 .DashboardDropdown .Dropdown-content {
     min-width: 20em;
-}
-
-.QuestionFilter:hover {
-    cursor: pointer;
-    color: var(--brand-color);
-    transition: color .3s linear;
-}
-
-.QuestionFilter--active {
-    color: var(--brand-color);
-}
-
-.TableRows {
-    border: 1px solid #ddd;
-    padding: 2em;
-    border-radius: 4px;
-    color: var(--brand-color);
 }
 
 .Entity-title {
@@ -80,16 +58,6 @@
     display: block;
     color: #ADADAD;
     margin-bottom: 0.5em;
-}
-
-.NavItem {
-    padding: 1em;
-    border-radius: 8px;
-}
-
-.NavItem:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    cursor: pointer;
 }
 
 @keyframes pop {
@@ -110,4 +78,17 @@
 
 .AdminLink:hover {
     opacity: 1;
+}
+
+.break-word {
+    word-wrap: break-word;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.HomeTabs {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius:6px;
 }

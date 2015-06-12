@@ -4,15 +4,7 @@
     </div>
 </div>
 <div class="mt4 wrapper wrapper--trim">
-    <div class="Grid Grid--fit Grid--gutters">
-        <div class="Grid-cell Cell--2of3">
-            <div ng-if="tab_focus == 'details'">
-                <ng-include src="'/app/user/partials/user_edit.html'"></ng-include>
-            </div>
-            <div class="clearfix" ng-if="tab_focus == 'password'">
-                <ng-include src="'/app/user/partials/password_edit.html'"></ng-include>
-            </div>
-        </div>
+    <div class="Grid Grid--full Grid--gutters">
         <div class="Grid-cell">
             <a class="rouded HoverItem p3 block"
                 ng-click="setTabFocus('details')"
@@ -25,6 +17,14 @@
                 ng-class="{ 'bg-brand text-white' : tab_focus == 'password' }">
                 Password
             </a>
+        </div>
+        <div class="Grid-cell">
+            <div ng-if="tab_focus == 'details'">
+                <ng-include src="'/app/user/partials/user_edit.html'"></ng-include>
+            </div>
+            <div class="clearfix" ng-if="tab_focus == 'password'">
+                <ng-include src="'/app/user/partials/password_edit.html'"></ng-include>
+            </div>
         </div>
     </div>
 </div>

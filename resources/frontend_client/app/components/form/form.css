@@ -1,22 +1,17 @@
 :root {
     --form-padding: 1em;
     --form-input-placeholder-color: #C0C0C0;
-    --form-input-size: 1.571rem;
+
+    --form-input-size: 1.0rem;
     --form-input-size-medium: 1.25rem;
-    --form-input-size-small: 1.0rem;
+    --form-input-size-large: 1.571rem;
 
     --form-label-color: #949494;
     --form-offset: 2.4rem;
 }
 
-/* TODO: deprecate this base object, it shouldn't be this specific */
-.Form {
-  margin: 0 auto;
-  max-width: 640px;
-}
-
 .Form-new {
-    padding-top: 2em;
+    padding-top: 2rem;
 }
 
 /* TODO: combine this and the scoped version */
@@ -29,7 +24,7 @@
 .Form-field {
     position: relative;
     color: #6C6C6C;
-    margin-bottom: 1.5em;
+    margin-bottom: 1.5rem;
 }
 
 /* TODO: remove this scoping once we've converted non admin forms */
@@ -46,22 +41,24 @@
 }
 
 .Form-input {
-    padding-top: 0.6em;
-    padding-bottom: 0.6em;
-    font-size: var(--form-input-size);
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    font-family: var(--default-font-family);
     line-height: 1;
     border: none;
     background-color: transparent;
     transition: color .3s linear;
-    font-family: var(--default-font-family);
 }
 
-.Form-input--medium {
-    font-size: var(--form-input-size-medium);
+/* form-input font sizes */
+.Form-input { font-size: var(--form-input-size-small); }
+
+@media screen and (--breakpoint-min-md) {
+    .Form-input { font-size: var(--form-input-size-medium); }
 }
 
-.Form-input--small {
-    font-size: var(--form-input-size-small);
+@media screen and (--breakpoint-min-lg) {
+    .Form-input { font-size: var(--form-input-size-large); }
 }
 
 .Form-input:focus {

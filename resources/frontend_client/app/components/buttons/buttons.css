@@ -15,15 +15,14 @@
   display: inline-block;
   box-sizing: border-box;
   text-decoration: none;
-  padding: 0.5em 0.75em;
+  padding: 1rem 2rem;
   background: #FBFCFD;
   border: 1px solid #ddd;
   color: #444;
   cursor: pointer;
   text-decoration: none;
-  font-size: 0.8em;
-  line-height: 1;
   font-weight: bold;
+  font-family: "Lato";
   border-radius: var(--default-button-border-radius);
 }
 
@@ -34,8 +33,7 @@
 }
 
 .Button:hover {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transition: border .3s linear, box-shadow .3s linear;
+  transition: border .3s linear;
 }
 
 .Button--primary {

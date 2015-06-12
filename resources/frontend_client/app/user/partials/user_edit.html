@@ -1,5 +1,4 @@
-
-<form class="Form bordered rounded" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
+<form class="Form-new" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
     <div class="Form-group clearfix">
         <div class="float-left half" cv-error-flag="first_name">
             <label class="my1 block full" for="first_name">First Name</label>
@@ -21,7 +20,6 @@
 
     <div class="Form-group border-top">
         <button type="submit" class="Button Button--primary" ng-disabled="!form.$dirty || form.$invalid">Save</button>
-        <button type="button" class="Button" cv-reset-button ng-disabled="!form.$dirty">Reset</button>
     </div>
 
     <div cv-form-status></div>

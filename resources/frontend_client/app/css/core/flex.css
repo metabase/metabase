@@ -28,10 +28,45 @@
     margin-left: auto;
 }
 
+@media screen and (--breakpoint-min-sm) {
+    .sm-flex-align-right { margin-left: auto; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-flex-align-right { margin-left: auto; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-flex-align-right { margin-left: auto; }
+}
+
 .layout-centered {
   align-items: center;
   justify-content: center;
 }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+
 
 .flex-column {
   flex-direction: column;
