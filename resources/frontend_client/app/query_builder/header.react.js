@@ -158,7 +158,7 @@ export default React.createClass({
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
                     className='inline-block ml1 link'
-                    canDelete={true}
+                    canDelete={this.props.card.is_creator}
                     deleteFn={this.deleteCard}
                 />
             );
