@@ -24,7 +24,7 @@
                         <span class="Badge Badge--permissions ml2" ng-if="dashboard.public_perms === 0">
                             <mb-icon name="lock" width="12px" height="12px"></mb-icon>
                         </span>
-                        <a href="#">Edit</a>
+                        <a href="#" mb-dashboard-saver ng-attr-dashboard="dashboard" ng-attr-callback="notifyDashboardSaved">Edit</a>
                     </div>
                     <span class="Entity-attribution">
                         Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>

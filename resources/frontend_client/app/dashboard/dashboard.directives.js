@@ -7,98 +7,44 @@ var DashboardDirectives = angular.module('corvus.dashboard.directives', [
     'corvus.card.services'
 ]);
 
-DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard', 'Metabase', 'Card', '$modal', function(CorvusCore, Dashboard, Metabase, Card, $modal) {
+
+DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$modal', function(CorvusCore, Dashboard, $modal) {
     function link(scope, element, attrs) {
 
-        var openAddToDashModal = function() {
-
+        var openModal = function() {
             var modalInstance = $modal.open({
+                templateUrl: '/app/dashboard/partials/modal_dashboard_saver.html',
+                controller: ['$scope', '$modalInstance',
+                    function($scope, $modalInstance) {
+                        $scope.dashboard = angular.copy(scope.dashboard);
+                        $scope.permOptions = CorvusCore.perms;
 
-                templateUrl: '/app/dashboard/partials/modal_add_to_dashboard.html',
-                controller: ['$scope', '$modalInstance', 'CorvusAlert', 'CorvusFormService', 'card', function($scope, $modalInstance, CorvusAlert, CorvusFormService, card) {
-                    var formName = 'addCardToDash';
+                        $scope.save = function(dash) {
+                            $scope.$broadcast("form:reset");
 
-                    // create an object for the add to dash form
-                    $scope.addToDashForm = {};
-                    $scope.card = card;
-                    $scope.alerts = CorvusAlert.alerts;
-
-                    var cardAdd = function(cardId, dashId) {
-                        Dashboard.addcard({
-                            'dashId': dashId,
-                            'cardId': cardId
-                        }, function(result) {
-                            // success!!
-                            if (typeof existingDashboardsById[dashId] != "undefined") {
-                                CorvusAlert.alertInfo('This card has been added to the dashboard: ' + existingDashboardsById[dashId].name + '</a>');
-                            } else {
-                                CorvusAlert.alertInfo('This card' + ' has been added to the specified dashboard!');
-                            }
-                            $modalInstance.close();
-                        }, function(error) {
-                            CorvusAlert.alertError('Unable to add card to the specified dashboard!');
-                            console.log(error);
-                        });
-                    };
-
-                    //we need to create a local index of dashboard objects that can been
-                    //queried by ID, so that the view can show the name of the
-                    //dashboard that a card was added to
-                    var existingDashboardsById = {};
-
-                    Dashboard.list({
-                        'filterMode': 'mine'
-                    }, function(result) {
-                        if (result && !result.error) {
-                            $scope.dashboards = result;
-                            for (var i = 0; i < result.length; i++) {
-                                existingDashboardsById[result[i].id] = result[i];
-                            }
-                        } else {
-                            console.log(result);
-                        }
-                    });
-
-                    $scope.submit = function() {
-                        // if there is an existing dash
-                        //  add the card to that dash
-                        if ($scope.addToDashForm.existingDash) {
-                            cardAdd($scope.card.id, $scope.addToDashForm.existingDash);
-                        } else if ($scope.card) {
-                            // populate a new Dash object
-                            var newDash = {
-                                'name': $scope.addToDashForm.newDashName,
-                                'public_perms': 0
-                            };
-
-                            // create a new dashboard, then add the card to that
-                            Dashboard.create(newDash, function(result) {
-                                if (result && !result.error) {
-                                    existingDashboardsById[result.id] = result;
-                                    cardAdd(card.id, result.id);
-                                } else {
-                                    console.log(result);
-                                    return;
+                            Dashboard.update(dash, function (result) {
+                                // trigger our callback if we have one
+                                if (scope.callback) {
+                                    scope.callback(result);
                                 }
+
+                                // just close out the modal now that we're done
+                                $modalInstance.close();
+
+                            }, function (error) {
+                                $scope.$broadcast("form:api-error", error);
                             });
-                        } else {
-                            console.log('error: no method for doing dashboard addition');
-                        }
-                    };
+                        };
 
-                    $scope.close = function() {
-                        $modalInstance.dismiss('cancel');
-                    };
-                }],
-
-                resolve: {
-                    card: function() {
-                        return scope.card;
+                        $scope.close = function() {
+                            $modalInstance.dismiss('cancel');
+                        };
                     }
-                }
+                ]
             });
         };
-        element.bind('click', openAddToDashModal);
+
+        element.bind('click', openModal);
     }
 
     return {
@@ -106,7 +52,7 @@ DashboardDirectives.directive('cvAddToDashboardModal', ['CorvusCore', 'Dashboard
         link: link,
         scope: {
             callback: '=',
-            card: '='
+            dashboard: '='
         }
     };
 }]);

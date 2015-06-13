@@ -21,10 +21,9 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
     // $scope.dashboard: single Card being displayed/edited
     // $scope.error: any relevant error message to be displayed
 
-    $scope.dashEdit = false;
-    var origDescription;
-    $scope.modalShown = false;
-    $scope.sendCardId = null;
+    $scope.dashboardLoaded = false;
+    $scope.dashboardLoadError = null;
+    $scope.editingText = "Edit layout";
 
     $scope.cardSettings = {
         "allowFavorite":true,
@@ -34,18 +33,6 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         "allowSend":true,
         "allowChangeCardSize": true,
         "allowTitleEdits": false
-    };
-
-    var processResize = function(event, $element, item){
-        $element.scope().$broadcast('cv-gridster-item-resized', $element);
-        savePosition();
-    };
-
-    var savePosition = function() {
-        Dashboard.reposition_cards({
-            'dashId': $scope.dashboard.id,
-            'cards': $scope.dashcards
-        });
     };
 
     $scope.gridsterOptions = {
@@ -69,7 +56,18 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
     };
 
-    $scope.editingText = "Edit layout";
+    var processResize = function(event, $element, item){
+        $element.scope().$broadcast('cv-gridster-item-resized', $element);
+        savePosition();
+    };
+
+    var savePosition = function() {
+        Dashboard.reposition_cards({
+            'dashId': $scope.dashboard.id,
+            'cards': $scope.dashcards
+        });
+    };
+
 
     $scope.toggleDashEditMode = function() {
         if ($scope.editingClass == "Dash--editing") {
@@ -87,66 +85,13 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         $scope.gridsterOptions.resizable.enabled = !$scope.gridsterOptions.resizable.enabled;
     };
 
-    $scope.dashboardLoaded = false;
-    $scope.dashboardLoadError = null;
-
-
-    if ($routeParams.dashId) {
-        Dashboard.get({
-            'dashId': $routeParams.dashId
-        }, function(result) {
-            $scope.dashboard = result.dashboard;
-
-            var cards = result.dashboard.ordered_cards;
-
-            $scope.dashcards = cards;
-            $scope.dashboardLoaded = true;
-
-        }, function (error) {
-            $scope.dashboardLoaded = true;
-
-            if (error.status == 404) {
-                $location.path('/');
-            } else if (error.message) {
-                $scope.dashboardLoadError = error.message;
-            } else {
-                $scope.dashboardLoadError = "Hmmm.  We had a problem loading this dashboard for some reason :(";
-            }
-        });
-    }
-
-    $scope.create = function(dashboard) {
-        Dashboard.create(dashboard, function(result) {
-            if (result && !result.error) {
-                // just go to the new dashboard
-                $location.path('/dash/' + result.id);
-            } else {
-                console.log(result);
-            }
-        });
-    };
-
-    $scope.save = function(dashboard) {
-        Dashboard.update(dashboard, function(result) {
-            if (result && !result.error) {
-                // just go back to view page after a save
-                $location.path('/dash/' + result.id);
-            }
-        });
-    };
-
-    $scope.inlineSave = function (dash) {
-        Dashboard.update(dash, function (result) {
-            // NOTE: we don't replace $scope.dashboard here because if we did that would cause the whole
-            //       dashboard to relaod based on our page setup, which we don't want.
-
-            // if DashEdit = true then assume user is inline editing and lets clear that
-            $scope.dashEdit = false;
-            origDescription = undefined;
-
-        }, function (error) {
-            console.log('error with inline save of dashboard', error);
-        });
+    $scope.notifyDashboardSaved = function(dashboard) {
+        // our saver is telling us the dashboard has been updated, so carry over a few things to our locally scoped dashboard
+        // TODO: this is pretty manual and kludgy, look for a better way
+        $scope.dashboard.name = dashboard.name;
+        $scope.dashboard.descrption = dashboard.description;
+        $scope.dashboard.public_perms = dashboard.public_perms;
+        $scope.dashboard.updated_at = dashboard.updated_at;
     };
 
     $scope.removeCard = function(idx) {
@@ -158,16 +103,28 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         });
     };
 
-    $scope.toggleDashEdit = function () {
-        if ($scope.dashEdit) {
-            // already in edit mode, so must be cancelling
-            $scope.dashEdit = !$scope.dashEdit;
-            $scope.dashboard.description = origDescription;
-            origDescription = undefined;
+
+    // note that we ALWAYS expect to be loading a specified dashboard
+    Dashboard.get({
+        'dashId': $routeParams.dashId
+    }, function(result) {
+        $scope.dashboard = result.dashboard;
+
+        var cards = result.dashboard.ordered_cards;
+
+        $scope.dashcards = cards;
+        $scope.dashboardLoaded = true;
+
+    }, function (error) {
+        $scope.dashboardLoaded = true;
+
+        if (error.status == 404) {
+            $location.path('/');
+        } else if (error.message) {
+            $scope.dashboardLoadError = error.message;
         } else {
-            // not in edit mode, so just showing edit controls and save the orig description
-            $scope.dashEdit = !$scope.dashEdit;
-            origDescription = $scope.dashboard.description;
+            $scope.dashboardLoadError = "Hmmm.  We had a problem loading this dashboard for some reason :(";
         }
-    };
+    });
+
 }]);
