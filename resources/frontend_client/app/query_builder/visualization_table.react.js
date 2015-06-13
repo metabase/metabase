@@ -11,7 +11,7 @@ export default React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
         data: React.PropTypes.object,
-        sort: React.PropTypes.object
+        sort: React.PropTypes.array
     },
 
     // local variables
