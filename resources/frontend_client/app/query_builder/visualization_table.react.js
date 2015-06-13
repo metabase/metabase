@@ -44,7 +44,7 @@ export default React.createClass({
 
     componentWillReceiveProps: function(newProps) {
         // TODO: check if our data has changed and specifically if our columns list has changed
-        if (JSON.stringify(this.props.data.cols) !== this.state.colDefs) {
+        if (JSON.stringify(newProps.data.cols) !== this.state.colDefs) {
             // if the columns have changed then reset any column widths we have setup
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
