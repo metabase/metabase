@@ -48,7 +48,7 @@ export default React.createClass({
             // if the columns have changed then reset any column widths we have setup
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
-                columnWidths: this.calculateColumnWidths(newProps, this.state)
+                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, newProps.data.cols)
             });
         }
     },
@@ -61,15 +61,17 @@ export default React.createClass({
         this.calculateSizing(prevState);
     },
 
-    calculateColumnWidths: function(props, state) {
-        var component = this,
-            calcColumnWidth = (props.data.cols.length > 0) ? state.width / props.data.cols.length : 75;
+    // availableWidth, minColumnWidth, # of columns
+    // previousWidths, prevWidth
+    calculateColumnWidths: function(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
+        // TODO: maintain column spacing on a window resize
 
-        var tableColumns = this.props.data.cols.map(function (column, idx) {
-            return (component.props.minColumnWidth > calcColumnWidth) ? component.props.minColumnWidth : calcColumnWidth;
+        var calcColumnWidth = (colDefs.length > 0) ? availableWidth / colDefs.length : minColumnWidth;
+        var columnWidths = colDefs.map(function (column, idx) {
+            return (minColumnWidth > calcColumnWidth) ? minColumnWidth : calcColumnWidth;
         });
 
-        return tableColumns;
+        return columnWidths;
     },
 
     calculateSizing: function(prevState) {
@@ -83,12 +85,9 @@ export default React.createClass({
                 height: height
             };
 
-            if (prevState.width === 0) {
-                var tableColumnWidths = this.calculateColumnWidths(this.props, this.state);
+            if (width !== prevState.width) {
+                var tableColumnWidths = this.calculateColumnWidths(width, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
                 updatedState.columnWidths = tableColumnWidths;
-            } else {
-                // existing grid in place and we are simply resizing it, so try to maintain current sizings
-                // if the columns are the same then attempt to maintain our current sizings (map each column to a % of the total)
             }
 
             this.setState(updatedState);
@@ -104,8 +103,7 @@ export default React.createClass({
     },
 
     rowGetter: function(rowIndex) {
-        var actualIndex = ((this.props.page - 1) * this.props.maxRows) + rowIndex;
-        return this.props.data.rows[actualIndex];
+        return this.props.data.rows[rowIndex];
     },
 
     cellDataGetter: function(cellKey, row) {
@@ -172,6 +170,7 @@ export default React.createClass({
 
             return (
                 <Column
+                    key={'col_' + idx}
                     className="MB-DataTable-column"
                     width={colWidth}
                     isResizable={true}
