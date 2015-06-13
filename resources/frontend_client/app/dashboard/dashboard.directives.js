@@ -8,7 +8,7 @@ var DashboardDirectives = angular.module('corvus.dashboard.directives', [
 ]);
 
 
-DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$modal', function(CorvusCore, Dashboard, $modal) {
+DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$modal', '$location', function(CorvusCore, Dashboard, $modal, $location) {
     function link(scope, element, attrs) {
 
         var openModal = function() {
@@ -30,6 +30,22 @@ DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$
 
                                 // just close out the modal now that we're done
                                 $modalInstance.close();
+
+                            }, function (error) {
+                                $scope.$broadcast("form:api-error", error);
+                            });
+                        };
+
+                        $scope.delete = function() {
+                            $scope.$broadcast("form:reset");
+
+                            Dashboard.delete({
+                                'dashId': scope.dashboard.id
+                            }, function (result) {
+                                $modalInstance.close();
+
+                                // send people home after deleting a dashboard
+                                $location.path('/');
 
                             }, function (error) {
                                 $scope.$broadcast("form:api-error", error);

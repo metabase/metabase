@@ -108,6 +108,11 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
     Dashboard.get({
         'dashId': $routeParams.dashId
     }, function(result) {
+        // add a quick indicator if the user viewing this dashboard is the owner.  this helps us with perm checking
+        if ($scope.user.id === result.dashboard.creator_id) {
+            result.dashboard.is_creator = true;
+        }
+
         $scope.dashboard = result.dashboard;
 
         var cards = result.dashboard.ordered_cards;

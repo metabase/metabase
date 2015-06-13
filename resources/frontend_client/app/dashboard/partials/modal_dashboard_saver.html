@@ -21,7 +21,7 @@
             </label>
         </div>
 
-        <div className="Form-offset mb4" ng-if="can_delete">
+        <div className="Form-offset mb4" ng-if="dashboard.is_creator">
             <label className="block">Danger zone:</label>
             <a className="Button Button--danger" ng-click="delete()">Delete dashboard</a>
         </div>
