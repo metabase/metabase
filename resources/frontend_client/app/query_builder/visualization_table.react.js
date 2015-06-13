@@ -139,10 +139,11 @@ export default React.createClass({
         }
 
         if (this.isSortable()) {
-            // TODO: handle case where we are sorting by an aggregate column
+            // ICK.  this is hacky for dealing with aggregations.  need something better
+            var fieldId = (column.id) ? column.id : "agg";
 
             return (
-                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, column.id)}>
+                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, fieldId)}>
                     {colVal}
                     <span className="ml1">
                         {sortChevron}
