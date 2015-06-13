@@ -4,7 +4,7 @@
             [colorize.core :as color]
             [expectations :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :refer [max-result-rows]]
+            [metabase.driver.query-processor :refer [max-result-bare-rows]]
             [metabase.test.data :refer [db-id table->id field->id]]))
 
 ;; # ERROR RESPONSES
@@ -14,7 +14,7 @@
     {:status :failed
      :error (str "Column \"CHECKINS.NAME\" not found; SQL statement:\nSELECT \"CHECKINS\".\"ID\", CAST(\"DATE\" AS DATE), "
                  "\"CHECKINS\".\"VENUE_ID\", \"CHECKINS\".\"USER_ID\" FROM \"CHECKINS\" WHERE (\"CHECKINS\".\"NAME\" = ?) LIMIT "
-                 max-result-rows)}
+                 max-result-bare-rows)}
   ;; This will print a stacktrace. Better to reassure people that that's on purpose than to make people question whether the tests are working
   (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))
       (driver/process-query {:database @db-id
