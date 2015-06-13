@@ -74,10 +74,10 @@ CardControllers.controller('CardDetail', [
 
         var newQueryTemplates = {
             "query": {
-                database: parseInt($routeParams.db) || null,
+                database: null,
                 type: "query",
                 query: {
-                    source_table: parseInt($routeParams.table) || null,
+                    source_table: null,
                     aggregation: [null],
                     breakout: [],
                     filter: []
@@ -134,28 +134,9 @@ CardControllers.controller('CardDetail', [
                 cardJson = JSON.stringify(card);
             },
             setQueryModeFn: function(mode) {
-                var queryTemplate = angular.copy(newQueryTemplates[mode]);
-                if ((!card.dataset_query.type ||
-                    mode !== card.dataset_query.type) &&
-                    queryTemplate) {
+                if (!card.dataset_query.type || mode !== card.dataset_query.type) {
 
-                    // carry over currently selected database to new query, if possible
-                    // otherwise try to set the database to a sensible default
-                    if (card.dataset_query.database !== undefined &&
-                        card.dataset_query.database !== null) {
-                        queryTemplate.database = card.dataset_query.database;
-                    } else if (databases && databases.length > 0) {
-                        // TODO: be smarter about this and use the most recent or popular db
-                        queryTemplate.database = parseInt($routeParams.db) || databases[0].id;
-                    }
-
-
-                    // apply the new query to our card
-                    card.dataset_query = queryTemplate;
-
-                    // clear out any visualization and reset to defaults
-                    queryResult = null;
-                    card.display = "table";
+                    resetCardQuery(mode);
 
                     renderAll();
                 }
@@ -333,6 +314,29 @@ CardControllers.controller('CardDetail', [
 
         // =====  Local helper functions
 
+        var resetCardQuery = function(mode) {
+            var queryTemplate = angular.copy(newQueryTemplates[mode]);
+            if (queryTemplate) {
+
+                // carry over currently selected database to new query, if possible
+                // otherwise try to set the database to a sensible default
+                if (card.dataset_query.database !== undefined &&
+                    card.dataset_query.database !== null) {
+                    queryTemplate.database = card.dataset_query.database;
+                } else if (databases && databases.length > 0) {
+                    // TODO: be smarter about this and use the most recent or popular db
+                    queryTemplate.database = parseInt($routeParams.db) || databases[0].id;
+                }
+
+                // apply the new query to our card
+                card.dataset_query = queryTemplate;
+
+                // clear out any visualization and reset to defaults
+                queryResult = null;
+                card.display = "table";
+            }
+        };
+
         var loadCardAndRender = function(cardId, cloning) {
             Card.get({
                 'cardId': cardId
@@ -373,7 +377,23 @@ CardControllers.controller('CardDetail', [
                 // starting a new card
 
                 // this is just an easy way to ensure defaults are all setup
-                headerModel.setQueryModeFn("query");
+                resetCardQuery("query");
+
+                // initialize the table & db from our query params, if we have them
+                if ($routeParams.db !== undefined) {
+                    // do a quick validation that this user actually has access to the db from the url
+                    for (var i=0; i < databases.length; i++) {
+                        if (databases[i].id === $routeParams.db) {
+                            card.dataset_query.database = parseInt($routeParams.db);
+                        }
+                    }
+
+                    // if we initialized our database safely and we have a table, lets handle that now
+                    if (card.dataset_query.database !== null && $routeParams.table !== undefined) {
+                        // TODO: do we need a security check here?  seems that if they have access to the db just use the table
+                        card.dataset_query.query.source_table = parseInt($routeParams.table);
+                    }
+                }
 
                 cardJson = JSON.stringify(card);
 
