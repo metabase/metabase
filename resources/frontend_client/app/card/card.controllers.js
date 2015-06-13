@@ -162,6 +162,7 @@ CardControllers.controller('CardDetail', [
 
         var editorModel = {
             isRunning: false,
+            isExpanded: true,
             databases: null,
             defaultQuery: null,
             query: null,
@@ -238,6 +239,10 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
+            },
+            toggleExpandCollapseFn: function() {
+                editorModel.isExpanded = !editorModel.isExpanded;
+                renderAll();
             }
         };
 
