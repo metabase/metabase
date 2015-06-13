@@ -540,7 +540,7 @@ DashboardDirectives.directive('mbDashcard', ['Card', 'Metabase', 'CorvusAlert', 
     return {
         restrict: 'E',
         replace: true,
-        templateUrl: '/app/card/partials/_card.html',
+        templateUrl: '/app/dashboard/partials/_card.html',
         require: ['^?gridsterItem'],
         scope: {
             card: '=',

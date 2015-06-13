@@ -1,5 +1,5 @@
 <div class="Card" ng-class="{ 'Card--errored': cardDataEmpty || cardData.error || sqlError }">
-    <div id="{{chartId}}_heading" ng-include="'/app/card/partials/_card_heading.html'" onload="headerLoaded = true"></div>
+    <div id="{{chartId}}_heading" ng-include="'/app/dashboard/partials/_card_heading.html'" onload="headerLoaded = true"></div>
 
     <div ng-if="cardDataEmpty && !sqlError">
         <div class="layout-centered text-centered full">
