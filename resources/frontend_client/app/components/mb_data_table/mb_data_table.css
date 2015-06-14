@@ -1,6 +1,7 @@
 .MB-DataTable-header {
     background-color: #fff;
 }
+
 .MB-DataTable-header:hover {
     cursor: pointer;
 }
@@ -53,4 +54,8 @@
 .Visualization .public_fixedDataTable_header,
 .Visualization .public_fixedDataTable_header .public_fixedDataTableCell_main {
     background-color: #fff;
+}
+
+.Visualization .public_fixedDataTable_header .public_fixedDataTableCell_main:hover {
+    border-color: #e8e8e8;
 }
