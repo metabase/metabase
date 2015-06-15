@@ -15,12 +15,14 @@ export default React.createClass({
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired,
-        setChartColorFn: React.PropTypes.func.isRequired
+        setChartColorFn: React.PropTypes.func.isRequired,
+        setSortFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
         return {
-            maxTableRows: 500,
+            // NOTE: this should be more dynamic from the backend, it's set based on the query lang
+            maxTableRows: 2000,
             visualizationTypes: [
                 'scalar',
                 'table',
@@ -209,7 +211,7 @@ export default React.createClass({
     render: function() {
         var viz,
             queryModified,
-            rowMaxMessage;
+            tableFootnote;
 
         if (!this.props.result) {
             viz = (
@@ -267,11 +269,21 @@ export default React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    if(this.props.result.data.rows.length > this.props.maxTableRows) {
-                        rowMaxMessage = (
+                    // when we are displaying a data grid, setup a footnote which provides some row information
+                    if (this.props.result.data.rows_truncated ||
+                            (this.props.card.dataset_query.type === "query" &&
+                                this.props.card.dataset_query.query.aggregation[0] === "rows" &&
+                                this.props.result.data.rows.length === 2000)) {
+                        tableFootnote = (
                             <div className="mt1">
-                                <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
-                                Previewing <b>{this.props.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                                <span className="Badge Badge--headsUp mr2">Too many rows!</span>
+                                Result data was capped at <b>{this.props.result.row_count}</b> rows.
+                            </div>
+                        );
+                    } else {
+                        tableFootnote = (
+                            <div className="mt1">
+                                Showing <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
                     }
@@ -279,7 +291,10 @@ export default React.createClass({
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.props.maxTableRows} />
+                            maxRows={this.props.maxTableRows}
+                            setSortFn={this.props.setSortFn}
+                            sort={this.props.card.dataset_query.query.order_by}
+                        />
                     );
 
                 } else {
@@ -293,8 +308,8 @@ export default React.createClass({
                 }
 
                 // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !rowMaxMessage) {
-                    rowMaxMessage = (
+                if (this.props.result.data.rows_truncated && !tableFootnote) {
+                    tableFootnote = (
                         <div className="mt1">
                             <span className="Badge Badge--headsUp mr2">Too many rows!</span>
                             Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
@@ -322,21 +337,20 @@ export default React.createClass({
             'full': true,
             'flex': true,
             'flex-full': true,
-            'QueryBuilder-section': true
+            'QueryBuilder-section': true,
+            'pt2': true
         });
 
         return (
             <div className="relative full flex flex-column">
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {queryModified}
-                </ReactCSSTransitionGroup>
+                {queryModified}
                 {loading}
-                <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
+                <div className={visualizationClasses}>
                     {viz}
-                </ReactCSSTransitionGroup>
+                </div>
                 <div className="VisualizationSettings QueryBuilder-section clearfix">
                     <div className="float-right">
-                        {rowMaxMessage}
+                        {tableFootnote}
                     </div>
                     {this.renderVizControls()}
                 </div>
