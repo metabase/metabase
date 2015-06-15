@@ -26,6 +26,10 @@
   "Maximum number of rows the QP should ever return."
   10000)
 
+(def ^:const max-result-bare-rows
+  "Maximum number of rows the QP should ever return specifically for 'rows' type aggregations."
+  2000)
+
 
 ;; # DYNAMIC VARS
 
@@ -114,7 +118,7 @@
   [{:keys [limit aggregation] :as query}]
   (if (and (= aggregation ["rows"])
            (not limit))
-    (assoc query :limit max-result-rows)
+    (assoc query :limit max-result-bare-rows)
     query))
 
 

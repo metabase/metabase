@@ -40,7 +40,7 @@ module.exports = {
     // output to "dist"
     output: {
         path: __dirname + '/resources/frontend_client/app/dist',
-        filename: '[name].js'
+        filename: '[name].bundle.js'
     },
 
     module: {
@@ -88,6 +88,7 @@ module.exports = {
             'react':                __dirname + '/node_modules/react/dist/react-with-addons.js',
             'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
             'react-datepicker':     __dirname + '/node_modules/react-datepicker/react-datepicker.js',
+            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.js',
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
@@ -104,9 +105,12 @@ module.exports = {
         // new NgAnnotatePlugin({ add: true }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
-        // new CommonsChunkPlugin('vendor', 'vendor.bundle.js'),
+        new CommonsChunkPlugin({
+            name: 'vendor',
+            minChunks: Infinity // (with more entries, this ensures that no other module goes into the vendor chunk)
+        }),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
-        new ExtractTextPlugin('styles.css')
+        new ExtractTextPlugin('styles.bundle.css')
     ],
 
     // CSSNext configuration

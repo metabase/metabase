@@ -23,3 +23,7 @@
 .align-self-end {
     align-self: flex-end;
 }
+
+.flex-align-right {
+    margin-left: auto;
+}
