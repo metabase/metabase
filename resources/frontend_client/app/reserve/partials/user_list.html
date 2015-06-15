@@ -86,7 +86,7 @@
 
             <tr ng-repeat="user in users | orderBy:orderByField:reverseSort | filter:searchFilter">
               <td class="clearfix">
-                <img class="EntityImage EntityImage--small float-left hide show-lg" src="{{user.profileImage.secureBaseUrl}}">
+                <img class="EntityImage EntityImage--small float-left hide lg-show" src="{{user.profileImage.secureBaseUrl}}">
                 <a class="EntityName float-left ml1 link" href="/reserve/user/{{user.user_id}}">{{user.firstName}} {{user.lastName}}</a>
               </td>
               <td>{{user.avg_num_bookings_per_week}}</td>
@@ -126,4 +126,3 @@
     </ol>
   </div>
 </div>
-

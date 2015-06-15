@@ -11,7 +11,7 @@
     height: 42.5px;
 }
 
-@media screen and (--breakpoint-min-mid) {
+@media screen and (--breakpoint-min-md) {
     .Logo .Icon {
         width: 66px;
         height: 85px;
