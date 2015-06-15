@@ -82,7 +82,6 @@
 (defn expand-filter
   "Expand a `filter` clause."
   [filter-clause]
-  (def _b filter-clause)
   (with-resolved-fields parse-filter filter-clause))
 
 ;; Do a breadth-first walk so we don't walk things that will be tossed anyway. Since
