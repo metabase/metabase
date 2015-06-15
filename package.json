@@ -16,7 +16,7 @@
     "angular-cookie": "git://github.com/ivpusic/angular-cookie#v4.0.6",
     "angular-cookies": "1.2.28",
     "angular-gridster": "0.11.7",
-    "angular-http-auth": "git://github.com/tamlyn/angular-http-auth#1eb4a08d08b400956c0848f84d8fcaa9ad1357a2",
+    "angular-http-auth": "1.2.1",
     "angular-readable-time": "git://github.com/wildlyinaccurate/angular-readable-time#0.1.1",
     "angular-resource": "1.2.28",
     "angular-route": "1.2.28",
