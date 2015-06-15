@@ -1,26 +1,21 @@
-<form class="Form-new" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
-    <div class="Form-group clearfix">
-        <div class="float-left half" cv-error-flag="first_name">
-            <label class="my1 block full" for="first_name">First Name</label>
-            <input class="input block full" ng-model="c.accountSettingsUser.first_name" type="text" name="first_name" placeholder="First Name">
-            <fielderrors for="first_name"></fielderrors>
-        </div>
-
-        <div class="float-left half" cv-error-flag="last_name">
-            <label class="my1 block full" for="last_name">Last Name</label>
-            <input class="input block full" ng-model="c.accountSettingsUser.last_name" type="text" name="last_name" placeholder="Last Name">
-            <fielderrors for="last_name"></fielderrors>
-        </div>
-    </div>
-    <div class="Form-group" cv-error-flag="email">
-        <label class="my1 block" for="email">E-Mail</label>
-        <input class="input block full" ng-model="c.accountSettingsUser.email" type="email" name="email" placeholder="E-Mail" required>
-        <fielderrors for="email"></fielderrors>
+<form class="Form-new bordered rounded shadowed" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
+    <div class="Form-field">
+        <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
+        <input class="Form-input Form-offset full" name="first_name" placeholder="Jonny" ng-model="first_name" />
     </div>
 
-    <div class="Form-group border-top">
-        <button type="submit" class="Button Button--primary" ng-disabled="!form.$dirty || form.$invalid">Save</button>
+    <div class="Form-field">
+        <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
+        <input class="Form-input Form-offset full" name="last_name" placeholder="Appleseed" ng-model="last_name" />
     </div>
 
-    <div cv-form-status></div>
+    <div class="Form-field">
+        <mb-form-label display-name="Email address" field-name="email"></mb-form-label>
+        <input class="Form-input Form-offset full" ng-model="c.accountSettingsUser.email" type="email" name="email" placeholder="youlooknicetoday@meail.com" required>
+    </div>
+
+    <div class="Form-offset pt2 pb4">
+        <button type="submit" class="Button block md-inline-block Button--primary" ng-disabled="!form.$dirty || form.$invalid">Save</button>
+    </div>
+
 </form>

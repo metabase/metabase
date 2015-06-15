@@ -9,9 +9,9 @@
                     </div>
                 </div>
                 <div class="Grid-cell flex">
-                    <div class="HomeTabs p1 inline-block md-flex-align-right">
-                        <a class="HomeTab rounded p1 inline-block mr1 lg-mr2" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
-                        <a class="HomeTab rounded p1 inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
+                    <div class="HomeTabs p1 md-p2 inline-block md-flex-align-right">
+                        <a class="HomeTab rounded p1 md-p2 inline-block mr1 lg-mr2" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
+                        <a class="HomeTab rounded p1 md-p2 inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
                     </div>
                 </div>
             </div>
@@ -20,17 +20,17 @@
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">
 
-        <div class="flex align-center bg-white border-bottom">
+        <div class="flex align-center py2 lg-py3 bg-white border-bottom">
             <div class="wrapper flex">
-                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('all')" ng-class="{'text-brand': filterMode === 'all'}">
+                <a href="#" class="flex text-grey-3 no-decoration transition-color align-center mr2" ng-click="filter('all')" ng-class="{'text-brand': filterMode === 'all', 'text-brand-hover': filterMode != 'all'}">
                     <mb-icon class="mr1" name="popular" width="32px" height="32px"></mb-icon>
                     Popular
                 </a>
-                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('mine')" ng-class="{'text-brand': filterMode === 'mine'}">
+                <a href="#" class="flex text-grey-3 no-decoration transition-color align-center mr2" ng-click="filter('mine')" ng-class="{'text-brand': filterMode === 'mine', 'text-brand-hover': filterMode != 'mine' }">
                     <mb-icon class="mr1" name="mine" width="18px" height="18px"></mb-icon>
                     Mine
                 </a>
-                <a href="#" class="text-grey-2 link flex align-center mr2" ng-click="filter('fav')" ng-class="{'text-brand': filterMode === 'fav'}">
+                <a href="#" class="flex text-grey-3 no-decoration transition-color align-center mr2" ng-click="filter('fav')" ng-class="{'text-brand': filterMode === 'fav', 'text-brand-hover': filterMode != 'fav' }">
                     <mb-icon class="mr1" name="star" width="18px" height="18px"></mb-icon>
                     Favorites
                 </a>
@@ -48,8 +48,8 @@
                         <a href="/card/{{card.id}}" class="Entity flex align-center no-decoration mb2 py2 lg-p2 border-bottom">
                             <div class="flex flex-column">
                                 <div class="flex align-center">
-                                    <h4 class="Entity-title break-word">{{card.name}}</h4>
-                                    <mb-icon name="lock" width="12px" height="12px" ng-if="card.public_perms === 0"></mb-icon>
+                                    <h4 class="Entity-title break-word text-brand-hover">{{card.name}}</h4>
+                                    <mb-icon class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="card.public_perms === 0"></mb-icon>
                                 </div>
                                 <span class="Entity-attribution">
                                     Asked by: {{card.creator.common_name}}
@@ -92,7 +92,7 @@
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
                     <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
                         <div class="flex flex-column pr3 lg-pr0">
-                            <h2 class="text-light text-grey-3 text-brand-hover break-word transition-color">{{table.name}}</h2>
+                            <h2 class="text-dark text-brand-hover break-word">{{table.name}}</h2>
                             {{table.description}}
                         </div>
                         <div class="flex flex-align-right align-center">

@@ -10,9 +10,11 @@
   padding: 0;
 }
 
-.Grid-cell {
+.Grid-cell,
+.Grid--normal > .Grid-cell {
   flex: 1;
 }
+
 
 .Grid--flexCells > .Grid-cell {
   display: flex;
@@ -185,6 +187,9 @@
   .md-Grid--guttersXl > .Grid-cell {
     padding: 2em 0 0 2em;
   }
+  .md-Grid--normal > .Grid-cell {
+    flex: 1;
+  }
 }
 
 @media (--breakpoint-min-lg) {
@@ -212,6 +217,26 @@
     flex: 0 0 33.3333%;
 }
 
-.Grid-cell.Cell--2of3 {
-    flex: 0 0 66.6666%;
+@media screen and (--breakpoint-min-sm) {
+    .Grid-cell.sm-Cell--1of3 {
+        flex: 0 0 33.3333%;
+    }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .Grid-cell.md-Cell--1of3 {
+        flex: 0 0 33.3333%;
+    }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .Grid-cell.lg-Cell--1of3 {
+        flex: 0 0 33.3333%;
+    }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Grid-cell.xl-Cell--1of3 {
+        flex: 0 0 33.3333%;
+    }
 }

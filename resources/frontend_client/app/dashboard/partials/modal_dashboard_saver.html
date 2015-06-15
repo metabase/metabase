@@ -1,5 +1,4 @@
-
-<div className="ModalContent">
+<div class="ModalContent">
     <form class="Form-new bordered rounded shadowed" name="form" novalidate>
         <div class="Form-field" mb-form-field="name">
             <mb-form-label display-name="Name" field-name="name"></mb-form-label>
@@ -15,21 +14,21 @@
 
         <div class="Form-field" mb-form-field="public_perms">
             <mb-form-label display-name="Privacy" field-name="public_perms"></mb-form-label>
-            <label className="Select Form-offset">
+            <label class="Select Form-offset">
                 <select ng-model="dashboard.public_perms" ng-options="perm.id as perm.name for perm in permOptions">
                 </select>
             </label>
         </div>
 
-        <div className="Form-offset mb4" ng-if="dashboard.is_creator">
-            <label className="block">Danger zone:</label>
-            <a className="Button Button--danger" ng-click="delete()">Delete dashboard</a>
+        <div class="Form-offset mb4" ng-if="dashboard.is_creator">
+            <label class="block">Danger zone:</label>
+            <a class="Button Button--danger" ng-click="delete()">Delete dashboard</a>
         </div>
 
         <div class="Form-actions">
             <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(dashboard)" ng-disabled="!form.$valid">Save</button>
 
-            <a className="ml1" href="#" ng-click="close()">Cancel</a>
+            <a class="ml1" href="#" ng-click="close()">Cancel</a>
 
             <mb-form-message></mb-form-message>
         </div>

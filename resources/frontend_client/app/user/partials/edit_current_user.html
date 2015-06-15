@@ -1,18 +1,18 @@
 <div class="py4 border-bottom">
     <div class="wrapper wrapper--trim">
-        <h2>Account settings</h2>
+        <h2 class="text-light text-grey-4">Account settings</h2>
     </div>
 </div>
-<div class="mt4 wrapper wrapper--trim">
-    <div class="Grid Grid--full Grid--gutters">
-        <div class="Grid-cell">
-            <a class="rouded HoverItem p3 block"
+<div class="mt2 md-mt4 wrapper wrapper--trim">
+    <div class="Grid Grid--gutters Grid--full md-Grid--normal md-flex-reverse">
+        <div class="Grid-cell Grid Grid--fit md-flex-column md-Cell--1of3">
+            <a class="Grid-cell md-no-flex rouded HoverItem p1 md-p3 block cursor-pointer text-centered md-text-left"
                 ng-click="setTabFocus('details')"
                 ng-class="{ 'bg-brand text-white' : tab_focus == 'details' }">
                 User Details
             </a>
 
-            <a class="rounded HoverItem p3 block"
+            <a class="Grid-cell md-no-flex rounded HoverItem p1 md-p3 block cursor-pointer text-centered md-text-left"
                 ng-click="setTabFocus('password')"
                 ng-class="{ 'bg-brand text-white' : tab_focus == 'password' }">
                 Password
