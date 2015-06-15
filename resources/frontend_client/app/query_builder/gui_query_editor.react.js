@@ -442,7 +442,7 @@ export default React.createClass({
         if(this.props.databases && this.props.databases.length > 1) {
             return (
                 <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Using:</span>
+                    <span className="Query-label">Data source:</span>
                     <DatabaseSelector
                         databases={this.props.databases}
                         setDatabase={this.setDatabase}
@@ -465,7 +465,7 @@ export default React.createClass({
 
             return (
                 <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">From:</span>
+                    <span className="Query-label">Table:</span>
                     <SelectionModule
                         placeholder="What part of your data?"
                         items={this.state.tables}
