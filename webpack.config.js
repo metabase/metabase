@@ -53,7 +53,7 @@ module.exports = {
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|react|moment|underscore|jquery|d3|crossfilter)/ // doesn't include 'dc' and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|react|moment|underscore|jquery|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -94,8 +94,8 @@ module.exports = {
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
-            'crossfilter':          __dirname + '/node_modules/crossfilter/crossfilter.min.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
+            'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
+            'dc':                   __dirname + '/node_modules/dc/dc.js',
         }
     },
 
