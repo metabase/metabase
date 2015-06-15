@@ -6,7 +6,9 @@
             [metabase.driver.query-processor :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data.datasets :as datasets :refer [*dataset*]]))
+            [metabase.test.data :refer [with-temp-db]]
+            (metabase.test.data [dataset-definitions :refer [us-history-1607-to-1774]]
+                                [datasets :as datasets :refer [*dataset*]])))
 
 ;; ##  Dataset-Independent Data Fns
 
@@ -40,6 +42,9 @@
 
 (defn timestamp-field-type []
   (datasets/timestamp-field-type *dataset*))
+
+(defn dataset-loader []
+  (datasets/dataset-loader *dataset*))
 
 
 ;; ## Dataset-Independent QP Tests
@@ -781,3 +786,19 @@
         :aggregation ["rows"],
         :order_by [[(id :users :id) "ascending"]]}})
      (update-in [:data :rows] (partial mapv (partial filterv #(not (isa? (type %) java.util.Date)))))))
+
+
+;; ## Unix timestamp special type fields <3
+
+;; There are 4 events in us-history-1607-to-1774 whose year is < 1765
+(datasets/expect-with-all-datasets 4
+ (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
+   (-> (driver/process-query {:database (:id db)
+                              :type     :query
+                              :query    {:source_table (:id &events)
+                                         :aggregation  ["count"]
+                                         :filter       ["<" (:id &events.timestamp) "1765-01-01"]}})
+       :data
+       :rows
+       first
+       first)))

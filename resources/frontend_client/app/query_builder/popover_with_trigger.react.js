@@ -32,12 +32,14 @@ export default React.createClass({
     },
 
     componentWillUnmount: function() {
-        this._tether.destroy();
-        React.unmountComponentAtNode(this._popoverElement);
-        if (this._popoverElement.parentNode) {
-            this._popoverElement.parentNode.removeChild(this._popoverElement);
+        if (this._tether) {
+            this._tether.destroy();
+            React.unmountComponentAtNode(this._popoverElement);
+            if (this._popoverElement.parentNode) {
+                this._popoverElement.parentNode.removeChild(this._popoverElement);
+            }
+            this._tether = undefined;
         }
-        this._tether = undefined;
     },
 
     toggleModal: function() {

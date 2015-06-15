@@ -59,7 +59,7 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     });
 }]);
 
-Corvus.run(function(AppState, editableOptions, editableThemes) {
+Corvus.run(["AppState", "editableOptions", "editableThemes", function(AppState, editableOptions, editableThemes) {
     // initialize app state
     AppState.init();
 
@@ -69,14 +69,14 @@ Corvus.run(function(AppState, editableOptions, editableThemes) {
     // overwrite submit button template
     editableThemes['default'].submitTpl = '<button class="Button Button--primary" type="submit">Save</button>';
     editableThemes['default'].cancelTpl = '<button class="Button" ng-click="$form.$cancel()">cancel</button>';
-});
+}]);
 
 
 if (document.location.hostname != "localhost") {
     // Only set up logging in production
-    Corvus.config(function(AngularyticsProvider) {
+    Corvus.config(["AngularyticsProvider", function(AngularyticsProvider) {
         AngularyticsProvider.setEventHandlers(['Console', 'GoogleUniversal']);
-    }).run(function(Angularytics) {
+    }]).run(["Angularytics", function(Angularytics) {
         Angularytics.init();
-    });
+    }]);
 }

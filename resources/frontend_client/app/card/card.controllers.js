@@ -67,8 +67,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', '$q', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, $q, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$scope', '$routeParams', '$location', '$q', '$window', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($scope, $routeParams, $location, $q, $window, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         // =====  Controller local objects
 
@@ -148,6 +148,7 @@ CardControllers.controller('CardDetail', [
 
         var editorModel = {
             isRunning: false,
+            isExpanded: true,
             databases: null,
             defaultQuery: null,
             query: null,
@@ -224,6 +225,10 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
+            },
+            toggleExpandCollapseFn: function() {
+                editorModel.isExpanded = !editorModel.isExpanded;
+                renderAll();
             }
         };
 
@@ -263,6 +268,34 @@ CardControllers.controller('CardDetail', [
                 }
 
                 renderAll();
+            },
+            setSortFn: function(fieldId) {
+                // for now, just put this into the query and re-run
+                var sortField = fieldId;
+                if (fieldId === "agg") {
+                    sortField = ["aggregation", 0];
+                }
+
+                // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
+                if (card.dataset_query.type === "query") {
+                    var sortClause = [sortField, "ascending"];
+                    if (card.dataset_query.query.order_by !== undefined &&
+                            card.dataset_query.query.order_by.length > 0 &&
+                            card.dataset_query.query.order_by[0].length > 0 &&
+                            card.dataset_query.query.order_by[0][1] === "ascending" &&
+                            (card.dataset_query.query.order_by[0][0] === sortField ||
+                                (Array.isArray(card.dataset_query.query.order_by[0][0]) &&
+                                    Array.isArray(sortField)))) {
+                        // someone triggered another sort on the same column, so flip the sort direction
+                        sortClause = [sortField, "descending"];
+                    }
+
+                    // set clause
+                    card.dataset_query.query.order_by = [sortClause];
+
+                    // run updated query
+                    editorModel.runFn(card.dataset_query);
+                }
             }
         };
 
@@ -407,6 +440,11 @@ CardControllers.controller('CardDetail', [
                 renderAll();
             }
         };
+
+        // when the window is resized we need to re-render, mainly so that our visualization pane updates
+        angular.element($window).bind('resize', function() {
+            renderAll();
+        });
 
         $scope.$on('$locationChangeStart', function (event) {
             // only ask for a confirmation on unsaved changes if the question is

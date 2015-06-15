@@ -20,10 +20,12 @@ export default React.createClass({
         query: React.PropTypes.object.isRequired,
         defaultQuery: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
+        isExpanded: React.PropTypes.bool.isRequired,
         getTablesFn: React.PropTypes.func.isRequired,
         getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
-        notifyQueryModifiedFn: React.PropTypes.func.isRequired
+        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
+        toggleExpandCollapseFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
@@ -35,8 +37,7 @@ export default React.createClass({
     getInitialState: function() {
         return {
             tables: null,
-            options: null,
-            isOpen: true
+            options: null
         };
     },
 
@@ -717,18 +718,15 @@ export default React.createClass({
     },
 
     toggleOpen: function() {
-        var newOpenValue = !this.state.isOpen;
-        this.setState({
-            isOpen: newOpenValue
-        });
+        this.props.toggleExpandCollapseFn();
     },
 
     toggleText: function() {
-        return (this.state.isOpen) ? 'Hide query' : 'Show query';
+        return (this.props.isExpanded) ? 'Hide query' : 'Show query';
     },
 
     toggleIcon: function () {
-        if(this.state.isOpen) {
+        if(this.props.isExpanded) {
             return (
                 <Icon name='expand' width="16px" height="16px" />
             );
@@ -752,7 +750,7 @@ export default React.createClass({
         var guiBuilderClasses = cx({
             'GuiBuilder': true,
             'wrapper': true,
-            'GuiBuilder--collapsed': !this.state.isOpen,
+            'GuiBuilder--collapsed': !this.props.isExpanded,
         });
         return (
             <div className={guiBuilderClasses}>
