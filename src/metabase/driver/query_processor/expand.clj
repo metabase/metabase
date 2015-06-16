@@ -5,7 +5,7 @@
    and various QP components wouldn't need to implement that logic themselves.
 
    That's the ultimate endgoal of this namespace: parse a Query dict and return an *expanded* form with relevant information added,
-   values already parsed (e.g. date strings will be converted to `java.util.Date` / Unix timestamps as appropriate), in a more
+   values already parsed (e.g. date strings will be converted to `java.sql.Date` / Unix timestamps as appropriate), in a more
    Clojure-friendly format (e.g. using keywords like `:not-null` instead of strings like `\"NOT_NULL\"`, and using maps instead of
    position-dependent vectors for things like like the `BETWEEN` filter clause. We'll also be able to add useful utility methods to various
    bits of the Query Language, since they're typed. On top of that, we'll see a big performance improvment when various QP modules aren't
@@ -237,18 +237,24 @@
   (collapse-one [_]
     ["BETWEEN" field min-val max-val]))
 
+(defn- collapse-filter-type [^clojure.lang.Keyword filter-type]
+  (-> filter-type
+      name
+      (s/replace #"-" "_")
+      s/upper-case))
+
 (defrecord Filter:Field+Value [^Keyword filter-type
                                ^Field   field
                                ^Value   value]
   ICollapse
   (collapse-one [_]
-    [(s/upper-case (name filter-type)) field value]))
+    [(collapse-filter-type filter-type) field value]))
 
 (defrecord Filter:Field [^Keyword filter-type
                          ^Field field]
   ICollapse
   (collapse-one [_]
-    [(s/upper-case (name filter-type)) field]))
+    [(collapse-filter-type filter-type) field]))
 
 
 ;; ### Parsers

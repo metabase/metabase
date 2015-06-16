@@ -49,9 +49,11 @@
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.util.Date`."
-  ^java.util.Date [^String date]
-  (.parse simple-date-format date))
+  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
+  ^java.sql.Date [^String date]
+  (-> (.parse simple-date-format date)
+      .getTime
+      java.sql.Date.))
 
 (defn date-yyyy-mm-dd->unix-timestamp
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."

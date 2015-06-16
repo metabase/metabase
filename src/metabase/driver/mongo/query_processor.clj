@@ -257,15 +257,8 @@
 ;; TODO - This is similar to the implementation in generic-sql; can we combine them and move it into metabase.driver.query-processor?
 (defn annotate-results
   "Add column information, `row_count`, etc. to the results of a Mongo QP query."
-  [{:keys [source_table] :as query} results]
-  {:pre [(integer? source_table)]}
-  (let [field-name->field (sel :many :field->obj [Field :name] :table_id source_table)
-        column-keys       (qp/order-columns {:query query} (keys (first results)))
-        column-names      (map name column-keys)]
-    {:columns column-names
-     :cols (qp/get-column-info {:query query} column-names)
-     :rows (map #(map % column-keys)
-                results)}))
+  [query results]
+  (qp/annotate query results))
 
 
 ;; ## CLAUSE APPLICATION 2.0
@@ -313,7 +306,7 @@
              identity))))))
 
 (defn- cast-value-if-needed
-  "*  Convert dates (which come back as `YYYY-MM-DD` strings) to `java.util.Date`
+  "*  Convert dates (which come back as `YYYY-MM-DD` strings) to `java.sql.Date`
    *  Convert ID strings to `ObjectId`
    *  Return other values as-is"
   [field-id ^String value]

@@ -88,16 +88,6 @@
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (sel :one Field :id dest-id))))
 
-(defn field->fk-table
-  "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Table`.
-   This is a simple convenience for calling `field->fk-field` then hydrating :table
-
-   Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
-  [field]
-  (-> (field->fk-field field)
-      (hydrate :table)
-      :table))
-
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (u/assoc* field
             :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
