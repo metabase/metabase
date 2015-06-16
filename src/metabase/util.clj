@@ -1,6 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.pprint :refer [pprint]]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             [medley.core :as m]
             [clj-time.format :as time]
@@ -239,5 +240,25 @@
            i))
        (filter identity)
        set))
+
+(defn format-color
+  "Like `format`, but uses a function in `colorize.core` to colorize the output.
+   COLOR-SYMB should be a symbol like `green`.
+
+     (format-color 'red \"Fatal error: %s\" error-message)"
+  [color-symb format-string & args]
+  ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
+
+(defn pprint-to-str
+  "Returns the output of pretty-printing X as a string.
+   Optionally accepts COLOR-SYMB, which colorizes the output with the corresponding
+   function from `colorize.core`.
+
+     (pprint-to-str 'green some-obj)"
+  ([x]
+   (when x
+     (with-out-str (pprint x))))
+  ([color-symb x]
+   ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
 (require-dox-in-this-namespace)
