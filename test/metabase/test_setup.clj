@@ -5,7 +5,8 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [task :as task])
+                      [task :as task]
+                      [util :as u])
             [metabase.test.data.datasets :as datasets]))
 
 (declare clear-test-db)
@@ -15,6 +16,29 @@
 ;; Don't run unit tests whenever JVM shuts down
 ;; it's pretty annoying to have our DB reset all the time
 (expectations/disable-run-on-shutdown)
+
+;; ## EXPECTATIONS FORMATTING OVERRIDES
+
+;; This overrides the methods Expectations usually uses for printing a failed test comparing two maps.
+;; This is basically the same as the original implementation, but colorizes and pretty-prints the
+;; output, which makes it an order of magnitude easier to read, especially for tests that compare a
+;; lot of data, like Query Processor or API tests.
+(defmethod compare-expr :expectations/maps [e a str-e str-a]
+  (let [[in-e in-a] (clojure.data/diff e a)]
+    (if (and (nil? in-e) (nil? in-a))
+      {:type :pass}
+      {:type             :fail
+       :expected-message (some->> in-e
+                                  u/pprint-to-str
+                                  (u/format-color 'green "\nin expected, not actual:\n%s"))
+       :actual-message   (some->> in-a
+                                  u/pprint-to-str
+                                  (u/format-color 'red "\nin actual, not expected:\n%s"))
+       :raw              [str-e str-a]
+       :result           ["expected:\n"
+                          (u/pprint-to-str 'green e)
+                          "\n                was:\n"
+                          (u/pprint-to-str 'red a)]})))
 
 
 ;; # FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP
