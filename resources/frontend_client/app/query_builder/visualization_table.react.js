@@ -94,7 +94,8 @@ export default React.createClass({
             };
 
             if (width !== prevState.width) {
-                var tableColumnWidths = this.calculateColumnWidths(width, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
+                // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
+                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
                 updatedState.columnWidths = tableColumnWidths;
             }
 
@@ -122,10 +123,11 @@ export default React.createClass({
         // TODO: should we be casting all values toString()?
         cellData = (cellData !== null) ? cellData.toString() : null;
 
+        var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
-            return (<a href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
+            return (<a key={key} href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
         } else {
-            return (<div>{cellData}</div>);
+            return (<div key={key}>{cellData}</div>);
         }
     },
 
