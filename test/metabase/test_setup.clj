@@ -35,9 +35,9 @@
                                   u/pprint-to-str
                                   (u/format-color 'red "\nin actual, not expected:\n%s"))
        :raw              [str-e str-a]
-       :result           ["expected:\n"
+       :result           ["\nexpected:\n"
                           (u/pprint-to-str 'green e)
-                          "\n                was:\n"
+                          "\nwas:\n"
                           (u/pprint-to-str 'red a)]})))
 
 
