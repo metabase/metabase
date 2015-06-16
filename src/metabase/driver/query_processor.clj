@@ -310,14 +310,6 @@
 
 ;; # ANNOTATION 2.0
 
-(def ^:dynamic *uncastify-fn*
-  "Function that should be called to transform a column name from the set of results to one that matches a `Field` in the DB.
-   The default implementation returns the column name as is; others, such as `generic-sql`, provide implementations that remove
-   remove casting statements and the like.
-
-   This function should accept and return *keywords*."
-  identity)
-
 ;; ## Ordering
 ;;
 ;; Fields should be returned in the following order:
@@ -413,11 +405,11 @@
 (defn annotate
   "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
    RESULTS should be a sequence of *maps*, keyed by result column -> value."
-  [{{:keys [source_table]} :query, :as query}, results]
+  [{{:keys [source_table]} :query, :as query}, results & [uncastify-fn]]
   {:pre [(integer? source_table)]}
-  (let [results         (if-not *uncastify-fn* results
+  (let [results         (if-not uncastify-fn results
                                 (for [row results]
-                                  (m/map-keys *uncastify-fn* row)))
+                                  (m/map-keys uncastify-fn row)))
         fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type]
                              :table_id source_table
                              :active true

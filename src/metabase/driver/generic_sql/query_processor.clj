@@ -50,10 +50,9 @@
          (map? (:query query))
          (= (name (:type query)) "query")]}
   (try
-    (binding [qp/*uncastify-fn* uncastify]
-      (->> (process query)
-           eval
-           (qp/annotate query)))
+    (->> (process query)
+         eval
+         (qp/annotate query uncastify))
     (catch java.sql.SQLException e
       (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
                                           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
