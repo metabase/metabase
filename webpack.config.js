@@ -98,6 +98,7 @@ module.exports = {
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.js',
+            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js'
         }
     },
 
