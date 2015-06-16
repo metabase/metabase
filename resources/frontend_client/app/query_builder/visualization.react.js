@@ -16,7 +16,9 @@ export default React.createClass({
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired,
         setChartColorFn: React.PropTypes.func.isRequired,
-        setSortFn: React.PropTypes.func.isRequired
+        setSortFn: React.PropTypes.func.isRequired,
+        cellIsClickableFn: React.PropTypes.func,
+        cellClickedFn: React.PropTypes.func
     },
 
     getDefaultProps: function() {
@@ -294,6 +296,8 @@ export default React.createClass({
                             maxRows={this.props.maxTableRows}
                             setSortFn={this.props.setSortFn}
                             sort={this.props.card.dataset_query.query.order_by}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn}
                         />
                     );
 

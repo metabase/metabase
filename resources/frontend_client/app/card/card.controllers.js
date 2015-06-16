@@ -296,6 +296,66 @@ CardControllers.controller('CardDetail', [
                     // run updated query
                     editorModel.runFn(card.dataset_query);
                 }
+            },
+            cellIsClickableFn: function(rowIndex, columnIndex) {
+                if (!queryResult) return false;
+
+                // lookup the coldef and cell value of the cell we are curious about
+                var coldef = queryResult.data.cols[columnIndex],
+                    value = queryResult.data.rows[rowIndex][columnIndex];
+
+                if (!coldef || !coldef.special_type) return false;
+
+                if (coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            },
+            cellClickedFn: function(rowIndex, columnIndex) {
+                if (!queryResult) return false;
+
+                // lookup the coldef and cell value of the cell we are taking action on
+                var coldef = queryResult.data.cols[columnIndex],
+                    value = queryResult.data.rows[rowIndex][columnIndex];
+
+                var queryTemplate;
+                if (coldef.special_type === "id") {
+                    // action is on a PK column
+                    queryTemplate = angular.copy(newQueryTemplates["query"]);
+
+                    // carry over database from existing query
+                    queryTemplate.database = card.dataset_query.database;
+                    queryTemplate.query.source_table = coldef.table_id;
+                    queryTemplate.query.aggregation = ["rows"];
+
+                    // add a filter clause narrowing us down to the specific row we want
+                    queryTemplate.query.filter = ["AND", ["=", coldef.id, value]];
+
+                } else if (coldef.special_type === "fk") {
+                    // action is on an FK column
+                    queryTemplate = angular.copy(newQueryTemplates["query"]);
+
+                    // carry over database from existing query
+                    queryTemplate.database = card.dataset_query.database;
+                    queryTemplate.query.source_table = coldef.target.table_id;
+                    queryTemplate.query.aggregation = ["rows"];
+
+                    // add a filter clause narrowing us down to the specific FK row we want
+                    queryTemplate.query.filter = ["AND", ["=", coldef.target.id, value]];
+                }
+
+                if (queryTemplate) {
+                    console.log(queryTemplate);
+                    // apply the new query to our card
+                    card.dataset_query = queryTemplate;
+
+                    // clear out any visualization and reset to defaults
+                    card.display = "table";
+
+                    // run it
+                    editorModel.runFn(card.dataset_query);
+                }
             }
         };
 
