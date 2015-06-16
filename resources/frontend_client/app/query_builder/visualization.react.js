@@ -257,7 +257,7 @@ export default React.createClass({
 
         if (!this.props.result) {
             viz = (
-                <div className="flex full layout-centered text-brand">
+                <div className="flex full layout-centered text-grey-1">
                     <h1>If you give me some data I can show you something cool.  Run a Query!</h1>
                 </div>
             );

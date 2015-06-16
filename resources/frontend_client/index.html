@@ -44,7 +44,7 @@
                             <li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>
                         </ul>
                     </div>
-                    <a class="AdminLink NavItem hide sm-show" ng-if="user.is_superuser" href="/admin/">
+                    <a class="AdminLink NavItem hide sm-show sm-ml1 md-ml2" ng-if="user.is_superuser" href="/admin/">
                         <mb-icon class="text-white" name="gear" width="16px" height="16px"></mb-icon>
                     </a>
                 </div>
@@ -61,24 +61,27 @@
                     <!-- admin sections -->
                     <ul class="ml4 flex flex-full">
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
-                                <span class="NavItem-text">Settings</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
+                                Settings
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" href="/admin/people/">
-                                <span class="NavItem-text">People</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/people')}" href="/admin/people/">
+                                People
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
-                                <span class="NavItem-text">Databases</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
+                                Databases
                             </a>
                         </li>
                     </ul>
 
                     <!-- user profile dropdown -->
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
+                    <a class="text-white ml1 md-ml2" href="/" tooltip="Back to Metabase">
+                        <mb-icon name="return" width="22px" height="22px"></mb-icon>
+                    </a>
                 </div>
             </nav>
         </div>

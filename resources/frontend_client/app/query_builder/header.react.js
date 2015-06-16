@@ -127,24 +127,20 @@ export default React.createClass({
     },
     permissions: function() {
         var permission;
-        switch(this.props.card.public_perms) {
-            case 0:
-                permission = (<Icon name="lock" width="12px" height="12px"></Icon>)
-                break;
-            case 1:
-                permission = 'Others can read';
-                break;
-            case 2:
-                permission = 'Others can modify';
-                break;
-            default:
-                return 'Error';
+        if(this.props.card.public_perms) {
+            switch(this.props.card.public_perms) {
+                case 0:
+                    permission = (
+                        <span className="ml1 sm-ml1 text-grey-3">
+                            <Icon name="lock" width="12px" height="12px" />
+                        </span>
+                    )
+                    break;
+                default:
+                    return '';
+            }
+            return permission;
         }
-        return (
-            <span className="Badge Badge--permissions ml2">
-                {permission}
-            </span>
-        );
     },
 
     render: function() {

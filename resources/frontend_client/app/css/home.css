@@ -92,3 +92,11 @@
     background-color: rgba(0, 0, 0, 0.05);
     border-radius:6px;
 }
+
+.tooltip {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 2px;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, .12);
+    color: #ddd;
+}
