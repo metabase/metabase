@@ -351,7 +351,7 @@
                               (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
 
     ;; Create a combined sequence of aggregate result KWs + other ordered kws
-    (->> (concat breakout-kws ag-kws non-breakout-kws))))
+    (concat breakout-kws ag-kws non-breakout-kws)))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
