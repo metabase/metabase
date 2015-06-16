@@ -253,7 +253,8 @@
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
                             {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
-                                      (assoc :target (field->fk-field column))
+                                      (assoc :target (if-let [fk-field (field->fk-field column)]
+                                                       (select-keys fk-field [:id :table_id :name :description :base_type :special_type])))
                                       (assoc :extra_info (if-let [fk-table (field->fk-table column)]
                                                            {:target_table_id (:id fk-table)}
                                                            {})))}))
