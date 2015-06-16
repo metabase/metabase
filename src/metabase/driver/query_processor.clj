@@ -5,7 +5,7 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.models.field :refer [Field field->fk-table]]
+            [metabase.models.field :refer [Field field->fk-table field->fk-field]]
             [metabase.util :as u]))
 
 (declare add-implicit-breakout-order-by
@@ -253,6 +253,7 @@
                           :table_id table-id :name [in (set column-names)])
                      (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
                             {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
+                                      (assoc :target (field->fk-field column))
                                       (assoc :extra_info (if-let [fk-table (field->fk-table column)]
                                                            {:target_table_id (:id fk-table)}
                                                            {})))}))
