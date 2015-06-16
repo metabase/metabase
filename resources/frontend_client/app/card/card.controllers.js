@@ -5,7 +5,6 @@ import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
-import QueryVisualizationObjectDetail from '../query_builder/visualization_object_detail.react';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -98,6 +97,7 @@ CardControllers.controller('CardDetail', [
             tables = null,
             table_metadata = null,
             isRunning = false,
+            isObjectDetail = false,
             card = {
                 name: null,
                 public_perms: 0,
@@ -199,6 +199,13 @@ CardControllers.controller('CardDetail', [
                     queryResult = result;
                     isRunning = false;
 
+                    // do a quick test to see if we are meant to render and object detail view or normal results
+                    if(isObjectDetailQuery(card, queryResult.data)) {
+                        isObjectDetail = true;
+                    } else {
+                        isObjectDetail = false;
+                    }
+
                     // try a little logic to pick a smart display for the data
                     if (card.display !== "scalar" &&
                             queryResult.data.rows &&
@@ -256,6 +263,7 @@ CardControllers.controller('CardDetail', [
             card: null,
             result: null,
             isRunning: false,
+            isObjectDetail: false,
             setDisplayFn: function(type) {
                 card.display = type;
 
@@ -338,39 +346,24 @@ CardControllers.controller('CardDetail', [
                 var coldef = queryResult.data.cols[columnIndex],
                     value = queryResult.data.rows[rowIndex][columnIndex];
 
-                var queryTemplate;
                 if (coldef.special_type === "id") {
                     // action is on a PK column
-                    queryTemplate = angular.copy(newQueryTemplates["query"]);
+                    resetCardQuery("query");
 
-                    // carry over database from existing query
-                    queryTemplate.database = card.dataset_query.database;
-                    queryTemplate.query.source_table = coldef.table_id;
-                    queryTemplate.query.aggregation = ["rows"];
+                    card.dataset_query.query.source_table = coldef.table_id;
+                    card.dataset_query.query.aggregation = ["rows"];
+                    card.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
-                    // add a filter clause narrowing us down to the specific row we want
-                    queryTemplate.query.filter = ["AND", ["=", coldef.id, value]];
+                    // run it
+                    editorModel.runFn(card.dataset_query);
 
                 } else if (coldef.special_type === "fk") {
                     // action is on an FK column
-                    queryTemplate = angular.copy(newQueryTemplates["query"]);
+                    resetCardQuery("query");
 
-                    // carry over database from existing query
-                    queryTemplate.database = card.dataset_query.database;
-                    queryTemplate.query.source_table = coldef.target.table_id;
-                    queryTemplate.query.aggregation = ["rows"];
-
-                    // add a filter clause narrowing us down to the specific FK row we want
-                    queryTemplate.query.filter = ["AND", ["=", coldef.target.id, value]];
-                }
-
-                if (queryTemplate) {
-                    console.log(queryTemplate);
-                    // apply the new query to our card
-                    card.dataset_query = queryTemplate;
-
-                    // clear out any visualization and reset to defaults
-                    card.display = "table";
+                    card.dataset_query.query.source_table = coldef.target.table_id;
+                    card.dataset_query.query.aggregation = ["rows"];
+                    card.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
 
                     // run it
                     editorModel.runFn(card.dataset_query);
@@ -415,12 +408,9 @@ CardControllers.controller('CardDetail', [
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
             visualizationModel.isRunning = isRunning;
+            visualizationModel.isObjectDetail = isObjectDetail;
 
-            if (queryResult && isObjectDetailQuery(card, queryResult.data)) {
-                React.render(new QueryVisualizationObjectDetail(visualizationModel), document.getElementById('react_qb_viz'));
-            } else {
-                React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
-            }
+            React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
         };
 
         var renderAll = function() {
@@ -435,7 +425,7 @@ CardControllers.controller('CardDetail', [
         var isObjectDetailQuery = function(card, data) {
             var response = false;
 
-            // "rows" type query against a table
+            // "rows" type query w/ an '=' filter against the PK column
             if (card.dataset_query &&
                     card.dataset_query.query &&
                     card.dataset_query.query.source_table &&
@@ -450,14 +440,12 @@ CardControllers.controller('CardDetail', [
                 var pkField;
                 for (var i=0; i < data.cols.length; i++) {
                     var coldef = data.cols[i];
-                    console.log('col=', coldef);
                     if (coldef.table_id === card.dataset_query.query.source_table &&
                             coldef.special_type === "id") {
                         pkField = coldef.id;
                     }
                 }
 
-                console.log(pkField);
                 // now check that we have a filter clause w/ '=' filter on PK column
                 if (pkField !== undefined) {
                     for (var j=0; j < card.dataset_query.query.filter.length; j++) {

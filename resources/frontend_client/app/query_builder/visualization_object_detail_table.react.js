@@ -70,17 +70,20 @@ export default React.createClass({
         }
 
         var fieldColumnWidth = 150,
-            valueColumnWidth = (this.state.width - fieldColumnWidth);
+            valueColumnWidth = (this.state.width - fieldColumnWidth),
+            headerHeight = 50,
+            rowHeight = 35,
+            totalHeight = (this.props.data.cols.length * rowHeight) + headerHeight + 2; // 2 extra pixels for border
 
         return (
             <Table
                 className="MB-DataTable"
-                rowHeight={35}
+                rowHeight={rowHeight}
                 rowGetter={this.rowGetter}
                 rowsCount={this.props.data.cols.length}
                 width={this.state.width}
-                height={this.state.height}
-                headerHeight={50}>
+                height={totalHeight}
+                headerHeight={headerHeight}>
 
                 <Column
                     className="MB-DataTable-column"
