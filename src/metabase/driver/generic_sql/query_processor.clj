@@ -8,7 +8,6 @@
             [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
-            [metabase.driver.generic-sql.query-processor.annotate :as annotate]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -34,6 +33,15 @@
       `(let [entity# (table-id->korma-entity ~source_table)]
          (select entity# ~@forms)))))
 
+(defn- uncastify
+  "Remove CAST statements from a column name if needed.
+
+    (uncastify \"DATE\")               -> \"DATE\"
+    (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
+  [column-name]
+  (let [column-name (name column-name)]
+    (keyword (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
+                 column-name))))
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
@@ -42,9 +50,9 @@
          (map? (:query query))
          (= (name (:type query)) "query")]}
   (try
-    (->> (process query)
-         eval
-         (annotate/annotate query))
+    (as-> (process query) results
+      (eval results)
+      (qp/annotate query results uncastify))
     (catch java.sql.SQLException e
       (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
                                           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
@@ -141,11 +149,13 @@
                                                                                 {lon-kw ['> lon-min]}]))
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
-                      (let [cast-value-if-needed (cond
-                                                   (date-field-id? field-id)            u/parse-date-yyyy-mm-dd
-                                                   (= (field-id->special-type field-id)
-                                                      :timestamp_seconds)               u/date-yyyy-mm-dd->unix-timestamp
-                                                   :else                                identity)]
+                      (let [cast-value-if-needed (fn [v]
+                                                   (cond (= (type v) java.sql.Date)           `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))
+                                                         (not (string? v))                    v
+                                                         (date-field-id? field-id)            (u/parse-date-yyyy-mm-dd v)
+                                                         (= (field-id->special-type field-id)
+                                                            :timestamp_seconds)               (u/date-yyyy-mm-dd->unix-timestamp v)
+                                                         :else                                v))]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]
