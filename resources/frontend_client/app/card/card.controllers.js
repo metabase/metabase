@@ -5,6 +5,7 @@ import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
+import QueryVisualizationObjectDetail from '../query_builder/visualization_object_detail.react';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -395,7 +396,11 @@ CardControllers.controller('CardDetail', [
             visualizationModel.result = queryResult;
             visualizationModel.isRunning = isRunning;
 
-            React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
+            if (queryResult && isObjectDetailQuery(card, queryResult.data)) {
+                React.render(new QueryVisualizationObjectDetail(visualizationModel), document.getElementById('react_qb_viz'));
+            } else {
+                React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
+            }
         };
 
         var renderAll = function() {
@@ -406,6 +411,51 @@ CardControllers.controller('CardDetail', [
 
 
         // =====  Local helper functions
+
+        var isObjectDetailQuery = function(card, data) {
+            var response = false;
+
+            // "rows" type query against a table
+            if (card.dataset_query &&
+                    card.dataset_query.query &&
+                    card.dataset_query.query.source_table &&
+                    card.dataset_query.query.filter &&
+                    card.dataset_query.query.aggregation &&
+                    card.dataset_query.query.aggregation.length > 0 &&
+                    card.dataset_query.query.aggregation[0] === "rows" &&
+                    data.rows &&
+                    data.rows.length === 1) {
+
+                // we need to know the PK field of the table that was queried, so find that now
+                var pkField;
+                for (var i=0; i < data.cols.length; i++) {
+                    var coldef = data.cols[i];
+                    console.log('col=', coldef);
+                    if (coldef.table_id === card.dataset_query.query.source_table &&
+                            coldef.special_type === "id") {
+                        pkField = coldef.id;
+                    }
+                }
+
+                console.log(pkField);
+                // now check that we have a filter clause w/ '=' filter on PK column
+                if (pkField !== undefined) {
+                    for (var j=0; j < card.dataset_query.query.filter.length; j++) {
+                        var filter = card.dataset_query.query.filter[j];
+                        if (Array.isArray(filter) &&
+                                filter.length === 3 &&
+                                filter[0] === "=" &&
+                                filter[1] === pkField &&
+                                filter[2] !== null) {
+                            // well, all of our conditions have passed so we have an object detail query here
+                            response = true;
+                        }
+                    }
+                }
+            }
+
+            return response;
+        };
 
         var resetCardQuery = function(mode) {
             var queryTemplate = angular.copy(newQueryTemplates[mode]);
