@@ -397,7 +397,9 @@
                                                                  (select-keys [:base_type :special_type]))
                      ;; count should always be IntegerField/number
                      (= col-kw :count)                       {:base_type    :IntegerField
-                                                              :special_type :number}))))
+                                                              :special_type :number}
+                     ;; Otherwise something went wrong !
+                     :else                                   (throw (Exception. (format "Don't know what to do with Field '%s'." col-kw)))))))
          ;; Add FK info the the resulting Fields
          add-fields-extra-info)))
 
