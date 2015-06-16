@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [medley.core :as m]
@@ -385,20 +386,18 @@
             ;; If col-kw is a known Field return that
             (field-kw->field col-kw)
             ;; Otherwise it is an aggregation column like :sum, build a map of information to return
-            (let [ag-type (keyword ag-type)]
-              (assert ag-type)
-              (merge {:name        (name col-kw)
-                      :id          nil
-                      :table_id    nil
-                      :description nil}
-                     (let [ag-type (keyword ag-type)]
-                       (cond
-                         ;; avg, stddev, and sum should inherit the base_type and special_type from the Field they're aggregating
-                         (contains? #{:avg :stddev :sum} ag-type) (-> (@field-id->field ag-field-id)
-                                                                      (select-keys [:base_type :special_type]))
-                         ;; count should always be IntegerField/number
-                         (= ag-type :count)                       {:base_type    :IntegerField
-                                                                   :special_type :number}))))))
+            (merge (assert ag-type)
+                   {:name        (name col-kw)
+                    :id          nil
+                    :table_id    nil
+                    :description nil}
+                   (cond
+                     ;; avg, stddev, and sum should inherit the base_type and special_type from the Field they're aggregating
+                     (contains? #{:avg :stddev :sum} col-kw) (-> (@field-id->field ag-field-id)
+                                                                 (select-keys [:base_type :special_type]))
+                     ;; count should always be IntegerField/number
+                     (= col-kw :count)                       {:base_type    :IntegerField
+                                                              :special_type :number}))))
          ;; Add FK info the the resulting Fields
          add-fields-extra-info)))
 
