@@ -10,6 +10,7 @@
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
                               (api-let 2)
+                              (assoc* 1)
                               (auto-parse 1)
                               (catch-api-exceptions 0)
                               (check 1)
