@@ -53,14 +53,30 @@ export default React.createClass({
         return [this.props.data.cols[rowIndex], this.props.data.rows[0][rowIndex]];
     },
 
-    cellDataGetter: function(cellKey, row) {
+    cellClicked: function(rowIndex, columnIndex) {
+        this.props.cellClickedFn(rowIndex, columnIndex);
+    },
+
+    cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+        // TODO: should we be casting all values toString()?
         // Check out the expected format of each row above in the rowGetter() function
-        if (cellKey === 'field') {
-            return (row[0] !== null) ? row[0].name.toString() : null;
+        var row = this.rowGetter(rowIndex),
+            cell,
+            key = 'cl'+rowIndex+'_'+cellDataKey;
+
+        if (cellDataKey === 'field') {
+            var colValue = (row[0] !== null) ? row[0].name.toString() : null;
+            return (<div key={key}>{colValue}</div>);
         } else {
             // TODO: should we be casting all values toString()?
-            // TODO: handle linking and other value formatting
-            return (row[1] !== null) ? row[1].toString() : null;
+            var cellValue = (row[1] !== null) ? row[1].toString() : null;
+
+            // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
+            if (this.props.cellIsClickableFn(0, rowIndex)) {
+                return (<a key={key} href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a>);
+            } else {
+                return (<div key={key}>{cellValue}</div>);
+            }
         }
     },
 
@@ -89,7 +105,7 @@ export default React.createClass({
                     className="MB-DataTable-column"
                     width={fieldColumnWidth}
                     isResizable={false}
-                    cellDataGetter={this.cellDataGetter}
+                    cellRenderer={this.cellRenderer}
                     dataKey={'field'}
                     label={'Field'}>
                 </Column>
@@ -98,7 +114,7 @@ export default React.createClass({
                     className="MB-DataTable-column"
                     width={valueColumnWidth}
                     isResizable={false}
-                    cellDataGetter={this.cellDataGetter}
+                    cellRenderer={this.cellRenderer}
                     dataKey={'value'}
                     label={'Value'}>
                 </Column>

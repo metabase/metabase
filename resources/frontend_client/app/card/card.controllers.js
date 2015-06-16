@@ -95,7 +95,8 @@ CardControllers.controller('CardDetail', [
         var queryResult = null,
             databases = null,
             tables = null,
-            table_metadata = null,
+            tableMetadata = null,
+            tableForeignKeys = null,
             isRunning = false,
             isObjectDetail = false,
             card = {
@@ -153,12 +154,15 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             isExpanded: true,
             databases: null,
+            tables: null,
+            options: null,
+            tableForeignKeys: null,
             defaultQuery: null,
             query: null,
             initialQuery: null,
             loadDatabaseInfoFn: function(databaseId) {
                 tables = null;
-                table_metadata = null;
+                tableMetadata = null;
 
                 // get tables for db
                 Metabase.db_tables({
@@ -172,7 +176,8 @@ CardControllers.controller('CardDetail', [
                 });
             },
             loadTableInfoFn: function(tableId) {
-                table_metadata = null;
+                tableMetadata = null;
+                tableForeignKeys = null;
 
                 // get table details
                 Metabase.table_query_metadata({
@@ -182,11 +187,22 @@ CardControllers.controller('CardDetail', [
                     // TODO: would be better if this was in our component
                     var updatedTable = markupTableMetadata(table);
 
-                    table_metadata = updatedTable;
+                    tableMetadata = updatedTable;
 
                     renderAll();
                 }, function (error) {
                     console.log('error getting table metadata', error);
+                });
+
+                // get table fks
+                Metabase.table_fks({
+                    'tableId': tableId
+                }).$promise.then(function (fks) {
+                    tableForeignKeys = fks;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting fks for table '+tableId, error);
                 });
             },
             runFn: function(dataset_query) {
@@ -262,6 +278,7 @@ CardControllers.controller('CardDetail', [
             visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
+            tableForeignKeys: null,
             isRunning: false,
             isObjectDetail: false,
             setDisplayFn: function(type) {
@@ -371,6 +388,30 @@ CardControllers.controller('CardDetail', [
                     // run it
                     editorModel.runFn(card.dataset_query);
                 }
+            },
+            followForeignKeyFn: function(fk) {
+                if (!queryResult || !fk) return false;
+
+                // extract the value we will use to filter our new query
+                var originValue;
+                for (var i=0; i < queryResult.data.cols.length; i++) {
+                    if (queryResult.data.cols[i].special_type === "id") {
+                        originValue = queryResult.data.rows[0][i];
+                    }
+                }
+
+                // action is on an FK column
+                resetCardQuery("query");
+
+                card.dataset_query.query.source_table = fk.origin.table.id;
+                card.dataset_query.query.aggregation = ["rows"];
+                card.dataset_query.query.filter = ["AND", ["=", fk.origin.id, originValue]];
+
+                // load table metadata now that we are switching to a new table
+                editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+
+                // run it
+                editorModel.runFn(card.dataset_query);
             }
         };
 
@@ -395,7 +436,8 @@ CardControllers.controller('CardDetail', [
             editorModel.isRunning = isRunning;
             editorModel.databases = databases;
             editorModel.tables = tables;
-            editorModel.options = table_metadata;
+            editorModel.options = tableMetadata;
+            editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
             editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
@@ -410,6 +452,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
+            visualizationModel.tableForeignKeys = tableForeignKeys;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 

@@ -165,11 +165,23 @@ export default React.createClass({
         }
     },
 
+    clickedForeignKey: function(fk) {
+        this.props.followForeignKeyFn(fk);
+    },
+
     renderFooter: function(tableFootnote) {
         if (this.props.isObjectDetail) {
+            if (!this.props.tableForeignKeys) return false;
+
+            var component = this;
+            var relationships = this.props.tableForeignKeys.map(function(fk) {
+                var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
+                return (<a key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>{relationName}</a>)
+            });
+
             return (
                 <div className="VisualizationSettings QueryBuilder-section clearfix">
-                    my own stuff
+                    {relationships}
                 </div>
             );
 
@@ -274,7 +286,9 @@ export default React.createClass({
                 if (this.props.isObjectDetail) {
                     viz = (
                         <QueryVisualizationObjectDetailTable
-                            data={this.props.result.data} />
+                            data={this.props.result.data}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn} />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {
