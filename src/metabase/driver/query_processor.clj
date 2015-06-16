@@ -329,9 +329,9 @@
   (let [field-id->field (zipmap (map :id fields) fields)
 
         ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table. Filter out :breakout field IDs
+        fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
         all-field-ids    (map :id fields)
-        non-breakout-ids (->> (when-not (:fields-is-implicit @*internal-context*) fields-ids)
-                              (concat all-field-ids)
+        non-breakout-ids (->> (concat fields-ids all-field-ids)
                               (filter (complement (partial contains? (set breakout-ids))))
                               distinct)
 
