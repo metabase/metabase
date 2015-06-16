@@ -365,6 +365,9 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.aggregation = ["rows"];
                     card.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
 
+                    // load table metadata now that we are switching to a new table
+                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+
                     // run it
                     editorModel.runFn(card.dataset_query);
                 }
