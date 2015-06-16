@@ -95,6 +95,8 @@ CardControllers.controller('CardDetail', [
 
         var queryResult = null,
             databases = null,
+            tables = null,
+            table_metadata = null,
             isRunning = false,
             card = {
                 name: null,
@@ -154,22 +156,38 @@ CardControllers.controller('CardDetail', [
             defaultQuery: null,
             query: null,
             initialQuery: null,
-            getTablesFn: function(databaseId) {
-                var apiCall = Metabase.db_tables({
+            loadDatabaseInfoFn: function(databaseId) {
+                tables = null;
+                table_metadata = null;
+
+                // get tables for db
+                Metabase.db_tables({
                     'dbId': databaseId
+                }).$promise.then(function (tables_list) {
+                    tables = tables_list;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting tables', error);
                 });
-                return apiCall.$promise;
             },
-            getTableDetailsFn: function(tableId) {
-                var apiCall = Metabase.table_query_metadata({
+            loadTableInfoFn: function(tableId) {
+                table_metadata = null;
+
+                // get table details
+                Metabase.table_query_metadata({
                     'tableId': tableId
+                }).$promise.then(function (table) {
+                    // Decorate with valid operators
+                    // TODO: would be better if this was in our component
+                    var updatedTable = markupTableMetadata(table);
+
+                    table_metadata = updatedTable;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting table metadata', error);
                 });
-                return apiCall.$promise;
-            },
-            markupTableFn: function(table) {
-                // TODO: would be better if this was in the component
-                var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
-                return QueryUtils.populateQueryOptions(updatedTable);
             },
             runFn: function(dataset_query) {
                 isRunning = true;
@@ -380,6 +398,8 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.databases = databases;
+            editorModel.tables = tables;
+            editorModel.options = table_metadata;
             editorModel.query = card.dataset_query;
             editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
@@ -457,6 +477,11 @@ CardControllers.controller('CardDetail', [
             return response;
         };
 
+        var markupTableMetadata = function(table) {
+            var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
+            return QueryUtils.populateQueryOptions(updatedTable);
+        };
+
         var resetCardQuery = function(mode) {
             var queryTemplate = angular.copy(newQueryTemplates[mode]);
             if (queryTemplate) {
@@ -500,6 +525,13 @@ CardControllers.controller('CardDetail', [
                 card = result;
                 cardJson = JSON.stringify(card);
 
+                // load metadata
+                editorModel.loadDatabaseInfoFn(card.dataset_query.database);
+
+                if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
+                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                }
+
                 // run the query
                 // TODO: is there a case where we wouldn't want this?
                 editorModel.runFn(card.dataset_query);
@@ -533,8 +565,12 @@ CardControllers.controller('CardDetail', [
                 if ($routeParams.db !== undefined) {
                     // do a quick validation that this user actually has access to the db from the url
                     for (var i=0; i < databases.length; i++) {
-                        if (databases[i].id === $routeParams.db) {
-                            card.dataset_query.database = parseInt($routeParams.db);
+                        var databaseId = parseInt($routeParams.db);
+                        if (databases[i].id === databaseId) {
+                            card.dataset_query.database = databaseId;
+
+                            // load metadata
+                            editorModel.loadDatabaseInfoFn(card.dataset_query.database);
                         }
                     }
 
@@ -542,6 +578,9 @@ CardControllers.controller('CardDetail', [
                     if (card.dataset_query.database !== null && $routeParams.table !== undefined) {
                         // TODO: do we need a security check here?  seems that if they have access to the db just use the table
                         card.dataset_query.query.source_table = parseInt($routeParams.table);
+
+                        // load table metadata
+                        editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
                     }
                 }
 

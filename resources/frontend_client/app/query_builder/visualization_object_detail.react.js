@@ -18,23 +18,6 @@ export default React.createClass({
         };
     },
 
-    hasLatitudeAndLongitudeColumns: function(columnDefs) {
-        var hasLatitude = false,
-            hasLongitude = false;
-        columnDefs.forEach(function(col, index) {
-            if (col.special_type &&
-                    col.special_type === "latitude") {
-                hasLatitude = true;
-
-            } else if (col.special_type &&
-                    col.special_type === "longitude") {
-                hasLongitude = true;
-            }
-        });
-
-        return (hasLatitude && hasLongitude);
-    },
-
     loader: function() {
         var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
         return (
@@ -86,7 +69,7 @@ export default React.createClass({
                 } else {
                     // we've got something to display
                     viz = (
-                        <QueryVisualizationObjectDetail
+                        <QueryVisualizationObjectDetailTable
                             data={this.props.result.data} />
                     );
                 }
