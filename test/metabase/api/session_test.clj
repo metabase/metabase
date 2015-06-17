@@ -112,3 +112,13 @@
     (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
+
+
+;; GET /session/properties
+;; Check that a non-superuser can't read settings
+(expect
+  [{:value nil
+    :key "site-name"
+    :description "The name used for this instance of Metabase."
+    :default "Metabase"}]
+  ((user->client :rasta) :get 200 "session/properties"))
