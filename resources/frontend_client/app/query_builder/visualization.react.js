@@ -288,12 +288,14 @@ export default React.createClass({
                         );
                     }
 
+                    var sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
+                                    this.props.card.dataset_query.query.order_by : null;
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
                             maxRows={this.props.maxTableRows}
                             setSortFn={this.props.setSortFn}
-                            sort={this.props.card.dataset_query.query.order_by}
+                            sort={sort}
                         />
                     );
 
