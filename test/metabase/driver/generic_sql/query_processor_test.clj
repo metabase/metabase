@@ -5,7 +5,6 @@
             [metabase.driver :as driver]
             (metabase.driver [query-processor :refer [max-result-bare-rows]]
                              [query-processor-test :as qp-test])
-            [metabase.test.data :refer [db-id table->id field->id]]
             [metabase.test.data.datasets :as datasets]))
 
 ;; # ERROR RESPONSES
