@@ -3,9 +3,10 @@
 /*global document,_,google,console,vs*/
 
 import $ from 'jquery';
-import { crossfilter } from 'crossfilter';
+import crossfilter from 'crossfilter';
 import d3 from 'd3';
 import dc from 'dc';
+import moment from 'moment';
 
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
@@ -186,49 +187,95 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
     // setup an x-axis where the dimension is a timeseries
 
     var x = card.visualization_settings.xAxis,
-        xAxis = chart.xAxis();
+        xAxis = chart.xAxis(),
+        xDomain = getMinMax(data, 0);
 
     // set the axis label
     if (x.labels_enabled) {
         chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
         xAxis.tickFormat(d3.time.format.multi([
-                [".%L", function(d) {
-                    return d.getMilliseconds();
-                }],
-                [":%S", function(d) {
-                    return d.getSeconds();
-                }],
-                ["%I:%M", function(d) {
-                    return d.getMinutes();
-                }],
-                ["%I %p", function(d) {
-                    return d.getHours();
-                }],
-                ["%a %d", function(d) {
-                    return d.getDay() && d.getDate() != 1;
-                }],
-                ["%b %d", function(d) {
-                    return d.getDate() != 1;
-                }],
-                ["%B '%y", function(d) { // default "%B"
-                    return d.getMonth();
-                }],
-                ["%B '%y", function() { // default "%Y"
-                    return true;
-                }]
-            ]));
+            [".%L",    (d) => d.getMilliseconds()],
+            [":%S",    (d) => d.getSeconds()],
+            ["%I:%M",  (d) => d.getMinutes()],
+            ["%I %p",  (d) => d.getHours()],
+            ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
+            ["%b %d",  (d) => d.getDate() != 1],
+            ["%B", (d) => d.getMonth()], // default "%B"
+            ["%Y", () => true] // default "%Y"
+        ]));
+
+        // Compute a sane interval to display based on the data granularity, domain, and chart width
+        var interval = computeTimeseriesTicksInterval(data, chart.width(), MIN_PIXELS_PER_TICK.x);
+        xAxis.ticks(d3.time[interval.interval], interval.count);
     } else {
         xAxis.ticks(0);
     }
 
     // calculate the x-axis domain
-    var xDomain = getMinMax(data, 0);
     chart.x(d3.time.scale().domain(xDomain));
+}
 
-    // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
-    // set some limits on the ticks per pixel and adjust if needed
-    adjustTicksIfNeeded(xAxis, chart.width(), MIN_PIXELS_PER_TICK.x);
+// mostly matches https://github.com/mbostock/d3/wiki/Time-Scales
+// Use UTC methods to avoid issues with daylight savings
+const TIMESERIES_INTERVALS = [
+    { interval: "ms",     count: 1,  testFn: (d) => 0                      }, // millisecond
+    { interval: "second", count: 1,  testFn: (d) => d.getUTCMilliseconds() }, // 1 second
+    { interval: "second", count: 5,  testFn: (d) => d.getUTCSeconds() % 5  }, // 5 seconds
+    { interval: "second", count: 15, testFn: (d) => d.getUTCSeconds() % 15 }, // 15 seconds
+    { interval: "second", count: 30, testFn: (d) => d.getUTCSeconds() % 30 }, // 30 seconds
+    { interval: "minute", count: 1,  testFn: (d) => d.getUTCSeconds()      }, // 1 minute
+    { interval: "minute", count: 5,  testFn: (d) => d.getUTCMinutes() % 5  }, // 5 minutes
+    { interval: "minute", count: 15, testFn: (d) => d.getUTCMinutes() % 15 }, // 15 minutes
+    { interval: "minute", count: 30, testFn: (d) => d.getUTCMinutes() % 30 }, // 30 minutes
+    { interval: "hour",   count: 1,  testFn: (d) => d.getUTCMinutes()      }, // 1 hour
+    { interval: "hour",   count: 3,  testFn: (d) => d.getUTCHours() % 3    }, // 3 hours
+    { interval: "hour",   count: 6,  testFn: (d) => d.getUTCHours() % 6    }, // 6 hours
+    { interval: "hour",   count: 12, testFn: (d) => d.getUTCHours() % 12   }, // 12 hours
+    { interval: "day",    count: 1,  testFn: (d) => d.getUTCHours()        }, // 1 day
+    { interval: "day",    count: 2,  testFn: (d) => d.getUTCDate() % 2     }, // 2 day
+    { interval: "week",   count: 1,  testFn: (d) => 0                      }, // 1 week, TODO: fix this one
+    { interval: "month",  count: 1,  testFn: (d) => d.getUTCDate()         }, // 1 months
+    { interval: "month",  count: 3,  testFn: (d) => d.getUTCMonth() % 3    }, // 3 months
+    { interval: "year",   count: 1,  testFn: (d) => d.getUTCMonth()        }  // 1 year
+];
+
+function computeTimeseriesDataInvervalIndex(data) {
+    // Keep track of the value seen for each level of granularity,
+    // if any don't match then we know the data is *at least* that granular.
+    var values = [];
+    var index = TIMESERIES_INTERVALS.length;
+    for (var row of data) {
+        // Only need to check more granular than the current interval
+        for (var i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
+            var interval = TIMESERIES_INTERVALS[i];
+            var value = interval.testFn(row[0]);
+            if (values[i] === undefined) {
+                values[i] = value;
+            } else if (values[i] !== value) {
+                index = i;
+            }
+        }
+    }
+    return index - 1;
+}
+
+function computeTimeseriesTicksInterval(data, chartWidth, minPixelsPerTick) {
+    // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
+    // TODO: compute this directly instead of iteratively
+    var maxTickCount = Math.round(chartWidth / minPixelsPerTick);
+    var domain = getMinMax(data, 0);
+    var index = computeTimeseriesDataInvervalIndex(data);
+    while (index < TIMESERIES_INTERVALS.length - 1) {
+        var interval = TIMESERIES_INTERVALS[index];
+        var intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
+        var tickCount = (domain[1] - domain[0]) / intervalMs;
+        if (tickCount <= maxTickCount) {
+            break;
+        }
+        index++;
+    }
+    return TIMESERIES_INTERVALS[index];
 }
 
 function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
@@ -375,6 +422,10 @@ function lineAndBarOnRender(dcjsChart, card) {
         });
 
     } catch (e) {}
+
+    // adjust the margins to fit the Y-axis tick label sizes, and rerender
+    dcjsChart.margins().left = dcjsChart.select(".axis.y")[0][0].getBBox().width + 20;
+    dcjsChart.render();
 }
 
 
@@ -726,8 +777,7 @@ export var CardRenderer = {
         var data = _.map(result.rows, function(row) {
             // IMPORTANT: clone the data if you are going to modify it in any way
             var tuple = row.slice(0);
-            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
             return tuple;
         });
 
@@ -803,8 +853,7 @@ export var CardRenderer = {
         var data = _.map(result.rows, function(row) {
             // IMPORTANT: clone the data if you are going to modify it in any way
             var tuple = row.slice(0);
-            // TODO: is this the right thing to be doing forcing strings for all non-timeseries?
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : String(row[0]);
+            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
             return tuple;
         });
 

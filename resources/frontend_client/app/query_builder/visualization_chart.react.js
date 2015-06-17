@@ -28,12 +28,21 @@ export default React.createClass({
             return true;
         }
     },
-
     componentDidMount: function() {
         this.renderChart();
+        window.addEventListener("resize", this.onResize);
+    },
+
+    componentWillUnmount: function() {
+        window.removeEventListener("resize", this.onResize);
     },
 
     componentDidUpdate: function() {
+        this.renderChart();
+    },
+
+    onResize: function() {
+        // TODO: CardRenderer.setSize would probably be better
         this.renderChart();
     },
 
@@ -103,6 +112,7 @@ export default React.createClass({
                     CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
                 }
             } catch (err) {
+                console.error(err);
                 this.setState({
                     error: (err.message || err)
                 });
