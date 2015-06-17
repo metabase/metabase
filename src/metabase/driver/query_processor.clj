@@ -255,43 +255,71 @@
 ;; ## Ordering
 ;;
 ;; Fields should be returned in the following order:
-;;
 ;; 1.  Breakout Fields
 ;; 2.  Aggregation Fields (e.g. sum, count)
 ;; 3.  Fields clause Fields, if they were added explicitly
-;; 4.  All other Fields, sorted by :position
+;; 4.  All other Fields, sorted by:
+;;     A.  :position (ascending)
+;;     B.  "PK-ness" -- PK Fields should be ranked higher than other Fields with the same :position
+;;     C.  ID, in descending order, as a fallback. There's no scentific reason for sorting this way but it makes QP results consistent and testable.
 (defn- order-cols
   "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
    FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
-  [{{breakout-ids :breakout, fields-ids :fields} :query} results fields]
+  [{{breakout-ids :breakout, fields-ids :fields, order-by-clauses :order_by} :query} results fields]
   {:post [(= (set %)
              (set (keys (first results))))]}
-  ;; Order needs to be [breakout-cols aggregate-cols fields-cols other-cols]
   (let [field-id->field (zipmap (map :id fields) fields)
 
-        ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table. Filter out :breakout field IDs
+        ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table.
         fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
-        all-field-ids    (map :id fields)
+        all-field-ids    (->> fields
+                              (sort-by (fn [{:keys [position special_type id]}] ; For each field generate a vector of [position not-pk-penalty -id], which we'll use to sort
+                                         [position                              ; the Fields in *ascending* order.
+                                          (if (= special_type :id) 0            ; NOT-PK-PENALTY is 0 for Fields with :special_type :id, 1 for all others (1 is the "penalty")
+                                              1)                                ; Thus position is most important, but in the case of a tie, we'll order PK columns first;
+                                          (- id)]))                             ; otherwise we'll drop down to Field IDs.
+                              (map :id))                                        ; Return the sorted IDs
+
+        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
+        ;; Then filter out ones that appear in breakout clause and remove duplicates
+        ;; which effectively gives us parts #3 and #4 from above.
         non-breakout-ids (->> (concat fields-ids all-field-ids)
                               (filter (complement (partial contains? (set breakout-ids))))
                               distinct)
 
-        ;; Get all the keywords returned by the results
-        result-kws       (set (keys (first results)))
+        _ (println (u/format-color 'cyan "FIELDS-IDS: %s" fields-ids))
+        _ (println (u/format-color 'green "NON-BREAKOUT-FIELD-ID: %s" (vec non-breakout-ids)))
 
-        ;; Convert breakout/non-breakout IDs to keywords
-        ids->kws         #(some->> (map field-id->field %)
-                                   (map :name)
-                                   (map keyword)
-                                   (filter (partial contains? result-kws)))
+        ;; Get all the column name keywords returned by the results
+        result-kws       (set (keys (first results)))
+        _ (println (u/format-color 'red "RESULT-KWS [UNSORTED]: %s" (vec result-kws)))
+
+        ;; Make a helper function that will take a sequence of Field IDs and convert them to corresponding column name keywords.
+        ;; Don't include names that aren't part of RESULT-KWS: we fetch *all* the Fields for a Table regardless of the Query, so
+        ;; there are likely some unused ones.
+        ids->kws         (fn [field-ids]
+                           (some->> (map field-id->field field-ids)
+                                    (map :name)
+                                    (map keyword)
+                                    (filter (partial contains? result-kws))))
+
+        ;; Use fn above to get the keyword column names of breakout clause fields [#1] + fields clause fields / other non-aggregation fields [#3 and #4]
         breakout-kws     (ids->kws breakout-ids)
         non-breakout-kws (ids->kws non-breakout-ids)
 
-        ;; Get the results kws specific to :aggregation (not part of breakout/non-breakout-kws)
+        _ (println (u/format-color 'cyan "BREAKOUT-KWS: %s" (vec breakout-kws)))
+        _ (println (u/format-color 'green "NON-BREAKOUT-KWS: %s" (vec non-breakout-kws)))
+
+        ;; Now get all the keyword column names specific to aggregation, such as :sum or :count [#2].
+        ;; Just get all the items in RESULT-KWS that *aren't* part of BREAKOUT-KWS or NON-BREAKOUT-KWS
         ag-kws           (->> result-kws
+                              ;; TODO - Currently, this will never be more than a single Field, since we only
+                              ;; support a single aggregation clause at this point. When we add support for
+                              ;; multiple aggregation clauses, we'll need to add some logic to make sure they're
+                              ;; being ordered correctly, e.g. the first aggregate column before the second, etc.
                               (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
 
-    ;; Create a combined sequence of aggregate result KWs + other ordered kws
+    ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
     (concat breakout-kws ag-kws non-breakout-kws)))
 
 (defn- add-fields-extra-info
@@ -352,13 +380,9 @@
   (let [results         (if-not uncastify-fn results
                                 (for [row results]
                                   (m/map-keys uncastify-fn row)))
-        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type]
-                             :table_id source_table
-                             :active true
-                             (order :position :asc)
-                             (order :id :desc))      ; not sure why we're ordering things this way but this is what the tests expect so (?)
+        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source_table, :active true)
         ordered-col-kws (order-cols query results fields)]
     {:rows    (for [row results]
-                (map row ordered-col-kws))
-     :columns (map name ordered-col-kws)
-     :cols    (get-cols-info query fields ordered-col-kws)}))
+                (mapv row ordered-col-kws))                         ; might as well return each row and col info as vecs because we're not worried about making
+     :columns (mapv name ordered-col-kws)                           ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
+     :cols    (vec (get-cols-info query fields ordered-col-kws))})) ; as vecs. Make sure
