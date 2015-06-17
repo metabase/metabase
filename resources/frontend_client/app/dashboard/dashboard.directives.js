@@ -74,7 +74,7 @@ DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$
 }]);
 
 
-DashboardDirectives.directive('mbDashcard', ['Card', 'Metabase', 'CorvusAlert', 'VisualizationSettings', '$timeout', function(Card, Metabase, CorvusAlert, VisualizationSettings, $timeout) {
+DashboardDirectives.directive('mbDashcard', ['Card', 'Metabase', 'VisualizationSettings', '$timeout', function(Card, Metabase, VisualizationSettings, $timeout) {
 
     var DATA_TIMEOUT_DELAY_IN_MS = 1000;
 

@@ -624,71 +624,6 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
     };
 }]);
 
-CorvusServices.service('CorvusAlert', [function() {
-    this.alerts = [];
-
-    this.closeAlert = function(index) {
-        this.alerts.splice(index, 1);
-    };
-
-    this.alertInfo = function(message) {
-        this.alerts.push({
-            type: 'success',
-            msg: message
-        });
-    };
-
-    this.alertError = function(message) {
-        this.alerts.push({
-            type: 'danger',
-            msg: message
-        });
-    };
-}]);
-
-CorvusServices.factory("transformRequestAsFormPost", [function() {
-    return (transformRequest);
-
-    function transformRequest(data, getHeaders) {
-        var headers = getHeaders();
-        headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8";
-        headers["X-CSRFToken"] = data.csrfmiddlewaretoken;
-        return (serializeData(data));
-    }
-
-    function serializeData(data) {
-
-        // If this is not an object, defer to native stringification.
-        if (!angular.isObject(data)) {
-            return ((data === null) ? "" : data.toString());
-        }
-
-        var buffer = [];
-
-        // Serialize each key in the object.
-        for (var name in data) {
-            if (!data.hasOwnProperty(name)) {
-                continue;
-            }
-
-            var value = data[name];
-            buffer.push(
-                encodeURIComponent(name) +
-                "=" +
-                encodeURIComponent((value === null) ? "" : value)
-            );
-        }
-
-        // Serialize the buffer and clean it up for transportation.
-        var source = buffer
-            .join("&")
-            .replace(/%20/g, "+");
-
-        return (source);
-    }
-
-}]);
-
 
 // User Services
 var CoreServices = angular.module('corvus.core.services', ['ngResource', 'ngCookies']);
@@ -793,20 +728,5 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
                 key: '@key'
             }
         }
-    });
-}]);
-
-CoreServices.factory('PermissionViolation', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/permissions_violation', {}, {
-        create: {
-            url: '/api/permissions_violation',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-
     });
 }]);
