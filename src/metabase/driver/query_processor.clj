@@ -270,6 +270,8 @@
              (set (keys (first results))))]}
   (let [field-id->field (zipmap (map :id fields) fields)
 
+        _ (println (u/format-color 'red "RESULTS [FIRST ROW]: %s" (u/pprint-to-str (first results))))
+
         ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table.
         fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
         all-field-ids    (->> fields

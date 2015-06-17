@@ -99,50 +99,50 @@
   "Return column information for the `venues` column named by keyword COL."
   [col]
   (case col
-    :id          {:extra_info {}
+    :id          {:extra_info   {}
                   :special_type :id
-                  :base_type (id-field-type)
-                  :description nil
-                  :name (format-name "id")
-                  :table_id (id :venues)
-                  :id (id :venues :id)}
-    :category_id {:extra_info (if (fks-supported?) {:target_table_id (id :categories)}
+                  :base_type    (id-field-type)
+                  :description  nil
+                  :name         (format-name "id")
+                  :table_id     (id :venues)
+                  :id           (id :venues :id)}
+    :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
                                   {})
                   :special_type (if (fks-supported?) :fk
                                     :category)
-                  :base_type :IntegerField
-                  :description nil
-                  :name (format-name "category_id")
-                  :table_id (id :venues)
-                  :id (id :venues :category_id)}
-    :price       {:extra_info {}
+                  :base_type    :IntegerField
+                  :description  nil
+                  :name         (format-name "category_id")
+                  :table_id     (id :venues)
+                  :id           (id :venues :category_id)}
+    :price       {:extra_info   {}
                   :special_type :category
-                  :base_type :IntegerField
-                  :description nil
-                  :name (format-name "price")
-                  :table_id (id :venues)
-                  :id (id :venues :price)}
-    :longitude   {:extra_info {}
+                  :base_type    :IntegerField
+                  :description  nil
+                  :name         (format-name "price")
+                  :table_id     (id :venues)
+                  :id           (id :venues :price)}
+    :longitude   {:extra_info   {}
                   :special_type :longitude,
-                  :base_type :FloatField,
-                  :description nil
-                  :name (format-name "longitude")
-                  :table_id (id :venues)
-                  :id (id :venues :longitude)}
-    :latitude    {:extra_info {}
+                  :base_type    :FloatField,
+                  :description  nil
+                  :name         (format-name "longitude")
+                  :table_id     (id :venues)
+                  :id           (id :venues :longitude)}
+    :latitude    {:extra_info   {}
                   :special_type :latitude
-                  :base_type :FloatField
-                  :description nil
-                  :name (format-name "latitude")
-                  :table_id (id :venues)
-                  :id (id :venues :latitude)}
-    :name        {:extra_info {}
+                  :base_type    :FloatField
+                  :description  nil
+                  :name         (format-name "latitude")
+                  :table_id     (id :venues)
+                  :id           (id :venues :latitude)}
+    :name        {:extra_info   {}
                   :special_type :name
-                  :base_type :TextField
-                  :description nil
-                  :name (format-name "name")
-                  :table_id (id :venues)
-                  :id (id :venues :name)}))
+                  :base_type    :TextField
+                  :description  nil
+                  :name         (format-name "name")
+                  :table_id     (id :venues)
+                  :id           (id :venues :name)}))
 
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
@@ -434,28 +434,28 @@
 
 ;; ### FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-datasets
- {:rows [[29]]
+ {:rows    [[29]]
   :columns ["count"]
-  :cols [(aggregate-col :count)]}
+  :cols    [(aggregate-col :count)]}
  {:source_table (id :checkins)
-  :filter ["AND" ["BETWEEN" (id :checkins :date) "2015-04-01" "2015-05-01"]]
-  :aggregation ["count"]})
+  :filter       ["AND" ["BETWEEN" (id :checkins :date) "2015-04-01" "2015-05-01"]]
+  :aggregation  ["count"]})
 
 ;; ### FILTER -- "OR", "<=", "="
 (qp-expect-with-all-datasets
-    {:rows [[1 4 3 -165.374 10.0646 "Red Medicine"]
+ {:rows    [[1 4 3 -165.374 10.0646 "Red Medicine"]
             [2 11 2 -118.329 34.0996 "Stout Burgers & Beers"]
             [3 11 2 -118.428 34.0406 "The Apple Pan"]
             [5 20 2 -118.261 34.0778 "Brite Spot Family Restaurant"]]
-     :columns (venues-columns)
-     :cols (venues-cols)}
-  {:source_table (id :venues)
-   :filter ["OR"
-            ["<=" (id :venues :id) 3]
-            ["=" (id :venues :id) 5]]
-   :aggregation ["rows"]
-   :breakout [nil]
-   :limit nil})
+  :columns (venues-columns)
+  :cols    (venues-cols)}
+ {:source_table (id :venues)
+  :filter       ["OR"
+                 ["<=" (id :venues :id) 3]
+                 ["=" (id :venues :id) 5]]
+  :aggregation  ["rows"]
+  :breakout     [nil]
+  :limit        nil})
 
 ;; TODO - These are working, but it would be nice to have some tests that covered
 ;; *  NOT_NULL
