@@ -51,7 +51,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `User`."
-  [id :as {{:keys [email first_name last_name] :as body} :body}]
+  [id :as {{:keys [email first_name last_name is_superuser] :as body} :body}]
   {email      [Required Email]
    first_name NonEmptyString
    last_name  NonEmptyString}
@@ -61,7 +61,10 @@
   (check-500 (upd-non-nil-keys User id
                                :email email
                                :first_name first_name
-                               :last_name last_name))
+                               :last_name last_name
+                               :is_superuser (if (:is_superuser @*current-user*)
+                                               is_superuser
+                                               nil)))
   (sel :one User :id id))
 
 
