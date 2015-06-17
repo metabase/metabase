@@ -256,14 +256,25 @@
 ;;
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
+;;
 ;; 2.  Aggregation Fields (e.g. sum, count)
+;;
 ;; 3.  Fields clause Fields, if they were added explicitly
+;;
 ;; 4.  All other Fields, sorted by:
 ;;     A.  :position (ascending)
-;;     B.  Field ID, in descending order, as a fallback. There's no scentific reason for sorting this way, but it makes the QP deterministic by keeping the results
-;;         in a consistent order, which makes it testable.
-;;         TODO - it would be nice if we did something more intelligent, like sorting by special_type, etc. (PK and :name Fields are probably more imporant than
-;;         "rando" ones). Or even sorting columns by name has to be preferable.
+;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return Fields in the specified
+;;         order; most of the time they'll have the default value of 0, in which case we'll compare...
+;;
+;;     B.  :special_type "group" -- :id Fields, then :name Fields, then everyting else
+;;         Attempt to put the most relevant Fields first. Order the Fields as follows:
+;;         1.  :id Fields
+;;         2.  :name Fields
+;;         3.  all other Fields
+;;
+;;     C.  Field Name
+;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
+;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
 (defn- order-cols
   "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
    FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
@@ -274,10 +285,15 @@
 
         ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table.
         fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
-        all-field-ids    (->> fields
-                              (sort-by (fn [{:keys [position special_type id]}] ; For each field generate a vector of [position -id], which we'll use to sort
-                                         [position (- id)]))                    ; the Fields in *ascending* order.
-                              (map :id))                                        ; Return the sorted IDs.
+        all-field-ids    (->> fields                                              ; Sort the Fields.
+                              (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
+                                         [position                                ; [position special-type-group name]
+                                          (cond                                   ; and Clojure will take care of the rest.
+                                            (= special_type :id)   0
+                                            (= special_type :name) 1
+                                            :else                  2)
+                                          name]))
+                              (map :id))                                          ; Return the sorted IDs
 
         ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
         ;; Then filter out ones that appear in breakout clause and remove duplicates
