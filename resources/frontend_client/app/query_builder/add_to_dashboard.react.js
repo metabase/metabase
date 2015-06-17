@@ -59,9 +59,7 @@ export default React.createClass({
                 <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
                     <Icon name='addtodash' />
                 </a>
-                <ReactCSSTransitionGroup transitionName="Transition-popover">
-                    {this.addToDash()}
-                </ReactCSSTransitionGroup>
+                {this.addToDash()}
             </span>
         );
     }
