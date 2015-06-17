@@ -22,14 +22,14 @@
 (def ^:const available-drivers
   "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
   ex: `:h2 {:id \"h2\" :name \"H2\"}`"
-  {:h2       {:id   "h2"
-              :name "H2"
+  {:h2       {:id      "h2"
+              :name    "H2"
               :example "file:[filename]"}
-   :postgres {:id "postgres"
-              :name "Postgres"
+   :postgres {:id      "postgres"
+              :name    "Postgres"
               :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}
-   :mongo    {:id "mongo"
-              :name "MongoDB"
+   :mongo    {:id      "mongo"
+              :name    "MongoDB"
               :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
 
 (def ^:const class->base-type
@@ -166,20 +166,20 @@
   [query {:keys [executed_by]
           :as options}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid (.toString (java.util.UUID/randomUUID))
-                         :executor_id executed_by
-                         :json_query query
-                         :query_id nil
-                         :version 0
-                         :status :starting
-                         :error ""
-                         :started_at (u/new-sql-timestamp)
-                         :finished_at (u/new-sql-timestamp)
-                         :running_time 0
-                         :result_rows 0
-                         :result_file ""
-                         :result_data "{}"
-                         :raw_query ""
+  (let [query-execution {:uuid            (.toString (java.util.UUID/randomUUID))
+                         :executor_id     executed_by
+                         :json_query      query
+                         :query_id        nil
+                         :version         0
+                         :status          :starting
+                         :error           ""
+                         :started_at      (u/new-sql-timestamp)
+                         :finished_at     (u/new-sql-timestamp)
+                         :running_time    0
+                         :result_rows     0
+                         :result_file     ""
+                         :result_data     "{}"
+                         :raw_query       ""
                          :additional_info ""}]
     (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
       (try
@@ -197,9 +197,9 @@
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
-  (let [updates {:status :failed
-                 :error error-message
-                 :finished_at (u/new-sql-timestamp)
+  (let [updates {:status       :failed
+                 :error        error-message
+                 :finished_at  (u/new-sql-timestamp)
                  :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
     ;; record our query execution and format response
     (-> query-execution
@@ -207,21 +207,21 @@
         (merge updates)
         (save-query-execution)
         ;; this is just for the response for clien
-        (assoc :error error-message
+        (assoc :error     error-message
                :row_count 0
-               :data {:rows []
-                      :cols []
-                      :columns []}))))
+               :data      {:rows    []
+                           :cols    []
+                           :columns []}))))
 
 (defn query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
   (-> (u/assoc* query-execution
-                   :status :completed
-                   :finished_at (u/new-sql-timestamp)
-                   :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
-                   :result_rows (get query-result :row_count 0))
+        :status       :completed
+        :finished_at  (u/new-sql-timestamp)
+        :running_time (- (System/currentTimeMillis) (:start_time_millis <>))
+        :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
       (save-query-execution)
       ;; at this point we've saved and we just need to massage things into our final response format

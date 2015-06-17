@@ -4,6 +4,7 @@ import { CardRenderer } from '../card/card.charting';
 import PopoverWithTrigger from './popover_with_trigger.react';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
+import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -16,7 +17,9 @@ export default React.createClass({
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired,
         setChartColorFn: React.PropTypes.func.isRequired,
-        setSortFn: React.PropTypes.func.isRequired
+        setSortFn: React.PropTypes.func.isRequired,
+        cellIsClickableFn: React.PropTypes.func,
+        cellClickedFn: React.PropTypes.func
     },
 
     getDefaultProps: function() {
@@ -162,37 +165,66 @@ export default React.createClass({
         }
     },
 
-    renderVizControls: function() {
-        if (this.props.result && this.props.result.error === undefined) {
-            var displayOptions = [];
-            for (var i = 0; i < this.props.visualizationTypes.length; i++) {
-                var val = this.props.visualizationTypes[i];
+    clickedForeignKey: function(fk) {
+        this.props.followForeignKeyFn(fk);
+    },
 
-                if (this.isSensibleChartDisplay(val)) {
-                    displayOptions.push(
-                        <option key={i} value={val}>{val}</option>
-                    );
-                } else {
-                    // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
-                    displayOptions.push(
-                        <option key={i+'_'} value={val}>{val} (not sensible)</option>
-                    );
+    renderFooter: function(tableFootnote) {
+        if (this.props.isObjectDetail) {
+            if (!this.props.tableForeignKeys) return false;
+
+            var component = this;
+            var relationships = this.props.tableForeignKeys.map(function(fk) {
+                var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
+                return (<a key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>{relationName}</a>)
+            });
+
+            return (
+                <div className="VisualizationSettings QueryBuilder-section clearfix">
+                    {relationships}
+                </div>
+            );
+
+        } else {
+            var vizControls;
+            if (this.props.result && this.props.result.error === undefined) {
+                var displayOptions = [];
+                for (var i = 0; i < this.props.visualizationTypes.length; i++) {
+                    var val = this.props.visualizationTypes[i];
+
+                    if (this.isSensibleChartDisplay(val)) {
+                        displayOptions.push(
+                            <option key={i} value={val}>{val}</option>
+                        );
+                    } else {
+                        // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
+                        displayOptions.push(
+                            <option key={i+'_'} value={val}>{val} (not sensible)</option>
+                        );
+                    }
                 }
+
+                vizControls = (
+                    <div>
+                        Show as:
+                        <label className="Select ml2">
+                            <select onChange={this.setDisplay} value={this.props.card.display}>
+                                {displayOptions}
+                            </select>
+                        </label>
+                        {this.renderChartColorPicker()}
+                    </div>
+                );
             }
 
             return (
-                <div>
-                    Show as:
-                    <label className="Select ml2">
-                        <select onChange={this.setDisplay} value={this.props.card.display}>
-                            {displayOptions}
-                        </select>
-                    </label>
-                    {this.renderChartColorPicker()}
+                <div className="VisualizationSettings wrapper flex">
+                    {vizControls}
+                    <div className="flex-align-right">
+                        {tableFootnote}
+                    </div>
                 </div>
             );
-        } else {
-            return false;
         }
     },
 
@@ -209,9 +241,19 @@ export default React.createClass({
     },
 
     render: function() {
-        var viz,
+        var loading,
+            viz,
             queryModified,
             tableFootnote;
+
+        if(this.props.isRunning) {
+            loading = (
+                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
+                    {this.loader()}
+                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
+                </div>
+            );
+        }
 
         if (!this.props.result) {
             viz = (
@@ -241,7 +283,15 @@ export default React.createClass({
                 );
 
             } else if (this.props.result.data) {
-                if (this.props.result.data.rows.length === 0) {
+                if (this.props.isObjectDetail) {
+                    viz = (
+                        <QueryVisualizationObjectDetailTable
+                            data={this.props.result.data}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn} />
+                    );
+
+                } else if (this.props.result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
                     viz = (
                         <div className="QueryError flex full align-center text-brand">
@@ -294,6 +344,8 @@ export default React.createClass({
                             maxRows={this.props.maxTableRows}
                             setSortFn={this.props.setSortFn}
                             sort={this.props.card.dataset_query.query.order_by}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn}
                         />
                     );
 
@@ -319,16 +371,12 @@ export default React.createClass({
             }
         }
 
-        var loading;
-
-        if(this.props.isRunning) {
-            loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
-                    {this.loader()}
-                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
-                </div>
-            );
-        }
+        var wrapperClasses = cx({
+            'relative': true,
+            'full': true,
+            'flex': !this.props.isObjectDetail,
+            'flex-column': !this.props.isObjectDetail
+        });
 
         var visualizationClasses = cx({
             'Visualization': true,
@@ -343,18 +391,13 @@ export default React.createClass({
         });
 
         return (
-            <div className="relative full flex flex-column">
+            <div className={wrapperClasses}>
                 {queryModified}
                 {loading}
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
-                <div className="VisualizationSettings wrapper flex">
-                    {this.renderVizControls()}
-                    <div className="flex-align-right">
-                        {tableFootnote}
-                    </div>
-                </div>
+                {this.renderFooter(tableFootnote)}
             </div>
         );
     }

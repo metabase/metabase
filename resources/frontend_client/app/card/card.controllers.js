@@ -94,7 +94,11 @@ CardControllers.controller('CardDetail', [
 
         var queryResult = null,
             databases = null,
+            tables = null,
+            tableMetadata = null,
+            tableForeignKeys = null,
             isRunning = false,
+            isObjectDetail = false,
             card = {
                 name: null,
                 public_perms: 0,
@@ -150,25 +154,56 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             isExpanded: true,
             databases: null,
+            tables: null,
+            options: null,
+            tableForeignKeys: null,
             defaultQuery: null,
             query: null,
             initialQuery: null,
-            getTablesFn: function(databaseId) {
-                var apiCall = Metabase.db_tables({
+            loadDatabaseInfoFn: function(databaseId) {
+                tables = null;
+                tableMetadata = null;
+
+                // get tables for db
+                Metabase.db_tables({
                     'dbId': databaseId
+                }).$promise.then(function (tables_list) {
+                    tables = tables_list;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting tables', error);
                 });
-                return apiCall.$promise;
             },
-            getTableDetailsFn: function(tableId) {
-                var apiCall = Metabase.table_query_metadata({
+            loadTableInfoFn: function(tableId) {
+                tableMetadata = null;
+                tableForeignKeys = null;
+
+                // get table details
+                Metabase.table_query_metadata({
                     'tableId': tableId
+                }).$promise.then(function (table) {
+                    // Decorate with valid operators
+                    // TODO: would be better if this was in our component
+                    var updatedTable = markupTableMetadata(table);
+
+                    tableMetadata = updatedTable;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting table metadata', error);
                 });
-                return apiCall.$promise;
-            },
-            markupTableFn: function(table) {
-                // TODO: would be better if this was in the component
-                var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
-                return QueryUtils.populateQueryOptions(updatedTable);
+
+                // get table fks
+                Metabase.table_fks({
+                    'tableId': tableId
+                }).$promise.then(function (fks) {
+                    tableForeignKeys = fks;
+
+                    renderAll();
+                }, function (error) {
+                    console.log('error getting fks for table '+tableId, error);
+                });
             },
             runFn: function(dataset_query) {
                 isRunning = true;
@@ -179,6 +214,13 @@ CardControllers.controller('CardDetail', [
                 Metabase.dataset(dataset_query, function (result) {
                     queryResult = result;
                     isRunning = false;
+
+                    // do a quick test to see if we are meant to render and object detail view or normal results
+                    if(isObjectDetailQuery(card, queryResult.data)) {
+                        isObjectDetail = true;
+                    } else {
+                        isObjectDetail = false;
+                    }
 
                     // try a little logic to pick a smart display for the data
                     if (card.display !== "scalar" &&
@@ -236,7 +278,9 @@ CardControllers.controller('CardDetail', [
             visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
+            tableForeignKeys: null,
             isRunning: false,
+            isObjectDetail: false,
             setDisplayFn: function(type) {
                 card.display = type;
 
@@ -296,6 +340,78 @@ CardControllers.controller('CardDetail', [
                     // run updated query
                     editorModel.runFn(card.dataset_query);
                 }
+            },
+            cellIsClickableFn: function(rowIndex, columnIndex) {
+                if (!queryResult) return false;
+
+                // lookup the coldef and cell value of the cell we are curious about
+                var coldef = queryResult.data.cols[columnIndex],
+                    value = queryResult.data.rows[rowIndex][columnIndex];
+
+                if (!coldef || !coldef.special_type) return false;
+
+                if (coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            },
+            cellClickedFn: function(rowIndex, columnIndex) {
+                if (!queryResult) return false;
+
+                // lookup the coldef and cell value of the cell we are taking action on
+                var coldef = queryResult.data.cols[columnIndex],
+                    value = queryResult.data.rows[rowIndex][columnIndex];
+
+                if (coldef.special_type === "id") {
+                    // action is on a PK column
+                    resetCardQuery("query");
+
+                    card.dataset_query.query.source_table = coldef.table_id;
+                    card.dataset_query.query.aggregation = ["rows"];
+                    card.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
+
+                    // run it
+                    editorModel.runFn(card.dataset_query);
+
+                } else if (coldef.special_type === "fk") {
+                    // action is on an FK column
+                    resetCardQuery("query");
+
+                    card.dataset_query.query.source_table = coldef.target.table_id;
+                    card.dataset_query.query.aggregation = ["rows"];
+                    card.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
+
+                    // load table metadata now that we are switching to a new table
+                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+
+                    // run it
+                    editorModel.runFn(card.dataset_query);
+                }
+            },
+            followForeignKeyFn: function(fk) {
+                if (!queryResult || !fk) return false;
+
+                // extract the value we will use to filter our new query
+                var originValue;
+                for (var i=0; i < queryResult.data.cols.length; i++) {
+                    if (queryResult.data.cols[i].special_type === "id") {
+                        originValue = queryResult.data.rows[0][i];
+                    }
+                }
+
+                // action is on an FK column
+                resetCardQuery("query");
+
+                card.dataset_query.query.source_table = fk.origin.table.id;
+                card.dataset_query.query.aggregation = ["rows"];
+                card.dataset_query.query.filter = ["AND", ["=", fk.origin.id, originValue]];
+
+                // load table metadata now that we are switching to a new table
+                editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+
+                // run it
+                editorModel.runFn(card.dataset_query);
             }
         };
 
@@ -319,6 +435,9 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.databases = databases;
+            editorModel.tables = tables;
+            editorModel.options = tableMetadata;
+            editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
             editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
@@ -333,7 +452,9 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
+            visualizationModel.tableForeignKeys = tableForeignKeys;
             visualizationModel.isRunning = isRunning;
+            visualizationModel.isObjectDetail = isObjectDetail;
 
             React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
         };
@@ -346,6 +467,54 @@ CardControllers.controller('CardDetail', [
 
 
         // =====  Local helper functions
+
+        var isObjectDetailQuery = function(card, data) {
+            var response = false;
+
+            // "rows" type query w/ an '=' filter against the PK column
+            if (card.dataset_query &&
+                    card.dataset_query.query &&
+                    card.dataset_query.query.source_table &&
+                    card.dataset_query.query.filter &&
+                    card.dataset_query.query.aggregation &&
+                    card.dataset_query.query.aggregation.length > 0 &&
+                    card.dataset_query.query.aggregation[0] === "rows" &&
+                    data.rows &&
+                    data.rows.length === 1) {
+
+                // we need to know the PK field of the table that was queried, so find that now
+                var pkField;
+                for (var i=0; i < data.cols.length; i++) {
+                    var coldef = data.cols[i];
+                    if (coldef.table_id === card.dataset_query.query.source_table &&
+                            coldef.special_type === "id") {
+                        pkField = coldef.id;
+                    }
+                }
+
+                // now check that we have a filter clause w/ '=' filter on PK column
+                if (pkField !== undefined) {
+                    for (var j=0; j < card.dataset_query.query.filter.length; j++) {
+                        var filter = card.dataset_query.query.filter[j];
+                        if (Array.isArray(filter) &&
+                                filter.length === 3 &&
+                                filter[0] === "=" &&
+                                filter[1] === pkField &&
+                                filter[2] !== null) {
+                            // well, all of our conditions have passed so we have an object detail query here
+                            response = true;
+                        }
+                    }
+                }
+            }
+
+            return response;
+        };
+
+        var markupTableMetadata = function(table) {
+            var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
+            return QueryUtils.populateQueryOptions(updatedTable);
+        };
 
         var resetCardQuery = function(mode) {
             var queryTemplate = angular.copy(newQueryTemplates[mode]);
@@ -390,6 +559,13 @@ CardControllers.controller('CardDetail', [
                 card = result;
                 cardJson = JSON.stringify(card);
 
+                // load metadata
+                editorModel.loadDatabaseInfoFn(card.dataset_query.database);
+
+                if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
+                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                }
+
                 // run the query
                 // TODO: is there a case where we wouldn't want this?
                 editorModel.runFn(card.dataset_query);
@@ -423,8 +599,12 @@ CardControllers.controller('CardDetail', [
                 if ($routeParams.db !== undefined) {
                     // do a quick validation that this user actually has access to the db from the url
                     for (var i=0; i < databases.length; i++) {
-                        if (databases[i].id === $routeParams.db) {
-                            card.dataset_query.database = parseInt($routeParams.db);
+                        var databaseId = parseInt($routeParams.db);
+                        if (databases[i].id === databaseId) {
+                            card.dataset_query.database = databaseId;
+
+                            // load metadata
+                            editorModel.loadDatabaseInfoFn(card.dataset_query.database);
                         }
                     }
 
@@ -432,6 +612,9 @@ CardControllers.controller('CardDetail', [
                     if (card.dataset_query.database !== null && $routeParams.table !== undefined) {
                         // TODO: do we need a security check here?  seems that if they have access to the db just use the table
                         card.dataset_query.query.source_table = parseInt($routeParams.table);
+
+                        // load table metadata
+                        editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
                     }
                 }
 

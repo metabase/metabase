@@ -21,8 +21,6 @@ export default React.createClass({
         defaultQuery: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
         isExpanded: React.PropTypes.bool.isRequired,
-        getTablesFn: React.PropTypes.func.isRequired,
-        getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
         notifyQueryModifiedFn: React.PropTypes.func.isRequired,
         toggleExpandCollapseFn: React.PropTypes.func.isRequired
@@ -34,57 +32,8 @@ export default React.createClass({
         };
     },
 
-    getInitialState: function() {
-        return {
-            tables: null,
-            options: null
-        };
-    },
-
-    componentDidMount: function() {
-        // if we know our database then load related information
-        if (this.props.query.database) {
-            this.loadDatabaseInfo(this.props.query.database);
-        }
-
-        // if we also know our table then load it's related information
-        if (this.props.query.query.source_table) {
-            this.loadTableInfo(this.props.query.query.source_table);
-        }
-    },
-
     setQuery: function(dataset_query, notify) {
         this.props.notifyQueryModifiedFn(dataset_query);
-    },
-
-    loadDatabaseInfo: function(databaseId) {
-        var component = this;
-
-        // get tables for db
-        this.props.getTablesFn(databaseId).then(function (tables) {
-            component.setState({
-                tables: tables
-            });
-        }, function (error) {
-            console.log('error getting tables', error);
-        });
-    },
-
-    loadTableInfo: function(tableId) {
-        var component = this;
-
-        // get table details
-        this.props.getTableDetailsFn(tableId).then(function (table) {
-            // Decorate with valid operators
-            // TODO: would be better if this was in our component
-            var updatedTable = component.props.markupTableFn(table);
-
-            component.setState({
-                options: updatedTable
-            });
-        }, function (error) {
-            console.log('error getting table metadata', error);
-        });
     },
 
     setDatabase: function(databaseId) {
@@ -95,22 +44,19 @@ export default React.createClass({
             // set our new database on the query
             query.database = databaseId;
 
-            // clear all previous state
-            this.replaceState(this.getInitialState());
-
             // notify parent that we've started over
             // TODO: should this clear the visualization as well?
             this.props.notifyQueryModifiedFn(query);
 
             // load rest of the data we need
-            this.loadDatabaseInfo(databaseId);
+            this.props.loadDatabaseInfoFn(databaseId);
         }
     },
 
     setSourceTable: function(sourceTable) {
         // this will either be the id or an object with an id
         var tableId = sourceTable.id || sourceTable;
-        this.loadTableInfo(tableId);
+        this.props.loadTableInfoFn(tableId);
 
         // when the table changes we reset everything else in the query, except the database of course
         // TODO: should this clear the visualization as well?
@@ -359,8 +305,8 @@ export default React.createClass({
 
         // start with all fields
         var fieldList = [];
-        for(var key in this.state.options.fields_lookup) {
-            fieldList.push(this.state.options.fields_lookup[key]);
+        for(var key in this.props.options.fields_lookup) {
+            fieldList.push(this.props.options.fields_lookup[key]);
         }
 
         if (this.isBareRowsAggregation()) {
@@ -462,7 +408,7 @@ export default React.createClass({
     },
 
     renderTableSelector: function() {
-        if (this.state.tables) {
+        if (this.props.tables) {
             var sourceTableListOpen = true;
             if(this.props.query.query.source_table) {
                 sourceTableListOpen = false;
@@ -476,7 +422,7 @@ export default React.createClass({
                     <span className="Query-label">Table:</span>
                     <SelectionModule
                         placeholder="What part of your data?"
-                        items={this.state.tables}
+                        items={this.props.tables}
                         display="name"
                         selectedValue={this.props.query.query.source_table}
                         selectedKey="id"
@@ -494,12 +440,12 @@ export default React.createClass({
     renderFilterButton: function() {
         if (this.props.query.query.source_table &&
                 this.getFilters().length === 0 &&
-                this.state.options &&
-                this.state.options.fields.length > 0) {
+                this.props.options &&
+                this.props.options.fields.length > 0) {
             return (
                 <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
                     <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
-                    Filter {(this.state.options) ? this.state.options.name : ""}
+                    Filter {(this.props.options) ? this.props.options.name : ""}
                 </a>
             );
         }
@@ -507,8 +453,8 @@ export default React.createClass({
 
     renderBreakouts: function() {
         // breakout clause.  must have table details available & a valid aggregation defined
-        if (this.state.options &&
-                this.state.options.breakout_options.fields.length > 0 &&
+        if (this.props.options &&
+                this.props.options.breakout_options.fields.length > 0 &&
                 !this.hasEmptyAggregation()) {
 
             // only render a label for our breakout if we have a valid breakout clause already
@@ -522,7 +468,7 @@ export default React.createClass({
             }
 
             var breakoutList;
-            if(this.state.options.breakout_options) {
+            if(this.props.options.breakout_options) {
                 breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
                     var breakoutListOpen = false;
                     if(breakout === null) {
@@ -534,7 +480,7 @@ export default React.createClass({
                             <SelectionModule
                                 placeholder='What part of your data?'
                                 display="1"
-                                items={this.state.options.breakout_options.fields}
+                                items={this.props.options.breakout_options.fields}
                                 selectedValue={breakout}
                                 selectedKey="0"
                                 index={index}
@@ -578,11 +524,11 @@ export default React.createClass({
 
     renderAggregation: function() {
         // aggregation clause.  must have table details available
-        if(this.state.options) {
+        if(this.props.options) {
             return (
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
-                    aggregationOptions={this.state.options.aggregation_options}
+                    aggregationOptions={this.props.options.aggregation_options}
                     updateAggregation={this.updateAggregation}>
                 </AggregationWidget>
             );
@@ -592,12 +538,12 @@ export default React.createClass({
     renderFilterSelector: function() {
         var queryFilters = this.getFilters();
 
-        if (this.state.options && queryFilters && queryFilters.length > 0) {
+        if (this.props.options && queryFilters && queryFilters.length > 0) {
             var component = this;
 
             var filterFieldList = [];
-            for(var key in this.state.options.fields_lookup) {
-                filterFieldList.push(this.state.options.fields_lookup[key]);
+            for(var key in this.props.options.fields_lookup) {
+                filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
             var filterList = queryFilters.map(function (filter, index) {
@@ -640,7 +586,7 @@ export default React.createClass({
     },
 
     renderLimitAndSort: function() {
-        if (this.state.options && !this.hasEmptyAggregation() &&
+        if (this.props.options && !this.hasEmptyAggregation() &&
                 (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
 
             var limitSection;
