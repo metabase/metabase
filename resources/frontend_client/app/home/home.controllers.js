@@ -10,9 +10,7 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
     var greetingPrefixes = [
         'Hey there',
         'How\'s it going',
-        'Good morning',
         'Howdy',
-        'Looking good',
         'Greetings',
         'Good to see you',
     ];
@@ -21,13 +19,11 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
         'What do you want to know?',
         'What\'s on your mind?',
         'What do you want to find out?',
-        'Hodor Hodor Hodor'
     ];
 
     function buildGreeting (greetingOptions, personalization) {
         // TODO - this can result in an undefined thing
         var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1) + 0);
-        console.log(greetingOptions, randomGreetingIndex);
         var greeting = greetingOptions[randomGreetingIndex];
 
         if(personalization) {
