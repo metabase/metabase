@@ -1,21 +1,28 @@
-<form class="Form-new bordered rounded shadowed" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
-    <div class="Form-field">
-        <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
-        <input class="Form-input Form-offset full" name="first_name" placeholder="Jonny" ng-model="first_name" />
-    </div>
+<div ng-controller="AccountSettingsController">
+    <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+        <div class="Form-field" mb-form-field="first_name">
+            <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
+            <input class="Form-input Form-offset full" name="first_name" placeholder="John" ng-model="editUser.first_name" required autofocus />
+            <span class="Form-charm"></span>
+        </div>
 
-    <div class="Form-field">
-        <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
-        <input class="Form-input Form-offset full" name="last_name" placeholder="Appleseed" ng-model="last_name" />
-    </div>
+        <div class="Form-field" mb-form-field="last_name">
+            <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
+            <input class="Form-input Form-offset full" name="last_name" placeholder="Doe" ng-model="editUser.last_name" required />
+            <span class="Form-charm"></span>
+        </div>
 
-    <div class="Form-field">
-        <mb-form-label display-name="Email address" field-name="email"></mb-form-label>
-        <input class="Form-input Form-offset full" ng-model="c.accountSettingsUser.email" type="email" name="email" placeholder="youlooknicetoday@meail.com" required>
-    </div>
+        <div class="Form-field" mb-form-field="email">
+            <mb-form-label display-name="Email" field-name="email"></mb-form-label>
+            <input class="Form-input Form-offset full" name="email" placeholder="johndoe@mycompany.com" ng-model="editUser.email" required />
+            <span class="Form-charm"></span>
+        </div>
 
-    <div class="Form-offset pt2 pb4">
-        <button type="submit" class="Button block md-inline-block Button--primary" ng-disabled="!form.$dirty || form.$invalid">Save</button>
-    </div>
-
-</form>
+        <div class="Form-actions">
+            <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(editUser)" ng-disabled="!form.$valid">
+                Save
+            </button>
+            <mb-form-message></mb-form-message>
+        </div>
+    </form>
+</div>
