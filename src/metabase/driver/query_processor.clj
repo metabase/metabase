@@ -322,18 +322,25 @@
                                      (filter #(= (:special_type %) :fk))
                                      (map :id)
                                      (filter identity))
-        ;; Fetch maps of the info we need for :extra_info if there are any FK Fields
+        ;; Look up the Foreign keys info if applicable.
+        ;; Build a map of FK Field IDs -> Destination Field IDs
         field-id->dest-field-id (when (seq fk-field-ids)
                                   (sel :many :field->field [ForeignKey :origin_id :destination_id], :origin_id [in fk-field-ids]))
-        dest-field-id->table-id (when (seq fk-field-ids)
-                                  (sel :many :id->field [Field :table_id], :id [in (vals field-id->dest-field-id)]))]
-    ;; Add :extra_info to every Field. Empty if it's not an FK, otherwise add a map with target Table ID
-    (for [{:keys [special_type], :as field} fields]
-      (cond-> field
-        (:id field) (assoc :extra_info (if-not (= special_type :fk) {}
-                                               {:target_table_id (->> (:id field)
-                                                                      field-id->dest-field-id
-                                                                      dest-field-id->table-id)}))))))
+
+        ;; Build a map of Destination Field IDs -> Destination Fields
+        dest-field-id->field    (when (seq fk-field-ids)
+                                  (sel :many :id->fields [Field :id :name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+
+    ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
+    (for [{field-id :id, :as field} fields]
+      (let [dest-field (when (seq fk-field-ids)
+                         (some->> field-id
+                                  field-id->dest-field-id
+                                  dest-field-id->field))]
+        (assoc field
+               :target     dest-field
+               :extra_info (if-not dest-field {}
+                                   {:target_table_id (:table_id dest-field)}))))))
 
 (defn- get-cols-info
   "Get column info for the `:cols` part of the QP results."
