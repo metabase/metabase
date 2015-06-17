@@ -44,8 +44,8 @@
 
 .Button--primary {
   color: #fff;
-  background: #4A90E2;
-  border: 1px solid #3282DF;
+  background: var(--primary-button-bg-color);
+  border: 1px solid var(--primary-button-border-color);
 }
 
 .Button--primary:hover {
