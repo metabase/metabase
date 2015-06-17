@@ -3,8 +3,8 @@
   --default-button-border-color: #b9b9b9;
   --default-button-background-color: #fff;
 
-  --primary-button-border-color: #4A90E2;
-  --primary-button-bg-color: #4A90E2;
+  --primary-button-border-color: #509EE3;
+  --primary-button-bg-color: #509EE3;
   --selected-button-bg-color: #F4F6F8;
 
   --danger-button-bg-color: #EF8C8C;
@@ -15,7 +15,7 @@
   display: inline-block;
   box-sizing: border-box;
   text-decoration: none;
-  padding: 1rem 2rem;
+  padding: 0.5rem 0.75rem;
   background: #FBFCFD;
   border: 1px solid #ddd;
   color: #444;
@@ -26,9 +26,15 @@
   border-radius: var(--default-button-border-radius);
 }
 
-@media screen and (--breakpoint-min-md) {
+@media screen and (--breakpoint-min-lg) {
     .Button {
-        padding: 1em;
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Button {
+        padding: 1rem 1.5rem;
     }
 }
 

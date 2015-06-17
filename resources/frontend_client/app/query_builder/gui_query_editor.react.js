@@ -30,7 +30,7 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            querySectionClasses: 'Query-section flex align-center'
+            querySectionClasses: 'Query-section mb1 md-mb2 flex align-center'
         };
     },
 
@@ -251,6 +251,14 @@ export default React.createClass({
         this.setQuery(query, true);
     },
 
+    renderAddIcon: function () {
+        return (
+            <span className="mr1">
+                <Icon name="add" width="12px" height="12px" />
+            </span>
+        )
+    },
+
     getFilters: function() {
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
@@ -441,7 +449,7 @@ export default React.createClass({
     renderDbSelector: function() {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
-                <div className={this.props.querySectionClasses}>
+                <div className={this.props.querySectionClasses + ' mt1 lg-mt2'}>
                     <span className="Query-label">Data source:</span>
                     <DatabaseSelector
                         databases={this.props.databases}
@@ -489,7 +497,7 @@ export default React.createClass({
                 this.state.options &&
                 this.state.options.fields.length > 0) {
             return (
-                <a className="ml2" onClick={this.addFilter}>
+                <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
                     <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
                     Filter {(this.state.options) ? this.state.options.name : ""}
                 </a>
@@ -543,12 +551,18 @@ export default React.createClass({
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
                 addBreakoutButton = (
-                    <a className="QuerySection-addTrigger" onClick={this.addDimension}>Add a grouping</a>
+                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addDimension}>
+                        {this.renderAddIcon()}
+                        Add a grouping
+                    </a>
                 );
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
                 addBreakoutButton = (
-                    <a className="ml2" onClick={this.addDimension}>Add another grouping</a>
+                    <a className="QueryOption p1 lg-p2 ml1 lg-ml2" onClick={this.addDimension}>
+                        {this.renderAddIcon()}
+                        Add another grouping
+                    </a>
                 );
             }
 
@@ -605,7 +619,10 @@ export default React.createClass({
             var addFilterButton;
             if (this.canAddFilter(queryFilters)) {
                 addFilterButton = (
-                    <a onClick={this.addFilter}>Add another filter</a>
+                    <a className="QueryOption p1 lg-p2" onClick={this.addFilter}>
+                        {this.renderAddIcon()}
+                        Add another filter
+                    </a>
                 );
             }
 
@@ -613,12 +630,8 @@ export default React.createClass({
                 <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
-                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
                         {filterList}
-                        </ReactCSSTransitionGroup>
-                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                            {addFilterButton}
-                        </ReactCSSTransitionGroup>
+                        {addFilterButton}
                     </div>
                 </div>
             );
@@ -641,8 +654,11 @@ export default React.createClass({
                 );
             } else {
                 limitSection = (
-                    <div className="flex align-center">
-                        <a onClick={this.addLimit}>Add row limit</a>
+                    <div className="QueryOption p1 lg-p2 flex align-center">
+                        <a onClick={this.addLimit}>
+                            {this.renderAddIcon()}
+                            Add row limit
+                        </a>
                     </div>
                 );
             }
@@ -669,8 +685,11 @@ export default React.createClass({
             var sortSection;
             if (sortList.length === 0) {
                 sortSection = (
-                    <div className="flex align-center">
-                        <a onClick={this.addSort}>Add sort</a>
+                    <div className="QueryOption p1 lg-p2 flex align-center">
+                        <a onClick={this.addSort}>
+                            {this.renderAddIcon()}
+                            Add sort
+                        </a>
                     </div>
                 );
             } else {
@@ -683,7 +702,7 @@ export default React.createClass({
 
                 sortSection = (
                     <div className="flex align-center">
-                        <span className="mx2">sorted by</span>
+                        <span className="m2">sorted by</span>
                         {sortList}
                         {addSortButton}
                     </div>
@@ -694,13 +713,8 @@ export default React.createClass({
                 <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Limit and sort:</span>
                     <div className="Query-filters">
-                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
-                            {limitSection}
-                        </ReactCSSTransitionGroup>
-
-                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                            {sortSection}
-                        </ReactCSSTransitionGroup>
+                        {limitSection}
+                        {sortSection}
                     </div>
                 </div>
             );
@@ -708,7 +722,8 @@ export default React.createClass({
         } else if (this.canAddLimitAndSort()) {
             return (
                 <div className={this.props.querySectionClasses}>
-                    <a className="QuerySection-addTrigger my2" onClick={this.addLimit}>
+                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addLimit}>
+                        {this.renderAddIcon()}
                         Set row limits and sorting
                     </a>
                 </div>
@@ -728,18 +743,18 @@ export default React.createClass({
     toggleIcon: function () {
         if(this.props.isExpanded) {
             return (
-                <Icon name='expand' width="16px" height="16px" />
+                <Icon name='chevronup' width="16px" height="16px" />
             );
         } else {
             return (
-                <Icon name='expand' width="16px" height="16px" />
+                <Icon name='chevrondown' width="16px" height="16px" />
             );
         }
     },
 
     openStatus: function() {
         return (
-            <a href="#" className="QueryToggle flex align-center" onClick={this.toggleOpen}>
+            <a href="#" className="QueryToggle absolute px2 py1     no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
                 {this.toggleIcon()}
                 {this.toggleText()}
             </a>
@@ -754,7 +769,6 @@ export default React.createClass({
         });
         return (
             <div className={guiBuilderClasses}>
-                {this.openStatus()}
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderDbSelector()}
                 </ReactCSSTransitionGroup>
@@ -785,6 +799,9 @@ export default React.createClass({
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
+                </div>
+                <div className="flex absolute bottom left right layout-centered">
+                    {this.openStatus()}
                 </div>
             </div>
         );

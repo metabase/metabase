@@ -334,11 +334,12 @@ export default React.createClass({
             'Visualization': true,
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning,
+            'wrapper': true,
             'full': true,
             'flex': true,
             'flex-full': true,
             'QueryBuilder-section': true,
-            'pt2': true
+            'pt2 lg-pt4': true
         });
 
         return (
@@ -348,11 +349,11 @@ export default React.createClass({
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
-                <div className="VisualizationSettings QueryBuilder-section clearfix">
-                    <div className="float-right">
+                <div className="VisualizationSettings wrapper flex">
+                    {this.renderVizControls()}
+                    <div className="flex-align-right">
                         {tableFootnote}
                     </div>
-                    {this.renderVizControls()}
                 </div>
             </div>
         );

@@ -212,38 +212,37 @@ export default React.createClass({
         }
 
 
-        var cardCreator = (this.props.card.creator) ? this.props.card.creator.common_name : "me";
+
+        var attribution;
+
+        if(this.props.card.creator) {
+            attribution = (
+                <div className="Entity-attribution">
+                    Asked by {this.props.card.creator.common_name}
+                </div>
+            )
+        }
 
         return (
-            <div className="QueryHeader QueryBuilder-section wrapper flex align-center">
+            <div className="border-bottom py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
                 <div className="Entity">
                     <div className="flex align-center">
                         <h1 className="Entity-title">{title}</h1>
                         {this.permissions()}
                         {editButton}
                     </div>
-                    <div className="Entity-attribution">
-                        Asked by {cardCreator}
-                    </div>
+                    {attribution}
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {saveButton}
-                    </ReactCSSTransitionGroup>
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {downloadButton}
-                    </ReactCSSTransitionGroup>
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {cardFavorite}
-                    </ReactCSSTransitionGroup>
+                    {downloadButton}
+                    {cardFavorite}
                     <AddToDashboard
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
                     />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-querybutton">
-                        {queryModeToggle}
-                    </ReactCSSTransitionGroup>
+                    {saveButton}
+                    {queryModeToggle}
                 </div>
             </div>
         );
