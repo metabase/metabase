@@ -73,7 +73,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 
             refreshSiteSettings: function() {
 
-                var settingsRefresh = Settings.list(function(result) {
+                var settingsRefresh = Session.properties(function(result) {
 
                     var settings = _.indexBy(result, 'key');
 
@@ -782,23 +782,18 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
         delete: {
             method: 'DELETE'
         },
+        properties: {
+            url: '/api/session/properties',
+            method: 'GET',
+            isArray: true
+        },
         forgot_password: {
             url: '/api/session/forgot_password',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         },
         reset_password: {
             url: '/api/session/reset_password',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         }
     });
 }]);
@@ -854,7 +849,7 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
         list: {
             url: '/api/setting',
             method: 'GET',
-            isArray: true
+            isArray: true,
         },
 
         // POST endpoint handles create + update in this case

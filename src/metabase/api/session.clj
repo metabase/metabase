@@ -1,14 +1,15 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes POST DELETE]]
+            [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as korma]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password]]
-                             [session :refer [Session]])
+                             [session :refer [Session]]
+                             [setting :as setting])
             [metabase.util.password :as pass]))
 
 
@@ -70,5 +71,12 @@
       (symbol "token") "Reset token has expired")
     (set-user-password (:id user) password)
     {:success true}))
+
+
+(defendpoint GET "/properties"
+  "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
+  []
+  (filter #(= (:key %) :site-name) (setting/all-with-descriptions)))
+
 
 (define-routes)
