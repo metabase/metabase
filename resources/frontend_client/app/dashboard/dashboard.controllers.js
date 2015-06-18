@@ -7,13 +7,27 @@ var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard', function($scope, $location, Dashboard) {
     $scope.dashboards = [];
 
-    Dashboard.list({
-        'filterMode': 'all'
-    }, function (dashes) {
-        $scope.dashboards = dashes;
-    }, function (error) {
-        console.log('error getting dahsboards list', error);
+    var refreshListing = function() {
+        Dashboard.list({
+            'filterMode': 'all'
+        }, function (dashes) {
+            $scope.dashboards = dashes;
+        }, function (error) {
+            console.log('error getting dahsboards list', error);
+        });
+    };
+
+    $scope.$on("dashboard:create", function(event, dashboardId) {
+        refreshListing();
     });
+
+    $scope.$on("dashboard:delete", function(event, dashboardId) {
+        refreshListing();
+    });
+
+    // always initialize with a fresh listing
+    refreshListing();
+
 }]);
 
 DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {

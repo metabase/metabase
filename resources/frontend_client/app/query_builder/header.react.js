@@ -240,6 +240,7 @@ export default React.createClass({
                     <AddToDashboard
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                     />
                     {saveButton}
                     {queryModeToggle}

@@ -67,8 +67,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$scope', '$routeParams', '$location', '$q', '$window', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($scope, $routeParams, $location, $q, $window, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$routeParams', '$location', '$q', '$window', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($rootScope, $scope, $routeParams, $location, $q, $window, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
 
         // =====  Controller local objects
 
@@ -108,12 +108,16 @@ CardControllers.controller('CardDetail', [
             },
             cardJson = JSON.stringify(card);
 
+
         // =====  REACT component models
 
         var headerModel = {
             card: null,
             cardApi: Card,
             dashboardApi: Dashboard,
+            broadcastEventFn: function(eventName, value) {
+                $rootScope.$broadcast(eventName, value);
+            },
             notifyCardChangedFn: function(modifiedCard) {
                 // these are the only things we let the header change
                 card.name = modifiedCard.name;
