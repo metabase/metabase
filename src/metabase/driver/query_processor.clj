@@ -7,10 +7,7 @@
             [medley.core :as m]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-<<<<<<< HEAD
             [metabase.driver.query-processor.expand :as expand]
-=======
->>>>>>> master
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
