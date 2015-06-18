@@ -48,7 +48,7 @@
                                                (with-out-str (clojure.pprint/pprint generated-query))
                                                "*****************************************************************\n")))
                    (->> (eval generated-query)
-                        (annotate-results (:query query)))))
+                        (annotate-results query))))
       :native (->> (eval-raw-command (:query (:native query)))
                    annotate-native-results))))
 
