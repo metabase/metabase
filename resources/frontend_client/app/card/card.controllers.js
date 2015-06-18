@@ -624,10 +624,11 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        // when the window is resized we need to re-render, mainly so that our visualization pane updates
-        angular.element($window).bind('resize', function() {
+        // When the window is resized we need to re-render, mainly so that our visualization pane updates
+        // Debounce the function to improve resizing performance.
+        angular.element($window).bind('resize', _.debounce(function() {
             renderAll();
-        });
+        }, 400));
 
         $scope.$on('$locationChangeStart', function (event) {
             // only ask for a confirmation on unsaved changes if the question is
