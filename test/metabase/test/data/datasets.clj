@@ -5,10 +5,14 @@
             [colorize.core :as color]
             [environ.core :refer [env]]
             [expectations :refer :all]
+            [metabase.db :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data]
-            [metabase.test.data :as generic-sql-data]
-            (metabase.test.data [h2 :as h2]
-                                [mongo :as mongo])))
+            (metabase.models [field :refer [Field]]
+                             [table :refer [Table]])
+            (metabase.test.data [data :as data]
+                                [h2 :as h2]
+                                [mongo :as mongo])
+            [metabase.util :as u]))
 
 ;; # IDataset
 
@@ -70,37 +74,61 @@
 
 ;; ## Generic SQL (H2)
 
-(deftype GenericSqlDriverData []
+;; TODO - Mongo implementation (etc.) might find these useful
+(def ^:private memoized-table-name->id
+  (memoize
+   (fn [db-id table-name]
+     (sel :one :id Table :name (s/upper-case (name table-name)), :db_id db-id))))
+
+(def ^:private memoized-field-name->id
+  (memoize
+   (fn [db-id table-name field-name]
+     (sel :one :id Field :name (s/upper-case (name field-name)), :table_id (memoized-table-name->id db-id table-name)))))
+
+(def ^:private generic-sql-db
+  (delay ))
+
+(deftype GenericSqlDriverData [dbpromise]
   IDataset
-  (load-data! [_]
-    @generic-sql-data/test-db
-    (assert (integer? @generic-sql-data/db-id)))
   (dataset-loader [_]
     (h2/dataset-loader))
+
+  (load-data! [this]
+    (when-not (realized? dbpromise)
+      (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
+    @dbpromise)
+
   (db [this]
-    @generic-sql-data/test-db)
-  (table-name->table [_ table-name]
-    (generic-sql-data/table-name->table table-name))
-  (table-name->id [_ table-name]
-    (generic-sql-data/table->id table-name))
-  (field-name->id [_ table-name field-name]
-    (generic-sql-data/field->id table-name field-name))
+    (load-data! this))
+
+  (table-name->id [this table-name]
+    (memoized-table-name->id (:id (db this)) table-name))
+
+  (table-name->table [this table-name]
+    (sel :one Table :id (table-name->id this table-name)))
+
+  (field-name->id [this table-name field-name]
+    (memoized-field-name->id (:id (db this)) table-name field-name))
+
   (fks-supported? [_]
     true)
+
   (format-name [_ table-or-field-name]
     (clojure.string/upper-case table-or-field-name))
+
   (id-field-type [_]
     :BigIntegerField)
+
   (timestamp-field-type [_]
     :DateTimeField))
 
 
 ;; # Concrete Instances
 
-(def ^:const dataset-name->dataset
+(def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
   {:mongo       (MongoDriverData.)
-   :generic-sql (GenericSqlDriverData.)})
+   :generic-sql (GenericSqlDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
@@ -123,14 +151,14 @@
   []
   (when-let [env-drivers (some-> (env :mb-test-datasets)
                                  s/lower-case)]
-    (->> (s/split env-drivers #",")
-         (map keyword)
-         ;; Double check that the specified datasets are all valid
-         (map (fn [dataset-name]
-                (assert (contains? all-valid-dataset-names dataset-name)
-                        (format "Invalid dataset specified in MB_TEST_DATASETS: %s" (name dataset-name)))
-                dataset-name))
-         set)))
+    (some->> (s/split env-drivers #",")
+             (map keyword)
+             ;; Double check that the specified datasets are all valid
+             (map (fn [dataset-name]
+                    (assert (contains? all-valid-dataset-names dataset-name)
+                            (format "Invalid dataset specified in MB_TEST_DATASETS: %s" (name dataset-name)))
+                    dataset-name))
+             set)))
 
 (def test-dataset-names
   "Delay that returns set of names of drivers we should run tests against.
@@ -144,8 +172,9 @@
 ;; # Helper Macros
 
 (def ^:dynamic *dataset*
-  "The dataset we're currently testing against, bound by `with-dataset`."
-  nil)
+  "The dataset we're currently testing against, bound by `with-dataset`.
+   Defaults to `:generic-sql`."
+  (dataset-name->dataset :generic-sql))
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."

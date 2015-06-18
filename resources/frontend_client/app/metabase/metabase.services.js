@@ -1,7 +1,11 @@
 'use strict';
 
 // Metabase Services
-var MetabaseServices = angular.module('corvus.metabase.services', ['ngResource', 'ngCookies']);
+var MetabaseServices = angular.module('corvus.metabase.services', [
+    'ngResource',
+    'ngCookies',
+    'corvus.services'
+]);
 
 MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'CorvusCore', function($resource, $cookies, CorvusCore) {
     return $resource('/api/meta', {}, {

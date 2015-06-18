@@ -26,13 +26,9 @@
     (do (set-settings nil "FANCY")
         (fetch-all-settings)))
 
-;; Check that a non-superuser can't read settings
-(expect
-  [{:value nil
-    :key "site-name"
-    :description "The name used for this instance of Metabase."
-    :default "Metabase"}]
-  ((user->client :rasta) :get 200 "setting"))
+;; Check that non-superusers are denied access
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 "setting"))
 
 
 ;; ## GET /api/setting/:key
