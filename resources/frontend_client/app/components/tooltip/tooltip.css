@@ -1,6 +1,7 @@
 /* based on https://rawgit.com/Caged/d3-tip/master/examples/example-styles.css */
 
 .Tooltip {
+  width: 200px;
   line-height: 1;
   padding: 12px;
   background: rgba(0, 0, 0, 0.8);
