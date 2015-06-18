@@ -9,9 +9,9 @@ Home.config(['$routeProvider', '$locationProvider', function($routeProvider, $lo
         templateUrl: '/app/home/home.html',
         controller: 'Home',
         resolve: {
-            appState: function(AppState) {
+            appState: ["AppState", function(AppState) {
                 return AppState.init();
-            }
+            }]
         }
     });
 }]);
