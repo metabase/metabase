@@ -9,8 +9,8 @@ module.exports = function(config) {
     config.set({
         basePath: '../',
         files: [
-            'app/dist/vendor.js',
-            'app/dist/app.js',
+            'app/dist/vendor.bundle.js',
+            'app/dist/app.bundle.js',
             '../../node_modules/angular-mocks/angular-mocks.js',
             'test/unit/**/*.spec.js'
         ],
