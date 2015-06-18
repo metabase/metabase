@@ -51,7 +51,7 @@
 }
 
 /* form-input font sizes */
-.Form-input { font-size: var(--form-input-size-small); }
+.Form-input { font-size: var(--form-input-size); }
 
 @media screen and (--breakpoint-min-md) {
     .Form-input { font-size: var(--form-input-size-medium); }
