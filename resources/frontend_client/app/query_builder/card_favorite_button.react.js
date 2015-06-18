@@ -77,7 +77,9 @@ export default React.createClass({
         var fillColor = (this.state.favorite) ? 'text-gold' : 'text-grey-1';
 
         return (
-            <Icon name="star" width="18px" height="18px" onClick={this.toggleFavorite}></Icon>
+            <a className="mx1 text-grey-4 text-gold-hover transition-color" href="#" onClick={this.toggleFavorite}>
+                <Icon name="star" width="18px" height="18px"></Icon>
+            </a>
         );
     }
 });
