@@ -301,12 +301,9 @@
     (memoize
      (fn [field-id]
        (let [{base-type :base_type, field-name :name, special-type :special_type} (sel :one [Field :base_type :name :special_type] :id field-id)]
-         (cond
-           (contains? #{:DateField :DateTimeField} base-type) u/parse-date-yyyy-mm-dd
-           (= special-type :timestamp_seconds)                u/date-yyyy-mm-dd->unix-timestamp
-           (and (= field-name "_id")
-                (= base-type  :UnknownField))                 ->ObjectId
-           :else                                              identity))))))
+         (if (and (= field-name "_id")
+                  (= base-type  :UnknownField)) ->ObjectId
+             identity))))))
 
 (defn- cast-value-if-needed
   "*  Convert dates (which come back as `YYYY-MM-DD` strings) to `java.sql.Date`

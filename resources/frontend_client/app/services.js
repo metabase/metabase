@@ -330,6 +330,12 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
         'id': 'state',
         'name': 'State'
     }, {
+        id: 'timestamp_seconds',
+        name: 'UNIX Timestamp (Seconds)'
+    }, {
+        id: 'timestamp_milliseconds',
+        name: 'UNIX Timestamp (Milliseconds)'
+    }, {
         'id': 'url',
         'name': 'URL'
     }, {

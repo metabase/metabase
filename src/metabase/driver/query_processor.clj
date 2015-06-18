@@ -1,11 +1,13 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [medley.core :as m]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
+            [metabase.driver.query-processor.expand :as expand]
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -14,6 +16,7 @@
          add-implicit-limit
          add-implicit-fields
          get-special-column-info
+         preprocess-rewrite-timestamp-equals-filter
          preprocess-cumulative-sum
          preprocess-structured
          remove-empty-clauses)
@@ -65,6 +68,7 @@
                                                            add-implicit-breakout-order-by
                                                            add-implicit-limit
                                                            add-implicit-fields
+                                                           preprocess-rewrite-timestamp-equals-filter
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -137,6 +141,40 @@
     (do (swap! *internal-context* assoc :fields-is-implicit true)
         (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
                                   :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
+
+(def ^:private ^:const seconds-per-day      (* 24 60 60))
+(def ^:private ^:const milliseconds-per-day (* seconds-per-day 1000))
+
+(defn- rewrite-timestamp-filter=
+  "Rewrite an `=` filter clause for a timestamp `Field`. "
+  [{:keys [field], {timestamp :value, special-type :special-type, :as value} :value}]
+  ;; The timestamps we create 00:00 on the day in question, re-write the filter as a ["BETWEEN" field timestamp (+ timestamp 1-day)]
+  (expand/map->Filter:Between {:type :between
+                              :field field
+                              :min   value
+                              :max   (expand/map->Value (assoc value
+                                                               :value (+ timestamp (case special-type
+                                                                                     :timestamp_seconds      seconds-per-day
+                                                                                     :timestamp_milliseconds milliseconds-per-day))))}))
+
+(defn preprocess-rewrite-timestamp-equals-filter
+  "In order for `=` filter clauses to work with timestamps (allowing the user to match a given day) we need to rewrite them as
+   `BETWEEN` clauses. Check and see if the `filter` clause contains any subclauses that fit the bill and rewrite them accordingly."
+  [query]
+  (if-not (:filter query)
+    ;; If there's no filter clause there's nothing to do
+    query
+    ;; Otherwise rewrite as needed
+    (update-in query [:filter] (fn [filter-clause]
+                                 (-> filter-clause
+                                     expand/expand-filter
+                                     (update-in [:subclauses] #(for [{:keys [filter-type], {:keys [special-type]} :field, :as subclause} %]
+                                                                 (if (and (= filter-type :=)
+                                                                          (contains? #{:timestamp_seconds
+                                                                                       :timestamp_milliseconds} special-type))
+                                                                   (rewrite-timestamp-filter= subclause)
+                                                                   subclause)))
+                                     expand/collapse)))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -213,6 +251,26 @@
   (update-in results [:rows] (partial take max-result-rows)))
 
 
+;;; ### CONVERT-TIMESTAMPS-TO-DATES
+
+(defn convert-unix-timestamps-to-dates
+  "Convert the values of Unix timestamps (for `Fields` whose `:special_type` is `:timestamp_seconds` or `:timestamp_milliseconds`) to dates."
+  [{:keys [cols rows], :as results}]
+  (let [timestamp-seconds-col-indecies (u/indecies-satisfying #(= (:special_type %) :timestamp_seconds)      cols)
+        timestamp-millis-col-indecies  (u/indecies-satisfying #(= (:special_type %) :timestamp_milliseconds) cols)]
+    (if-not (or (seq timestamp-seconds-col-indecies)
+                (seq timestamp-millis-col-indecies))
+      ;; If we don't have any columns whose special type is a seconds or milliseconds timestamp return results as-is
+      results
+      ;; Otherwise go modify the results of each row
+      (update-in results [:rows] #(for [row %]
+                                    (for [[i val] (m/indexed row)]
+                                      (cond
+                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000))
+                                        (contains? timestamp-millis-col-indecies i)  (java.sql.Date. val)
+                                        :else                                        val)))))))
+
+
 ;; ### ADD-ROW-COUNT-AND-STATUS
 
 (defn add-row-count-and-status
@@ -247,6 +305,7 @@
        (#(case (keyword (:type query))
            :native %
            :query  (post-process-cumulative-sum (:query query) %)))
+       convert-unix-timestamps-to-dates
        add-row-count-and-status))
 
 
