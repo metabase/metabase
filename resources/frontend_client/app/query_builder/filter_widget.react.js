@@ -169,6 +169,10 @@ export default React.createClass({
         this.setValue(value, index, this.props.index);
     },
 
+    removeFilterFn: function() {
+        this.props.removeFilter(this.props.index);
+    },
+
     renderFieldList: function() {
         return (
             <div className={this.props.sectionClassName}>
@@ -282,7 +286,7 @@ export default React.createClass({
                 {this.renderFieldList()}
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
-                <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
+                <a onClick={this.removeFilterFn}>
                     <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>
