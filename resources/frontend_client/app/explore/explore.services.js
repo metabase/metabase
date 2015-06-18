@@ -6,6 +6,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     // Valid Operators per field
 
     var DateBaseTypes = ['DateTimeField', 'DateField'];
+    var DateSpecialTypes = ['timestamp_milliseconds', 'timestamp_seconds'];
     var NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
     var SummableBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
     var CategoryBaseTypes = ["BooleanField"];
@@ -20,7 +21,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     function isDate(field) {
-        return isInTypes(field.base_type, DateBaseTypes);
+        return isInTypes(field.base_type, DateBaseTypes) || isInTypes(field.special_type, DateSpecialTypes);
     }
 
     function isNumber(field) {

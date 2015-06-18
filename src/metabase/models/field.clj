@@ -24,6 +24,7 @@
     :name
     :number
     :state
+    :timestamp_milliseconds
     :timestamp_seconds
     :url
     :zip_code})
