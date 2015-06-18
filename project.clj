@@ -87,4 +87,4 @@
                                        "-Dmb.jetty.port=3001"
                                        "-Dmb.api.key=test-api-key"]}
              :uberjar {:aot :all
-                       :prep-tasks ["npm" "webpack" "javac" "compile"]}})
+                       :prep-tasks ^:replace ["npm" "webpack" "javac" "compile"]}})
