@@ -9,11 +9,11 @@
 
 ;; Check that we can connect to the Test DB
 (expect true
-  (driver/can-connect? @test-db))
+  (driver/can-connect? (db)))
 
 ;; Lie and say Test DB is Postgres. CAN-CONNECT? should fail
 (expect false
-  (driver/can-connect? (assoc @test-db :engine :postgres)))
+  (driver/can-connect? (assoc (db) :engine :postgres)))
 
 ;; Random made-up DBs should fail
 (expect false

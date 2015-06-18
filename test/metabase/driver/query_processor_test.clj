@@ -6,45 +6,11 @@
             [metabase.driver.query-processor :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data :refer [with-temp-db]]
+            [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :refer [us-history-1607-to-1774]]
                                 [datasets :as datasets :refer [*dataset*]])))
 
-;; ##  Dataset-Independent Data Fns
 
-(defn id
-  "Return the ID of a `Table` or `Field` for the current driver data set."
-  ([table-name]
-   {:pre [*dataset*
-          (keyword? table-name)]
-    :post [(integer? %)]}
-   (datasets/table-name->id *dataset* table-name))
-  ([table-name field-name]
-   {:pre [*dataset*
-          (keyword? table-name)
-          (keyword? field-name)]
-    :post [(integer? %)]}
-   (datasets/field-name->id *dataset* table-name field-name)))
-
-(defn db-id []
-  {:pre  [*dataset*]
-   :post [(integer? %)]}
-  (:id (datasets/db *dataset*)))
-
-(defn fks-supported? []
-  (datasets/fks-supported? *dataset*))
-
-(defn format-name [name]
-  (datasets/format-name *dataset* name))
-
-(defn id-field-type []
-  (datasets/id-field-type *dataset*))
-
-(defn timestamp-field-type []
-  (datasets/timestamp-field-type *dataset*))
-
-(defn dataset-loader []
-  (datasets/dataset-loader *dataset*))
 
 
 ;; ## Dataset-Independent QP Tests

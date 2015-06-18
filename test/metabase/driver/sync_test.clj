@@ -23,7 +23,7 @@
   (delay (korma-entity @users-table)))
 
 (def users-name-field
-  (delay (sel :one Field :id (field->id :users :name))))
+  (delay (sel :one Field :id (id :users :name))))
 
 
 ;; ## TEST PK SYNCING
@@ -32,20 +32,20 @@
          :id
          :latitude
          :id]
-  (let [get-special-type (fn [] (sel :one :field [Field :special_type] :id (field->id :venues :id)))]
+  (let [get-special-type (fn [] (sel :one :field [Field :special_type] :id (id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
      ;; Clear out the special type
-     (do (upd Field (field->id :venues :id) :special_type nil)
+     (do (upd Field (id :venues :id) :special_type nil)
          (get-special-type))
      ;; Calling sync-table! should set the special type again
      (do (driver/sync-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (upd Field (field->id :venues :id) :special_type :latitude)
+     (do (upd Field (id :venues :id) :special_type :latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
-     (do (upd Field (field->id :venues :id) :special_type nil)
+     (do (upd Field (id :venues :id) :special_type nil)
          (driver/sync-table! @venues-table)
          (get-special-type))]))
 
@@ -53,20 +53,20 @@
 
 ;; Check that Foreign Key relationships were created on sync as we expect
 
-(expect (field->id :venues :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (field->id :checkins :venue_id)))
+(expect (id :venues :id)
+  (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :venue_id)))
 
-(expect (field->id :users :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (field->id :checkins :user_id)))
+(expect (id :users :id)
+  (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :user_id)))
 
-(expect (field->id :categories :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (field->id :venues :category_id)))
+(expect (id :categories :id)
+  (sel :one :field [ForeignKey :destination_id] :origin_id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
 (expect [[:fk true]
          [nil false]
          [:fk true]]
-  (let [field-id (field->id :checkins :user_id)
+  (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           [(sel :one :field [Field :special_type] :id field-id)
                                            (exists? ForeignKey :origin_id field-id)])]
@@ -77,16 +77,16 @@
          (upd Field field-id :special_type nil)
          (get-special-type-and-fk-exists?))
      ;; Run sync-table and they should be set again
-     (let [table (sel :one Table :id (table->id :checkins))]
+     (let [table (sel :one Table :id (id :checkins))]
        (driver/sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
 (expect :Mt1
-  (sync/determine-fk-type (sel :one Field :id (field->id :venues :category_id))))
+  (sync/determine-fk-type (sel :one Field :id (id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (sel :one Field :id (field->id :venues :id))))
+  (sync/determine-fk-type (sel :one Field :id (id :venues :id))))

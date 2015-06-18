@@ -10,15 +10,15 @@
     [nil
      75
      :done]
-  (let [orig-special-type      (sel :one :field [Field :special_type] :id (field->id :categories :name))
+  (let [orig-special-type      (sel :one :field [Field :special_type] :id (id :categories :name))
         set-field-special-type (fn [special-type]
-                                 (upd Field (field->id :categories :name) :special_type special-type))
+                                 (upd Field (id :categories :name) :special_type special-type))
         sel-field-values-count (fn []
-                                 (some-> (sel :one FieldValues :field_id (field->id :categories :name))
+                                 (some-> (sel :one FieldValues :field_id (id :categories :name))
                                          :values
                                          count))
         del-field-values       (fn []
-                                 (del FieldValues :field_id (field->id :categories :name)))]
+                                 (del FieldValues :field_id (id :categories :name)))]
     [(do (del-field-values)                 ; make sure there's nothing at first
          (set-field-special-type nil)
          (sel-field-values-count))

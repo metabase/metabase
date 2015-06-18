@@ -22,21 +22,21 @@
   (delay (korma-entity @users-table)))
 
 (def users-name-field
-  (delay (sel :one Field :id (field->id :users :name))))
+  (delay (sel :one Field :id (id :users :name))))
 
 ;; ACTIVE-TABLE-NAMES
 (expect
     #{"CATEGORIES" "VENUES" "CHECKINS" "USERS"}
-  (i/active-table-names h2/driver @test-db))
+  (i/active-table-names h2/driver (db)))
 
 ;; ACTIVE-COLUMN-NAMES->TYPE
 (expect
-    {"NAME" :TextField
-     "LATITUDE" :FloatField
-     "LONGITUDE" :FloatField
-     "PRICE" :IntegerField
+    {"NAME"        :TextField
+     "LATITUDE"    :FloatField
+     "LONGITUDE"   :FloatField
+     "PRICE"       :IntegerField
      "CATEGORY_ID" :IntegerField
-     "ID" :BigIntegerField}
+     "ID"          :BigIntegerField}
   (i/active-column-names->type h2/driver @venues-table))
 
 
