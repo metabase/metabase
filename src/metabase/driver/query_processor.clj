@@ -3,9 +3,11 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
+            [medley.core :as m]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.models.field :refer [Field field->fk-table field->fk-field]]
+            (metabase.models [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
 (declare add-implicit-breakout-order-by
@@ -232,7 +234,14 @@
   "Apply post-processing steps to the RESULTS of a QUERY, such as applying cumulative sum."
   [driver query results]
   {:pre [(map? query)
-         (map? results)]}
+         (map? results)
+         (sequential? (:columns results))
+         (sequential? (:cols results))
+         (sequential? (:rows results))]}
+  ;; Double-check that there are no duplicate columns in results
+  (assert (= (count (:columns results))
+             (count (set (:columns results))))
+          (format "Duplicate columns in results: %s" (vec (:columns results))))
   (->> results
        limit-max-result-rows
        (#(case (keyword (:type query))
@@ -241,113 +250,154 @@
        add-row-count-and-status))
 
 
-;; # COMMON ANNOTATION FNS
+;; # ANNOTATION 2.0
 
-(defn get-column-info
-  "Get extra information about result columns. This is done by looking up matching `Fields` for the `Table` in QUERY or looking up
-   information about special columns such as `count` via `get-special-column-info`."
-  [{{table-id :source_table} :query, :as query} column-names]
-  {:pre [(integer? table-id)
-         (every? string? column-names)]}
-  (let [columns (->> (sel :many [Field :id :table_id :name :description :base_type :special_type] ; lookup columns with matching names for this Table
-                          :table_id table-id :name [in (set column-names)])
-                     (map (fn [{:keys [name] :as column}]                                         ; build map of column-name -> column
-                            {name (-> (select-keys column [:id :table_id :name :description :base_type :special_type])
-                                      (assoc :target (if-let [fk-field (field->fk-field column)]
-                                                       (select-keys fk-field [:id :table_id :name :description :base_type :special_type])))
-                                      (assoc :extra_info (if-let [fk-table (field->fk-table column)]
-                                                           {:target_table_id (:id fk-table)}
-                                                           {})))}))
-                     (into {}))]
-    (->> column-names
-         (map (fn [column-name]
-                (try
-                  (or (columns column-name)                        ; try to get matching column from the map we build earlier
-                      (get-special-column-info query column-name)) ; if it's not there then it's a special column like `count`
-                  (catch Throwable _                               ; If for some reason column info lookup failed just return empty info map
-                    {:name         column-name                     ; TODO - should we log this ? It shouldn't be happening ideally
-                     :id           nil
-                     :table_id     nil
-                     :description  nil
-                     :base_type    :UnknownField
-                     :special_type nil})))))))
+;; ## Ordering
+;;
+;; Fields should be returned in the following order:
+;; 1.  Breakout Fields
+;;
+;; 2.  Aggregation Fields (e.g. sum, count)
+;;
+;; 3.  Fields clause Fields, if they were added explicitly
+;;
+;; 4.  All other Fields, sorted by:
+;;     A.  :position (ascending)
+;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return Fields in the specified
+;;         order; most of the time they'll have the default value of 0, in which case we'll compare...
+;;
+;;     B.  :special_type "group" -- :id Fields, then :name Fields, then everyting else
+;;         Attempt to put the most relevant Fields first. Order the Fields as follows:
+;;         1.  :id Fields
+;;         2.  :name Fields
+;;         3.  all other Fields
+;;
+;;     C.  Field Name
+;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
+;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
+(defn- order-cols
+  "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
+   FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
+  [{{breakout-ids :breakout, fields-ids :fields, order-by-clauses :order_by} :query} results fields]
+  {:post [(= (set %)
+             (set (keys (first results))))]}
+  (let [field-id->field (zipmap (map :id fields) fields)
 
+        ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table.
+        fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
+        all-field-ids    (->> fields                                              ; Sort the Fields.
+                              (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
+                                         [position                                ; [position special-type-group name]
+                                          (cond                                   ; and Clojure will take care of the rest.
+                                            (= special_type :id)   0
+                                            (= special_type :name) 1
+                                            :else                  2)
+                                          name]))
+                              (map :id))                                          ; Return the sorted IDs
 
-(defn get-special-column-info
-  "Get info like `:base_type` and `:special_type` for a special aggregation column like `count` or `sum`."
-  [query column-name]
-  {:pre [(:query query)]}
-  (merge {:name column-name
-          :id nil
-          :table_id nil
-          :description nil}
-         (let [aggregation-type   (keyword column-name)                              ; For aggregations of a specific Field (e.g. `sum`)
-               field-aggregation? (contains? #{:avg :stddev :sum} aggregation-type)] ; lookup the field we're aggregating and return its
-           (if field-aggregation? (sel :one :fields [Field :base_type :special_type] ; type info. (The type info of the aggregate result
-                                       :id (-> query :query :aggregation second))    ; will be the same.)
-               (case aggregation-type                                                ; Otherwise for general aggregations such as `count`
-                 :count {:base_type :IntegerField                                    ; just return hardcoded type info
-                         :special_type :number})))))
+        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
+        ;; Then filter out ones that appear in breakout clause and remove duplicates
+        ;; which effectively gives us parts #3 and #4 from above.
+        non-breakout-ids (->> (concat fields-ids all-field-ids)
+                              (filter (complement (partial contains? (set breakout-ids))))
+                              distinct)
 
-(def ^:dynamic *uncastify-fn*
-  "Function that should be called to transform a column name from the set of results to one that matches a `Field` in the DB.
-   The default implementation returns the column name as is; others, such as `generic-sql`, provide implementations that remove
-   remove casting statements and the like."
-  identity)
+        ;; Get all the column name keywords returned by the results
+        result-kws       (set (keys (first results)))
 
-;; TODO - since this was moved over from generic SQL some of its functionality should be reworked. And dox updated.
-;; (Since castification is basically SQL-specific it would make sense to handle castification / decastification separately)
-;; Fix this when I'm not burnt out on driver code
+        ;; Make a helper function that will take a sequence of Field IDs and convert them to corresponding column name keywords.
+        ;; Don't include names that aren't part of RESULT-KWS: we fetch *all* the Fields for a Table regardless of the Query, so
+        ;; there are likely some unused ones.
+        ids->kws         (fn [field-ids]
+                           (some->> (map field-id->field field-ids)
+                                    (map :name)
+                                    (map keyword)
+                                    (filter (partial contains? result-kws))))
 
-(defn -order-columns
-  "Don't use this directly; use `order-columns`.
+        ;; Use fn above to get the keyword column names of breakout clause fields [#1] + fields clause fields / other non-aggregation fields [#3 and #4]
+        breakout-kws     (ids->kws breakout-ids)
+        non-breakout-kws (ids->kws non-breakout-ids)
 
-   This broken out for testability -- it doesn't depend on data from the DB."
-  [fields breakout-field-ids field-field-ids castified-field-names]
-  ;; Basically we want to convert both BREAKOUT-FIELD-IDS and CASTIFIED-FIELD-NAMES to maps like:
-  ;;   {:name      "updated_at"
-  ;;    :id        224
-  ;;    :castified (keyword "CAST(updated_at AS DATE)")
-  ;;    :position  21}
-  ;; Then we can order things appropriately and return the castified names.
-  (let [uncastified->castified (zipmap (map #(*uncastify-fn* (name %)) castified-field-names) castified-field-names)
-        fields                 (map #(assoc % :castified (uncastified->castified (:name %)))
-                                    fields)
-        id->field              (zipmap (map :id fields) fields)
-        castified->field       (zipmap (map :castified fields) fields)
-        breakout-fields        (->> breakout-field-ids
-                                    (map id->field))
-        field-fields           (->> field-field-ids
-                                    (map id->field))
-        other-fields           (->> castified-field-names
-                                    (map (fn [castified-name]
-                                           (or (castified->field castified-name)
-                                               {:castified castified-name             ; for aggregate fields like 'count' create a fake map
-                                                :position 0})))                       ; with position 0 so it is returned ahead of the other fields
-                                    (filter #(not (or (contains? (set breakout-field-ids)
-                                                                 (:id %))
-                                                      (contains? (set field-field-ids)
-                                                                 (:id %)))))
-                                    (sort-by :position))]
-    (->> (concat breakout-fields field-fields other-fields)
-         (map :castified)
-         (filter identity))))
+        ;; Now get all the keyword column names specific to aggregation, such as :sum or :count [#2].
+        ;; Just get all the items in RESULT-KWS that *aren't* part of BREAKOUT-KWS or NON-BREAKOUT-KWS
+        ag-kws           (->> result-kws
+                              ;; TODO - Currently, this will never be more than a single Field, since we only
+                              ;; support a single aggregation clause at this point. When we add support for
+                              ;; multiple aggregation clauses, we'll need to add some logic to make sure they're
+                              ;; being ordered correctly, e.g. the first aggregate column before the second, etc.
+                              (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
 
-(defn order-columns
-  "Return CASTIFIED-FIELD-NAMES in the order we'd like to display them in the output.
-   They should be ordered as follows:
+    ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
+    (concat breakout-kws ag-kws non-breakout-kws)))
 
-   1.  All breakout fields, in the same order as BREAKOUT-FIELD-IDS
-   2.  Any aggregate fields like `count`
-   3.  Fields included in the `fields` clause
-   4.  All other columns in the same order as `Field.position`."
-  [{{source-table :source_table, breakout-field-ids :breakout, field-field-ids :fields} :query} castified-field-names]
-  {:post [(every? keyword? %)]}
-  (try
-    (-order-columns (sel :many :fields [Field :id :name :position] :table_id source-table)
-                    breakout-field-ids
-                    (when-not (:fields-is-implicit @*internal-context*) field-field-ids)
-                    castified-field-names)
-    (catch Exception e
-      (.printStackTrace e)
-      (log/error (.getMessage e)))))
+(defn- add-fields-extra-info
+  "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
+  [fields]
+  ;; Get a sequence of add Field IDs that have a :special_type of FK
+  (let [fk-field-ids            (->> fields
+                                     (filter #(= (:special_type %) :fk))
+                                     (map :id)
+                                     (filter identity))
+        ;; Look up the Foreign keys info if applicable.
+        ;; Build a map of FK Field IDs -> Destination Field IDs
+        field-id->dest-field-id (when (seq fk-field-ids)
+                                  (sel :many :field->field [ForeignKey :origin_id :destination_id], :origin_id [in fk-field-ids]))
+
+        ;; Build a map of Destination Field IDs -> Destination Fields
+        dest-field-id->field    (when (seq fk-field-ids)
+                                  (sel :many :id->fields [Field :id :name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+
+    ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
+    (for [{field-id :id, :as field} fields]
+      (let [dest-field (when (seq fk-field-ids)
+                         (some->> field-id
+                                  field-id->dest-field-id
+                                  dest-field-id->field))]
+        (assoc field
+               :target     dest-field
+               :extra_info (if-not dest-field {}
+                                   {:target_table_id (:table_id dest-field)}))))))
+
+(defn- get-cols-info
+  "Get column info for the `:cols` part of the QP results."
+  [{{[ag-type ag-field-id] :aggregation} :query} fields ordered-col-kws]
+  (let [field-kw->field (zipmap (map #(keyword (:name %)) fields)
+                                fields)
+        field-id->field (delay (zipmap (map :id fields) ; a delay since we probably won't need it
+                                       fields))]
+    (->> (for [col-kw ordered-col-kws]
+           (or
+            ;; If col-kw is a known Field return that
+            (field-kw->field col-kw)
+            ;; Otherwise it is an aggregation column like :sum, build a map of information to return
+            (merge (assert ag-type)
+                   {:name        (name col-kw)
+                    :id          nil
+                    :table_id    nil
+                    :description nil}
+                   (cond
+                     ;; avg, stddev, and sum should inherit the base_type and special_type from the Field they're aggregating
+                     (contains? #{:avg :stddev :sum} col-kw) (-> (@field-id->field ag-field-id)
+                                                                 (select-keys [:base_type :special_type]))
+                     ;; count should always be IntegerField/number
+                     (= col-kw :count)                       {:base_type    :IntegerField
+                                                              :special_type :number}
+                     ;; Otherwise something went wrong !
+                     :else                                   (throw (Exception. (format "Don't know what to do with Field '%s'." col-kw)))))))
+         ;; Add FK info the the resulting Fields
+         add-fields-extra-info)))
+
+(defn annotate
+  "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
+   RESULTS should be a sequence of *maps*, keyed by result column -> value."
+  [{{:keys [source_table]} :query, :as query}, results & [uncastify-fn]]
+  {:pre [(integer? source_table)]}
+  (let [results         (if-not uncastify-fn results
+                                (for [row results]
+                                  (m/map-keys uncastify-fn row)))
+        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source_table, :active true)
+        ordered-col-kws (order-cols query results fields)]
+    {:rows    (for [row results]
+                (mapv row ordered-col-kws))                         ; might as well return each row and col info as vecs because we're not worried about making
+     :columns (mapv name ordered-col-kws)                           ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
+     :cols    (vec (get-cols-info query fields ordered-col-kws))})) ; as vecs. Make sure

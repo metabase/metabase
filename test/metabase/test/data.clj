@@ -82,13 +82,16 @@
 
 
 ;; ## Helper Functions for Using the Default (H2) Dataset For Writing Tests
+;; Thest should be considered *DEPRECATED* since they only work with a single one of our drivers.
+;; Instead, prefer the patterns used in files like metabase.driver.query-processor-test.
 
 (def test-db
   "The test `Database` object."
   (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
 
 (def db-id
-  "The ID of the test `Database`."
+  "The ID of the test `Database`.
+   This is *DEPRECATED*. Instead, you should "
   (delay (assert @test-db)
          (:id @test-db)))
 
