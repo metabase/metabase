@@ -65,11 +65,14 @@
     align-items: center;
 }
 
+.Filter-section {
+    display: flex;
+    align-items: center;
+}
+
 .Query-filter .input {
-    padding: 0;
     border-radius: 0;
-    padding: 0.5rem;
-    border-color: transparent;
+    border-color: var(--selection-color);
 }
 
 .Query-filter .Icon-close {

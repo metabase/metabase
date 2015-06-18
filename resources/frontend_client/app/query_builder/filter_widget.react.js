@@ -254,7 +254,7 @@ export default React.createClass({
                         default:
                             valueHtml = (
                                 <input
-                                    className="input"
+                                    className="input p1 lg-p2"
                                     type="text"
                                     value={filterValue}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
