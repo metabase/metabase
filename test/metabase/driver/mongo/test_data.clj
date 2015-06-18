@@ -5,9 +5,9 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data :refer [get-or-create-database!]]
             (metabase.test.data [data :as data]
-                                [mongo :as loader])))
+                                [mongo :as loader])
+            [metabase.util :as u]))
 
 ;; ## MONGO-TEST-DB + OTHER DELAYS
 
@@ -15,7 +15,7 @@
   ^{:doc "A delay that fetches or creates the Mongo test `Database`.
           If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."}
   mongo-test-db
-  (delay (get-or-create-database! (loader/dataset-loader) data/test-data)))
+  (delay ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (loader/dataset-loader) data/test-data)))
 
 (defonce
   ^{:doc "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."}
@@ -24,9 +24,8 @@
            (assert (integer? id))
            id)))
 
-
-;; ## FNS FOR GETTING RELEVANT TABLES / FIELDS
-;; TODO - This seems like it's duplicated a bit with the functions in metabase.test.data
+;; TODO - This is duplicated with the code in metabase.test.data.datasets.
+;; Remove this namespace when time permits.
 
 (defn table-name->table
   "Fetch `Table` for Mongo test database.

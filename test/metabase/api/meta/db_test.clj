@@ -38,7 +38,7 @@
 
 ;; ## GET /api/meta/db/:id
 (expect
-    (match-$ @test-db
+    (match-$ (db)
       {:created_at $
        :engine "h2"
        :id $
@@ -47,7 +47,7 @@
        :name "Test Database"
        :organization_id nil
        :description nil})
-  ((user->client :rasta) :get 200 (format "meta/db/%d" (:id @test-db))))
+  ((user->client :rasta) :get 200 (format "meta/db/%d" (db-id))))
 
 ;; ## POST /api/meta/db
 ;; Check that we can create a Database
@@ -126,7 +126,7 @@
                   :name "Test Database"
                   :organization_id nil
                   :description nil}))
-             (match-$ @test-db
+             (match-$ (db)
                {:created_at $
                 :engine "h2"
                 :id $
@@ -139,7 +139,7 @@
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
                                                         [(datasets/when-testing-dataset :generic-sql
-                                                           @db-id)
+                                                           (db-id))
                                                          (datasets/when-testing-dataset :mongo
                                                            @mongo-test-data/mongo-test-db-id)]))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
@@ -153,13 +153,13 @@
 ;; ## GET /api/meta/db/:id/tables
 ;; These should come back in alphabetical order
 (expect
-    (let [db-id (:id @test-db)]
-      [(match-$ (sel :one Table :id (table->id :categories))
+    (let [db-id (db-id)]
+      [(match-$ (sel :one Table :id (id :categories))
          {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (table->id :checkins))
+       (match-$ (sel :one Table :id (id :checkins))
          {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (table->id :users))
+       (match-$ (sel :one Table :id (id :users))
          {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (table->id :venues))
+       (match-$ (sel :one Table :id (id :venues))
          {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})])
-  ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (:id @test-db))))
+  ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))

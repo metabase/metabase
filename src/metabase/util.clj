@@ -181,7 +181,7 @@
    Useful for avoiding circular dependencies.
 
     (def ^:private table->id (runtime-resolved-fn 'metabase.test.data 'table->id))
-    (table->id :users) -> 4"
+    (id :users) -> 4"
   [orig-namespace orig-fn-name]
   {:pre [(symbol? orig-namespace)
          (symbol? orig-fn-name)]}

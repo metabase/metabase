@@ -13,18 +13,18 @@
 
 ;; ## Helper fns
 (defn post-card [card-name]
-  ((user->client :rasta) :post 200 "card" {:name card-name
-                                           :public_perms 0
-                                           :can_read true
-                                           :can_write true
-                                           :display "scalar"
-                                           :dataset_query {:type "query"
-                                                           :query {:source_table (table->id :categories)
-                                                                   :filter [nil nil]
-                                                                   :aggregation ["count"]
-                                                                   :breakout [nil]
-                                                                   :limit nil}
-                                                           :database (:id @test-db)}
+  ((user->client :rasta) :post 200 "card" {:name                   card-name
+                                           :public_perms           0
+                                           :can_read               true
+                                           :can_write              true
+                                           :display                "scalar"
+                                           :dataset_query          {:type     "query"
+                                                                    :query    {:source_table (id :categories)
+                                                                               :filter       [nil nil]
+                                                                               :aggregation  ["count"]
+                                                                               :breakout     [nil]
+                                                                               :limit        nil}
+                                                                    :database (db-id)}
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
@@ -56,12 +56,12 @@
                                :creator_id (user->id :rasta)
                                :updated_at $
                                :dataset_query {:type "query"
-                                               :query {:source_table (table->id :categories)
+                                               :query {:source_table (id :categories)
                                                        :filter [nil nil]
                                                        :aggregation ["count"]
                                                        :breakout [nil]
                                                        :limit nil}
-                                               :database @db-id}
+                                               :database (db-id)}
                                :id $
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
@@ -82,12 +82,12 @@
          :creator_id (user->id :rasta)
          :updated_at $
          :dataset_query {:type "query"
-                         :query {:source_table (table->id :categories)
+                         :query {:source_table (id :categories)
                                  :filter [nil nil]
                                  :aggregation ["count"]
                                  :breakout [nil]
                                  :limit nil}
-                         :database (:id @test-db)}
+                         :database (db-id)}
          :id $
          :display "scalar"
          :visualization_settings {:global {:title nil}}

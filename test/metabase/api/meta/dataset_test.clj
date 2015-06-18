@@ -20,13 +20,13 @@
        :status    "completed"
        :id        $
        :uuid      $})
-  ((user->client :rasta) :post 200 "meta/dataset" {:database (:id @test-db)
+  ((user->client :rasta) :post 200 "meta/dataset" {:database (db-id)
                                                    :type     "query"
-                                                   :query    {:aggregation ["count"]
-                                                           :breakout       [nil]
-                                                           :filter         [nil nil]
-                                                           :limit          nil
-                                                           :source_table   (table->id :checkins)}}))
+                                                   :query    {:aggregation  ["count"]
+                                                              :breakout     [nil]
+                                                              :filter       [nil nil]
+                                                              :limit        nil
+                                                              :source_table (id :checkins)}}))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect-eval-actual-first
@@ -46,6 +46,6 @@
      :running_time $
      :id $
      :uuid $})
-  ((user->client :rasta) :post 200 "meta/dataset" {:database (:id @test-db)
+  ((user->client :rasta) :post 200 "meta/dataset" {:database (db-id)
                                                    :type "native"
                                                    :native {:query "foobar"}}))
