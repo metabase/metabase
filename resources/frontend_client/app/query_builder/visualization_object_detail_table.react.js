@@ -73,7 +73,7 @@ export default React.createClass({
 
             // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
             if (this.props.cellIsClickableFn(0, rowIndex)) {
-                return (<a key={key} href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a>);
+                return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a>);
             } else {
                 return (<div key={key}>{cellValue}</div>);
             }

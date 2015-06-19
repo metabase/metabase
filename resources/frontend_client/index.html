@@ -30,9 +30,7 @@
                             <li ng-repeat="dash in dashboards">
                                 <a class="Dropdown-item link flex align-center text-normal" href="/dash/{{dash.id}}">
                                     {{dash.name}}
-                                    <span class="Badge Badge--permissions flex flex-align-right align-center" ng-if="dash.public_perms === 0">
-                                        <mb-icon name="lock" width="12px" height="12px">
-                                    </span>
+                                    <mb-icon class="ml1 text-grey-4 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
                                 </a>
                             </li>
                         </ul>
