@@ -365,18 +365,18 @@ function applyChartTooltips(dcjsChart, card, cols) {
     dcjsChart.renderlet(function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
         // We should only ever have one tooltip on screen, right?
-        Array.prototype.forEach.call(document.querySelectorAll('.Tooltip'), (t) => t.parentNode.removeChild(t));
+        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
 
         var valueFormatter = d3.format(',.0f');
 
         var tip = d3.tip()
-            .attr('class', 'Tooltip')
+            .attr('class', 'ChartTooltip')
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
                 return (
-                    '<div><span class="Tooltip-key">' + cols[0].name + '</span> <span class="Tooltip-value">' + d.data.key + '</span></div>' +
-                    '<div><span class="Tooltip-key">' + cols[1].name + '</span> <span class="Tooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
+                    '<div><span class="ChartTooltip-key">' + cols[0].name + '</span> <span class="ChartTooltip-value">' + d.data.key + '</span></div>' +
+                    '<div><span class="ChartTooltip-key">' + cols[1].name + '</span> <span class="ChartTooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
                 );
             });
 
@@ -391,7 +391,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
                     var centroid = arc.centroid();
                     var pieRect = this.parentNode.parentNode.getBoundingClientRect();
                     var pieCenter = [pieRect.left + chart.radius(), pieRect.top + chart.radius()];
-                    var tooltip = d3.select('.Tooltip');
+                    var tooltip = d3.select('.ChartTooltip');
                     var tooltipRect = tooltip[0][0].getBoundingClientRect();
                     var tooltipOffset = [-tooltipRect.width / 2, -tooltipRect.height - 20];
                     tooltip.style({

@@ -1,6 +1,6 @@
 /* based on https://rawgit.com/Caged/d3-tip/master/examples/example-styles.css */
 
-.Tooltip {
+.ChartTooltip {
   width: 200px;
   line-height: 1;
   padding: 12px;
@@ -11,7 +11,7 @@
 }
 
 /* Creates a small triangle extender for the tooltip */
-.Tooltip:after {
+.ChartTooltip:after {
   box-sizing: border-box;
   display: inline;
   font-size: 10px;
@@ -23,7 +23,7 @@
 }
 
 /* Northward tooltips */
-.Tooltip.n:after {
+.ChartTooltip.n:after {
   content: "\25BC";
   margin: -1px 0 0 0;
   top: 100%;
@@ -32,7 +32,7 @@
 }
 
 /* Eastward tooltips */
-.Tooltip.e:after {
+.ChartTooltip.e:after {
   content: "\25C0";
   margin: -4px 0 0 0;
   top: 50%;
@@ -40,7 +40,7 @@
 }
 
 /* Southward tooltips */
-.Tooltip.s:after {
+.ChartTooltip.s:after {
   content: "\25B2";
   margin: 0 0 1px 0;
   top: -8px;
@@ -49,19 +49,16 @@
 }
 
 /* Westward tooltips */
-.Tooltip.w:after {
+.ChartTooltip.w:after {
   content: "\25B6";
   margin: -4px 0 0 -1px;
   top: 50%;
   left: 100%;
 }
 
-.Tooltip-key {
+.ChartTooltip-key {
     font-weight: bold;
 }
-.Tooltip-key:after {
+.ChartTooltip-key:after {
     content: ":";
-}
-
-.Tooltip-value {
 }
