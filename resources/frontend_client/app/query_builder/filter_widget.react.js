@@ -148,7 +148,8 @@ export default React.createClass({
                 value = parseInt(value);
             } else if (this.state.fieldDef.base_type === "BooleanField") {
                 value = (value.toLowerCase() === "true") ? true : false;
-            } else if (this.state.fieldDef.base_type === "FloatField") {
+            } else if (this.state.fieldDef.base_type === "FloatField" ||
+                        this.state.fieldDef.base_type === "DecimalField") {
                 value = parseFloat(value);
             }
 
