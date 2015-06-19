@@ -53,11 +53,11 @@
                 <div class="wrapper flex align-center">
                     <div class="NavTitle flex align-center">
                         <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
-                        <span class="NavItem-text ml1">Site Administration</span>
+                        <span class="NavItem-text ml1 hide sm-show">Site Administration</span>
                     </div>
 
                     <!-- admin sections -->
-                    <ul class="ml4 flex flex-full">
+                    <ul class="sm-ml4 flex flex-full">
                         <li>
                             <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
                                 Settings
@@ -77,7 +77,7 @@
 
                     <!-- user profile dropdown -->
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
-                    <a class="text-white ml1 md-ml2" href="/" tooltip="Back to Metabase">
+                    <a class="text-white ml1 md-ml2" href="/">
                         <mb-icon name="return" width="22px" height="22px"></mb-icon>
                     </a>
                 </div>

@@ -6,7 +6,8 @@
 }
 
 .AdminNav {
-    padding: 1.825em;
+    padding-top: 1.825em;
+    padding-bottom: 1.825em;
     background: var(--admin-nav-bg-color);
     color: #fff;
     font-size: 0.85rem;
