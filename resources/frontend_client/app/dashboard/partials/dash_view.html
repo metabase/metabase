@@ -21,9 +21,7 @@
                 <div class="Entity">
                     <div class="flex align-center">
                         <h4 class="Entity-title">{{dashboard.name}}</h4>
-                        <span class="Badge Badge--permissions ml2" ng-if="dashboard.public_perms === 0">
-                            <mb-icon name="lock" width="12px" height="12px"></mb-icon>
-                        </span>
+                        <mb-icon class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="dashboard.public_perms === 0"></mb-icon>
                         <a class="cursor-pointer link ml1" href="#" mb-dashboard-saver ng-attr-dashboard="dashboard" ng-attr-callback="notifyDashboardSaved">Edit</a>
                     </div>
                     <span class="Entity-attribution">
