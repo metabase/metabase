@@ -445,7 +445,7 @@ export default React.createClass({
             return (
                 <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
                     <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
-                    Filter {(this.props.options) ? this.props.options.name : ""}
+                    <span className="mr1">Filter</span> <span>{(this.props.options) ? this.props.options.name : ''}</span>
                 </a>
             );
         }
