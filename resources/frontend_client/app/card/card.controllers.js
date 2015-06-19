@@ -62,8 +62,6 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
         $scope.filter('all');
     }
 
-    window.scope = $scope;
-
 }]);
 
 CardControllers.controller('CardDetail', [
