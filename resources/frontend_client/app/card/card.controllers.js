@@ -395,7 +395,7 @@ CardControllers.controller('CardDetail', [
                 loadCardAndRender($routeParams.cardId, false);
 
             } else if ($routeParams.clone) {
-                loadCardAndRender($routeParams.cardId, true);
+                loadCardAndRender($routeParams.clone, true);
 
             } else {
                 // starting a new card
