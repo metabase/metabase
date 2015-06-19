@@ -360,6 +360,7 @@ function applyChartColors(dcjsChart, card) {
 
 function applyChartTooltips(dcjsChart, card) {
     // set the title (tooltip) function for points / bars on the chart
+    console.log('tip tip tip');
     return dcjsChart.title(function(d) {
         var commasFormatter = d3.format(",.0f");
         return d.key + ": " + commasFormatter(d.value);
@@ -418,7 +419,7 @@ function lineAndBarOnRender(dcjsChart, card) {
         var customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, function(colorStr) {
-            return 'stroke:' + colorStr + ';';
+            return 'stroke:' + '#ddd' + ';';
         });
 
     } catch (e) {}

@@ -2,28 +2,17 @@
   --default-link-color: #4A90E2;
 }
 
-a       { color: var(--default-link-color); }
-a:hover { color: color(var(--default-link-color) shade(5%)); }
+.no-decoration {
+    text-decoration: none;
+}
 
 .link {
   text-decoration: none;
+  color: var(--default-link-color);
 }
 .link:hover {
   text-decoration: underline;
 }
 .link--nohover:hover {
   text-decoration: none;
-}
-
-.psdisabled {
-  color: #A4A4A4;
-}
-
-.psdisabled:hover {
-  text-decoration: none;
-  color: #A4A4A4;
-}
-
-.psunderline {
-  text-decoration: underline;
 }

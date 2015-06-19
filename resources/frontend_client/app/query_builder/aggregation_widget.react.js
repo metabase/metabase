@@ -13,7 +13,7 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            querySectionClasses: 'Query-section flex align-center'
+            querySectionClasses: 'Query-section mb1 md-mb2 flex align-center'
         };
     },
 

@@ -9,9 +9,6 @@
 
 .Card {
   position: relative;
-  border: 1px solid var(--card-border-color);
-  border-radius: var(--card-border-radius);
-  box-shadow: 0 0 1px rgba(0, 0, 0, .12);
 }
 
 .Card-footing {

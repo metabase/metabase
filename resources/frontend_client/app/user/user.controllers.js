@@ -1,61 +1,6 @@
 "use strict";
 
-var UserControllers = angular.module('corvus.user.controllers', ['corvus.forms.directives']);
-
-UserControllers.controller('AccountSettingsController', ['$scope', 'User', 'CorvusCore', 'CorvusFormService', function($scope, User, CorvusCore, CorvusFormService) {
-    var _self = this;
-    var formName = "accountSettings";
-    CorvusCore.currentUser(function(result) {
-        if (result && !result.error) {
-            _self.accountSettingsUser = result;
-        }
-    });
-
-    this.submit = function() {
-        var submitSuccessMessage = "user updated successfully";
-        var submitFailedMessage = "user update failed!";
-
-        User.update(_self.accountSettingsUser, function(result) {
-            CorvusFormService.submitSuccessCallback(formName, submitSuccessMessage);
-
-            // it's possible the user changed their name, so refresh our current user model
-            $scope.refreshCurrentUser();
-
-        }, function(errorResponse) {
-            CorvusFormService.submitFailedCallback(formName, errorResponse.data, submitFailedMessage);
-        });
-    };
-}]);
-
-UserControllers.controller('PasswordUpdateController', ['$scope', 'User', 'CorvusCore', 'CorvusFormService', function($scope, User, CorvusCore, CorvusFormService) {
-    var _self = this;
-    var formName = "passwordEdit";
-
-    CorvusCore.currentUser(function(result) {
-        if (result && !result.error) {
-            _self.passwordEditUser = result;
-        }
-    });
-
-    this.resetCallback = function() {
-        var corvusFormController = CorvusFormService.getFormController(formName);
-        corvusFormController.form.password_verify.$viewValue = '';
-        corvusFormController.form.password_verify.$modelValue = '';
-        corvusFormController.form.password_verify.$setValidity('password_verify', true);
-        $scope.$apply();
-    };
-
-    this.submit = function() {
-        var submitSuccessMessage = "password updated successfully";
-        var submitFailedMessage = "password update failed!";
-
-        User.update_password(_self.passwordEditUser, function(result) {
-            CorvusFormService.submitSuccessCallback(formName, submitSuccessMessage);
-        }, function(errorResponse) {
-            CorvusFormService.submitFailedCallback(formName, errorResponse.data, submitFailedMessage);
-        });
-    };
-}]);
+var UserControllers = angular.module('corvus.user.controllers', ['metabase.forms']);
 
 UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {
     $scope.tab_focus = 'details';
@@ -64,3 +9,55 @@ UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {
         $scope.tab_focus = tab;
     };
 }]);
+
+
+UserControllers.controller('AccountSettingsController', ['$scope', 'User',
+    function($scope, User) {
+
+        $scope.save = function(updateUser) {
+            $scope.$broadcast("form:reset");
+
+            User.update(updateUser, function (result) {
+                $scope.$broadcast("form:api-success", "Account updated successfully!");
+
+                // it's possible the user changed their name, so refresh our current user model
+                $scope.refreshCurrentUser();
+
+            }, function (error) {
+                $scope.$broadcast("form:api-error", error);
+            });
+        };
+
+        // always use the currently logged in user
+        $scope.editUser = angular.copy($scope.user);
+    }
+]);
+
+
+UserControllers.controller('PasswordUpdateController', ['$scope', 'User',
+    function($scope, User) {
+
+        $scope.save = function(passwordDetails) {
+            $scope.$broadcast("form:reset");
+
+            // check that confirm password matches new password
+            if (passwordDetails.password !== passwordDetails.password2) {
+                $scope.$broadcast("form:api-error", {'data': {'errors': {'password2': "Passwords do not match"}}});
+                return;
+            }
+
+            User.update_password({
+                'id': $scope.user.id,
+                'password': passwordDetails.password,
+                'old_password': passwordDetails.old_password
+            }, function (result) {
+                $scope.$broadcast("form:api-success", "Password updated successfully!");
+
+            }, function (error) {
+                $scope.$broadcast("form:api-error", error);
+            });
+        };
+
+        $scope.passwordDetails = {};
+    }
+]);

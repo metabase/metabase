@@ -148,7 +148,8 @@ export default React.createClass({
                 value = parseInt(value);
             } else if (this.state.fieldDef.base_type === "BooleanField") {
                 value = (value.toLowerCase() === "true") ? true : false;
-            } else if (this.state.fieldDef.base_type === "FloatField") {
+            } else if (this.state.fieldDef.base_type === "FloatField" ||
+                        this.state.fieldDef.base_type === "DecimalField") {
                 value = parseFloat(value);
             }
 
@@ -171,6 +172,10 @@ export default React.createClass({
         var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will be 2 for the value of a filter
         this.setValue(value, index, this.props.index);
+    },
+
+    removeFilterFn: function() {
+        this.props.removeFilter(this.props.index);
     },
 
     renderFieldList: function() {
@@ -258,7 +263,7 @@ export default React.createClass({
                         default:
                             valueHtml = (
                                 <input
-                                    className="input"
+                                    className="input p1 lg-p2"
                                     type="text"
                                     value={filterValue}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
@@ -286,7 +291,7 @@ export default React.createClass({
                 {this.renderFieldList()}
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
-                <a onClick={this.props.removeFilter.bind(null, this.props.index)}>
+                <a onClick={this.removeFilterFn}>
                     <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>

@@ -1,5 +1,5 @@
 <div class="Card" ng-class="{ 'Card--errored': cardDataEmpty || cardData.error || sqlError }">
-    <div id="{{chartId}}_heading" ng-include="'/app/card/partials/_card_heading.html'" onload="headerLoaded = true"></div>
+    <div id="{{chartId}}_heading" ng-include="'/app/dashboard/partials/_card_heading.html'" onload="headerLoaded = true"></div>
 
     <div ng-if="cardDataEmpty && !sqlError">
         <div class="layout-centered text-centered full">
@@ -57,7 +57,7 @@
     <div ng-if="!cardDataEmpty && !cardRenderingError && !cardData.error" ng-switch="card.display">
 
         <div ng-switch-when="scalar" class="Card--scalar">
-            <h1 class="Card-scalarValue text-normal px1">{{cardData.rows[0][0]}}</h1>
+            <h1 class="Card-scalarValue text-normal">{{cardData.rows[0][0]}}</h1>
         </div>
 
         <div ng-switch-when="table" class="Card--table scroll-x scroll-y" id="{{chartId}}">
@@ -93,15 +93,6 @@
         <div class="Card--{{card.display}} Card-outer mx1" id="{{chartId}}" ng-switch-default>
             <div id="{{'card-title--' + chartId}}" class="text-centered"></div>
             <div id="{{'card-inner--' + chartId}}" class="card-inner"></div>
-        </div>
-
-        <div class="Card-footing py1 px2 clearfix" id="{{chartId + '_footing'}}">
-            <a class="Card-dataSource float-right" ng-if="dataset_info.title" href="{{dataset_info.link}}">{{dataset_info.title}}</a>
-            <div class="py1" ng-if="card.creator && ((card.creator.last_name && card.creator.first_name) || card.creator.email)">
-                By:
-                <span ng-if="card.creator.first_name && card.creator.last_name">{{card.creator.first_name}} {{card.creator.last_name}}</span>
-                <span ng-if="(!(card.creator.first_name && card.creator.last_name)) && card.creator.email">{{card.creator.email}}</span>
-            </div>
         </div>
     </div>
 

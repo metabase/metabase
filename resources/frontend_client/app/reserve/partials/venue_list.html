@@ -67,7 +67,7 @@
           <tbody>
             <tr ng-repeat="venue in venues | orderBy:orderByField:reverseSort | filter:searchFilter">
               <td class="clearfix">
-                <img class="EntityImage EntityImage--small float-left hide show-lg" src="">
+                <img class="EntityImage EntityImage--small float-left hide lg-show" src="">
                 <a class="EntityName float-left ml1 link" href="/reserve/venue/{{venue.id}}">{{venue.name}}</a>
               </td>
               <td>{{venue.locality}}</td>
@@ -105,4 +105,3 @@
     </ol>
   </div>
 </div>
-

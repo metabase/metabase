@@ -3,6 +3,7 @@
 
 import ActionButton from './action_button.react';
 import AddToDashboard from './add_to_dashboard.react';
+import CardFavoriteButton from './card_favorite_button.react';
 import Icon from './icon.react';
 import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
@@ -18,7 +19,7 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
-        downloadLink: React.PropTypes.string
+        downloadLink: React.PropTypes.string,
     },
 
     getInitialState: function() {
@@ -105,6 +106,16 @@ export default React.createClass({
         return apiCall.$promise;
     },
 
+    deleteCard: function () {
+        var card = this.props.card,
+            component = this;
+
+        var apiCall = this.props.cardApi.delete({'cardId': card.id}, function () {
+            component.props.notifyCardDeletedFn();
+        });
+
+    },
+
     setQueryMode: function(mode) {
         // we need to update our dirty state here
         var component = this;
@@ -115,25 +126,21 @@ export default React.createClass({
         });
     },
     permissions: function() {
-        var text;
-        switch(this.props.card.public_perms) {
-            case 0:
-                text = 'Private';
-                break;
-            case 1:
-                text = 'Others can read';
-                break;
-            case 2:
-                text = 'Others can modify';
-                break;
-            default:
-                return 'Error';
+        var permission;
+        if(this.props.card.public_perms) {
+            switch(this.props.card.public_perms) {
+                case 0:
+                    permission = (
+                        <span className="ml1 sm-ml1 text-grey-3">
+                            <Icon name="lock" width="12px" height="12px" />
+                        </span>
+                    )
+                    break;
+                default:
+                    return '';
+            }
+            return permission;
         }
-        return (
-            <span className="Badge Badge--permissions ml2">
-                {text}
-            </span>
-        );
     },
 
     render: function() {
@@ -147,6 +154,8 @@ export default React.createClass({
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
                     className='inline-block ml1 link'
+                    canDelete={this.props.card.is_creator}
+                    deleteFn={this.deleteCard}
                 />
             );
         }
@@ -160,6 +169,7 @@ export default React.createClass({
                     saveFn={this.saveCard}
                     buttonText="Save"
                     saveButtonText="Create card"
+                    canDelete={false}
                 />
             );
         } else if (this.cardIsDirty() || this.state.recentlySaved) {
@@ -196,28 +206,44 @@ export default React.createClass({
             );
         }
 
+        var cardFavorite;
+        if (!this.cardIsNew()) {
+            cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
+        }
+
+
+
+        var attribution;
+
+        if(this.props.card.creator) {
+            attribution = (
+                <div className="Entity-attribution">
+                    Asked by {this.props.card.creator.common_name}
+                </div>
+            )
+        }
+
         return (
-            <div className="QueryHeader QueryBuilder-section flex align-center">
-                <div className="QueryHeader-details">
-                    <h1 className="QueryName">{title}</h1>
-                    {this.permissions()}
-                    {editButton}
+            <div className="border-bottom py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+                <div className="Entity">
+                    <div className="flex align-center">
+                        <h1 className="Entity-title">{title}</h1>
+                        {this.permissions()}
+                        {editButton}
+                    </div>
+                    {attribution}
                 </div>
 
-                <div className="QueryHeader-actions">
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {saveButton}
-                    </ReactCSSTransitionGroup>
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {downloadButton}
-                    </ReactCSSTransitionGroup>
+                <div className="QueryHeader-actions flex-align-right">
+                    {downloadButton}
+                    {cardFavorite}
                     <AddToDashboard
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                     />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-querybutton">
-                        {queryModeToggle}
-                    </ReactCSSTransitionGroup>
+                    {saveButton}
+                    {queryModeToggle}
                 </div>
             </div>
         );

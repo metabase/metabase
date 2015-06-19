@@ -80,6 +80,15 @@
          :organization_id nil
          :name card-name
          :creator_id (user->id :rasta)
+         :creator (match-$ (fetch-user :rasta)
+                    {:common_name "Rasta Toucan",
+                     :is_superuser false,
+                     :last_login $,
+                     :last_name "Toucan",
+                     :first_name "Rasta",
+                     :date_joined $,
+                     :email "rasta@metabase.com",
+                     :id $})
          :updated_at $
          :dataset_query {:type "query"
                          :query {:source_table (id :categories)

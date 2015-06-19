@@ -3,8 +3,8 @@
   --default-button-border-color: #b9b9b9;
   --default-button-background-color: #fff;
 
-  --primary-button-border-color: #4A90E2;
-  --primary-button-bg-color: #4A90E2;
+  --primary-button-border-color: #509EE3;
+  --primary-button-bg-color: #509EE3;
   --selected-button-bg-color: #F4F6F8;
 
   --danger-button-bg-color: #EF8C8C;
@@ -15,34 +15,37 @@
   display: inline-block;
   box-sizing: border-box;
   text-decoration: none;
-  padding: 0.5em 0.75em;
+  padding: 0.5rem 0.75rem;
   background: #FBFCFD;
   border: 1px solid #ddd;
   color: #444;
-  border-radius: var(--default-button-border-radius);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   text-decoration: none;
-  font-size: 0.8em;
-  line-height: 1;
+  font-weight: bold;
+  font-family: "Lato";
+  border-radius: var(--default-button-border-radius);
 }
 
-@media screen and (--breakpoint-min-md) {
+@media screen and (--breakpoint-min-lg) {
     .Button {
-        padding: 1em;
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Button {
+        padding: 1rem 1.5rem;
     }
 }
 
 .Button:hover {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transition: border .3s linear, box-shadow .3s linear;
+  transition: border .3s linear;
 }
 
 .Button--primary {
   color: #fff;
-  background: #4A90E2;
-  border: 1px solid #3282DF;
-  transition: background .3s linear, border .3s linear, color .3s linear;
+  background: var(--primary-button-bg-color);
+  border: 1px solid var(--primary-button-border-color);
 }
 
 .Button--primary:hover {
