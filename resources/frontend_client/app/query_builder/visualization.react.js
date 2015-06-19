@@ -176,12 +176,21 @@ export default React.createClass({
             var component = this;
             var relationships = this.props.tableForeignKeys.map(function(fk) {
                 var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
-                return (<a key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>{relationName}</a>)
+                return (
+                    <li className="block mb1 lg-mb2">
+                        <a className="QueryOption inline-block no-decoration p2 lg-p2" key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
+                            {relationName}
+                        </a>
+                    </li>
+                )
             });
 
             return (
-                <div className="VisualizationSettings QueryBuilder-section clearfix">
-                    {relationships}
+                <div className="VisualizationSettings wrapper QueryBuilder-section clearfix">
+                    <h3 className="mb1 lg-mb2">Relationships:</h3>
+                    <ul>
+                        {relationships}
+                    </ul>
                 </div>
             );
 
