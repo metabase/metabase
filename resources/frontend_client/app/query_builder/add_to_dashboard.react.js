@@ -39,6 +39,7 @@ export default React.createClass({
                     <AddToDashboardPopover
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                         closePopoverFn={this.toggleModal}
                     />
                 </Popover>

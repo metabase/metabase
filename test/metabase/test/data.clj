@@ -11,12 +11,68 @@
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
             (metabase.test.data [data :as data]
+                                [datasets :as datasets :refer [*dataset*]]
                                 [h2 :as h2]
                                 [interface :refer :all]))
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
                                          TableDefinition)))
+
+;; ## Dataset-Independent Data Fns
+;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our
+;; many driver/dataset combos. Internally, these call the implementations of the current dataset, which
+;; is bound to *dataset*. By default, this is bound to the Generic SQL Default Dataset; you can swap it
+;; put with the macro `with-dataset`.
+;;
+;; A suite of macros exist in `metabase.test.data.datasets` that let you write a unit test once and have
+;; it run against many drivers. The take care of establishing the correct bindings; you can use these
+;; functions seamlessly when writing such tests.
+(defn id
+  "Return the ID of a `Table` or `Field` for the current driver data set."
+  ([table-name]
+   {:pre [*dataset*
+          (keyword? table-name)]
+    :post [(integer? %)]}
+   (datasets/table-name->id *dataset* table-name))
+  ([table-name field-name]
+   {:pre [*dataset*
+          (keyword? table-name)
+          (keyword? field-name)]
+    :post [(integer? %)]}
+   (datasets/field-name->id *dataset* table-name field-name)))
+
+(defn db []
+  {:pre [*dataset*]
+   :post [(map? %)]}
+  (datasets/db *dataset*))
+
+(defn db-id []
+  {:pre  [*dataset*]
+   :post [(integer? %)]}
+  (:id (datasets/db *dataset*)))
+
+;; (defn fetch-table [table-name]
+;;   {:pre [*dataset*
+;;          (keyword? table-name)]
+;;    :post [(map? %)]}
+;;   (datasets/table-name->table *dataset* table-name))
+
+(defn fks-supported? []
+  (datasets/fks-supported? *dataset*))
+
+(defn format-name [name]
+  (datasets/format-name *dataset* name))
+
+(defn id-field-type []
+  (datasets/id-field-type *dataset*))
+
+(defn timestamp-field-type []
+  (datasets/timestamp-field-type *dataset*))
+
+(defn dataset-loader []
+  (datasets/dataset-loader *dataset*))
+
 
 ;; ## Loading / Deleting Test Datasets
 
@@ -79,50 +135,6 @@
 
     ;; now delete the DBMS database
   (drop-physical-db! dataset-loader database-definition))
-
-
-;; ## Helper Functions for Using the Default (H2) Dataset For Writing Tests
-
-(def test-db
-  "The test `Database` object."
-  (delay (get-or-create-database! (h2/dataset-loader) data/test-data)))
-
-(def db-id
-  "The ID of the test `Database`."
-  (delay (assert @test-db)
-         (:id @test-db)))
-
-(def ^{:arglists '([[table-name]])}
-  table->id
-  "Return the ID of a Table with TABLE-NAME.
-
-    (table->id :venues) -> 12"
-  (memoize
-   (fn [table-name]
-     {:pre [(keyword? table-name)]
-      :post [(integer? %)
-             (not (zero? %))]}
-     (sel :one :id Table :name (s/upper-case (name table-name)), :db_id @db-id))))
-
-(def ^{:arglists '([table-name field-name])}
-  field->id
-  "Return the ID of a Field with FIELD-NAME belonging to Table with TABLE-NAME.
-
-    (field->id :checkins :venue_id) -> 4"
-  (memoize
-   (fn [table-name field-name]
-     {:pre [(keyword? table-name)
-            (keyword? field-name)]
-      :post [(integer? %)
-             (not (zero? %))]}
-     (sel :one :id Field :name (s/upper-case (name field-name)), :table_id (table->id table-name)))))
-
-(defn table-name->table
-  "Fetch `Table` with TABLE-NAME."
-  [table-name]
-  {:pre [(keyword? table-name)]
-   :post [(map? %)]}
-  (sel :one Table :id (table->id (s/upper-case (name table-name)))))
 
 
 ;; ## Temporary Dataset Macros

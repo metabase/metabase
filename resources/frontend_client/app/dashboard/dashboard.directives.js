@@ -8,70 +8,74 @@ var DashboardDirectives = angular.module('corvus.dashboard.directives', [
 ]);
 
 
-DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$modal', '$location', function(CorvusCore, Dashboard, $modal, $location) {
-    function link(scope, element, attrs) {
+DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$modal', '$location', '$rootScope',
+    function(CorvusCore, Dashboard, $modal, $location, $rootScope) {
+        function link(scope, element, attrs) {
 
-        var openModal = function() {
-            var modalInstance = $modal.open({
-                templateUrl: '/app/dashboard/partials/modal_dashboard_saver.html',
-                controller: ['$scope', '$modalInstance',
-                    function($scope, $modalInstance) {
-                        $scope.dashboard = angular.copy(scope.dashboard);
-                        $scope.permOptions = CorvusCore.perms;
+            var openModal = function() {
+                var modalInstance = $modal.open({
+                    templateUrl: '/app/dashboard/partials/modal_dashboard_saver.html',
+                    controller: ['$scope', '$modalInstance',
+                        function($scope, $modalInstance) {
+                            $scope.dashboard = angular.copy(scope.dashboard);
+                            $scope.permOptions = CorvusCore.perms;
 
-                        $scope.save = function(dash) {
-                            $scope.$broadcast("form:reset");
+                            $scope.save = function(dash) {
+                                $scope.$broadcast("form:reset");
 
-                            Dashboard.update(dash, function (result) {
-                                // trigger our callback if we have one
-                                if (scope.callback) {
-                                    scope.callback(result);
-                                }
+                                Dashboard.update(dash, function (result) {
+                                    // trigger our callback if we have one
+                                    if (scope.callback) {
+                                        scope.callback(result);
+                                    }
 
-                                // just close out the modal now that we're done
-                                $modalInstance.close();
+                                    // just close out the modal now that we're done
+                                    $modalInstance.close();
 
-                            }, function (error) {
-                                $scope.$broadcast("form:api-error", error);
-                            });
-                        };
+                                }, function (error) {
+                                    $scope.$broadcast("form:api-error", error);
+                                });
+                            };
 
-                        $scope.delete = function() {
-                            $scope.$broadcast("form:reset");
+                            $scope.delete = function() {
+                                $scope.$broadcast("form:reset");
 
-                            Dashboard.delete({
-                                'dashId': scope.dashboard.id
-                            }, function (result) {
-                                $modalInstance.close();
+                                Dashboard.delete({
+                                    'dashId': scope.dashboard.id
+                                }, function (result) {
+                                    $rootScope.$broadcast("dashboard:delete", scope.dashboard.id);
 
-                                // send people home after deleting a dashboard
-                                $location.path('/');
+                                    $modalInstance.close();
 
-                            }, function (error) {
-                                $scope.$broadcast("form:api-error", error);
-                            });
-                        };
+                                    // send people home after deleting a dashboard
+                                    $location.path('/');
 
-                        $scope.close = function() {
-                            $modalInstance.dismiss('cancel');
-                        };
-                    }
-                ]
-            });
-        };
+                                }, function (error) {
+                                    $scope.$broadcast("form:api-error", error);
+                                });
+                            };
 
-        element.bind('click', openModal);
-    }
+                            $scope.close = function() {
+                                $modalInstance.dismiss('cancel');
+                            };
+                        }
+                    ]
+                });
+            };
 
-    return {
-        restrict: 'A',
-        link: link,
-        scope: {
-            callback: '=',
-            dashboard: '='
+            element.bind('click', openModal);
         }
-    };
-}]);
+
+        return {
+            restrict: 'A',
+            link: link,
+            scope: {
+                callback: '=',
+                dashboard: '='
+            }
+        };
+    }
+]);
 
 
 DashboardDirectives.directive('mbDashcard', ['Card', 'Metabase', 'VisualizationSettings', '$timeout', function(Card, Metabase, VisualizationSettings, $timeout) {

@@ -14,13 +14,15 @@ var glob = require('glob');
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
 // All JS files except dist and test
-var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + '{bower_components,dist,test}/**/*.js' });
+var JS_SRC = glob.sync(BASE_PATH + '**/*.js', { ignore: BASE_PATH + 'dist/**/*.js' });
 // All CSS files in app/css and app/components
 var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH + 'components/**/*.css'));
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-console.warn("Warning: in weback watch mode you must restart webpack if you change any CSS variables or custom media queries");
+if (process.argv.indexOf("-w") >= 0 || process.argv.indexOf("--watch") >= 0) {
+    console.warn("Warning: in weback watch mode you must restart webpack if you change any CSS variables or custom media queries");
+}
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
@@ -47,18 +49,18 @@ module.exports = {
         loaders: [
             // JavaScript
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
-            { test: /\.js$/, exclude: /node_modules/, loader: 'eslint' },
+            { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|react|moment|underscore|jquery|d3|crossfilter)/ // doesn't include 'dc' and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|react|moment|underscore|jquery|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
     resolve: {
-        modulesDirectories: [],
+        // modulesDirectories: [],
         alias: {
             'metabase':             __dirname + '/resources/frontend_client/app',
 
@@ -94,8 +96,8 @@ module.exports = {
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
-            'crossfilter':          __dirname + '/node_modules/crossfilter/crossfilter.min.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
+            'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
+            'dc':                   __dirname + '/node_modules/dc/dc.js',
         }
     },
 

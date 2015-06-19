@@ -50,9 +50,11 @@
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.util.Date`."
-  ^java.util.Date [^String date]
-  (.parse simple-date-format date))
+  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
+  ^java.sql.Date [^String date]
+  (-> (.parse simple-date-format date)
+      .getTime
+      java.sql.Date.))
 
 (defn date-yyyy-mm-dd->unix-timestamp
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
@@ -179,7 +181,7 @@
    Useful for avoiding circular dependencies.
 
     (def ^:private table->id (runtime-resolved-fn 'metabase.test.data 'table->id))
-    (table->id :users) -> 4"
+    (id :users) -> 4"
   [orig-namespace orig-fn-name]
   {:pre [(symbol? orig-namespace)
          (symbol? orig-fn-name)]}

@@ -14,7 +14,7 @@
                 :cols [{:name :id, :base_type :IntegerField}]}}
   (driver/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                          :type     :native
-                         :database @db-id}))
+                         :database (db-id)}))
 
 ;; Check that column ordering is maintained
 (expect
@@ -28,7 +28,7 @@
                    {:name :category_id, :base_type :IntegerField}]}}
   (driver/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                          :type     :native
-                         :database @db-id}))
+                         :database (db-id)}))
 
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
@@ -36,4 +36,4 @@
   (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))      ; this will print a stacktrace
       (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
                              :type     :native
-                             :database @db-id})))
+                             :database (db-id)})))

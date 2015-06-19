@@ -121,12 +121,12 @@
                      :name $
                      :creator_id (user->id :rasta)
                      :updated_at $
-                     :dataset_query {:database (:id @test-db)
+                     :dataset_query {:database (db-id)
                                      :query {:limit nil
                                              :breakout [nil]
                                              :aggregation ["count"]
                                              :filter [nil nil]
-                                             :source_table (table->id :categories)}
+                                             :source_table (id :categories)}
                                      :type "query"}
                      :id card-id
                      :display "scalar"
