@@ -382,7 +382,25 @@ function applyChartTooltips(dcjsChart, card, cols) {
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
             .call(tip)
-            .on('mouseover.tip', tip.show)
+            .on('mouseover.tip', function(x) {
+                tip.show.apply(tip, arguments);
+                if (card.display === "pie") {
+                    var arc = d3.svg.arc()
+                        .outerRadius(chart.radius()).innerRadius(x.innerRadius)
+                        .padAngle(x.padAngle).startAngle(x.startAngle).endAngle(x.endAngle);
+                    var centroid = arc.centroid();
+                    var pieRect = this.parentNode.parentNode.getBoundingClientRect();
+                    var pieCenter = [pieRect.left + chart.radius(), pieRect.top + chart.radius()];
+                    var tooltip = d3.select('.Tooltip');
+                    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+                    var tooltipOffset = [-tooltipRect.width / 2, -tooltipRect.height - 20];
+                    tooltip.style({
+                        top: pieCenter[1] + tooltipOffset[1] + centroid[1] + "px",
+                        left: pieCenter[0] + tooltipOffset[0] + centroid[0] + "px",
+                        "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
+                    });
+                }
+            })
             .on('mouseleave.tip', tip.hide);
 
         chart.selectAll('title').remove();
@@ -784,6 +802,9 @@ export var CardRenderer = {
                             var percent = Math.round((d.value / sumTotalValue) * 1000) / 10.0;
                             return d.key + ': ' + d.value + ' (' + percent + '%)';
                         });
+
+
+        applyChartTooltips(chart, card, result.cols);
 
         chart.render();
     },
