@@ -221,7 +221,8 @@
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
      (when (and form#
                 (or (not (sequential? form#))
-                    (seq form#)))
+                    (and (seq form#)
+                         (every? identity form#))))
        (match form#
          ~@match-forms))))
 
