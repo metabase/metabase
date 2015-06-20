@@ -50,7 +50,9 @@
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
-(declare parse-filter
+(declare parse-aggregation
+         parse-breakout
+         parse-filter
          with-resolved-fields)
 
 ;; ## -------------------- Protocols --------------------
@@ -76,8 +78,22 @@
   IResolveField {:resolve-field (fn [this _] this)}
   ICollapse     {:collapse-one  identity})
 
+(extend nil
+  IResolveField {:resolve-field (constantly nil)})
+
 
 ;; ## -------------------- Public Interface --------------------
+
+(defn- parse [query-dict]
+  (update-in query-dict [:query] #(assoc %
+                                         :aggregation (parse-aggregation (:aggregation %))
+                                         :breakout    (parse-breakout (:breakout %))
+                                         :filter      (parse-filter   (:filter %)))))
+
+(defn expand
+  "Expand a query-dict."
+  [query-dict]
+  (with-resolved-fields parse query-dict))
 
 (defn expand-filter
   "Expand a `filter` clause."
@@ -203,8 +219,34 @@
   "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
   [fn-name & match-forms]
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (match form#
-       ~@match-forms)))
+     (when (and form#
+                (or (not (sequential? form#))
+                    (seq form#)))
+       (match form#
+         ~@match-forms))))
+
+;; ## -------------------- Aggregation --------------------
+
+(defrecord Aggregation [^Keyword aggregation-type
+                        ^Field field])
+
+(defparser parse-aggregation
+  ["rows"]              (->Aggregation :rows nil)
+  ["count"]             (->Aggregation :count nil)
+  ["avg" field-id]      (->Aggregation :avg (ph field-id))
+  ["count" field-id]    (->Aggregation :count (ph field-id))
+  ["distinct" field-id] (->Aggregation :distinct (ph field-id))
+  ["stddev" field-id]   (->Aggregation :stddev (ph field-id))
+  ["sum" field-id]      (->Aggregation :sum (ph field-id))
+  ["cum_sum" field-id]  (->Aggregation :cumulative-sum (ph field-id)))
+
+
+;; ## -------------------- Breakout --------------------
+
+(defrecord Breakout [fields])
+
+(defparser parse-breakout
+  [& field-ids] (mapv ph field-ids))
 
 ;; ## -------------------- Filter --------------------
 
@@ -237,7 +279,7 @@
   (collapse-one [_]
     ["BETWEEN" field min-val max-val]))
 
-(defn- collapse-filter-type [^clojure.lang.Keyword filter-type]
+(defn- collapse-filter-type [^Keyword filter-type]
   (-> filter-type
       name
       (s/replace #"-" "_")

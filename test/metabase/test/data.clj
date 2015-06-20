@@ -78,63 +78,69 @@
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`."
-  [dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
-  (let [engine (engine dataset-loader)]
-    (or (metabase-instance database-definition engine)
-        (do
-          ;; Create the database
-          (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
-          (create-physical-db! dataset-loader database-definition)
+   DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
+   current dataset (`*dataset*`), which is H2 by default."
+  ([^DatabaseDefinition database-definition]
+   (get-or-create-database! (dataset-loader) database-definition))
+  ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
+   (let [engine (engine dataset-loader)]
+     (or (metabase-instance database-definition engine)
+         (do
+           ;; Create the database
+           (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
+           (create-physical-db! dataset-loader database-definition)
 
-          ;; Load data
-          (log/info (color/blue "Loading data..."))
-          (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-            (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
-            (load-table-data! dataset-loader database-definition table-definition)
-            (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
+           ;; Load data
+           (log/info (color/blue "Loading data..."))
+           (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
+             (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
+             (load-table-data! dataset-loader database-definition table-definition)
+             (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
 
-          ;; Add DB object to Metabase DB
-          (log/info (color/blue "Adding DB to Metabase..."))
-          (let [db (ins Database
-                     :name    database-name
-                     :engine  (name engine)
-                     :details (database->connection-details dataset-loader database-definition))]
+           ;; Add DB object to Metabase DB
+           (log/info (color/blue "Adding DB to Metabase..."))
+           (let [db (ins Database
+                      :name    database-name
+                      :engine  (name engine)
+                      :details (database->connection-details dataset-loader database-definition))]
 
-            ;; Sync the database
-            (log/info (color/blue "Syncing DB..."))
-            (driver/sync-database! db)
+             ;; Sync the database
+             (log/info (color/blue "Syncing DB..."))
+             (driver/sync-database! db)
 
-            ;; Add extra metadata like Field field-type, base-type, etc.
-            (log/info (color/blue "Adding schema metadata..."))
-            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-              (let [table-name (:table-name table-definition)
-                    table      (delay (let [table (metabase-instance table-definition db)]
-                                        (assert table)
-                                        table))]
-                (doseq [{:keys [field-name field-type special-type], :as field-definition} (:field-definitions table-definition)]
-                  (let [field (delay (let [field (metabase-instance field-definition @table)]
-                                       (assert field)
-                                       field))]
-                    (when field-type
-                      (log/info (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                      (upd Field (:id @field) :field_type (name field-type)))
-                    (when special-type
-                      (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                      (upd Field (:id @field) :special_type (name special-type)))))))
+             ;; Add extra metadata like Field field-type, base-type, etc.
+             (log/info (color/blue "Adding schema metadata..."))
+             (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
+               (let [table-name (:table-name table-definition)
+                     table      (delay (let [table (metabase-instance table-definition db)]
+                                         (assert table)
+                                         table))]
+                 (doseq [{:keys [field-name field-type special-type], :as field-definition} (:field-definitions table-definition)]
+                   (let [field (delay (let [field (metabase-instance field-definition @table)]
+                                        (assert field)
+                                        field))]
+                     (when field-type
+                       (log/info (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
+                       (upd Field (:id @field) :field_type (name field-type)))
+                     (when special-type
+                       (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+                       (upd Field (:id @field) :special_type (name special-type)))))))
 
-            (log/info (color/blue "Finished."))
-            db)))))
+             (log/info (color/blue "Finished."))
+             db))))))
 
 (defn remove-database!
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`."
-  [dataset-loader ^DatabaseDefinition database-definition]
-  ;; Delete the Metabase Database and associated objects
-  (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
+   DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
+   current dataset, bound to `*dataset*`."
+  ([^DatabaseDefinition database-definition]
+   (remove-database! (dataset-loader) database-definition))
+  ([dataset-loader ^DatabaseDefinition database-definition]
+   ;; Delete the Metabase Database and associated objects
+   (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
 
-    ;; now delete the DBMS database
-  (drop-physical-db! dataset-loader database-definition))
+   ;; now delete the DBMS database
+   (drop-physical-db! dataset-loader database-definition)))
 
 
 ;; ## Temporary Dataset Macros

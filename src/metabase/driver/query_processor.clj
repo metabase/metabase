@@ -39,7 +39,11 @@
 ;; # DYNAMIC VARS
 
 (def ^:dynamic *query*
-  "The query we're currently processing (i.e., the body of the query API call)."
+  "The query we're currently processing, in its original, unexpanded form."
+  nil)
+
+(def ^:dynamic *expanded-query*
+  "The query we're currently processing, in its expanded form."
   nil)
 
 (def ^:dynamic *disable-qp-logging*
@@ -80,7 +84,7 @@
 ;; ## PREPROCESSOR FNS
 
 ;; ### REMOVE-EMPTY-CLAUSES
-(def ^:const clause->empty-forms
+(def ^:private ^:const clause->empty-forms
   "Clause values that should be considered empty and removed during preprocessing."
   {:breakout #{[nil]}
    :filter   #{[nil nil]}})
@@ -150,12 +154,12 @@
   [{:keys [field], {timestamp :value, special-type :special-type, :as value} :value}]
   ;; The timestamps we create 00:00 on the day in question, re-write the filter as a ["BETWEEN" field timestamp (+ timestamp 1-day)]
   (expand/map->Filter:Between {:type :between
-                              :field field
-                              :min   value
-                              :max   (expand/map->Value (assoc value
-                                                               :value (+ timestamp (case special-type
-                                                                                     :timestamp_seconds      seconds-per-day
-                                                                                     :timestamp_milliseconds milliseconds-per-day))))}))
+                               :field field
+                               :min   value
+                               :max   (expand/map->Value (assoc value
+                                                                :value (+ timestamp (case special-type
+                                                                                      :timestamp_seconds      seconds-per-day
+                                                                                      :timestamp_milliseconds milliseconds-per-day))))}))
 
 (defn preprocess-rewrite-timestamp-equals-filter
   "In order for `=` filter clauses to work with timestamps (allowing the user to match a given day) we need to rewrite them as
@@ -165,16 +169,14 @@
     ;; If there's no filter clause there's nothing to do
     query
     ;; Otherwise rewrite as needed
-    (update-in query [:filter] (fn [filter-clause]
-                                 (-> filter-clause
-                                     expand/expand-filter
-                                     (update-in [:subclauses] #(for [{:keys [filter-type], {:keys [special-type]} :field, :as subclause} %]
-                                                                 (if (and (= filter-type :=)
-                                                                          (contains? #{:timestamp_seconds
-                                                                                       :timestamp_milliseconds} special-type))
-                                                                   (rewrite-timestamp-filter= subclause)
-                                                                   subclause)))
-                                     expand/collapse)))))
+    (assoc query :filter (-> (:filter *expanded-query*)
+                             (update-in [:subclauses] #(for [{:keys [filter-type], {:keys [special-type]} :field, :as subclause} %]
+                                                         (if (and (= filter-type :=)
+                                                                  (contains? #{:timestamp_seconds
+                                                                               :timestamp_milliseconds} special-type))
+                                                           (rewrite-timestamp-filter= subclause)
+                                                           subclause)))
+                             expand/collapse))))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -216,6 +218,46 @@
 
 
 ;; # POSTPROCESSOR
+
+;; ### PERFORM-UNIX-TIMESTAMP-AGGREGATION
+
+(defn perform-unix-timestamp-aggregation
+  "Unix timestamp support is implemented entirely in Clojure-land -- Databases themeselves are working directly with
+   integers as far as they're concerned. Some functionality, like aggregations, must be implemented in Clojure.
+
+   Check and see if we need to do any post-processing to aggregate a Unix timestamp column, and, if so, perform
+   the appropriate aggregation."
+  [results]
+  (let [{{[breakout-field] :breakout} :query} *expanded-query*]
+    (if-not (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type breakout-field)) results
+            (let [ ;; Procure an appropriate function to perform the aggregation for the resulting rows
+                  ag-fn      (case (-> *expanded-query* :query :aggregation :aggregation-type)
+                               :count    count
+                               :avg      #(/ (reduce + %) (count %))
+                               :distinct #(count (set %))             ; (!!!)
+                               :sum      (partial reduce +))
+
+                  ;; Convert the dates returned by the rows to their string equivalent so we can aggregate them
+                  ;; appropriately. Each row should look like [#inst<...> value]; convert to rows that look like
+                  ;; ["YYYY-MM-DD" value].
+                  rows       (for [[timestamp val] (:rows results)]
+                               [(u/date->yyyy-mm-dd timestamp) val])
+
+                  ;; Rows already come back in the correct order; lazily partition the sequence into separate sequences
+                  ;; for each distinct date value.
+                  ;; That will give us a sequence like:
+                  ;; [[["06-01-2015" val1] ["06-01-2015" val2]]
+                  ;;  [["06-02-2015" val3]]
+                  ;; ...]
+                  partitions (partition-by first rows)
+
+                  ;; Now take each of these partitions and convert them back into single rows by grabbing the
+                  ;; date string from the first row and then applying AG-FN to the values
+                  aggregated-rows (for [[[date-str] :as rows] partitions]
+                                    [date-str (ag-fn (map second rows))])]
+
+              ;; Return the updated results
+              (assoc results :rows aggregated-rows)))))
 
 ;; ### POST-PROCESS-CUMULATIVE-SUM
 
@@ -301,11 +343,12 @@
              (count (set (:columns results))))
           (format "Duplicate columns in results: %s" (vec (:columns results))))
   (->> results
+       convert-unix-timestamps-to-dates
+       perform-unix-timestamp-aggregation
        limit-max-result-rows
        (#(case (keyword (:type query))
            :native %
            :query  (post-process-cumulative-sum (:query query) %)))
-       convert-unix-timestamps-to-dates
        add-row-count-and-status))
 
 
