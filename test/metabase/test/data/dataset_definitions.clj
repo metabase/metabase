@@ -44,18 +44,11 @@
     ["Boston Port Act Passed"          (unix-timestamp :year 1774 :month  3 :date 31)]
     ["First Continental Congress Held" (unix-timestamp :year 1774 :month  9 :date  5)]]])
 
-(defn random-incident []
-  [(rand-int 6) (unix-timestamp-ms :year   2015
-                                   :month  6
-                                   :date    (+ 1 (rand-int 28)) ; 0 - 28
-                                   :hour   (rand-int 24)
-                                   :minute (rand-int 60))])
-
-(def ^:const edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
+(def ^:private ^:const edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
 ;; TODO - move this to interface
 ;; TODO - make rows be lazily loadable for DB definitions from a file
-(defmacro def-database-definition-edn [dbname]
+(defmacro ^:private def-database-definition-edn [dbname]
   `(def-database-definition ~dbname
      (edn/read-string (slurp ~(str edn-definitions-dir (name dbname) ".edn")))))
 
