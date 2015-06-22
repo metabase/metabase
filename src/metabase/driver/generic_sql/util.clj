@@ -97,7 +97,6 @@
   [field-name base-type special-type]
   {:pre [(string? field-name)
          (keyword? base-type)]}
-  ;; TODO - timestamp stuff is Postgres-specific
   (cond
     (contains? #{:DateField :DateTimeField} base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
     (= special-type :timestamp_seconds)                `(korma/raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) field-name))
@@ -115,14 +114,13 @@
      (contains? #{:DateField :DateTimeField} field-base-type) (format "CAST(%s AS DATE)" field-name)
      :else                                                    field-name)))
 
-(def field-id->kw
+(defn field-id->kw
   "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
-  (memoize                         ; This can be memozied since the names and base_types of Fields never change
-   (fn [field-id]                   ; *  if a field is renamed the old field will just be marked as `inactive` and a new Field will be created
-     {:pre [(integer? field-id)]}  ; *  if a field's type *actually* changes we have no logic in driver.generic-sql.sync to handle that case any way (TODO - fix issue?)
-     (if-let [{field-name :name, field-type :base_type, special-type :special_type} (sel :one [Field :name :base_type :special_type] :id field-id)]
-       (castify-field field-name field-type special-type)
-       (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))))
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (if-let [{field-name :name, field-type :base_type, special-type :special_type} (sel :one [Field :name :base_type :special_type] :id field-id)]
+    (castify-field field-name field-type special-type)
+    (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))
 
 (def date-field-id?
   "Does FIELD-ID correspond to a field that is a Date?"

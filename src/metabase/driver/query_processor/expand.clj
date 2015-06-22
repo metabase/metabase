@@ -156,11 +156,11 @@
   [{:keys [value base-type special-type] :as qp-value}]
   (assoc qp-value
          :original-value value
-         :value (or (when (string? value) ; Since Value *doesn't* revert to YYYY-MM-DD when collapsing make sure we're not parsing it twice
-                      (cond
-                        (contains? #{:DateField :DateTimeField} base-type) (u/parse-date-yyyy-mm-dd value)
-                        (= special-type :timestamp_seconds)                (u/date-yyyy-mm-dd->unix-timestamp value)
-                        (= special-type :timestamp_milliseconds)           (* (u/date-yyyy-mm-dd->unix-timestamp value) 1000)))
+         ;; Since Value *doesn't* revert to YYYY-MM-DD when collapsing make sure we're not parsing it twice
+         :value (or (when (and (string? value)
+                               (or (contains? #{:DateField :DateTimeField} base-type)
+                                   (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
+                      (u/parse-date-yyyy-mm-dd value))
                     value)))
 
 ;; Replace values with these during first pass over Query.

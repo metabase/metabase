@@ -151,13 +151,9 @@
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
                       (let [cast-value-if-needed (fn [v]
-                                                   (cond (or (= (type v) java.sql.Date)
-                                                             (= (type v) java.util.Date))    `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))
-                                                         (not (string? v))                    v
-                                                         (date-field-id? field-id)            (u/parse-date-yyyy-mm-dd v)
-                                                         (= (field-id->special-type field-id)
-                                                            :timestamp_seconds)               (u/date-yyyy-mm-dd->unix-timestamp v)
-                                                         :else                                v))]
+                                                   (if-not (or (= (type v) java.sql.Date)
+                                                               (= (type v) java.util.Date)) v
+                                                     `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))))]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]
