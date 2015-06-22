@@ -132,17 +132,19 @@ export default React.createClass({
 
         return (
             <div className="QueryBuilder-section border-bottom">
-                <div id="id_sql" className="Query-section bordered mt4"></div>
-                <div className="py2 clearfix">
-                    <div className="float-right">
-                        <RunButton
-                            canRun={this.canRunQuery()}
-                            isRunning={this.props.isRunning}
-                            runFn={this.runQuery}
-                        />
-                    </div>
-                    <div className="float-left">
-                        {dbSelector}
+                <div className="wrapper">
+                    <div id="id_sql" className="Query-section bordered mt2"></div>
+                    <div className="py2 clearfix">
+                        <div className="float-right">
+                            <RunButton
+                                canRun={this.canRunQuery()}
+                                isRunning={this.props.isRunning}
+                                runFn={this.runQuery}
+                            />
+                        </div>
+                        <div className="float-left">
+                            {dbSelector}
+                        </div>
                     </div>
                 </div>
             </div>
