@@ -15,6 +15,7 @@
 (declare add-implicit-breakout-order-by
          add-implicit-limit
          add-implicit-fields
+         expand-date-values
          get-special-column-info
          preprocess-cumulative-sum
          preprocess-structured
@@ -75,6 +76,7 @@
                                                            add-implicit-breakout-order-by
                                                            add-implicit-limit
                                                            add-implicit-fields
+                                                           expand-date-values
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -147,6 +149,16 @@
     (do (swap! *internal-context* assoc :fields-is-implicit true)
         (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
                                   :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
+
+
+;;; ### EXPAND-DATES
+
+(defn expand-date-values
+  "Expand any dates in the `:filter` clause.
+   This is done so various implementations can cast date values appropriately by simply checking their types.
+   In the future when drivers are re-worked to deal with the Expanded Query directly this step will no longer be needed."
+  [query]
+  (assoc query :filter (-> *expanded-query* :query :filter expand/collapse))) ; collapse the filter clause from the expanded query and use that as the replacement
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM

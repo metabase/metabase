@@ -133,9 +133,6 @@
 ;;       [">" 1413 1]
 ;;       [">=" 1412 4]]
 
-(defn- field-id->special-type [field-id]
-  (sel :one :field [Field :special_type] :id field-id))
-
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
 
