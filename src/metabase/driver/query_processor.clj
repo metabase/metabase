@@ -54,6 +54,10 @@
   "A neat place to store 'notes-to-self': things individual implementations don't need to know about, like if the `fields` clause was added implicitly."
   (atom nil))
 
+(def ^:dynamic *driver*
+  "The driver currently being used to process this query."
+  (atom nil))
+
 
 ;; # PREPROCESSOR
 
@@ -219,46 +223,6 @@
 
 ;; # POSTPROCESSOR
 
-;; ### PERFORM-UNIX-TIMESTAMP-AGGREGATION
-
-(defn perform-unix-timestamp-aggregation
-  "Unix timestamp support is implemented entirely in Clojure-land -- Databases themeselves are working directly with
-   integers as far as they're concerned. Some functionality, like aggregations, must be implemented in Clojure.
-
-   Check and see if we need to do any post-processing to aggregate a Unix timestamp column, and, if so, perform
-   the appropriate aggregation."
-  [results]
-  (let [{{[breakout-field] :breakout} :query} *expanded-query*]
-    (if-not (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type breakout-field)) results
-            (let [ ;; Procure an appropriate function to perform the aggregation for the resulting rows
-                  ag-fn      (case (-> *expanded-query* :query :aggregation :aggregation-type)
-                               :count    count
-                               :avg      #(/ (reduce + %) (count %))
-                               :distinct #(count (set %))             ; (!!!)
-                               :sum      (partial reduce +))
-
-                  ;; Convert the dates returned by the rows to their string equivalent so we can aggregate them
-                  ;; appropriately. Each row should look like [#inst<...> value]; convert to rows that look like
-                  ;; ["YYYY-MM-DD" value].
-                  rows       (for [[timestamp val] (:rows results)]
-                               [(u/date->yyyy-mm-dd timestamp) val])
-
-                  ;; Rows already come back in the correct order; lazily partition the sequence into separate sequences
-                  ;; for each distinct date value.
-                  ;; That will give us a sequence like:
-                  ;; [[["06-01-2015" val1] ["06-01-2015" val2]]
-                  ;;  [["06-02-2015" val3]]
-                  ;; ...]
-                  partitions (partition-by first rows)
-
-                  ;; Now take each of these partitions and convert them back into single rows by grabbing the
-                  ;; date string from the first row and then applying AG-FN to the values
-                  aggregated-rows (for [[[date-str] :as rows] partitions]
-                                    [date-str (ag-fn (map second rows))])]
-
-              ;; Return the updated results
-              (assoc results :rows aggregated-rows)))))
-
 ;; ### POST-PROCESS-CUMULATIVE-SUM
 
 (defn post-process-cumulative-sum
@@ -308,7 +272,8 @@
       (update-in results [:rows] #(for [row %]
                                     (for [[i val] (m/indexed row)]
                                       (cond
-                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000))
+                                        (instance? java.util.Date val)               val                           ; already converted to Date as part of preprocessing,
+                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000)) ; nothing to do here
                                         (contains? timestamp-millis-col-indecies i)  (java.sql.Date. val)
                                         :else                                        val)))))))
 
@@ -344,7 +309,6 @@
           (format "Duplicate columns in results: %s" (vec (:columns results))))
   (->> results
        convert-unix-timestamps-to-dates
-       perform-unix-timestamp-aggregation
        limit-max-result-rows
        (#(case (keyword (:type query))
            :native %
@@ -485,7 +449,9 @@
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}
                      ;; Otherwise something went wrong !
-                     :else                                   (throw (Exception. (format "Don't know what to do with Field '%s'." col-kw)))))))
+                     :else                                   (throw (Exception. (format "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
+                                                                                        col-kw
+                                                                                        (u/pprint-to-str field-kw->field))))))))
          ;; Add FK info the the resulting Fields
          add-fields-extra-info)))
 

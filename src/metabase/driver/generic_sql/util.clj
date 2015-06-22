@@ -2,6 +2,7 @@
   "Shared functions for our generic-sql query processor."
   (:require [clojure.core.memoize :as memo]
             [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as korma]
@@ -9,6 +10,7 @@
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.context :as context]
+            [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])))
@@ -31,9 +33,6 @@
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
       (-db->korma-db (select-keys database [:engine :details])))))
-
-#_(defn db->korma-db [database]
-    (kdb/create-db (db->connection-spec database)))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -93,31 +92,37 @@
 (defn castify-field
   "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `:DateTimeField`).
 
-    (castify :name :TextField)     -> :name
-    (castify :date :DateTimeField) -> (raw \"CAST(\"date\" AS DATE)"
-  [field-name field-base-type]
+    (castify :name :TextField nil)     -> :name
+    (castify :date :DateTimeField nil) -> (raw \"CAST(\"date\" AS DATE)
+    (castify :timestamp :IntegerField :timestamp_seconds) -> (raw \"CAST(TO_TIMESTAMP(\"timestamp\") AS DATE))"
+  [field-name base-type special-type]
   {:pre [(string? field-name)
-         (keyword? field-base-type)]}
-  ;; do we need to cast DateFields ? or just DateTimeFields ?
-  (if (contains? #{:DateField :DateTimeField} field-base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
-      (keyword field-name)))
+         (keyword? base-type)]}
+  ;; TODO - timestamp stuff is Postgres-specific
+  (cond
+    (contains? #{:DateField :DateTimeField} base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+    (= special-type :timestamp_seconds)                `(korma/raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) field-name))
+    (= special-type :timestamp_milliseconds)           `(korma/raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) field-name))
+    :else                                              (keyword field-name)))
 
 (defn field-name+base-type->castified-key
   "Like `castify-field`, but returns a keyword that should match the one returned in results."
-  [field-name field-base-type]
+  [field-name field-base-type special-type]
   {:pre [(string? field-name)
          (keyword? field-base-type)]
    :post [(keyword? %)]}
-  (if (contains? #{:DateField :DateTimeField} field-base-type) (keyword (format "CAST(%s AS DATE)" field-name))
-      (keyword field-name)))
+  (keyword
+   (cond
+     (contains? #{:DateField :DateTimeField} field-base-type) (format "CAST(%s AS DATE)" field-name)
+     :else                                                    field-name)))
 
 (def field-id->kw
   "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
   (memoize                         ; This can be memozied since the names and base_types of Fields never change
    (fn [field-id]                   ; *  if a field is renamed the old field will just be marked as `inactive` and a new Field will be created
      {:pre [(integer? field-id)]}  ; *  if a field's type *actually* changes we have no logic in driver.generic-sql.sync to handle that case any way (TODO - fix issue?)
-     (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
-       (castify-field field-name field-type)
+     (if-let [{field-name :name, field-type :base_type, special-type :special_type} (sel :one [Field :name :base_type :special_type] :id field-id)]
+       (castify-field field-name field-type special-type)
        (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))))
 
 (def date-field-id?

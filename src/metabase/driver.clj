@@ -51,6 +51,7 @@
 
 ;; ## Driver Lookup
 
+
 (def ^{:arglists '([engine])} engine->driver
   "Return the driver instance that should be used for given ENGINE.
    This loads the corresponding driver if needed; it is expected that it resides in a var named
@@ -134,14 +135,15 @@
   [query]
   {:pre [(map? query)]}
   (try
-    (binding [qp/*query* query
-              qp/*expanded-query* (expand/expand query)
-              qp/*internal-context* (atom {})]
-      (let [driver  (database-id->driver (:database query))
-            query   (qp/preprocess query)
-            results (binding [qp/*query* query]
-                      (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
-        (qp/post-process driver query results)))
+    (let [driver  (database-id->driver (:database query))]
+      (binding [qp/*query*            query
+                qp/*expanded-query*   (expand/expand query)
+                qp/*internal-context* (atom {})
+                qp/*driver*           driver]
+        (let [query   (qp/preprocess query)
+              results (binding [qp/*query* query]
+                        (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
+          (qp/post-process driver query results))))
     (catch Throwable e
       (.printStackTrace e)
       {:status :failed

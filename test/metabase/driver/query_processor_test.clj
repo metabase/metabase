@@ -7,7 +7,7 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :refer [us-history-1607-to-1774]]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*dataset*]])))
 
 
@@ -780,7 +780,7 @@
 
 ;; There are 4 events in us-history-1607-to-1774 whose year is < 1765
 (datasets/expect-with-all-datasets 4
- (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
+ (with-temp-db [db (dataset-loader) defs/us-history-1607-to-1774]
    (-> (driver/process-query {:database (:id db)
                               :type     :query
                               :query    {:source_table (:id &events)
@@ -790,3 +790,74 @@
        :rows
        first
        first)))
+
+;; Check that Timestamps are getting converted the way we expect
+(datasets/expect-with-all-datasets
+ ["1607-05-14"
+  "1620-11-11"
+  "1752-06-15"
+  "1754-05-28"
+  "1765-03-22"
+  "1765-03-24"
+  "1765-10-19"
+  "1766-03-18"
+  "1767-06-29"
+  "1770-03-05"
+  "1773-05-10"
+  "1773-12-16"
+  "1774-03-31"
+  "1774-09-05"]
+ (with-temp-db [db (dataset-loader) defs/us-history-1607-to-1774]
+   (->> (driver/process-query {:database (:id db)
+                               :type     "query"
+                               :query    {:source_table (:id &events)
+                                          :aggregation  ["rows"]}})
+        :data
+        :rows
+        (map last))))
+
+
+;;; Unix timestamp breakouts -- SQL only
+(datasets/expect-with-datasets #{:generic-sql}
+  [["1607-05-14" (->sum-type 1)]
+   ["1620-11-11" (->sum-type 3)]
+   ["1752-06-15" (->sum-type 7)]
+   ["1754-05-28" (->sum-type 10)]
+   ["1765-03-22" (->sum-type 15)]
+   ["1765-03-24" (->sum-type 21)]
+   ["1765-10-19" (->sum-type 28)]
+   ["1766-03-18" (->sum-type 36)]
+   ["1767-06-29" (->sum-type 45)]
+   ["1770-03-05" (->sum-type 55)]
+   ["1773-05-10" (->sum-type 66)]
+   ["1773-12-16" (->sum-type 78)]
+   ["1774-03-31" (->sum-type 91)]
+   ["1774-09-05" (->sum-type 105)]]
+  (with-temp-db [db (dataset-loader) defs/us-history-1607-to-1774]
+    (->> (driver/process-query {:database (:id db)
+                                :type     "query"
+                                :query    {:source_table (:id &events)
+                                           :aggregation  ["cum_sum" (:id &events.id)]
+                                           :breakout     [(:id &events.timestamp)]}})
+         :data
+         :rows)))
+
+
+(datasets/expect-with-datasets #{:generic-sql}
+  [["2015-06-01" 6]
+   ["2015-06-02" 9]
+   ["2015-06-03" 5]
+   ["2015-06-04" 9]
+   ["2015-06-05" 8]
+   ["2015-06-06" 9]
+   ["2015-06-07" 8]
+   ["2015-06-08" 9]
+   ["2015-06-09" 7]
+   ["2015-06-10" 8]]
+  (with-temp-db [db (dataset-loader) defs/sad-toucan-incidents]
+    (driver/process-query {:database (:id db)
+                           :type     "query"
+                           :query    {:source_table (:id &events)
+                                      :aggregation  ["count"]
+                                      :breakout     [(:id &events.timestamp)]
+                                      :limit        10}})))

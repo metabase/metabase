@@ -19,7 +19,7 @@
 (defn unix-timestamp
   "Create a Unix timestamp, in seconds."
   ^Long [& args]
-  (apply unix-timestamp-ms args))
+  (/ (apply unix-timestamp-ms args) 1000))
 
 ;; ## Datasets
 
@@ -31,7 +31,7 @@
               :special-type :timestamp_seconds}]
    [["Jamestown Settlement Founded"    (unix-timestamp :year 1607 :month  5 :date 14)]
     ["Mayflower Compact Signed"        (unix-timestamp :year 1620 :month 11 :date 11)]
-    ["Ben Franklin's Kite Experiment"  (unix-timestamp :year 1752 :month 96 :date 15)]
+    ["Ben Franklin's Kite Experiment"  (unix-timestamp :year 1752 :month  6 :date 15)]
     ["French and Indian War Begins"    (unix-timestamp :year 1754 :month  5 :date 28)]
     ["Stamp Act Enacted"               (unix-timestamp :year 1765 :month  3 :date 22)]
     ["Quartering Act Enacted"          (unix-timestamp :year 1765 :month  3 :date 24)]

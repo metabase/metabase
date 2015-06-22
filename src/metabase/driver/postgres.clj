@@ -127,13 +127,26 @@
 (defn- timezone->set-timezone-sql [timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
+(defn- cast-timestamp-seconds-field-to-date-fn [field-name]
+  {:pre [(string? field-name)]}
+  (format "CAST(TO_TIMESTAMP(\"%s\") AS DATE)" field-name))
+
+(defn- cast-timestamp-milliseconds-field-to-date-fn [field-name]
+  {:pre [(string? field-name)]}
+  (format "CAST(TO_TIMESTAMP(\"%s\" / 1000) AS DATE)" field-name))
+
+(def ^:private ^:const uncastify-timestamp-regex
+  #"CAST\(TO_TIMESTAMP\(([^\s+])(?: / 1000)?\) AS DATE\)")
 
 ;; ## DRIVER
 
 (def ^:const driver
   (generic-sql/map->SqlDriver
-   {:column->base-type                   column->base-type
-    :connection-details->connection-spec connection-details->connection-spec
-    :database->connection-details        database->connection-details
-    :sql-string-length-fn                :CHAR_LENGTH
-    :timezone->set-timezone-sql          timezone->set-timezone-sql}))
+   {:column->base-type                            column->base-type
+    :connection-details->connection-spec          connection-details->connection-spec
+    :database->connection-details                 database->connection-details
+    :sql-string-length-fn                         :CHAR_LENGTH
+    :timezone->set-timezone-sql                   timezone->set-timezone-sql
+    :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
+    :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
+    :uncastify-timestamp-regex                    uncastify-timestamp-regex}))
