@@ -28,7 +28,7 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            querySectionClasses: 'Query-section mb1 md-mb2 flex align-center'
+            querySectionClasses: 'Query-section mt1 md-mt2 flex align-center'
         };
     },
 
