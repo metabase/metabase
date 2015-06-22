@@ -158,7 +158,7 @@
    This is done so various implementations can cast date values appropriately by simply checking their types.
    In the future when drivers are re-worked to deal with the Expanded Query directly this step will no longer be needed."
   [query]
-  (assoc query :filter (-> *expanded-query* :query :filter expand/collapse))) ; collapse the filter clause from the expanded query and use that as the replacement
+  (assoc query :filter (some-> *expanded-query* :query :filter expand/collapse))) ; collapse the filter clause from the expanded query and use that as the replacement
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
