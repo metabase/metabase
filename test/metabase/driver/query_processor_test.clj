@@ -857,7 +857,7 @@
   (with-temp-db [db (dataset-loader) defs/sad-toucan-incidents]
     (driver/process-query {:database (:id db)
                            :type     "query"
-                           :query    {:source_table (:id &events)
+                           :query    {:source_table (:id &incidents)
                                       :aggregation  ["count"]
-                                      :breakout     [(:id &events.timestamp)]
+                                      :breakout     [(:id &incidents.timestamp)]
                                       :limit        10}})))
