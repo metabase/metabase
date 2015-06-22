@@ -4,7 +4,7 @@
     <span class="Setup-brandWordMark">metabase</span>
 </nav>
 
-<div class="wrapper flex flex-column layout-centered wrapper wrapper-max-sm">
+<div class="wrapper flex flex-column layout-centered wrapper wrapper--trim">
     <div class="SetupSteps full">
         <section class="SetupStep rounded full relative" ng-class="{ 'SetupStep--active shadowed' : activeStep == 'user', 'SetupStep--completed shadowed' : completedSteps.user }">
                 <div class="flex align-center py3" ng-click="activeStep = 'user'">
@@ -12,7 +12,7 @@
                         <span class="SetupStep-number">1</span>
                         <mb-icon name="check" class="SetupStep-check" width="16px" height="16px"></mb-icon>
                     </span>
-                    <h3 class="SetupStep-title ml4">{{userStepText}}</h3>
+                    <h2 class="SetupStep-title ml4 my1">{{userStepText}}</h2>
                 </div>
                 <form name="form" ng-submit="createOrgAndUser()" novalidate ng-if="activeStep == 'user'" novalidate>
                     <div class="Form-field Grid" mb-form-field="first_name">
@@ -69,7 +69,7 @@
                     <span class="SetupStep-number">2</span>
                     <mb-icon name="check" class="SetupStep-check" width="16px" height="16px"></mb-icon>
                 </span>
-                <h3 class="SetupStep-title ml4">{{databaseStepText}}</h3>
+                <h2 class="SetupStep-title ml4 my1">{{databaseStepText}}</h2>
             </div>
             <div ng-controller="DatabaseEdit" ng-if="activeStep == 'database'">
                 <form name="form" novalidate>

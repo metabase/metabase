@@ -259,10 +259,9 @@
 .GuiBuilder.GuiBuilder--collapsed .Query-section {
     display: none;
 }
+.QueryToggleWrapper { bottom: -1rem; }
 
 .QueryToggle {
-    position: absolute;
-    bottom: -1rem;
     color: #999;
     border-radius: 99px;
     z-index: 1000;
