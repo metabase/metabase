@@ -687,21 +687,24 @@ export default React.createClass({
     },
 
     toggleIcon: function () {
+        var iconSize = '12px'
         if(this.props.isExpanded) {
             return (
-                <Icon name='chevronup' width="16px" height="16px" />
+                <Icon name='chevronup' width={iconSize} height={iconSize} />
             );
         } else {
             return (
-                <Icon name='chevrondown' width="16px" height="16px" />
+                <Icon name='chevrondown' width={iconSize} height={iconSize} />
             );
         }
     },
 
     openStatus: function() {
         return (
-            <a href="#" className="QueryToggle absolute px2 py1     no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
-                {this.toggleIcon()}
+            <a href="#" className="QueryToggle px2 py1 no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
+                <span className="mr1">
+                    {this.toggleIcon()}
+                </span>
                 {this.toggleText()}
             </a>
         );
@@ -746,7 +749,7 @@ export default React.createClass({
                         runFn={this.runQuery}
                     />
                 </div>
-                <div className="flex absolute bottom left right layout-centered">
+                <div className="QueryToggleWrapper absolute left right flex layout-centered">
                     {this.openStatus()}
                 </div>
             </div>
