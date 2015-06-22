@@ -58,7 +58,7 @@
           <tbody>
             <tr ng-repeat="specialist in specialists | orderBy:orderByField:reverseSort | filter:searchFilter">
               <td class="clearfix">
-                <img class="EntityImage EntityImage--small float-left hide show-lg" src="{{specialist.avatar}}">
+                <img class="EntityImage EntityImage--small float-left hide lg-show" src="{{specialist.avatar}}">
                 <a class="EntityName float-left ml1 link" href="/operator/specialist/{{specialist.specialist_id}}">{{specialist.nick}}</a>
               </td>
               <td>{{specialist.business_name}}</td>
@@ -95,4 +95,3 @@
     </ol>
   </div>
 </div>
-

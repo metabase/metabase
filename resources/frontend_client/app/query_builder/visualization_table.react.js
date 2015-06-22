@@ -11,7 +11,10 @@ export default React.createClass({
     displayName: 'QueryVisualizationTable',
     propTypes: {
         data: React.PropTypes.object,
-        sort: React.PropTypes.array
+        sort: React.PropTypes.array,
+        setSortFn: React.PropTypes.func,
+        isCellClickableFn: React.PropTypes.func,
+        cellClickedFn: React.PropTypes.func
     },
 
     // local variables
@@ -91,7 +94,8 @@ export default React.createClass({
             };
 
             if (width !== prevState.width) {
-                var tableColumnWidths = this.calculateColumnWidths(width, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
+                // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
+                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
                 updatedState.columnWidths = tableColumnWidths;
             }
 
@@ -107,13 +111,24 @@ export default React.createClass({
         this.props.setSortFn(fieldId);
     },
 
+    cellClicked: function(rowIndex, columnIndex) {
+        this.props.cellClickedFn(rowIndex, columnIndex);
+    },
+
     rowGetter: function(rowIndex) {
         return this.props.data.rows[rowIndex];
     },
 
-    cellDataGetter: function(cellKey, row) {
+    cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
         // TODO: should we be casting all values toString()?
-        return (row[cellKey] !== null) ? row[cellKey].toString() : null;
+        cellData = (cellData !== null) ? cellData.toString() : null;
+
+        var key = 'cl'+rowIndex+'_'+cellDataKey;
+        if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
+            return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
+        } else {
+            return (<div key={key}>{cellData}</div>);
+        }
     },
 
     columnResized: function(width, idx) {
@@ -181,7 +196,7 @@ export default React.createClass({
                     width={colWidth}
                     isResizable={true}
                     headerRenderer={component.tableHeaderRenderer.bind(null, idx)}
-                    cellDataGetter={component.cellDataGetter}
+                    cellRenderer={component.cellRenderer}
                     dataKey={idx}
                     label={colVal}>
                 </Column>

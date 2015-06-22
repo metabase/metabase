@@ -21,28 +21,19 @@ var Corvus = angular.module('corvus', [
     'corvus.card',
     'corvus.dashboard',
     'corvus.explore',
+    'corvus.home',
     'corvus.operator', // this is a short term hack
     'corvus.reserve',
     'corvus.user',
     'corvus.setup',
     'corvusadmin.databases',
     'corvusadmin.people',
-    'corvusadmin.settings'
+    'corvusadmin.settings',
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
-    });
-
-    $routeProvider.when('/', {
-        template: '',
-        controller: 'Homepage',
-        resolve: {
-            appState: ["AppState", function(AppState) {
-                return AppState.init();
-            }]
-        }
     });
 
     $routeProvider.when('/unauthorized/', {

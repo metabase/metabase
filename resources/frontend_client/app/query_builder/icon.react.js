@@ -6,8 +6,8 @@ export default React.createClass({
     displayName: 'Icon',
     getDefaultProps: function () {
        return {
-          width: 32,
-          height: 32,
+          width: '32px',
+          height: '32px',
           fill: 'currentcolor'
        };
     },

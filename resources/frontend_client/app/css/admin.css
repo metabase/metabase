@@ -6,7 +6,8 @@
 }
 
 .AdminNav {
-    padding: 1.825em;
+    padding-top: 1.825em;
+    padding-bottom: 1.825em;
     background: var(--admin-nav-bg-color);
     color: #fff;
     font-size: 0.85rem;
@@ -38,6 +39,7 @@
 }
 
 /* utility to get a simple common hover state for admin items */
+.HoverItem:hover,
 .AdminHoverItem:hover {
     background-color: #F3F8FD;
     transition: background .2s linear;

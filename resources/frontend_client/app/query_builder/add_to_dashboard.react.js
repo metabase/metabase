@@ -39,6 +39,7 @@ export default React.createClass({
                     <AddToDashboardPopover
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                         closePopoverFn={this.toggleModal}
                     />
                 </Popover>
@@ -56,12 +57,10 @@ export default React.createClass({
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
-                <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
+                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
                     <Icon name='addtodash' />
                 </a>
-                <ReactCSSTransitionGroup transitionName="Transition-popover">
-                    {this.addToDash()}
-                </ReactCSSTransitionGroup>
+                {this.addToDash()}
             </span>
         );
     }

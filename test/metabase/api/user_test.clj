@@ -224,7 +224,7 @@
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
 
 ;; Make sure that if current password doesn't match we get a 400
-(expect "password mismatch"
+(expect {:errors {:old_password "Invalid password"}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "whateverUP12!!"
                                                                                  :old_password "mismatched"}))
 

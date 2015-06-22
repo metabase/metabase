@@ -8,6 +8,9 @@ import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
+import tip from 'd3-tip';
+tip(d3);
+
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
 // - 'titles' (tooltips)
@@ -358,11 +361,49 @@ function applyChartColors(dcjsChart, card) {
     return dcjsChart.ordinalColors([chartColor].concat(colorList));
 }
 
-function applyChartTooltips(dcjsChart, card) {
-    // set the title (tooltip) function for points / bars on the chart
-    return dcjsChart.title(function(d) {
-        var commasFormatter = d3.format(",.0f");
-        return d.key + ": " + commasFormatter(d.value);
+function applyChartTooltips(dcjsChart, card, cols) {
+    dcjsChart.renderlet(function(chart) {
+        // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
+        // We should only ever have one tooltip on screen, right?
+        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
+
+        var valueFormatter = d3.format(',.0f');
+
+        var tip = d3.tip()
+            .attr('class', 'ChartTooltip')
+            .direction('n')
+            .offset([-10, 0])
+            .html(function(d) {
+                return (
+                    '<div><span class="ChartTooltip-key">' + cols[0].name + '</span> <span class="ChartTooltip-value">' + d.data.key + '</span></div>' +
+                    '<div><span class="ChartTooltip-key">' + cols[1].name + '</span> <span class="ChartTooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
+                );
+            });
+
+        chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
+            .call(tip)
+            .on('mouseover.tip', function(x) {
+                tip.show.apply(tip, arguments);
+                if (card.display === "pie") {
+                    var arc = d3.svg.arc()
+                        .outerRadius(chart.radius()).innerRadius(x.innerRadius)
+                        .padAngle(x.padAngle).startAngle(x.startAngle).endAngle(x.endAngle);
+                    var centroid = arc.centroid();
+                    var pieRect = this.parentNode.parentNode.getBoundingClientRect();
+                    var pieCenter = [pieRect.left + chart.radius(), pieRect.top + chart.radius()];
+                    var tooltip = d3.select('.ChartTooltip');
+                    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+                    var tooltipOffset = [-tooltipRect.width / 2, -tooltipRect.height - 20];
+                    tooltip.style({
+                        top: pieCenter[1] + tooltipOffset[1] + centroid[1] + "px",
+                        left: pieCenter[0] + tooltipOffset[0] + centroid[0] + "px",
+                        "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
+                    });
+                }
+            })
+            .on('mouseleave.tip', tip.hide);
+
+        chart.selectAll('title').remove();
     });
 }
 
@@ -418,7 +459,7 @@ function lineAndBarOnRender(dcjsChart, card) {
         var customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, function(colorStr) {
-            return 'stroke:' + colorStr + ';';
+            return 'stroke:' + '#ddd' + ';';
         });
 
     } catch (e) {}
@@ -762,6 +803,9 @@ export var CardRenderer = {
                             return d.key + ': ' + d.value + ' (' + percent + '%)';
                         });
 
+
+        applyChartTooltips(chart, card, result.cols);
+
         chart.render();
     },
 
@@ -823,7 +867,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card);
+        applyChartTooltips(chart, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -900,7 +944,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card);
+        applyChartTooltips(chart, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips

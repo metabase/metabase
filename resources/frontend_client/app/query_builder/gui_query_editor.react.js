@@ -21,8 +21,6 @@ export default React.createClass({
         defaultQuery: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
         isExpanded: React.PropTypes.bool.isRequired,
-        getTablesFn: React.PropTypes.func.isRequired,
-        getTableDetailsFn: React.PropTypes.func.isRequired,
         runFn: React.PropTypes.func.isRequired,
         notifyQueryModifiedFn: React.PropTypes.func.isRequired,
         toggleExpandCollapseFn: React.PropTypes.func.isRequired
@@ -30,61 +28,12 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            querySectionClasses: 'Query-section flex align-center'
+            querySectionClasses: 'Query-section mt1 md-mt2 flex align-center'
         };
-    },
-
-    getInitialState: function() {
-        return {
-            tables: null,
-            options: null
-        };
-    },
-
-    componentDidMount: function() {
-        // if we know our database then load related information
-        if (this.props.query.database) {
-            this.loadDatabaseInfo(this.props.query.database);
-        }
-
-        // if we also know our table then load it's related information
-        if (this.props.query.query.source_table) {
-            this.loadTableInfo(this.props.query.query.source_table);
-        }
     },
 
     setQuery: function(dataset_query, notify) {
         this.props.notifyQueryModifiedFn(dataset_query);
-    },
-
-    loadDatabaseInfo: function(databaseId) {
-        var component = this;
-
-        // get tables for db
-        this.props.getTablesFn(databaseId).then(function (tables) {
-            component.setState({
-                tables: tables
-            });
-        }, function (error) {
-            console.log('error getting tables', error);
-        });
-    },
-
-    loadTableInfo: function(tableId) {
-        var component = this;
-
-        // get table details
-        this.props.getTableDetailsFn(tableId).then(function (table) {
-            // Decorate with valid operators
-            // TODO: would be better if this was in our component
-            var updatedTable = component.props.markupTableFn(table);
-
-            component.setState({
-                options: updatedTable
-            });
-        }, function (error) {
-            console.log('error getting table metadata', error);
-        });
     },
 
     setDatabase: function(databaseId) {
@@ -95,22 +44,19 @@ export default React.createClass({
             // set our new database on the query
             query.database = databaseId;
 
-            // clear all previous state
-            this.replaceState(this.getInitialState());
-
             // notify parent that we've started over
             // TODO: should this clear the visualization as well?
             this.props.notifyQueryModifiedFn(query);
 
             // load rest of the data we need
-            this.loadDatabaseInfo(databaseId);
+            this.props.loadDatabaseInfoFn(databaseId);
         }
     },
 
     setSourceTable: function(sourceTable) {
         // this will either be the id or an object with an id
         var tableId = sourceTable.id || sourceTable;
-        this.loadTableInfo(tableId);
+        this.props.loadTableInfoFn(tableId);
 
         // when the table changes we reset everything else in the query, except the database of course
         // TODO: should this clear the visualization as well?
@@ -251,6 +197,14 @@ export default React.createClass({
         this.setQuery(query, true);
     },
 
+    renderAddIcon: function () {
+        return (
+            <span className="mr1">
+                <Icon name="add" width="12px" height="12px" />
+            </span>
+        )
+    },
+
     getFilters: function() {
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
@@ -351,8 +305,8 @@ export default React.createClass({
 
         // start with all fields
         var fieldList = [];
-        for(var key in this.state.options.fields_lookup) {
-            fieldList.push(this.state.options.fields_lookup[key]);
+        for(var key in this.props.options.fields_lookup) {
+            fieldList.push(this.props.options.fields_lookup[key]);
         }
 
         if (this.isBareRowsAggregation()) {
@@ -441,8 +395,8 @@ export default React.createClass({
     renderDbSelector: function() {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Using:</span>
+                <div className={this.props.querySectionClasses + ' mt1 lg-mt2'}>
+                    <span className="Query-label">Data source:</span>
                     <DatabaseSelector
                         databases={this.props.databases}
                         setDatabase={this.setDatabase}
@@ -454,7 +408,7 @@ export default React.createClass({
     },
 
     renderTableSelector: function() {
-        if (this.state.tables) {
+        if (this.props.tables) {
             var sourceTableListOpen = true;
             if(this.props.query.query.source_table) {
                 sourceTableListOpen = false;
@@ -465,10 +419,10 @@ export default React.createClass({
 
             return (
                 <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">From:</span>
+                    <span className="Query-label">Table:</span>
                     <SelectionModule
                         placeholder="What part of your data?"
-                        items={this.state.tables}
+                        items={this.props.tables}
                         display="name"
                         selectedValue={this.props.query.query.source_table}
                         selectedKey="id"
@@ -486,12 +440,12 @@ export default React.createClass({
     renderFilterButton: function() {
         if (this.props.query.query.source_table &&
                 this.getFilters().length === 0 &&
-                this.state.options &&
-                this.state.options.fields.length > 0) {
+                this.props.options &&
+                this.props.options.fields.length > 0) {
             return (
-                <a className="ml2" onClick={this.addFilter}>
+                <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
                     <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
-                    Filter {(this.state.options) ? this.state.options.name : ""}
+                    <span className="mr1">Filter</span> <span>{(this.props.options) ? this.props.options.name : ''}</span>
                 </a>
             );
         }
@@ -499,8 +453,8 @@ export default React.createClass({
 
     renderBreakouts: function() {
         // breakout clause.  must have table details available & a valid aggregation defined
-        if (this.state.options &&
-                this.state.options.breakout_options.fields.length > 0 &&
+        if (this.props.options &&
+                this.props.options.breakout_options.fields.length > 0 &&
                 !this.hasEmptyAggregation()) {
 
             // only render a label for our breakout if we have a valid breakout clause already
@@ -514,7 +468,7 @@ export default React.createClass({
             }
 
             var breakoutList;
-            if(this.state.options.breakout_options) {
+            if(this.props.options.breakout_options) {
                 breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
                     var breakoutListOpen = false;
                     if(breakout === null) {
@@ -526,7 +480,7 @@ export default React.createClass({
                             <SelectionModule
                                 placeholder='What part of your data?'
                                 display="1"
-                                items={this.state.options.breakout_options.fields}
+                                items={this.props.options.breakout_options.fields}
                                 selectedValue={breakout}
                                 selectedKey="0"
                                 index={index}
@@ -543,12 +497,18 @@ export default React.createClass({
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
                 addBreakoutButton = (
-                    <a className="QuerySection-addTrigger" onClick={this.addDimension}>Add a grouping</a>
+                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addDimension}>
+                        {this.renderAddIcon()}
+                        Add a grouping
+                    </a>
                 );
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
                 addBreakoutButton = (
-                    <a className="ml2" onClick={this.addDimension}>Add another grouping</a>
+                    <a className="QueryOption p1 lg-p2 ml1 lg-ml2" onClick={this.addDimension}>
+                        {this.renderAddIcon()}
+                        Add another grouping
+                    </a>
                 );
             }
 
@@ -564,11 +524,11 @@ export default React.createClass({
 
     renderAggregation: function() {
         // aggregation clause.  must have table details available
-        if(this.state.options) {
+        if(this.props.options) {
             return (
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
-                    aggregationOptions={this.state.options.aggregation_options}
+                    aggregationOptions={this.props.options.aggregation_options}
                     updateAggregation={this.updateAggregation}>
                 </AggregationWidget>
             );
@@ -578,12 +538,12 @@ export default React.createClass({
     renderFilterSelector: function() {
         var queryFilters = this.getFilters();
 
-        if (this.state.options && queryFilters && queryFilters.length > 0) {
+        if (this.props.options && queryFilters && queryFilters.length > 0) {
             var component = this;
 
             var filterFieldList = [];
-            for(var key in this.state.options.fields_lookup) {
-                filterFieldList.push(this.state.options.fields_lookup[key]);
+            for(var key in this.props.options.fields_lookup) {
+                filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
             var filterList = queryFilters.map(function (filter, index) {
@@ -605,7 +565,10 @@ export default React.createClass({
             var addFilterButton;
             if (this.canAddFilter(queryFilters)) {
                 addFilterButton = (
-                    <a onClick={this.addFilter}>Add another filter</a>
+                    <a className="QueryOption p1 lg-p2" onClick={this.addFilter}>
+                        {this.renderAddIcon()}
+                        Add another filter
+                    </a>
                 );
             }
 
@@ -613,12 +576,8 @@ export default React.createClass({
                 <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Filtered by:</span>
                     <div className="Query-filters">
-                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
                         {filterList}
-                        </ReactCSSTransitionGroup>
-                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                            {addFilterButton}
-                        </ReactCSSTransitionGroup>
+                        {addFilterButton}
                     </div>
                 </div>
             );
@@ -627,7 +586,7 @@ export default React.createClass({
     },
 
     renderLimitAndSort: function() {
-        if (this.state.options && !this.hasEmptyAggregation() &&
+        if (this.props.options && !this.hasEmptyAggregation() &&
                 (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
 
             var limitSection;
@@ -641,8 +600,11 @@ export default React.createClass({
                 );
             } else {
                 limitSection = (
-                    <div className="flex align-center">
-                        <a onClick={this.addLimit}>Add row limit</a>
+                    <div className="QueryOption p1 lg-p2 flex align-center">
+                        <a onClick={this.addLimit}>
+                            {this.renderAddIcon()}
+                            Add row limit
+                        </a>
                     </div>
                 );
             }
@@ -669,8 +631,11 @@ export default React.createClass({
             var sortSection;
             if (sortList.length === 0) {
                 sortSection = (
-                    <div className="flex align-center">
-                        <a onClick={this.addSort}>Add sort</a>
+                    <div className="QueryOption p1 lg-p2 flex align-center">
+                        <a onClick={this.addSort}>
+                            {this.renderAddIcon()}
+                            Add sort
+                        </a>
                     </div>
                 );
             } else {
@@ -683,7 +648,7 @@ export default React.createClass({
 
                 sortSection = (
                     <div className="flex align-center">
-                        <span className="mx2">sorted by</span>
+                        <span className="m2">sorted by</span>
                         {sortList}
                         {addSortButton}
                     </div>
@@ -694,13 +659,8 @@ export default React.createClass({
                 <div className={this.props.querySectionClasses}>
                     <span className="Query-label">Limit and sort:</span>
                     <div className="Query-filters">
-                        <ReactCSSTransitionGroup className="flex" transitionName="Transition-qb-section">
-                            {limitSection}
-                        </ReactCSSTransitionGroup>
-
-                        <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                            {sortSection}
-                        </ReactCSSTransitionGroup>
+                        {limitSection}
+                        {sortSection}
                     </div>
                 </div>
             );
@@ -708,7 +668,8 @@ export default React.createClass({
         } else if (this.canAddLimitAndSort()) {
             return (
                 <div className={this.props.querySectionClasses}>
-                    <a className="QuerySection-addTrigger my2" onClick={this.addLimit}>
+                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addLimit}>
+                        {this.renderAddIcon()}
                         Set row limits and sorting
                     </a>
                 </div>
@@ -726,21 +687,24 @@ export default React.createClass({
     },
 
     toggleIcon: function () {
+        var iconSize = '12px'
         if(this.props.isExpanded) {
             return (
-                <Icon name='expand' width="16px" height="16px" />
+                <Icon name='chevronup' width={iconSize} height={iconSize} />
             );
         } else {
             return (
-                <Icon name='expand' width="16px" height="16px" />
+                <Icon name='chevrondown' width={iconSize} height={iconSize} />
             );
         }
     },
 
     openStatus: function() {
         return (
-            <a href="#" className="QueryToggle flex align-center" onClick={this.toggleOpen}>
-                {this.toggleIcon()}
+            <a href="#" className="QueryToggle px2 py1 no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
+                <span className="mr1">
+                    {this.toggleIcon()}
+                </span>
                 {this.toggleText()}
             </a>
         );
@@ -749,11 +713,11 @@ export default React.createClass({
     render: function() {
         var guiBuilderClasses = cx({
             'GuiBuilder': true,
+            'wrapper': true,
             'GuiBuilder--collapsed': !this.props.isExpanded,
         });
         return (
             <div className={guiBuilderClasses}>
-                {this.openStatus()}
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderDbSelector()}
                 </ReactCSSTransitionGroup>
@@ -784,6 +748,9 @@ export default React.createClass({
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
+                </div>
+                <div className="QueryToggleWrapper absolute left right flex layout-centered">
+                    {this.openStatus()}
                 </div>
             </div>
         );

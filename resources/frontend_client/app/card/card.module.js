@@ -14,10 +14,6 @@ var Card = angular.module('corvus.card', [
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/card/', {
-        templateUrl: '/app/card/partials/card_list.html',
-        controller: 'CardList'
-    });
     $routeProvider.when('/card/create/', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'

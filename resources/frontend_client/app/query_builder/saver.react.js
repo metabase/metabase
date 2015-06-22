@@ -10,7 +10,8 @@ export default React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,
-        saveFn: React.PropTypes.func.isRequired
+        saveFn: React.PropTypes.func.isRequired,
+        deleteFn: React.PropTypes.func
     },
     mixins: [OnClickOutside],
 
@@ -84,6 +85,17 @@ export default React.createClass({
         });
     },
 
+    renderCardDelete: function () {
+        if(this.props.canDelete) {
+           return (
+                <div className="Form-offset mb4">
+                    <label className="block">Danger zone:</label>
+                    <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                </div>
+           )
+        }
+    },
+
     renderCardSaveForm: function() {
         if (!this.state.modalOpen) {
             return false;
@@ -150,6 +162,7 @@ export default React.createClass({
                     </label>
                 </FormField>
 
+                {this.renderCardDelete()}
                 <div className="Form-actions">
                     <button className={buttonClasses}>
                         {this.props.saveButtonText}

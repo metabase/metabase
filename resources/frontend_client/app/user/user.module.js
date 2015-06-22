@@ -12,6 +12,8 @@ var UserAdmin = angular.module('corvus.user', [
 ]);
 
 UserAdmin.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/user/edit_current', {templateUrl: '/app/user/partials/edit_current_user.html', controller: 'EditCurrentUser'});
-    $routeProvider.otherwise({redirectTo: '/'});
+    $routeProvider.when('/user/edit_current', {
+        templateUrl: '/app/user/partials/edit_current_user.html',
+        controller: 'EditCurrentUser'
+    });
 }]);

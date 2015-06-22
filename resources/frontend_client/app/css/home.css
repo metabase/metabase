@@ -1,0 +1,102 @@
+.NavItem {
+    border-radius: 8px;
+}
+
+.NavItem:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.Greeting {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .Greeting {
+        padding-top: 6em;
+        padding-bottom: 6em;
+    }
+}
+
+.Greeting-subtitle {
+    opacity: 0.575;
+}
+
+/* on the homepage, the wrapper should only be as wide as our largest size */
+.Home .wrapper {
+    max-width: var(--xl-width);
+    margin: 0 auto;
+}
+
+.HomeTab {
+    text-decoration: none;
+    border: 1px solid #fff;
+    color: #fff;
+}
+
+.HomeTab:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+.HomeTab.HomeTab--active {
+    background-color: #fff;
+    color: var(--brand-color);
+    transition: background .3s linear;
+}
+
+.DashboardDropdown .Dropdown-content {
+    min-width: 20em;
+}
+
+.Entity-title {
+    font-size: 1.24em;
+    color: #797979;
+}
+
+.Entity-attribution {
+    display: block;
+    color: #ADADAD;
+    margin-bottom: 0.5em;
+}
+
+@keyframes pop {
+    0% { transform: scale(0.75) }
+   75% { transform: scale(1.0625) }
+  100% { transform: scale(1) }
+}
+
+.animate-pop {
+    animation-name: popin;
+    animation-duration: .15s;
+    animation-timing-function: ease-out;
+}
+
+.AdminLink {
+    opacity: 0.435;
+}
+
+.AdminLink:hover {
+    opacity: 1;
+}
+
+.break-word {
+    word-wrap: break-word;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.HomeTabs {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius:6px;
+}
+
+.tooltip {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 2px;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, .12);
+    color: #ddd;
+}

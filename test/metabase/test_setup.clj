@@ -34,9 +34,9 @@
    :actual-message   (when-let [in-a (first (clojure.data/diff a e))]
                        (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
    :raw              [str-e str-a]
-   :result           ["expected:\n"
+   :result           ["\nexpected:\n"
                       (u/pprint-to-str 'green e)
-                      "was:\n"
+                      "\nwas:\n"
                       (u/pprint-to-str 'red a)]})
 
 (defmethod compare-expr :expectations/maps [e a str-e str-a]

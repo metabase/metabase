@@ -75,8 +75,7 @@
    old_password Required}
   (check-self-or-superuser id)
   (let-404 [user (sel :one [User :password_salt :password] :id id :is_active true)]
-    (check (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
-      [400 "password mismatch"]))
+    (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password"))
   (set-user-password id password)
   (sel :one User :id id))
 

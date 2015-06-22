@@ -101,6 +101,9 @@ export default React.createClass({
         var component = this;
         this.props.dashboardApi.create(newDash, function(result) {
             component.addToExistingDash(result, true);
+
+            // send out a notice that we created a new dashboard
+            component.props.broadcastEventFn("dashboard:create", result.id);
         }, function(error) {
             component.setState({
                 errors: error

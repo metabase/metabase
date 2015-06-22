@@ -5,7 +5,7 @@
 // Global Controllers
 var CorvusControllers = angular.module('corvus.controllers', ['corvus.services', 'corvus.navbar.directives']);
 
-CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'CorvusAlert', 'AppState', function($scope, $location, CorvusCore, CorvusAlert, AppState) {
+CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'AppState', function($scope, $location, CorvusCore, AppState) {
 
     var clearState = function() {
         $scope.siteName = undefined;
@@ -19,8 +19,6 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     // current User
     $scope.user = undefined;
     $scope.userIsSuperuser = false;
-
-    $scope.alerts = CorvusAlert.alerts;
 
     $scope.$on("appstate:site-settings", function(event, settings) {
         // change in global settings
@@ -36,18 +34,6 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Co
     $scope.$on("appstate:logout", function(event, user) {
         clearState();
     });
-
-    $scope.closeAlert = function(index) {
-        CorvusAlert.closeAlert(index);
-    };
-
-    $scope.alertInfo = function(message) {
-        CorvusAlert.alertInfo(message);
-    };
-
-    $scope.alertError = function(message) {
-        CorvusAlert.alertError(message);
-    };
 
     $scope.refreshCurrentUser = function() {
         AppState.refreshCurrentUser();
