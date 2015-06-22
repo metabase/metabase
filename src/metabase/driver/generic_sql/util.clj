@@ -2,7 +2,6 @@
   "Shared functions for our generic-sql query processor."
   (:require [clojure.core.memoize :as memo]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as korma]
