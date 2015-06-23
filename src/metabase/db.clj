@@ -61,18 +61,17 @@
 
 ;; ## CONNECTION
 
-(defn metabase-db-conn-str
-  "A connection string that can be used when pretending the Metabase DB is itself a `Database`
+(defn- metabase-db-connection-details
+  "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   []
   (case (config/config-kw :mb-db-type)
-    :h2 (db-file)
-    :postgres (format "host=%s port=%d dbname=%s user=%s password=%s"
-                      (config/config-str :mb-db-host)
-                      (config/config-int :mb-db-port)
-                      (config/config-str :mb-db-dbname)
-                      (config/config-str :mb-db-user)
-                      (config/config-str :mb-db-pass))))
+    :h2       {:db (db-file)}
+    :postgres {:host     (config/config-str :mb-db-host)
+               :port     (config/config-int :mb-db-port)
+               :dbname   (config/config-str :mb-db-dbname)
+               :user     (config/config-str :mb-db-user)
+               :password (config/config-str :mb-db-pass)}))
 
 
 ;; ## MIGRATE
@@ -107,7 +106,7 @@
     ;; Test DB connection and throw exception if we have any troubles connecting
     (log/info "Verifying Database Connection ...")
     (assert (db-can-connect? {:engine (config/config-kw :mb-db-type)
-                              :details {:conn_str (metabase-db-conn-str)}})
+                              :details (metabase-db-connection-details)})
             "Unable to connect to Metabase DB.")
     (log/info "Verify Database Connection ... CHECK")
 
@@ -127,11 +126,7 @@
     (log/info "Database Migrations Current ... CHECK")
 
     ;; Establish our 'default' Korma DB Connection
-    (default-connection (create-db korma-db))
-
-    ;; Perform ghetto "data migration" to update any old-style database connection strings. This is temporary until everyone's DBs are updated
-    ;; Resolve at runtime to avoid circular deps
-    ((u/runtime-resolved-fn 'metabase.db.migrate-details 'convert-legacy-database-connection-details))))
+    (default-connection (create-db korma-db))))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?

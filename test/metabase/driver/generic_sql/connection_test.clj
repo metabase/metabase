@@ -17,10 +17,10 @@
 
 ;; Random made-up DBs should fail
 (expect false
-  (driver/can-connect? {:engine :postgres
-                 :details {:conn_str "host=localhost port=5432 dbname=ABCDEFGHIJKLMNOP user=rasta"}}))
+  (driver/can-connect? {:engine  :postgres
+                        :details {:host "localhost", :port 5432, :dbname "ABCDEFGHIJKLMNOP", :user "rasta"}}))
 
 ;; Things that you can connect to, but are not DBs, should fail
 (expect false
-  (driver/can-connect? {:engine :postgres
-                 :details {:conn_str "host=google.com port=80"}}))
+  (driver/can-connect? {:engine  :postgres
+                        :details {:host "google.com", :port 80}}))

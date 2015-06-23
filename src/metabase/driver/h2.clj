@@ -11,8 +11,7 @@
                       :make-pool? false)))
 
 (defn- database->connection-details [{:keys [details]}]
-  {:db (or (:db details)          ; new-style connection details call it 'db'
-           (:conn_str details))}) ; legacy instead calls is 'conn_str'
+  details)
 
 
 ;; ## SYNCING

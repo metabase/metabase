@@ -13,9 +13,12 @@
 ;; HELPER FNS
 
 (defn create-db [db-name]
-  ((user->client :crowberto) :post 200 "meta/db" {:engine :postgres
-                                                  :name db-name
-                                                  :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}}))
+  ((user->client :crowberto) :post 200 "meta/db" {:engine  :postgres
+                                                  :name    db-name
+                                                  :details {:host   "localhost"
+                                                            :port   5432
+                                                            :dbname "fakedb"
+                                                            :user   "cam"}}))
 
 ;; # FORM INPUT
 
@@ -54,14 +57,14 @@
 (let [db-name (random-name)]
   (expect-eval-actual-first
       (match-$ (sel :one Database :name db-name)
-        {:created_at $
-         :engine "postgres" ; string because it's coming back from API instead of DB
-         :id $
-         :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-         :updated_at $
-         :name db-name
+        {:created_at      $
+         :engine          "postgres" ; string because it's coming back from API instead of DB
+         :id              $
+         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+         :updated_at      $
+         :name            db-name
          :organization_id nil
-         :description nil})
+         :description     nil})
     (create-db db-name)))
 
 ;; ## DELETE /api/meta/db/:id
@@ -80,20 +83,20 @@
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
              sel-db (fn [] (sel :one :fields [Database :name :engine :details] :id db-id))]
-  [{:details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-    :engine :postgres
-    :name old-name}
-   {:details {:conn_str "host=localhost port=5432 dbname=fakedb user=rastacan"}
-    :engine :h2
-    :name new-name}
-   {:details {:conn_str "host=localhost port=5432 dbname=fakedb user=rastacan"}
-    :engine :h2
-    :name old-name}]
+  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+    :engine  :postgres
+    :name    old-name}
+   {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+    :engine  :h2
+    :name    new-name}
+   {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+    :engine  :h2
+    :name    old-name}]
   [(sel-db)
    ;; Check that we can update all the fields
-   (do ((user->client :crowberto) :put 200 (format "meta/db/%d" db-id) {:name new-name
-                                                                        :engine "h2"
-                                                                        :details {:conn_str "host=localhost port=5432 dbname=fakedb user=rastacan"}})
+   (do ((user->client :crowberto) :put 200 (format "meta/db/%d" db-id) {:name    new-name
+                                                                        :engine  "h2"
+                                                                        :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
        (sel-db))
    ;; Check that we can update just a single field
    (do ((user->client :crowberto) :put 200 (format "meta/db/%d" db-id) {:name old-name})
@@ -105,36 +108,36 @@
 ;; Test that we can get all the DBs for an Org, ordered by name
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
-    (filter identity
-            [(datasets/when-testing-dataset :generic-sql
-               (match-$ (sel :one Database :name db-name)
-                 {:created_at $
-                  :engine "postgres"
-                  :id $
-                  :details {:conn_str "host=localhost port=5432 dbname=fakedb user=cam"}
-                  :updated_at $
-                  :name $
+      (filter identity
+              [(datasets/when-testing-dataset :generic-sql
+                 (match-$ (sel :one Database :name db-name)
+                   {:created_at      $
+                    :engine          "postgres"
+                    :id              $
+                    :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+                    :updated_at      $
+                    :name            $
+                    :organization_id nil
+                    :description     nil}))
+               (datasets/when-testing-dataset :mongo
+                 (match-$ @mongo-test-data/mongo-test-db
+                   {:created_at      $
+                    :engine          "mongo"
+                    :id              $
+                    :details         $
+                    :updated_at      $
+                    :name            "Test Database"
+                    :organization_id nil
+                    :description     nil}))
+               (match-$ (db)
+                 {:created_at      $
+                  :engine          "h2"
+                  :id              $
+                  :details         $
+                  :updated_at      $
+                  :name            "Test Database"
                   :organization_id nil
-                  :description nil}))
-             (datasets/when-testing-dataset :mongo
-               (match-$ @mongo-test-data/mongo-test-db
-                 {:created_at $
-                  :engine "mongo"
-                  :id $
-                  :details $
-                  :updated_at $
-                  :name "Test Database"
-                  :organization_id nil
-                  :description nil}))
-             (match-$ (db)
-               {:created_at $
-                :engine "h2"
-                :id $
-                :details $
-                :updated_at $
-                :name "Test Database"
-                :organization_id nil
-                :description nil})])
+                  :description     nil})])
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
