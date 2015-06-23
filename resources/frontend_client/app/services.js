@@ -122,6 +122,8 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                     }, function(error) {
                         service.routeChangedImpl(event);
                     });
+                } else {
+                    service.routeChangedImpl(event);
                 }
             },
 
