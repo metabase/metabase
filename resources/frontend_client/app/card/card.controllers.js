@@ -148,7 +148,11 @@ CardControllers.controller('CardDetail', [
                 }
             },
             notifyCardDeletedFn: function () {
-                $location.path('/')
+                $location.path('/');
+            },
+            cloneCardFn: function(cardId) {
+                console.log('path=', '/card/create?clone='+cardId);
+                $location.path('/card/create/?clone='+cardId);
             }
         };
 
