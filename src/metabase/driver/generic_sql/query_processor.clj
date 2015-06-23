@@ -41,6 +41,7 @@
   [column-name]
   (let [column-name (name column-name)]
     (keyword (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
+                 (second (re-find (:uncastify-timestamp-regex qp/*driver*) column-name))
                  column-name))))
 
 (defn process-structured
@@ -132,9 +133,6 @@
 ;;       [">" 1413 1]
 ;;       [">=" 1412 4]]
 
-(defn- field-id->special-type [field-id]
-  (sel :one :field [Field :special_type] :id field-id))
-
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
 
@@ -150,13 +148,9 @@
     [_ field-id & _] {(field-id->kw field-id)
                       ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
                       (let [cast-value-if-needed (fn [v]
-                                                   (cond (or (= (type v) java.sql.Date)
-                                                             (= (type v) java.util.Date))    `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))
-                                                         (not (string? v))                    v
-                                                         (date-field-id? field-id)            (u/parse-date-yyyy-mm-dd v)
-                                                         (= (field-id->special-type field-id)
-                                                            :timestamp_seconds)               (u/date-yyyy-mm-dd->unix-timestamp v)
-                                                         :else                                v))]
+                                                   (if-not (or (= (type v) java.sql.Date)
+                                                               (= (type v) java.util.Date)) v
+                                                     `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))))]
                         (match subclause
                           ["NOT_NULL" _]        ['not= nil]
                           ["IS_NULL" _]         ['=    nil]

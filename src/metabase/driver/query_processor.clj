@@ -15,8 +15,8 @@
 (declare add-implicit-breakout-order-by
          add-implicit-limit
          add-implicit-fields
+         expand-date-values
          get-special-column-info
-         preprocess-rewrite-timestamp-equals-filter
          preprocess-cumulative-sum
          preprocess-structured
          remove-empty-clauses)
@@ -39,7 +39,11 @@
 ;; # DYNAMIC VARS
 
 (def ^:dynamic *query*
-  "The query we're currently processing (i.e., the body of the query API call)."
+  "The query we're currently processing, in its original, unexpanded form."
+  nil)
+
+(def ^:dynamic *expanded-query*
+  "The query we're currently processing, in its expanded form."
   nil)
 
 (def ^:dynamic *disable-qp-logging*
@@ -48,6 +52,10 @@
 
 (def ^:dynamic *internal-context*
   "A neat place to store 'notes-to-self': things individual implementations don't need to know about, like if the `fields` clause was added implicitly."
+  (atom nil))
+
+(def ^:dynamic *driver*
+  "The driver currently being used to process this query."
   (atom nil))
 
 
@@ -68,7 +76,7 @@
                                                            add-implicit-breakout-order-by
                                                            add-implicit-limit
                                                            add-implicit-fields
-                                                           preprocess-rewrite-timestamp-equals-filter
+                                                           expand-date-values
                                                            preprocess-cumulative-sum))]
     (when-not *disable-qp-logging*
       (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
@@ -80,7 +88,7 @@
 ;; ## PREPROCESSOR FNS
 
 ;; ### REMOVE-EMPTY-CLAUSES
-(def ^:const clause->empty-forms
+(def ^:private ^:const clause->empty-forms
   "Clause values that should be considered empty and removed during preprocessing."
   {:breakout #{[nil]}
    :filter   #{[nil nil]}})
@@ -142,39 +150,16 @@
         (assoc query :fields (sel :many :id Field :table_id source_table, :active true, :preview_display true,
                                   :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
 
-(def ^:private ^:const seconds-per-day      (* 24 60 60))
-(def ^:private ^:const milliseconds-per-day (* seconds-per-day 1000))
 
-(defn- rewrite-timestamp-filter=
-  "Rewrite an `=` filter clause for a timestamp `Field`. "
-  [{:keys [field], {timestamp :value, special-type :special-type, :as value} :value}]
-  ;; The timestamps we create 00:00 on the day in question, re-write the filter as a ["BETWEEN" field timestamp (+ timestamp 1-day)]
-  (expand/map->Filter:Between {:type :between
-                              :field field
-                              :min   value
-                              :max   (expand/map->Value (assoc value
-                                                               :value (+ timestamp (case special-type
-                                                                                     :timestamp_seconds      seconds-per-day
-                                                                                     :timestamp_milliseconds milliseconds-per-day))))}))
+;;; ### EXPAND-DATES
 
-(defn preprocess-rewrite-timestamp-equals-filter
-  "In order for `=` filter clauses to work with timestamps (allowing the user to match a given day) we need to rewrite them as
-   `BETWEEN` clauses. Check and see if the `filter` clause contains any subclauses that fit the bill and rewrite them accordingly."
+(defn expand-date-values
+  "Expand any dates in the `:filter` clause.
+   This is done so various implementations can cast date values appropriately by simply checking their types.
+   In the future when drivers are re-worked to deal with the Expanded Query directly this step will no longer be needed."
   [query]
-  (if-not (:filter query)
-    ;; If there's no filter clause there's nothing to do
-    query
-    ;; Otherwise rewrite as needed
-    (update-in query [:filter] (fn [filter-clause]
-                                 (-> filter-clause
-                                     expand/expand-filter
-                                     (update-in [:subclauses] #(for [{:keys [filter-type], {:keys [special-type]} :field, :as subclause} %]
-                                                                 (if (and (= filter-type :=)
-                                                                          (contains? #{:timestamp_seconds
-                                                                                       :timestamp_milliseconds} special-type))
-                                                                   (rewrite-timestamp-filter= subclause)
-                                                                   subclause)))
-                                     expand/collapse)))))
+  (cond-> query
+    (:filter query) (assoc  :filter (some-> *expanded-query* :query :filter expand/collapse)))) ; collapse the filter clause from the expanded query and use that as the replacement
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
@@ -266,7 +251,8 @@
       (update-in results [:rows] #(for [row %]
                                     (for [[i val] (m/indexed row)]
                                       (cond
-                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000))
+                                        (instance? java.util.Date val)               val                           ; already converted to Date as part of preprocessing,
+                                        (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000)) ; nothing to do here
                                         (contains? timestamp-millis-col-indecies i)  (java.sql.Date. val)
                                         :else                                        val)))))))
 
@@ -301,11 +287,11 @@
              (count (set (:columns results))))
           (format "Duplicate columns in results: %s" (vec (:columns results))))
   (->> results
+       convert-unix-timestamps-to-dates
        limit-max-result-rows
        (#(case (keyword (:type query))
            :native %
            :query  (post-process-cumulative-sum (:query query) %)))
-       convert-unix-timestamps-to-dates
        add-row-count-and-status))
 
 
@@ -442,7 +428,9 @@
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}
                      ;; Otherwise something went wrong !
-                     :else                                   (throw (Exception. (format "Don't know what to do with Field '%s'." col-kw)))))))
+                     :else                                   (throw (Exception. (format "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
+                                                                                        col-kw
+                                                                                        (u/pprint-to-str field-kw->field))))))))
          ;; Add FK info the the resulting Fields
          add-fields-extra-info)))
 

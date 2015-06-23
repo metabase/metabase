@@ -82,12 +82,26 @@
    :YEAR                  :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
+;; ## QP Functions
+
+(defn- cast-timestamp-seconds-field-to-date-fn [field-name]
+  (format "CAST(TIMESTAMPADD('SECOND', \"%s\", DATE '1970-01-01') AS DATE)" field-name))
+
+(defn- cast-timestamp-milliseconds-field-to-date-fn [field-name]
+  (format "CAST(TIMESTAMPADD('MILLISECOND', \"%s\", DATE '1970-01-01') AS DATE)" field-name))
+
+(def ^:private ^:const uncastify-timestamp-regex
+  #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', ([^\s]+), DATE '1970-01-01'\) AS DATE\)")
+
 ;; ## DRIVER
 
-(def ^:const driver
+(def driver
   (generic-sql/map->SqlDriver
-   {:column->base-type                   column->base-type
-    :connection-details->connection-spec connection-details->connection-spec
-    :database->connection-details        database->connection-details
-    :sql-string-length-fn                :LENGTH
-    :timezone->set-timezone-sql          nil}))
+   {:column->base-type                            column->base-type
+    :connection-details->connection-spec          connection-details->connection-spec
+    :database->connection-details                 database->connection-details
+    :sql-string-length-fn                         :LENGTH
+    :timezone->set-timezone-sql                   nil
+    :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
+    :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
+    :uncastify-timestamp-regex                    uncastify-timestamp-regex}))

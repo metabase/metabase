@@ -7,7 +7,7 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :refer [us-history-1607-to-1774]]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*dataset*]])))
 
 
@@ -778,15 +778,42 @@
 
 ;; ## Unix timestamp special type fields <3
 
-;; There are 4 events in us-history-1607-to-1774 whose year is < 1765
-(datasets/expect-with-all-datasets 4
- (with-temp-db [db (dataset-loader) us-history-1607-to-1774]
-   (-> (driver/process-query {:database (:id db)
-                              :type     :query
-                              :query    {:source_table (:id &events)
-                                         :aggregation  ["count"]
-                                         :filter       ["<" (:id &events.timestamp) "1765-01-01"]}})
-       :data
-       :rows
-       first
-       first)))
+;; There were 9 "sad toucan incidents" on 2015-06-02
+(datasets/expect-with-datasets #{:generic-sql}
+  9
+  (with-temp-db [db (dataset-loader) defs/sad-toucan-incidents]
+    (->> (driver/process-query {:database (:id db)
+                                :type     "query"
+                                :query    {:source_table (:id &incidents)
+                                           :filter ["AND"
+                                                    [">" (:id &incidents.timestamp) "2015-06-01"]
+                                                    ["<" (:id &incidents.timestamp) "2015-06-03"]]
+                                           :order_by     [[(:id &incidents.timestamp) "ascending"]]}})
+         :data
+         :rows
+         count)))
+
+
+;;; Unix timestamp breakouts -- SQL only
+(datasets/expect-with-datasets #{:generic-sql}
+  [["2015-06-01" 6]
+   ["2015-06-02" 9]
+   ["2015-06-03" 5]
+   ["2015-06-04" 9]
+   ["2015-06-05" 8]
+   ["2015-06-06" 9]
+   ["2015-06-07" 8]
+   ["2015-06-08" 9]
+   ["2015-06-09" 7]
+   ["2015-06-10" 8]]
+  (with-temp-db [db (dataset-loader) defs/sad-toucan-incidents]
+    (->> (driver/process-query {:database (:id db)
+                                :type     "query"
+                                :query    {:source_table (:id &incidents)
+                                           :aggregation  ["count"]
+                                           :breakout     [(:id &incidents.timestamp)]
+                                           :limit        10}})
+         :data
+         :rows
+         (map (fn [[^java.util.Date date count]]
+                [(.toString date) (int count)])))))

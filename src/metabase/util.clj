@@ -46,15 +46,20 @@
            (coerce/to-long)
            (java.sql.Date.)))
 
-(def ^:private ^java.text.SimpleDateFormat simple-date-format
+(def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn parse-date-yyyy-mm-dd
   "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
   ^java.sql.Date [^String date]
-  (-> (.parse simple-date-format date)
+  (-> (.parse yyyy-mm-dd-simple-date-format date)
       .getTime
       java.sql.Date.))
+
+(defn date->yyyy-mm-dd
+  "Convert a date to a `YYYY-MM-DD` string."
+  ^String [^java.util.Date date]
+  (.format yyyy-mm-dd-simple-date-format date))
 
 (defn date-yyyy-mm-dd->unix-timestamp
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
