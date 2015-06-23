@@ -71,6 +71,10 @@ export default React.createClass({
         return this.saveCard(this.props.card);
     },
 
+    cloneCard: function() {
+        this.props.cloneCardFn(this.props.card.id);
+    },
+
     saveCard: function(card) {
         var component = this,
             apiCall;
@@ -125,6 +129,7 @@ export default React.createClass({
             component.props.setQueryModeFn(mode);
         });
     },
+
     permissions: function() {
         var permission;
         if(this.props.card.public_perms) {
@@ -196,6 +201,15 @@ export default React.createClass({
             );
         }
 
+        var cloneButton;
+        if (this.props.card.id) {
+            cloneButton = (
+                <span className="mx1 text-grey-4 text-brand-hover">
+                    <Icon name='clone' width="18px" height="18px" onClick={this.cloneCard}></Icon>
+                </span>
+            );
+        }
+
         var queryModeToggle;
         if (this.cardIsNew() && !this.cardIsDirty()) {
             queryModeToggle = (
@@ -235,6 +249,7 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
+                    {cloneButton}
                     {downloadButton}
                     {cardFavorite}
                     <AddToDashboard
