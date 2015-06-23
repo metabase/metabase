@@ -20,7 +20,8 @@
    password [Required NonEmptyString]}
   (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
     (checkp (not (nil? user))
-      (symbol "email") "no account found for the given email")
+    ; Don't leak whether the account doesn't exist or the password was incorrect
+      (symbol "password") "did not match stored password")
     (checkp (pass/verify-password password (:password_salt user) (:password user))
       (symbol "password") "did not match stored password")
     (let [session-id (str (java.util.UUID/randomUUID))]
@@ -51,11 +52,12 @@
   (let [{user-id :id} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    (checkp (not (nil? user-id))
-      (symbol "email") "no account found for the given email")
-    (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-    (email/send-password-reset-email email server-name password-reset-url)
-    (log/info password-reset-url)))
+    ; Don't leak whether the account doesn't exist, just pretend everything is ok
+    (if (not (nil? user-id))
+      (do
+        (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
+        (email/send-password-reset-email email server-name password-reset-url)
+        (log/info password-reset-url)))))
 
 
 (defendpoint POST "/reset_password"
