@@ -103,7 +103,7 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
     border-radius: 4px;
     background: #fff;
-    z-index: 2;
+    z-index: 3;
     left: 0;
     right: 0;
     overflow-y: scroll;
@@ -259,7 +259,10 @@
 .GuiBuilder.GuiBuilder--collapsed .Query-section {
     display: none;
 }
-.QueryToggleWrapper { bottom: -1rem; }
+.QueryToggleWrapper {
+    bottom: -1rem;
+    z-index: 1;
+}
 
 .QueryToggle {
     color: #999;
