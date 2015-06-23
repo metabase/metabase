@@ -174,6 +174,13 @@
                                                                   :email new-email})
        (fetch-user))])
 
+;; Test that a normal user cannot change the :is_superuser flag for themselves
+(expect-let [fetch-user (fn [] (sel :one :fields [User :first_name :last_name :is_superuser :email] :id (user->id :rasta)))]
+  [(fetch-user)]
+  [(do ((user->client :rasta) :put 200 (str "user/" (user->id :rasta)) (-> (fetch-user)
+                                                                           (assoc :is_superuser true)))
+       (fetch-user))])
+
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 (str "user/" (user->id :trashbird)) {:email "toucan@metabase.com"}))
