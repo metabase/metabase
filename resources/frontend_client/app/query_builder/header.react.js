@@ -196,6 +196,12 @@ export default React.createClass({
             );
         }
 
+        var cloneButton = (
+            <span className="mx1 text-grey-4 text-brand-hover">
+                <Icon name='clone' width="18px" height="18px"></Icon>
+            </span>
+        );
+
         var queryModeToggle;
         if (this.cardIsNew() && !this.cardIsDirty()) {
             queryModeToggle = (
@@ -235,6 +241,7 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
+                    {cloneButton}
                     {downloadButton}
                     {cardFavorite}
                     <AddToDashboard
