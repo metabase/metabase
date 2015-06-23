@@ -147,7 +147,7 @@ export default React.createClass({
         var title = this.props.card.name || "What would you like to know?";
 
         var editButton;
-        if (!this.cardIsNew()) {
+        if (!this.cardIsNew() && this.props.card.is_creator) {
             editButton = (
                 <Saver
                     card={this.props.card}
@@ -172,7 +172,7 @@ export default React.createClass({
                     canDelete={false}
                 />
             );
-        } else if (this.cardIsDirty() || this.state.recentlySaved) {
+        } else if ((this.cardIsDirty() || this.state.recentlySaved) && this.props.card.is_creator) {
             // for existing cards we render a very simply ActionButton
             saveButton = (
                 <ActionButton
