@@ -16,13 +16,6 @@ would run the application using a local postgres server instead of the default e
 
 The application will create file named "metabase.db.h2.db" in the directory it is being run in. This can be backed up by either stopping the application server and backing up this file. Alternatively to backup the application data while it is running, you can follow the methods described at the relevant [H2 documentation](http://www.h2database.com/html/tutorial.html#upgrade_backup_restore)
 
-
-# Database connection strings
-
-If you need to access connections over SSL, you should set an environment variable MB_POSTGRES_SSL to true in the environment that you use to run the application, eg
- 
-    MB_POSTGRES_SSL=true java -jar ./metabase.jar
-
 # Scaling
 
 Typically, you'll want to evaluate the application on any database you have access to. If you want to expose the application to other users, you should carefully consider how you access your database. In addition as the data sizes grow, there will be a number of options in how you should setup your overall analytics infrastructure.
