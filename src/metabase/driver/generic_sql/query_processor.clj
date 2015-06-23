@@ -22,6 +22,7 @@
 (defn process
   "Convert QUERY into a korma `select` form."
   [{{:keys [source_table] :as query} :query}]
+  (println (u/format-color 'magenta "EXPANDED-QUERY:\n%s" (u/pprint-to-str qp/*expanded-query*)))
   (when-not (zero? source_table)
     (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
                      (filter identity)
@@ -228,10 +229,6 @@
   [{:keys [source_table] :as query} forms]
   (when-not qp/*disable-qp-logging*
     (log/debug
-     "\n********************"
-     "\nSOURCE TABLE: " source_table
-     "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
-     "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
-     "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
-                                (sql-only (select entity# ~@forms))))
-     "\n********************\n")))
+     (u/format-color 'green "\n\nKORMA FORM:\n%s" (u/pprint-to-str `(select (table-id->korma-entity ~source_table) ~@forms)))
+     (u/format-color 'blue  "\nSQL:\n%s\n"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
+                                                           (sql-only (select entity# ~@forms))))))))
