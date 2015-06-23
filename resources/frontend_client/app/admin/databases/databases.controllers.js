@@ -42,7 +42,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         // update an existing Database
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
-            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            database.details = details;
             return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
@@ -55,7 +55,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         // create a new Database
         var create = function(database, details, redirectToDetail) {
             $scope.$broadcast("form:reset");
-            database.details = $scope.ENGINES[database.engine].buildDetails(details);
+            database.details = details;
             return Metabase.db_create(database).$promise.then(function(new_database) {
                 if (redirectToDetail) {
                     $location.path('/admin/databases/' + new_database.id);
@@ -135,7 +135,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             }, function(database) {
                 $scope.hiddenFields = null;
                 $scope.database = database;
-                $scope.details = $scope.ENGINES[database.engine].parseDetails(database.details);
+                $scope.details = database.details;
             }, function(error) {
                 console.log('error loading database', error);
                 if (error.status == 404) {

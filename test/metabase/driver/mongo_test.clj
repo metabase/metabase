@@ -64,12 +64,6 @@
 
 ;; ## Tests for connection functions
 
-;; legacy
-(expect-when-testing-mongo true
-  (driver/can-connect? {:engine  :mongo
-                        :details {:conn_str "mongodb://localhost:27017/metabase-test"}}))
-
-;; new-style
 (expect-when-testing-mongo true
   (driver/can-connect? {:engine  :mongo
                         :details {:host   "localhost"
@@ -78,11 +72,14 @@
 
 (expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
-                        :details {:conn_str "mongodb://123.4.5.6/bad-db-name?connectTimeoutMS=50"}})) ; timeout after 50ms instead of 10s so test's don't take forever
+                        :details {:host   "123.4.5.6"
+                                  :dbname "bad-db-name"}}))
 
 (expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
-                        :details {:conn_str "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}}))
+                        :details {:host   "localhost"
+                                  :port   3000
+                                  :dbname "bad-db-name"}}))
 
 (expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {}))

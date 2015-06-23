@@ -20,7 +20,8 @@
        (when-not (s/blank? (str port))
          (str ":" port))
        "/"
-       dbname))
+       dbname
+       "?connectTimeoutMS=250")) ; timeout after 250 ms instead of 10s so can-connect? doesn't take forever
 
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
@@ -35,7 +36,6 @@
                             (string? database)              database
                             (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style -- entire Database obj
                             (:dbname database)              (details-map->connection-string database)            ; new-style -- connection details map only
-                            (:conn_str (:details database)) (:conn_str (:details database))                      ; legacy
                             :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
