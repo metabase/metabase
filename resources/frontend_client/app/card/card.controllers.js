@@ -151,8 +151,7 @@ CardControllers.controller('CardDetail', [
                 $location.path('/');
             },
             cloneCardFn: function(cardId) {
-                console.log('path=', '/card/create?clone='+cardId);
-                $location.path('/card/create/?clone='+cardId);
+                $scope.$apply(() => $location.url('/card/create?clone='+cardId));
             }
         };
 
