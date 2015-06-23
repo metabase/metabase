@@ -8,7 +8,6 @@
             [korma.db :as kdb]
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.context :as context]
             [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
@@ -83,9 +82,7 @@
   [table-id]
   {:pre  [(integer? table-id)]
    :post [(map? %)]}
-  (korma-entity (or (and (= (:id context/*table*) table-id)
-                         context/*table*)
-                    (sel :one Table :id table-id)
+  (korma-entity (or (sel :one Table :id table-id)
                     (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
 
 (defn castify-field
