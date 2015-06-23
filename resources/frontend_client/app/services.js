@@ -451,31 +451,37 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             fields: [{
                 displayName: "Host",
                 fieldName: "host",
+                type: "text",
                 placeholder: "localhost",
                 placeholderIsDefault: true
             }, {
                 displayName: "Port",
                 fieldName: "port",
+                type: "text",
                 transform: parseInt,
                 placeholder: "5432",
                 placeholderIsDefault: true
             }, {
                 displayName: "Database name",
                 fieldName: "dbname",
+                type: "text",
                 placeholder: "birds_of_the_world",
                 required: true
             }, {
                 displayName: "Database username",
                 fieldName: "user",
+                type: "text",
                 placeholder: "What username do you use to login to the database?",
                 required: true
             }, {
                 displayName: "Database password",
                 fieldName: "password",
+                type: "password",
                 placeholder: "*******"
             }, {
                 displayName: "Use a secure connection (SSL)?",
                 fieldName: "ssl",
+                type: "select",
                 choices: [{
                     name: 'Yes',
                     value: true,
@@ -492,6 +498,7 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             fields: [{
                 displayName: "Connection String",
                 fieldName: "db",
+                type: "text",
                 placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
             }]
         },
@@ -500,25 +507,30 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             fields: [{
                 displayName: "Host",
                 fieldName: "host",
+                type: "text",
                 placeholder: "localhost",
                 placeholderIsDefault: true
             }, {
                 displayName: "Port",
                 fieldName: "port",
+                type: "text",
                 transform: parseInt,
                 placeholder: "27017"
             }, {
                 displayName: "Database name",
                 fieldName: "dbname",
+                type: "text",
                 placeholder: "carrierPigeonDeliveries",
                 required: true
             }, {
                 displayName: "Database username",
                 fieldName: "user",
+                type: "text",
                 placeholder: "What username do you use to login to the database?"
             }, {
                 displayName: "Database password",
                 fieldName: "pass",
+                type: "password",
                 placeholder: "******"
             }]
         }
