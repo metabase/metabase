@@ -42,7 +42,8 @@
             [medley.core :as m]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            (metabase.models [field :as field]
+            (metabase.models [database :refer [Database]]
+                             [field :as field]
                              [table :refer [Table]])
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
@@ -107,10 +108,14 @@
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
             (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
 
+(defn- resolve-database
+  "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
+  [{database-id :database, :as expanded-query-dict}]
+  (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
+
 (defn- resolve-tables
-  "Resolve the `Tables` in an EXPANDED-QUERY-DICT`."
-  [{{source-table-id :source-table} :query, :as expanded-query-dict}]
-  ;; TODO - do we need any other information about a Table besides its name and ID?
+  "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
+  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict}]
   ;; TODO - this doesn't handle join tables yet
   (let [table (sel :one :fields [Table :name :id] :id source-table-id)]
     (->> (assoc-in expanded-query-dict [:query :source-table] table)
@@ -126,6 +131,7 @@
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
+            resolve-database
             resolve-tables)))
 
 

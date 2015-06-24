@@ -32,10 +32,10 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [{{:keys [source_table]} :query, :as query}]
+  [{{:keys [source-table]} :query, database :database, :as query}]
   (try
     ;; Process the expanded query and generate a korma form
-    (let [korma-form `(let [entity# (table-id->korma-entity ~source_table)]
+    (let [korma-form `(let [entity# (korma-entity ~database ~source-table)]
                         (select entity# ~@(->> (map apply-form (:query query))
                                                (filter identity)
                                                (mapcat #(if (vector? %) % [%])))))]
