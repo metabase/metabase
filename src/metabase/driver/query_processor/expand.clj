@@ -119,6 +119,14 @@
   [{database-id :database, :as expanded-query-dict}]
   (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
 
+(defrecord JoinTableField [^Integer field-id
+                           ^String  field-name])
+
+(defrecord JoinTable [^JoinTableField source-field
+                      ^JoinTableField pk-field
+                      ^Integer        table-id
+                      ^String         table-name])
+
 (defn- join-tables-fetch-field-info
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id join-tables]
@@ -134,14 +142,15 @@
                                        (zipmap (map :table_id pk-fields) pk-fields))]
 
     ;; Now build the :join-tables clause
-    (vec (for [{table-id :id, :as table} join-tables]
-           (let [pk-field      (join-table-id->pk-field table-id)
-                 fk-field-id   (pk-field-id->fk-field-id (:id pk-field))
-                 fk-field-name (fk-field-id->field-name fk-field-id)]
-             (assoc table
-                    :pk-field     pk-field
-                    :source-field {:id         fk-field-id
-                                   :name       fk-field-name}))))))
+    (vec (for [{table-id :id, table-name :name} join-tables]
+           (let [{pk-field-id :id, pk-field-name :name} (join-table-id->pk-field table-id)]
+             (map->JoinTable {:table-id     table-id
+                              :table-name   table-name
+                              :pk-field     (map->JoinTableField {:field-id   pk-field-id
+                                                                  :field-name pk-field-name})
+                              :source-field (let [fk-field-id (pk-field-id->fk-field-id pk-field-id)]
+                                              (map->JoinTableField {:field-id   fk-field-id
+                                                                    :field-name (fk-field-id->field-name fk-field-id)}))}))))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."

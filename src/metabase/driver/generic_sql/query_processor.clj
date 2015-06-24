@@ -176,6 +176,9 @@
                :or     `(~'or  ~@subclauses)
                :simple first-subclause))))
 
+
+(defmethod apply-form :join-tables [[_ ]])
+
 (defmethod apply-form :limit [[_ value]]
   `(limit ~value))
 
