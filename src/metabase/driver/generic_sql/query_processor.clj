@@ -2,6 +2,7 @@
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
+            [clojure.string :as s]
             [clojure.walk :as walk]
             [korma.core :refer :all]
             [metabase.config :as config]
@@ -202,11 +203,16 @@
   [korma-form]
   (when-not qp/*disable-qp-logging*
     (log/debug
-     (u/format-color 'green "\n\nKORMA FORM:\n%s" (->> (nth korma-form 2)                                ; korma form is wrapped in a let clause. Discard it
-                                                       (walk/prewalk (fn [form]                          ; strip korma.core/ qualifications from symbols in the form
-                                                                       (if-not (symbol? form) form       ; to remove some of the clutter
+     (u/format-color 'green "\n\nKORMA FORM:\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
+                                                       (walk/prewalk (fn [form]                              ; strip korma.core/ qualifications from symbols in the form
+                                                                       (if-not (symbol? form) form           ; to remove some of the clutter
                                                                                (symbol (name form)))))
                                                        (u/pprint-to-str)))
-     (u/format-color 'blue  "\nSQL:\n%s\n"        (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
-                                                          `(~let-form ~binding-form                      ; has to go there to work correctly
-                                                                      (sql-only ~@body))))))))
+     (u/format-color 'blue  "\nSQL:\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
+                                                               `(~let-form ~binding-form                     ; has to go there to work correctly
+                                                                           (sql-only ~@body))))
+                                                      (s/replace #"\sFROM" "\nFROM")                         ; add newlines to the SQL to make it more readable
+                                                      (s/replace #"\sWHERE" "\nWHERE")
+                                                      (s/replace #"\sGROUP BY" "\nGROUP BY")
+                                                      (s/replace #"\sORDER BY" "\nORDER BY")
+                                                      (s/replace #"\sLIMIT" "\nLIMIT"))))))
