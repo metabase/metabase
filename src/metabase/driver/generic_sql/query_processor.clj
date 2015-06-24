@@ -87,13 +87,13 @@
 
 (extend-protocol IGenericSQLFormattable
   Field
-  (formatted [{:keys [field-name base-type special-type]}]
+  (formatted [{:keys [table-name field-name base-type special-type]}]
     ;; TODO - add Table names
     (cond
-      (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\" AS DATE)" field-name))
-      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) field-name))
-      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) field-name))
-      :else                                              (keyword field-name)))
+      (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name))
+      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) table-name field-name))
+      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) table-name field-name))
+      :else                                              (keyword (format "%s.%s" table-name field-name))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
