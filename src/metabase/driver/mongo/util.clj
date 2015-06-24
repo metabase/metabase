@@ -6,6 +6,16 @@
             [monger.core :as mg]
             [metabase.driver :as driver]))
 
+(def ^:const ^:private connection-timeout-ms
+  "Number of milliseconds to wait when attempting to establish a Mongo connection.
+   By default, Monger uses a 10-second timeout, which means `can/connect?` can take
+   forever, especially when called with bad details. This translates to our tests
+   taking longer and the DB setup API endpoints seeming sluggish.
+
+   Don't set the timeout too low -- I've have Circle fail when the timeout was 250ms
+   on one occasion."
+  1000)
+
 (defn- details-map->connection-string
   [{:keys [user pass host port dbname]}]
   {:pre [host
@@ -21,7 +31,8 @@
          (str ":" port))
        "/"
        dbname
-       "?connectTimeoutMS=250")) ; timeout after 250 ms instead of 10s so can-connect? doesn't take forever
+       "?connectTimeoutMS="
+       connection-timeout-ms))
 
 (def ^:dynamic *mongo-connection*
   "Connection to a Mongo database.
