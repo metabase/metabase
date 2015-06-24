@@ -6,12 +6,8 @@
             [colorize.core :as color]
             [korma.core :as korma]
             [korma.db :as kdb]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])))
+            [metabase.driver.query-processor :as qp]))
 
 ;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
 (defn- db->connection-spec [database]
@@ -66,21 +62,16 @@
        ~@body)))
 
 (defn korma-entity
-  "Return a Korma entity for TABLE.
+  "Return a Korma entity for [DB and] TABLE .
 
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
-  [{:keys [name db] :as table}]
-  {:pre [(delay? db)]}
-  {:table name
-   :pk    :id
-   :db    (db->korma-db @db)})
-
-(defn table-id->korma-entity
-  "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
-  [table-id]
-  {:pre  [(integer? table-id)]
-   :post [(map? %)]}
-  (korma-entity (or (sel :one Table :id table-id)
-                    (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
+  ([{db-delay :db, :as table}]
+   {:pre [(delay? db-delay)]}
+   (korma-entity @db-delay table))
+  ([db {table-name :name}]
+   {:pre [(map? db)]}
+   {:table table-name
+    :pk    :id
+    :db    (db->korma-db db)}))

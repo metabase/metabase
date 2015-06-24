@@ -10,12 +10,10 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.interface :as i]
-            [metabase.driver.query-processor :as qp :refer [*query*]]
+            (metabase.driver [interface :as i]
+                             [query-processor :as qp :refer [*query*]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u])
   (:import (com.mongodb CommandResult
                         DBApiLayer)
@@ -34,8 +32,8 @@
 
 (defn process-and-run
   "Process and run a MongoDB QUERY."
-  [{query-type :type database-id :database :as query}]
-  (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
+  [{query-type :type, database :database, :as query}]
+  (with-mongo-connection [_ database]
     (case (keyword query-type)
       :query (let [generated-query (process-structured (:query query))]
                (when-not qp/*disable-qp-logging*
@@ -220,8 +218,8 @@
    *  queries that contain `breakout` clauses are handled by `do-breakout`
    *  other queries are handled by `match-aggregation`, which hands off to the
       appropriate fn defined by a `defaggregation`."
-  [{:keys [source_table aggregation breakout] :as query}]
-  (binding [*collection-name* (sel :one :field [Table :name] :id source_table) ;; TODO - can remove this once expand handles Tables
+  [{:keys [source-table aggregation breakout] :as query}]
+  (binding [*collection-name* (:name source-table)
             *constraints*     (when-let [filter-clause (:filter query)]
                                 (apply-clause [:filter filter-clause]))]
     (if (seq breakout) (do-breakout query)
