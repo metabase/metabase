@@ -4,7 +4,6 @@
             [clojure.tools.logging :as log]
             [korma.core :refer :all]
             [metabase.config :as config]
-            [metabase.db :refer :all]
             [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
