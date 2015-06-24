@@ -50,8 +50,8 @@
          parse-breakout
          parse-fields
          parse-filter
-         parse-order-by
-         with-resolved-fields)
+         parse-order-by)
+
 
 ;; ## -------------------- Protocols --------------------
 
@@ -70,7 +70,7 @@
   IResolveField {:resolve-field (constantly nil)})
 
 
-;; ## -------------------- Public Interface --------------------
+;; ## -------------------- Parser --------------------
 
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
@@ -82,10 +82,27 @@
                                        (set/rename-keys <> {:order_by :order-by})
                                        (m/filter-vals identity <>))))
 
+(def ^:private ^:dynamic *field-ids*
+  "Bound to an atom containing a set when a parsing function is ran"
+  nil)
+
+
+;; ## -------------------- Public Interface --------------------
+
 (defn expand
   "Expand a query-dict."
   [query-dict]
-  (with-resolved-fields parse query-dict))
+  (binding [*field-ids* (atom #{})]
+    (when-let [parsed-form (parse query-dict)]
+      (if-not (seq @*field-ids*) parsed-form ; No need to do a DB call or walk parsed-form if we didn't see any Field IDs
+              (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in @*field-ids*])
+                                (m/map-vals #(set/rename-keys % {:id           :field-id
+                                                                 :name         :field-name
+                                                                 :special_type :special-type
+                                                                 :base_type    :base-type})))]
+                ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
+                ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
+                (walk/postwalk #(resolve-field % fields) parsed-form))))))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -140,10 +157,6 @@
         parse-value
         map->Value)))
 
-(def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set when a parsing function is ran"
-  nil)
-
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
@@ -153,26 +166,6 @@
    (->FieldPlaceholder field-id))
   ([field-id value]
    (->ValuePlaceholder field-id value)))
-
-
-;; ## -------------------- Field Resolution --------------------
-
-(defn- with-resolved-fields
-  "Call (PARSER-FN FORM), collecting the `Field` IDs encountered; then fetch the relevant Fields
-   and walk the parsed form, calling `resolve-field` on each element."
-  [parser-fn form]
-  (when form
-    (binding [*field-ids* (atom #{})]
-      (when-let [parsed-form (parser-fn form)]
-        (if-not (seq @*field-ids*) parsed-form ; No need to do a DB call or walk parsed-form if we didn't see any Field IDs
-                (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in @*field-ids*])
-                                  (m/map-vals #(set/rename-keys % {:id           :field-id
-                                                                   :name         :field-name
-                                                                   :special_type :special-type
-                                                                   :base_type    :base-type})))]
-                  ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
-                  ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
-                  (walk/postwalk #(resolve-field % fields) parsed-form)))))))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
