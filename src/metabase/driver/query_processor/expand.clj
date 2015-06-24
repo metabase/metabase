@@ -70,7 +70,7 @@
   IResolveField {:resolve-field (constantly nil)})
 
 
-;; ## -------------------- Parser --------------------
+;; ## -------------------- Expansion - Impl --------------------
 
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
@@ -86,23 +86,29 @@
   "Bound to an atom containing a set when a parsing function is ran"
   nil)
 
+(defn- resolve-fields
+  "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
+  [expanded-query-dict field-ids]
+  (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
+          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in field-ids])
+                            (m/map-vals #(set/rename-keys % {:id           :field-id
+                                                             :name         :field-name
+                                                             :special_type :special-type
+                                                             :base_type    :base-type})))]
+            ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
+            ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
+            (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
+
 
 ;; ## -------------------- Public Interface --------------------
 
 (defn expand
-  "Expand a query-dict."
+  "Expand a QUERY-DICT."
   [query-dict]
   (binding [*field-ids* (atom #{})]
-    (when-let [parsed-form (parse query-dict)]
-      (if-not (seq @*field-ids*) parsed-form ; No need to do a DB call or walk parsed-form if we didn't see any Field IDs
-              (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in @*field-ids*])
-                                (m/map-vals #(set/rename-keys % {:id           :field-id
-                                                                 :name         :field-name
-                                                                 :special_type :special-type
-                                                                 :base_type    :base-type})))]
-                ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
-                ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
-                (walk/postwalk #(resolve-field % fields) parsed-form))))))
+    (some-> query-dict
+            parse
+            (resolve-fields @*field-ids*))))
 
 
 ;; ## -------------------- Field + Value --------------------
