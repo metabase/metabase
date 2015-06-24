@@ -79,8 +79,7 @@
   An implementation of `apply-form` may optionally return a vector of several forms to insert into the generated korma `select` form."
   (fn [[clause-name _]] clause-name))
 
-(defmethod apply-form :default [form]
-  (println (u/format-color 'red "Ignoring form: %s" (u/pprint-to-str form))))
+(defmethod apply-form :default [form]) ;; nothing
 
 
 (defprotocol IGenericSQLFormattable

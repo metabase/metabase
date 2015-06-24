@@ -324,22 +324,28 @@
 (defn- order-cols
   "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
    FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
-  [{{breakout-ids :breakout, fields-ids :fields, order-by-clauses :order_by} :query} results fields]
+  [{{breakout-fields :breakout, fields-fields :fields} :query} results fields]
   {:post [(= (set %)
              (set (keys (first results))))]}
-  (let [field-id->field (zipmap (map :id fields) fields)
+  (let [;; TODO - This function was written before the advent of the expanded query it is designed to work with Field IDs rather than expanded forms
+        ;; Since this logic is delecate I've side-stepped the issue by converting the expanded Fields back to IDs for the time being.
+        ;; We should carefully re-work this function to use expanded Fields so we don't need the complicated logic below to fetch their names
+        breakout-ids     (map :field-id breakout-fields)
+        fields-ids       (map :field-id fields-fields)
+
+        field-id->field  (zipmap (map :id fields) fields)
 
         ;; Get IDs from Fields clause *if* it was added explicitly and other all other Field IDs for Table.
         fields-ids       (when-not (:fields-is-implicit @*internal-context*) fields-ids)
-        all-field-ids    (->> fields                                              ; Sort the Fields.
+        all-field-ids    (->> fields    ; Sort the Fields.
                               (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
-                                         [position                                ; [position special-type-group name]
-                                          (cond                                   ; and Clojure will take care of the rest.
+                                         [position ; [position special-type-group name]
+                                          (cond ; and Clojure will take care of the rest.
                                             (= special_type :id)   0
                                             (= special_type :name) 1
                                             :else                  2)
                                           name]))
-                              (map :id))                                          ; Return the sorted IDs
+                              (map :id)) ; Return the sorted IDs
 
         ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
         ;; Then filter out ones that appear in breakout clause and remove duplicates
