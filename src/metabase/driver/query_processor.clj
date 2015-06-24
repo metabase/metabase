@@ -15,7 +15,7 @@
 (declare add-implicit-breakout-order-by
          add-implicit-limit
          add-implicit-fields
-         expand-date-values
+         expand
          get-special-column-info
          preprocess-cumulative-sum
          preprocess-structured
@@ -42,10 +42,6 @@
   "The query we're currently processing, in its original, unexpanded form."
   nil)
 
-(def ^:dynamic *expanded-query*
-  "The query we're currently processing, in its expanded form."
-  nil)
-
 (def ^:dynamic *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
@@ -65,23 +61,26 @@
   "Preprocess QUERY dict, applying various driver-independent transformations to it before it is passed to specific driver query processor implementations."
   [{query-type :type :as query}]
   (case (keyword query-type)
-    :query (preprocess-structured query)
+    :query  (preprocess-structured query)
     :native query))
 
 (defn preprocess-structured
   "Preprocess a strucuted QUERY dict."
   [query]
-  (let [preprocessed-query (update-in query [:query] #(->> %
-                                                           remove-empty-clauses
-                                                           add-implicit-breakout-order-by
-                                                           add-implicit-limit
-                                                           add-implicit-fields
-                                                           expand-date-values
-                                                           preprocess-cumulative-sum))]
+  (let [preprocessed-query (->>
+                            ;; Functions that take place before expansion
+                            ;; These functions expect just the :query subdictionary (TODO -- these need to be changed to use to expanded query at some point
+                            (update-in query [:query] #(->> %
+                                                            remove-empty-clauses
+                                                            add-implicit-breakout-order-by
+                                                            add-implicit-limit
+                                                            add-implicit-fields))
+                            ;; Functions that take place after expansion
+                            ;; These work with the entire expanded query dict including :database_id, etc.
+                            expand
+                            preprocess-cumulative-sum)]
     (when-not *disable-qp-logging*
-      (log/debug (colorize.core/cyan "\n******************** PREPROCESSED: ********************\n"
-                                     (with-out-str (clojure.pprint/pprint preprocessed-query)) "\n"
-                                     "*******************************************************\n")))
+      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED:\n%s" (u/pprint-to-str preprocessed-query))))
     preprocessed-query))
 
 
@@ -151,53 +150,55 @@
                                   :field_type [not= "sensitive"], (order :position :asc), (order :id :desc))))))
 
 
-;;; ### EXPAND-DATES
+;;; ### EXPAND
 
-(defn expand-date-values
-  "Expand any dates in the `:filter` clause.
-   This is done so various implementations can cast date values appropriately by simply checking their types.
-   In the future when drivers are re-worked to deal with the Expanded Query directly this step will no longer be needed."
+(defn expand
+  "Expand the Query Dictionary with the query expander.
+   This will be threaded through the subsequent post-processing steps."
   [query]
-  (cond-> query
-    (:filter query) (assoc  :filter (some-> *expanded-query* :query :filter expand/collapse)))) ; collapse the filter clause from the expanded query and use that as the replacement
+  (expand/expand query))
 
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
 
-(defn preprocess-cumulative-sum
-  "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
-   (Cumulative sum is a special case; it is implemented in post-processing)."
-  [{[ag-type ag-field :as aggregation] :aggregation, breakout-fields :breakout, order-by :order_by, :as query}]
-  (let [cum-sum?                    (= ag-type "cum_sum")
-        cum-sum-with-breakout?      (and cum-sum?
-                                         (not (empty? breakout-fields)))
-        cum-sum-with-same-breakout? (and cum-sum-with-breakout?
-                                         (= (count breakout-fields) 1)
-                                         (= (first breakout-fields) ag-field))]
+;;; TODO !
+;; (defn preprocess-cumulative-sum
+;;   "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
+;;    (Cumulative sum is a special case; it is implemented in post-processing)."
+;;   [{[ag-type ag-field :as aggregation] :aggregation, breakout-fields :breakout, order-by :order_by, :as query}]
+;;   (let [cum-sum?                    (= ag-type "cum_sum")
+;;         cum-sum-with-breakout?      (and cum-sum?
+;;                                          (not (empty? breakout-fields)))
+;;         cum-sum-with-same-breakout? (and cum-sum-with-breakout?
+;;                                          (= (count breakout-fields) 1)
+;;                                          (= (first breakout-fields) ag-field))]
 
-    ;; Cumulative sum is only applicable if it has breakout fields
-    ;; For these, store the cumulative sum field under the key :cum_sum so we know which one to sum later
-    ;; Cumulative summing happens in post-processing
-    (cond
-      ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
-      ;; to just fetch all the values of the field in question.
-      cum-sum-with-same-breakout? (-> query
-                                      (dissoc :breakout)
-                                      (assoc :cum_sum     ag-field     ; TODO - move this to *internal-context* instead?
-                                             :aggregation ["rows"]
-                                             :fields      [ag-field]))
+;;     ;; Cumulative sum is only applicable if it has breakout fields
+;;     ;; For these, store the cumulative sum field under the key :cum_sum so we know which one to sum later
+;;     ;; Cumulative summing happens in post-processing
+;;     (cond
+;;       ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
+;;       ;; to just fetch all the values of the field in question.
+;;       cum-sum-with-same-breakout? (-> query
+;;                                       (dissoc :breakout)
+;;                                       (assoc :cum_sum     ag-field     ; TODO - move this to *internal-context* instead?
+;;                                              :aggregation ["rows"]
+;;                                              :fields      [ag-field]))
 
-      ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? (assoc query
-                                    :cum_sum     ag-field
-                                    :aggregation ["sum" ag-field])
+;;       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
+;;       cum-sum-with-breakout? (assoc query
+;;                                     :cum_sum     ag-field
+;;                                     :aggregation ["sum" ag-field])
 
-      ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? (assoc query
-                      :aggregation ["sum" ag-field])
+;;       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
+;;       cum-sum? (assoc query
+;;                       :aggregation ["sum" ag-field])
 
-      ;; Otherwise if this isn't a cum_sum query return it as-is
-      :else               query)))
+;;       ;; Otherwise if this isn't a cum_sum query return it as-is
+;;       :else               query)))
+
+(defn preprocess-cumulative-sum [query]
+  query)
 
 
 ;; # POSTPROCESSOR
@@ -405,7 +406,7 @@
 
 (defn- get-cols-info
   "Get column info for the `:cols` part of the QP results."
-  [{{[ag-type ag-field-id] :aggregation} :query} fields ordered-col-kws]
+  [{{{ag-type :aggregation-type, ag-field :field} :aggregation} :query} fields ordered-col-kws]
   (let [field-kw->field (zipmap (map #(keyword (:name %)) fields)
                                 fields)
         field-id->field (delay (zipmap (map :id fields) ; a delay since we probably won't need it
@@ -422,8 +423,8 @@
                     :description nil}
                    (cond
                      ;; avg, stddev, and sum should inherit the base_type and special_type from the Field they're aggregating
-                     (contains? #{:avg :stddev :sum} col-kw) (-> (@field-id->field ag-field-id)
-                                                                 (select-keys [:base_type :special_type]))
+                     (contains? #{:avg :stddev :sum} col-kw) {:base_type    (:base-type ag-field)
+                                                              :special_type (:special-type ag-field)}
                      ;; count should always be IntegerField/number
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}

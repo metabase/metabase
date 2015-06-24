@@ -34,12 +34,7 @@
 
    1.  Parsing:          Various functions parse the query form and replace Field IDs and values with placeholders
    2.  Field Lookup:     A *batched* DB call is made to fetch Fields with IDs found during Parsing
-   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects
-
-   ## Collapsing
-
-   Unfortunately, not every part of the QP understands expanded queries. Call `collapse` on an expanded Query form to get the equivalent standard
-   QL forms for backwards-compatibility."
+   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects"
   (:require [clojure.core.match :refer [match]]
             (clojure [set :as set]
                      [string :as s]
@@ -52,6 +47,7 @@
 
 (declare parse-aggregation
          parse-breakout
+         parse-fields
          parse-filter
          with-resolved-fields)
 
@@ -64,19 +60,9 @@
      Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
      return their expanded form. Other objects should just return themselves."))
 
-(defprotocol ICollapse
-  "Methods called during reverse-expansion.
-   `collapse` traverses and expanded form breadth-first and calls `collapse-one`
-   on each form. Implementers of `ICollapse` *should-not* call `collapse-one`
-   on their subforms."
-  (collapse-one [this]
-    "Don't call this directly; use `collapse`.
-     Return a reverse-expanded version of this object."))
-
 ;; Default impls are just identity
 (extend Object
-  IResolveField {:resolve-field (fn [this _] this)}
-  ICollapse     {:collapse-one  identity})
+  IResolveField {:resolve-field (fn [this _] this)})
 
 (extend nil
   IResolveField {:resolve-field (constantly nil)})
@@ -85,10 +71,12 @@
 ;; ## -------------------- Public Interface --------------------
 
 (defn- parse [query-dict]
-  (update-in query-dict [:query] #(assoc %
-                                         :aggregation (parse-aggregation (:aggregation %))
-                                         :breakout    (parse-breakout (:breakout %))
-                                         :filter      (parse-filter   (:filter %)))))
+  (update-in query-dict [:query] #(->> (assoc %
+                                              :aggregation (parse-aggregation (:aggregation %))
+                                              :breakout    (parse-breakout    (:breakout %))
+                                              :fields      (parse-fields      (:fields %))
+                                              :filter      (parse-filter      (:filter %)))
+                                       (m/filter-vals identity))))
 
 (defn expand
   "Expand a query-dict."
@@ -100,16 +88,6 @@
   [filter-clause]
   (with-resolved-fields parse-filter filter-clause))
 
-;; Do a breadth-first walk so we don't walk things that will be tossed anyway. Since
-;; some of these objects can be nil, this saves us from having to write an implentation
-;; of collapse-one for nil as well.
-(defn collapse
-  "Collapse an expanded QUERY-FORM returning its standard QL equivalent."
-  [query-form]
-  (->> query-form
-       (walk/prewalk collapse-one)   ; do a second pass because some forms might not get fully collapsed the first time around,
-       (walk/prewalk collapse-one))) ; e.g. :simple filters return collapse to their (not-yet-collapsed) subclause
-
 
 ;; ## -------------------- Field + Value --------------------
 
@@ -117,23 +95,14 @@
 (defrecord Field [field-id
                   field-name
                   base-type
-                  special-type]
-  ICollapse
-  (collapse-one [_]
-    field-id))
+                  special-type])
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (defrecord Value [value              ; e.g. parsed Date / timestamp
                   original-value     ; e.g. original YYYY-MM-DD string
                   base-type
-                  special-type]
-  ICollapse
-  (collapse-one [_]
-    ;; Some preprocessing steps modify the parsed value
-    ;; So return that value instead of converting date/timestamp back to YYYY-MM-DD
-    ;; QPs shouldn't need logic for parsing YYYY-MM-DD strings anymore
-    value))
+                  special-type])
 
 
 ;; ## -------------------- Placeholders --------------------
@@ -144,11 +113,7 @@
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
         field-id->fields
-        map->Field))
-
-  ICollapse
-  (collapse-one [_]
-    field-id))
+        map->Field)))
 
 (defn- parse-value
   "Convert the `value` of a `Value` to a date or timestamp if needed.
@@ -166,10 +131,6 @@
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (defrecord ValuePlaceholder [field-id value]
-  ICollapse
-  (collapse-one [_]
-    value)
-
   IResolveField
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
@@ -244,60 +205,43 @@
 
 ;; ## -------------------- Breakout --------------------
 
-(defrecord Breakout [fields])
-
+;; Breakout + Fields clauses are just regular vectors
+;; TODO - might need to change this if we want to add any special
+;; functionality
 (defparser parse-breakout
-  [& field-ids] (mapv ph field-ids))
+  field-ids (mapv ph field-ids))
+
+
+;; ## -------------------- Fields --------------------
+
+(defparser parse-fields
+  field-ids (mapv ph field-ids))
 
 ;; ## -------------------- Filter --------------------
 
 ;; ### Top-Level Type
 
 (defrecord Filter [^Keyword compound-type ; :and :or :simple
-                   subclauses]
-  ICollapse
-  (collapse-one [_]
-    (case compound-type
-      :simple  (first subclauses)
-      :and    `["AND" ~@subclauses]
-      :or     `["OR"  ~@subclauses])))
+                   subclauses])
 
 
 ;; ### Subclause Types
 
 (defrecord Filter:Inside [^Keyword filter-type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
                           lat
-                          lon]
-  ICollapse
-  (collapse-one [_]
-    ["INSIDE" (:field lat) (:field lon) (:max lat) (:min lon) (:min lat) (:max lon)]))
+                          lon])
 
 (defrecord Filter:Between [^Keyword filter-type
                            ^Field   field
                            ^Value   min-val
-                           ^Value   max-val]
-  ICollapse
-  (collapse-one [_]
-    ["BETWEEN" field min-val max-val]))
-
-(defn- collapse-filter-type [^Keyword filter-type]
-  (-> filter-type
-      name
-      (s/replace #"-" "_")
-      s/upper-case))
+                           ^Value   max-val])
 
 (defrecord Filter:Field+Value [^Keyword filter-type
                                ^Field   field
-                               ^Value   value]
-  ICollapse
-  (collapse-one [_]
-    [(collapse-filter-type filter-type) field value]))
+                               ^Value   value])
 
 (defrecord Filter:Field [^Keyword filter-type
-                         ^Field field]
-  ICollapse
-  (collapse-one [_]
-    [(collapse-filter-type filter-type) field]))
+                         ^Field field])
 
 
 ;; ### Parsers
