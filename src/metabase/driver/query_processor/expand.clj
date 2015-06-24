@@ -44,6 +44,7 @@
             [metabase.db :refer [sel]]
             (metabase.models [database :refer [Database]]
                              [field :as field]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
@@ -118,15 +119,39 @@
   [{database-id :database, :as expanded-query-dict}]
   (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
 
+(defn- join-tables-fetch-field-info
+  "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
+  [source-table-id join-tables]
+  (let [ ;; Build a map of source table FK field IDs -> field names
+        fk-field-id->field-name      (sel :many :id->field [field/Field :name], :table_id source-table-id, :special_type "fk")
+
+        ;; Build a map of join table PK field IDs -> source table FK field IDs
+        pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
+                                          :origin_id [in (set (keys fk-field-id->field-name))])
+
+        ;; Build a map of join table ID -> PK field info
+        join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
+                                       (zipmap (map :table_id pk-fields) pk-fields))]
+
+    ;; Now build the :join-tables clause
+    (vec (for [{table-id :id, :as table} join-tables]
+           (let [pk-field      (join-table-id->pk-field table-id)
+                 fk-field-id   (pk-field-id->fk-field-id (:id pk-field))
+                 fk-field-name (fk-field-id->field-name fk-field-id)]
+             (assoc table
+                    :pk-field     pk-field
+                    :source-field {:id         fk-field-id
+                                   :name       fk-field-name}))))))
+
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
   [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict} table-ids]
-  (let [table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
-        join-tables     (vals (dissoc table-id->table source-table-id))]
-    (walk/postwalk #(resolve-table % table-id->table)
-                   (cond-> (assoc-in expanded-query-dict [:query :source-table] (table-id->table source-table-id))
-                     ;; If there are any Tables to join include them in a :join-tables clause
-                     join-tables (assoc-in [:query :join-tables] (vec join-tables))))))
+  (let [table-id->table              (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        join-tables                  (vals (dissoc table-id->table source-table-id))]
+    (->> (assoc-in expanded-query-dict [:query :source-table] (table-id->table source-table-id))
+         (#(if-not join-tables %
+                   (assoc-in % [:query :join-tables] (join-tables-fetch-field-info source-table-id join-tables))))
+         (walk/postwalk #(resolve-table % table-id->table)))))
 
 
 ;; ## -------------------- Public Interface --------------------
