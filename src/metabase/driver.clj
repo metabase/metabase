@@ -5,7 +5,6 @@
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
-            [metabase.driver.query-processor.expand :as expand]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
@@ -137,7 +136,6 @@
   (try
     (let [driver  (database-id->driver (:database query))]
       (binding [qp/*query*            query
-                qp/*expanded-query*   (expand/expand query)
                 qp/*internal-context* (atom {})
                 qp/*driver*           driver]
         (let [query   (qp/preprocess query)

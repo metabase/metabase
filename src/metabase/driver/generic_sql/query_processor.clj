@@ -8,30 +8,16 @@
             [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import (metabase.driver.query_processor.expand Field
+                                                   OrderByAggregateField
+                                                   Value)))
 
 
 (declare apply-form
-         log-query)
+         log-korma-form)
 
 ;; # INTERFACE
-
-(defn process
-  "Convert QUERY into a korma `select` form."
-  [{{:keys [source_table] :as query} :query}]
-  (when-not (zero? source_table)
-    (let [forms (->> (map apply-form query)                    ; call `apply-form` for each clause and strip out nil results
-                     (filter identity)
-                     (mapcat (fn [form] (if (vector? form) form ; some `apply-form` implementations return a vector of multiple korma forms; if only one was
-                                           [form])))           ; returned wrap it in a vec so `mapcat` can build a flattened sequence of forms
-                     doall)]
-      (when (config/config-bool :mb-db-logging)
-        (log-query query forms))
-      `(let [entity# (table-id->korma-entity ~source_table)]
-         (select entity# ~@forms)))))
 
 (defn- uncastify
   "Remove CAST statements from a column name if needed.
@@ -46,14 +32,23 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [query]
-  {:pre [(integer? (:database query)) ; double check that the query being passed is valid
-         (map? (:query query))
-         (= (name (:type query)) "query")]}
+  [{{:keys [source_table]} :query, :as query}]
   (try
-    (as-> (process query) results
-      (eval results)
-      (qp/annotate query results uncastify))
+    ;; Process the expanded query and generate a korma form
+    (let [korma-form `(let [entity# (table-id->korma-entity ~source_table)]
+                        (select entity# ~@(->> (map apply-form (:query query))
+                                               (filter identity)
+                                               (mapcat #(if (vector? %) % [%])))))]
+
+      ;; Log generated korma form
+      (when (config/config-bool :mb-db-logging)
+        (log-korma-form korma-form))
+
+      ;; Now eval the korma form. Then annotate the results
+      ;; TODO - why does this happen within the individual drivers still? Annotate should be moved out
+      (let [results (eval korma-form)]
+        (qp/annotate query results uncastify)))
+
     (catch java.sql.SQLException e
       (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
                                           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
@@ -61,11 +56,9 @@
                                 (.getMessage e))]
         (throw (Exception. message))))))
 
-
 (defn process-and-run
   "Process and run a query and return results."
   [{:keys [type] :as query}]
-  ;; we know how to handle :native and :query (structured) type queries
   (case (keyword type)
       :native (native/process-and-run query)
       :query  (process-structured query)))
@@ -87,127 +80,113 @@
   An implementation of `apply-form` may optionally return a vector of several forms to insert into the generated korma `select` form."
   (fn [[clause-name _]] clause-name))
 
-;; ### `:aggregation`
-;; ex.
-;;
-;;     ["distinct" 1412]
-(defmethod apply-form :aggregation [[_ value]]
-  (match value
-    ["rows"]           nil ; don't need to do anything special for `rows` - `select` selects all rows by default
-    ["count"]          `(aggregate (~'count :*) :count)
-    [ag-type field-id] (let [field (field-id->kw field-id)]
-                         (match ag-type
-                           "avg"      `(aggregate (~'avg ~field) :avg)
-                           "count"    `(aggregate (~'count ~field) :count)
-                           "distinct" `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
-                           "stddev"   `(fields [(sqlfn :stddev ~field) :stddev])
-                           "sum"      `(aggregate (~'sum ~field) :sum))))) ; cumulative sum happens in post-processing (see below)
-
-;; ### `:breakout`
-;; ex.
-;;
-;;     [1412 1413]
-(defmethod apply-form :breakout [[_ field-ids]]
-  (let [ ;; Group by all the breakout fields
-        field-names                       (map field-id->kw field-ids)
-        ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
-        fields-not-in-fields-clause-names (->> field-ids
-                                               (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
-                                               (map field-id->kw))]
-    `[(group  ~@field-names)
-      (fields ~@fields-not-in-fields-clause-names)]))
+(defmethod apply-form :default [form]) ;; nothing
 
 
-;; ### `:fields`
-;; ex.
-;;
-;;     [1412 1413]
-(defmethod apply-form :fields [[_ field-ids]]
-  (let [field-names (map field-id->kw field-ids)]
-    `(fields ~@field-names)))
+(defprotocol IGenericSQLFormattable
+  (formatted [this]))
 
-;; ### `:filter`
-;; ex.
-;;
-;;     ["AND"
-;;       [">" 1413 1]
-;;       [">=" 1412 4]]
+(extend-protocol IGenericSQLFormattable
+  Field
+  (formatted [{:keys [field-name base-type special-type]}]
+    ;; TODO - add Table names
+    (cond
+      (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) field-name))
+      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) field-name))
+      :else                                              (keyword field-name)))
+
+  ;; e.g. the ["aggregation" 0] fields we allow in order-by
+  OrderByAggregateField
+  (formatted [_]
+    (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))] ; determine the name of the aggregation field
+      `(raw ~(case aggregation-type
+               :avg      "\"avg\""
+               :count    "\"count\""
+               :distinct "\"count\""
+               :stddev   "\"stddev\""
+               :sum      "\"sum\""))))
+
+  Value
+  (formatted [{:keys [value]}]
+    (if-not (instance? java.util.Date value) value
+            `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value))))))
+
+
+(defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
+  (if-not field
+    ;; aggregation clauses w/o a Field
+    (case aggregation-type
+      :rows  nil                               ; don't need to do anything special for `rows` - `select` selects all rows by default
+      :count `(aggregate (~'count :*) :count))
+    ;; aggregation clauses with a Field
+    (let [field (formatted field)]
+      (case aggregation-type
+        :avg      `(aggregate (~'avg ~field) :avg)
+        :count    `(aggregate (~'count ~field) :count)
+        :distinct `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
+        :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
+        :sum      `(aggregate (~'sum ~field) :sum)))))
+
+
+(defmethod apply-form :breakout [[_ fields]]
+  `[ ;; Group by all the breakout fields
+    (group  ~@(map formatted fields))
+
+    ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
+    (fields ~@(->> fields
+                   (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
+                   (map formatted)))])
+
+
+(defmethod apply-form :fields [[_ fields]]
+  `(fields ~@(map formatted fields)))
+
 
 (defn- filter-subclause->predicate
-  "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`.
+  "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
+  [{:keys [filter-type], :as filter}]
+  (if (= filter-type :inside)
+    ;; INSIDE filter subclause
+    (let [{:keys [lat lon]} filter]
+      (list 'and {(formatted (:field lat)) ['< (formatted (:max lat))]}
+                 {(formatted (:field lat)) ['> (formatted (:min lat))]}
+                 {(formatted (:field lon)) ['< (formatted (:max lon))]}
+                 {(formatted (:field lon)) ['> (formatted (:min lon))]}))
 
-    (filter-subclause->predicate [\">\" 1413 1]) -> {:field_name [> 1]} "
-  [subclause]
-  (match subclause
-    ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max] (let [lat-kw (field-id->kw lat-field)
-                                                                         lon-kw (field-id->kw lon-field)]
-                                                                     `(~'and ~@[{lat-kw ['< lat-max]}
-                                                                                {lat-kw ['> lat-min]}
-                                                                                {lon-kw ['< lon-max]}
-                                                                                {lon-kw ['> lon-min]}]))
-    [_ field-id & _] {(field-id->kw field-id)
-                      ;; If the field in question is a date field we need to cast the YYYY-MM-DD string that comes back from the UI to a SQL date
-                      (let [cast-value-if-needed (fn [v]
-                                                   (if-not (or (= (type v) java.sql.Date)
-                                                               (= (type v) java.util.Date)) v
-                                                     `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))))]
-                        (match subclause
-                          ["NOT_NULL" _]        ['not= nil]
-                          ["IS_NULL" _]         ['=    nil]
-                          ["BETWEEN" _ min max] ['between [(cast-value-if-needed min) (cast-value-if-needed max)]]
-                          [_ _ value]           (let [value (cast-value-if-needed value)]
-                                                  (match subclause
-                                                    [">"  _ _] ['>    value]
-                                                    ["<"  _ _] ['<    value]
-                                                    [">=" _ _] ['>=   value]
-                                                    ["<=" _ _] ['<=   value]
-                                                    ["="  _ _] ['=    value]
-                                                    ["!=" _ _] ['not= value]))))}))
+    ;; all other filter subclauses
+    (let [field (formatted (:field filter))
+          value (some-> filter :value formatted)]
+      (case filter-type
+        :between  {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
+        :not-null {field ['not= nil]}
+        :is-null  {field ['=    nil]}
+        :>        {field ['>    value]}
+        :<        {field ['<    value]}
+        :>=       {field ['>=   value]}
+        :<=       {field ['<=   value]}
+        :=        {field ['=    value]}
+        :!=       {field ['not= value]}))))
 
-(defmethod apply-form :filter [[_ filter-clause]]
-  (match filter-clause
-    ["AND" & subclauses] `(where (~'and ~@(map filter-subclause->predicate
-                                               subclauses)))
-    ["OR" & subclauses]  `(where (~'or  ~@(map filter-subclause->predicate
-                                               subclauses)))
-    [& subclause]        `(where ~(filter-subclause->predicate subclause))))
+(defmethod apply-form :filter [[_ {:keys [compound-type subclauses]}]]
+  (let [[first-subclause :as subclauses] (map filter-subclause->predicate subclauses)]
+    `(where ~(case compound-type
+               :and    `(~'and ~@subclauses)
+               :or     `(~'or  ~@subclauses)
+               :simple first-subclause))))
 
-;; ### `:limit`
-;; ex.
-;;
-;;     10
 (defmethod apply-form :limit [[_ value]]
   `(limit ~value))
 
-;; ### `:order_by`
-;; ex.
-;;
-;;     [[1416 "ascending"]
-;;      [1412 "descending"]]
-(defmethod apply-form :order_by [[_ order-by-pairs]]
-  (when-not (empty? order-by-pairs)
-    (->> order-by-pairs
-         (map (fn [pair] (when-not (vector? pair) (throw (Exception. "order_by clause must consists of pairs like [field_id \"ascending\"]"))) pair))
-         (mapv (fn [[field asc-desc]]
-                 {:pre [(string? asc-desc)]}
-                 `(order ~(match [field]
-                            [field-id :guard integer?] (field-id->kw field-id)
-                            [["aggregation" 0]]        (let [[ag] (:aggregation (:query qp/*query*))]
-                                                         `(raw ~(case ag
-                                                                  "avg"      "\"avg\""   ; based on the type of the aggregation
-                                                                  "count"    "\"count\"" ; make sure we ask the DB to order by the
-                                                                  "distinct" "\"count\"" ; name of the aggregate field
-                                                                  "stddev"   "\"stddev\""
-                                                                  "sum"      "\"sum\""))))
-                         ~(case asc-desc
-                            "ascending" :ASC
-                            "descending" :DESC)))))))
+(defmethod apply-form :order-by [[_ subclauses]]
+  (vec (for [{:keys [field direction]} subclauses]
+         `(order ~(formatted field)
+                 ~(case direction
+                    :ascending  :ASC
+                    :descending :DESC)))))
 
-;; ### `:page`
-;; ex.
-;;
-;;     {:page 1
-;;      :items 20}
+;; TODO - page can be preprocessed away -- converted to a :limit clause and an :offset clause
+;; implement this at some point.
 (defmethod apply-form :page [[_ {:keys [items page]}]]
   {:pre [(integer? items)
          (> items 0)
@@ -216,22 +195,14 @@
   `[(limit ~items)
     (offset ~(* items (- page 1)))])
 
-;; ### `:source_table`
-(defmethod apply-form :source_table [_] ; nothing to do here since getting the `Table` is handled by `process`
-  nil)
-
 
 ;; ## Debugging Functions (Internal)
 
-(defn- log-query
-  "Log QUERY Dictionary and the korma form and SQL that the Query Processor translates it to."
-  [{:keys [source_table] :as query} forms]
+(defn- log-korma-form
+  [korma-form]
   (when-not qp/*disable-qp-logging*
     (log/debug
-     "\n********************"
-     "\nSOURCE TABLE: " source_table
-     "\nQUERY ->"      (with-out-str (clojure.pprint/pprint query))
-     "\nKORMA FORM ->" (with-out-str (clojure.pprint/pprint `(select (table-id->korma-entity ~source_table) ~@forms)))
-     "\nSQL ->"        (eval `(let [entity# (table-id->korma-entity ~source_table)]
-                                (sql-only (select entity# ~@forms))))
-     "\n********************\n")))
+     (u/format-color 'green "\n\nKORMA FORM:\n%s" (u/pprint-to-str korma-form))
+     (u/format-color 'blue  "\nSQL:\n%s\n"        (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
+                                                          `(~let-form ~binding-form                      ; has to go there to work correctly
+                                                             (sql-only ~@body))))))))
