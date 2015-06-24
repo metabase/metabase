@@ -10,6 +10,7 @@
                                          [util :refer :all])
             [metabase.util :as u])
   (:import (metabase.driver.query_processor.expand Field
+                                                   OrderByAggregateField
                                                    Value)))
 
 
@@ -95,9 +96,19 @@
       (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) field-name))
       :else                                              (keyword field-name)))
 
+  ;; e.g. the ["aggregation" 0] fields we allow in order-by
+  OrderByAggregateField
+  (formatted [_]
+    (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))] ; determine the name of the aggregation field
+      `(raw ~(case aggregation-type
+               :avg      "\"avg\""
+               :count    "\"count\""
+               :distinct "\"count\""
+               :stddev   "\"stddev\""
+               :sum      "\"sum\""))))
+
   Value
   (formatted [{:keys [value]}]
-    instance?
     (if-not (instance? java.util.Date value) value
             `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value))))))
 
@@ -111,11 +122,12 @@
     ;; aggregation clauses with a Field
     (let [field (formatted field)]
       (case aggregation-type
-        :avg      `(aggregate (~'avg ~field) :avg)
-        :count    `(aggregate (~'count ~field) :count)
-        :distinct `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
-        :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
-        :sum      `(aggregate (~'sum ~field) :sum)))))
+        :avg            `(aggregate (~'avg ~field) :avg)
+        :count          `(aggregate (~'count ~field) :count)
+        :distinct       `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
+        :stddev         `(fields [(sqlfn :stddev ~field) :stddev])
+        :sum            `(aggregate (~'sum ~field) :sum)
+        :cumulative-sum nil)))) ; nothing to do here - this is implemented in post-processing
 
 
 (defmethod apply-form :breakout [[_ fields]]
@@ -132,21 +144,16 @@
   `(fields ~@(map formatted fields)))
 
 
-;; (fn [v]
-;;   (if-not (or (= (type v) java.sql.Date)
-;;               (= (type v) java.util.Date)) v
-;;               `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.sql.Date v)))))
-
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
   [{:keys [filter-type], :as filter}]
   (if (= filter-type :inside)
-    ;; inside filter subclause
-    (let [{:keys [lat lon]} :filter]
-      `(~'and {~(formatted (:field lat)) ['< ~(formatted (:max lat))]}
-              {~(formatted (:field lat)) ['> ~(formatted (:min lat))]}
-              {~(formatted (:field lon)) ['< ~(formatted (:max lon))]}
-              {~(formatted (:field lon)) ['> ~(formatted (:min lon))]}))
+    ;; INSIDE filter subclause
+    (let [{:keys [lat lon]} filter]
+      (list 'and {(formatted (:field lat)) ['< (formatted (:max lat))]}
+                 {(formatted (:field lat)) ['> (formatted (:min lat))]}
+                 {(formatted (:field lon)) ['< (formatted (:max lon))]}
+                 {(formatted (:field lon)) ['> (formatted (:min lon))]}))
 
     ;; all other filter subclauses
     (let [field (formatted (:field filter))
@@ -174,17 +181,10 @@
 
 (defmethod apply-form :order-by [[_ subclauses]]
   (vec (for [{:keys [field direction]} subclauses]
-         (do (println "FIELD:" field)
-             `(order ~(if (= (:source field) :aggregation)
-                        ;; order by an aggregate Field
-                        (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))]
-                          `(raw ~(format "\"%s\"" (name aggregation-type))))
-
-                        ;; order by a normal Field
-                        (formatted field))
-                     ~(case direction
-                        :ascending  :ASC
-                        :descending :DESC))))))
+         `(order ~(formatted field)
+                 ~(case direction
+                    :ascending  :ASC
+                    :descending :DESC)))))
 
 ;; TODO - page can be preprocessed away -- converted to a :limit clause and an :offset clause
 ;; implement this at some point.
