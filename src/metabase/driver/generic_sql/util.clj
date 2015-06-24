@@ -6,12 +6,8 @@
             [colorize.core :as color]
             [korma.core :as korma]
             [korma.db :as kdb]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])))
+            [metabase.driver.query-processor :as qp]))
 
 ;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
 (defn- db->connection-spec [database]
