@@ -91,7 +91,11 @@
                                        (m/filter-vals identity <>))))
 
 (def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set when a parsing function is ran"
+  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *table-ids*
+  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
   nil)
 
 (defn- resolve-fields
@@ -104,6 +108,7 @@
                                                              :special_type :special-type
                                                              :base_type    :base-type
                                                              :table_id     :table-id})))]
+            (reset! *table-ids* (set (map :table-id (vals fields))))
             ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
             (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
@@ -115,11 +120,13 @@
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict}]
-  ;; TODO - this doesn't handle join tables yet
-  (let [table (sel :one :fields [Table :name :id] :id source-table-id)]
-    (->> (assoc-in expanded-query-dict [:query :source-table] table)
-         (walk/postwalk #(resolve-table % {(:id table) table})))))
+  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict} table-ids]
+  (let [table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        join-tables     (vals (dissoc table-id->table source-table-id))]
+    (walk/postwalk #(resolve-table % table-id->table)
+                   (cond-> (assoc-in expanded-query-dict [:query :source-table] (table-id->table source-table-id))
+                     ;; If there are any Tables to join include them in a :join-tables clause
+                     join-tables (assoc-in [:query :join-tables] (vec join-tables))))))
 
 
 ;; ## -------------------- Public Interface --------------------
@@ -127,12 +134,13 @@
 (defn expand
   "Expand a QUERY-DICT."
   [query-dict]
-  (binding [*field-ids* (atom #{})]
+  (binding [*field-ids* (atom #{})
+            *table-ids* (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
             resolve-database
-            resolve-tables)))
+            (resolve-tables @*table-ids*))))
 
 
 ;; ## -------------------- Field + Value --------------------
