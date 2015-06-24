@@ -132,7 +132,7 @@
                  keep-taking? (if limit (fn [_]
                                           (< (count values) limit))
                                   (constantly true))]
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:id field))) ; resolve driver at runtime to avoid circular deps
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))
