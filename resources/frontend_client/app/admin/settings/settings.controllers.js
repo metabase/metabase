@@ -3,8 +3,8 @@
 
 var SettingsAdminControllers = angular.module('corvusadmin.settings.controllers', ['corvusadmin.settings.services']);
 
-SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'SettingsAdminServices',
-    function($scope, SettingsAdminServices) {
+SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 'SettingsAdminServices',
+    function($scope, $q, SettingsAdminServices) {
         $scope.settings = [];
 
         SettingsAdminServices.list(function(results) {
@@ -16,24 +16,34 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', 'Setti
             console.log("Error fetching settings list: ", error);
         });
 
-        $scope.saveSetting = function(setting) {
-            SettingsAdminServices.put({
-                key: setting.key
-            }, setting, function() {
-                setting.originalValue = setting.value;
-            }, function(error) {
-                console.log("Error saving setting: ", error);
-            });
-        };
+        $scope.settingName = function(setting) {
+            // return setting.description.replace(/\.$/, '');
+            return setting.key
+                .replace(/-/g, ' ')
+                .replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); })
+                .replace(/smtp/i, function(a) { return a.toUpperCase(); });
+        }
 
-        $scope.deleteSetting = function(setting) {
-            SettingsAdminServices.delete({
-                key: setting.key
-            }, function() {
-                setting.value = null;
-                setting.originalValue = null;
+        $scope.settingPlaceholder = function(setting) {
+            // return setting.default;
+            return setting.description.replace(/\.$/, '');
+        }
+
+        $scope.save = function() {
+            $scope.$broadcast("form:reset");
+            return $q.all($scope.settings.map(function(setting) {
+                if (setting.value !== setting.originalValue) {
+                    return SettingsAdminServices.put({
+                        key: setting.key
+                    }, setting).$promise.then(function() {
+                        setting.originalValue = setting.value;
+                    });
+                }
+            })).then(function(results) {
+                $scope.$broadcast("form:api-success", "Successfully saved!");
             }, function(error) {
-                console.log("Error deleting setting: ", error);
+                $scope.$broadcast("form:api-error", error);
+                throw error;
             });
         };
     }
