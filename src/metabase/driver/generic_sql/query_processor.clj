@@ -26,7 +26,7 @@
     (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
   [column-name]
   (let [column-name (name column-name)]
-    (keyword (or (second (re-find #"CAST\(([^\s]+) AS [\w]+\)" column-name))
+    (keyword (or (second (re-find #"CAST\([^.\s]+\.([^.\s]+) AS [\w]+\)" column-name))
                  (second (re-find (:uncastify-timestamp-regex qp/*driver*) column-name))
                  column-name))))
 
