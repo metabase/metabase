@@ -161,44 +161,39 @@
 
 ;; ### PREPROCESS-CUMULATIVE-SUM
 
-;;; TODO !
-;; (defn preprocess-cumulative-sum
-;;   "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
-;;    (Cumulative sum is a special case; it is implemented in post-processing)."
-;;   [{[ag-type ag-field :as aggregation] :aggregation, breakout-fields :breakout, order-by :order_by, :as query}]
-;;   (let [cum-sum?                    (= ag-type "cum_sum")
-;;         cum-sum-with-breakout?      (and cum-sum?
-;;                                          (not (empty? breakout-fields)))
-;;         cum-sum-with-same-breakout? (and cum-sum-with-breakout?
-;;                                          (= (count breakout-fields) 1)
-;;                                          (= (first breakout-fields) ag-field))]
+(defn preprocess-cumulative-sum
+  "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
+   (Cumulative sum is a special case; it is implemented in post-processing)."
+  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout, order-by :order_by} :query, :as query}]
+  (let [cum-sum?                    (= ag-type :cumulative-sum)
+        cum-sum-with-breakout?      (and cum-sum?
+                                         (seq breakout-fields))
+        cum-sum-with-same-breakout? (and cum-sum-with-breakout?
+                                         (= (count breakout-fields) 1)
+                                         (= (first breakout-fields) ag-field))]
 
-;;     ;; Cumulative sum is only applicable if it has breakout fields
-;;     ;; For these, store the cumulative sum field under the key :cum_sum so we know which one to sum later
-;;     ;; Cumulative summing happens in post-processing
-;;     (cond
-;;       ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
-;;       ;; to just fetch all the values of the field in question.
-;;       cum-sum-with-same-breakout? (-> query
-;;                                       (dissoc :breakout)
-;;                                       (assoc :cum_sum     ag-field     ; TODO - move this to *internal-context* instead?
-;;                                              :aggregation ["rows"]
-;;                                              :fields      [ag-field]))
+    ;; Cumulative sum is only applicable if it has breakout fields
+    ;; For these, store the cumulative sum field under the key :cumulative-sum so we know which one to sum later
+    ;; Cumulative summing happens in post-processing
+    (cond
+      ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
+      ;; to just fetch all the values of the field in question.
+      cum-sum-with-same-breakout? (update-in query [:query] #(-> %
+                                                                 (dissoc :breakout)
+                                                                 (assoc :cumulative-sum ag-field
+                                                                        :aggregation    (expand/map->Aggregation {:aggregation-type :rows})
+                                                                        :fields         [ag-field])))
 
-;;       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-;;       cum-sum-with-breakout? (assoc query
-;;                                     :cum_sum     ag-field
-;;                                     :aggregation ["sum" ag-field])
+      ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
+      cum-sum-with-breakout? (-> query
+                                 (assoc-in [:query :cumulative-sum] ag-field)
+                                 (assoc-in [:query :aggregation]    (expand/map->Aggregation {:aggregation-type :sum, :field ag-field})))
 
-;;       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-;;       cum-sum? (assoc query
-;;                       :aggregation ["sum" ag-field])
+      ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
+      cum-sum? (assoc-in query [:query :aggregation] (expand/map->Aggregation {:aggregation-type :sum, :field ag-field}))
 
-;;       ;; Otherwise if this isn't a cum_sum query return it as-is
-;;       :else               query)))
-
-(defn preprocess-cumulative-sum [query]
-  query)
+      ;; Otherwise if this isn't a cum_sum query return it as-is
+      :else               query)))
 
 
 ;; # POSTPROCESSOR
@@ -208,12 +203,12 @@
 (defn post-process-cumulative-sum
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   {:arglists '([query results])}
-  [{cum-sum-field :cum_sum, :as query} {rows :rows, cols :cols, :as results}]
+  [{cum-sum-field :cumulative-sum, :as query} {rows :rows, cols :cols, :as results}]
   (if-not cum-sum-field results
           (let [ ;; Determine the index of the field we need to cumulative sum
                 cum-sum-field-index (->> cols
                                          (u/indecies-satisfying #(or (= (:name %) "sum")
-                                                                     (= (:id %) cum-sum-field)))
+                                                                     (= (:id %) (:field-id cum-sum-field))))
                                          first)
                 _                   (assert (integer? cum-sum-field-index))
                 ;; Now make a sequence of cumulative sum values for each row
