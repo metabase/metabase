@@ -170,27 +170,21 @@
 (defmethod apply-form :limit [[_ value]]
   `(limit ~value))
 
-;; TODO
-(defmethod apply-form :order_by [[_ order-by-pairs]]
-  (when-not (empty? order-by-pairs)
-    (->> order-by-pairs
-         (map (fn [pair] (when-not (vector? pair) (throw (Exception. "order_by clause must consists of pairs like [field_id \"ascending\"]"))) pair))
-         (mapv (fn [[field asc-desc]]
-                 {:pre [(string? asc-desc)]}
-                 `(order ~(match [field]
-                            [field-id :guard integer?] (field-id->kw field-id)
-                            [["aggregation" 0]]        (let [[ag] (:aggregation (:query qp/*query*))]
-                                                         `(raw ~(case ag
-                                                                  "avg"      "\"avg\""   ; based on the type of the aggregation
-                                                                  "count"    "\"count\"" ; make sure we ask the DB to order by the
-                                                                  "distinct" "\"count\"" ; name of the aggregate field
-                                                                  "stddev"   "\"stddev\""
-                                                                  "sum"      "\"sum\""))))
-                         ~(case asc-desc
-                            "ascending" :ASC
-                            "descending" :DESC)))))))
+(defmethod apply-form :order-by [[_ subclauses]]
+  (vec (for [{:keys [field direction]} subclauses]
+         `(order ~(if (= (:source field) :aggregation)
+                    ;; order by an aggregate Field
+                    (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))]
+                      `(raw ~(name aggregation-type)))
 
-;; TODO (?)
+                    ;; order by a normal Field
+                    (formatted field))
+                 ~(case direction
+                    :ascending  :ASC
+                    :descending :DESC)))))
+
+;; TODO - page can be preprocessed away -- converted to a :limit clause and an :offset clause
+;; implement this at some point.
 (defmethod apply-form :page [[_ {:keys [items page]}]]
   {:pre [(integer? items)
          (> items 0)

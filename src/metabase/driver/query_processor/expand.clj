@@ -49,6 +49,7 @@
          parse-breakout
          parse-fields
          parse-filter
+         parse-order-by
          with-resolved-fields)
 
 ;; ## -------------------- Protocols --------------------
@@ -75,18 +76,14 @@
                                               :aggregation (parse-aggregation (:aggregation %))
                                               :breakout    (parse-breakout    (:breakout %))
                                               :fields      (parse-fields      (:fields %))
-                                              :filter      (parse-filter      (:filter %)))
+                                              :filter      (parse-filter      (:filter %))
+                                              :order-by    (parse-order-by    (:order_by %)))
                                        (m/filter-vals identity))))
 
 (defn expand
   "Expand a query-dict."
   [query-dict]
   (with-resolved-fields parse query-dict))
-
-(defn expand-filter
-  "Expand a `filter` clause."
-  [filter-clause]
-  (with-resolved-fields parse-filter filter-clause))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -280,3 +277,25 @@
                                      :subclauses    (mapv parse-filter-subclause subclauses)})
   subclause            (map->Filter {:compound-type :simple
                                      :subclauses    [(parse-filter-subclause subclause)]}))
+
+
+;; ## -------------------- Order-By --------------------
+
+(defrecord OrderByAggregateField [^Keyword source  ; e.g. :aggregation
+                                  ^Integer index]) ; e.g. 0
+
+(defrecord OrderBySubclause [^Field   field       ; or aggregate Field?
+                             ^Keyword direction]) ; either :ascending or :descending
+
+(defn- parse-order-by-direction [direction]
+  (case direction
+    "ascending"  :ascending
+    "descending" :descending))
+
+(defparser parse-order-by-subclause
+  [["aggregation" index] direction]      (->OrderBySubclause (->OrderByAggregateField :aggregation index)
+                                                             (parse-order-by-direction direction))
+  [(field-id :guard integer?) direction] (->OrderBySubclause (ph field-id)
+                                                             (parse-order-by-direction direction)))
+(defparser parse-order-by
+  subclauses (mapv parse-order-by-subclause subclauses))
