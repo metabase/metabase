@@ -101,7 +101,9 @@
 (defrecord Value [value              ; e.g. parsed Date / timestamp
                   original-value     ; e.g. original YYYY-MM-DD string
                   base-type
-                  special-type])
+                  special-type
+                  field-id
+                  field-name])
 
 
 ;; ## -------------------- Placeholders --------------------

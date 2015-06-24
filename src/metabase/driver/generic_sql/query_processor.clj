@@ -122,12 +122,11 @@
     ;; aggregation clauses with a Field
     (let [field (formatted field)]
       (case aggregation-type
-        :avg            `(aggregate (~'avg ~field) :avg)
-        :count          `(aggregate (~'count ~field) :count)
-        :distinct       `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
-        :stddev         `(fields [(sqlfn :stddev ~field) :stddev])
-        :sum            `(aggregate (~'sum ~field) :sum)
-        :cumulative-sum nil)))) ; nothing to do here - this is implemented in post-processing
+        :avg      `(aggregate (~'avg ~field) :avg)
+        :count    `(aggregate (~'count ~field) :count)
+        :distinct `(aggregate (~'count (sqlfn :DISTINCT ~field)) :count)
+        :stddev   `(fields [(sqlfn :stddev ~field) :stddev])
+        :sum      `(aggregate (~'sum ~field) :sum)))))
 
 
 (defmethod apply-form :breakout [[_ fields]]
