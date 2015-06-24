@@ -10,12 +10,10 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.interface :as i]
-            [metabase.driver.query-processor :as qp :refer [*query*]]
+            (metabase.driver [interface :as i]
+                             [query-processor :as qp :refer [*query*]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u])
   (:import (com.mongodb CommandResult
                         DBApiLayer)
