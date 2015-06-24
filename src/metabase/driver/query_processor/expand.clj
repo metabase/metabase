@@ -138,12 +138,12 @@
 ;; ## -------------------- Field + Value --------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
-(defrecord Field [field-id
-                  field-name
-                  base-type
-                  special-type
-                  table-id
-                  table-name]
+(defrecord Field [^Integer field-id
+                  ^String  field-name
+                  ^Keyword base-type
+                  ^Keyword special-type
+                  ^Integer table-id
+                  ^String  table-name]
   IResolve
   (resolve-table [this table-id->table]
     (cond-> this
@@ -153,10 +153,10 @@
 ;; Information about the associated Field is included for convenience
 (defrecord Value [value              ; e.g. parsed Date / timestamp
                   original-value     ; e.g. original YYYY-MM-DD string
-                  base-type
-                  special-type
-                  field-id
-                  field-name])
+                  ^Keyword base-type
+                  ^Keyword special-type
+                  ^Integer field-id
+                  ^String  field-name])
 
 
 ;; ## -------------------- Placeholders --------------------

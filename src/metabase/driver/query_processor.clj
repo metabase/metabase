@@ -80,7 +80,7 @@
                             expand
                             preprocess-cumulative-sum)]
     (when-not *disable-qp-logging*
-      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED:\n%s" (u/pprint-to-str preprocessed-query))))
+      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED:\n%s" (u/pprint-to-str (assoc-in preprocessed-query [:database :details] "**********"))))) ; obscure DB details when logging
     preprocessed-query))
 
 
@@ -439,12 +439,12 @@
 (defn annotate
   "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
    RESULTS should be a sequence of *maps*, keyed by result column -> value."
-  [{{:keys [source_table]} :query, :as query}, results & [uncastify-fn]]
-  {:pre [(integer? source_table)]}
+  [{{{source-table-id :id} :source-table} :query, :as query}, results & [uncastify-fn]]
+  {:pre [(integer? source-table-id)]}
   (let [results         (if-not uncastify-fn results
                                 (for [row results]
                                   (m/map-keys uncastify-fn row)))
-        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source_table, :active true)
+        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source-table-id, :active true)
         ordered-col-kws (order-cols query results fields)]
     {:rows    (for [row results]
                 (mapv row ordered-col-kws))                         ; might as well return each row and col info as vecs because we're not worried about making
