@@ -2,6 +2,7 @@
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [korma.core :refer :all]
             [metabase.config :as config]
             [metabase.driver.query-processor :as qp]
@@ -201,7 +202,11 @@
   [korma-form]
   (when-not qp/*disable-qp-logging*
     (log/debug
-     (u/format-color 'green "\n\nKORMA FORM:\n%s" (u/pprint-to-str korma-form))
+     (u/format-color 'green "\n\nKORMA FORM:\n%s" (->> (nth korma-form 2)                                ; korma form is wrapped in a let clause. Discard it
+                                                       (walk/prewalk (fn [form]                          ; strip korma.core/ qualifications from symbols in the form
+                                                                       (if-not (symbol? form) form       ; to remove some of the clutter
+                                                                               (symbol (name form)))))
+                                                       (u/pprint-to-str)))
      (u/format-color 'blue  "\nSQL:\n%s\n"        (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
                                                           `(~let-form ~binding-form                      ; has to go there to work correctly
-                                                             (sql-only ~@body))))))))
+                                                                      (sql-only ~@body))))))))
