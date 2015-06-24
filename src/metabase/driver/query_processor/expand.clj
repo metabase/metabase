@@ -73,13 +73,13 @@
 ;; ## -------------------- Public Interface --------------------
 
 (defn- parse [query-dict]
-  (update-in query-dict [:query] #(-<> (set/rename-keys % {:order_by :order-by})
-                                       (assoc <>
+  (update-in query-dict [:query] #(-<> (assoc %
                                               :aggregation (parse-aggregation (:aggregation %))
                                               :breakout    (parse-breakout    (:breakout %))
                                               :fields      (parse-fields      (:fields %))
                                               :filter      (parse-filter      (:filter %))
-                                              :order-by    (parse-order-by    (:order-by %)))
+                                              :order_by    (parse-order-by    (:order_by %)))
+                                       (set/rename-keys <> {:order_by :order-by})
                                        (m/filter-vals identity <>))))
 
 (defn expand

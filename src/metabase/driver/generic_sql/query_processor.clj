@@ -174,16 +174,17 @@
 
 (defmethod apply-form :order-by [[_ subclauses]]
   (vec (for [{:keys [field direction]} subclauses]
-         `(order ~(if (= (:source field) :aggregation)
-                    ;; order by an aggregate Field
-                    (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))]
-                      `(raw ~(name aggregation-type)))
+         (do (println "FIELD:" field)
+             `(order ~(if (= (:source field) :aggregation)
+                        ;; order by an aggregate Field
+                        (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))]
+                          `(raw ~(format "\"%s\"" (name aggregation-type))))
 
-                    ;; order by a normal Field
-                    (formatted field))
-                 ~(case direction
-                    :ascending  :ASC
-                    :descending :DESC)))))
+                        ;; order by a normal Field
+                        (formatted field))
+                     ~(case direction
+                        :ascending  :ASC
+                        :descending :DESC))))))
 
 ;; TODO - page can be preprocessed away -- converted to a :limit clause and an :offset clause
 ;; implement this at some point.
