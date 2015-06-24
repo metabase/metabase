@@ -42,7 +42,8 @@
             [medley.core :as m]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            [metabase.models.field :as field]
+            (metabase.models [field :as field]
+                             [table :refer [Table]])
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
@@ -55,19 +56,24 @@
 
 ;; ## -------------------- Protocols --------------------
 
-(defprotocol IResolveField
-  "Methods called during `Field` resolution. Placeholder types should implement this protocol."
+(defprotocol IResolve
+  "Methods called during `Field` and `Table` resolution. Placeholder types should implement this protocol."
   (resolve-field [this field-id->fields]
     "This method is called when walking the Query after fetching `Fields`.
      Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-     return their expanded form. Other objects should just return themselves."))
+     return their expanded form. Other objects should just return themselves.")
+  (resolve-table [this table-id->tables]
+    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
+     Objects like `Fields` can add relevant information like the name of their `Table`."))
 
 ;; Default impls are just identity
 (extend Object
-  IResolveField {:resolve-field (fn [this _] this)})
+  IResolve {:resolve-field (fn [this _] this)
+            :resolve-table (fn [this _] this)})
 
 (extend nil
-  IResolveField {:resolve-field (constantly nil)})
+  IResolve {:resolve-field (constantly nil)
+            :resolve-table (constantly nil)})
 
 
 ;; ## -------------------- Expansion - Impl --------------------
@@ -79,7 +85,8 @@
                                               :fields      (parse-fields      (:fields %))
                                               :filter      (parse-filter      (:filter %))
                                               :order_by    (parse-order-by    (:order_by %)))
-                                       (set/rename-keys <> {:order_by :order-by})
+                                       (set/rename-keys <> {:order_by     :order-by
+                                                            :source_table :source-table})
                                        (m/filter-vals identity <>))))
 
 (def ^:private ^:dynamic *field-ids*
@@ -90,14 +97,24 @@
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
   [expanded-query-dict field-ids]
   (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
-          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in field-ids])
+          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
                             (m/map-vals #(set/rename-keys % {:id           :field-id
                                                              :name         :field-name
                                                              :special_type :special-type
-                                                             :base_type    :base-type})))]
+                                                             :base_type    :base-type
+                                                             :table_id     :table-id})))]
             ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
             (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
+
+(defn- resolve-tables
+  "Resolve the `Tables` in an EXPANDED-QUERY-DICT`."
+  [{{source-table-id :source-table} :query, :as expanded-query-dict}]
+  ;; TODO - do we need any other information about a Table besides its name and ID?
+  ;; TODO - this doesn't handle join tables yet
+  (let [table (sel :one :fields [Table :name :id] :id source-table-id)]
+    (->> (assoc-in expanded-query-dict [:query :source-table] table)
+         (walk/postwalk #(resolve-table % {(:id table) table})))))
 
 
 ;; ## -------------------- Public Interface --------------------
@@ -108,7 +125,8 @@
   (binding [*field-ids* (atom #{})]
     (some-> query-dict
             parse
-            (resolve-fields @*field-ids*))))
+            (resolve-fields @*field-ids*)
+            resolve-tables)))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -117,7 +135,13 @@
 (defrecord Field [field-id
                   field-name
                   base-type
-                  special-type])
+                  special-type
+                  table-id
+                  table-name]
+  IResolve
+  (resolve-table [this table-id->table]
+    (cond-> this
+      table-id (assoc :table-name (:name (table-id->table table-id))))))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
@@ -133,7 +157,7 @@
 
 ;; Replace Field IDs with these during first pass
 (defrecord FieldPlaceholder [field-id]
-  IResolveField
+  IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
         field-id->fields
@@ -155,7 +179,7 @@
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (defrecord ValuePlaceholder [field-id value]
-  IResolveField
+  IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
         field-id->fields
