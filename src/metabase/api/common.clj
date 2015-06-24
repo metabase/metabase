@@ -442,7 +442,17 @@
       (check-403 @~'can_read)
       obj#))
   ([entity id]
-   `(read-check (sel :one ~entity :id ~id))))
+   (cond
+     ;; simple optimization : since @can-read is always true for a Database
+     ;; the read-check macro will just resolve to true in this simple case
+     ;; use `name` so we can match 'Database or 'metabase.models.database/Database
+     ;;
+     ;; TODO - it would be nice to generalize the read-checking pattern, and make it
+     ;; a separate multimethod or protocol so other models besides DB can write optimized
+     ;; implementations. Currently, we always fetch an *entire* object to do read checking,
+     ;; which is wasteful.
+     (= (name entity) "Database") `true
+     :else                        `(read-check (sel :one ~entity :id ~id)))))
 
 (defmacro write-check
   "Checks that `@can_write` is true for this object."
