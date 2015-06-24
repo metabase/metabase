@@ -999,10 +999,10 @@ export var CardRenderer = {
         var chartData = _.map(result.rows, function(value) {
             // Does this actually make sense? If country is > 2 characters just use the first 2 letters as the country code ?? (WTF)
             var countryCode = value[0];
-            if (countryCode) {
-                if (countryCode.length > 2) countryCode = countryCode.substring(0, 2);
-                countryCode = countryCode.toUpperCase();
+            if (typeof countryCode === "string") {
+                countryCode = countryCode.substring(0, 2).toUpperCase();
             }
+
             return {
                 code: countryCode,
                 value: value[1]
