@@ -88,14 +88,19 @@
 
 (extend-protocol IGenericSQLFormattable
   Field
-  (formatted [{:keys [field-name base-type-special-type]}]
-    ;; TODO
-    (keyword field-name))
+  (formatted [{:keys [field-name base-type special-type]}]
+    ;; TODO - add Table names
+    (cond
+      (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\" AS DATE)" field-name))
+      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) field-name))
+      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) field-name))
+      :else                                              (keyword field-name)))
 
   Value
-  (formatted [{:keys [value base-type special-type]}]
-    ;; TODO
-    value))
+  (formatted [{:keys [value]}]
+    instance?
+    (if-not (instance? java.util.Date value) value
+            `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
@@ -114,16 +119,14 @@
         :sum      `(aggregate (~'sum ~field) :sum)))))
 
 
-;; TODO
-(defmethod apply-form :breakout [[_ field-ids]]
-  (let [ ;; Group by all the breakout fields
-        field-names                       (map field-id->kw field-ids)
-        ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
-        fields-not-in-fields-clause-names (->> field-ids
-                                               (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
-                                               (map field-id->kw))]
-    `[(group  ~@field-names)
-      (fields ~@fields-not-in-fields-clause-names)]))
+(defmethod apply-form :breakout [[_ fields]]
+  `[ ;; Group by all the breakout fields
+    (group  ~@(map formatted fields))
+
+    ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
+    (fields ~@(->> fields
+                   (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
+                   (map formatted)))])
 
 
 (defmethod apply-form :fields [[_ fields]]

@@ -40,6 +40,7 @@
                      [string :as s]
                      [walk :as walk])
             [medley.core :as m]
+            [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             [metabase.models.field :as field]
             [metabase.util :as u])
@@ -72,13 +73,14 @@
 ;; ## -------------------- Public Interface --------------------
 
 (defn- parse [query-dict]
-  (update-in query-dict [:query] #(->> (assoc %
+  (update-in query-dict [:query] #(-<> (set/rename-keys % {:order_by :order-by})
+                                       (assoc <>
                                               :aggregation (parse-aggregation (:aggregation %))
                                               :breakout    (parse-breakout    (:breakout %))
                                               :fields      (parse-fields      (:fields %))
                                               :filter      (parse-filter      (:filter %))
-                                              :order-by    (parse-order-by    (:order_by %)))
-                                       (m/filter-vals identity))))
+                                              :order-by    (parse-order-by    (:order-by %)))
+                                       (m/filter-vals identity <>))))
 
 (defn expand
   "Expand a query-dict."
