@@ -5,8 +5,10 @@
             [clojure.tools.logging :as log]
             (korma [core :as korma]
                    db)
+            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.util :refer :all]))
+            [metabase.driver.generic-sql.util :refer :all]
+            [metabase.models.database :refer [Database]]))
 
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
@@ -20,11 +22,13 @@
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
   {:arglists '([query])}
-  [{{sql :query} :native, database :database, :as query}]
-  {:pre [(string? sql)]}
+  [{{sql :query} :native, database-id :database, :as query}]
+  {:pre [(string? sql)
+         (integer? database-id)]}
   (log/debug "QUERY: \n"
              (with-out-str (clojure.pprint/pprint query)))
-  (try (let [db (-> database
+  (try (let [database (sel :one [Database :engine :details] :id database-id)
+             db (-> database
                     db->korma-db
                     korma.db/get-connection)
              [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
