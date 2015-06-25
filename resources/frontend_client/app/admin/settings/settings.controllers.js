@@ -17,16 +17,11 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 
         });
 
         $scope.settingName = function(setting) {
-            // return setting.description.replace(/\.$/, '');
-            return setting.key
-                .replace(/-/g, ' ')
-                .replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); })
-                .replace(/smtp/i, function(a) { return a.toUpperCase(); });
+            return setting.description.replace(/\.$/, '');
         }
 
         $scope.settingPlaceholder = function(setting) {
-            // return setting.default;
-            return setting.description.replace(/\.$/, '');
+            return setting.default;
         }
 
         $scope.save = function() {
