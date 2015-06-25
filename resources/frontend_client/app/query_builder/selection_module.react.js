@@ -1,4 +1,5 @@
 'use strict';
+/*global _ */
 
 import OnClickOutside from 'react-onclickoutside';
 
@@ -115,11 +116,11 @@ export default React.createClass({
 
     render: function() {
         var selection;
-        this.props.items.map(function (item) {
-            if(item && item[this.props.selectedKey] === this.props.selectedValue) {
+        this.props.items.forEach(function (item) {
+            if(item && _.isEqual(item[this.props.selectedKey], this.props.selectedValue)) {
                 selection = item[this.props.display];
             }
-        }.bind(this));
+        }, this);
 
         var placeholder = selection || this.props.placeholder,
             searchBar,
