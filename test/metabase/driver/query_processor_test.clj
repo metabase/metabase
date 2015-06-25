@@ -813,17 +813,18 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field
+;; (Note how the FK Field is returned in the results)
 (datasets/expect-with-datasets #{:generic-sql}
-  [["Arlington" 16]
-   ["Albany" 15]
-   ["Portland" 14]
-   ["Louisville" 13]
-   ["Philadelphia" 13]
-   ["Anchorage" 12]
-   ["Lincoln" 12]
-   ["Houston" 11]
-   ["Irvine" 11]
-   ["Lakeland" 11]]
+  [[16 "Arlington"]
+   [15 "Albany"]
+   [14 "Portland"]
+   [13 "Louisville"]
+   [13 "Philadelphia"]
+   [12 "Anchorage"]
+   [12 "Lincoln"]
+   [11 "Houston"]
+   [11 "Irvine"]
+   [11 "Lakeland"]]
   (-> (query-with-temp-db defs/tupac-sightings
         :source_table &sightings:id
         :aggregation  ["count"]
