@@ -155,9 +155,12 @@
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
   [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict} table-ids]
-  (let [table-id->table              (sel :many :id->fields [Table :name :id] :id [in table-ids])
-        join-tables                  (vals (dissoc table-id->table source-table-id))]
-    (->> (assoc-in expanded-query-dict [:query :source-table] (table-id->table source-table-id))
+  {:pre [(integer? source-table-id)]}
+  (let [table-ids       (conj table-ids source-table-id)
+        table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        join-tables     (vals (dissoc table-id->table source-table-id))]
+    (->> (assoc-in expanded-query-dict [:query :source-table] (or (table-id->table source-table-id)
+                                                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
          (#(if-not join-tables %
                    (assoc-in % [:query :join-tables] (join-tables-fetch-field-info source-table-id join-tables))))
          (walk/postwalk #(resolve-table % table-id->table)))))
@@ -188,8 +191,8 @@
                   ^String  table-name]
   IResolve
   (resolve-table [this table-id->table]
-    (cond-> this
-      table-id (assoc :table-name (:name (table-id->table table-id))))))
+    (assoc this :table-name (:name (or (table-id->table table-id)
+                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience

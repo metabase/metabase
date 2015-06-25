@@ -439,12 +439,13 @@
 (defn annotate
   "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
    RESULTS should be a sequence of *maps*, keyed by result column -> value."
-  [{{{source-table-id :id} :source-table} :query, :as query}, results & [uncastify-fn]]
+  [{{:keys [join-tables], {source-table-id :id} :source-table} :query, :as query}, results & [uncastify-fn]]
   {:pre [(integer? source-table-id)]}
   (let [results         (if-not uncastify-fn results
                                 (for [row results]
                                   (m/map-keys uncastify-fn row)))
-        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source-table-id, :active true)
+        table-ids       (set (conj (map :table-id join-tables) source-table-id))
+        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id [in table-ids], :active true)
         ordered-col-kws (order-cols query results fields)]
     {:rows    (for [row results]
                 (mapv row ordered-col-kws))                         ; might as well return each row and col info as vecs because we're not worried about making

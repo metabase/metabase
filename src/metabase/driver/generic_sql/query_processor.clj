@@ -14,7 +14,6 @@
                                                    OrderByAggregateField
                                                    Value)))
 
-
 (declare apply-form
          log-korma-form)
 

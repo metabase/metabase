@@ -216,6 +216,8 @@
        (remove-database! loader# dbdef#)                              ; Remove DB if it already exists for some weird reason
        (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
                              -temp-db-add-getter-delay)]              ; Add the :table-name->table delay used by -temp-get
+         (assert ~db-binding)
+         (assert (exists? Database :id (:id ~db-binding)))
          ~@(walk-expand-& db-binding body))                           ; expand $table and $table.field forms into -temp-get calls
        (finally
          (remove-database! loader# dbdef#)))))

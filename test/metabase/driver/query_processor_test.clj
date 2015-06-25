@@ -801,3 +801,31 @@
          :rows
          (map (fn [[^java.util.Date date count]]
                 [(.toString date) (int count)])))))
+
+
+;; +------------------------------------------------------------------------------------------------------------------------+
+;; |                                                          JOIN                                                          |
+;; +------------------------------------------------------------------------------------------------------------------------+
+
+;;; The top 10 cities by number of Tupac sightings
+;;; (test that we can breakout on an FK field)
+(datasets/expect-with-datasets #{:generic-sql}
+  [["Arlington" 16]
+   ["Albany" 15]
+   ["Portland" 14]
+   ["Louisville" 13]
+   ["Philadelphia" 13]
+   ["Anchorage" 12]
+   ["Lincoln" 12]
+   ["Houston" 11]
+   ["Irvine" 11]
+   ["Lakeland" 11]]
+  (with-temp-db [db (dataset-loader) defs/tupac-sightings]
+    (-> (driver/process-query {:database (:id db)
+                               :type     "query"
+                               :query    {:source_table (:id &sightings)
+                                          :aggregation  ["count"]
+                                          :breakout     [(:id &cities.name)]
+                                          :order_by     [[["aggregation" 0] "descending"]]
+                                          :limit        10}})
+        :data :rows)))
