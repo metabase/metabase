@@ -112,7 +112,8 @@
   "Get a list of all `Tables` in `Database`."
   [id]
   (read-check Database id)
-  (sel :many Table :db_id id :active true (order :name)))
+  (-> (sel :many Table :db_id id :active true (order :name))
+      (hydrate :human_readable_name)))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."

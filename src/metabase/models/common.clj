@@ -1,5 +1,6 @@
 (ns metabase.models.common
-  (:require [metabase.api.common :refer [*current-user* *current-user-id* check]]
+  (:require [clojure.string :as s]
+            [metabase.api.common :refer [*current-user* *current-user-id* check]]
             [metabase.util :as u]))
 
 (def timezones
@@ -64,7 +65,21 @@
   Note that these delays depend upon the presence of `creator_id`, and `public_perms` fields in OBJ."
   [obj]
   (u/assoc* obj
-            :public-permissions-set (delay (public-permissions <>))
-            :user-permissions-set (delay (user-permissions <>))
-            :can_read (delay (user-can? :read <>))
-            :can_write (delay (user-can? :write <>))))
+    :public-permissions-set (delay (public-permissions <>))
+    :user-permissions-set   (delay (user-permissions <>))
+    :can_read               (delay (user-can? :read <>))
+    :can_write              (delay (user-can? :write <>))))
+
+
+(defn name->human-readable-name
+  "Convert a string NAME of some object like a `Table` or `Field` to one more friendly to humans.
+
+    (name->human-readable-name \"admin_users\") -> \"Admin Users\""
+  [^String n]
+  (when-let [n (some-> n
+                       (s/replace #"(?:-|_id)$" "")                                 ; strip off any trailing _id or -id suffix
+                       (s/split #"_|-"))]                                           ; explode string on underscores and hyphens
+    (->> (for [[first-letter & rest-letters :as part] n]                            ; for each part of the string,
+           (apply str (s/upper-case first-letter) (map s/lower-case rest-letters))) ; upcase the first char and downcase the rest
+         (interpose " ")                                                            ; add a space between each part
+         (apply str))))                                                             ; convert back to a single string
