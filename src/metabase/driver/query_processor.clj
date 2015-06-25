@@ -407,7 +407,7 @@
 
 (defn- get-cols-info
   "Get column info for the `:cols` part of the QP results."
-  [{{{ag-type :aggregation-type, ag-field :field} :aggregation} :query} fields ordered-col-kws]
+  [{{{ag-type :aggregation-type, ag-field :field} :aggregation} :query} fields ordered-col-kws join-table-ids]
   (let [field-kw->field (zipmap (map #(keyword (:name %)) fields)
                                 fields)
         field-id->field (delay (zipmap (map :id fields) ; a delay since we probably won't need it
@@ -416,6 +416,11 @@
            (or
             ;; If col-kw is a known Field return that
             (field-kw->field col-kw)
+
+            ;; Otherwise if this Query included any joins then attempt to lookup a matching Field from one of the join tables
+            (and (seq join-table-ids)
+                 (sel :one :fields [Field :id :table_id :name :description :base_type :special_type], :name (name col-kw), :table_id [in join-table-ids]))
+
             ;; Otherwise it is an aggregation column like :sum, build a map of information to return
             (merge (assert ag-type)
                    {:name        (name col-kw)
@@ -444,10 +449,10 @@
   (let [results         (if-not uncastify-fn results
                                 (for [row results]
                                   (m/map-keys uncastify-fn row)))
-        table-ids       (set (conj (map :table-id join-tables) source-table-id))
-        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id [in table-ids], :active true)
+        join-table-ids  (set (map :table-id join-tables))
+        fields          (sel :many :fields [Field :id :table_id :name :description :base_type :special_type], :table_id source-table-id, :active true)
         ordered-col-kws (order-cols query results fields)]
     {:rows    (for [row results]
-                (mapv row ordered-col-kws))                         ; might as well return each row and col info as vecs because we're not worried about making
-     :columns (mapv name ordered-col-kws)                           ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
-     :cols    (vec (get-cols-info query fields ordered-col-kws))})) ; as vecs. Make sure
+                (mapv row ordered-col-kws))                                        ; might as well return each row and col info as vecs because we're not worried about making
+     :columns (mapv name ordered-col-kws)                                          ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
+     :cols    (vec (get-cols-info query fields ordered-col-kws join-table-ids))})) ; as vecs.

@@ -181,15 +181,20 @@
    (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
 
 (defn- walk-expand-&
-  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms."
+  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.
+   If symbol ends in a `:field` form, wrap the call to `-temp-get` in call in a keyword getter for that field.
+
+    &sightings      -> (-temp-get db \"sightings\")
+    &cities.name    -> (-temp-get db \"cities\" \"name\")
+    &cities.name:id -> (:id (-temp-get db \"cities\" \"name\"))"
   [db-binding body]
   (walk/prewalk
    (fn [form]
      (or (when (symbol? form)
-           (when-let [symbol-name (re-matches #"^&.+$" (name form))]
-             `(-temp-get ~db-binding ~@(-> symbol-name
-                                           (s/replace #"&" "")
-                                           (s/split #"\.")))))
+           (when-let [[_ table-name field-name prop-name] (re-matches #"^&([^.:]+)(?:\.([^.:]+))?(?::([^.:]+))?$" (name form))]
+             (let [temp-get `(-temp-get ~db-binding ~table-name ~@(when field-name [field-name]))]
+               (if prop-name `(~(keyword prop-name) ~temp-get)
+                   temp-get))))
          form))
    body))
 
@@ -199,8 +204,11 @@
    Remove `Database` and destroy data afterward.
 
    Within BODY, symbols like `&table` and `&table.field` will be expanded into function calls to
-   fetch corresponding `Tables` and `Fields`. These are accessed via lazily-created maps of
-   Table/Field names to the objects themselves. To facilitate mutli-driver tests, these names are lowercased.
+   fetch corresponding `Tables` and `Fields`. Symbols like `&table:id` wrap a getter around the resulting
+   forms (see `walk-expand-&` for details).
+
+   These are accessed via lazily-created maps of Table/Field names to the objects themselves.
+   To facilitate mutli-driver tests, these names are lowercased.
 
      (with-temp-db [db (h2/dataset-loader) us-history-1607-to-1774]
        (driver/process-quiery {:database (:id db)
