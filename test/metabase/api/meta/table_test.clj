@@ -25,14 +25,32 @@
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect (set (mapcat (fn [dataset-name]
-                       (with-dataset-when-testing dataset-name
-                         (let [db-id (:id (datasets/db *dataset*))]
-                           [{:name (datasets/format-name *dataset* "categories"), :db_id db-id, :active true, :rows   75, :id (datasets/table-name->id *dataset* :categories)}
-                            {:name (datasets/format-name *dataset* "checkins"),   :db_id db-id, :active true, :rows 1000, :id (datasets/table-name->id *dataset* :checkins)}
-                            {:name (datasets/format-name *dataset* "users"),      :db_id db-id, :active true, :rows   15, :id (datasets/table-name->id *dataset* :users)}
-                            {:name (datasets/format-name *dataset* "venues"),     :db_id db-id, :active true, :rows  100, :id (datasets/table-name->id *dataset* :venues)}])))
-                     @datasets/test-dataset-names))
+(expect (set (reduce concat (for [dataset-name @datasets/test-dataset-names]
+                              (with-dataset-when-testing dataset-name
+                                [{:name                (format-name "categories")
+                                  :human_readable_name "Categories"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                75
+                                  :id                  (id :categories)}
+                                 {:name                (format-name "checkins")
+                                  :human_readable_name "Checkins"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                1000
+                                  :id                  (id :checkins)}
+                                 {:name                (format-name "users")
+                                  :human_readable_name "Users"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                15
+                                  :id                  (id :users)}
+                                 {:name                (format-name "venues")
+                                  :human_readable_name "Venues"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                100
+                                  :id                  (id :venues)}]))))
   (->> ((user->client :rasta) :get 200 "meta/table")
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
        set))
@@ -64,31 +82,33 @@
 
 ;; ## GET /api/meta/table/:id/fields
 (expect [(match-$ (sel :one Field :id (id :categories :id))
-           {:description nil
-            :table_id (id :categories)
-            :special_type "id"
-            :name "ID"
-            :updated_at $
-            :active true
-            :id (id :categories :id)
-            :field_type "info"
-            :position 0
-            :preview_display true
-            :created_at $
-            :base_type "BigIntegerField"})
+           {:description         nil
+            :table_id            (id :categories)
+            :special_type        "id"
+            :name                "ID"
+            :human_readable_name "Id"
+            :updated_at          $
+            :active              true
+            :id                  (id :categories :id)
+            :field_type          "info"
+            :position            0
+            :preview_display     true
+            :created_at          $
+            :base_type           "BigIntegerField"})
          (match-$ (sel :one Field :id (id :categories :name))
-           {:description nil
-            :table_id (id :categories)
-            :special_type "name"
-            :name "NAME"
-            :updated_at $
-            :active true
-            :id (id :categories :name)
-            :field_type "info"
-            :position 0
-            :preview_display true
-            :created_at $
-            :base_type "TextField"})]
+           {:description         nil
+            :table_id            (id :categories)
+            :special_type        "name"
+            :name                "NAME"
+            :human_readable_name "Name"
+            :updated_at          $
+            :active              true
+            :id                  (id :categories :name)
+            :field_type          "info"
+            :position            0
+            :preview_display     true
+            :created_at          $
+            :base_type           "TextField"})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata

@@ -49,8 +49,8 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (->> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC))
-       (hydrate :human_readable_name)))
+  (-> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC))
+      (hydrate :human_readable_name)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
