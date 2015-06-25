@@ -10,7 +10,7 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [data :as data]
-                                [datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
+                                [datasets :as datasets]
                                 [users :refer :all])
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
@@ -26,7 +26,7 @@
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect (set (reduce concat (for [dataset-name @datasets/test-dataset-names]
-                              (with-dataset-when-testing dataset-name
+                              (datasets/with-dataset-when-testing dataset-name
                                 [{:name                (format-name "categories")
                                   :human_readable_name "Categories"
                                   :db_id               (db-id)
