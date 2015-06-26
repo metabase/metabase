@@ -18,14 +18,9 @@
          expand
          get-special-column-info
          preprocess-cumulative-sum
-         preprocess-structured
-         remove-empty-clauses)
+         preprocess-structured)
 
 ;; # CONSTANTS
-
-(def ^:const empty-response
-  "An empty response dictionary to return when there's no query to run."
-  {:rows [], :columns [], :cols []})
 
 (def ^:const max-result-rows
   "Maximum number of rows the QP should ever return."
@@ -71,7 +66,6 @@
                             ;; Functions that take place before expansion
                             ;; These functions expect just the :query subdictionary (TODO -- these need to be changed to use to expanded query at some point
                             (update-in query [:query] #(->> %
-                                                            remove-empty-clauses
                                                             add-implicit-breakout-order-by
                                                             add-implicit-limit
                                                             add-implicit-fields))
@@ -85,27 +79,6 @@
 
 
 ;; ## PREPROCESSOR FNS
-
-;; ### REMOVE-EMPTY-CLAUSES
-(def ^:private ^:const clause->empty-forms
-  "Clause values that should be considered empty and removed during preprocessing."
-  {:breakout #{[nil]}
-   :filter   #{[nil nil]}})
-
-(defn remove-empty-clauses
-  "Remove all QP clauses whose value is:
-   1.  is `nil`
-   2.  is an empty sequence (e.g. `[]`)
-   3.  matches a form in `clause->empty-forms`"
-  [query]
-  (->> query
-       (map (fn [[clause clause-value]]
-              (when (and clause-value
-                         (or (not (sequential? clause-value))
-                             (seq clause-value)))
-                (when-not (contains? (clause->empty-forms clause) clause-value)
-                  [clause clause-value]))))
-       (into {})))
 
 
 ;; ### ADD-IMPLICIT-BREAKOUT-ORDER-BY

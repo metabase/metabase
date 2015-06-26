@@ -79,6 +79,12 @@
 
 ;; ## -------------------- Expansion - Impl --------------------
 
+(defn- non-empty-clause? [clause]
+  (and clause
+       (or (not (sequential? clause))
+           (and (seq clause)
+                (every? identity clause)))))
+
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
                                               :aggregation (parse-aggregation (:aggregation %))
@@ -88,7 +94,7 @@
                                               :order_by    (parse-order-by    (:order_by %)))
                                        (set/rename-keys <> {:order_by     :order-by
                                                             :source_table :source-table})
-                                       (m/filter-vals identity <>))))
+                                       (m/filter-vals non-empty-clause? <>))))
 
 (def ^:private ^:dynamic *field-ids*
   "Bound to an atom containing a set when a parsing function is ran"
@@ -210,10 +216,7 @@
   "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
   [fn-name & match-forms]
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (when (and form#
-                (or (not (sequential? form#))
-                    (and (seq form#)
-                         (every? identity form#))))
+     (when (non-empty-clause? form#)
        (match form#
          ~@match-forms))))
 
