@@ -100,16 +100,21 @@
   "Bound to an atom containing a set when a parsing function is ran"
   nil)
 
+(defn rename-mb-field-keys
+  "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
+  [field]
+  (set/rename-keys field {:id           :field-id
+                          :name         :field-name
+                          :special_type :special-type
+                          :base_type    :base-type
+                          :table_id     :table-id}))
+
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
   [expanded-query-dict field-ids]
   (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
           (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
-                            (m/map-vals #(set/rename-keys % {:id           :field-id
-                                                             :name         :field-name
-                                                             :special_type :special-type
-                                                             :base_type    :base-type
-                                                             :table_id     :table-id})))]
+                            (m/map-vals rename-mb-field-keys))]
             ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
             (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
@@ -238,9 +243,8 @@
 
 ;; ## -------------------- Breakout --------------------
 
-;; Breakout + Fields clauses are just regular vectors
-;; TODO - might need to change this if we want to add any special
-;; functionality
+;; Breakout + Fields clauses are just regular vectors of Fields
+
 (defparser parse-breakout
   field-ids (mapv ph field-ids))
 
