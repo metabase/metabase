@@ -41,12 +41,11 @@
 
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
-    (qp query)
-    #_(try (qp query)
-           (catch Throwable e
-             (.printStackTrace e)
-             {:status :failed
-              :error  (.getMessage e)}))))
+    (try (qp query)
+         (catch Throwable e
+           (.printStackTrace e)
+           {:status :failed
+            :error  (.getMessage e)}))))
 
 
 (defn- pre-expand [qp]
