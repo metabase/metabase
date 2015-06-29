@@ -69,15 +69,15 @@
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
-  (fn [{{:keys [fields breakout], {source-table-id :id} :source-table, {ag-type :aggregation-type} :aggregation} :query, :as query}]
+  (fn [{{:keys [fields breakout source-table], {source-table-id :id} :source-table, {ag-type :aggregation-type} :aggregation} :query, :as query}]
     (qp (if (or (not (= ag-type :rows)) breakout fields) query
             (-> query
                 (assoc-in [:query :fields-is-implicit] true)
                 (assoc-in [:query :fields] (->> (sel :many [Field :name :base_type :special_type :table_id], :table_id source-table-id, :active true,
                                                      :preview_display true, :field_type [not= "sensitive"], (k/order :position :asc), (k/order :id :desc))
                                                 (map expand/rename-mb-field-keys)
-                                                ;; TODO - we need to resolve the Tables for these newly added Fields (!)
-                                                (mapv expand/map->Field))))))))
+                                                (mapv expand/map->Field)))
+                (expand/resolve-tables source-table))))))
 
 
 (defn- pre-add-implicit-breakout-order-by
@@ -391,7 +391,6 @@
 ;; query as modified by PRE-EXPAND.
 ;;
 ;; Pre-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
-
 
 (defn- process-structured [driver query]
   (let [driver-process-query (partial i/process-query driver)]

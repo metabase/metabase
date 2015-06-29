@@ -124,13 +124,14 @@
   [{database-id :database, :as expanded-query-dict}]
   (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
 
-(defn- resolve-tables
+(defn resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict}]
-  ;; TODO - this doesn't handle join tables yet
-  (let [table (sel :one :fields [Table :name :id] :id source-table-id)]
-    (->> (assoc-in expanded-query-dict [:query :source-table] table)
-         (walk/postwalk #(resolve-table % {(:id table) table})))))
+  ([{{source-table-id :source-table} :query, :as expanded-query-dict}]
+   (resolve-tables expanded-query-dict (sel :one :fields [Table :name :id] :id source-table-id)))
+  ([expanded-query-dict table]
+   {:pre [(map? table)]}
+   (->> (assoc-in expanded-query-dict [:query :source-table] table)
+        (walk/postwalk #(resolve-table % {(:id table) table})))))
 
 
 ;; ## -------------------- Public Interface --------------------
