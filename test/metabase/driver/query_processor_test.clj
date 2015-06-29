@@ -622,6 +622,15 @@
   {:source_table (id :venues)
    :aggregation  ["stddev" (id :venues :latitude)]})
 
+;; Make sure standard deviation fails for the Mongo driver since its not supported
+(datasets/expect-with-dataset :mongo
+  {:status :failed
+   :error  "standard-deviation-aggregations is not supported by this driver."}
+  (driver/process-query {:database (db-id)
+                         :type :query
+                         :query {:source_table (id :venues)
+                                 :aggregation  ["stddev" (id :venues :latitude)]}}))
+
 
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
@@ -891,3 +900,15 @@
                         [&sightings.id:id "ascending"]]
          :limit        10)
        :data :rows (map butlast) (map reverse))) ; drop timestamps. reverse ordering to make the results columns order match order_by
+
+
+;; Check that trying to use a Foreign Key fails for Mongo
+(datasets/expect-with-dataset :mongo
+  {:status :failed
+   :error "foreign-keys is not supported by this driver."}
+  (query-with-temp-db defs/tupac-sightings
+    :source_table &sightings:id
+    :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
+                   [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
+                   [&sightings.id:id "ascending"]]
+    :limit        10))

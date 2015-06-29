@@ -42,6 +42,7 @@
             [medley.core :as m]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
+            [metabase.driver.interface :as i]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
@@ -79,6 +80,12 @@
 
 
 ;; ## -------------------- Expansion - Impl --------------------
+
+(def ^:private ^:dynamic *driver* nil)
+
+(defn- assert-driver-supports [^Keyword feature]
+  {:pre [*driver*]}
+  (i/assert-driver-supports *driver* feature))
 
 (defn- non-empty-clause? [clause]
   (and clause
@@ -185,8 +192,9 @@
 
 (defn expand
   "Expand a QUERY-DICT."
-  [query-dict]
-  (binding [*field-ids*    (atom #{})
+  [driver query-dict]
+  (binding [*driver*       driver
+            *field-ids*    (atom #{})
             *fk-field-ids* (atom #{})
             *table-ids*    (atom #{})]
     (some-> query-dict
@@ -272,9 +280,10 @@
                                            (->FieldPlaceholder field-id))
      ["fk->"
       (fk-field-id :guard integer?)
-      (dest-field-id :guard integer?)] (do (swap! *field-ids* conj dest-field-id)
-                                            (swap! *fk-field-ids* conj fk-field-id)
-                                            (->FieldPlaceholder dest-field-id))))
+      (dest-field-id :guard integer?)] (do (assert-driver-supports :foreign-keys)
+                                           (swap! *field-ids* conj dest-field-id)
+                                           (swap! *fk-field-ids* conj fk-field-id)
+                                           (->FieldPlaceholder dest-field-id))))
   ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
@@ -300,7 +309,8 @@
   ["avg" field-id]      (->Aggregation :avg (ph field-id))
   ["count" field-id]    (->Aggregation :count (ph field-id))
   ["distinct" field-id] (->Aggregation :distinct (ph field-id))
-  ["stddev" field-id]   (->Aggregation :stddev (ph field-id))
+  ["stddev" field-id]   (do (assert-driver-supports :standard-deviation-aggregations)
+                            (->Aggregation :stddev (ph field-id)))
   ["sum" field-id]      (->Aggregation :sum (ph field-id))
   ["cum_sum" field-id]  (->Aggregation :cumulative-sum (ph field-id)))
 

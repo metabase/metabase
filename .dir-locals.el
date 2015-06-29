@@ -21,7 +21,7 @@
                               (expect-eval-actual-first 1)
                               (expect-expansion 0)
                               (expect-let 1)
-                              (expect-when-testing-against-dataset 1)
+                              (expect-when-testing-dataset 1)
                               (expect-when-testing-mongo 1)
                               (expect-with-all-drivers 1)
                               (expect-with-dataset 1)
