@@ -125,7 +125,8 @@
 
 (def ^:const driver
   (generic-sql/map->SqlDriver
-   {:column->base-type                            column->base-type
+   {:additional-supported-features                #{:set-timezone}
+    :column->base-type                            column->base-type
     :connection-details->connection-spec          connection-details->connection-spec
     :database->connection-details                 database->connection-details
     :sql-string-length-fn                         :CHAR_LENGTH

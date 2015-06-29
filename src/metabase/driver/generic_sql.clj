@@ -8,7 +8,15 @@
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])))
 
-(defrecord SqlDriver [column->base-type
+(def ^:private ^:const sql-driver-features
+  "Features supported by *all* Generic SQL drivers."
+  #{:foreign-keys
+    :standard-deviation-aggregations
+    :unix-timestamp-special-type-fields})
+
+(defrecord SqlDriver [;; A set of additional features supported by a specific driver implmentation, e.g. :set-timezone for :postgres
+                      additional-supported-features
+                      column->base-type
                       connection-details->connection-spec
                       database->connection-details
                       sql-string-length-fn
@@ -20,6 +28,11 @@
                       ;; e.g. #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', ([^\s]+), DATE '1970-01-01'\) AS DATE\)" for H2
                       uncastify-timestamp-regex]
   IDriver
+  ;; Features
+  (supports? [_ feature]
+    (or (contains? sql-driver-features feature)
+        (contains? additional-supported-features feature)))
+
   ;; Connection
   (can-connect? [this database]
     (can-connect-with-details? this (database->connection-details database)))

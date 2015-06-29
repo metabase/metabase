@@ -50,7 +50,7 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (expand/expand query))))
+    (qp (expand/expand *driver* query))))
 
 
 (defn- post-add-row-count-and-status
