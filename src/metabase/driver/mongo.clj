@@ -40,8 +40,16 @@
 
 ;;; ## MongoDriver
 
+(def ^:const ^:private mongo-driver-features
+  "Optional features supported by the Mongo driver."
+  #{}) ; nothing yet
+
 (deftype MongoDriver []
   IDriver
+;;; ### Features
+  (supports? [_ feature]
+    (contains? mongo-driver-features feature))
+
 ;;; ### Connection
   (can-connect? [_ database]
     (with-mongo-connection [^com.mongodb.DBApiLayer conn database]

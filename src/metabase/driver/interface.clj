@@ -1,21 +1,36 @@
 (ns metabase.driver.interface
-  "Protocols that DB drivers implement. Thus, the interface such drivers provide.")
+  "Protocols that DB drivers implement. Thus, the interface such drivers provide."
+  (:import (clojure.lang Keyword)))
+
+(def ^:const driver-optional-features
+  "A set on optional features (as keywords) that may or may not be supported by individual drivers."
+  #{:foreign-keys
+    :set-timezone
+    :standard-deviation-aggregations
+    :unix-timestamp-special-type-fields})
+
 
 ;; ## IDriver Protocol
 
 (defprotocol IDriver
   "Methods all drivers must implement."
+  ;; Features
+  (supports? [this ^Keyword feature]
+    "Does this driver support optional FEATURE?
+
+       (supports? metabase.driver.h2/driver :timestamps) -> false")
+
   ;; Connection
   (can-connect? [this database]
     "Check whether we can connect to DATABASE and perform a simple query.
      (To check whether we can connect to a database given only its details, use `can-connect-with-details?` instead).
 
-       (can-connect? (sel :one Database :id 1))")
+       (can-connect? driver (sel :one Database :id 1))")
   (can-connect-with-details? [this details-map]
     "Check whether we can connect to a database and performa a simple query.
      Returns true if we can, otherwise returns false or throws an Exception.
 
-       (can-connect-with-details? {:engine :postgres, :dbname \"book\", ...})")
+       (can-connect-with-details? driver {:engine :postgres, :dbname \"book\", ...})")
 
   ;; Syncing
   (sync-in-context [this database do-sync-fn]
@@ -80,3 +95,12 @@
    If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
   (field-percent-urls [this field]
     "Return the percentage of non-nil values of textual FIELD that are valid URLs."))
+
+
+;; ## Helper Functions
+
+(defn assert-driver-supports
+  "Helper fn. Assert that DRIVER supports FEATURE."
+  [driver ^Keyword feature]
+  (when-not (supports? driver feature)
+    (throw (Exception. (format "%s is not supported by this driver." (name feature))))))
