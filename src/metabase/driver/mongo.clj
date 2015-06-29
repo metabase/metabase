@@ -42,7 +42,7 @@
 
 (def ^:const ^:private mongo-driver-features
   "Optional features supported by the Mongo driver."
-  #{}) ; nothing yet
+  #{:nested-fields})
 
 (deftype MongoDriver []
   IDriver

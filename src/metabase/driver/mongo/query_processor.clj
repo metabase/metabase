@@ -82,10 +82,15 @@
                                                                         [{$match *constraints*}])
                                                                     ~@(filter identity forms)]))
 
-(defn field->$str
+(defn- field->name
+  [{:keys [field-name subfield]}]
+  (if subfield (format "%s.%s" field-name subfield)
+      field-name))
+
+(defn- field->$str
   "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
   [field]
-  (format "$%s" (name (:field-name field))))
+  (format "$%s" (name (field->name field))))
 
 (defn- aggregation:rows []
   `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*
@@ -99,7 +104,7 @@
   ([field]
    `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
                        (merge ~*constraints*
-                              {(:field-name field) {$exists true}}))}]))
+                              {(field->name field) {$exists true}}))}]))
 
 (defn- aggregation:avg [field]
   (aggregate {$group {"_id" nil
@@ -176,7 +181,7 @@
    is present, this is essentialy a separate implementation :/"
   [{aggregation :aggregation, breakout-fields :breakout, order-by :order-by, limit :limit, :as query}]
   (let [[ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
-        fields               (map :field-name breakout-fields)
+        fields               (map field->name breakout-fields)
         $fields              (map field->$str breakout-fields)
         fields->$fields      (zipmap fields $fields)]
     (aggregate {$group  (merge {"_id" (if (= (count fields) 1) (first $fields)
@@ -190,7 +195,7 @@
                                     (into {})))}
                {$sort    (->> order-by
                               (mapcat (fn [{:keys [field direction]}]
-                                        [(:field-name field) (case direction
+                                        [(field->name field) (case direction
                                                                :ascending   1
                                                                :descending -1)]))
                               (apply sorted-map))}
@@ -241,7 +246,7 @@
 
 ;; ### fields
 (defclause :fields fields
-  `[(fields ~(mapv :field-name fields))])
+  `[(fields ~(mapv field->name fields))])
 
 
 ;; ### filter
@@ -254,13 +259,13 @@
            value))
 
 (defn- parse-filter-subclause [{:keys [filter-type field value] :as filter}]
-  (let [field (when field (:field-name field))
+  (let [field (when field (field->name field))
         value (when value (format-value value))]
     (case filter-type
       :inside  (let [lat (:lat filter)
                      lon (:lon filter)]
-                 {$and [{(:field-name (:field lat)) {$gte (format-value (:min lat)), $lte (format-value (:max lat))}}
-                        {(:field-name (:field lon)) {$gte (format-value (:min lon)), $lte (format-value (:max lon))}}]})
+                 {$and [{(field->name (:field lat)) {$gte (format-value (:min lat)), $lte (format-value (:max lat))}}
+                        {(field->name (:field lon)) {$gte (format-value (:min lon)), $lte (format-value (:max lon))}}]})
       :between  {field {$gte (format-value (:min-val filter))
                         $lte (format-value (:max-val filter))}}
       :is-null  {field {$exists false}}
@@ -290,7 +295,7 @@
 ;; ### order_by
 (defclause :order-by subclauses
   (let [sort-options (mapcat (fn [{:keys [field direction]}]
-                               [(:field-name field) (case direction
+                               [(field->name field) (case direction
                                                       :ascending   1
                                                       :descending -1)])
                              subclauses)]

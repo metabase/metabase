@@ -5,6 +5,7 @@
 (def ^:const driver-optional-features
   "A set on optional features (as keywords) that may or may not be supported by individual drivers."
   #{:foreign-keys
+    :nested-fields                         ; are nested Fields (i.e., Mongo-style nested keys) supported?
     :set-timezone
     :standard-deviation-aggregations
     :unix-timestamp-special-type-fields})

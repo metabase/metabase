@@ -243,9 +243,9 @@
 (defrecord FieldPlaceholder [^Integer field-id]
   IResolve
   (resolve-field [this field-id->fields]
-    (-> (:field-id this)
-        field-id->fields
-        map->Field)))
+    (->> (field-id->fields field-id)
+         (merge this)
+         map->Field)))
 
 (defn- parse-value
   "Convert the `value` of a `Value` to a date or timestamp if needed.
@@ -276,14 +276,23 @@
    If `*field-ids*` is bound, "
   ([field-id]
    (match field-id
-     (field-id :guard integer?)        (do (swap! *field-ids* conj field-id)
-                                           (->FieldPlaceholder field-id))
-     ["fk->"
-      (fk-field-id :guard integer?)
-      (dest-field-id :guard integer?)] (do (assert-driver-supports :foreign-keys)
-                                           (swap! *field-ids* conj dest-field-id)
-                                           (swap! *fk-field-ids* conj fk-field-id)
-                                           (->FieldPlaceholder dest-field-id))))
+     (id :guard integer?)
+     (do (swap! *field-ids* conj id)
+         (->FieldPlaceholder id))
+
+     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)]
+     (do (assert-driver-supports :foreign-keys)
+         (swap! *field-ids* conj dest-field-id)
+         (swap! *fk-field-ids* conj fk-field-id)
+         (->FieldPlaceholder dest-field-id))
+
+      ["." (id :guard integer?) subfield]
+      (do (assert-driver-supports :nested-fields)
+          (swap! *field-ids* conj id)
+          (map->FieldPlaceholder {:field-id id
+                                  :subfield subfield}))
+
+      _ (throw (Exception. (str "Invalid field: " field-id)))))
   ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 

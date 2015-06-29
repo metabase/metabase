@@ -912,3 +912,28 @@
                    [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
                    [&sightings.id:id "ascending"]]
     :limit        10))
+
+
+;; +------------------------------------------------------------------------------------------------------------------------+
+;; |                                                MONGO NESTED-FIELD ACCESS                                               |
+;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn y []
+  (datasets/with-dataset :mongo
+    (with-temp-db [_ (dataset-loader) defs/geographical-tips]
+      (sel :many Field :table_id &tips:id))))
+
+(defn x []
+  (datasets/with-dataset :mongo
+    (query-with-temp-db defs/geographical-tips
+      :aggregation  ["rows"]
+      :source_table &tips:id
+      :filter       ["=" ["." &tips.venue:id "name"] "Kyle's Low-Carb Grill"]
+      :limit        10)))
+
+(defn z []
+  (datasets/with-dataset :mongo
+    (metabase.driver.mongo.util/with-mongo-connection [^com.mongodb.DBApiLayer db (metabase.test.data/get-or-create-database! defs/geographical-tips)]
+      (doall (monger.query/with-collection db "tips"
+               (monger.query/find {:venue {:name "Kyle's Low-Carb Grill"}})
+               (monger.query/limit 10))))))
