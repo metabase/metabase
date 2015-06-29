@@ -101,6 +101,10 @@
   "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
   nil)
 
+(def ^:private ^:dynamic *fk-field-ids*
+  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
+  nil)
+
 (def ^:private ^:dynamic *table-ids*
   "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
   nil)
@@ -142,7 +146,7 @@
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id join-tables]
   (let [ ;; Build a map of source table FK field IDs -> field names
-        fk-field-id->field-name      (sel :many :id->field [field/Field :name], :table_id source-table-id, :special_type "fk")
+        fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in @*fk-field-ids*], :table_id source-table-id, :special_type "fk")
 
         ;; Build a map of join table PK field IDs -> source table FK field IDs
         pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
@@ -182,8 +186,9 @@
 (defn expand
   "Expand a QUERY-DICT."
   [query-dict]
-  (binding [*field-ids* (atom #{})
-            *table-ids* (atom #{})]
+  (binding [*field-ids*    (atom #{})
+            *fk-field-ids* (atom #{})
+            *table-ids*    (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
@@ -205,6 +210,15 @@
     (assoc this :table-name (:name (or (table-id->table table-id)
                                        (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
 
+(defn- Field?
+  "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
+  ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
+  [field]
+  (match field
+    (field-id :guard integer?)                                             true
+    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    _                                                                      false))
+
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (defrecord Value [value              ; e.g. parsed Date / timestamp
@@ -218,7 +232,7 @@
 ;; ## -------------------- Placeholders --------------------
 
 ;; Replace Field IDs with these during first pass
-(defrecord FieldPlaceholder [field-id]
+(defrecord FieldPlaceholder [^Integer field-id]
   IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
@@ -253,11 +267,16 @@
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
   ([field-id]
-   (when *field-ids*
-     (swap! *field-ids* conj field-id))
-   (->FieldPlaceholder field-id))
+   (match field-id
+     (field-id :guard integer?)        (do (swap! *field-ids* conj field-id)
+                                           (->FieldPlaceholder field-id))
+     ["fk->"
+      (fk-field-id :guard integer?)
+      (dest-field-id :guard integer?)] (do (swap! *field-ids* conj dest-field-id)
+                                            (swap! *fk-field-ids* conj fk-field-id)
+                                            (->FieldPlaceholder dest-field-id))))
   ([field-id value]
-   (->ValuePlaceholder field-id value)))
+   (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -378,9 +397,9 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]      (->OrderBySubclause (->OrderByAggregateField :aggregation index)
-                                                             (parse-order-by-direction direction))
-  [(field-id :guard integer?) direction] (->OrderBySubclause (ph field-id)
-                                                             (parse-order-by-direction direction)))
+  [["aggregation" index] direction]    (->OrderBySubclause (->OrderByAggregateField :aggregation index)
+                                                           (parse-order-by-direction direction))
+  [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
+                                                           (parse-order-by-direction direction)))
 (defparser parse-order-by
   subclauses (mapv parse-order-by-subclause subclauses))

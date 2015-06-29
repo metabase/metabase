@@ -827,7 +827,7 @@
   (-> (query-with-temp-db defs/tupac-sightings
         :source_table &sightings:id
         :aggregation  ["count"]
-        :breakout     [&cities.name:id]
+        :breakout     [["fk->" &sightings.city_id:id &cities.name:id]]
         :order_by     [[["aggregation" 0] "descending"]]
         :limit        10)
       :data :rows))
@@ -841,7 +841,7 @@
   (-> (query-with-temp-db defs/tupac-sightings
         :source_table &sightings:id
         :aggregation  ["count"]
-        :filter       ["=" (:id &categories.id) 8])
+        :filter       ["=" ["fk->" &sightings.category_id:id &categories.id:id] 8])
       :data :rows first first))
 
 
@@ -861,7 +861,7 @@
    ["In the Expa Office" 499]]
   (->> (query-with-temp-db defs/tupac-sightings
          :source_table &sightings:id
-         :fields       [&sightings.id:id &categories.name:id]
+         :fields       [&sightings.id:id ["fk->" &sightings.category_id:id &categories.name:id]]
          :order_by     [[&sightings.timestamp:id "descending"]]
          :limit        10)
        :data :rows))
@@ -886,8 +886,8 @@
    [2 13 202]]
   (->> (query-with-temp-db defs/tupac-sightings
          :source_table &sightings:id
-         :order_by     [[&cities.name:id "ascending"]
-                        [&categories.name:id "descending"]
+         :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
+                        [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
                         [&sightings.id:id "ascending"]]
          :limit        10)
        :data :rows (map butlast) (map reverse))) ; drop timestamps. reverse ordering to make the results columns order match order_by
