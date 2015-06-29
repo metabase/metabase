@@ -22,8 +22,7 @@ var Corvus = angular.module('corvus', [
     'corvus.dashboard',
     'corvus.explore',
     'corvus.home',
-    'corvus.operator', // this is a short term hack
-    'corvus.reserve',
+    'corvus.reserve', // this is a short term hack
     'corvus.user',
     'corvus.setup',
     'corvusadmin.databases',
