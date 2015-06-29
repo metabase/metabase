@@ -4,34 +4,24 @@
     </section>
 
     <section>
-        <table class="ContentTable">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Value</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-show="!settings">
-                    <td colspan=4>
-                        <mb-loading-icon></mb-loading-icon>
-                        <h3>Loading ...</h3>
-                    </td>
-                </tr>
-                <tr ng-repeat="setting in settings">
-                    <td>{{setting.key}}</td>
-                    <td>{{setting.description}}</td>
-                    <td>
-                        <input class="input block full" type="text" placeholder="{{setting.default}}" ng-model="setting.value"></input>
-                    </td>
-                    <td class="Table-actions">
-                        <button class="Button Button--primary" ng-click="saveSetting(setting)" ng-disabled="!setting.value || setting.value === setting.originalValue">Save</button>
-                        <button class="mx2 Button" ng-class="{'Button--danger': setting.originalValue !== null}" ng-click="deleteSetting(setting)" ng-disabled="!setting.originalValue">Clear</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+            <!-- Form -->
+            <div class="FormInputGroup">
+                <div class="Form-field" ng-repeat="setting in settings" mb-form-field="{{setting.key}}">
+                    <mb-form-label display-name="{{settingName(setting)}}" field-name="{{setting.key}}"></mb-form-label>
+
+                    <input class="Form-input Form-offset full" name="{{setting.key}}" placeholder="{{settingPlaceholder(setting)}}" ng-model="setting.value" />
+                    <span class="Form-charm"></span>
+                </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="Form-actions">
+                <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(database, details)" ng-disabled="!form.$valid">
+                    Save
+                </button>
+                <mb-form-message></mb-form-message>
+            </div>
+        </form>
     </section>
 </div>
