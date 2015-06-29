@@ -14,7 +14,6 @@
                                                    OrderByAggregateField
                                                    Value)))
 
-
 (declare apply-form
          log-korma-form)
 
@@ -180,8 +179,17 @@
                :or     `(~'or  ~@subclauses)
                :simple first-subclause))))
 
+
+(defmethod apply-form :join-tables [[_ join-tables]]
+  (vec (for [{:keys [table-name pk-field source-field]} join-tables]
+         `(join ~table-name
+                (~'= ~(keyword (format "%s.%s" (:name (:source-table (:query *query*))) (:field-name source-field)))
+                     ~(keyword (format "%s.%s" table-name                               (:field-name pk-field))))))))
+
+
 (defmethod apply-form :limit [[_ value]]
   `(limit ~value))
+
 
 (defmethod apply-form :order-by [[_ subclauses]]
   (vec (for [{:keys [field direction]} subclauses]
@@ -216,6 +224,7 @@
                                                                `(~let-form ~binding-form                     ; has to go there to work correctly
                                                                            (sql-only ~@body))))
                                                       (s/replace #"\sFROM" "\nFROM")                         ; add newlines to the SQL to make it more readable
+                                                      (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
                                                       (s/replace #"\sWHERE" "\nWHERE")
                                                       (s/replace #"\sGROUP BY" "\nGROUP BY")
                                                       (s/replace #"\sORDER BY" "\nORDER BY")

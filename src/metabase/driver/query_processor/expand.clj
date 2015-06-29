@@ -44,6 +44,7 @@
             [metabase.db :refer [sel]]
             (metabase.models [database :refer [Database]]
                              [field :as field]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
@@ -97,7 +98,15 @@
                                        (m/filter-vals non-empty-clause? <>))))
 
 (def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set when a parsing function is ran"
+  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *fk-field-ids*
+  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
+  nil)
+
+(def ^:private ^:dynamic *table-ids*
+  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
   nil)
 
 (defn rename-mb-field-keys
@@ -115,6 +124,7 @@
   (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
           (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
                             (m/map-vals rename-mb-field-keys))]
+            (reset! *table-ids* (set (map :table-id (vals fields))))
             ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
             (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
@@ -124,14 +134,51 @@
   [{database-id :database, :as expanded-query-dict}]
   (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
 
-(defn resolve-tables
+(defrecord JoinTableField [^Integer field-id
+                           ^String  field-name])
+
+(defrecord JoinTable [^JoinTableField source-field
+                      ^JoinTableField pk-field
+                      ^Integer        table-id
+                      ^String         table-name])
+
+(defn- join-tables-fetch-field-info
+  "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
+  [source-table-id join-tables]
+  (let [ ;; Build a map of source table FK field IDs -> field names
+        fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in @*fk-field-ids*], :table_id source-table-id, :special_type "fk")
+
+        ;; Build a map of join table PK field IDs -> source table FK field IDs
+        pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
+                                          :origin_id [in (set (keys fk-field-id->field-name))])
+
+        ;; Build a map of join table ID -> PK field info
+        join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
+                                       (zipmap (map :table_id pk-fields) pk-fields))]
+
+    ;; Now build the :join-tables clause
+    (vec (for [{table-id :id, table-name :name} join-tables]
+           (let [{pk-field-id :id, pk-field-name :name} (join-table-id->pk-field table-id)]
+             (map->JoinTable {:table-id     table-id
+                              :table-name   table-name
+                              :pk-field     (map->JoinTableField {:field-id   pk-field-id
+                                                                  :field-name pk-field-name})
+                              :source-field (let [fk-field-id (pk-field-id->fk-field-id pk-field-id)]
+                                              (map->JoinTableField {:field-id   fk-field-id
+                                                                    :field-name (fk-field-id->field-name fk-field-id)}))}))))))
+
+(defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  ([{{source-table-id :source-table} :query, :as expanded-query-dict}]
-   (resolve-tables expanded-query-dict (sel :one :fields [Table :name :id] :id source-table-id)))
-  ([expanded-query-dict table]
-   {:pre [(map? table)]}
-   (->> (assoc-in expanded-query-dict [:query :source-table] table)
-        (walk/postwalk #(resolve-table % {(:id table) table})))))
+  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict} table-ids]
+  {:pre [(integer? source-table-id)]}
+  (let [table-ids       (conj table-ids source-table-id)
+        table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        join-tables     (vals (dissoc table-id->table source-table-id))]
+    (->> (assoc-in expanded-query-dict [:query :source-table] (or (table-id->table source-table-id)
+                                                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
+         (#(if-not join-tables %
+                   (assoc-in % [:query :join-tables] (join-tables-fetch-field-info source-table-id join-tables))))
+         (walk/postwalk #(resolve-table % table-id->table)))))
 
 
 ;; ## -------------------- Public Interface --------------------
@@ -139,12 +186,14 @@
 (defn expand
   "Expand a QUERY-DICT."
   [query-dict]
-  (binding [*field-ids* (atom #{})]
+  (binding [*field-ids*    (atom #{})
+            *fk-field-ids* (atom #{})
+            *table-ids*    (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
             resolve-database
-            resolve-tables)))
+            (resolve-tables @*table-ids*))))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -158,8 +207,17 @@
                   ^String  table-name]
   IResolve
   (resolve-table [this table-id->table]
-    (cond-> this
-      table-id (assoc :table-name (:name (table-id->table table-id))))))
+    (assoc this :table-name (:name (or (table-id->table table-id)
+                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
+
+(defn- Field?
+  "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
+  ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
+  [field]
+  (match field
+    (field-id :guard integer?)                                             true
+    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    _                                                                      false))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
@@ -174,7 +232,7 @@
 ;; ## -------------------- Placeholders --------------------
 
 ;; Replace Field IDs with these during first pass
-(defrecord FieldPlaceholder [field-id]
+(defrecord FieldPlaceholder [^Integer field-id]
   IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
@@ -209,11 +267,16 @@
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
   ([field-id]
-   (when *field-ids*
-     (swap! *field-ids* conj field-id))
-   (->FieldPlaceholder field-id))
+   (match field-id
+     (field-id :guard integer?)        (do (swap! *field-ids* conj field-id)
+                                           (->FieldPlaceholder field-id))
+     ["fk->"
+      (fk-field-id :guard integer?)
+      (dest-field-id :guard integer?)] (do (swap! *field-ids* conj dest-field-id)
+                                            (swap! *fk-field-ids* conj fk-field-id)
+                                            (->FieldPlaceholder dest-field-id))))
   ([field-id value]
-   (->ValuePlaceholder field-id value)))
+   (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -334,9 +397,9 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]      (->OrderBySubclause (->OrderByAggregateField :aggregation index)
-                                                             (parse-order-by-direction direction))
-  [(field-id :guard integer?) direction] (->OrderBySubclause (ph field-id)
-                                                             (parse-order-by-direction direction)))
+  [["aggregation" index] direction]    (->OrderBySubclause (->OrderByAggregateField :aggregation index)
+                                                           (parse-order-by-direction direction))
+  [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
+                                                           (parse-order-by-direction direction)))
 (defparser parse-order-by
   subclauses (mapv parse-order-by-subclause subclauses))
