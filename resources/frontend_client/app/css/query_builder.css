@@ -329,3 +329,24 @@
     border-color: var(--brand-color);
     color: #fff;
 }
+
+.ChartType-button {
+    width: 38px;
+    height: 38px;
+    border-radius: 38px;
+    background-color: white;
+    border: 1px solid #ccdff6;
+}
+
+.ChartType-popover {
+    min-width: 15em !important;
+}
+
+.ChartType--selected {
+    color: white;
+    background-color: rgb(74, 144, 226);
+}
+
+.ChartType--notSensible {
+    opacity: 0.5;
+}

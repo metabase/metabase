@@ -1,6 +1,7 @@
 'use strict';
 
 import { CardRenderer } from '../card/card.charting';
+import Icon from './icon.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
@@ -20,6 +21,18 @@ export default React.createClass({
         setSortFn: React.PropTypes.func.isRequired,
         cellIsClickableFn: React.PropTypes.func,
         cellClickedFn: React.PropTypes.func
+    },
+
+    visualizationTypeNames: {
+        'scalar': 'Number',
+        'table': 'Table',
+        'line': 'Line',
+        'bar': 'Bar',
+        'pie': 'Pie',
+        'area': 'Area',
+        'state': 'State map',
+        'country': 'Country map',
+        'pin_map': 'Pin map'
     },
 
     getDefaultProps: function() {
@@ -108,14 +121,56 @@ export default React.createClass({
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function(event) {
+    setDisplay: function(type) {
         // notify our parent about our change
-        this.props.setDisplayFn(event.target.value);
+        this.props.setDisplayFn(type);
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
+    },
+
+    renderChartTypePicker: function() {
+        var tetherOptions = {
+            attachment: 'bottom center',
+            targetAttachment: 'top center',
+            targetOffset: '-25px 0'
+        };
+        var chartTypeButton = (
+                <div className="inline-block">
+                    <span className="ChartType-button text-brand text-brand-hover shadowed flex layout-centered">
+                        <Icon name="star" width="18px" height="18px"></Icon>
+                    </span>
+                </div>
+        );
+
+        var displayOptions = this.props.visualizationTypes.map((type, index) => {
+            var classes = cx({
+                'p2': true,
+                'ChartType--selected': type === this.props.card.display,
+                'ChartType--notSensible': !this.isSensibleChartDisplay(type)
+            });
+            var name = this.visualizationTypeNames[type] || type;
+            return (
+                <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
+                    <Icon name="star" width="18px" height="18px"/>
+                    <span className="ml1">{name}</span>
+                </li>
+            );
+        });
+        return (
+            <span>
+                Showing
+                <PopoverWithTrigger className="PopoverBody ChartType-popover"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={chartTypeButton}>
+                    <ul className="">
+                        {displayOptions}
+                    </ul>
+                </PopoverWithTrigger>
+            </span>
+        );
     },
 
     renderChartColorPicker: function() {
@@ -192,30 +247,9 @@ export default React.createClass({
         } else {
             var vizControls;
             if (this.props.result && this.props.result.error === undefined) {
-                var displayOptions = [];
-                for (var i = 0; i < this.props.visualizationTypes.length; i++) {
-                    var val = this.props.visualizationTypes[i];
-
-                    if (this.isSensibleChartDisplay(val)) {
-                        displayOptions.push(
-                            <option key={i} value={val}>{val}</option>
-                        );
-                    } else {
-                        // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
-                        displayOptions.push(
-                            <option key={i+'_'} value={val}>{val} (not sensible)</option>
-                        );
-                    }
-                }
-
                 vizControls = (
                     <div>
-                        Show as:
-                        <label className="Select ml2">
-                            <select onChange={this.setDisplay} value={this.props.card.display}>
-                                {displayOptions}
-                            </select>
-                        </label>
+                        {this.renderChartTypePicker()}
                         {this.renderChartColorPicker()}
                     </div>
                 );
