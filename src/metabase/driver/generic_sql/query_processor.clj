@@ -31,31 +31,35 @@
                  (second (re-find (:uncastify-timestamp-regex qp/*driver*) column-name))
                  column-name))))
 
+(def ^:dynamic ^:private *query* nil)
+
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [{{:keys [source-table]} :query, database :database, :as query}]
-  (try
-    ;; Process the expanded query and generate a korma form
-    (let [korma-form `(let [entity# (korma-entity ~database ~source-table)]
-                        (select entity# ~@(->> (map apply-form (:query query))
-                                               (filter identity)
-                                               (mapcat #(if (vector? %) % [%])))))]
+  (binding [*query* query]
+    (try
+      ;; Process the expanded query and generate a korma form
+      (let [korma-form `(let [entity# (korma-entity ~database ~source-table)]
+                          (select entity# ~@(->> (map apply-form (:query query))
+                                                 (filter identity)
+                                                 (mapcat #(if (vector? %) % [%])))))]
 
-      ;; Log generated korma form
-      (when (config/config-bool :mb-db-logging)
-        (log-korma-form korma-form))
+        ;; Log generated korma form
+        (when (config/config-bool :mb-db-logging)
+          (log-korma-form korma-form))
 
-      ;; Now eval the korma form. Then annotate the results
-      ;; TODO - why does this happen within the individual drivers still? Annotate should be moved out
-      (let [results (eval korma-form)]
-        (qp/annotate query results uncastify)))
+        ;; Now eval the korma form. Then annotate the results
+        ;; TODO - why does this happen within the individual drivers still? Annotate should be moved out
+        (let [results (eval korma-form)]
+          {:results      results
+           :uncastify-fn uncastify}))
 
-    (catch java.sql.SQLException e
-      (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
-                                          (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                          second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
-                                (.getMessage e))]
-        (throw (Exception. message))))))
+      (catch java.sql.SQLException e
+        (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
+                                       (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
+                                       second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+                                  (.getMessage e))]
+          (throw (Exception. message)))))))
 
 (defn process-and-run
   "Process and run a query and return results."
@@ -100,7 +104,7 @@
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
   (formatted [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query qp/*query*))] ; determine the name of the aggregation field
+    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
       `(raw ~(case aggregation-type
                :avg      "\"avg\""
                :count    "\"count\""
@@ -136,7 +140,7 @@
 
     ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
     (fields ~@(->> fields
-                   (filter (partial (complement contains?) (set (:fields (:query qp/*query*)))))
+                   (filter (partial (complement contains?) (set (:fields (:query *query*)))))
                    (map formatted)))])
 
 

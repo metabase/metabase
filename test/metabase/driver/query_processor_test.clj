@@ -8,9 +8,8 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*dataset*]])))
-
-
+                                [datasets :as datasets :refer [*dataset*]])
+            [metabase.util :as u]))
 
 
 ;; ## Dataset-Independent QP Tests
@@ -537,9 +536,9 @@
 ;; ## LIMIT-MAX-RESULT-ROWS
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `max-result-rows`
 (expect max-result-rows
-  (count (->> {:rows (repeat [:ok])}
-              limit-max-result-rows
-              :rows)))
+  (->> (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
+       :rows
+       count))
 
 
 ;; ## CUMULATIVE SUM
