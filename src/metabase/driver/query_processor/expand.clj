@@ -80,6 +80,12 @@
 
 ;; ## -------------------- Expansion - Impl --------------------
 
+(defn- non-empty-clause? [clause]
+  (and clause
+       (or (not (sequential? clause))
+           (and (seq clause)
+                (every? identity clause)))))
+
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
                                               :aggregation (parse-aggregation (:aggregation %))
@@ -89,7 +95,7 @@
                                               :order_by    (parse-order-by    (:order_by %)))
                                        (set/rename-keys <> {:order_by     :order-by
                                                             :source_table :source-table})
-                                       (m/filter-vals identity <>))))
+                                       (m/filter-vals non-empty-clause? <>))))
 
 (def ^:private ^:dynamic *field-ids*
   "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
@@ -99,16 +105,21 @@
   "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
   nil)
 
+(defn rename-mb-field-keys
+  "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
+  [field]
+  (set/rename-keys field {:id           :field-id
+                          :name         :field-name
+                          :special_type :special-type
+                          :base_type    :base-type
+                          :table_id     :table-id}))
+
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
   [expanded-query-dict field-ids]
   (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
           (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
-                            (m/map-vals #(set/rename-keys % {:id           :field-id
-                                                             :name         :field-name
-                                                             :special_type :special-type
-                                                             :base_type    :base-type
-                                                             :table_id     :table-id})))]
+                            (m/map-vals rename-mb-field-keys))]
             (reset! *table-ids* (set (map :table-id (vals fields))))
             ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
             ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
@@ -255,10 +266,7 @@
   "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
   [fn-name & match-forms]
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (when (and form#
-                (or (not (sequential? form#))
-                    (and (seq form#)
-                         (every? identity form#))))
+     (when (non-empty-clause? form#)
        (match form#
          ~@match-forms))))
 
@@ -280,9 +288,8 @@
 
 ;; ## -------------------- Breakout --------------------
 
-;; Breakout + Fields clauses are just regular vectors
-;; TODO - might need to change this if we want to add any special
-;; functionality
+;; Breakout + Fields clauses are just regular vectors of Fields
+
 (defparser parse-breakout
   field-ids (mapv ph field-ids))
 

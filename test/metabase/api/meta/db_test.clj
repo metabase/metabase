@@ -108,36 +108,36 @@
 ;; Test that we can get all the DBs for an Org, ordered by name
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
-      (filter identity
-              [(datasets/when-testing-dataset :generic-sql
-                 (match-$ (sel :one Database :name db-name)
-                   {:created_at      $
-                    :engine          "postgres"
-                    :id              $
-                    :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
-                    :updated_at      $
-                    :name            $
-                    :organization_id nil
-                    :description     nil}))
-               (datasets/when-testing-dataset :mongo
-                 (match-$ @mongo-test-data/mongo-test-db
-                   {:created_at      $
-                    :engine          "mongo"
-                    :id              $
-                    :details         $
-                    :updated_at      $
-                    :name            "Test Database"
-                    :organization_id nil
-                    :description     nil}))
-               (match-$ (db)
-                 {:created_at      $
-                  :engine          "h2"
-                  :id              $
-                  :details         $
-                  :updated_at      $
-                  :name            "Test Database"
-                  :organization_id nil
-                  :description     nil})])
+      (set (filter identity
+                   [(datasets/when-testing-dataset :generic-sql
+                      (match-$ (sel :one Database :name db-name)
+                        {:created_at      $
+                         :engine          "postgres"
+                         :id              $
+                         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+                         :updated_at      $
+                         :name            $
+                         :organization_id nil
+                         :description     nil}))
+                    (datasets/when-testing-dataset :mongo
+                      (match-$ @mongo-test-data/mongo-test-db
+                        {:created_at      $
+                         :engine          "mongo"
+                         :id              $
+                         :details         $
+                         :updated_at      $
+                         :name            "Test Database"
+                         :organization_id nil
+                         :description     nil}))
+                    (match-$ (db)
+                      {:created_at      $
+                       :engine          "h2"
+                       :id              $
+                       :details         $
+                       :updated_at      $
+                       :name            "Test Database"
+                       :organization_id nil
+                       :description     nil})]))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
@@ -148,7 +148,7 @@
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
-      ((user->client :rasta) :get 200 "meta/db"))))
+      (set ((user->client :rasta) :get 200 "meta/db")))))
 
 
 ;; # DB TABLES ENDPOINTS
@@ -158,11 +158,11 @@
 (expect
     (let [db-id (db-id)]
       [(match-$ (sel :one Table :id (id :categories))
-         {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
+         {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Categories"})
        (match-$ (sel :one Table :id (id :checkins))
-         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
+         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Checkins"})
        (match-$ (sel :one Table :id (id :users))
-         {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
+         {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Users"})
        (match-$ (sel :one Table :id (id :venues))
-         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})])
+         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Venues"})])
   ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))

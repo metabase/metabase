@@ -79,34 +79,29 @@ export default React.createClass({
 
     isSensibleChartDisplay: function(display) {
         var data = (this.props.result) ? this.props.result.data : null;
-
-        if (display === "table") {
-            // table is always appropriate
-            return true;
-
-        } else if (display === "scalar" && data &&
-                    data.rows && data.rows.length === 1 &&
-                    data.cols && data.cols.length === 1) {
-            // a 1x1 data set is appropriate for a scalar
-            return true;
-
-        } else if (display === "pin_map" && data && this.hasLatitudeAndLongitudeColumns(data.cols)) {
-            // when we have a latitude and longitude a pin map is cool
-            return true;
-
-        } else if ((display === "line" || display === "area") && data &&
-                    data.rows && data.rows.length > 1 &&
-                    data.cols && data.cols.length > 1) {
-            // if we have 2x2 or more then that's enough to make a line/area chart
-            return true;
-
-        } else if (this.isChartDisplay(display) && data &&
-                    data.cols && data.cols.length > 1) {
-            // general check for charts is that they require 2 columns
-            return true;
+        switch (display) {
+            case "table":
+                // table is always appropriate
+                return true;
+            case "scalar":
+                // a 1x1 data set is appropriate for a scalar
+                return (data && data.rows && data.rows.length === 1 && data.cols && data.cols.length === 1);
+            case "pin_map":
+                // when we have a latitude and longitude a pin map is cool
+                return (data && this.hasLatitudeAndLongitudeColumns(data.cols));
+            case "line":
+            case "area":
+                // if we have 2x2 or more then that's enough to make a line/area chart
+                return (data && data.rows && data.rows.length > 1 && data.cols && data.cols.length > 1);
+            case "country":
+            case "state":
+                return (data && data.cols && data.cols.length > 1 && data.cols[0].base_type === "TextField");
+            case "bar":
+            case "pie":
+            default:
+                // general check for charts is that they require 2 columns
+                return (data && data.cols && data.cols.length > 1);
         }
-
-        return false;
     },
 
     isChartDisplay: function(display) {

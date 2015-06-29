@@ -88,9 +88,11 @@ export default React.createClass({
     renderCardDelete: function () {
         if(this.props.canDelete) {
            return (
-                <div className="Form-offset mb4">
-                    <label className="block">Danger zone:</label>
-                    <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                <div className="Form-field">
+                    <label className="Form-label Form-offset mb1"><span>Danger zone</span>:</label>
+                    <label className="Form-offset">
+                        <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                    </label>
                 </div>
            )
         }
@@ -156,7 +158,7 @@ export default React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms" defaultValue={this.props.card.public_perms}>
+                        <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
                             {privacyOptions}
                         </select>
                     </label>

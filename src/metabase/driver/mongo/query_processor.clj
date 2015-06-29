@@ -11,7 +11,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [interface :as i]
-                             [query-processor :as qp :refer [*query*]])
+                             [query-processor :as qp])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u])
@@ -21,8 +21,6 @@
            (org.bson.types ObjectId)))
 
 (declare apply-clause
-         annotate-native-results
-         annotate-results
          eval-raw-command
          process-structured
          process-and-run-structured)
@@ -30,20 +28,23 @@
 
 ;; # DRIVER QP INTERFACE
 
+(def ^:dynamic ^:private *query* nil)
+
 (defn process-and-run
   "Process and run a MongoDB QUERY."
   [{query-type :type, database :database, :as query}]
-  (with-mongo-connection [_ database]
-    (case (keyword query-type)
-      :query (let [generated-query (process-structured (:query query))]
-               (when-not qp/*disable-qp-logging*
-                 (log/debug (color/magenta "\n\n******************** Generated Monger Query: ********************\n"
-                                           (u/pprint-to-str generated-query)
-                                           "\n*****************************************************************\n")))
-               (->> (eval generated-query)
-                    (annotate-results query)))
-      :native (->> (eval-raw-command (:query (:native query)))
-                   annotate-native-results))))
+  (binding [*query* query]
+    (with-mongo-connection [_ database]
+      (case (keyword query-type)
+        :query (let [generated-query (process-structured (:query query))]
+                 (when-not qp/*disable-qp-logging*
+                   (log/debug (color/magenta "\n\n******************** Generated Monger Query: ********************\n"
+                                             (u/pprint-to-str generated-query)
+                                             "\n*****************************************************************\n")))
+                 {:results (eval generated-query)})
+        :native (let [results (eval-raw-command (:query (:native query)))]
+                  {:results (if (sequential? results) results
+                                [results])})))))
 
 
 ;; # NATIVE QUERY PROCESSOR
@@ -61,15 +62,6 @@
         (throw (.getException result)))
       (let [{result "retval"} (PersistentArrayMap/create (.toMap result))]
         result)))
-
-(defn annotate-native-results
-  "Package up the results in the way the frontend expects."
-  [results]
-  (if-not (sequential? results) (annotate-native-results [results])
-          {:status    :completed
-           :row_count (count results)
-           :data      {:rows    results
-                       :columns (keys (first results))}}))
 
 
 ;; # STRUCTURED QUERY PROCESSOR
@@ -224,15 +216,6 @@
                                 (apply-clause [:filter filter-clause]))]
     (if (seq breakout) (do-breakout query)
         (match-aggregation aggregation))))
-
-
-;; ## ANNOTATION
-
-;; TODO - This is similar to the implementation in generic-sql; can we combine them and move it into metabase.driver.query-processor?
-(defn annotate-results
-  "Add column information, `row_count`, etc. to the results of a Mongo QP query."
-  [query results]
-  (qp/annotate query results))
 
 
 ;; ## CLAUSE APPLICATION 2.0
