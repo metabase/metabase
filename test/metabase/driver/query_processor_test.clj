@@ -12,8 +12,6 @@
             [metabase.util :as u]))
 
 
-
-
 ;; ## Dataset-Independent QP Tests
 
 ;; ### Helper Fns + Macros
@@ -538,9 +536,9 @@
 ;; ## LIMIT-MAX-RESULT-ROWS
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `max-result-rows`
 (expect max-result-rows
-  (count (->> {:rows (repeat [:ok])}
-              ((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit-max-result-rows))
-              :rows)))
+  (->> (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
+       :rows
+       count))
 
 
 ;; ## CUMULATIVE SUM
