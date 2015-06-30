@@ -22,8 +22,8 @@
   (create-physical-db! [_ _])
 
   (drop-physical-db! [this database-definition]
-    (mg/drop-db (mg/connect (database->connection-details this database-definition))
-                (escaped-name database-definition)))
+    (with-open [mongo-connection (mg/connect (database->connection-details this database-definition))]
+      (mg/drop-db mongo-connection (escaped-name database-definition))))
 
   ;; Nothing to do here, collection is created when we add documents to it
   (create-physical-table! [_ _ _])
