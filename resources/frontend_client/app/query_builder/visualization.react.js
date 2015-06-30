@@ -255,7 +255,7 @@ export default React.createClass({
             var vizControls;
             if (this.props.result && this.props.result.error === undefined) {
                 vizControls = (
-                    <div>
+                    <div className="flex">
                         {this.renderChartTypePicker()}
                         {this.renderChartColorPicker()}
                     </div>
@@ -265,9 +265,7 @@ export default React.createClass({
             return (
                 <div className="VisualizationSettings wrapper flex">
                     {vizControls}
-                    <div className="flex-align-right">
-                        {tableFootnote}
-                    </div>
+                    {tableFootnote}
                 </div>
             );
         }
@@ -370,14 +368,14 @@ export default React.createClass({
                                 this.props.card.dataset_query.query.aggregation[0] === "rows" &&
                                 this.props.result.data.rows.length === 2000)) {
                         tableFootnote = (
-                            <div className="mt1">
+                            <div className="flex-align-right mt1">
                                 <span className="Badge Badge--headsUp mr2">Too many rows!</span>
                                 Result data was capped at <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
                     } else {
                         tableFootnote = (
-                            <div className="mt1">
+                            <div className="flex-align-right mt1">
                                 Showing <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
