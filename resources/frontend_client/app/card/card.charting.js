@@ -374,15 +374,13 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
-                function row(key, value) {
-                    return '<div><span class="ChartTooltip-key">' + key + '</span> <span class="ChartTooltip-value">' + value + '</span></div>'
-                }
-                var html = row(cols[0].name, d.data.key) + row(cols[1].name, valueFormatter(d.data.value));
+                var values = valueFormatter(d.data.value);
                 if (card.display === 'pie') {
                     // TODO: this is not the ideal way to calculate the percentage, but it works for now
-                    html += row('percentage', valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%');
+                    values += " (" + valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
                 }
-                return html;
+                return '<div><span class="ChartTooltip-name">' + d.data.key + '</span></div>' +
+                    '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
