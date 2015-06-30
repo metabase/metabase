@@ -325,7 +325,7 @@
   :aggregation  ["rows"]
   :page         {:items 5
                  :page 1}
-  :order_by     [[(id :categories :name) "ascending"]]})
+  :order_by     [[(id :categories :id) "ascending"]]})
 
 ;; ### PAGE - Get the second page
 (qp-expect-with-all-datasets
@@ -341,7 +341,7 @@
   :aggregation  ["rows"]
   :page         {:items 5
                  :page 2}
-  :order_by     [[(id :categories :name) "ascending"]]})
+  :order_by     [[(id :categories :id) "ascending"]]})
 
 
 ;; ## "ORDER_BY" CLAUSE
