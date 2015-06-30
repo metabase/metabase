@@ -144,7 +144,8 @@ export default React.createClass({
 
         if (value && value.length > 0) {
             // value casting.  we need the value in the filter to be of the proper type
-            if (this.state.fieldDef.base_type === "IntegerField") {
+            if (this.state.fieldDef.base_type === "IntegerField" ||
+                    this.state.fieldDef.base_type === "BigIntegerField") {
                 value = parseInt(value);
             } else if (this.state.fieldDef.base_type === "BooleanField") {
                 value = (value.toLowerCase() === "true") ? true : false;
