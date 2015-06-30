@@ -111,15 +111,16 @@
 (defn- cast-timestamp-seconds-field-to-date-fn [table-name field-name]
   {:pre [(string? table-name)
          (string? field-name)]}
-  (format "CAST(TO_TIMESTAMP(\"%s\".\"%s\") AS DATE)" table-name field-name))
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 second'))::date" table-name field-name))
 
 (defn- cast-timestamp-milliseconds-field-to-date-fn [table-name field-name]
   {:pre [(string? table-name)
          (string? field-name)]}
-  (format "CAST(TO_TIMESTAMP(\"%s\".\"%s\" / 1000) AS DATE)" table-name field-name))
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 millisecond'))::date" table-name field-name))
 
 (def ^:private ^:const uncastify-timestamp-regex
-  #"CAST\(TO_TIMESTAMP\([^.\s]+\.([^.\s]+)(?: / 1000)?\) AS DATE\)")
+  ;; TODO - this doesn't work
+  #"TO_TIMESTAMP\([^.\s]+\.([^.\s]+)(?: / 1000)?\)::date")
 
 ;; ## DRIVER
 

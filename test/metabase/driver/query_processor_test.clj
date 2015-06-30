@@ -9,6 +9,7 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*dataset*]])
+            [metabase.test.util.mql :refer [Q]]
             [metabase.util :as u]))
 
 
@@ -324,7 +325,7 @@
   :aggregation  ["rows"]
   :page         {:items 5
                  :page 1}
-  :order_by     [[(id :categories :name) "ascending"]]})
+  :order_by     [[(id :categories :id) "ascending"]]})
 
 ;; ### PAGE - Get the second page
 (qp-expect-with-all-datasets
@@ -340,7 +341,7 @@
   :aggregation  ["rows"]
   :page         {:items 5
                  :page 2}
-  :order_by     [[(id :categories :name) "ascending"]]})
+  :order_by     [[(id :categories :id) "ascending"]]})
 
 
 ;; ## "ORDER_BY" CLAUSE
@@ -615,10 +616,17 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2}
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[3.43467255295115]]}
+  {:source_table (id :venues)
+   :aggregation  ["stddev" (id :venues :latitude)]})
+
+(qp-expect-with-datasets #{:postgres}
+  {:columns ["stddev"]
+   :cols    [(aggregate-col :stddev (venues-col :latitude))]
+   :rows    [[3.4346725529512736]]}
   {:source_table (id :venues)
    :aggregation  ["stddev" (id :venues :latitude)]})
 
@@ -626,16 +634,14 @@
 (datasets/expect-with-dataset :mongo
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (driver/process-query {:database (db-id)
-                         :type :query
-                         :query {:source_table (id :venues)
-                                 :aggregation  ["stddev" (id :venues :latitude)]}}))
+  (Q run tbl venues
+     ag stddev latitude))
 
 
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -667,7 +673,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -683,7 +689,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(datasets/expect-with-dataset :h2
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 22]
@@ -692,13 +698,30 @@
              [4 53]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
-  {:source_table (id :venues)
-   :aggregation  ["avg" (id :venues :category_id)]
-   :breakout     [(id :venues :price)]
-   :order_by     [[["aggregation" 0] "ascending"]]})
+  (Q run return :data
+     tbl venues
+     ag avg category_id
+     breakout price
+     order ag.0+))
+
+;; Values are slightly different for Postgres
+(datasets/expect-with-dataset :postgres
+  {:rows [[3 22.0000000000000000M]
+          [2 28.2881355932203390M]
+          [1 32.8181818181818182M]
+          [4 53.5000000000000000M]]
+   :columns [(format-name "price")
+             "avg"]
+   :cols [(venues-col :price)
+          (aggregate-col :avg (venues-col :category_id))]}
+  (Q run return :data
+     tbl venues
+     ag avg category_id
+     breakout price
+     order ag.0+))
 
 ;;; ### order_by aggregate ["stddev" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(datasets/expect-with-dataset :h2
   {:columns [(format-name "price")
              "stddev"]
    :rows    [[3 26.19160170741759]
@@ -707,10 +730,26 @@
              [4 14.788509052639485]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  {:source_table (id :venues)
-   :aggregation  ["stddev" (id :venues :category_id)]
-   :breakout     [(id :venues :price)]
-   :order_by     [[["aggregation" 0] "descending"]]})
+  (Q run return :data
+     tbl venues
+     ag stddev category_id
+     breakout price
+     order ag.0-))
+
+(datasets/expect-with-dataset :postgres
+  {:columns [(format-name "price")
+             "stddev"]
+   :rows    [[3 26.1916017074175897M]
+             [1 24.1121118816651851M]
+             [2 21.4186921647952867M]
+             [4 14.7885090526394851M]]
+   :cols    [(venues-col :price)
+             (aggregate-col :stddev (venues-col :category_id))]}
+  (Q run return :data
+     tbl venues
+     ag stddev category_id
+     breakout price
+     order ag.0-))
 
 
 ;;; ### make sure that rows where preview_display = false don't get displayed
@@ -782,7 +821,7 @@
                             :query    ~query})))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   9
   (->> (query-with-temp-db defs/sad-toucan-incidents
          :source_table &incidents:id
@@ -794,25 +833,42 @@
 
 
 ;;; Unix timestamp breakouts -- SQL only
-(datasets/expect-with-datasets #{:generic-sql}
-  [["2015-06-01" 6]
-   ["2015-06-02" 9]
-   ["2015-06-03" 5]
-   ["2015-06-04" 9]
-   ["2015-06-05" 8]
-   ["2015-06-06" 9]
-   ["2015-06-07" 8]
-   ["2015-06-08" 9]
-   ["2015-06-09" 7]
-   ["2015-06-10" 8]]
-  (->> (query-with-temp-db defs/sad-toucan-incidents
-         :source_table &incidents:id
-         :aggregation  ["count"]
-         :breakout     [&incidents.timestamp:id]
-         :limit        10)
-       :data :rows
-       (map (fn [[^java.util.Date date count]]
-              [(.toString date) (int count)]))))
+(let [do-query (fn [] (->> (query-with-temp-db defs/sad-toucan-incidents
+                             :source_table &incidents:id
+                             :aggregation  ["count"]
+                             :breakout     [&incidents.timestamp:id]
+                             :limit        10)
+                           :data :rows
+                           (map (fn [[^java.util.Date date count]]
+                                  [(.toString date) (int count)]))))]
+
+  (datasets/expect-with-dataset :h2
+    [["2015-06-01" 6]
+     ["2015-06-02" 9]
+     ["2015-06-03" 5]
+     ["2015-06-04" 9]
+     ["2015-06-05" 8]
+     ["2015-06-06" 9]
+     ["2015-06-07" 8]
+     ["2015-06-08" 9]
+     ["2015-06-09" 7]
+     ["2015-06-10" 8]]
+    (do-query))
+
+  ;; postgres gives us *slightly* different answers because I think it's actually handling UNIX timezones properly (with timezone = UTC)
+  ;; as opposed to H2 which is giving us the wrong timezome. TODO - verify this
+  (datasets/expect-with-dataset :postgres
+    [["2015-06-01" 8]
+     ["2015-06-02" 9]
+     ["2015-06-03" 9]
+     ["2015-06-04" 4]
+     ["2015-06-05" 11]
+     ["2015-06-06" 8]
+     ["2015-06-07" 6]
+     ["2015-06-08" 10]
+     ["2015-06-09" 6]
+     ["2015-06-10" 10]]
+    (do-query)))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -822,7 +878,8 @@
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field
 ;; (Note how the FK Field is returned in the results)
-(datasets/expect-with-datasets #{:generic-sql}
+;; TODO - this is broken for Postgres! Returns columns in the wrong order
+(datasets/expect-with-dataset :h2
   [[16 "Arlington"]
    [15 "Albany"]
    [14 "Portland"]
@@ -833,19 +890,19 @@
    [11 "Houston"]
    [11 "Irvine"]
    [11 "Lakeland"]]
-  (-> (query-with-temp-db defs/tupac-sightings
-        :source_table &sightings:id
-        :aggregation  ["count"]
-        :breakout     [["fk->" &sightings.city_id:id &cities.name:id]]
-        :order_by     [[["aggregation" 0] "descending"]]
-        :limit        10)
-      :data :rows))
+  (Q run with db tupac-sightings
+     return :data :rows
+     tbl sightings
+     ag count
+     breakout city_id->cities.name
+     order ag.0-
+     lim 10))
 
 
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   60
   (-> (query-with-temp-db defs/tupac-sightings
         :source_table &sightings:id
@@ -857,7 +914,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   [["In the Park" 772]
    ["Working at a Pet Store" 894]
    ["At the Airport" 684]
@@ -880,7 +937,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]

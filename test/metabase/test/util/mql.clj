@@ -71,16 +71,25 @@
                      ~'id data/id]
      ~(macroexpand-all form)))
 
+(defmacro Q:field [f]
+  (let [f (name f)]
+    (if-let [[_ from to] (re-matches #"^(.*)->(.*)$" f)]
+      ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
+      (if-let [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
+        ["aggregation" (Integer/parseInt ag-field-index)]
+        (let [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)]
+          `(~'id ~(if table (keyword table)
+                      'table)
+                 ~(keyword field)))))))
+
 (defmacro Q [& tokens]
   (let [[outer-tokens inner-tokens] (split-with (complement (partial contains? inner-q-tokens)) tokens)
         outer-tokens                (partition-tokens outer-q-tokens outer-tokens)
         inner-tokens                (partition-tokens inner-q-tokens inner-tokens)
         query                       (macroexpand-all `(Q:expand-inner ~@inner-tokens))]
     `(Q:wrap-fallback-captures (Q:expand-outer* ~outer-tokens
-                                                (macrolet [(~'fl [f#] (let [[~'_ table# field#] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" (name f#))]
-                                                                        `(~'~'id ~(if table# table#
-                                                                                      ~(second (:source_table (:query query))))
-                                                                                 ~(keyword field#))))]
+                                                (symbol-macrolet [~'table ~(second (:source_table (:query query)))
+                                                                  ~'fl Q:field]
                                                   ~(macroexpand-all query))))))
 
 (defmacro Q:expand-clauses [acc & [[clause & args] & more]]

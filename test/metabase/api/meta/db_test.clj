@@ -109,42 +109,33 @@
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
       (set (filter identity
-                   [(datasets/when-testing-dataset :generic-sql
-                      (match-$ (sel :one Database :name db-name)
-                        {:created_at      $
-                         :engine          "postgres"
-                         :id              $
-                         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
-                         :updated_at      $
-                         :name            $
-                         :organization_id nil
-                         :description     nil}))
-                    (datasets/when-testing-dataset :mongo
-                      (match-$ @mongo-test-data/mongo-test-db
-                        {:created_at      $
-                         :engine          "mongo"
-                         :id              $
-                         :details         $
-                         :updated_at      $
-                         :name            "Test Database"
-                         :organization_id nil
-                         :description     nil}))
-                    (match-$ (db)
-                      {:created_at      $
-                       :engine          "h2"
-                       :id              $
-                       :details         $
-                       :updated_at      $
-                       :name            "Test Database"
-                       :organization_id nil
-                       :description     nil})]))
+                   (conj (for [dataset-name datasets/all-valid-dataset-names]
+                           (datasets/when-testing-dataset dataset-name
+                             (match-$ (datasets/db (datasets/dataset-name->dataset dataset-name))
+                               {:created_at      $
+                                :engine          (name $engine)
+                                :id              $
+                                :details         $
+                                :updated_at      $
+                                :name            "Test Database"
+                                :organization_id nil
+                                :description     nil})))
+                         (datasets/when-testing-dataset :h2
+                           (match-$ (sel :one Database :name db-name)
+                             {:created_at      $
+                              :engine          "postgres"
+                              :id              $
+                              :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+                              :updated_at      $
+                              :name            $
+                              :organization_id nil
+                              :description     nil})))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        [(datasets/when-testing-dataset :generic-sql
-                                                           (db-id))
-                                                         (datasets/when-testing-dataset :mongo
-                                                           @mongo-test-data/mongo-test-db-id)]))])
+                                                        (for [dataset-name datasets/all-valid-dataset-names]
+                                                          (datasets/when-testing-dataset dataset-name
+                                                            (:id (datasets/db (datasets/dataset-name->dataset dataset-name)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
