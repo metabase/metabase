@@ -109,7 +109,7 @@
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
       (set (filter identity
-                   [(datasets/when-testing-dataset :generic-sql
+                   [(datasets/when-testing-dataset :h2
                       (match-$ (sel :one Database :name db-name)
                         {:created_at      $
                          :engine          "postgres"
@@ -141,7 +141,7 @@
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        [(datasets/when-testing-dataset :generic-sql
+                                                        [(datasets/when-testing-dataset :h2
                                                            (db-id))
                                                          (datasets/when-testing-dataset :mongo
                                                            @mongo-test-data/mongo-test-db-id)]))])

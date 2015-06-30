@@ -67,14 +67,12 @@
   (field-name->id [_ table-name field-name]
     (mongo-data/field-name->id table-name (if (= field-name :id) :_id
                                               field-name)))
-  (fks-supported? [_] false)
-
   (format-name [_ table-or-field-name]
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
 
-  (id-field-type [_] :IntegerField)
-
+  (fks-supported?       [_] false)
+  (id-field-type        [_] :IntegerField)
   (timestamp-field-type [_] :DateField))
 
 
@@ -160,10 +158,9 @@
 
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo       (MongoDriverData.)
-   :generic-sql (H2DriverData. (promise))
-   :postgres    (PostgresDriverData. (promise))})
-;; TODO - :generic-sql should be renamed H2
+  {:mongo    (MongoDriverData.)
+   :h2       (H2DriverData. (promise))
+   :postgres (PostgresDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
@@ -172,13 +169,13 @@
 
 ;; # Logic for determining which datasets to test against
 
-;; By default, we'll test against against only the :generic-sql (H2) dataset; otherwise, you can specify which
+;; By default, we'll test against against only the :h2 (H2) dataset; otherwise, you can specify which
 ;; datasets to test against by setting the env var `MB_TEST_DATASETS` to a comma-separated list of dataset names, e.g.
 ;;
-;;    # test against :generic-sql and :mongo
+;;    # test against :h2 and :mongo
 ;;    MB_TEST_DATASETS=generic-sql,mongo
 ;;
-;;    # just test against :generic-sql (default)
+;;    # just test against :h2 (default)
 ;;    MB_TEST_DATASETS=generic-sql
 
 (defn- get-test-datasets-from-env
@@ -197,9 +194,9 @@
 
 (def test-dataset-names
   "Delay that returns set of names of drivers we should run tests against.
-   By default, this returns only `:generic-sql`, but can be overriden by setting env var `MB_TEST_DATASETS`."
+   By default, this returns only `:h2` but can be overriden by setting env var `MB_TEST_DATASETS`."
   (delay (let [datasets (or (get-test-datasets-from-env)
-                            #{:generic-sql})]
+                            #{:h2})]
            (log/info (color/green "Running QP tests against these datasets: " datasets))
            datasets)))
 
@@ -208,8 +205,8 @@
 
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `:generic-sql`."
-  (dataset-name->dataset :generic-sql))
+   Defaults to `:h2`."
+  (dataset-name->dataset :h2))
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."

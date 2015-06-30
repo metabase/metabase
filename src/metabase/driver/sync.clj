@@ -34,7 +34,7 @@
   (binding [qp/*disable-qp-logging* true]
     (sync-in-context driver database
       (fn []
-        (log/info (color/blue (format "Syncing database %s..." (:name database))))
+        (log/info (u/format-color 'blue "Syncing %s database %s..." (name (:engine database)) (:name database)))
 
         (let [active-table-names (active-table-names driver database)
               table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]

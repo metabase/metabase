@@ -615,7 +615,7 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[3.43467255295115]]}
@@ -635,7 +635,7 @@
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -667,7 +667,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -683,7 +683,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 22]
@@ -698,7 +698,7 @@
    :order_by     [[["aggregation" 0] "ascending"]]})
 
 ;;; ### order_by aggregate ["stddev" field-id]
-(qp-expect-with-datasets #{:generic-sql}
+(qp-expect-with-datasets #{:h2 :postgres}
   {:columns [(format-name "price")
              "stddev"]
    :rows    [[3 26.19160170741759]
@@ -782,7 +782,7 @@
                             :query    ~query})))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets #{:generic-sql :postgres}
+(datasets/expect-with-datasets #{:h2 :postgres}
   9
   (->> (query-with-temp-db defs/sad-toucan-incidents
          :source_table &incidents:id
@@ -803,7 +803,7 @@
                            (map (fn [[^java.util.Date date count]]
                                   [(.toString date) (int count)]))))]
 
-  (datasets/expect-with-dataset :generic-sql
+  (datasets/expect-with-dataset :h2
     [["2015-06-01" 6]
      ["2015-06-02" 9]
      ["2015-06-03" 5]
@@ -839,7 +839,7 @@
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field
 ;; (Note how the FK Field is returned in the results)
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   [[16 "Arlington"]
    [15 "Albany"]
    [14 "Portland"]
@@ -862,7 +862,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   60
   (-> (query-with-temp-db defs/tupac-sightings
         :source_table &sightings:id
@@ -874,7 +874,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   [["In the Park" 772]
    ["Working at a Pet Store" 894]
    ["At the Airport" 684]
@@ -897,7 +897,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:h2 :postgres}
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]
