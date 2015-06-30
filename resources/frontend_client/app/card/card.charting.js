@@ -374,10 +374,14 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
-                return (
-                    '<div><span class="ChartTooltip-key">' + cols[0].name + '</span> <span class="ChartTooltip-value">' + d.data.key + '</span></div>' +
-                    '<div><span class="ChartTooltip-key">' + cols[1].name + '</span> <span class="ChartTooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
-                );
+                function row(key, value) {
+                    return '<div><span class="ChartTooltip-key">' + key + '</span> <span class="ChartTooltip-value">' + value + '</span></div>'
+                }
+                var html = row(cols[0].name, d.data.key) + row(cols[1].name, valueFormatter(d.data.value));
+                if (card.display === 'pie') {
+                    html += row('percentage', valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%');
+                }
+                return html;
             });
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
