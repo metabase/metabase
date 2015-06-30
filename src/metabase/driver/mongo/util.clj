@@ -43,18 +43,22 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
+  (println (metabase.util/format-color 'red "<<OPENING A NEW MONGO CONNECTION>>"))
   (let [connection-string (cond
                             (string? database)              database
                             (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style -- entire Database obj
                             (:dbname database)              (details-map->connection-string database)            ; new-style -- connection details map only
                             :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
+        {conn :conn, mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]
         (f *mongo-connection*))
       (finally
-        (mg/disconnect conn)))))
+        (println (metabase.util/format-color 'red "DISCONNECTING!"))
+        (assert conn)
+        (mg/disconnect conn)
+        (println (metabase.util/format-color 'green "OK."))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to DATABASE-OR-CONNECTION-STRING, bind connection to BINDING, execute BODY, and close the connection.

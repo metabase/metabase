@@ -70,12 +70,19 @@
      *  dest-column-name"))
 
 
+(defprotocol ISyncDriverFieldSubFields
+  "Optional protocol that should provide information about the subfields of a FIELD when applicable.
+   Drivers that declare support for `:nested-fields` should implement this protocol."
+  (active-subfield-names->type [this field]
+    "Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`."))
+
+
 ;; ## ISyncDriverField Protocols
 
 ;; Sync drivers need to implement either ISyncDriverFieldValues or ISyncDriverFieldAvgLength *and* ISyncDriverFieldPercentUrls.
 ;;
 ;; ISyncDriverFieldValues is used to provide a generic fallback implementation of the other two that calculate these values by
-;; iterating over *every* value of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
+;; iterating over a few thousand values of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
 ;; of ISyncDriverFieldAvgLength/ISyncDriverFieldPercentUrls when possible. (You can also implement ISyncDriverFieldValues and
 ;; *one* of the other two; the optimized implementation will be used for that and the fallback implementation for the other)
 

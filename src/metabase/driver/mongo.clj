@@ -4,6 +4,7 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
+            [medley.core :as m]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
@@ -96,7 +97,30 @@
        (map (keyword (:name field))
             (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
               (mq/with-collection conn (:name table)
-                (mq/fields [(:name field)]))))))))
+                (mq/fields [(:name field)])))))))
+
+  ISyncDriverFieldSubFields
+  (active-subfield-names->type [this field]
+    ;; shared part of driver should be enforcing this actually !
+    (assert (= (:base_type field) :UnknownField))
+    ;; Build a map of nested-field-key -> type -> count
+    ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); this takes ~50ms for a smallish Field in the Geographic Tips dataset;
+    ;; if I run out of important things to do re-write this recursively or with transient collections
+    (let [field->type->count (atom {})]
+      ;; Look at the first 1000 values
+      (doseq [val (take 1000 (field-values-lazy-seq this field))]
+        (when (map? val)
+          (doseq [[k v] val]
+            (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
+      ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
+      (->> @field->type->count
+           (m/map-vals (fn [type->count]
+                         (->> (seq type->count)                   ; convert to pairs of [type count]
+                              (sort-by second)                    ; source by count
+                              last                                ; take last item (highest count)
+                              first                               ; keep just the type
+                              (#(or (driver/class->base-type %)   ; convert to corresponding Field base_type if possible
+                                    :UnknownField)))))))))        ; fall back to :UnknownField for things like clojure.lang.PersistentVector
 
 (def driver
   "Concrete instance of the MongoDB driver."
@@ -111,17 +135,6 @@
          '[metabase.test.data.dataset-definitions :as defs]
          '[metabase.test.util.mql :refer [Q]])
 
-(defn- field-collect-subfields
-  "Fetch all the subfields for a FIELD's first 1000 values."
-  [field]
-  (->> (field-values-lazy-seq driver field)
-       (take 1000)
-       (filter map?)
-       (map keys)
-       (map set)
-       (reduce set/union #{})
-       doall))
-
 (defn x []
   (Q run with db geographical-tips
      with dataset mongo
@@ -134,4 +147,5 @@
   (datasets/with-dataset :mongo
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
       (with-mongo-connection [_ db]
-        (field-collect-subfields &tips.venue)))))
+        ;; 61 ms ???
+        (active-subfield-names->type driver &tips.venue)))))

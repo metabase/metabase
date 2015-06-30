@@ -24,6 +24,7 @@
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
+         update-field-subfields!
          update-table-row-count!)
 
 ;; ## sync-database! and sync-table!
@@ -249,7 +250,8 @@
                  (mark-url-field! driver)
                  mark-category-field!
                  (mark-no-preview-display-field! driver)
-                 auto-assign-field-special-type-by-name!))
+                 auto-assign-field-special-type-by-name!
+                 (update-field-subfields! driver)))
 
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
@@ -353,7 +355,7 @@
 
 ;; ### auto-assign-field-special-type-by-name!
 
-(def ^{:arglists '([field])}
+(def ^:private ^{:arglists '([field])}
   field->name-inferred-special-type
   "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
   (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
@@ -415,7 +417,7 @@
                            (re-matches name-pattern (s/lower-case field-name))))
                     pattern+base-types+special-type))))
 
-(defn auto-assign-field-special-type-by-name!
+(defn- auto-assign-field-special-type-by-name!
   "If FIELD doesn't have a special type, but has a name that matches a known pattern like `latitude`, mark it as having the specified special type."
   [field]
   (when-not (:special_type field)
@@ -424,3 +426,11 @@
                         (name (:base_type field)) (:name @(:table field)) (:name field) pattern (name special-type)))
       (upd Field (:id field) :special_type special-type)
       (assoc field :special_type special-type))))
+
+
+(defn- update-field-subfields! [driver field]
+  (when (and (= (:base_type field) :UnknownField)
+             (supports? driver :nested-fields)              ; if one of these is true
+             (satisfies? ISyncDriverFieldSubFields driver)) ; the other should be :wink:
+    (let [subfield-name->type (active-subfield-names->type driver field)]
+      (log/info "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys subfield-name->type)))))
