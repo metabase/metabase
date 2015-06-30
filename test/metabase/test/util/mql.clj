@@ -22,25 +22,18 @@
        (map seq)
        (filter identity)))
 
-(def ^:private ^:const outer-q-tokens
-  '#{with run return})
-
-(def ^:private ^:const inner-q-tokens
-  '#{ag breakout fields filter lim order page tbl})
+(def ^:private ^:const outer-q-tokens '#{with run return})
+(def ^:private ^:const inner-q-tokens '#{ag breakout fields filter lim order page tbl})
 
 (defmacro Q:temp-get [& args]
   `(:id (data/-temp-get ~'db ~@(map name args))))
 
-(defmacro with-id-as [id body]
-  `(symbol-macrolet [~'id ~id]
-     ~(macroexpand-all body)))
-
-(defn resolve-dataset [^clojure.lang.Symbol dataset]
+(defn Q:resolve-dataset [^clojure.lang.Symbol dataset]
   (require 'metabase.test.data.dataset-definitions)
   (var-get (ns-resolve 'metabase.test.data.dataset-definitions dataset)))
 
 (defmacro Q:with-temp-db [dataset body]
-  `(data/with-temp-db [~'db (data/dataset-loader) (resolve-dataset '~dataset)]
+  `(data/with-temp-db [~'db (data/dataset-loader) (Q:resolve-dataset '~dataset)]
      (symbol-macrolet [~'db-id (:id ~'db)]
        (macrolet [(~'id [& args#] `(Q:temp-get ~@args#))]
          ~(macroexpand-all body)))))
@@ -58,22 +51,22 @@
 (defmacro Q:return [q & args]
   `(-> ~q ~@args))
 
-(defmacro expand-outer [token form]
+(defmacro Q:expand-outer [token form]
   (macroexpand-all `(symbol-macrolet [~'return Q:return
                                       ~'run    driver/process-query
                                       ~'with   Q:with]
                       (-> ~form ~token))))
 
-(defmacro expand-outer* [[token & tokens] form]
+(defmacro Q:expand-outer* [[token & tokens] form]
   (if-not token form
-          `(expand-outer* ~tokens (expand-outer ~token ~form))))
+          `(Q:expand-outer* ~tokens (Q:expand-outer ~token ~form))))
 
-(defmacro expand-inner [& forms]
+(defmacro Q:expand-inner [& forms]
   {:database 'db-id
    :type :query
-   :query `(Q* {} ~@forms)})
+   :query `(Q:expand-clauses {} ~@forms)})
 
-(defmacro Q+ [form]
+(defmacro Q:wrap-fallback-captures [form]
   `(symbol-macrolet [~'db-id (data/db-id)
                      ~'id data/id]
      ~(macroexpand-all form)))
@@ -82,17 +75,17 @@
   (let [[outer-tokens inner-tokens] (split-with (complement (partial contains? inner-q-tokens)) tokens)
         outer-tokens                (partition-tokens outer-q-tokens outer-tokens)
         inner-tokens                (partition-tokens inner-q-tokens inner-tokens)
-        query                       (macroexpand-all `(expand-inner ~@inner-tokens))]
-    `(Q+ (expand-outer* ~outer-tokens
-                        (macrolet [(~'fl [f#] (let [[~'_ table# field#] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" (name f#))]
-                                                `(~'~'id ~(if table# table#
-                                                              ~(second (:source_table (:query query))))
-                                                         ~(keyword field#))))]
-                          ~(macroexpand-all query))))))
+        query                       (macroexpand-all `(Q:expand-inner ~@inner-tokens))]
+    `(Q:wrap-fallback-captures (Q:expand-outer* ~outer-tokens
+                                                (macrolet [(~'fl [f#] (let [[~'_ table# field#] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" (name f#))]
+                                                                        `(~'~'id ~(if table# table#
+                                                                                      ~(second (:source_table (:query query))))
+                                                                                 ~(keyword field#))))]
+                                                  ~(macroexpand-all query))))))
 
-(defmacro Q* [acc & [[clause & args] & more]]
+(defmacro Q:expand-clauses [acc & [[clause & args] & more]]
   (if-not clause acc
-          `(Q* ~(macroexpand-all `(~(symbol (format "metabase.test.util.mql/Q:%s" clause)) ~acc ~@args)) ~@more)))
+          `(Q:expand-clauses ~(macroexpand-all `(~(symbol (format "metabase.test.util.mql/Q:%s" clause)) ~acc ~@args)) ~@more)))
 
 
 ;; ## ag
