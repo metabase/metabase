@@ -89,6 +89,8 @@
 
   ISyncDriverFieldValues
   (field-values-lazy-seq [_ field]
+    {:pre [(map? field)
+           (delay? (:table field))]}
     (lazy-seq
      (let [table @(:table field)]
        (map (keyword (:name field))
@@ -96,6 +98,40 @@
               (mq/with-collection conn (:name table)
                 (mq/fields [(:name field)]))))))))
 
-(def ^:const driver
+(def driver
   "Concrete instance of the MongoDB driver."
   (MongoDriver.))
+
+
+
+;; ---------------------------------------- EXPLORATORY SUBFIELD STUFF ----------------------------------------
+
+(require '[metabase.test.data :as data]
+         '[metabase.test.data.datasets :as datasets]
+         '[metabase.test.data.dataset-definitions :as defs]
+         '[metabase.test.util.mql :refer [Q]])
+
+(defn- field-collect-subfields
+  "Fetch all the subfields for a FIELD's first 1000 values."
+  [field]
+  (->> (field-values-lazy-seq driver field)
+       (take 1000)
+       (filter map?)
+       (map keys)
+       (map set)
+       (reduce set/union #{})
+       doall))
+
+(defn x []
+  (Q run with db geographical-tips
+     with dataset mongo
+     ag rows
+     tbl tips
+     filter = ["." (id :tips :venue) "name"] "Kyle's Low-Carb Grill"
+     lim 10))
+
+(defn y []
+  (datasets/with-dataset :mongo
+    (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
+      (with-mongo-connection [_ db]
+        (field-collect-subfields &tips.venue)))))

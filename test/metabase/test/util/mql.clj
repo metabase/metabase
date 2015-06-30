@@ -72,15 +72,17 @@
      ~(macroexpand-all form)))
 
 (defmacro Q:field [f]
-  (let [f (name f)]
-    (if-let [[_ from to] (re-matches #"^(.*)->(.*)$" f)]
-      ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
-      (if-let [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
-        ["aggregation" (Integer/parseInt ag-field-index)]
-        (let [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)]
-          `(~'id ~(if table (keyword table)
-                      'table)
-                 ~(keyword field)))))))
+  (or (when (symbol? f)
+        (let [f (name f)]
+          (if-let [[_ from to] (re-matches #"^(.*)->(.*)$" f)]
+            ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
+            (if-let [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
+              ["aggregation" (Integer/parseInt ag-field-index)]
+              (when-let [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)]
+                `(~'id ~(if table (keyword table)
+                            'table)
+                       ~(keyword field)))))))
+      f))
 
 (defmacro Q [& tokens]
   (let [[outer-tokens inner-tokens] (split-with (complement (partial contains? inner-q-tokens)) tokens)
