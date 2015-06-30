@@ -152,9 +152,11 @@ export default React.createClass({
                 'ChartType--notSensible': !this.isSensibleChartDisplay(type)
             });
             var name = this.visualizationTypeNames[type] || type;
+            console.log(name);
+            var iconName = name.replace(/\s+/g, '').toLowerCase();
             return (
                 <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
-                    <Icon name="star" width="18px" height="18px"/>
+                    <Icon name={iconName} width="18px" height="18px"/>
                     <span className="ml1">{name}</span>
                 </li>
             );
