@@ -114,6 +114,8 @@ export default React.createClass({
                     placeholder="What data?"
                     items={this.state.availableAggregations}
                     display="name"
+                    descriptionKey="description"
+                    expandFilter={(item) => !item.advanced}
                     selectedValue={this.props.aggregation[0]}
                     selectedKey="short"
                     isInitiallyOpen={aggregationListOpen}

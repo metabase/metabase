@@ -129,24 +129,34 @@
     background-color: currentColor;
 }
 
-.SelectionItem .Icon-check {
-    opacity: 0;
-    color: #fff;
+.SelectionItem .Icon {
     margin-left: 0.5rem;
-    margin-right: 0.5rem;
+    margin-right: 0.75rem;
+    color: var(--brand-color);
 }
 
-.SelectionItem:hover .Icon-check {
+.SelectionItem .Icon-check {
+    opacity: 0;
+}
+
+.SelectionItem .Icon-chevrondown {
     opacity: 1;
+ }
+
+ .SelectionItem:hover .Icon {
+    color: #fff !important;
 }
 
 .SelectionItem:hover .SelectionModule-display {
     color: #fff;
 }
 
+.SelectionItem:hover .SelectionModule-description {
+    color: #fff;
+}
+
 .SelectionItem.SelectionItem--selected .Icon-check {
     opacity: 1;
-    color: var(--brand-color);
 }
 
 .SelectionModule.open .SelectionItems {
@@ -156,6 +166,12 @@
 
 .SelectionModule-display {
     color: currentColor;
+    margin-bottom: 0.5em;
+}
+
+.SelectionModule-description {
+    color: color(var(--base-grey) shade(40%));
+    font-size: 0.8rem;
 }
 
 .Visualization {
