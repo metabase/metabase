@@ -19,4 +19,5 @@
          :can_write    (delay (:is_superuser @*current-user*))))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
+  (println (format "DATABASE %d IS GOING TO BE DESTROYED..." id))
   (cascade-delete 'metabase.models.table/Table :db_id id))
