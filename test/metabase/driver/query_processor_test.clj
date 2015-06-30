@@ -9,6 +9,7 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*dataset*]])
+            [metabase.test.util.mql :refer [Q]]
             [metabase.util :as u]))
 
 
@@ -850,13 +851,13 @@
    [11 "Houston"]
    [11 "Irvine"]
    [11 "Lakeland"]]
-  (-> (query-with-temp-db defs/tupac-sightings
-        :source_table &sightings:id
-        :aggregation  ["count"]
-        :breakout     [["fk->" &sightings.city_id:id &cities.name:id]]
-        :order_by     [[["aggregation" 0] "descending"]]
-        :limit        10)
-      :data :rows))
+  (Q run with db tupac-sightings
+     return :data :rows
+     tbl sightings
+     ag count
+     breakout city_id->cities.name
+     order ag.0-
+     lim 10))
 
 
 ;; Number of Tupac sightings in the Expa office
