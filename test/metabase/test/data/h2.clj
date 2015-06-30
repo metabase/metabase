@@ -47,25 +47,14 @@
 
 ;; ## Implementation
 
-(defprotocol IH2DatasetFormat
-  (format-for-h2 [this]
-    "Format dataset definitions for H2, e.g. upcasing `Table` and `Field` names."))
-
-(extend-protocol IH2DatasetFormat
-  DatabaseDefinition
-  (format-for-h2 [this]
-    (update-in this [:table-definitions] (partial map format-for-h2)))
-
-  TableDefinition
-  (format-for-h2 [this]
-    (-> this
-        (update-in [:table-name] s/upper-case)
-        (update-in [:field-definitions] (partial map format-for-h2))))
-
-  FieldDefinition
-  (format-for-h2 [this]
-    (cond-> (update-in this [:field-name] s/upper-case)
-      (:pk this) (update-in [:pk] (comp s/upper-case name)))))
+(defn- format-for-h2 [obj]
+  (cond
+    (:database-name obj) (update-in obj [:table-definitions] (partial map format-for-h2))
+    (:table-name obj)    (-> obj
+                             (update-in [:table-name] s/upper-case)
+                             (update-in [:field-definitions] (partial map format-for-h2)))
+    (:field-name obj)    (cond-> (update-in obj [:field-name] s/upper-case)
+                           (:fk obj) (update-in [:fk] (comp s/upper-case name)))))
 
 
 ;; ## Public Concrete DatasetLoader instance
@@ -81,8 +70,8 @@
     (-> (k/create-entity (:table-name table-definition))
         (k/database (korma-connection-pool database-definition))))
 
-  (generic/pk-sql-type [_]
-    "BIGINT AUTO_INCREMENT")
+  (generic/pk-sql-type   [_] "BIGINT AUTO_INCREMENT")
+  (generic/pk-field-name [_] "ID")
 
   (generic/field-base-type->sql-type [_ field-type]
     (field-base-type->sql-type field-type)))

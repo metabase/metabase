@@ -57,8 +57,8 @@
                         (assoc :make-pool? false)
                         kdb/create-db))))
 
-  (generic/pk-sql-type [_]
-    "SERIAL")
+  (generic/pk-sql-type   [_] "SERIAL")
+  (generic/pk-field-name [_] "id")
 
   (generic/field-base-type->sql-type [_ field-type]
     (field-base-type->sql-type field-type)))

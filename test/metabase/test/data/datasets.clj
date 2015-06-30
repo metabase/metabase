@@ -51,26 +51,31 @@
   (load-data! [_]
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
+
   (dataset-loader [_]
     (mongo/dataset-loader))
+
   (db [_]
     @mongo-data/mongo-test-db)
+
   (table-name->table [_ table-name]
     (mongo-data/table-name->table table-name))
+
   (table-name->id [_ table-name]
     (mongo-data/table-name->id table-name))
+
   (field-name->id [_ table-name field-name]
     (mongo-data/field-name->id table-name (if (= field-name :id) :_id
                                               field-name)))
-  (fks-supported? [_]
-    false)
+  (fks-supported? [_] false)
+
   (format-name [_ table-or-field-name]
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
-  (id-field-type [_]
-    :IntegerField)
-  (timestamp-field-type [_]
-    :DateField))
+
+  (id-field-type [_] :IntegerField)
+
+  (timestamp-field-type [_] :DateField))
 
 
 ;; ## Generic SQL (H2)
@@ -79,21 +84,20 @@
 (def ^:private memoized-table-name->id
   (memoize
    (fn [db-id table-name]
-     (sel :one :id Table :name (s/upper-case (name table-name)), :db_id db-id))))
+     {:pre [(string? table-name)]}
+     (sel :one :id Table :name table-name, :db_id db-id))))
 
 (def ^:private memoized-field-name->id
   (memoize
    (fn [db-id table-name field-name]
-     (sel :one :id Field :name (s/upper-case (name field-name)), :table_id (memoized-table-name->id db-id table-name)))))
+     {:pre [(string? field-name)]}
+     (sel :one :id Field :name field-name, :table_id (memoized-table-name->id db-id table-name)))))
 
-(def ^:private generic-sql-db
-  (delay ))
 
-(deftype GenericSqlDriverData [dataset-loader-fn
-                               dbpromise]
+(deftype H2DriverData [dbpromise]
   IDataset
   (dataset-loader [_]
-    (dataset-loader-fn))
+    (h2/dataset-loader))
 
   (load-data! [this]
     (when-not (realized? dbpromise)
@@ -104,25 +108,52 @@
     (load-data! this))
 
   (table-name->id [this table-name]
-    (memoized-table-name->id (:id (db this)) table-name))
+    (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
 
   (table-name->table [this table-name]
-    (sel :one Table :id (table-name->id this table-name)))
+    (sel :one Table :id (table-name->id this (s/upper-case (name table-name)))))
 
   (field-name->id [this table-name field-name]
-    (memoized-field-name->id (:id (db this)) table-name field-name))
-
-  (fks-supported? [_]
-    true)
+    (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
 
   (format-name [_ table-or-field-name]
     (clojure.string/upper-case table-or-field-name))
 
-  (id-field-type [_]
-    :BigIntegerField)
+  (fks-supported?       [_] true)
+  (id-field-type        [_] :BigIntegerField)
+  (timestamp-field-type [_] :DateTimeField))
 
-  (timestamp-field-type [_]
-    :DateTimeField))
+
+;; ## Postgres
+
+(deftype PostgresDriverData [dbpromise]
+  IDataset
+  (dataset-loader [_]
+    (postgres/dataset-loader))
+
+  (load-data! [this]
+    (when-not (realized? dbpromise)
+      (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
+    @dbpromise)
+
+  (db [this]
+    (load-data! this))
+
+  (table-name->id [this table-name]
+    (memoized-table-name->id (:id (db this)) (name table-name)))
+
+  (table-name->table [this table-name]
+    (sel :one Table :id (table-name->id this (name table-name))))
+
+  (field-name->id [this table-name field-name]
+    (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))
+
+  (format-name [_ table-or-field-name]
+    table-or-field-name)
+
+  (fks-supported?       [_] true)
+  (id-field-type        [_] :IntegerField)
+  (timestamp-field-type [_] :DateTimeField))
 
 
 ;; # Concrete Instances
@@ -130,10 +161,9 @@
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
   {:mongo       (MongoDriverData.)
-   :generic-sql (GenericSqlDriverData. h2/dataset-loader (promise))
-
-   ;; TODO - make sure we have pg connection info
-   :postgres    (GenericSqlDriverData. postgres/dataset-loader (promise))})
+   :generic-sql (H2DriverData. (promise))
+   :postgres    (PostgresDriverData. (promise))})
+;; TODO - :generic-sql should be renamed H2
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."

@@ -18,6 +18,9 @@
   (pk-sql-type ^String [this]
     "SQL that should be used for creating the PK Table ID, e.g. `SERIAL` or `BIGINT AUTOINCREMENT`.")
 
+  (pk-field-name ^String [this]
+    "e.g. `id` or `ID`.")
+
   (field-base-type->sql-type ^String [this base-type]
     "Given a `Field.base_type`, return the SQL type we should use for that column when creating a DB."))
 
@@ -28,14 +31,16 @@
 
   ;; Now create the new table
   (execute-sql! dataset-loader database-definition
-    (format "CREATE TABLE \"%s\" (%s, \"ID\" %s, PRIMARY KEY (\"ID\"));"
+    (format "CREATE TABLE \"%s\" (%s, \"%s\" %s, PRIMARY KEY (\"%s\"));"
             table-name
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "\"%s\" %s" field-name (field-base-type->sql-type dataset-loader base-type))))
                  (interpose ", ")
                  (apply str))
-            (pk-sql-type dataset-loader))))
+            (pk-field-name dataset-loader)
+            (pk-sql-type dataset-loader)
+            (pk-field-name dataset-loader))))
 
 
 (defn drop-physical-table! [dataset-loader database-definition table-definition]
@@ -54,17 +59,17 @@
     (doseq [{dest-table-name :fk, field-name :field-name} field-definitions]
       (when dest-table-name
         (execute-sql! dataset-loader database-definition
-          (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
+          (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"%s\");"
                   table-name
-                  field-name dest-table-name
+                  field-name (name dest-table-name)
                   field-name
-                  (name dest-table-name)))))))
+                  (name dest-table-name)
+                  (pk-field-name dataset-loader)))))))
 
 
 (defn load-table-data! [dataset-loader database-definition table-definition]
   (let [rows              (:rows table-definition)
         fields-for-insert (map :field-name (:field-definitions table-definition))]
-    (println (korma-entity dataset-loader database-definition table-definition))
     (-> (korma-entity dataset-loader database-definition table-definition)
         (k/insert (k/values (->> (for [row rows]
                                    (for [v row]
