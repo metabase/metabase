@@ -198,6 +198,18 @@
          form))
    body))
 
+(defn with-temp-db* [loader ^DatabaseDefinition dbdef f]
+  (let [dbdef (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
+    (try
+      (remove-database! loader dbdef)
+      (let [db (-> (get-or-create-database! loader dbdef)
+                   -temp-db-add-getter-delay)]
+        (assert db)
+        (assert (exists? Database :id (:id db)))
+        (f db))
+      (finally
+        (remove-database! loader dbdef)))))
+
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
    the newly created `Database` bound to DB-BINDING.
@@ -217,15 +229,6 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
-  `(let [loader# ~dataset-loader
-         ;; Add :short-lived? to the database definition so dataset loaders can use different connection options if desired
-         dbdef# (map->DatabaseDefinition (assoc ~database-definition :short-lived? true))]
-     (try
-       (remove-database! loader# dbdef#)                              ; Remove DB if it already exists for some weird reason
-       (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
-                             -temp-db-add-getter-delay)]              ; Add the :table-name->table delay used by -temp-get
-         (assert ~db-binding)
-         (assert (exists? Database :id (:id ~db-binding)))
-         ~@(walk-expand-& db-binding body))                           ; expand $table and $table.field forms into -temp-get calls
-       (finally
-         (remove-database! loader# dbdef#)))))
+  `(with-temp-db* ~dataset-loader ~database-definition
+     (fn [~db-binding]
+       ~@(walk-expand-& db-binding body))))
