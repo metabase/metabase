@@ -148,20 +148,20 @@ export default React.createClass({
         var displayOptions = this.props.visualizationTypes.map((type, index) => {
             var classes = cx({
                 'p2': true,
-                'ChartType--selected': type === this.props.card.display,
-                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
                 'flex': true,
                 'align-center': true,
                 'cursor-pointer': true,
                 'bg-brand-hover': true,
                 'text-white-hover': true,
+                'ChartType--selected': type === this.props.card.display,
+                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
             });
             var name = this.visualizationTypeNames[type] || type;
             console.log(name);
             var iconName = name.replace(/\s+/g, '').toLowerCase();
             return (
                 <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
-                    <Icon name={iconName} width="18px" height="18px"/>
+                    <Icon name={iconName} width="24px" height="24px"/>
                     <span className="ml1">{name}</span>
                 </li>
             );
