@@ -241,8 +241,8 @@
         fields-ids       (when-not fields-is-implicit fields-ids)
         all-field-ids    (->> fields    ; Sort the Fields.
                               (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
-                                         [position ; [position special-type-group name]
-                                          (cond ; and Clojure will take care of the rest.
+                                         [position                                ; [position special-type-group name]
+                                          (cond                                   ; and Clojure will take care of the rest.
                                             (= special_type :id)   0
                                             (= special_type :name) 1
                                             :else                  2)

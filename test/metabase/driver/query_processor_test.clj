@@ -616,10 +616,17 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:h2 :postgres}
+(qp-expect-with-datasets #{:h2}
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[3.43467255295115]]}
+  {:source_table (id :venues)
+   :aggregation  ["stddev" (id :venues :latitude)]})
+
+(qp-expect-with-datasets #{:postgres}
+  {:columns ["stddev"]
+   :cols    [(aggregate-col :stddev (venues-col :latitude))]
+   :rows    [[3.4346725529512736]]}
   {:source_table (id :venues)
    :aggregation  ["stddev" (id :venues :latitude)]})
 
@@ -627,10 +634,8 @@
 (datasets/expect-with-dataset :mongo
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (driver/process-query {:database (db-id)
-                         :type :query
-                         :query {:source_table (id :venues)
-                                 :aggregation  ["stddev" (id :venues :latitude)]}}))
+  (Q run tbl venues
+     ag stddev latitude))
 
 
 ;;; ## order_by aggregate fields (SQL-only for the time being)
@@ -684,7 +689,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(qp-expect-with-datasets #{:h2 :postgres}
+(datasets/expect-with-dataset :h2
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 22]
@@ -693,13 +698,30 @@
              [4 53]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
-  {:source_table (id :venues)
-   :aggregation  ["avg" (id :venues :category_id)]
-   :breakout     [(id :venues :price)]
-   :order_by     [[["aggregation" 0] "ascending"]]})
+  (Q run return :data
+     tbl venues
+     ag avg category_id
+     breakout price
+     order ag.0+))
+
+;; Values are slightly different for Postgres
+(datasets/expect-with-dataset :postgres
+  {:rows [[3 22.0000000000000000M]
+          [2 28.2881355932203390M]
+          [1 32.8181818181818182M]
+          [4 53.5000000000000000M]]
+   :columns [(format-name "price")
+             "avg"]
+   :cols [(venues-col :price)
+          (aggregate-col :avg (venues-col :category_id))]}
+  (Q run return :data
+     tbl venues
+     ag avg category_id
+     breakout price
+     order ag.0+))
 
 ;;; ### order_by aggregate ["stddev" field-id]
-(qp-expect-with-datasets #{:h2 :postgres}
+(datasets/expect-with-dataset :h2
   {:columns [(format-name "price")
              "stddev"]
    :rows    [[3 26.19160170741759]
@@ -708,10 +730,26 @@
              [4 14.788509052639485]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  {:source_table (id :venues)
-   :aggregation  ["stddev" (id :venues :category_id)]
-   :breakout     [(id :venues :price)]
-   :order_by     [[["aggregation" 0] "descending"]]})
+  (Q run return :data
+     tbl venues
+     ag stddev category_id
+     breakout price
+     order ag.0-))
+
+(datasets/expect-with-dataset :postgres
+  {:columns [(format-name "price")
+             "stddev"]
+   :rows    [[3 26.1916017074175897M]
+             [1 24.1121118816651851M]
+             [2 21.4186921647952867M]
+             [4 14.7885090526394851M]]
+   :cols    [(venues-col :price)
+             (aggregate-col :stddev (venues-col :category_id))]}
+  (Q run return :data
+     tbl venues
+     ag stddev category_id
+     breakout price
+     order ag.0-))
 
 
 ;;; ### make sure that rows where preview_display = false don't get displayed
@@ -840,7 +878,8 @@
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field
 ;; (Note how the FK Field is returned in the results)
-(datasets/expect-with-datasets #{:h2 :postgres}
+;; TODO - this is broken for Postgres! Returns columns in the wrong order
+(datasets/expect-with-dataset :h2
   [[16 "Arlington"]
    [15 "Albany"]
    [14 "Portland"]
