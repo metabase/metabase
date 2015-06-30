@@ -149,7 +149,12 @@ export default React.createClass({
             var classes = cx({
                 'p2': true,
                 'ChartType--selected': type === this.props.card.display,
-                'ChartType--notSensible': !this.isSensibleChartDisplay(type)
+                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
+                'flex': true,
+                'align-center': true,
+                'cursor-pointer': true,
+                'bg-brand-hover': true,
+                'text-white-hover': true,
             });
             var name = this.visualizationTypeNames[type] || type;
             console.log(name);
@@ -162,8 +167,8 @@ export default React.createClass({
             );
         });
         return (
-            <span>
-                Showing
+            <span className="flex align-center">
+                Visualize as
                 <PopoverWithTrigger className="PopoverBody ChartType-popover"
                                     tetherOptions={tetherOptions}
                                     triggerElement={chartTypeButton}>
