@@ -141,10 +141,9 @@
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        [(datasets/when-testing-dataset :h2
-                                                           (db-id))
-                                                         (datasets/when-testing-dataset :mongo
-                                                           @mongo-test-data/mongo-test-db-id)]))])
+                                                        (for [dataset (datasets/all-valid-dataset-names)]
+                                                          (datasets/when-testing-dataset dataset
+                                                            (db-id)))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
