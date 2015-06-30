@@ -379,6 +379,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
                 }
                 var html = row(cols[0].name, d.data.key) + row(cols[1].name, valueFormatter(d.data.value));
                 if (card.display === 'pie') {
+                    // TODO: this is not the ideal way to calculate the percentage, but it works for now
                     html += row('percentage', valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%');
                 }
                 return html;
