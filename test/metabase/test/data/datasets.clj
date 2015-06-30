@@ -11,7 +11,8 @@
                              [table :refer [Table]])
             (metabase.test.data [data :as data]
                                 [h2 :as h2]
-                                [mongo :as mongo])
+                                [mongo :as mongo]
+                                [postgres :as postgres])
             [metabase.util :as u]))
 
 ;; # IDataset
@@ -88,10 +89,11 @@
 (def ^:private generic-sql-db
   (delay ))
 
-(deftype GenericSqlDriverData [dbpromise]
+(deftype GenericSqlDriverData [dataset-loader-fn
+                               dbpromise]
   IDataset
   (dataset-loader [_]
-    (h2/dataset-loader))
+    (dataset-loader-fn))
 
   (load-data! [this]
     (when-not (realized? dbpromise)
@@ -128,7 +130,10 @@
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
   {:mongo       (MongoDriverData.)
-   :generic-sql (GenericSqlDriverData. (promise))})
+   :generic-sql (GenericSqlDriverData. h2/dataset-loader (promise))
+
+   ;; TODO - make sure we have pg connection info
+   :postgres    (GenericSqlDriverData. postgres/dataset-loader (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."

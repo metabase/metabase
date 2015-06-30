@@ -100,7 +100,6 @@
     :connection-details->connection-spec          connection-details->connection-spec
     :database->connection-details                 database->connection-details
     :sql-string-length-fn                         :LENGTH
-    :timezone->set-timezone-sql                   nil
     :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
     :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
     :uncastify-timestamp-regex                    uncastify-timestamp-regex}))

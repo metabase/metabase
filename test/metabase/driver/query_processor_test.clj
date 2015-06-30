@@ -782,7 +782,7 @@
                             :query    ~query})))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets #{:generic-sql}
+(datasets/expect-with-datasets #{:generic-sql :postgres}
   9
   (->> (query-with-temp-db defs/sad-toucan-incidents
          :source_table &incidents:id
@@ -794,25 +794,42 @@
 
 
 ;;; Unix timestamp breakouts -- SQL only
-(datasets/expect-with-datasets #{:generic-sql}
-  [["2015-06-01" 6]
-   ["2015-06-02" 9]
-   ["2015-06-03" 5]
-   ["2015-06-04" 9]
-   ["2015-06-05" 8]
-   ["2015-06-06" 9]
-   ["2015-06-07" 8]
-   ["2015-06-08" 9]
-   ["2015-06-09" 7]
-   ["2015-06-10" 8]]
-  (->> (query-with-temp-db defs/sad-toucan-incidents
-         :source_table &incidents:id
-         :aggregation  ["count"]
-         :breakout     [&incidents.timestamp:id]
-         :limit        10)
-       :data :rows
-       (map (fn [[^java.util.Date date count]]
-              [(.toString date) (int count)]))))
+(let [do-query (fn [] (->> (query-with-temp-db defs/sad-toucan-incidents
+                             :source_table &incidents:id
+                             :aggregation  ["count"]
+                             :breakout     [&incidents.timestamp:id]
+                             :limit        10)
+                           :data :rows
+                           (map (fn [[^java.util.Date date count]]
+                                  [(.toString date) (int count)]))))]
+
+  (datasets/expect-with-dataset :generic-sql
+    [["2015-06-01" 6]
+     ["2015-06-02" 9]
+     ["2015-06-03" 5]
+     ["2015-06-04" 9]
+     ["2015-06-05" 8]
+     ["2015-06-06" 9]
+     ["2015-06-07" 8]
+     ["2015-06-08" 9]
+     ["2015-06-09" 7]
+     ["2015-06-10" 8]]
+    (do-query))
+
+  ;; postgres gives us *slightly* different answers because I think it's actually handling UNIX timezones properly (with timezone = UTC)
+  ;; as opposed to H2 which is giving us the wrong timezome. TODO - verify this
+  (datasets/expect-with-dataset :postgres
+    [["2015-06-01" 8]
+     ["2015-06-02" 9]
+     ["2015-06-03" 9]
+     ["2015-06-04" 4]
+     ["2015-06-05" 11]
+     ["2015-06-06" 8]
+     ["2015-06-07" 6]
+     ["2015-06-08" 10]
+     ["2015-06-09" 6]
+     ["2015-06-10" 10]]
+    (do-query)))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+

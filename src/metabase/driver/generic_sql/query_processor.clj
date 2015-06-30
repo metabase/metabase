@@ -38,25 +38,32 @@
   (binding [*query* query]
     (try
       ;; Process the expanded query and generate a korma form
-      (let [korma-form `(let [entity# (korma-entity ~database ~source-table)]
-                          (select entity# ~@(->> (map apply-form (:query query))
-                                                 (filter identity)
-                                                 (mapcat #(if (vector? %) % [%])))))]
+      (let [entity            (gensym "ENTITY_")
+            korma-select-form `(select ~entity ~@(->> (map apply-form (:query query))
+                                                      (filter identity)
+                                                      (mapcat #(if (vector? %) % [%]))))
+            set-timezone-sql  (when-let [timezone (:timezone (:details database))]
+                                (when-let [set-timezone-sql (:timezone->set-timezone-sql qp/*driver*)]
+                                  `(exec-raw ~(set-timezone-sql timezone))))
+            korma-form        `(let [~entity (korma-entity ~database ~source-table)]
+                                 ~(if set-timezone-sql `(korma.db/with-db (:db ~entity)
+                                                          (korma.db/transaction
+                                                           ~set-timezone-sql
+                                                           ~korma-select-form))
+                                      korma-select-form))]
 
         ;; Log generated korma form
         (when (config/config-bool :mb-db-logging)
           (log-korma-form korma-form))
 
-        ;; Now eval the korma form. Then annotate the results
-        ;; TODO - why does this happen within the individual drivers still? Annotate should be moved out
         (let [results (eval korma-form)]
           {:results      results
            :uncastify-fn uncastify}))
 
       (catch java.sql.SQLException e
-        (let [^String message (or (->> (.getMessage e)                            ; error message comes back like "Error message ... [status-code]" sometimes
+        (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes
                                        (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                       second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+                                       second) ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
                                   (.getMessage e))]
           (throw (Exception. message)))))))
 
