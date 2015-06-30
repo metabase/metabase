@@ -8,6 +8,7 @@
                       [db :as db]
                       [task :as task]
                       [util :as u])
+            (metabase.models [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]))
 
 (declare clear-test-db)
@@ -70,7 +71,12 @@
   []
   (doseq [dataset-name @datasets/test-dataset-names]
     (log/info (format "Loading test data: %s..." (name dataset-name)))
-    (datasets/load-data! (datasets/dataset-name->dataset dataset-name))))
+    (let [dataset (datasets/dataset-name->dataset dataset-name)]
+      (datasets/load-data! dataset)
+
+      ;; Check that dataset is loaded and working
+      (assert (db/sel :one Table :id (datasets/table-name->id dataset :venues))
+              (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
 
 (defn test-startup
   {:expectations-options :before-run}

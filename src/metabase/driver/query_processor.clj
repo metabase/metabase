@@ -241,8 +241,8 @@
         fields-ids       (when-not fields-is-implicit fields-ids)
         all-field-ids    (->> fields    ; Sort the Fields.
                               (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
-                                         [position ; [position special-type-group name]
-                                          (cond ; and Clojure will take care of the rest.
+                                         [position                                ; [position special-type-group name]
+                                          (cond                                   ; and Clojure will take care of the rest.
                                             (= special_type :id)   0
                                             (= special_type :name) 1
                                             :else                  2)
@@ -342,9 +342,11 @@
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}
                      ;; Otherwise something went wrong !
-                     :else                                   (throw (Exception. (format "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
-                                                                                        col-kw
-                                                                                        (u/pprint-to-str field-kw->field))))))))
+                     :else                                   (do (log/error (u/format-color 'red "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
+                                                                                            col-kw
+                                                                                            (u/pprint-to-str field-kw->field)))
+                                                                 {:base_type    :UnknownField
+                                                                  :special_type nil})))))
          ;; Add FK info the the resulting Fields
          add-fields-extra-info)))
 
