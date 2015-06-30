@@ -24,15 +24,15 @@ export default React.createClass({
     },
 
     visualizationTypeNames: {
-        'scalar': 'Number',
-        'table': 'Table',
-        'line': 'Line',
-        'bar': 'Bar',
-        'pie': 'Pie',
-        'area': 'Area',
-        'state': 'State map',
-        'country': 'Country map',
-        'pin_map': 'Pin map'
+        'scalar':  { displayName: 'Number',      iconName: 'number' },
+        'table':   { displayName: 'Table',       iconName: 'table' },
+        'line':    { displayName: 'Line',        iconName: 'line' },
+        'bar':     { displayName: 'Bar',         iconName: 'bar' },
+        'pie':     { displayName: 'Pie',         iconName: 'pie' },
+        'area':    { displayName: 'Area',        iconName: 'area' },
+        'state':   { displayName: 'State map',   iconName: 'statemap' },
+        'country': { displayName: 'Country map', iconName: 'countrymap' },
+        'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
     },
 
     getDefaultProps: function() {
@@ -135,12 +135,13 @@ export default React.createClass({
         var tetherOptions = {
             attachment: 'bottom center',
             targetAttachment: 'top center',
-            targetOffset: '-25px 0'
+            targetOffset: '-15px 0'
         };
+        var currentIconName = this.visualizationTypeNames[this.props.card.display].iconName;
         var chartTypeButton = (
                 <div className="inline-block">
                     <span className="ChartType-button text-brand text-brand-hover shadowed flex layout-centered">
-                        <Icon name="star" width="18px" height="18px"></Icon>
+                        <Icon name={currentIconName} width="30px" height="30px"></Icon>
                     </span>
                 </div>
         );
@@ -156,20 +157,19 @@ export default React.createClass({
                 'ChartType--selected': type === this.props.card.display,
                 'ChartType--notSensible': !this.isSensibleChartDisplay(type),
             });
-            var name = this.visualizationTypeNames[type] || type;
-            console.log(name);
-            var iconName = name.replace(/\s+/g, '').toLowerCase();
+            var displayName = this.visualizationTypeNames[type].displayName;
+            var iconName = this.visualizationTypeNames[type].iconName;
             return (
                 <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
                     <Icon name={iconName} width="24px" height="24px"/>
-                    <span className="ml1">{name}</span>
+                    <span className="ml1">{displayName}</span>
                 </li>
             );
         });
         return (
             <span className="flex align-center">
                 Visualize as
-                <PopoverWithTrigger className="PopoverBody ChartType-popover"
+                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow ChartType-popover"
                                     tetherOptions={tetherOptions}
                                     triggerElement={chartTypeButton}>
                     <ul className="">
