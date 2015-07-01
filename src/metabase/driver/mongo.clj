@@ -133,7 +133,7 @@
 (require '[metabase.test.data :as data]
          '[metabase.test.data.datasets :as datasets]
          '[metabase.test.data.dataset-definitions :as defs]
-         '[metabase.test.util.mql :refer [Q]])
+         '[metabase.test.util.mql :refer [Q R]])
 
 (defn x []
   (Q run with db geographical-tips

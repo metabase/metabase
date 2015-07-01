@@ -23,8 +23,8 @@
        (map seq)
        (filter identity)))
 
-(def ^:private ^:const outer-q-tokens '#{with run return})
-(def ^:private ^:const inner-q-tokens '#{ag breakout fields filter lim order page tbl})
+(def ^:private ^:const outer-q-tokens '#{against with run return using})
+(def ^:private ^:const inner-q-tokens '#{ag aggregate breakout fields filter lim limit order page of tbl})
 
 (defmacro Q:temp-get [& args]
   `(:id (data/-temp-get ~'db ~@(map name args))))
@@ -39,12 +39,18 @@
        (macrolet [(~'id [& args#] `(Q:temp-get ~@args#))]
          ~(macroexpand-all body)))))
 
+(defmacro Q:against [query arg]
+  `(Q:with-temp-db ~arg
+                   ~query))
+
+(defmacro Q:using [query arg]
+  `(datasets/with-dataset ~(keyword arg)
+     ~query))
+
 (defmacro Q:with [query arg & [arg2 :as more]]
   (case (keyword arg)
-    :db       `(Q:with-temp-db ~arg2
-                 ~query)
-    :dataset  `(datasets/with-dataset ~(keyword arg2)
-                 ~query)
+    :db       `(Q:against ~query ~arg2)
+    :dataset  `(Q:using ~query ~arg2)
     :datasets `(do ~@(for [dataset# more]
                        `(datasets/with-dataset ~(keyword dataset#)
                           ~query)))))
@@ -53,9 +59,11 @@
   `(-> ~q ~@args))
 
 (defmacro Q:expand-outer [token form]
-  (macroexpand-all `(symbol-macrolet [~'return Q:return
-                                      ~'run    driver/process-query
-                                      ~'with   Q:with]
+  (macroexpand-all `(symbol-macrolet [~'against Q:against
+                                      ~'return  Q:return
+                                      ~'run     driver/process-query
+                                      ~'using   Q:using
+                                      ~'with    Q:with]
                       (-> ~form ~token))))
 
 (defmacro Q:expand-outer* [[token & tokens] form]
@@ -112,6 +120,9 @@
                               ['sum id]      ["sum" `(~'fl ~id)]
                               ['cum-sum id]  ["cum_sum" `(~'fl ~id)])))
 
+(defmacro Q:aggregate [& args]
+  `(Q:ag ~@args))
+
 
 ;; ## breakout
 
@@ -160,6 +171,9 @@
 (defmacro Q:lim [query lim]
   (assoc query :limit lim))
 
+(defmacro Q:limit [& args]
+  `(Q:lim ~@args))
+
 ;; ## order
 (defmacro Q:order [query & fields]
   (assoc query :order_by (vec (for [field fields]
@@ -181,3 +195,6 @@
 
 (defmacro Q:tbl [query table]
   (assoc query :source_table `(~'id ~(keyword table))))
+
+(defmacro Q:of [query table]
+  `(Q:tbl ~query ~table))
