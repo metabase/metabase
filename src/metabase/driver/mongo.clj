@@ -140,12 +140,19 @@
      with dataset mongo
      ag rows
      tbl tips
-     filter = ["." (id :tips :venue) "name"] "Kyle's Low-Carb Grill"
+     filter = venue...name "Kyle's Low-Carb Grill"
      lim 10))
+
+(defn x2 []
+  (Q run against geographical-tips
+     using mongo
+     aggregate rows
+     of tips
+     filter = venue...name "Kyle's Low-Carb Grill"
+     limit 10))
 
 (defn y []
   (datasets/with-dataset :mongo
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
       (with-mongo-connection [_ db]
-        ;; 61 ms ???
         (active-subfield-names->type driver &tips.venue)))))

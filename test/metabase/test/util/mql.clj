@@ -5,7 +5,8 @@
             [clojure.walk :refer [macroexpand-all]]
             [metabase.driver :as driver]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util :as u]))
 
 (defn- partition-tokens [keywords tokens]
   (->> (loop [all [], current-split nil, [token & more] tokens]
@@ -74,14 +75,13 @@
 (defmacro Q:field [f]
   (or (when (symbol? f)
         (let [f (name f)]
-          (if-let [[_ from to] (re-matches #"^(.*)->(.*)$" f)]
-            ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
-            (if-let [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
-              ["aggregation" (Integer/parseInt ag-field-index)]
-              (when-let [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)]
-                `(~'id ~(if table (keyword table)
-                            'table)
-                       ~(keyword field)))))))
+          (u/cond-let
+           [[_ from to] (re-matches #"^(.+)->(.+)$" f)]                  ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
+           [[_ f sub] (re-matches #"^(.+)\.\.\.(.+)$" f)]                ["." `(Q:field ~(symbol f)) sub #_`(Q:field ~(symbol sub))]
+           [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]            ["aggregation" (Integer/parseInt ag-field-index)]
+           [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)] `(~'id ~(if table (keyword table)
+                                                                                     'table)
+                                                                                ~(keyword field)))))
       f))
 
 (defmacro Q [& tokens]
