@@ -34,19 +34,20 @@
 
 (def ^:const class->base-type
   "Map of classes returned from DB call to metabase.models.field/base-types"
-  {java.lang.Boolean            :BooleanField
-   java.lang.Double             :FloatField
-   java.lang.Float              :FloatField
-   java.lang.Integer            :IntegerField
-   java.lang.Long               :IntegerField
-   java.lang.String             :TextField
-   java.math.BigDecimal         :DecimalField
-   java.math.BigInteger         :BigIntegerField
-   java.sql.Date                :DateField
-   java.sql.Timestamp           :DateTimeField
-   java.util.Date               :DateField
-   java.util.UUID               :TextField
-   org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
+  {clojure.lang.PersistentArrayMap :DictionaryField ; are there other map types we need to account for ?
+   Boolean                         :BooleanField
+   Double                          :FloatField
+   Float                           :FloatField
+   Integer                         :IntegerField
+   Long                            :IntegerField
+   String                          :TextField
+   java.math.BigDecimal            :DecimalField
+   java.math.BigInteger            :BigIntegerField
+   java.sql.Date                   :DateField
+   java.sql.Timestamp              :DateTimeField
+   java.util.Date                  :DateField
+   java.util.UUID                  :TextField
+   org.postgresql.util.PGobject    :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
 
 ;; ## Driver Lookup
 

@@ -93,5 +93,8 @@
            (sort-by second)
            first
            first
+           ((fn [v]
+              (println (metabase.util/format-color 'green "TYPE: %s" v))
+              v))
            driver/class->base-type)
       :UnknownField))

@@ -78,12 +78,10 @@
 
   (active-column-names->type [_ table]
     (with-mongo-connection [_ @(:db table)]
-      (->> (table->column-names table)
-           (map (fn [column-name]
-                  {(name column-name)
-                   (field->base-type {:name (name column-name)
-                                      :table (delay table)})}))
-           (into {}))))
+      (into {} (for [column-name (table->column-names table)]
+                 {(name column-name)
+                  (field->base-type {:name  (name column-name)
+                                     :table (delay table)})}))))
 
   (table-pks [_ _]
     #{"_id"})
@@ -115,12 +113,12 @@
       ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
       (->> @field->type->count
            (m/map-vals (fn [type->count]
-                         (->> (seq type->count)                   ; convert to pairs of [type count]
-                              (sort-by second)                    ; source by count
-                              last                                ; take last item (highest count)
-                              first                               ; keep just the type
-                              (#(or (driver/class->base-type %)   ; convert to corresponding Field base_type if possible
-                                    :UnknownField)))))))))        ; fall back to :UnknownField for things like clojure.lang.PersistentVector
+                         (->> (seq type->count) ; convert to pairs of [type count]
+                              (sort-by second)  ; source by count
+                              last    ; take last item (highest count)
+                              first   ; keep just the type
+                              (#(or (driver/class->base-type %) ; convert to corresponding Field base_type if possible
+                                    :UnknownField))))))))) ; fall back to :UnknownField for things like clojure.lang.PersistentVector
 
 (def driver
   "Concrete instance of the MongoDB driver."
@@ -133,7 +131,7 @@
 (require '[metabase.test.data :as data]
          '[metabase.test.data.datasets :as datasets]
          '[metabase.test.data.dataset-definitions :as defs]
-         '[metabase.test.util.mql :refer [Q R]])
+         '[metabase.test.util.mql :refer [Q]])
 
 (defn x []
   (Q run with db geographical-tips
@@ -156,3 +154,18 @@
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
       (with-mongo-connection [_ db]
         (active-subfield-names->type driver &tips.venue)))))
+
+{:id        100
+ :name      "address"
+ :parent_id nil}
+
+{:parent_id    100
+ :name         "street"
+ :type         :CharField
+ :special_type :name}
+
+{:name    "Tempest"
+ :address {:street  "430 Natoma"
+           :city    "San Francisco"
+           :state   "CA"
+           :country "US"}}

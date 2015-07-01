@@ -58,6 +58,7 @@
     :DateField
     :DateTimeField
     :DecimalField
+    :DictionaryField
     :FloatField
     :IntegerField
     :TextField

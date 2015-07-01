@@ -246,6 +246,7 @@
   {:pre [driver
          field]}
   (log/debug (format "Syncing field '%s.%s'..." (:name @(:table field)) (:name field)))
+  (println (u/format-color 'red "FIELD TYPE: %s" field))
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
