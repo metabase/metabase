@@ -122,7 +122,7 @@ export default React.createClass({
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
                         <Icon name="check" width="12px" height="12px" />
-                        <div>
+                        <div className="flex-full">
                             <div className="SelectionModule-display">
                                 {display}
                             </div>
