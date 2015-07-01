@@ -879,7 +879,7 @@ export var CardRenderer = {
         // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
         if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
 
-        chart.barPadding(0.5); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
+        chart.barPadding(0.2); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
         chart.render();
 
         // apply any on-rendering functions
