@@ -111,17 +111,21 @@
     min-width: 320px;
 }
 
-.SelectionItems.open {
+.SelectionItems.SelectionItems--open {
     opacity: 1;
     transition: opacity .3s linear;
     pointer-events: all;
+}
+
+.SelectionItems.SelectionItems--expanded {
+    max-height: inherit;
 }
 
 .SelectionItem {
     display: flex;
     align-items: center;
     cursor: pointer;
-    padding: 0.75rem;
+    padding: 0.75rem 1.5rem 0.75rem 0.75rem;
     background-color: #fff;
 }
 
@@ -166,7 +170,7 @@
 
 .SelectionModule-display {
     color: currentColor;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.25em;
 }
 
 .SelectionModule-description {

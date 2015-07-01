@@ -198,7 +198,8 @@ export default React.createClass({
 
         var itemListClasses = cx({
             'SelectionItems': true,
-            'open' : this.state.open
+            'SelectionItems--open': this.state.open,
+            'SelectionItems--expanded': this.state.expanded
         });
 
         if(this._enableSearch()) {
