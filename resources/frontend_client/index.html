@@ -21,27 +21,26 @@
                     <a class="NavItem cursor-pointer text-white flex align-center" href="/">
                         <mb-logo-icon class="text-white"></mb-logo-icon>
                     </a>
-                    <div class="DashboardDropdown Dropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
+                    <div class="NavDropdown Dropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
                         <a class="NavItem text-white cursor-pointer p2 flex align-center" dropdown-toggle>
                             Dashboards
                             <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
                         </a>
                         <ul class="Dropdown-content" ng-controller="DashList">
-                            <li ng-repeat="dash in dashboards">
-                                <a class="Dropdown-item link flex align-center text-normal" href="/dash/{{dash.id}}">
-                                    {{dash.name}}
-                                    <mb-icon class="ml1 text-grey-4 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
+                            <li class="Dropdown-item" ng-repeat="dash in dashboards">
+                                <a class="text-white no-decoration" href="/dash/{{dash.id}}">
+                                    <div class="flex text-bold">
+                                        {{dash.name}}
+                                        <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
+                                    </div>
+                                    <div class="mt1 text-light text-brand-light">
+                                        {{dash.description}}
+                                    </div>
                                 </a>
                             </li>
                         </ul>
                     </div>
-                    <div class="UserDropdown Dropdown flex-align-right" dropdown on-toggle="toggled(open)">
-                        <mb-profile-link class="NavItem text-white" user="user" context="nav"></mb-profile-link>
-                        <ul class="Dropdown-content right">
-                            <li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>
-                            <li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>
-                        </ul>
-                    </div>
+                    <mb-profile-link class="text-white flex-align-right" user="user" context="nav"></mb-profile-link>
                     <a class="AdminLink NavItem hide sm-show sm-ml1 md-ml2" ng-if="user.is_superuser" href="/admin/">
                         <mb-icon class="text-white" name="gear" width="16px" height="16px"></mb-icon>
                     </a>

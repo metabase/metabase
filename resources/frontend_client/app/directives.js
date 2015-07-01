@@ -165,20 +165,19 @@ NavbarDirectives.directive('mbProfileLink', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template:  '<ul>' +
-                        '<li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
-                            '<a class="flex align-center" selectable-nav-item="settings" dropdown-toggle>' +
-                                '<span class="UserNick">' +
-                                    '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
-                                '</span>' +
-                                '<mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>' +
-                            '</a>' +
-                            '<ul class="Dropdown-content right">' +
-                                '<li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>' +
-                                '<li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>' +
-                            '</ul>' +
-                        '</li>' +
-                    '</ul>',
+        template:   '<div class="NavDropdown Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
+                        '<a class="NavItem flex align-center p2" selectable-nav-item="settings" dropdown-toggle>' +
+                            '<span class="UserNick">' +
+                                '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
+                            '</span>' +
+                            '<mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>' +
+                        '</a>' +
+                        '<ul class="Dropdown-content right">' +
+                            '<li class="Dropdown-item"><a class="text-white no-decoration" href="/user/edit_current">Account Settings</a></li>' +
+                            '<li class="Dropdown-item"><a class="text-white no-decoration" ng-if="user.is_superuser" href="/admin/">Admin Panel</a></li>' +
+                            '<li class="Dropdown-item border-top"><a class="text-white no-decoration" href="/auth/logout">Logout</a></li>' +
+                        '</ul>' +
+                    '</div>',
         scope: {
             context: '=',
             user: '='

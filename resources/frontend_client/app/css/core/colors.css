@@ -1,5 +1,6 @@
 :root {
   --brand-color: #509EE3;
+  --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
   --alt-bg-color: #F4F6F8;
@@ -27,6 +28,11 @@
 .text-brand-darken,
 .text-brand-darken-hover:hover {
     color: color(var(--brand-color) shade(20%));
+}
+
+.text-brand-light,
+.text-brand-light-hover:hover {
+    color: color(var(--brand-light-color)) !important;
 }
 
 .bg-brand,

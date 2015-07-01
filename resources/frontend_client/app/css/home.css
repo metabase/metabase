@@ -18,10 +18,6 @@
     }
 }
 
-.Greeting-subtitle {
-    opacity: 0.575;
-}
-
 /* on the homepage, the wrapper should only be as wide as our largest size */
 .Home .wrapper {
     max-width: var(--xl-width);
@@ -45,8 +41,42 @@
     transition: background .3s linear;
 }
 
-.DashboardDropdown .Dropdown-content {
+.NavDropdown.Dropdown .NavItem {
+    border: 1px solid transparent;
+}
+
+.NavDropdown.Dropdown.open .NavItem {
+    background-color: #6FB0EB;
+    position: relative;
+    z-index: 21;
+    border-top: 1px solid rgba(0,0,0,0.12);
+    border-left: 1px solid rgba(0,0,0,0.12);
+    border-right: 1px solid rgba(0,0,0,0.12);
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    background-clip: padding-box;
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+}
+
+.NavDropdown.Dropdown .Dropdown-content {
+    background-color: #6FB0EB;
+    border-top-left-radius: 0px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: 1px solid rgba(0,0,0,0.12);
+    overflow: hidden;
+}
+
+.NavDropdown.Dropdown.open .Dropdown-content
+{
+    transition: none;
     min-width: 20em;
+}
+
+.NavDropdown.Dropdown .Dropdown-item {
+  padding: 1rem;
+  border-color: rgba(255,255,255,0.2) !important;
 }
 
 .Entity-title {
