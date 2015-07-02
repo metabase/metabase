@@ -70,17 +70,17 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
     };
 
-    var processResize = function(event, $element, item){
+    function processResize(event, $element, item){
         $element.scope().$broadcast('cv-gridster-item-resized', $element);
         savePosition();
-    };
+    }
 
-    var savePosition = function() {
+    function savePosition() {
         Dashboard.reposition_cards({
             'dashId': $scope.dashboard.id,
             'cards': $scope.dashcards
         });
-    };
+    }
 
 
     $scope.toggleDashEditMode = function() {
