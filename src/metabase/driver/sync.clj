@@ -51,10 +51,10 @@
               (upd Table table-id :active false)
               (log/info (format "Marked table %s.%s as inactive." (:name database) table-name))
 
-              ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.) This can happen in the background
-              (future (k/update Field
-                                (k/where {:table_id table-id})
-                                (k/set-fields {:active false})))))
+              ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
+              (k/update Field
+                        (k/where {:table_id table-id})
+                        (k/set-fields {:active false}))))
 
           ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
           (log/debug "Creating new tables...")
@@ -142,7 +142,7 @@
   [table pk-fields]
   {:pre [(set? pk-fields)
          (every? string? pk-fields)]}
-  (doseq [{field-name :name field-id :id} (sel :many :fields [Field :name :id] :table_id (:id table) :special_type nil :name [in pk-fields])]
+  (doseq [{field-name :name field-id :id} (sel :many :fields [Field :name :id], :table_id (:id table), :special_type nil, :name [in pk-fields], :parent_id nil)]
     (log/info (format "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
     (upd Field field-id :special_type :id)))
 
@@ -153,7 +153,7 @@
     ;; Now do the syncing for Table's Fields
     (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type (active-column-names->type driver table)
-          field-name->id            (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
+          field-name->id            (sel :many :field->id [Field :name], :table_id (:id table), :active true, :parent_id nil)]
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
       (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
       (assert (every? (partial contains? field/base-types) (vals active-column-names->type)) "The vals of active-column-names->type should be valid Field base types.")
@@ -170,8 +170,8 @@
         (doseq [[active-field-name active-field-type] active-column-names->type]
           (when-not (contains? existing-field-names active-field-name)
             (ins Field
-              :table_id (:id table)
-              :name active-field-name
+              :table_id  (:id table)
+              :name      active-field-name
               :base_type active-field-type))))
 
       ;; Now mark PK fields as such if needed
@@ -203,12 +203,12 @@
                    (every? :dest-column-name fks))
               "table-fks should return a set of maps with keys :fk-column-name, :dest-table-name, and :dest-column-name.")
       (when (seq fks)
-        (let [fk-name->id    (sel :many :field->id [Field :name] :table_id (:id table), :special_type nil, :name [in (map :fk-column-name fks)])
-              table-name->id (sel :many :field->id [Table :name] :name [in (map :dest-table-name fks)])]
+        (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :special_type nil, :name [in (map :fk-column-name fks)], :parent_id nil)
+              table-name->id (sel :many :field->id [Table :name], :name [in (map :dest-table-name fks)], :parent_id nil)]
           (doseq [{:keys [fk-column-name dest-column-name dest-table-name] :as fk} fks]
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (table-name->id dest-table-name)]
-                (when-let [dest-column-id (sel :one :id Field :table_id dest-table-id :name dest-column-name)]
+                (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
                   (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
                   (ins ForeignKey
                     :origin_id fk-column-id
@@ -222,7 +222,7 @@
 (defn sync-table-fields-metadata!
   "Call `sync-field!` for every active Field for TABLE."
   [driver table]
-  (let [active-fields (->> (sel :many Field, :table_id (:id table), :active true)
+  (let [active-fields (->> (sel :many Field, :table_id (:id table), :active true, :parent_id nil)
                            (map #(assoc % :table (delay table))))] ; as above, replace the delay that comes back with one that reuses existing table obj
     (doseq [field active-fields]
       (u/try-apply sync-field! driver field))))
@@ -436,5 +436,19 @@
     (let [nested-field-name->type (active-nested-field-name->type driver field)]
       (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys nested-field-name->type)))
 
-      ;; fetch those existing nested fields
-      )))
+      ;; fetch existing nested fields
+      (let [existing-nested-field-name->id (sel :many :field->id [Field :name], :table_id (:table_id field), :active true, :parent_id (:id field))]
+
+        ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
+        (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
+          (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
+            (upd Field nested-field-id :active false)))
+
+        ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
+        (doseq [[nested-field-name nested-field-type] nested-field-name->type]
+          (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
+            (log/info (u/format-color 'blue "Found new nested field: %s.%s.%s" (:name @(:table field)) (:name field) (name nested-field-name)))
+            (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
+              ;; Now recursively sync this nested Field (TODO)
+              ;; (sync-field! driver nested-field)
+              )))))))

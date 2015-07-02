@@ -121,6 +121,7 @@
     (future (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type :field_type] :id id)))))
 
 (defmethod pre-cascade-delete Field [_ {:keys [id]}]
+  (cascade-delete Field :parent_id id)
   (cascade-delete ForeignKey (where (or (= :origin_id id)
                                         (= :destination_id id))))
   (cascade-delete 'metabase.models.field-values/FieldValues :field_id id))

@@ -154,7 +154,6 @@
 
 ;; TODO
 ;; 1. Sync
-;;    1A. Create new Field objects for each Nested Field during Sync
 ;;    1B. Recursively call sync-field! for each nested field
 ;; 2. QX
 ;;    2A. Recursively resolve nested fields
