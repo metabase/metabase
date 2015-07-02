@@ -97,8 +97,8 @@
               (mq/with-collection conn (:name table)
                 (mq/fields [(:name field)])))))))
 
-  ISyncDriverFieldSubFields
-  (active-subfield-names->type [this field]
+  ISyncDriverFieldNestedFields
+  (active-nested-field-name->type [this field]
     ;; Build a map of nested-field-key -> type -> count
     ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
     (let [field->type->count (atom {})]
@@ -150,7 +150,7 @@
   (datasets/with-dataset :mongo
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
       (with-mongo-connection [_ db]
-        (active-subfield-names->type driver &tips.venue)))))
+        (active-nested-field-name->type driver &tips.venue)))))
 
 ;; TODO
 ;; 1. Sync

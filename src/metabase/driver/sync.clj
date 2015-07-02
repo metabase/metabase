@@ -24,7 +24,7 @@
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
-         sync-field-subfields!
+         sync-field-nested-fields!
          update-table-row-count!)
 
 ;; ## sync-database! and sync-table!
@@ -252,7 +252,7 @@
                  mark-category-field!
                  (mark-no-preview-display-field! driver)
                  auto-assign-field-special-type-by-name!
-                 (sync-field-subfields! driver)))
+                 (sync-field-nested-fields! driver)))
 
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
@@ -429,9 +429,12 @@
       (assoc field :special_type special-type))))
 
 
-(defn- sync-field-subfields! [driver field]
+(defn- sync-field-nested-fields! [driver field]
   (when (and (= (:base_type field) :DictionaryField)
              (supports? driver :nested-fields)              ; if one of these is true
-             (satisfies? ISyncDriverFieldSubFields driver)) ; the other should be :wink:
-    (let [subfield-name->type (active-subfield-names->type driver field)]
-      (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys subfield-name->type))))))
+             (satisfies? ISyncDriverFieldNestedFields driver)) ; the other should be :wink:
+    (let [nested-field-name->type (active-nested-field-name->type driver field)]
+      (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys nested-field-name->type)))
+
+      ;; fetch those existing nested fields
+      )))

@@ -70,10 +70,10 @@
      *  dest-column-name"))
 
 
-(defprotocol ISyncDriverFieldSubFields
+(defprotocol ISyncDriverFieldNestedFields
   "Optional protocol that should provide information about the subfields of a FIELD when applicable.
    Drivers that declare support for `:nested-fields` should implement this protocol."
-  (active-subfield-names->type [this field]
+  (active-nested-field-name->type [this field]
     "Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`."))
 
 
