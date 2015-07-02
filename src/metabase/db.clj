@@ -392,9 +392,9 @@
                                                             (default-fields entity#)))]
        (when (and (config/config-bool :mb-db-logging)
                   (not *sel-disable-logging*))
-         (log/debug "DB CALL : " (:name entity#) " " (or (:fields entity-select-form#) "*")
-                    ~(apply str (for [[form & args] forms]
-                                  (apply str " " (name form) " " (interpose " " args))))))
+         (log/debug "DB CALL:" (:name entity#) (or (:fields entity-select-form#) "*")
+                    ~(apply str (interpose " " (for [[form & args] forms]
+                                                 (apply str (name form) " " (interpose " " args)))))))
        (-sel-after entity# (select entity-select-form# ~@forms)))))
 
 
