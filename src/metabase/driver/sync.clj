@@ -222,10 +222,11 @@
 (defn sync-table-fields-metadata!
   "Call `sync-field!` for every active Field for TABLE."
   [driver table]
-  (let [active-fields (->> (sel :many Field, :table_id (:id table), :active true, :parent_id nil)
-                           (map #(assoc % :table (delay table))))] ; as above, replace the delay that comes back with one that reuses existing table obj
+  {:pre [(map? table)]}
+  (let [active-fields (sel :many Field, :table_id (:id table), :active true, :parent_id nil)]
     (doseq [field active-fields]
-      (u/try-apply sync-field! driver field))))
+      ;; replace the normal delay for the Field with one that just returns the existing Table so we don't need to re-fetch
+      (u/try-apply sync-field! driver (assoc field :table (delay table))))))
 
 
 ;; ## sync-field
@@ -246,7 +247,7 @@
   [driver field]
   {:pre [driver
          field]}
-  (log/debug (format "Syncing field '%s.%s'..." (:name @(:table field)) (:name field)))
+  (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
@@ -453,4 +454,5 @@
             (log/info (u/format-color 'blue "Found new nested field: %s.%s.%s" (:name @(:table field)) (:name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
               ;; Now recursively sync this nested Field
-              (sync-field! driver nested-field))))))))
+              ;; Replace parent so deref doesn't need to do a DB call
+              (sync-field! driver (assoc nested-field :parent (delay field))))))))))
