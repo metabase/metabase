@@ -9,10 +9,10 @@
     </a>
     <div class="NavDropdown-content right">
         <ul class="NavDropdown-content-layer">
-            <li class="Dropdown-item"><a class="text-white no-decoration" href="/user/edit_current">Account Settings</a></li>
-            <li class="Dropdown-item" ng-if="user.is_superuser &amp;&amp; context !== 'admin'"><a class="text-white no-decoration" href="/admin/">Admin Panel</a></li>
-            <li class="Dropdown-item" ng-if="user.is_superuser &amp;&amp; context === 'admin'"><a class="text-white no-decoration" href="/">Exit Admin</a></li>
-            <li class="Dropdown-item border-top"><a class="text-white no-decoration" href="/auth/logout">Logout</a></li>
+            <li><a class="Dropdown-item block text-white no-decoration" href="/user/edit_current">Account Settings</a></li>
+            <li ng-if="user.is_superuser &amp;&amp; context !== 'admin'"><a class="Dropdown-item block text-white no-decoration" href="/admin/">Admin Panel</a></li>
+            <li ng-if="user.is_superuser &amp;&amp; context === 'admin'"><a class="Dropdown-item block text-white no-decoration" href="/">Exit Admin</a></li>
+            <li class="border-top"><a class="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a></li>
         </ul>
     </div>
 </div>
