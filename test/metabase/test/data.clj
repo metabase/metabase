@@ -151,7 +151,7 @@
 (defn- table-id->field-name->field
   "Return a map of lowercased `Field` names -> fields for `Table` with TABLE-ID."
   [table-id]
-  (->> (sel :many :field->obj [Field :name] :table_id table-id)
+  (->> (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil)
        (m/map-keys s/lower-case)))
 
 (defn- db-id->table-name->table
@@ -178,7 +178,10 @@
    (@(:table-name->table temp-db) table-name))
   ([temp-db table-name field-name]
    {:pre [(string? field-name)]}
-   (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
+   (@(:field-name->field (-temp-get temp-db table-name)) field-name))
+  ([temp-db table-name parent-field-name & nested-field-names]
+   {:pre [(string? (last nested-field-names))]}
+   (sel :one :id Field, :name (last nested-field-names), :parent_id (:id (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))))))
 
 (defn- walk-expand-&
   "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.

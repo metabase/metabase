@@ -211,9 +211,9 @@
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
                   (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
                   (ins ForeignKey
-                    :origin_id fk-column-id
+                    :origin_id      fk-column-id
                     :destination_id dest-column-id
-                    :relationship (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
+                    :relationship   (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
@@ -267,8 +267,9 @@
 (defn percent-valid-urls
   "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
   [vs]
-  (loop [valid-count 0 non-nil-count 0 [v & more :as vs] vs]
-    (cond (not (seq vs)) (float (/ valid-count non-nil-count))
+  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
+    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
+                             (float (/ valid-count non-nil-count)))
           (nil? v)       (recur valid-count non-nil-count more)
           :else          (let [valid? (and (string? v)
                                            (u/is-url? v))]
@@ -363,60 +364,62 @@
         float       #{:DecimalField :FloatField}
         int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
         text        #{:CharField :TextField}
-        ;; tuples of [pattern set-of-valid-base-types special-type]
+        ;; tuples of [pattern set-of-valid-base-types special-type [& top-level-only?]
         ;; * Convert field name to lowercase before matching against a pattern
         ;; * consider a nil set-of-valid-base-types to mean "match any base type"
-        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
-                                         [#"^.*_lon$"       float       :longitude]
-                                         [#"^.*_lng$"       float       :longitude]
-                                         [#"^.*_long$"      float       :longitude]
-                                         [#"^.*_longitude$" float       :longitude]
-                                         [#"^.*_rating$"    int-or-text :category]
-                                         [#"^.*_type$"      int-or-text :category]
-                                         [#"^.*_url$"       text        :url]
-                                         [#"^_latitude$"    float       :latitude]
-                                         [#"^active$"       bool-or-int :category]
-                                         [#"^city$"         text        :city]
-                                         [#"^country$"      text        :country]
-                                         [#"^countrycode$"  text        :country]
-                                         [#"^currency$"     int-or-text :category]
-                                         [#"^first_name$"   text        :name]
-                                         [#"^full_name$"    text        :name]
-                                         [#"^gender$"       int-or-text :category]
-                                         [#"^id$"           nil         :id]
-                                         [#"^last_name$"    text        :name]
-                                         [#"^lat$"          float       :latitude]
-                                         [#"^latitude$"     float       :latitude]
-                                         [#"^lon$"          float       :longitude]
-                                         [#"^lng$"          float       :longitude]
-                                         [#"^long$"         float       :longitude]
-                                         [#"^longitude$"    float       :longitude]
-                                         [#"^name$"         text        :name]
-                                         [#"^postalCode$"   int-or-text :zip_code]
-                                         [#"^postal_code$"  int-or-text :zip_code]
-                                         [#"^rating$"       int-or-text :category]
-                                         [#"^role$"         int-or-text :category]
-                                         [#"^sex$"          int-or-text :category]
-                                         [#"^state$"        text        :state]
-                                         [#"^status$"       int-or-text :category]
-                                         [#"^type$"         int-or-text :category]
-                                         [#"^url$"          text        :url]
-                                         [#"^zip_code$"     int-or-text :zip_code]
-                                         [#"^zipcode$"      int-or-text :zip_code]]]
+        pattern+base-types+special-type+top-level-only? [[#"^.*_lat$"       float       :latitude]
+                                                         [#"^.*_lon$"       float       :longitude]
+                                                         [#"^.*_lng$"       float       :longitude]
+                                                         [#"^.*_long$"      float       :longitude]
+                                                         [#"^.*_longitude$" float       :longitude]
+                                                         [#"^.*_rating$"    int-or-text :category]
+                                                         [#"^.*_type$"      int-or-text :category]
+                                                         [#"^.*_url$"       text        :url]
+                                                         [#"^_latitude$"    float       :latitude]
+                                                         [#"^active$"       bool-or-int :category]
+                                                         [#"^city$"         text        :city]
+                                                         [#"^country$"      text        :country]
+                                                         [#"^countrycode$"  text        :country]
+                                                         [#"^currency$"     int-or-text :category]
+                                                         [#"^first_name$"   text        :name]
+                                                         [#"^full_name$"    text        :name]
+                                                         [#"^gender$"       int-or-text :category]
+                                                         [#"^id$"           nil         :id         :top-level-only]
+                                                         [#"^last_name$"    text        :name]
+                                                         [#"^lat$"          float       :latitude]
+                                                         [#"^latitude$"     float       :latitude]
+                                                         [#"^lon$"          float       :longitude]
+                                                         [#"^lng$"          float       :longitude]
+                                                         [#"^long$"         float       :longitude]
+                                                         [#"^longitude$"    float       :longitude]
+                                                         [#"^name$"         text        :name]
+                                                         [#"^postalCode$"   int-or-text :zip_code]
+                                                         [#"^postal_code$"  int-or-text :zip_code]
+                                                         [#"^rating$"       int-or-text :category]
+                                                         [#"^role$"         int-or-text :category]
+                                                         [#"^sex$"          int-or-text :category]
+                                                         [#"^state$"        text        :state]
+                                                         [#"^status$"       int-or-text :category]
+                                                         [#"^type$"         int-or-text :category]
+                                                         [#"^url$"          text        :url]
+                                                         [#"^zip_code$"     int-or-text :zip_code]
+                                                         [#"^zipcode$"      int-or-text :zip_code]]]
     ;; Check that all the pattern tuples are valid
-    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type+top-level-only?]
       (assert (= (type name-pattern) java.util.regex.Pattern))
       (assert (every? (partial contains? field/base-types) base-types))
       (assert (contains? field/special-types special-type)))
 
-    (fn [{base-type :base_type, field-name :name}]
+    (fn [{base-type :base_type, field-name :name, :as field}]
       {:pre [(string? field-name)
              (keyword? base-type)]}
-      (m/find-first (fn [[name-pattern valid-base-types _]]
-                      (and (or (nil? valid-base-types)
-                               (contains? valid-base-types base-type))
-                           (re-matches name-pattern (s/lower-case field-name))))
-                    pattern+base-types+special-type))))
+      (or (m/find-first (fn [[name-pattern valid-base-types _ top-level-only?]]
+                          (and (or (nil? valid-base-types)
+                                   (contains? valid-base-types base-type))
+                               (re-matches name-pattern (s/lower-case field-name))
+                               (if top-level-only? (nil? (:parent_id field))
+                                   true)))
+                        pattern+base-types+special-type+top-level-only?)))))
 
 (defn- auto-assign-field-special-type-by-name!
   "If FIELD doesn't have a special type, but has a name that matches a known pattern like `latitude`, mark it as having the specified special type."
@@ -449,6 +452,5 @@
           (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
             (log/info (u/format-color 'blue "Found new nested field: %s.%s.%s" (:name @(:table field)) (:name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
-              ;; Now recursively sync this nested Field (TODO)
-              ;; (sync-field! driver nested-field)
-              )))))))
+              ;; Now recursively sync this nested Field
+              (sync-field! driver nested-field))))))))

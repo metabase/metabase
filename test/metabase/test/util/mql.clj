@@ -85,7 +85,7 @@
         (let [f (name f)]
           (u/cond-let
            [[_ from to] (re-matches #"^(.+)->(.+)$" f)]                  ["fk->" `(Q:field ~(symbol from)) `(Q:field ~(symbol to))]
-           [[_ f sub] (re-matches #"^(.+)\.\.\.(.+)$" f)]                ["." `(Q:field ~(symbol f)) sub #_`(Q:field ~(symbol sub))]
+           [[_ f sub] (re-matches #"^(.+)\.\.\.(.+)$" f)]                `(~@(macroexpand-1 `(Q:field ~(symbol f))) ~(keyword sub))
            [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]            ["aggregation" (Integer/parseInt ag-field-index)]
            [[_ table field] (re-matches #"^(?:([^\.]+)\.)?([^\.]+)$" f)] `(~'id ~(if table (keyword table)
                                                                                      'table)

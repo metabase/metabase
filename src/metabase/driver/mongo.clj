@@ -153,8 +153,6 @@
         (active-nested-field-name->type driver &tips.venue)))))
 
 ;; TODO
-;; 1. Sync
-;;    1B. Recursively call sync-field! for each nested field
 ;; 2. QX
 ;;    2A. Recursively resolve nested fields
 ;;    2B. Add qualified-path-components fieldd to nested fields
