@@ -24,7 +24,7 @@
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
-         update-field-subfields!
+         sync-field-subfields!
          update-table-row-count!)
 
 ;; ## sync-database! and sync-table!
@@ -152,7 +152,7 @@
     ;; Now do the syncing for Table's Fields
     (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type (active-column-names->type driver table)
-          field-name->id (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
+          field-name->id            (sel :many :field->id [Field :name] :table_id (:id table) :active true)]
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
       (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
       (assert (every? (partial contains? field/base-types) (vals active-column-names->type)) "The vals of active-column-names->type should be valid Field base types.")
@@ -246,13 +246,12 @@
   {:pre [driver
          field]}
   (log/debug (format "Syncing field '%s.%s'..." (:name @(:table field)) (:name field)))
-  (println (u/format-color 'red "FIELD TYPE: %s" field))
   (sync-field->> field
                  (mark-url-field! driver)
                  mark-category-field!
                  (mark-no-preview-display-field! driver)
                  auto-assign-field-special-type-by-name!
-                 (update-field-subfields! driver)))
+                 (sync-field-subfields! driver)))
 
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
@@ -429,9 +428,9 @@
       (assoc field :special_type special-type))))
 
 
-(defn- update-field-subfields! [driver field]
-  (when (and (= (:base_type field) :UnknownField)
+(defn- sync-field-subfields! [driver field]
+  (when (and (= (:base_type field) :DictionaryField)
              (supports? driver :nested-fields)              ; if one of these is true
              (satisfies? ISyncDriverFieldSubFields driver)) ; the other should be :wink:
     (let [subfield-name->type (active-subfield-names->type driver field)]
-      (log/info "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys subfield-name->type)))))
+      (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys subfield-name->type))))))

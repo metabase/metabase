@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [find sort])
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [colorize.core :as color]
             (monger [collection :as mc]
                     [core :as mg]
@@ -38,9 +39,10 @@
       (case (keyword query-type)
         :query (let [generated-query (process-structured (:query query))]
                  (when-not qp/*disable-qp-logging*
-                   (log/debug (color/magenta "\n\n******************** Generated Monger Query: ********************\n"
-                                             (u/pprint-to-str generated-query)
-                                             "\n*****************************************************************\n")))
+                   (log/debug (u/format-color 'green "\nMONGER FORM:\n\n%s\n"
+                                              (->> generated-query
+                                                   (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
+                                                   u/pprint-to-str) "\n")))                              ; so it's easier to read
                  {:results (eval generated-query)})
         :native (let [results (eval-raw-command (:query (:native query)))]
                   {:results (if (sequential? results) results

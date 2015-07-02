@@ -99,11 +99,8 @@
 
   ISyncDriverFieldSubFields
   (active-subfield-names->type [this field]
-    ;; shared part of driver should be enforcing this actually !
-    (assert (= (:base_type field) :UnknownField))
     ;; Build a map of nested-field-key -> type -> count
-    ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); this takes ~50ms for a smallish Field in the Geographic Tips dataset;
-    ;; if I run out of important things to do re-write this recursively or with transient collections
+    ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
     (let [field->type->count (atom {})]
       ;; Look at the first 1000 values
       (doseq [val (take 1000 (field-values-lazy-seq this field))]
@@ -155,17 +152,15 @@
       (with-mongo-connection [_ db]
         (active-subfield-names->type driver &tips.venue)))))
 
-{:id        100
- :name      "address"
- :parent_id nil}
-
-{:parent_id    100
- :name         "street"
- :type         :CharField
- :special_type :name}
-
-{:name    "Tempest"
- :address {:street  "430 Natoma"
-           :city    "San Francisco"
-           :state   "CA"
-           :country "US"}}
+;; TODO
+;; 1. Sync
+;;    1A. Create new Field objects for each Nested Field during Sync
+;;    1B. Recursively call sync-field! for each nested field
+;; 2. QX
+;;    2A. Recursively resolve nested fields
+;;    2B. Add qualified-path-components fieldd to nested fields
+;; 3. Mongo
+;;    3A. Mongo QP handle nested Fields appropriately
+;; 4. API
+;;    4A. API Tweaks as Needed
+;; 5. Cleanup + Tests
