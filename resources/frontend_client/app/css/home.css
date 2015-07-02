@@ -41,42 +41,75 @@
     transition: background .3s linear;
 }
 
-.NavDropdown.Dropdown .NavItem {
-    border: 1px solid transparent;
-}
-
-.NavDropdown.Dropdown.open .NavItem {
-    background-color: #6FB0EB;
+.NavDropdown {
     position: relative;
-    z-index: 21;
-    border-top: 1px solid rgba(0,0,0,0.12);
-    border-left: 1px solid rgba(0,0,0,0.12);
-    border-right: 1px solid rgba(0,0,0,0.12);
-    border-bottom-left-radius: 0px;
-    border-bottom-right-radius: 0px;
+}
+.NavDropdown.open {
+    z-index: 100;
+}
+.NavDropdown .NavDropdown-content {
+    display: none;
+}
+.NavDropdown.open .NavDropdown-content {
+    display: inherit;
+}
+.NavDropdown .NavDropdown-button {
+    position: relative;
+    border-radius: 8px;
+}
+.NavDropdown .NavDropdown-content {
+    position: absolute;
+    /*margin-top: -15px;*/
+    border-radius: 4px;
+    top: 38px;
+    min-width: 200px;
+}
+.NavDropdown .NavDropdown-button:before,
+.NavDropdown .NavDropdown-content:before {
+    content:"";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, .12);
     background-clip: padding-box;
-    padding-bottom: 7px;
-    margin-bottom: 9px;
 }
 
-.NavDropdown.Dropdown .Dropdown-content {
-    background-color: #6FB0EB;
-    border-top-left-radius: 0px;
-    padding-top: 0;
-    padding-bottom: 0;
-    border: 1px solid rgba(0,0,0,0.12);
+.NavDropdown .NavDropdown-content:before {
+    z-index: -2;
+    border-radius: 4px;
+}
+.NavDropdown .NavDropdown-button:before {
+    z-index: -1;
+    border-radius: 8px;
+}
+.NavDropdown .NavDropdown-content-layer {
+    position: relative;
+    z-index: 1;
     overflow: hidden;
 }
-
-.NavDropdown.Dropdown.open .Dropdown-content
-{
-    transition: none;
-    min-width: 20em;
+.NavDropdown .NavDropdown-button-layer {
+    position: relative;
+    z-index: 2;
 }
 
-.NavDropdown.Dropdown .Dropdown-item {
-  padding: 1rem;
-  border-color: rgba(255,255,255,0.2) !important;
+.NavDropdown.open .NavDropdown-button,
+.NavDropdown .NavDropdown-content-layer {
+    background-color: #6FB0EB;
+}
+
+.NavDropdown .NavDropdown-content-layer {
+    padding-top: 10px;
+    border-radius: 4px;
+}
+
+.NavDropdown .DashboardList {
+    min-width: 332px;
+}
+
+.NavDropdown .Dropdown-item {
+    border-color: rgba(255,255,255,0.2);
 }
 
 .Entity-title {

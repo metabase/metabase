@@ -1,0 +1,18 @@
+<div class="NavDropdown inline-block" dropdown on-toggle="toggled(open)">
+    <a class="NavDropdown-button NavItem flex align-center p2" selectable-nav-item="settings" dropdown-toggle>
+        <div class="NavDropdown-button-layer">
+            <span class="UserNick">
+                <span class="UserInitials NavItem-text">{{initials}}</span>
+            </span>
+            <!-- <mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon> -->
+        </div>
+    </a>
+    <div class="NavDropdown-content right">
+        <ul class="NavDropdown-content-layer">
+            <li class="Dropdown-item"><a class="text-white no-decoration" href="/user/edit_current">Account Settings</a></li>
+            <li class="Dropdown-item" ng-if="user.is_superuser &amp;&amp; context !== 'admin'"><a class="text-white no-decoration" href="/admin/">Admin Panel</a></li>
+            <li class="Dropdown-item" ng-if="user.is_superuser &amp;&amp; context === 'admin'"><a class="text-white no-decoration" href="/">Exit Admin</a></li>
+            <li class="Dropdown-item border-top"><a class="text-white no-decoration" href="/auth/logout">Logout</a></li>
+        </ul>
+    </div>
+</div>
