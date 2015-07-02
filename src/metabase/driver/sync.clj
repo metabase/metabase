@@ -32,7 +32,8 @@
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields."
   [driver database]
-  (binding [qp/*disable-qp-logging* true]
+  (binding [qp/*disable-qp-logging* true
+            *sel-disable-logging* true]
     (sync-in-context driver database
       (fn []
         (log/info (u/format-color 'blue "Syncing %s database %s..." (name (:engine database)) (:name database)))

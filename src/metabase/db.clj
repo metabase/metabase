@@ -369,27 +369,33 @@
         :fields `(let [[~'_ & fields# :as entity#] ~entity]
                    (map #(select-keys % fields#)
                         (sel :many entity# ~@forms)))
-        nil     `(-sel-select ~entity ~@forms)))))
+        nil     `(-sel ~entity ~@forms)))))
 
-(defmacro -sel-select
+(def ^:dynamic *sel-disable-logging* false)
+
+(defn -sel-maybe-log [entity fields forms-str]
+  )
+
+(defn -sel-after [entity results]
+  (map (comp (partial apply-type-fns :out (seq (::types entity)))
+             (partial post-select entity))
+       results))
+
+(defmacro -sel
   "Internal macro used by `sel` (don't call this directly).
    Generates the korma `select` form."
   [entity & forms]
-  (let [forms (sel-apply-kwargs forms)]                                          ; convert kwargs like `:id 1` to korma `where` clause
-    `(let [[entity# field-keys#] (destructure-entity ~entity)                    ; pull out field-keys if passed entity vector like `[entity & field-keys]`
-           entity# (entity->korma entity#)                                       ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
-           entity-select-form# (-> entity#                                       ; entity-select-form# is the tweaked version we'll pass to korma `select`
-                                   (assoc :fields (or field-keys#
-                                                      (default-fields entity#))))] ; tell korma which fields to grab. If `field-keys` weren't passed in vector do lookup at runtime
-       (when (config/config-bool :mb-db-logging)
-         (log/debug "DB CALL: " (:name entity#)
-                  (or (:fields entity-select-form#) "*")
-                  ~@(mapv (fn [[form & args]]
-                            `[~(name form) ~(apply str (interpose " " args))])
-                          forms)))
-       (->> (select entity-select-form# ~@forms)
-            (map (partial apply-type-fns :out (seq (::types entity#))))
-            (map (partial post-select entity#))))))                             ; map `post-select` over the results
+  (let [forms (sel-apply-kwargs forms)]
+    `(let [[entity# field-keys#] (destructure-entity ~entity)
+           entity#               (entity->korma entity#)
+           entity-select-form#   (assoc entity# :fields (or field-keys#
+                                                            (default-fields entity#)))]
+       (when (and (config/config-bool :mb-db-logging)
+                  (not *sel-disable-logging*))
+         (log/debug "DB CALL : " (:name entity#) " " (or (:fields entity-select-form#) "*")
+                    ~(apply str (for [[form & args] forms]
+                                  (apply str " " (name form) " " (interpose " " args))))))
+       (-sel-after entity# (select entity-select-form# ~@forms)))))
 
 
 ;; ## INS
