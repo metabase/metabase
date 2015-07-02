@@ -25,7 +25,8 @@
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
-(expect {:errors {:email "no account found for the given email"}}
+;; Return same error as incorrect password to avoid leaking existence of user
+(expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking
@@ -62,9 +63,9 @@
 (expect {:errors {:email "field is a required param."}}
   (client :post 400 "session/forgot_password" {}))
 
-;; Test that email not found gives 404
-(expect {:errors {:email "no account found for the given email"}}
-  (client :post 400 "session/forgot_password" {:email "not-found@metabase.com"}))
+;; Test that email not found also gives 200 as to not leak existence of user
+(expect nil
+  (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password

@@ -108,22 +108,26 @@
 (defn- timezone->set-timezone-sql [timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
-(defn- cast-timestamp-seconds-field-to-date-fn [field-name]
-  {:pre [(string? field-name)]}
-  (format "CAST(TO_TIMESTAMP(\"%s\") AS DATE)" field-name))
+(defn- cast-timestamp-seconds-field-to-date-fn [table-name field-name]
+  {:pre [(string? table-name)
+         (string? field-name)]}
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 second'))::date" table-name field-name))
 
-(defn- cast-timestamp-milliseconds-field-to-date-fn [field-name]
-  {:pre [(string? field-name)]}
-  (format "CAST(TO_TIMESTAMP(\"%s\" / 1000) AS DATE)" field-name))
+(defn- cast-timestamp-milliseconds-field-to-date-fn [table-name field-name]
+  {:pre [(string? table-name)
+         (string? field-name)]}
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 millisecond'))::date" table-name field-name))
 
 (def ^:private ^:const uncastify-timestamp-regex
-  #"CAST\(TO_TIMESTAMP\(([^\s+])(?: / 1000)?\) AS DATE\)")
+  ;; TODO - this doesn't work
+  #"TO_TIMESTAMP\([^.\s]+\.([^.\s]+)(?: / 1000)?\)::date")
 
 ;; ## DRIVER
 
 (def ^:const driver
   (generic-sql/map->SqlDriver
-   {:column->base-type                            column->base-type
+   {:additional-supported-features                #{:set-timezone}
+    :column->base-type                            column->base-type
     :connection-details->connection-spec          connection-details->connection-spec
     :database->connection-details                 database->connection-details
     :sql-string-length-fn                         :CHAR_LENGTH

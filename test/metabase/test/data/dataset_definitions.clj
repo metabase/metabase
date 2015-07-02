@@ -30,7 +30,10 @@
 ;; TODO - make rows be lazily loadable for DB definitions from a file
 (defmacro ^:private def-database-definition-edn [dbname]
   `(def-database-definition ~dbname
-     (edn/read-string (slurp ~(str edn-definitions-dir (name dbname) ".edn")))))
+     ~@(edn/read-string (slurp (str edn-definitions-dir (name dbname) ".edn")))))
 
 ;; Times when the Toucan cried
 (def-database-definition-edn sad-toucan-incidents)
+
+;; Places, times, and circumstances where Tupac was sighted
+(def-database-definition-edn tupac-sightings)

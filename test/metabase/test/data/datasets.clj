@@ -11,7 +11,8 @@
                              [table :refer [Table]])
             (metabase.test.data [data :as data]
                                 [h2 :as h2]
-                                [mongo :as mongo])
+                                [mongo :as mongo]
+                                [postgres :as postgres])
             [metabase.util :as u]))
 
 ;; # IDataset
@@ -50,26 +51,29 @@
   (load-data! [_]
     @mongo-data/mongo-test-db
     (assert (integer? @mongo-data/mongo-test-db-id)))
+
   (dataset-loader [_]
     (mongo/dataset-loader))
+
   (db [_]
     @mongo-data/mongo-test-db)
+
   (table-name->table [_ table-name]
     (mongo-data/table-name->table table-name))
+
   (table-name->id [_ table-name]
     (mongo-data/table-name->id table-name))
+
   (field-name->id [_ table-name field-name]
     (mongo-data/field-name->id table-name (if (= field-name :id) :_id
                                               field-name)))
-  (fks-supported? [_]
-    false)
   (format-name [_ table-or-field-name]
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
-  (id-field-type [_]
-    :IntegerField)
-  (timestamp-field-type [_]
-    :DateField))
+
+  (fks-supported?       [_] false)
+  (id-field-type        [_] :IntegerField)
+  (timestamp-field-type [_] :DateField))
 
 
 ;; ## Generic SQL (H2)
@@ -78,17 +82,17 @@
 (def ^:private memoized-table-name->id
   (memoize
    (fn [db-id table-name]
-     (sel :one :id Table :name (s/upper-case (name table-name)), :db_id db-id))))
+     {:pre [(string? table-name)]}
+     (sel :one :id Table :name table-name, :db_id db-id))))
 
 (def ^:private memoized-field-name->id
   (memoize
    (fn [db-id table-name field-name]
-     (sel :one :id Field :name (s/upper-case (name field-name)), :table_id (memoized-table-name->id db-id table-name)))))
+     {:pre [(string? field-name)]}
+     (sel :one :id Field :name field-name, :table_id (memoized-table-name->id db-id table-name)))))
 
-(def ^:private generic-sql-db
-  (delay ))
 
-(deftype GenericSqlDriverData [dbpromise]
+(deftype H2DriverData [dbpromise]
   IDataset
   (dataset-loader [_]
     (h2/dataset-loader))
@@ -102,33 +106,61 @@
     (load-data! this))
 
   (table-name->id [this table-name]
-    (memoized-table-name->id (:id (db this)) table-name))
+    (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
 
   (table-name->table [this table-name]
-    (sel :one Table :id (table-name->id this table-name)))
+    (sel :one Table :id (table-name->id this (s/upper-case (name table-name)))))
 
   (field-name->id [this table-name field-name]
-    (memoized-field-name->id (:id (db this)) table-name field-name))
-
-  (fks-supported? [_]
-    true)
+    (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
 
   (format-name [_ table-or-field-name]
     (clojure.string/upper-case table-or-field-name))
 
-  (id-field-type [_]
-    :BigIntegerField)
+  (fks-supported?       [_] true)
+  (id-field-type        [_] :BigIntegerField)
+  (timestamp-field-type [_] :DateTimeField))
 
-  (timestamp-field-type [_]
-    :DateTimeField))
+
+;; ## Postgres
+
+(deftype PostgresDriverData [dbpromise]
+  IDataset
+  (dataset-loader [_]
+    (postgres/dataset-loader))
+
+  (load-data! [this]
+    (when-not (realized? dbpromise)
+      (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
+    @dbpromise)
+
+  (db [this]
+    (load-data! this))
+
+  (table-name->id [this table-name]
+    (memoized-table-name->id (:id (db this)) (name table-name)))
+
+  (table-name->table [this table-name]
+    (sel :one Table :id (table-name->id this (name table-name))))
+
+  (field-name->id [this table-name field-name]
+    (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))
+
+  (format-name [_ table-or-field-name]
+    table-or-field-name)
+
+  (fks-supported?       [_] true)
+  (id-field-type        [_] :IntegerField)
+  (timestamp-field-type [_] :DateTimeField))
 
 
 ;; # Concrete Instances
 
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo       (MongoDriverData.)
-   :generic-sql (GenericSqlDriverData. (promise))})
+  {:mongo    (MongoDriverData.)
+   :h2       (H2DriverData. (promise))
+   :postgres (PostgresDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
@@ -137,13 +169,13 @@
 
 ;; # Logic for determining which datasets to test against
 
-;; By default, we'll test against against only the :generic-sql (H2) dataset; otherwise, you can specify which
+;; By default, we'll test against against only the :h2 (H2) dataset; otherwise, you can specify which
 ;; datasets to test against by setting the env var `MB_TEST_DATASETS` to a comma-separated list of dataset names, e.g.
 ;;
-;;    # test against :generic-sql and :mongo
+;;    # test against :h2 and :mongo
 ;;    MB_TEST_DATASETS=generic-sql,mongo
 ;;
-;;    # just test against :generic-sql (default)
+;;    # just test against :h2 (default)
 ;;    MB_TEST_DATASETS=generic-sql
 
 (defn- get-test-datasets-from-env
@@ -162,9 +194,9 @@
 
 (def test-dataset-names
   "Delay that returns set of names of drivers we should run tests against.
-   By default, this returns only `:generic-sql`, but can be overriden by setting env var `MB_TEST_DATASETS`."
+   By default, this returns only `:h2` but can be overriden by setting env var `MB_TEST_DATASETS`."
   (delay (let [datasets (or (get-test-datasets-from-env)
-                            #{:generic-sql})]
+                            #{:h2})]
            (log/info (color/green "Running QP tests against these datasets: " datasets))
            datasets)))
 
@@ -173,8 +205,8 @@
 
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `:generic-sql`."
-  (dataset-name->dataset :generic-sql))
+   Defaults to `:h2`."
+  (dataset-name->dataset :h2))
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."

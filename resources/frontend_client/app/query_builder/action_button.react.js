@@ -14,9 +14,9 @@ export default React.createClass({
     getDefaultProps: function() {
         return {
             normalText: "Save",
-            activeText: "Saving ...",
+            activeText: "Saving...",
             failedText: "Save failed",
-            successText: "Save succeeded",
+            successText: "Saved",
             className: 'Button'
         };
     },

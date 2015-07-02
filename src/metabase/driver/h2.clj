@@ -83,14 +83,14 @@
 
 ;; ## QP Functions
 
-(defn- cast-timestamp-seconds-field-to-date-fn [field-name]
-  (format "CAST(TIMESTAMPADD('SECOND', \"%s\", DATE '1970-01-01') AS DATE)" field-name))
+(defn- cast-timestamp-seconds-field-to-date-fn [table-name field-name]
+  (format "CAST(TIMESTAMPADD('SECOND', \"%s\".\"%s\", DATE '1970-01-01') AS DATE)" table-name field-name))
 
-(defn- cast-timestamp-milliseconds-field-to-date-fn [field-name]
-  (format "CAST(TIMESTAMPADD('MILLISECOND', \"%s\", DATE '1970-01-01') AS DATE)" field-name))
+(defn- cast-timestamp-milliseconds-field-to-date-fn [table-name field-name]
+  (format "CAST(TIMESTAMPADD('MILLISECOND', \"%s\".\"%s\", DATE '1970-01-01') AS DATE)" table-name field-name))
 
 (def ^:private ^:const uncastify-timestamp-regex
-  #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', ([^\s]+), DATE '1970-01-01'\) AS DATE\)")
+  #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', [^.\s]+\.([^.\s]+), DATE '1970-01-01'\) AS DATE\)")
 
 ;; ## DRIVER
 
@@ -100,7 +100,6 @@
     :connection-details->connection-spec          connection-details->connection-spec
     :database->connection-details                 database->connection-details
     :sql-string-length-fn                         :LENGTH
-    :timezone->set-timezone-sql                   nil
     :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
     :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
     :uncastify-timestamp-regex                    uncastify-timestamp-regex}))

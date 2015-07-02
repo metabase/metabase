@@ -50,10 +50,11 @@
                                                        (s/upper-case (:table-name this))}]))
 
   DatabaseDefinition
-  (metabase-instance [this engine-kw]
+  (metabase-instance [{:keys [database-name]} engine-kw]
+    (assert (string? database-name))
     (assert (keyword? engine-kw))
     (setup-db-if-needed :auto-migrate true)
-    (sel :one Database :name (:database-name this) :engine (name engine-kw))))
+    (sel :one Database :name database-name, :engine (name engine-kw))))
 
 
 ;; ## IDatasetLoader

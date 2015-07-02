@@ -8,18 +8,31 @@
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])))
 
-(defrecord SqlDriver [column->base-type
+(def ^:private ^:const sql-driver-features
+  "Features supported by *all* Generic SQL drivers."
+  #{:foreign-keys
+    :standard-deviation-aggregations
+    :unix-timestamp-special-type-fields})
+
+(defrecord SqlDriver [;; A set of additional features supported by a specific driver implmentation, e.g. :set-timezone for :postgres
+                      additional-supported-features
+                      column->base-type
                       connection-details->connection-spec
                       database->connection-details
                       sql-string-length-fn
                       timezone->set-timezone-sql
-                      ;; These functions take a string name of a Field and return the raw SQL to select it as a DATE
+                      ;; These functions take a string name of a Table and a string name of a Field and return the raw SQL to select it as a DATE
                       cast-timestamp-seconds-field-to-date-fn
                       cast-timestamp-milliseconds-field-to-date-fn
                       ;; This should be a regex that will match the column returned by the driver when unix timestamp -> date casting occured
                       ;; e.g. #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', ([^\s]+), DATE '1970-01-01'\) AS DATE\)" for H2
                       uncastify-timestamp-regex]
   IDriver
+  ;; Features
+  (supports? [_ feature]
+    (or (contains? sql-driver-features feature)
+        (contains? additional-supported-features feature)))
+
   ;; Connection
   (can-connect? [this database]
     (can-connect-with-details? this (database->connection-details database)))

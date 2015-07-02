@@ -34,121 +34,218 @@
 
    1.  Parsing:          Various functions parse the query form and replace Field IDs and values with placeholders
    2.  Field Lookup:     A *batched* DB call is made to fetch Fields with IDs found during Parsing
-   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects
-
-   ## Collapsing
-
-   Unfortunately, not every part of the QP understands expanded queries. Call `collapse` on an expanded Query form to get the equivalent standard
-   QL forms for backwards-compatibility."
+   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects"
   (:require [clojure.core.match :refer [match]]
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
             [medley.core :as m]
+            [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            [metabase.models.field :as field]
+            [metabase.driver.interface :as i]
+            (metabase.models [database :refer [Database]]
+                             [field :as field]
+                             [foreign-key :refer [ForeignKey]]
+                             [table :refer [Table]])
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
 (declare parse-aggregation
          parse-breakout
+         parse-fields
          parse-filter
-         with-resolved-fields)
+         parse-order-by)
+
 
 ;; ## -------------------- Protocols --------------------
 
-(defprotocol IResolveField
-  "Methods called during `Field` resolution. Placeholder types should implement this protocol."
+(defprotocol IResolve
+  "Methods called during `Field` and `Table` resolution. Placeholder types should implement this protocol."
   (resolve-field [this field-id->fields]
     "This method is called when walking the Query after fetching `Fields`.
      Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-     return their expanded form. Other objects should just return themselves."))
-
-(defprotocol ICollapse
-  "Methods called during reverse-expansion.
-   `collapse` traverses and expanded form breadth-first and calls `collapse-one`
-   on each form. Implementers of `ICollapse` *should-not* call `collapse-one`
-   on their subforms."
-  (collapse-one [this]
-    "Don't call this directly; use `collapse`.
-     Return a reverse-expanded version of this object."))
+     return their expanded form. Other objects should just return themselves.")
+  (resolve-table [this table-id->tables]
+    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
+     Objects like `Fields` can add relevant information like the name of their `Table`."))
 
 ;; Default impls are just identity
 (extend Object
-  IResolveField {:resolve-field (fn [this _] this)}
-  ICollapse     {:collapse-one  identity})
+  IResolve {:resolve-field (fn [this _] this)
+            :resolve-table (fn [this _] this)})
 
 (extend nil
-  IResolveField {:resolve-field (constantly nil)})
+  IResolve {:resolve-field (constantly nil)
+            :resolve-table (constantly nil)})
+
+
+;; ## -------------------- Expansion - Impl --------------------
+
+(def ^:private ^:dynamic *driver* nil)
+
+(defn- assert-driver-supports [^Keyword feature]
+  {:pre [*driver*]}
+  (i/assert-driver-supports *driver* feature))
+
+(defn- non-empty-clause? [clause]
+  (and clause
+       (or (not (sequential? clause))
+           (and (seq clause)
+                (every? identity clause)))))
+
+(defn- parse [query-dict]
+  (update-in query-dict [:query] #(-<> (assoc %
+                                              :aggregation (parse-aggregation (:aggregation %))
+                                              :breakout    (parse-breakout    (:breakout %))
+                                              :fields      (parse-fields      (:fields %))
+                                              :filter      (parse-filter      (:filter %))
+                                              :order_by    (parse-order-by    (:order_by %)))
+                                       (set/rename-keys <> {:order_by     :order-by
+                                                            :source_table :source-table})
+                                       (m/filter-vals non-empty-clause? <>))))
+
+(def ^:private ^:dynamic *field-ids*
+  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *fk-field-ids*
+  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
+  nil)
+
+(def ^:private ^:dynamic *table-ids*
+  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
+  nil)
+
+(defn rename-mb-field-keys
+  "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
+  [field]
+  (set/rename-keys field {:id           :field-id
+                          :name         :field-name
+                          :special_type :special-type
+                          :base_type    :base-type
+                          :table_id     :table-id}))
+
+(defn- resolve-fields
+  "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
+  [expanded-query-dict field-ids]
+  (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
+          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
+                            (m/map-vals rename-mb-field-keys))]
+            (reset! *table-ids* (set (map :table-id (vals fields))))
+            ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
+            ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
+            (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
+
+(defn- resolve-database
+  "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
+  [{database-id :database, :as expanded-query-dict}]
+  (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
+
+(defrecord JoinTableField [^Integer field-id
+                           ^String  field-name])
+
+(defrecord JoinTable [^JoinTableField source-field
+                      ^JoinTableField pk-field
+                      ^Integer        table-id
+                      ^String         table-name])
+
+(defn- join-tables-fetch-field-info
+  "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
+  [source-table-id join-tables]
+  (let [ ;; Build a map of source table FK field IDs -> field names
+        fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in @*fk-field-ids*], :table_id source-table-id, :special_type "fk")
+
+        ;; Build a map of join table PK field IDs -> source table FK field IDs
+        pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
+                                          :origin_id [in (set (keys fk-field-id->field-name))])
+
+        ;; Build a map of join table ID -> PK field info
+        join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
+                                       (zipmap (map :table_id pk-fields) pk-fields))]
+
+    ;; Now build the :join-tables clause
+    (vec (for [{table-id :id, table-name :name} join-tables]
+           (let [{pk-field-id :id, pk-field-name :name} (join-table-id->pk-field table-id)]
+             (map->JoinTable {:table-id     table-id
+                              :table-name   table-name
+                              :pk-field     (map->JoinTableField {:field-id   pk-field-id
+                                                                  :field-name pk-field-name})
+                              :source-field (let [fk-field-id (pk-field-id->fk-field-id pk-field-id)]
+                                              (map->JoinTableField {:field-id   fk-field-id
+                                                                    :field-name (fk-field-id->field-name fk-field-id)}))}))))))
+
+(defn- resolve-tables
+  "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
+  [{{source-table-id :source-table} :query, database-id :database, :as expanded-query-dict} table-ids]
+  {:pre [(integer? source-table-id)]}
+  (let [table-ids       (conj table-ids source-table-id)
+        table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        join-tables     (vals (dissoc table-id->table source-table-id))]
+    (->> (assoc-in expanded-query-dict [:query :source-table] (or (table-id->table source-table-id)
+                                                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
+         (#(if-not join-tables %
+                   (assoc-in % [:query :join-tables] (join-tables-fetch-field-info source-table-id join-tables))))
+         (walk/postwalk #(resolve-table % table-id->table)))))
 
 
 ;; ## -------------------- Public Interface --------------------
 
-(defn- parse [query-dict]
-  (update-in query-dict [:query] #(assoc %
-                                         :aggregation (parse-aggregation (:aggregation %))
-                                         :breakout    (parse-breakout (:breakout %))
-                                         :filter      (parse-filter   (:filter %)))))
-
 (defn expand
-  "Expand a query-dict."
-  [query-dict]
-  (with-resolved-fields parse query-dict))
-
-(defn expand-filter
-  "Expand a `filter` clause."
-  [filter-clause]
-  (with-resolved-fields parse-filter filter-clause))
-
-;; Do a breadth-first walk so we don't walk things that will be tossed anyway. Since
-;; some of these objects can be nil, this saves us from having to write an implentation
-;; of collapse-one for nil as well.
-(defn collapse
-  "Collapse an expanded QUERY-FORM returning its standard QL equivalent."
-  [query-form]
-  (->> query-form
-       (walk/prewalk collapse-one)   ; do a second pass because some forms might not get fully collapsed the first time around,
-       (walk/prewalk collapse-one))) ; e.g. :simple filters return collapse to their (not-yet-collapsed) subclause
+  "Expand a QUERY-DICT."
+  [driver query-dict]
+  (binding [*driver*       driver
+            *field-ids*    (atom #{})
+            *fk-field-ids* (atom #{})
+            *table-ids*    (atom #{})]
+    (some-> query-dict
+            parse
+            (resolve-fields @*field-ids*)
+            resolve-database
+            (resolve-tables @*table-ids*))))
 
 
 ;; ## -------------------- Field + Value --------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
-(defrecord Field [field-id
-                  field-name
-                  base-type
-                  special-type]
-  ICollapse
-  (collapse-one [_]
-    field-id))
+(defrecord Field [^Integer field-id
+                  ^String  field-name
+                  ^Keyword base-type
+                  ^Keyword special-type
+                  ^Integer table-id
+                  ^String  table-name]
+  IResolve
+  (resolve-table [this table-id->table]
+    (assoc this :table-name (:name (or (table-id->table table-id)
+                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
+
+(defn- Field?
+  "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
+  ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
+  [field]
+  (match field
+    (field-id :guard integer?)                                             true
+    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    _                                                                      false))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (defrecord Value [value              ; e.g. parsed Date / timestamp
                   original-value     ; e.g. original YYYY-MM-DD string
-                  base-type
-                  special-type]
-  ICollapse
-  (collapse-one [_]
-    ;; Some preprocessing steps modify the parsed value
-    ;; So return that value instead of converting date/timestamp back to YYYY-MM-DD
-    ;; QPs shouldn't need logic for parsing YYYY-MM-DD strings anymore
-    value))
+                  ^Keyword base-type
+                  ^Keyword special-type
+                  ^Integer field-id
+                  ^String  field-name])
 
 
 ;; ## -------------------- Placeholders --------------------
 
 ;; Replace Field IDs with these during first pass
-(defrecord FieldPlaceholder [field-id]
-  IResolveField
+(defrecord FieldPlaceholder [^Integer field-id]
+  IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
         field-id->fields
-        map->Field))
-
-  ICollapse
-  (collapse-one [_]
-    field-id))
+        map->Field)))
 
 (defn- parse-value
   "Convert the `value` of a `Value` to a date or timestamp if needed.
@@ -166,11 +263,7 @@
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (defrecord ValuePlaceholder [field-id value]
-  ICollapse
-  (collapse-one [_]
-    value)
-
-  IResolveField
+  IResolve
   (resolve-field [this field-id->fields]
     (-> (:field-id this)
         field-id->fields
@@ -178,39 +271,21 @@
         parse-value
         map->Value)))
 
-(def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set when a parsing function is ran"
-  nil)
-
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
   ([field-id]
-   (when *field-ids*
-     (swap! *field-ids* conj field-id))
-   (->FieldPlaceholder field-id))
+   (match field-id
+     (field-id :guard integer?)        (do (swap! *field-ids* conj field-id)
+                                           (->FieldPlaceholder field-id))
+     ["fk->"
+      (fk-field-id :guard integer?)
+      (dest-field-id :guard integer?)] (do (assert-driver-supports :foreign-keys)
+                                           (swap! *field-ids* conj dest-field-id)
+                                           (swap! *fk-field-ids* conj fk-field-id)
+                                           (->FieldPlaceholder dest-field-id))))
   ([field-id value]
-   (->ValuePlaceholder field-id value)))
-
-
-;; ## -------------------- Field Resolution --------------------
-
-(defn- with-resolved-fields
-  "Call (PARSER-FN FORM), collecting the `Field` IDs encountered; then fetch the relevant Fields
-   and walk the parsed form, calling `resolve-field` on each element."
-  [parser-fn form]
-  (when form
-    (binding [*field-ids* (atom #{})]
-      (when-let [parsed-form (parser-fn form)]
-        (if-not (seq @*field-ids*) parsed-form ; No need to do a DB call or walk parsed-form if we didn't see any Field IDs
-                (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type] :id [in @*field-ids*])
-                                  (m/map-vals #(set/rename-keys % {:id           :field-id
-                                                                   :name         :field-name
-                                                                   :special_type :special-type
-                                                                   :base_type    :base-type})))]
-                  ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
-                  ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
-                  (walk/postwalk #(resolve-field % fields) parsed-form)))))))
+   (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -219,10 +294,7 @@
   "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
   [fn-name & match-forms]
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (when (and form#
-                (or (not (sequential? form#))
-                    (and (seq form#)
-                         (every? identity form#))))
+     (when (non-empty-clause? form#)
        (match form#
          ~@match-forms))))
 
@@ -237,67 +309,50 @@
   ["avg" field-id]      (->Aggregation :avg (ph field-id))
   ["count" field-id]    (->Aggregation :count (ph field-id))
   ["distinct" field-id] (->Aggregation :distinct (ph field-id))
-  ["stddev" field-id]   (->Aggregation :stddev (ph field-id))
+  ["stddev" field-id]   (do (assert-driver-supports :standard-deviation-aggregations)
+                            (->Aggregation :stddev (ph field-id)))
   ["sum" field-id]      (->Aggregation :sum (ph field-id))
   ["cum_sum" field-id]  (->Aggregation :cumulative-sum (ph field-id)))
 
 
 ;; ## -------------------- Breakout --------------------
 
-(defrecord Breakout [fields])
+;; Breakout + Fields clauses are just regular vectors of Fields
 
 (defparser parse-breakout
-  [& field-ids] (mapv ph field-ids))
+  field-ids (mapv ph field-ids))
+
+
+;; ## -------------------- Fields --------------------
+
+(defparser parse-fields
+  field-ids (mapv ph field-ids))
 
 ;; ## -------------------- Filter --------------------
 
 ;; ### Top-Level Type
 
 (defrecord Filter [^Keyword compound-type ; :and :or :simple
-                   subclauses]
-  ICollapse
-  (collapse-one [_]
-    (case compound-type
-      :simple  (first subclauses)
-      :and    `["AND" ~@subclauses]
-      :or     `["OR"  ~@subclauses])))
+                   subclauses])
 
 
 ;; ### Subclause Types
 
 (defrecord Filter:Inside [^Keyword filter-type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
                           lat
-                          lon]
-  ICollapse
-  (collapse-one [_]
-    ["INSIDE" (:field lat) (:field lon) (:max lat) (:min lon) (:min lat) (:max lon)]))
+                          lon])
 
 (defrecord Filter:Between [^Keyword filter-type
                            ^Field   field
                            ^Value   min-val
-                           ^Value   max-val]
-  ICollapse
-  (collapse-one [_]
-    ["BETWEEN" field min-val max-val]))
-
-(defn- collapse-filter-type [^Keyword filter-type]
-  (-> filter-type
-      name
-      (s/replace #"-" "_")
-      s/upper-case))
+                           ^Value   max-val])
 
 (defrecord Filter:Field+Value [^Keyword filter-type
                                ^Field   field
-                               ^Value   value]
-  ICollapse
-  (collapse-one [_]
-    [(collapse-filter-type filter-type) field value]))
+                               ^Value   value])
 
 (defrecord Filter:Field [^Keyword filter-type
-                         ^Field field]
-  ICollapse
-  (collapse-one [_]
-    [(collapse-filter-type filter-type) field]))
+                         ^Field field])
 
 
 ;; ### Parsers
@@ -336,3 +391,25 @@
                                      :subclauses    (mapv parse-filter-subclause subclauses)})
   subclause            (map->Filter {:compound-type :simple
                                      :subclauses    [(parse-filter-subclause subclause)]}))
+
+
+;; ## -------------------- Order-By --------------------
+
+(defrecord OrderByAggregateField [^Keyword source  ; e.g. :aggregation
+                                  ^Integer index]) ; e.g. 0
+
+(defrecord OrderBySubclause [^Field   field       ; or aggregate Field?
+                             ^Keyword direction]) ; either :ascending or :descending
+
+(defn- parse-order-by-direction [direction]
+  (case direction
+    "ascending"  :ascending
+    "descending" :descending))
+
+(defparser parse-order-by-subclause
+  [["aggregation" index] direction]    (->OrderBySubclause (->OrderByAggregateField :aggregation index)
+                                                           (parse-order-by-direction direction))
+  [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
+                                                           (parse-order-by-direction direction)))
+(defparser parse-order-by
+  subclauses (mapv parse-order-by-subclause subclauses))

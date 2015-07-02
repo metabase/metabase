@@ -20,13 +20,12 @@
   "Get all `Tables`."
   []
   (-> (sel :many Table :active true (order :name :ASC))
-      (hydrate :db)
+      (hydrate :db :human_readable_name)
       ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
       (#(map (fn [table]
                (cond-> table
                  (not (:rows table)) (assoc :rows 0)))
          %))))
-
 
 (defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -50,7 +49,8 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC)))
+  (-> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC))
+      (hydrate :human_readable_name)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

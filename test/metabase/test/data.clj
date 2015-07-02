@@ -181,17 +181,34 @@
    (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
 
 (defn- walk-expand-&
-  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms."
+  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.
+   If symbol ends in a `:field` form, wrap the call to `-temp-get` in call in a keyword getter for that field.
+
+    &sightings      -> (-temp-get db \"sightings\")
+    &cities.name    -> (-temp-get db \"cities\" \"name\")
+    &cities.name:id -> (:id (-temp-get db \"cities\" \"name\"))"
   [db-binding body]
   (walk/prewalk
    (fn [form]
      (or (when (symbol? form)
-           (when-let [symbol-name (re-matches #"^&.+$" (name form))]
-             `(-temp-get ~db-binding ~@(-> symbol-name
-                                           (s/replace #"&" "")
-                                           (s/split #"\.")))))
+           (when-let [[_ table-name field-name prop-name] (re-matches #"^&([^.:]+)(?:\.([^.:]+))?(?::([^.:]+))?$" (name form))]
+             (let [temp-get `(-temp-get ~db-binding ~table-name ~@(when field-name [field-name]))]
+               (if prop-name `(~(keyword prop-name) ~temp-get)
+                   temp-get))))
          form))
    body))
+
+(defn with-temp-db* [loader ^DatabaseDefinition dbdef f]
+  (let [dbdef (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
+    (try
+      (remove-database! loader dbdef)
+      (let [db (-> (get-or-create-database! loader dbdef)
+                   -temp-db-add-getter-delay)]
+        (assert db)
+        (assert (exists? Database :id (:id db)))
+        (f db))
+      (finally
+        (remove-database! loader dbdef)))))
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
@@ -199,8 +216,11 @@
    Remove `Database` and destroy data afterward.
 
    Within BODY, symbols like `&table` and `&table.field` will be expanded into function calls to
-   fetch corresponding `Tables` and `Fields`. These are accessed via lazily-created maps of
-   Table/Field names to the objects themselves. To facilitate mutli-driver tests, these names are lowercased.
+   fetch corresponding `Tables` and `Fields`. Symbols like `&table:id` wrap a getter around the resulting
+   forms (see `walk-expand-&` for details).
+
+   These are accessed via lazily-created maps of Table/Field names to the objects themselves.
+   To facilitate mutli-driver tests, these names are lowercased.
 
      (with-temp-db [db (h2/dataset-loader) us-history-1607-to-1774]
        (driver/process-quiery {:database (:id db)
@@ -209,13 +229,6 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
-  `(let [loader# ~dataset-loader
-         ;; Add :short-lived? to the database definition so dataset loaders can use different connection options if desired
-         dbdef# (map->DatabaseDefinition (assoc ~database-definition :short-lived? true))]
-     (try
-       (remove-database! loader# dbdef#)                              ; Remove DB if it already exists for some weird reason
-       (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
-                             -temp-db-add-getter-delay)]              ; Add the :table-name->table delay used by -temp-get
-         ~@(walk-expand-& db-binding body))                           ; expand $table and $table.field forms into -temp-get calls
-       (finally
-         (remove-database! loader# dbdef#)))))
+  `(with-temp-db* ~dataset-loader ~database-definition
+     (fn [~db-binding]
+       ~@(walk-expand-& db-binding body))))

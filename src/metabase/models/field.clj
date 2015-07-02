@@ -2,7 +2,8 @@
   (:require [korma.core :refer :all]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
-            (metabase.models [database :refer [Database]]
+            (metabase.models [common :as common]
+                             [database :refer [Database]]
                              [field-values :refer [field-should-have-field-values? create-field-values create-field-values-if-needed]]
                              [hydrate :refer [hydrate]]
                              [foreign-key :refer [ForeignKey]])
@@ -91,11 +92,13 @@
 
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (u/assoc* field
-            :table     (delay (sel :one 'metabase.models.table/Table :id table_id))
-            :db        (delay @(:db @(:table <>)))
-            :target    (delay (field->fk-field field))
-            :can_read  (delay @(:can_read @(:table <>)))
-            :can_write (delay @(:can_write @(:table <>)))))
+    :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
+    :db                  (delay @(:db @(:table <>)))
+    :target              (delay (field->fk-field field))
+    :can_read            (delay @(:can_read @(:table <>)))
+    :can_write           (delay @(:can_write @(:table <>)))
+    :human_readable_name (when (name :field)
+                           (delay (common/name->human-readable-name (:name field))))))
 
 (defmethod pre-insert Field [_ field]
   (let [defaults {:active          true

@@ -1,8 +1,8 @@
 /* based on https://rawgit.com/Caged/d3-tip/master/examples/example-styles.css */
 
 .ChartTooltip {
-  width: 200px;
-  line-height: 1;
+  min-width: 100px;
+  line-height: 1.3;
   padding: 12px;
   background: rgba(0, 0, 0, 0.8);
   color: #fff;
@@ -56,9 +56,6 @@
   left: 100%;
 }
 
-.ChartTooltip-key {
+.ChartTooltip-name {
     font-weight: bold;
-}
-.ChartTooltip-key:after {
-    content: ":";
 }
