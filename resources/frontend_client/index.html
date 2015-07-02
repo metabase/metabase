@@ -28,8 +28,16 @@
                                 <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
                             </span>
                         </a>
-                        <div class="NavDropdown-content">
-                            <ul class="NavDropdown-content-layer DashboardList" ng-controller="DashList">
+                        <div class="NavDropdown-content DashboardList" ng-controller="DashList">
+                            <div class="NavDropdown-content-layer text-white text-centered" ng-if="dashboards.length === 0">
+                                <div class="p2"><span class="QuestionCircle">?</span></div>
+                                <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
+                                <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
+                                <div class="p2 text-bold text-white border-top border-light">
+                                    To create your first dashboard, <a class="text-white" href="/card/create"> ask a question</a> and save it.
+                                </div>
+                            </div>
+                            <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
                                 <li class="Dropdown-item" ng-repeat="dash in dashboards">
                                     <a class="text-white no-decoration" href="/dash/{{dash.id}}">
                                         <div class="flex text-bold">

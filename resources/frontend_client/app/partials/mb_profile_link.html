@@ -12,7 +12,7 @@
             <li><a class="Dropdown-item block text-white no-decoration" href="/user/edit_current">Account Settings</a></li>
             <li ng-if="user.is_superuser &amp;&amp; context !== 'admin'"><a class="Dropdown-item block text-white no-decoration" href="/admin/">Admin Panel</a></li>
             <li ng-if="user.is_superuser &amp;&amp; context === 'admin'"><a class="Dropdown-item block text-white no-decoration" href="/">Exit Admin</a></li>
-            <li class="border-top"><a class="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a></li>
+            <li class="border-top border-light"><a class="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a></li>
         </ul>
     </div>
 </div>

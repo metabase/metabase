@@ -108,8 +108,14 @@
     min-width: 332px;
 }
 
-.NavDropdown .Dropdown-item {
-    border-color: rgba(255,255,255,0.2);
+.QuestionCircle {
+    display: inline-block;
+    font-size: 40pt;
+    width: 73px;
+    height: 73px;
+    border-radius: 99px;
+    border: 3px solid white;
+    text-align: center;
 }
 
 .Entity-title {
