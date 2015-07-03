@@ -128,7 +128,10 @@
 (require '[metabase.test.data :as data]
          '[metabase.test.data.datasets :as datasets]
          '[metabase.test.data.dataset-definitions :as defs]
-         '[metabase.test.util.mql :refer [Q]])
+         '[metabase.test.util.mql :refer [Q]]
+         '[metabase.db :refer [sel]]
+         '(metabase.models [table :refer [Table]]
+                           [field :refer [Field]]))
 
 (defn x []
   (Q run with db geographical-tips
@@ -149,15 +152,11 @@
 (defn y []
   (datasets/with-dataset :mongo
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
-      (with-mongo-connection [_ db]
-        (active-nested-field-name->type driver &tips.venue)))))
+      (->> (sel :many :fields [Field :id :name :parent_id] :table_id (sel :one :id Table :db_id (:id db)))
+           unflatten-nested-fields))))
 
 ;; TODO
-;; 2. QX
-;;    2A. Recursively resolve nested fields
-;;    2B. Add qualified-path-components fieldd to nested fields
-;; 3. Mongo
-;;    3A. Mongo QP handle nested Fields appropriately
+;; "structure nested fields" method ?
 ;; 4. API
 ;;    4A. API Tweaks as Needed
 ;; 5. Cleanup + Tests

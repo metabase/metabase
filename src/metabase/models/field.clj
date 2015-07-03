@@ -91,6 +91,23 @@
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (sel :one Field :id dest-id))))
 
+(defn unflatten-nested-fields
+  "Take a sequence of both top-level and nested FIELDS, and return a sequence of top-level `Fields`
+   with nested `Fields` moved into sequences keyed by `:children` in their parents.
+
+     (unflatten-nested-fields [{:id 1, :parent_id nil}, {:id 2, :parent_id 1}])
+       -> [{:id 1, :parent_id nil, :children [{:id 2, :parent_id 1, :children nil}]}]
+
+   You may optionally specify a different PARENT-ID-KEY; the default is `:parent_id`."
+  ([fields]
+   (unflatten-nested-fields fields :parent_id))
+  ([fields parent-id-key]
+   (let [parent-id->fields (group-by parent-id-key fields)
+         resolve-children  (fn resolve-children [field]
+                             (assoc field :children (map resolve-children
+                                                         (parent-id->fields (:id field)))))]
+     (map resolve-children (parent-id->fields nil)))))
+
 (defn- qualified-name
   "Return a name like `table.field` for FIELD. If FIELD is a nested field, recursively return a name
    like `table.parent.field`."
