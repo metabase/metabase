@@ -41,6 +41,19 @@
     transition: background .3s linear;
 }
 
+.bullet {
+    position: relative;
+    margin-left: 1.2em;
+}
+.bullet:before {
+    content: "•";
+    color: #6FB0EB;
+    position: absolute;
+    top: 0;
+    margin-top: 16px;
+    left: -0.85em;
+}
+
 .NavDropdown {
     position: relative;
 }

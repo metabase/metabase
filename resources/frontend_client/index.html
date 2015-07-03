@@ -17,43 +17,52 @@
         <div ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
             <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
-                <div class="wrapper flex align-center">
-                    <a class="NavItem cursor-pointer text-white flex align-center" href="/">
-                        <mb-logo-icon class="text-white"></mb-logo-icon>
-                    </a>
-                    <div class="NavDropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
-                        <a class="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" dropdown-toggle>
-                            <span class="NavDropdown-button-layer">
-                                Dashboards
-                                <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
-                            </span>
+                <ul class="wrapper flex align-center">
+                    <li>
+                        <a class="NavItem cursor-pointer text-white flex align-center" href="/">
+                            <mb-logo-icon class="text-white"></mb-logo-icon>
                         </a>
-                        <div class="NavDropdown-content DashboardList" ng-controller="DashList">
-                            <div class="NavDropdown-content-layer text-white text-centered" ng-if="dashboards.length === 0">
-                                <div class="p2"><span class="QuestionCircle">?</span></div>
-                                <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
-                                <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
-                                <div class="p2 text-bold text-white border-top border-light">
-                                    To create your first dashboard, <a class="text-white" href="/card/create"> ask a question</a> and save it.
+                    </li>
+                    <li>
+                        <div class="NavDropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
+                            <a class="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" dropdown-toggle>
+                                <span class="NavDropdown-button-layer">
+                                    Dashboards
+                                    <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
+                                </span>
+                            </a>
+                            <div class="NavDropdown-content DashboardList" ng-controller="DashList">
+                                <div class="NavDropdown-content-layer text-white text-centered" ng-if="dashboards.length === 0">
+                                    <div class="p2"><span class="QuestionCircle">?</span></div>
+                                    <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
+                                    <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
+                                    <div class="p2 text-bold text-white border-top border-light">
+                                        To create your first dashboard, <a class="text-white" href="/card/create"> ask a question</a> and save it.
+                                    </div>
                                 </div>
+                                <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
+                                    <li class="Dropdown-item" ng-repeat="dash in dashboards">
+                                        <a class="text-white no-decoration" href="/dash/{{dash.id}}">
+                                            <div class="flex text-bold">
+                                                {{dash.name}}
+                                                <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
+                                            </div>
+                                            <div class="mt1 text-light text-brand-light">
+                                                {{dash.description}}
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ul>
                             </div>
-                            <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
-                                <li class="Dropdown-item" ng-repeat="dash in dashboards">
-                                    <a class="text-white no-decoration" href="/dash/{{dash.id}}">
-                                        <div class="flex text-bold">
-                                            {{dash.name}}
-                                            <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
-                                        </div>
-                                        <div class="mt1 text-light text-brand-light">
-                                            {{dash.description}}
-                                        </div>
-                                    </a>
-                                </li>
-                            </ul>
                         </div>
-                    </div>
-                    <mb-profile-link class="text-white flex-align-right" user="user" context="nav"></mb-profile-link>
-                </div>
+                    </li>
+                    <li class="bullet">
+                        <a class="NavItem text-white cursor-pointer p2 flex align-center no-decoration" href="/card/create">Ask a Question</a>
+                    </li>
+                    <li class="flex-align-right">
+                        <mb-profile-link class="text-white" user="user" context="nav"></mb-profile-link>
+                    </li>
+                </ul>
             </nav>
 
             <!-- ADMIN NAV -->
