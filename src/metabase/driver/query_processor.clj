@@ -30,10 +30,6 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
-(def ^:dynamic *driver*
-  "The driver currently being used to process this query."
-  (atom nil))
-
 
 ;; +----------------------------------------------------------------------------------------------------+
 ;; |                                     QP INTERNAL IMPLEMENTATION                                     |
@@ -50,8 +46,7 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (assoc (expand/expand *driver* query)
-               :query-id (str (java.util.UUID/randomUUID))))))
+    (qp (expand/expand query))))
 
 
 (defn- post-add-row-count-and-status
@@ -416,9 +411,7 @@
         (log/debug "\nRESULTS:\n" (u/pprint-to-str 'cyan results)))
       results)))
 
-(defn- process-structured [driver query]
-  (when-not *disable-qp-logging*
-    (println "PROCESS STRUCTURED!"))
+(defn- process-structured [{:keys [driver], :as query}]
   (let [driver-process-query (partial i/process-query driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
@@ -434,7 +427,7 @@
           wrap-guard-multiple-calls
           driver-process-query) query)))
 
-(defn- process-native [driver query]
+(defn- process-native [{:keys [driver], :as query}]
   (let [driver-process-query (partial i/process-query driver)]
     ((<<- wrap-catch-exceptions
           post-add-row-count-and-status
@@ -448,8 +441,8 @@
   [driver query]
   (when-not *disable-qp-logging*
     (log/info (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
-  (binding [*driver* driver]
-    ((case (keyword (:type query))
-       :native process-native
-       :query  process-structured)
-     driver query)))
+  ((case (keyword (:type query))
+     :native process-native
+     :query  process-structured)
+   (assoc query
+          :driver driver)))

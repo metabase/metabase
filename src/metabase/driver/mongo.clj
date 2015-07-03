@@ -153,10 +153,9 @@
   (datasets/with-dataset :mongo
     (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
       (->> (sel :many :fields [Field :id :name :parent_id] :table_id (sel :one :id Table :db_id (:id db)))
-           unflatten-nested-fields))))
+           metabase.models.field/unflatten-nested-fields))))
 
 ;; TODO
-;; "structure nested fields" method ?
 ;; 4. API
 ;;    4A. API Tweaks as Needed
 ;; 5. Cleanup + Tests

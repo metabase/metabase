@@ -19,18 +19,19 @@
 
 ;; # INTERFACE
 
+
+(def ^:dynamic ^:private *query* nil)
+
 (defn- uncastify
   "Remove CAST statements from a column name if needed.
 
     (uncastify \"DATE\")               -> \"DATE\"
     (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
-  [column-name]
+  [driver column-name]
   (let [column-name (name column-name)]
     (keyword (or (second (re-find #"CAST\([^.\s]+\.([^.\s]+) AS [\w]+\)" column-name))
-                 (second (re-find (:uncastify-timestamp-regex qp/*driver*) column-name))
+                 (second (re-find (:uncastify-timestamp-regex driver) column-name))
                  column-name))))
-
-(def ^:dynamic ^:private *query* nil)
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
@@ -43,7 +44,7 @@
                                                       (filter identity)
                                                       (mapcat #(if (vector? %) % [%]))))
             set-timezone-sql  (when-let [timezone (:timezone (:details database))]
-                                (when-let [set-timezone-sql (:timezone->set-timezone-sql qp/*driver*)]
+                                (when-let [set-timezone-sql (:timezone->set-timezone-sql (:driver *query*))]
                                   `(exec-raw ~(set-timezone-sql timezone))))
             korma-form        `(let [~entity (korma-entity ~database ~source-table)]
                                  ~(if set-timezone-sql `(korma.db/with-db (:db ~entity)
@@ -58,7 +59,7 @@
 
         (let [results (eval korma-form)]
           {:results      results
-           :uncastify-fn uncastify}))
+           :uncastify-fn (partial uncastify (:driver query))}))
 
       (catch java.sql.SQLException e
         (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes
@@ -103,8 +104,8 @@
     ;; TODO - add Table names
     (cond
       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name))
-      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) table-name field-name))
-      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) table-name field-name))
+      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn (:driver *query*)) table-name field-name))
+      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn (:driver *query*)) table-name field-name))
       :else                                              (keyword (format "%s.%s" table-name field-name))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by

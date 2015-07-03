@@ -40,6 +40,7 @@
                      [string :as s]
                      [walk :as walk])
             [medley.core :as m]
+            [korma.core :as k]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             [metabase.driver.interface :as i]
@@ -129,14 +130,14 @@
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
-  [expanded-query-dict field-ids]
+  [expanded-query-dict field-ids & [count]]
   (if-not (seq field-ids)
     ;; Base case: if there's no field-ids to expand we're done
     expanded-query-dict
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id] :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]
@@ -145,7 +146,8 @@
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
         ;; We can't use recur here because binding wraps body in try/catch
         (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
-                        @*field-ids*)))))
+                        @*field-ids*
+                        (inc (or count 0)))))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
@@ -203,7 +205,7 @@
 
 (defn expand
   "Expand a QUERY-DICT."
-  [driver query-dict]
+  [{:keys [driver], :as query-dict}]
   (binding [*driver*       driver
             *field-ids*    (atom #{})
             *fk-field-ids* (atom #{})
