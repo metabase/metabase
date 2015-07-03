@@ -975,6 +975,77 @@
 ;; |                                                MONGO NESTED-FIELD ACCESS                                               |
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
+;;; Nested Field in FILTER
+;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
+(expect
+    [[8 "Kyle's Low-Carb Grill"]
+     [67 "Kyle's Low-Carb Grill"]
+     [80 "Kyle's Low-Carb Grill"]
+     [83 "Kyle's Low-Carb Grill"]
+     [295 "Kyle's Low-Carb Grill"]
+     [342 "Kyle's Low-Carb Grill"]
+     [417 "Kyle's Low-Carb Grill"]
+     [426 "Kyle's Low-Carb Grill"]
+     [470 "Kyle's Low-Carb Grill"]]
+  (Q run against geographical-tips using mongo
+     return :data :rows (map (fn [[id _ _ {venue-name :name}]] [id venue-name]))
+     aggregate rows of tips
+     filter = venue...name "Kyle's Low-Carb Grill"
+     order _id
+     lim 10))
+
+;;; Nested Field in ORDER
+;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
+(expect
+    [[446 "Cam's Mexican Gastro Pub"
+      {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}]
+     [230 "Haight European Grill"
+      {:mentions ["@haight_european_grill"], :tags ["#european" "#grill"], :service "twitter", :username "kyle"}]
+     [319 "Haight Soul Food Pop-Up Food Stand"
+      {:mentions ["@haight_soul_food_pop_up_food_stand"], :tags ["#soul" "#food" "#pop-up" "#food" "#stand"], :service "twitter", :username "kyle"}]
+     [224 "Pacific Heights Free-Range Eatery"
+      {:mentions ["@pacific_heights_free_range_eatery"], :tags ["#free-range" "#eatery"], :service "twitter", :username "kyle"}]]
+  (Q run against geographical-tips using mongo
+     return :data :rows (map (fn [[id source _ {venue-name :name}]] [id venue-name source]))
+     aggregate rows of tips
+     filter and = source...service "twitter"
+     = source...username "kyle"
+     order venue...name))
+
+;; Nested Field in AGGREGATION
+(expect
+    {}
+    (Q run against geographical-tips using mongo
+       return :data :rows
+       aggregate distinct venue...name of tips))
+
+;;; Nested Field in BREAKOUT
+
+;; TODO - id/$ don't handle nested Fields ?
+
+;;; Nested Field in FIELDS
+;; Return the first 10 tips with just tip.venue.name
+(expect
+    [[1 {:name "Lucky's Gluten-Free Café"}]
+     [2 {:name "Joe's Homestyle Eatery"}]
+     [3 {:name "Lower Pac Heights Cage-Free Coffee House"}]
+     [4 {:name "Oakland European Liquor Store"}]
+     [5 {:name "Tenderloin Gormet Restaurant"}]
+     [6 {:name "Marina Modern Sushi"}]
+     [7 {:name "Sunset Homestyle Grill"}]
+     [8 {:name "Kyle's Low-Carb Grill"}]
+     [9 {:name "Mission Homestyle Churros"}]
+     [10 {:name "Sameer's Pizza Liquor Store"}]]
+  (Q run against geographical-tips using mongo
+     return :data :rows
+     aggregate rows of tips
+     order _id
+     fields venue...name
+     lim 10))
+
+
+;;; Nested-Nested Fields
+
 (defn y []
   (datasets/with-dataset :mongo
     (with-temp-db [_ (dataset-loader) defs/geographical-tips]

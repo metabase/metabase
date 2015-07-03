@@ -178,19 +178,26 @@
   ([temp-db table-name]
    {:pre [(map? temp-db)
           (string? table-name)]
-    :post [(map? %)]}
+    :post [(or (map? %) (assert nil (format "Couldn't find table '%s'.\nValid choices are: %s" table-name
+                                            (vec (keys @(:table-name->table temp-db))))))]}
    (@(:table-name->table temp-db) table-name))
 
   ([temp-db table-name field-name]
    {:pre [(string? field-name)]
-    :post [(map? %)]}
+    :post [(or (map? %) (assert nil (format "Couldn't find field '%s.%s'.\nValid choices are: %s" table-name field-name
+                                            (vec (keys @(:field-name->field (-temp-get temp-db table-name)))))))]}
    (@(:field-name->field (-temp-get temp-db table-name)) field-name))
 
   ([temp-db table-name parent-field-name & nested-field-names]
    {:pre [(every? string? nested-field-names)]
-    :post [(map? %)]}
+    :post [(or (map? %) (assert nil (format "Couldn't find nested field '%s.%s.%s'.\nValid choices are: %s" table-name parent-field-name
+                                            (apply str (interpose "." nested-field-names))
+                                            (vec (map :name @(:children (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))))))))]}
    (binding [*sel-disable-logging* true]
-     (sel :one Field, :name (last nested-field-names), :parent_id (:id (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names)))))))
+     (let [parent            (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))
+           children          @(:children parent)
+           child-name->child (zipmap (map :name children) children)]
+       (child-name->child (last nested-field-names))))))
 
 (defn- walk-expand-&
   "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.

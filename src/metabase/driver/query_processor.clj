@@ -278,6 +278,8 @@
                               (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
 
     ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
+    (when-not *disable-qp-logging*
+      (log/debug (u/format-color 'magenta "Using this ordering: breakout: %s, ag: %s, other: %s" (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws))))
     (concat breakout-kws ag-kws non-breakout-kws)))
 
 (defn- add-fields-extra-info
@@ -355,10 +357,14 @@
           results                        (if-not uncastify-fn results
                                                  (for [row results]
                                                    (m/map-keys uncastify-fn row)))
+          _                              (when-not *disable-qp-logging*
+                                           (log/debug (u/format-color 'magenta "\nDriver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
           fields                         (sel :many :fields [Field :id :table_id :name :description :base_type :special_type],
-                                              :table_id source-table-id, :active true)
+                                              :table_id source-table-id, :active true, :parent_id nil)
           ordered-col-kws                (order-cols query results fields)]
+      (assert (= (count (keys (first results))) (count ordered-col-kws))
+              (format "Order-cols returned an invalid number of keys. Expected: %d, got: %d" (count (keys (first results))) (count ordered-col-kws)))
       {:rows    (for [row results]
                   (mapv row ordered-col-kws))                                          ; might as well return each row and col info as vecs because we're not worried about making
        :columns (mapv name ordered-col-kws)                                            ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
@@ -405,13 +411,6 @@
       (reset! called? true)
       (qp query))))
 
-(defn- post-log-results [qp]
-  (fn [query]
-    (let [results (qp query)]
-      (when-not *disable-qp-logging*
-        (log/debug "\nRESULTS:\n" (u/pprint-to-str 'cyan results)))
-      results)))
-
 (defn- process-structured [{:keys [driver], :as query}]
   (let [driver-process-query (partial i/process-query driver)]
     ((<<- wrap-catch-exceptions
@@ -424,7 +423,6 @@
           limit
           post-annotate
           pre-log-query
-          post-log-results
           wrap-guard-multiple-calls
           driver-process-query) query)))
 

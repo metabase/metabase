@@ -108,28 +108,29 @@
                                                          (parent-id->fields (:id field)))))]
      (map resolve-children (parent-id->fields nil)))))
 
-(defn- qualified-name
-  "Return a name like `table.field` for FIELD. If FIELD is a nested field, recursively return a name
-   like `table.parent.field`."
+(defn- qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{:keys [table parent], :as field}]
   {:pre [(delay? table)]}
-  (str (if parent
-         (qualified-name @parent)
-         (:name @table))
-       "." (:name field)))
+  (conj (if parent
+          (qualified-name-components @parent)
+          [(:name @table)])
+        (:name field)))
 
 (defmethod post-select Field [_ {:keys [table_id] :as field}]
   (u/assoc* field
-    :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
-    :db                  (delay @(:db @(:table <>)))
-    :target              (delay (field->fk-field field))
-    :can_read            (delay @(:can_read @(:table <>)))
-    :can_write           (delay @(:can_write @(:table <>)))
-    :human_readable_name (when (name :field)
-                           (delay (common/name->human-readable-name (:name field))))
-    :parent              (when (:parent_id field)
-                           (delay (sel :one Field :id (:parent_id field))))
-    :qualified-name      (delay (qualified-name <>))))
+    :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
+    :db                        (delay @(:db @(:table <>)))
+    :target                    (delay (field->fk-field field))
+    :can_read                  (delay @(:can_read @(:table <>)))
+    :can_write                 (delay @(:can_write @(:table <>)))
+    :human_readable_name       (when (name :field)
+                                 (delay (common/name->human-readable-name (:name field))))
+    :parent                    (when (:parent_id field)
+                                 (delay (sel :one Field :id (:parent_id field))))
+    :children                  (delay (sel :many Field :parent_id (:id field)))
+    :qualified-name-components (delay (qualified-name-components <>))
+    :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>))))))
 
 (defmethod pre-insert Field [_ field]
   (let [defaults {:active          true

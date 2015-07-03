@@ -87,15 +87,18 @@
     #{"_id"})
 
   ISyncDriverFieldValues
-  (field-values-lazy-seq [_ field]
+  (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
     {:pre [(map? field)
-           (delay? (:table field))]}
+           (delay? qualified-name-components)
+           (delay? table)]}
     (lazy-seq
-     (let [table @(:table field)]
-       (map (keyword (:name field))
-            (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
-              (mq/with-collection conn (:name table)
-                (mq/fields [(:name field)])))))))
+     (assert *mongo-connection*
+             "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
+     (let [table           @table
+           name-components (rest @qualified-name-components)]
+       (map #(get-in % (map keyword name-components))
+            (mq/with-collection *mongo-connection* (:name table)
+              (mq/fields [(apply str (interpose "." name-components))]))))))
 
   ISyncDriverFieldNestedFields
   (active-nested-field-name->type [this field]
@@ -120,44 +123,3 @@
 (def driver
   "Concrete instance of the MongoDB driver."
   (MongoDriver.))
-
-
-
-;; ---------------------------------------- EXPLORATORY SUBFIELD STUFF ----------------------------------------
-
-(require '[metabase.test.data :as data]
-         '[metabase.test.data.datasets :as datasets]
-         '[metabase.test.data.dataset-definitions :as defs]
-         '[metabase.test.util.mql :refer [Q]]
-         '[metabase.db :refer [sel]]
-         '(metabase.models [table :refer [Table]]
-                           [field :refer [Field]]))
-
-(defn x []
-  (Q run with db geographical-tips
-     with dataset mongo
-     ag rows
-     tbl tips
-     filter = venue...name "Kyle's Low-Carb Grill"
-     lim 10))
-
-(defn x2 []
-  (Q run against geographical-tips using mongo
-     aggregate rows of tips
-     filter = source...service "yelp"
-     order venue...name+
-     limit 10))
-
-(defn y []
-  (datasets/with-dataset :mongo
-    (data/with-temp-db [db (data/dataset-loader) defs/geographical-tips]
-      (->> (sel :many :fields [Field :id :name :parent_id] :table_id (sel :one :id Table :db_id (:id db)))
-           metabase.models.field/unflatten-nested-fields))))
-
-;; TODO
-;; 4. API
-;;    4A. API Tweaks as Needed
-;; 5. Cleanup + Tests
-;;    5A. Cleanup / Dox
-;;    5B. Tests
-;;    5C. $ notation doesn't handle nested Fields (yet) (or id ? )

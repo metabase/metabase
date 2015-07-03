@@ -107,7 +107,7 @@
   ([field]
    `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
                        (merge ~*constraints*
-                              {(field->name field) {$exists true}}))}]))
+                              {~(field->name field) {$exists true}}))}]))
 
 (defn- aggregation:avg [field]
   (aggregate {$group {"_id" nil

@@ -57,7 +57,7 @@
                           ~query)))))
 
 (defmacro Q:return [q & args]
-  `(-> ~q ~@args))
+  `(->> ~q ~@args))
 
 (defmacro Q:expand-outer [token form]
   (macroexpand-all `(symbol-macrolet [~'against Q:against

@@ -34,7 +34,7 @@
        "?connectTimeoutMS="
        connection-timeout-ms))
 
-(def ^:dynamic *mongo-connection*
+(def ^:dynamic ^com.mongodb.DBApiLayer *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
