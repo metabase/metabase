@@ -13,6 +13,7 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
+            [metabase.driver.query-processor.expand :as expand]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u])
@@ -39,7 +40,7 @@
       (case (keyword query-type)
         :query (let [generated-query (process-structured (:query query))]
                  (when-not qp/*disable-qp-logging*
-                   (log/debug (u/format-color 'green "\nMONGER FORM:\n\n%s\n"
+                   (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
                                               (->> generated-query
                                                    (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                                                    u/pprint-to-str) "\n")))                              ; so it's easier to read
@@ -85,14 +86,14 @@
                                                                     ~@(filter identity forms)]))
 
 (defn- field->name
-  [{:keys [field-name subfield]}]
-  (if subfield (format "%s.%s" field-name subfield)
-      field-name))
+  "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
+  ^String [field]
+  (apply str (interpose "." (expand/qualified-name-components field))))
 
 (defn- field->$str
   "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
   [field]
-  (format "$%s" (name (field->name field))))
+  (format "$%s" (field->name field)))
 
 (defn- aggregation:rows []
   `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*

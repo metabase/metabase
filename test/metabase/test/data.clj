@@ -151,17 +151,20 @@
 (defn- table-id->field-name->field
   "Return a map of lowercased `Field` names -> fields for `Table` with TABLE-ID."
   [table-id]
-  (->> (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil)
+  {:pre [(integer? table-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil))
        (m/map-keys s/lower-case)))
 
 (defn- db-id->table-name->table
   "Return a map of lowercased `Table` names -> Tables for `Database` with DATABASE-ID.
    Add a delay `:field-name->field` to each Table that calls `table-id->field-name->field` for that Table."
   [database-id]
-  (->> (sel :many :field->obj [Table :name] :db_id database-id)
+  {:pre [(integer? database-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Table :name] :db_id database-id))
        (m/map-keys s/lower-case)
-       (m/map-vals (fn [table]
-                     (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))))))
+       (m/map-vals #(assoc % :field-name->field (delay (table-id->field-name->field (:id %)))))))
 
 (defn -temp-db-add-getter-delay
   "Add a delay `:table-name->table` to DB that calls `db-id->table-name->table`."
@@ -174,14 +177,20 @@
    With three args, fetch `Field` with FIELD-NAME by recursively fetching `Table` and using its `:field-name->field` delay."
   ([temp-db table-name]
    {:pre [(map? temp-db)
-          (string? table-name)]}
+          (string? table-name)]
+    :post [(map? %)]}
    (@(:table-name->table temp-db) table-name))
+
   ([temp-db table-name field-name]
-   {:pre [(string? field-name)]}
+   {:pre [(string? field-name)]
+    :post [(map? %)]}
    (@(:field-name->field (-temp-get temp-db table-name)) field-name))
+
   ([temp-db table-name parent-field-name & nested-field-names]
-   {:pre [(string? (last nested-field-names))]}
-   (sel :one :id Field, :name (last nested-field-names), :parent_id (:id (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))))))
+   {:pre [(every? string? nested-field-names)]
+    :post [(map? %)]}
+   (binding [*sel-disable-logging* true]
+     (sel :one Field, :name (last nested-field-names), :parent_id (:id (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names)))))))
 
 (defn- walk-expand-&
   "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.
@@ -201,17 +210,20 @@
          form))
    body))
 
-(defn with-temp-db* [loader ^DatabaseDefinition dbdef f]
+(defn -with-temp-db [loader ^DatabaseDefinition dbdef f]
   (let [dbdef (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
-      (remove-database! loader dbdef)
-      (let [db (-> (get-or-create-database! loader dbdef)
-                   -temp-db-add-getter-delay)]
-        (assert db)
-        (assert (exists? Database :id (:id db)))
-        (f db))
+      (binding [*sel-disable-logging* true]
+        (remove-database! loader dbdef)
+        (let [db (-> (get-or-create-database! loader dbdef)
+                     -temp-db-add-getter-delay)]
+          (assert db)
+          (assert (exists? Database :id (:id db)))
+          (binding [*sel-disable-logging* false]
+            (f db))))
       (finally
-        (remove-database! loader dbdef)))))
+        (binding [*sel-disable-logging* true]
+          (remove-database! loader dbdef))))))
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
@@ -232,6 +244,6 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
-  `(with-temp-db* ~dataset-loader ~database-definition
+  `(-with-temp-db ~dataset-loader ~database-definition
      (fn [~db-binding]
        ~@(walk-expand-& db-binding body))))

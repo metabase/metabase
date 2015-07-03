@@ -11,7 +11,8 @@
 (defn- partition-tokens [keywords tokens]
   (->> (loop [all [], current-split nil, [token & more] tokens]
          (cond
-           (not token)                (conj all current-split)
+           (and (not token)
+                (not (seq more)))     (conj all current-split)
            (contains? keywords token) (recur (or (when (seq current-split)
                                                    (conj all current-split))
                                                  all)

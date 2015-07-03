@@ -161,3 +161,6 @@
 ;; 4. API
 ;;    4A. API Tweaks as Needed
 ;; 5. Cleanup + Tests
+;;    5A. Cleanup / Dox
+;;    5B. Tests
+;;    5C. $ notation doesn't handle nested Fields (yet) (or id ? )

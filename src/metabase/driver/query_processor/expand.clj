@@ -54,7 +54,8 @@
          parse-breakout
          parse-fields
          parse-filter
-         parse-order-by)
+         parse-order-by
+         ph)
 
 
 ;; ## -------------------- Protocols --------------------
@@ -91,7 +92,7 @@
   (and clause
        (or (not (sequential? clause))
            (and (seq clause)
-                (every? identity clause)))))
+                (not (every? nil? clause))))))
 
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
@@ -123,18 +124,28 @@
                           :name         :field-name
                           :special_type :special-type
                           :base_type    :base-type
-                          :table_id     :table-id}))
+                          :table_id     :table-id
+                          :parent_id    :parent-id}))
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
   [expanded-query-dict field-ids]
-  (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
-          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
-                            (m/map-vals rename-mb-field-keys))]
-            (reset! *table-ids* (set (map :table-id (vals fields))))
-            ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
-            ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
-            (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
+  (if-not (seq field-ids)
+    ;; Base case: if there's no field-ids to expand we're done
+    expanded-query-dict
+
+    ;; Re-bind *field-ids* in case we need to do recursive Field resolution
+    (binding [*field-ids* (atom #{})]
+      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id] :id [in field-ids])
+                        (m/map-vals rename-mb-field-keys)
+                        (m/map-vals #(assoc % :parent (when (:parent-id %)
+                                                        (ph (:parent-id %))))))]
+        (swap! *table-ids* set/union (set (map :table-id (vals fields))))
+
+        ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
+        ;; We can't use recur here because binding wraps body in try/catch
+        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
+                        @*field-ids*)))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
@@ -206,17 +217,40 @@
 
 ;; ## -------------------- Field + Value --------------------
 
+(defprotocol IField
+  "Methods specific to the Query Expander `Field` record type."
+  (qualified-name-components [this]
+    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
+
 ;; Field is the expansion of a Field ID in the standard QL
 (defrecord Field [^Integer field-id
                   ^String  field-name
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer table-id
-                  ^String  table-name]
+                  ^String  table-name
+                  ^Integer parent-id
+                  parent] ; Field once its resolved; FieldPlaceholder before that
   IResolve
+  (resolve-field [this field-id->fields]
+    (cond
+      parent          (if (= (type parent) Field)
+                        this
+                        (resolve-field parent field-id->fields))
+      parent-id       (assoc this :parent (or (field-id->fields parent-id)
+                                              (ph parent-id)))
+      :else           this))
+
   (resolve-table [this table-id->table]
     (assoc this :table-name (:name (or (table-id->table table-id)
-                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
+                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
+
+  IField
+  (qualified-name-components [this]
+    (conj (if parent
+            (qualified-name-components parent)
+            [table-name])
+          field-name)))
 
 (defn- Field?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
@@ -243,9 +277,13 @@
 (defrecord FieldPlaceholder [^Integer field-id]
   IResolve
   (resolve-field [this field-id->fields]
-    (->> (field-id->fields field-id)
-         (merge this)
-         map->Field)))
+    (or
+     ;; try to resolve the Field with the ones available in field-id->fields
+     (some->> (field-id->fields field-id)
+              (merge this)
+              map->Field)
+     ;; If that fails just return ourselves as-is
+     this)))
 
 (defn- parse-value
   "Convert the `value` of a `Value` to a date or timestamp if needed.
@@ -285,12 +323,6 @@
          (swap! *field-ids* conj dest-field-id)
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
-
-      ["." (id :guard integer?) subfield]
-      (do (assert-driver-supports :nested-fields)
-          (swap! *field-ids* conj id)
-          (map->FieldPlaceholder {:field-id id
-                                  :subfield subfield}))
 
       _ (throw (Exception. (str "Invalid field: " field-id)))))
   ([field-id value]
@@ -367,7 +399,7 @@
 ;; ### Parsers
 
 (defparser parse-filter-subclause
-  ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max]
+  ["INSIDE" (lat-field :guard integer?) (lon-field :guard integer?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
                                      :min   (ph lat-field lat-min)
@@ -376,22 +408,25 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" field-id min max]
+  ["BETWEEN" (field-id :guard integer?) (min :guard number?) (max :guard number?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [filter-type field-id val]
+  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard integer?) val]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
-  [filter-type field-id]
+  [(filter-type :guard string?) (field-id :guard integer?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)
-                      :field       (ph field-id)}))
+                      :field       (ph field-id)})
+
+  clause
+  (throw (Exception. (format "Invalid filter clause: %s" clause))))
 
 (defparser parse-filter
   ["AND" & subclauses] (map->Filter {:compound-type :and

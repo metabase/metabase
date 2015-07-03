@@ -50,7 +50,8 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (expand/expand *driver* query))))
+    (qp (assoc (expand/expand *driver* query)
+               :query-id (str (java.util.UUID/randomUUID))))))
 
 
 (defn- post-add-row-count-and-status
@@ -171,8 +172,7 @@
 
 (defn- cumulative-sum [qp]
   (fn [query]
-    (let [[cumulative-sum-field query] (pre-cumulative-sum query)
-          results                      (qp query)]
+    (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
       (cond->> (qp query)
         cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))))
 
@@ -400,7 +400,25 @@
 ;;
 ;; Pre-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
+(defn- wrap-guard-multiple-calls
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
+  [qp]
+  (let [called? (atom false)]
+    (fn [query]
+      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+      (reset! called? true)
+      (qp query))))
+
+(defn- post-log-results [qp]
+  (fn [query]
+    (let [results (qp query)]
+      (when-not *disable-qp-logging*
+        (log/debug "\nRESULTS:\n" (u/pprint-to-str 'cyan results)))
+      results)))
+
 (defn- process-structured [driver query]
+  (when-not *disable-qp-logging*
+    (println "PROCESS STRUCTURED!"))
   (let [driver-process-query (partial i/process-query driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
@@ -412,6 +430,8 @@
           limit
           post-annotate
           pre-log-query
+          post-log-results
+          wrap-guard-multiple-calls
           driver-process-query) query)))
 
 (defn- process-native [driver query]
@@ -420,11 +440,14 @@
           post-add-row-count-and-status
           post-convert-unix-timestamps-to-dates
           limit
+          wrap-guard-multiple-calls
           driver-process-query) query)))
 
 (defn process
   "Process a QUERY and return the results."
   [driver query]
+  (when-not *disable-qp-logging*
+    (log/info (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
   (binding [*driver* driver]
     ((case (keyword (:type query))
        :native process-native
