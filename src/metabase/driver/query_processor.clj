@@ -177,7 +177,7 @@
   [qp]
   (fn [{{{ag-type :aggregation-type} :aggregation} :query, :as query}]
     (let [query   (cond-> query
-                    (= ag-type :rows) (assoc :limit max-result-bare-rows))
+                    (= ag-type :rows) (update-in [:query] #(m/assoc-some % :limit max-result-bare-rows)))
           results (qp query)]
       (update-in results [:rows] (partial take max-result-rows)))))
 
