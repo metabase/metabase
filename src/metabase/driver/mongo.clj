@@ -142,11 +142,10 @@
      lim 10))
 
 (defn x2 []
-  (Q run against geographical-tips
-     using mongo
-     aggregate rows
-     of tips
-     filter = venue...name "Kyle's Low-Carb Grill"
+  (Q run against geographical-tips using mongo
+     aggregate rows of tips
+     filter = source...service "yelp"
+     order venue...name+
      limit 10))
 
 (defn y []

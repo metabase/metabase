@@ -88,7 +88,7 @@
 (defn- field->name
   "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
   ^String [field]
-  (apply str (interpose "." (expand/qualified-name-components field))))
+  (apply str (interpose "." (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
 
 (defn- field->$str
   "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."

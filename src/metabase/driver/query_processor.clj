@@ -175,9 +175,10 @@
 (defn- limit
   "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
-  (fn [{{{ag-type :aggregation-type} :aggregation} :query, :as query}]
+  (fn [{{{ag-type :aggregation-type} :aggregation, limit :limit} :query, :as query}]
     (let [query   (cond-> query
-                    (= ag-type :rows) (update-in [:query] #(m/assoc-some % :limit max-result-bare-rows)))
+                    (and (not limit)
+                         (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
       (update-in results [:rows] (partial take max-result-rows)))))
 
