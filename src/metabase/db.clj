@@ -373,10 +373,9 @@
 
 (def ^:dynamic *sel-disable-logging* false)
 
-(defn -sel-maybe-log [entity fields forms-str]
-  )
-
-(defn -sel-after [entity results]
+(defn -sel-after
+  "Perform ENTITY transformations on RESULTS."
+  [entity results]
   (map (comp (partial post-select entity)
              (partial apply-type-fns :out (seq (::types entity))))
        results))

@@ -39,10 +39,10 @@
   {field_type   FieldType
    special_type FieldSpecialType}
   (write-check Field id)
-  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description and special_type
-                                            :special_type special_type}                                              ; but field_type and preview_display must be replaced
-                                           (when field_type                   {:field_type field_type})              ; with new non-nil values
-                                           (when (not (nil? preview_display)) {:preview_display preview_display}))))
+  (check-500 (m/mapply upd Field id (merge {:description  description                                              ; you're allowed to unset description and special_type
+                                            :special_type special_type}                                            ; but field_type and preview_display must be replaced
+                                           (when field_type                 {:field_type field_type})              ; with new non-nil values
+                                           (when-not (nil? preview_display) {:preview_display preview_display}))))
   (sel :one Field :id id))
 
 (defendpoint GET "/:id/summary"
