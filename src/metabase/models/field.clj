@@ -97,7 +97,7 @@
     :target              (delay (field->fk-field field))
     :can_read            (delay @(:can_read @(:table <>)))
     :can_write           (delay @(:can_write @(:table <>)))
-    :human_readable_name (when (name :field)
+    :human_readable_name (when (:name field)
                            (delay (common/name->human-readable-name (:name field))))))
 
 (defmethod pre-insert Field [_ field]

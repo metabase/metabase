@@ -185,7 +185,7 @@ export default React.createClass({
             <div className={this.props.sectionClassName}>
                 <SelectionModule
                     action={this.setField}
-                    display='name'
+                    display='human_readable_name'
                     index={1}
                     items={this.props.filterFieldList}
                     placeholder="Filter by..."

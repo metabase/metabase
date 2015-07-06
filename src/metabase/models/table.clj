@@ -36,7 +36,8 @@
     :can_read            (delay @(:can_read @(:db <>)))
     :can_write           (delay @(:can_write @(:db <>)))
     :human_readable_name (when (:name table)
-                           (delay (common/name->human-readable-name (:name table))))))
+                           (delay (or (:entity_name table)
+                                      (common/name->human-readable-name (:name table)))))))
 
 
 (defmethod pre-cascade-delete Table [_ {:keys [id] :as table}]
