@@ -95,7 +95,8 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"
-            :parent_id           nil})
+            :parent_id           nil
+            :parent              nil})
          (match-$ (sel :one Field :id (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
@@ -110,7 +111,8 @@
             :preview_display     true
             :created_at          $
             :base_type           "TextField"
-            :parent_id           nil})]
+            :parent_id           nil
+            :parent              nil})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
@@ -142,7 +144,8 @@
                          :preview_display true
                          :created_at      $
                          :base_type       "BigIntegerField"
-                         :parent_id       nil})
+                         :parent_id       nil
+                         :parent          nil})
                       (match-$ (sel :one Field :id (id :categories :name))
                         {:description     nil
                          :table_id        (id :categories)
@@ -157,7 +160,8 @@
                          :preview_display true
                          :created_at      $
                          :base_type       "TextField"
-                         :parent_id       nil})]
+                         :parent_id       nil
+                         :parent          nil})]
        :field_values {}
        :rows         75
        :updated_at   $
@@ -191,80 +195,88 @@
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
     (match-$ (sel :one Table :id (id :users))
-      {:description nil
-       :entity_type nil
-       :db (match-$ (db)
-             {:created_at $
-              :engine "h2"
-              :id $
-              :details $
-              :updated_at $
-              :name "Test Database"
-              :organization_id nil
-              :description nil})
-       :name "USERS"
-       :fields [(match-$ (sel :one Field :id (id :users :id))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "id"
-                   :name "ID"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :users :last_login))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "LAST_LOGIN"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "DateTimeField"})
-                (match-$ (sel :one Field :id (id :users :name))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})
-                (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "PASSWORD"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "sensitive"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})]
-       :rows 15
-       :updated_at $
-       :entity_name nil
-       :active true
-       :id (id :users)
-       :db_id (db-id)
+      {:description  nil
+       :entity_type  nil
+       :db           (match-$ (db)
+                       {:created_at      $
+                        :engine          "h2"
+                        :id              $
+                        :details         $
+                        :updated_at      $
+                        :name            "Test Database"
+                        :organization_id nil
+                        :description     nil})
+       :name         "USERS"
+       :fields       [(match-$ (sel :one Field :id (id :users :id))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "id"
+                         :name            "ID"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "BigIntegerField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :id (id :users :last_login))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "LAST_LOGIN"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "DateTimeField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :id (id :users :name))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "NAME"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "PASSWORD"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "sensitive"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})]
+       :rows         15
+       :updated_at   $
+       :entity_name  nil
+       :active       true
+       :id           (id :users)
+       :db_id        (db-id)
        :field_values {(keyword (str (id :users :last_login)))
                       user-last-login-date-strs
 
@@ -284,7 +296,7 @@
                        "Simcha Yan"
                        "Spiros Teofil"
                        "Szymon Theutrich"]}
-       :created_at $})
+       :created_at   $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
 ;;; GET api/meta/table/:id/query_metadata
@@ -317,7 +329,8 @@
                          :preview_display true
                          :created_at      $
                          :base_type       "BigIntegerField"
-                         :parent_id       nil})
+                         :parent_id       nil
+                         :parent          nil})
                       (match-$ (sel :one Field :id (id :users :last_login))
                         {:description     nil
                          :table_id        (id :users)
@@ -332,7 +345,8 @@
                          :preview_display true
                          :created_at      $
                          :base_type       "DateTimeField"
-                         :parent_id       nil})
+                         :parent_id       nil
+                         :parent          nil})
                       (match-$ (sel :one Field :id (id :users :name))
                         {:description     nil
                          :table_id        (id :users)
@@ -347,7 +361,8 @@
                          :preview_display true
                          :created_at      $
                          :base_type       "TextField"
-                         :parent_id       nil})]
+                         :parent_id       nil
+                         :parent          nil})]
        :rows         15
        :updated_at   $
        :entity_name  nil
@@ -434,6 +449,7 @@
                          :created_at      $
                          :updated_at      $
                          :parent_id       nil
+                         :parent          nil
                          :table           (match-$ (sel :one Table :id (id :checkins))
                                             {:description nil
                                              :entity_type nil
@@ -468,6 +484,7 @@
                          :created_at      $
                          :updated_at      $
                          :parent_id       nil
+                         :parent          nil
                          :table           (match-$ (sel :one Table :id (id :users))
                                             {:description nil
                                              :entity_type nil

@@ -117,7 +117,7 @@
           [(:name @table)])
         (:name field)))
 
-(defmethod post-select Field [_ {:keys [table_id] :as field}]
+(defmethod post-select Field [_ {:keys [table_id parent_id] :as field}]
   (u/assoc* field
     :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
     :db                        (delay @(:db @(:table <>)))
@@ -126,8 +126,8 @@
     :can_write                 (delay @(:can_write @(:table <>)))
     :human_readable_name       (when (name :field)
                                  (delay (common/name->human-readable-name (:name field))))
-    :parent                    (when (:parent_id field)
-                                 (delay (sel :one Field :id (:parent_id field))))
+    :parent                    (when parent_id
+                                 (delay (sel :one Field :id parent_id)))
     :children                  (delay (sel :many Field :parent_id (:id field)))
     :qualified-name-components (delay (qualified-name-components <>))
     :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>))))))

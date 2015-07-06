@@ -14,7 +14,8 @@
             [metabase.driver :as driver]
             [metabase.driver.interface :refer :all]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])))
+                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
+            [metabase.util :as u]))
 
 (declare driver)
 
@@ -80,17 +81,19 @@
     (with-mongo-connection [_ @(:db table)]
       (into {} (for [column-name (table->column-names table)]
                  {(name column-name)
-                  (field->base-type {:name  (name column-name)
-                                     :table (delay table)})}))))
+                  (field->base-type {:name                      (name column-name)
+                                     :table                     (delay table)
+                                     :qualified-name-components (delay [(name column-name)])})}))))
 
   (table-pks [_ _]
     #{"_id"})
 
   ISyncDriverFieldValues
   (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
-    {:pre [(map? field)
-           (delay? qualified-name-components)
-           (delay? table)]}
+    (assert (and (map? field)
+                 (delay? qualified-name-components)
+                 (delay? table))
+            (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
     (lazy-seq
      (assert *mongo-connection*
              "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")

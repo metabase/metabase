@@ -46,11 +46,11 @@
                [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
-         (:table field)]}                                              ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
+         (:table field)]} ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
   (log/debug (format "Creating FieldValues for Field %d..." field-id))
   (ins FieldValues
-    :field_id field-id
-    :values (field-distinct-values field)
+    :field_id              field-id
+    :values                (field-distinct-values field)
     :human_readable_values human-readable-values))
 
 (defn create-field-values-if-needed

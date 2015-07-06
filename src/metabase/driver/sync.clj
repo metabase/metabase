@@ -153,20 +153,21 @@
     ;; Now do the syncing for Table's Fields
     (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type (active-column-names->type driver table)
-          field-name->id            (sel :many :field->id [Field :name], :table_id (:id table), :active true, :parent_id nil)]
+          existing-field-name->id   (sel :many :field->id [Field :name], :table_id (:id table), :active true, :parent_id nil)]
+
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
       (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
       (assert (every? (partial contains? field/base-types) (vals active-column-names->type)) "The vals of active-column-names->type should be valid Field base types.")
 
       ;; As above, first mark inactive Fields
       (let [active-column-names (set (keys active-column-names->type))]
-        (doseq [[field-name field-id] field-name->id]
+        (doseq [[field-name field-id] existing-field-name->id]
           (when-not (contains? active-column-names field-name)
             (upd Field field-id :active false)
             (log/info (format "Marked field %s.%s.%s as inactive." (:name database) (:name table) field-name)))))
 
       ;; Next, create new Fields as needed
-      (let [existing-field-names (set (keys field-name->id))]
+      (let [existing-field-names (set (keys existing-field-name->id))]
         (doseq [[active-field-name active-field-type] active-column-names->type]
           (when-not (contains? existing-field-names active-field-name)
             (ins Field
