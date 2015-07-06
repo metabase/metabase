@@ -80,11 +80,13 @@ export default React.createClass({
     calculateSizing: function(prevState) {
         var element = this.getDOMNode(); //React.findDOMNode(this);
 
-        // account for padding above our parent
+        // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);
         var paddingTop = Math.ceil(parseFloat(style.getPropertyValue("padding-top")));
+        var paddingLeft = Math.ceil(parseFloat(style.getPropertyValue("padding-left")));
+        var paddingRight = Math.ceil(parseFloat(style.getPropertyValue("padding-right")));
 
-        var width = element.parentElement.offsetWidth;
+        var width = element.parentElement.offsetWidth - paddingLeft - paddingRight;
         var height = element.parentElement.offsetHeight - paddingTop;
 
         if (width !== prevState.width || height !== prevState.height) {
