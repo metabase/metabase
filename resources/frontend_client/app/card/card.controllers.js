@@ -321,11 +321,6 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.profileId = result.items[0].id;
                     card.dataset_query.query.ids = 'ga:' + result.items[0].id;
 
-                    GA.columnList().then(function (result) {
-                       gaModel.metrics = result.metrics;
-                       gaModel.dimensions = result.dimensions;
-                       renderAll();
-                    });
                 });
             },
             runFn: function(dataset_query) {
@@ -336,26 +331,29 @@ CardControllers.controller('CardDetail', [
                 GA.queryCoreReportingApi(card.dataset_query.query).then(function (result) {
                     console.log('query result from ga', result.result.rows);
                     var data = result.result.rows;
+                    data = _.unzip(data);
+
                     var formattedColumns = [],
                         formattedRows = [],
                         formattedCols = [];
 
-                    for(var d in data) {
-                        // the first index is the name of the column, so push that to the list
-                        for(var i = 0; i < data[d].length; i ++) {
-                            console.log('checking in', data[d]);
-                            if(i === 0) {
-                                formattedColumns.push(data[d][0]);
-                                formattedCols.push({
-                                    name: data[d][0]
-                                });
-                            } else {
-                                console.log('roww', data[d][i]);
-                                formattedRows.push(data[d][i]);
-                            }
-                        }
-                    }
-
+                    data.map(function (d, i) {
+                        // if the array index is 0, then its the header
+                       if(i === 0) {
+                           for(var h in d) {
+                               var header = d[h];
+                               formattedColumns.push(header);
+                               formattedCols.push({
+                                   name: header
+                               });
+                           }
+                       } else {
+                           for(var r in d) {
+                               console.log(d[r]);
+                               formattedRows.push([d[r]]);
+                           }
+                       }
+                   });
 
 
                     var formattedResult = {
@@ -365,6 +363,8 @@ CardControllers.controller('CardDetail', [
                             columns: formattedColumns
                         }
                     };
+
+                    window.formatted = formattedResult;
 
                     console.log('formatted', formattedResult);
 
@@ -723,6 +723,11 @@ CardControllers.controller('CardDetail', [
                     console.log('properties results', result);
                     gaModel.properties = result.items;
                     renderAll();
+                    GA.columnList().then(function (result) {
+                       gaModel.metrics = result.metrics;
+                       gaModel.dimensions = result.dimensions;
+                       renderAll();
+                    });
                 });
             }).catch(function (err) {
                console.log('whoops');
