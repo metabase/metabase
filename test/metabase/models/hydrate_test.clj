@@ -237,11 +237,13 @@
                   :b d2}
                  :b))
 
-;; specifying "nested" hydration with no "nested" keys should still work
-(expect {:a 1 :b 2}
-        (hydrate {:a 1
-                  :b d2}
-                 [:b]))
+;; specifying "nested" hydration with no "nested" keys should throw an exception and tell you not to do it
+(expect "Assert failed: Replace '[:b]' with ':b'. Vectors are for nested hydration. There's no need to use one when you only have a single key.\n(> (count vect) 1)"
+  (try (hydrate {:a 1
+                 :b d2}
+                [:b])
+       (catch Throwable e
+         (.getMessage e))))
 
 ;; check that returning an array works correctly
 (expect {:c [1 2 3]}
