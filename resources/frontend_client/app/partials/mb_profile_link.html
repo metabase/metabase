@@ -1,10 +1,12 @@
 <div class="NavDropdown inline-block" dropdown on-toggle="toggled(open)">
     <a class="NavDropdown-button NavItem flex align-center p2" selectable-nav-item="settings" dropdown-toggle>
         <div class="NavDropdown-button-layer">
-            <span class="UserNick">
-                <span class="UserInitials NavItem-text">{{initials}}</span>
-            </span>
-            <!-- <mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon> -->
+            <div class="flex align-center">
+                <span class="UserNick">
+                    <span class="UserInitials NavItem-text">{{initials}}</span>
+                </span>
+                <mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>
+            </div>
         </div>
     </a>
     <div class="NavDropdown-content right">
