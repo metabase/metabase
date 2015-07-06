@@ -10,6 +10,7 @@ import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import GADimensionList from './ga_dimensions.react';
+import DatePicker from './date_filter.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -631,6 +632,43 @@ export default React.createClass({
         }
     },
 
+    renderTime: function () {
+        var startFilter,
+            endFilter;
+
+        if(this.props.card && this.props.card.dataset_query) {
+            var start = this.props.card.dataset_query.query['start-date'];
+            var end = this.props.card.dataset_query.query['end-date'];
+            console.log('start', start, 'end', end);
+            startFilter = (
+                <div className="inline-block QueryOption ">
+                    <div>Start Date:</div>
+                    <DatePicker date={start} onChange={this.props.setStartDate}/>
+                </div>
+            );
+
+            endFilter = (
+                <div className="inline-block ml2 QueryOption">
+                    <div>End Date:</div>
+                    <DatePicker date={end} onChange={this.props.setEndDate}/>
+                </div>
+            );
+
+        }
+
+        return (
+            <div>
+                <h3>Filter:</h3>
+                <div className="block">
+                    {startFilter}
+                    {endFilter}
+                </div>
+            </div>
+
+        );
+
+    },
+
     openStatus: function() {
         return (
             <a href="#" className="QueryToggle px2 py1 no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
@@ -672,6 +710,10 @@ export default React.createClass({
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderLimitAndSort()}
+                </ReactCSSTransitionGroup>
+
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderTime()}
                 </ReactCSSTransitionGroup>
 
                 <div className="Query-section Query-section--right mb2">

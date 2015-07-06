@@ -1,5 +1,5 @@
 'use strict';
-/*global _, document, confirm, console*/
+/*global _, document, confirm, console, moment*/
 
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import GAGuiQueryEditor from '../query_builder/ga_gui_query_editor.react';
@@ -97,8 +97,8 @@ CardControllers.controller('CardDetail', [
                 accountId: null,
                 query: {
                     'ids': null,
-                    'start-date': '7daysAgo',
-                    'end-date': 'today',
+                    'start-date': moment().subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD'),
+                    'end-date': moment().format('YYYY-MM-DD'),
                     'mertrics': '',  // GA API wants a , separated list of format 'ga:metric'
                     'dimensions': '' // GA API wants a , separated list of format 'ga:dimesion'
                 }
@@ -322,6 +322,17 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.ids = 'ga:' + result.items[0].id;
 
                 });
+            },
+
+            setStartDate: function (date) {
+                console.log('change start', moment(date));
+                card.dataset_query.query['start-date'] = date;
+                renderAll();
+            },
+            setEndDate: function (date) {
+                console.log('change end', moment(date));
+                card.dataset_query.query['end-date'] = date;
+                renderAll();
             },
             runFn: function(dataset_query) {
                 isRunning = true;
