@@ -6,7 +6,6 @@
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             (metabase.models [hydrate :refer [hydrate]]
                              [user :refer [User create-user set-user-password]])
-            [metabase.util.password :as password]
             [ring.util.request :as req]))
 
 (defn ^:private check-self-or-superuser
@@ -30,9 +29,21 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (check-400 (not (exists? User :email email :is_active true)))
-  (let [password-reset-url (str (java.net.URL. (java.net.URL. (req/request-url request)) "/auth/forgot_password"))]
-    (-> (create-user first_name last_name email :send-welcome true :reset-url password-reset-url)
+  (let [existing-user (sel :one [User :id :is_active] :email email)
+        password-reset-url (str (java.net.URL. (java.net.URL. (req/request-url request)) "/auth/forgot_password"))]
+    (-> (cond
+          ;; new user account, so create it
+          (nil? existing-user) (create-user first_name last_name email :send-welcome true :reset-url password-reset-url)
+          ;; this user already exists but is inactive, so simply reactivate the account
+          (not (:is_active existing-user)) (do
+                                             (upd User (:id existing-user)
+                                               :first_name first_name
+                                               :last_name last_name
+                                               :is_active true
+                                               :is_superuser false)
+                                             (sel :one User :id (:id existing-user)))
+          ;; account already exists and is active, so do nothing and just return the account
+          :else (sel :one User :id (:id existing-user)))
         (hydrate :user :organization))))
 
 

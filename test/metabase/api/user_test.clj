@@ -82,6 +82,28 @@
        :is_superuser false})
     (create-user-api rand-name)))
 
+;; Test that reactivating a disabled account works
+(let [rand-name (random-name)]
+  (expect-eval-actual-first
+    (match-$ (sel :one User :first_name rand-name :is_active true)
+      {:id $
+       :email $
+       :first_name rand-name
+       :last_name "whatever"
+       :date_joined $
+       :last_login $
+       :common_name $
+       :is_superuser false})
+    (when-let [user (create-user-api rand-name)]
+      ;; create a random user then set them to :inactive
+      (upd User (:id user)
+        :is_active false
+        :is_superuser true)
+      ;; then try creating the same user again
+      ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
+                                                   :last_name "whatever"
+                                                   :email (:email user)}))))
+
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "user" {:first_name "whatever"

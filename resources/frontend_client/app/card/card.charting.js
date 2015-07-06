@@ -374,10 +374,13 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
-                return (
-                    '<div><span class="ChartTooltip-key">' + cols[0].name + '</span> <span class="ChartTooltip-value">' + d.data.key + '</span></div>' +
-                    '<div><span class="ChartTooltip-key">' + cols[1].name + '</span> <span class="ChartTooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
-                );
+                var values = valueFormatter(d.data.value);
+                if (card.display === 'pie') {
+                    // TODO: this is not the ideal way to calculate the percentage, but it works for now
+                    values += " (" + valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
+                }
+                return '<div><span class="ChartTooltip-name">' + d.data.key + '</span></div>' +
+                    '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
@@ -876,7 +879,7 @@ export var CardRenderer = {
         // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
         if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
 
-        chart.barPadding(0.5); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
+        chart.barPadding(0.2); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
         chart.render();
 
         // apply any on-rendering functions

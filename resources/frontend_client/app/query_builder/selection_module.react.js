@@ -13,6 +13,9 @@ export default React.createClass({
     propTypes: {
         action: React.PropTypes.func.isRequired,
         display: React.PropTypes.string.isRequired,
+        descriptionKey: React.PropTypes.string,
+        expandFilter: React.PropTypes.func,
+        expandTitle: React.PropTypes.string,
         isInitiallyOpen: React.PropTypes.bool,
         items: React.PropTypes.array,
         remove: React.PropTypes.func,
@@ -29,6 +32,7 @@ export default React.createClass({
 
         return {
             open: isInitiallyOpen,
+            expanded: false,
             searchThreshold: 20,
             searchEnabled: false,
             filterTerm: null
@@ -37,7 +41,8 @@ export default React.createClass({
 
     handleClickOutside: function() {
         this.setState({
-            open: false
+            open: false,
+            expanded: false
         });
     },
 
@@ -54,10 +59,30 @@ export default React.createClass({
     },
 
     _toggleOpen: function() {
-        var open = !this.state.open;
         this.setState({
-            open: open
+            open: !this.state.open,
+            expanded: !this.state.open ? this.state.expanded : false
         });
+    },
+
+    _expand: function() {
+        this.setState({
+            expanded: true
+        });
+    },
+
+    _isExpanded: function() {
+        if (this.state.expanded || !this.props.expandFilter) {
+            return true;
+        }
+        // if an item that is normally in the expansion is selected then show the expansion
+        for (var i = 0; i < this.props.items.length; i++) {
+            var item = this.props.items[i];
+            if (this._itemIsSelected(item) && !this.props.expandFilter(item, i)) {
+                return true;
+            }
+        }
+        return false;
     },
 
     _displayCustom: function(values) {
@@ -71,26 +96,55 @@ export default React.createClass({
     },
 
     _listItems: function(selection) {
-        var items,
-            remove;
+        if (this.props.items) {
+            var sourceItems = this.props.items;
 
-        if(this.props.items) {
-            items = this.props.items.map(function (item, index) {
+            var isExpanded = this._isExpanded();
+            if (!isExpanded) {
+                sourceItems = sourceItems.filter(this.props.expandFilter);
+            }
+
+            var items = sourceItems.map(function (item, index) {
                 var display = (item) ? item[this.props.display] || item : item;
                 var itemClassName = cx({
                     'SelectionItem' : true,
                     'SelectionItem--selected': selection === display
                 });
+                var description = null;
+                if (this.props.descriptionKey && item && item[this.props.descriptionKey]) {
+                    description = (
+                        <div className="SelectionModule-description">
+                            {item[this.props.descriptionKey]}
+                        </div>
+                    );
+                }
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
-                        <Icon name='check' width="12px" height="12px" />
-                        <span className="SelectionModule-display">
-                            {display}
-                        </span>
+                        <Icon name="check" width="12px" height="12px" />
+                        <div className="flex-full">
+                            <div className="SelectionModule-display">
+                                {display}
+                            </div>
+                            {description}
+                        </div>
                     </li>
                 );
-            }.bind(this));
+            }, this);
+
+            if (!isExpanded && items.length !== this.props.items.length) {
+                items.push(
+                    <li className="SelectionItem border-top" onClick={this._expand} key="expand">
+                        <Icon name="chevrondown" width="12px" height="12px" />
+                        <div>
+                            <div className="SelectionModule-display">
+                                {this.props.expandedTitle || "Advanced..."}
+                            </div>
+                        </div>
+                    </li>
+                );
+            }
+
             return items;
         } else {
             return "Sorry. Something went wrong.";
@@ -114,10 +168,14 @@ export default React.createClass({
         this._toggleOpen();
     },
 
+    _itemIsSelected: function(item) {
+        return item && _.isEqual(item[this.props.selectedKey], this.props.selectedValue);
+    },
+
     render: function() {
         var selection;
         this.props.items.forEach(function (item) {
-            if(item && _.isEqual(item[this.props.selectedKey], this.props.selectedValue)) {
+            if (this._itemIsSelected(item)) {
                 selection = item[this.props.display];
             }
         }, this);
@@ -140,7 +198,8 @@ export default React.createClass({
 
         var itemListClasses = cx({
             'SelectionItems': true,
-            'open' : this.state.open
+            'SelectionItems--open': this.state.open,
+            'SelectionItems--expanded': this.state.expanded
         });
 
         if(this._enableSearch()) {

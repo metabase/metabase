@@ -1,6 +1,7 @@
 'use strict';
 
 import { CardRenderer } from '../card/card.charting';
+import Icon from './icon.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
@@ -20,6 +21,18 @@ export default React.createClass({
         setSortFn: React.PropTypes.func.isRequired,
         cellIsClickableFn: React.PropTypes.func,
         cellClickedFn: React.PropTypes.func
+    },
+
+    visualizationTypeNames: {
+        'scalar':  { displayName: 'Number',      iconName: 'number' },
+        'table':   { displayName: 'Table',       iconName: 'table' },
+        'line':    { displayName: 'Line',        iconName: 'line' },
+        'bar':     { displayName: 'Bar',         iconName: 'bar' },
+        'pie':     { displayName: 'Pie',         iconName: 'pie' },
+        'area':    { displayName: 'Area',        iconName: 'area' },
+        'state':   { displayName: 'State map',   iconName: 'statemap' },
+        'country': { displayName: 'Country map', iconName: 'countrymap' },
+        'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
     },
 
     getDefaultProps: function() {
@@ -108,14 +121,63 @@ export default React.createClass({
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function(event) {
+    setDisplay: function(type) {
         // notify our parent about our change
-        this.props.setDisplayFn(event.target.value);
+        this.props.setDisplayFn(type);
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
+    },
+
+    renderChartTypePicker: function() {
+        var tetherOptions = {
+            attachment: 'bottom center',
+            targetAttachment: 'top center',
+            targetOffset: '-15px 0'
+        };
+        var currentIconName = this.visualizationTypeNames[this.props.card.display].iconName;
+        var chartTypeButton = (
+                <div className="inline-block">
+                    <span className="ChartType-button text-brand text-brand-hover shadowed flex layout-centered">
+                        <Icon name={currentIconName} width="30px" height="30px"></Icon>
+                    </span>
+                </div>
+        );
+
+        var displayOptions = this.props.visualizationTypes.map((type, index) => {
+            var classes = cx({
+                'p2': true,
+                'flex': true,
+                'align-center': true,
+                'cursor-pointer': true,
+                'bg-brand-hover': true,
+                'text-white-hover': true,
+                'ChartType--selected': type === this.props.card.display,
+                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
+            });
+            var displayName = this.visualizationTypeNames[type].displayName;
+            var iconName = this.visualizationTypeNames[type].iconName;
+            return (
+                <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
+                    <Icon name={iconName} width="24px" height="24px"/>
+                    <span className="ml1">{displayName}</span>
+                </li>
+            );
+        });
+        return (
+            <span className="flex align-center">
+                Visualize as
+                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow ChartType-popover"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={chartTypeButton}>
+                    <ul className="">
+                        {displayOptions}
+                    </ul>
+                </PopoverWithTrigger>
+            </span>
+        );
     },
 
     renderChartColorPicker: function() {
@@ -192,30 +254,9 @@ export default React.createClass({
         } else {
             var vizControls;
             if (this.props.result && this.props.result.error === undefined) {
-                var displayOptions = [];
-                for (var i = 0; i < this.props.visualizationTypes.length; i++) {
-                    var val = this.props.visualizationTypes[i];
-
-                    if (this.isSensibleChartDisplay(val)) {
-                        displayOptions.push(
-                            <option key={i} value={val}>{val}</option>
-                        );
-                    } else {
-                        // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
-                        displayOptions.push(
-                            <option key={i+'_'} value={val}>{val} (not sensible)</option>
-                        );
-                    }
-                }
-
                 vizControls = (
-                    <div>
-                        Show as:
-                        <label className="Select ml2">
-                            <select onChange={this.setDisplay} value={this.props.card.display}>
-                                {displayOptions}
-                            </select>
-                        </label>
+                    <div className="flex">
+                        {this.renderChartTypePicker()}
                         {this.renderChartColorPicker()}
                     </div>
                 );
@@ -224,9 +265,7 @@ export default React.createClass({
             return (
                 <div className="VisualizationSettings wrapper flex">
                     {vizControls}
-                    <div className="flex-align-right">
-                        {tableFootnote}
-                    </div>
+                    {tableFootnote}
                 </div>
             );
         }
@@ -329,14 +368,14 @@ export default React.createClass({
                                 this.props.card.dataset_query.query.aggregation[0] === "rows" &&
                                 this.props.result.data.rows.length === 2000)) {
                         tableFootnote = (
-                            <div className="mt1">
+                            <div className="flex-align-right mt1">
                                 <span className="Badge Badge--headsUp mr2">Too many rows!</span>
                                 Result data was capped at <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
                     } else {
                         tableFootnote = (
-                            <div className="mt1">
+                            <div className="flex-align-right mt1">
                                 Showing <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
