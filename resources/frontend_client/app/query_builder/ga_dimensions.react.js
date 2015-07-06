@@ -177,6 +177,9 @@ export default React.createClass({
                 <div className="SelectionModule-trigger">
                     <a className="QueryOption p1 lg-p2 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}
+                        <span className="ml2">
+                            <Icon name="chevrondown" width="12px" height="12px" />
+                        </span>
                     </a>
                 </div>
                 <div className={itemListClasses}>

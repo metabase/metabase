@@ -99,7 +99,7 @@ export default React.createClass({
                 });
                 var description = (
                     <div className="SelectionModule-description">
-                        {item.id}
+                        {item.segmentId}
                     </div>
                 );
                 // if children are provided, use the custom layout display
@@ -127,7 +127,8 @@ export default React.createClass({
     },
 
     _itemIsSelected: function(item) {
-        return item && _.isEqual(item.id, this.props.query[this.props.queryKey]);
+        console.log('segment item', item);
+        return item && _.isEqual(item.segmentId, this.props.query[this.props.queryKey]);
     },
 
     render: function() {
@@ -148,7 +149,7 @@ export default React.createClass({
             placeholder = (
                 <span>
                     {selection.name}
-                    <span className="block">{selection.id}</span>
+                    <span className="block">{selection.segmentId}</span>
                 </span>
             );
         }
@@ -177,6 +178,9 @@ export default React.createClass({
                 <div className="SelectionModule-trigger">
                     <a className="QueryOption p1 lg-p2 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}
+                        <span className="ml2">
+                            <Icon name="chevrondown" width="12px" height="12px" />
+                        </span>
                     </a>
                 </div>
                 <div className={itemListClasses}>

@@ -679,7 +679,7 @@ export default React.createClass({
                         fields={this.props.segments}
                         placeholder="Pick a segment to query your GA Data by"
                         selectFn={this.props.selectSegment}
-                        queryKey='segments'
+                        queryKey='segment'
                         query={this.props.card.dataset_query.query}
                     />
                 </div>

@@ -311,7 +311,7 @@ CardControllers.controller('CardDetail', [
                 renderAll();
             },
             selectSegment: function (segment) {
-                card.dataset_query.query.segments = segment.id;
+                card.dataset_query.query.segment = segment.segmentId;
                 renderAll();
             },
             setAccountIdandProperyIdFn: function (accountId, propertyId) {
