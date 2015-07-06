@@ -32,7 +32,7 @@
 
 .text-brand-light,
 .text-brand-light-hover:hover {
-    color: color(var(--brand-light-color)) !important;
+    color: var(--brand-light-color);
 }
 
 .bg-brand,
