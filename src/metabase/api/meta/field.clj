@@ -35,13 +35,15 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [field_type special_type preview_display description]} :body}]
+  [id :as {{:keys [field_type special_type preview_display description display_name]} :body}]
   {field_type   FieldType
-   special_type FieldSpecialType}
+   special_type FieldSpecialType
+   display_name NonEmptyString}
   (write-check Field id)
-  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description and special_type
-                                            :special_type special_type}                                              ; but field_type and preview_display must be replaced
-                                           (when field_type                   {:field_type field_type})              ; with new non-nil values
+  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description, special_type
+                                            :special_type special_type                                               ; and display_name but field_type and preview_display
+                                            :display_name display_name}                                              ; must be replaced with new non-nil values
+                                           (when field_type                   {:field_type field_type})
                                            (when (not (nil? preview_display)) {:preview_display preview_display}))))
   (sel :one Field :id id))
 

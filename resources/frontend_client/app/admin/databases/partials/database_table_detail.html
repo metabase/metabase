@@ -29,7 +29,9 @@
                     <input ng-model="field.preview_display" type="checkbox" ng-change="inlineSaveField($index)">
 
                     <h3 class="TableField-name inline-block">
-                        {{field.name}}
+                        <a e-class="full" href="#" ng-class="{EditedEntity: field.display_name }" editable-text="field.display_name" onaftersave="inlineSaveField($index)">
+                            {{field.display_name || field.name}}
+                        </a>
                     </h3>
                     <span class="EntityOriginalType inline-block">{{field.base_type}}</span>
 
