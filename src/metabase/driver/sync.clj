@@ -204,7 +204,7 @@
               "table-fks should return a set of maps with keys :fk-column-name, :dest-table-name, and :dest-column-name.")
       (when (seq fks)
         (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :special_type nil, :name [in (map :fk-column-name fks)], :parent_id nil)
-              table-name->id (sel :many :field->id [Table :name], :name [in (map :dest-table-name fks)], :parent_id nil)]
+              table-name->id (sel :many :field->id [Table :name], :name [in (map :dest-table-name fks)])]
           (doseq [{:keys [fk-column-name dest-column-name dest-table-name] :as fk} fks]
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (table-name->id dest-table-name)]
