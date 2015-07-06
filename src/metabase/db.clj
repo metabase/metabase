@@ -377,8 +377,8 @@
   )
 
 (defn -sel-after [entity results]
-  (map (comp (partial apply-type-fns :out (seq (::types entity)))
-             (partial post-select entity))
+  (map (comp (partial post-select entity)
+             (partial apply-type-fns :out (seq (::types entity))))
        results))
 
 (defmacro -sel
