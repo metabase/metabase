@@ -460,7 +460,7 @@
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
-    (log/info (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
   ((case (keyword (:type query))
      :native process-native
      :query  process-structured)

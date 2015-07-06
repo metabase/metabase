@@ -401,7 +401,7 @@
 ;; ### Parsers
 
 (defparser parse-filter-subclause
-  ["INSIDE" (lat-field :guard integer?) (lon-field :guard integer?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
+  ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
                                      :min   (ph lat-field lat-min)
@@ -410,18 +410,18 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard integer?) (min :guard number?) (max :guard number?)]
+  ["BETWEEN" (field-id :guard Field?) min max]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard integer?) val]
+  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) val]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
-  [(filter-type :guard string?) (field-id :guard integer?)]
+  [(filter-type :guard string?) (field-id :guard Field?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)

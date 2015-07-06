@@ -904,11 +904,10 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-datasets #{:h2 :postgres}
   60
-  (-> (query-with-temp-db defs/tupac-sightings
-        :source_table &sightings:id
-        :aggregation  ["count"]
-        :filter       ["=" ["fk->" &sightings.category_id:id &categories.id:id] 8])
-      :data :rows first first))
+  (Q run against tupac-sightings
+     return :data :rows first first
+     aggregate count of sightings
+     filter = category_id->categories.id 8))
 
 
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
@@ -978,17 +977,17 @@
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
 (expect
-    [[8 "Kyle's Low-Carb Grill"]
-     [67 "Kyle's Low-Carb Grill"]
-     [80 "Kyle's Low-Carb Grill"]
-     [83 "Kyle's Low-Carb Grill"]
+    [[8   "Kyle's Low-Carb Grill"]
+     [67  "Kyle's Low-Carb Grill"]
+     [80  "Kyle's Low-Carb Grill"]
+     [83  "Kyle's Low-Carb Grill"]
      [295 "Kyle's Low-Carb Grill"]
      [342 "Kyle's Low-Carb Grill"]
      [417 "Kyle's Low-Carb Grill"]
      [426 "Kyle's Low-Carb Grill"]
      [470 "Kyle's Low-Carb Grill"]]
   (Q run against geographical-tips using mongo
-     return :data :rows (map (fn [[id _ _ {venue-name :name}]] [id venue-name]))
+     return :data :rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
      aggregate rows of tips
      filter = venue...name "Kyle's Low-Carb Grill"
      order _id

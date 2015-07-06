@@ -41,8 +41,8 @@
     (with-mongo-connection [_ database]
       (case (keyword query-type)
         :query (let [generated-query (process-structured (:query query))]
-                 (when-not false #_qp/*disable-qp-logging*
-                   (log/info (u/format-color 'green "\nMONGER FORM:\n%s\n"
+                 (when-not qp/*disable-qp-logging*
+                   (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
                                               (->> generated-query
                                                    (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                                                    u/pprint-to-str) "\n")))                              ; so it's easier to read

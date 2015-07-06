@@ -73,8 +73,8 @@
 
 (defmacro Q:expand-inner [& forms]
   {:database 'db-id
-   :type :query
-   :query `(Q:expand-clauses {} ~@forms)})
+   :type     :query
+   :query    `(Q:expand-clauses {} ~@forms)})
 
 (defmacro Q:wrap-fallback-captures [form]
   `(symbol-macrolet [~'db-id (data/db-id)
