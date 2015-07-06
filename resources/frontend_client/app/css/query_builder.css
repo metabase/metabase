@@ -91,7 +91,6 @@
     @selectionmodule
 */
 .SelectionModule {
-    color: var(--brand-color);
 }
 
 .SelectionItems {
@@ -136,7 +135,7 @@
 .SelectionItem .Icon {
     margin-left: 0.5rem;
     margin-right: 0.75rem;
-    color: var(--brand-color);
+    color: currentColor;
 }
 
 .SelectionItem .Icon-check {
@@ -325,9 +324,9 @@
 }
 
 .QueryOption {
-    border: 1px solid var(--selection-color);
+    border: 1px solid currentColor;
     border-radius: 2px;
-    color: var(--brand-color);
+    color: currentColor;
     line-height: 1;
 }
 
@@ -336,18 +335,13 @@
 }
 
 .QueryOption:hover {
-    border-color: color(var(--selection-color) shade(5%));
+    border-color: currentColor;
     cursor: pointer;
 }
 
 .SelectionModule.selected .QueryOption {
-    background-color: var(--selection-color);
-}
-
-.SelectionModule.selected .QueryOption:hover {
-    background-color: var(--brand-color);
-    border-color: var(--brand-color);
-    color: #fff;
+    background-color: transparent;
+    color: currentColor;
 }
 
 .ChartType-button {

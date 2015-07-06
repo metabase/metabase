@@ -11,9 +11,15 @@ var cx = React.addons.classSet;
 export default React.createClass({
     displayName:'GADimensionList',
     propTypes: {
-        fields: React.PropTypes.array.isRequired
+        fields: React.PropTypes.array.isRequired,
     },
     mixins: [OnClickOutside],
+
+    getDefaultProps: function () {
+       return {
+            colorClass: 'text-brand'
+       }
+    },
 
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed
@@ -163,7 +169,7 @@ export default React.createClass({
             'SelectionModule': true,
             'relative': true,
             'selected': selection,
-            'removeable': removeable
+            'removeable': removeable,
         });
 
         var itemListClasses = cx({
@@ -173,7 +179,7 @@ export default React.createClass({
         });
 
         return (
-            <div className={moduleClasses}>
+            <div className={moduleClasses + ' ' + this.props.colorClass}>
                 <div className="SelectionModule-trigger">
                     <a className="QueryOption p1 lg-p2 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}

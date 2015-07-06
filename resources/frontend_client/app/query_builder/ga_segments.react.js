@@ -164,19 +164,21 @@ export default React.createClass({
             'SelectionModule': true,
             'relative': true,
             'selected': selection,
-            'removeable': removeable
+            'removeable': removeable,
+            'text-gold': true
         });
 
         var itemListClasses = cx({
             'SelectionItems': true,
             'SelectionItems--open': this.state.open,
-            'SelectionItems--expanded': this.state.expanded
+            'SelectionItems--expanded': this.state.expanded,
+            'text-gold': true,
         });
 
         return (
             <div className={moduleClasses}>
                 <div className="SelectionModule-trigger">
-                    <a className="QueryOption p1 lg-p2 flex align-center" onClick={this._toggleOpen}>
+                    <a className="QueryOption p1 lg-p2 flex align-center text-gold" onClick={this._toggleOpen}>
                         {placeholder}
                         <span className="ml2">
                             <Icon name="chevrondown" width="12px" height="12px" />

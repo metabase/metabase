@@ -413,7 +413,7 @@ export default React.createClass({
 
             return (
                 <div className="inline-block">
-                    <h3>GA- Source</h3>
+                    <h5>GA- Source</h5>
                     {properties}
                 </div>
             );
@@ -438,13 +438,14 @@ export default React.createClass({
         if(this.props.dimensions) {
             return (
                 <div className="ml1 inline-block">
-                    <h3>GA Dimension:</h3>
+                    <h5>GA Dimension: (OPTIONAL)</h5>
                     <GADimensionList
                         fields={this.props.dimensions}
                         placeholder="Pick a dimension to see your GA data by"
                         selectFn={this.props.selectDimension}
                         query={this.props.card.dataset_query.query}
                         queryKey='dimensions'
+                        colorClass="text-success"
                     />
                 </div>
             );
@@ -455,7 +456,7 @@ export default React.createClass({
         if(this.props.metrics) {
             return (
                 <div className="inline-block">
-                    <h3>GA Metric:</h3>
+                    <h5>GA Metric:</h5>
                     <GADimensionList
                         fields={this.props.metrics}
                         placeholder="Pick a metric to see your GA data by"
@@ -674,7 +675,7 @@ export default React.createClass({
         if(this.props.segments) {
             return (
                 <div className="ml1 inline-block">
-                    <h3>GA- Segment</h3>
+                    <h5>GA- Segment (OPTIONAL)</h5>
                     <GASegmentList
                         fields={this.props.segments}
                         placeholder="Pick a segment to query your GA Data by"
@@ -714,6 +715,10 @@ export default React.createClass({
                     {this.renderPropertySelector()}
                 </ReactCSSTransitionGroup>
 
+                <span className="inline-block mx2 text-grey-1">
+                    <Icon name="chevronright" width="12px" height="12px"></Icon>
+                </span>
+
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderFilterSelector()}
                 </ReactCSSTransitionGroup>
@@ -722,9 +727,16 @@ export default React.createClass({
                     {this.renderMetric()}
                 </ReactCSSTransitionGroup>
 
+                <span className="inline-block mx2">
+                    By:
+                </span>
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderDimensions()}
                 </ReactCSSTransitionGroup>
+
+                <span className="inline-block mx2 text-grey-1">
+                    <Icon name="chevronright" width="12px" height="12px"></Icon>
+                </span>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderSegments()}
