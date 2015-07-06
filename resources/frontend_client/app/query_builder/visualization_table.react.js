@@ -116,12 +116,14 @@ export default React.createClass({
     },
 
     rowGetter: function(rowIndex) {
+        console.log('rowindex', rowIndex);
         return this.props.data.rows[rowIndex];
     },
 
     cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+        console.log('cell data', cellData);
         // TODO: should we be casting all values toString()?
-        cellData = (cellData !== null) ? cellData.toString() : null;
+        cellData = (cellData !== null || cellData !== undefined) ? cellData.toString() : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {

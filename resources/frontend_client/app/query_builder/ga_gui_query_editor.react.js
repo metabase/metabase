@@ -9,16 +9,16 @@ import LimitWidget from './limit_widget.react';
 import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
+import GADimensionList from './ga_dimensions.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
-    displayName: 'GuiQueryEditor',
+    displayName: 'GAGuiQueryEditor',
     propTypes: {
-        databases: React.PropTypes.array.isRequired,
+        properties: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
-        defaultQuery: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
         isExpanded: React.PropTypes.bool.isRequired,
         runFn: React.PropTypes.func.isRequired,
@@ -54,31 +54,17 @@ export default React.createClass({
         }
     },
 
-    setSourceTable: function(sourceTable) {
-        // this will either be the id or an object with an id
-        var tableId = sourceTable.id || sourceTable;
-        this.props.loadTableInfoFn(tableId);
-
-        // when the table changes we reset everything else in the query, except the database of course
-        // TODO: should this clear the visualization as well?
-        var query = this.props.defaultQuery;
-        query.database = this.props.query.database;
-        query.query.source_table = tableId;
-
-        this.setQuery(query, true);
-    },
-
     canRun: function() {
-        if (this.hasValidAggregation()) {
+        if(this.props.card.dataset_query.profileId) {
             return true;
         }
         return false;
     },
 
     runQuery: function() {
-        var cleanQuery = this.cleanQuery(this.props.query);
+        // var cleanQuery = this.cleanQuery(this.props.query);
 
-        this.props.runFn(cleanQuery);
+        this.props.runFn();
     },
 
     cleanQuery: function(dataset_query) {
@@ -408,31 +394,25 @@ export default React.createClass({
         }
     },
 
-    renderTableSelector: function() {
-        if (this.props.tables) {
-            var sourceTableListOpen = true;
-            if(this.props.query.query.source_table) {
-                sourceTableListOpen = false;
-            }
-
+    renderPropertySelector: function() {
+        if (this.props.properties) {
             // if we don't have any filters applied yet then provide an option to do that
 
+            var properties = this.props.properties.map(function (property) {
+                var propertyClasses = cx({
+                    'text-brand': this.props.card.propertyId === property.id
+                });
+               return (
+                   <div className={propertyClasses} onClick={this.props.setAccountIdandProperyIdFn.bind(null, property.accountId, property.id)}>
+                       {property.name}
+                   </div>
+               )
+           }.bind(this))
 
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Table:</span>
-                    <SelectionModule
-                        placeholder="What part of your data?"
-                        items={this.props.tables}
-                        display="name"
-                        selectedValue={this.props.query.query.source_table}
-                        selectedKey="id"
-                        isInitiallyOpen={sourceTableListOpen}
-                        action={this.setSourceTable}
-                    />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderFilterButton()}
-                    </ReactCSSTransitionGroup>
+                <div className="inline-block">
+                    <h3>GA- Source</h3>
+                    {properties}
                 </div>
             );
         }
@@ -452,86 +432,37 @@ export default React.createClass({
         }
     },
 
-    renderBreakouts: function() {
-        // breakout clause.  must have table details available & a valid aggregation defined
-        if (this.props.options &&
-                this.props.options.breakout_options.fields.length > 0 &&
-                !this.hasEmptyAggregation()) {
-
-            // only render a label for our breakout if we have a valid breakout clause already
-            var breakoutLabel;
-            if(this.props.query.query.breakout.length > 0) {
-                breakoutLabel = (
-                    <div className="Query-label">
-                        Grouped by:
-                    </div>
-                );
-            }
-
-            var breakoutList;
-            if(this.props.options.breakout_options) {
-                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
-                    var breakoutListOpen = false;
-                    if(breakout === null) {
-                        breakoutListOpen = true;
-                    }
-
-                    return (
-                        <div className="DimensionList">
-                            <SelectionModule
-                                placeholder='What part of your data?'
-                                display="1"
-                                items={this.props.options.breakout_options.fields}
-                                selectedValue={breakout}
-                                selectedKey="0"
-                                index={index}
-                                isInitiallyOpen={breakoutListOpen}
-                                action={this.updateDimension}
-                                remove={this.removeDimension}
-                            />
-                        </div>
-                    );
-                }.bind(this));
-            }
-
-            // include a button to add a breakout, up to 2 total
-            var addBreakoutButton;
-            if (this.props.query.query.breakout.length === 0) {
-                addBreakoutButton = (
-                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addDimension}>
-                        {this.renderAddIcon()}
-                        Add a grouping
-                    </a>
-                );
-            } else if (this.props.query.query.breakout.length === 1 &&
-                            this.props.query.query.breakout[0] !== null) {
-                addBreakoutButton = (
-                    <a className="QueryOption p1 lg-p2 ml1 lg-ml2" onClick={this.addDimension}>
-                        {this.renderAddIcon()}
-                        Add another grouping
-                    </a>
-                );
-            }
-
+    renderDimensions: function() {
+        if(this.props.dimensions) {
             return (
-                <div className={this.props.querySectionClasses}>
-                    {breakoutLabel}
-                    {breakoutList}
-                    {addBreakoutButton}
+                <div className="inline-block">
+                    <h3>GA Dimension:</h3>
+                    <GADimensionList
+                        fields={this.props.dimensions}
+                        placeholder="Pick a dimension to see your GA data by"
+                        selectFn={this.props.selectDimension}
+                        query={this.props.card.dataset_query.query}
+                        queryKey='dimensions'
+                    />
                 </div>
             );
         }
     },
 
-    renderAggregation: function() {
-        // aggregation clause.  must have table details available
-        if(this.props.options) {
+    renderMetric: function() {
+        if(this.props.metrics) {
             return (
-                <AggregationWidget
-                    aggregation={this.props.query.query.aggregation}
-                    aggregationOptions={this.props.options.aggregation_options}
-                    updateAggregation={this.updateAggregation}>
-                </AggregationWidget>
+                <div className="inline-block">
+                    <h3>GA Metric:</h3>
+                    <GADimensionList
+                        fields={this.props.metrics}
+                        placeholder="Pick a metric to see your GA data by"
+                        selectFn={this.props.selectMetric}
+                        queryKey='metrics'
+                        query={this.props.card.dataset_query.query}
+                    />
+
+                </div>
             );
         }
     },
@@ -724,7 +655,7 @@ export default React.createClass({
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderTableSelector()}
+                    {this.renderPropertySelector()}
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
@@ -732,11 +663,11 @@ export default React.createClass({
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderAggregation()}
+                    {this.renderMetric()}
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderBreakouts()}
+                    {this.renderDimensions()}
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
