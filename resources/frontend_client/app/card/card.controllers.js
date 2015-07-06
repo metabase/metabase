@@ -310,6 +310,10 @@ CardControllers.controller('CardDetail', [
                 card.dataset_query.query.metrics = metric.id;
                 renderAll();
             },
+            selectSegment: function (segment) {
+                card.dataset_query.query.segments = segment.id;
+                renderAll();
+            },
             setAccountIdandProperyIdFn: function (accountId, propertyId) {
                 card.dataset_query.accountId = accountId;
                 card.dataset_query.propertyId = propertyId;
@@ -322,6 +326,7 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.ids = 'ga:' + result.items[0].id;
 
                 });
+
             },
 
             setStartDate: function (date) {
@@ -739,6 +744,11 @@ CardControllers.controller('CardDetail', [
                        gaModel.dimensions = result.dimensions;
                        renderAll();
                     });
+                    GA.querySegments().then(function (result) {
+                        console.log(result.items)
+                        gaModel.segments = result.items;
+                       renderAll();
+                   });
                 });
             }).catch(function (err) {
                console.log('whoops');

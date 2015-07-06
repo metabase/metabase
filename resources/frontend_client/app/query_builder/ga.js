@@ -141,6 +141,17 @@ let GA = {
        });
     },
 
+    querySegments: function () {
+        return new Promise(function (resolve, reject) {
+            gapi.client.analytics.management.segments.list().then(function (response) {
+                if(response.result.items && response.result.items.length) {
+                    resolve(response.result);
+                } else {
+                    reject(new Error('Could not fetch segments'));
+                }
+            });
+        });
+    },
 
     queryCoreReportingApi: function (query) {
         return new Promise(function (resolve, reject) {

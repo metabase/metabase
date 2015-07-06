@@ -11,6 +11,7 @@ import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import GADimensionList from './ga_dimensions.react';
 import DatePicker from './date_filter.react';
+import GASegmentList from './ga_segments.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -436,7 +437,7 @@ export default React.createClass({
     renderDimensions: function() {
         if(this.props.dimensions) {
             return (
-                <div className="inline-block">
+                <div className="ml1 inline-block">
                     <h3>GA Dimension:</h3>
                     <GADimensionList
                         fields={this.props.dimensions}
@@ -669,6 +670,23 @@ export default React.createClass({
 
     },
 
+    renderSegments: function () {
+        if(this.props.segments) {
+            return (
+                <div className="ml1 inline-block">
+                    <h3>GA- Segment</h3>
+                    <GASegmentList
+                        fields={this.props.segments}
+                        placeholder="Pick a segment to query your GA Data by"
+                        selectFn={this.props.selectSegment}
+                        queryKey='segments'
+                        query={this.props.card.dataset_query.query}
+                    />
+                </div>
+            )
+        }
+    },
+
     openStatus: function() {
         return (
             <a href="#" className="QueryToggle px2 py1 no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
@@ -706,6 +724,10 @@ export default React.createClass({
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
                     {this.renderDimensions()}
+                </ReactCSSTransitionGroup>
+
+                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                    {this.renderSegments()}
                 </ReactCSSTransitionGroup>
 
                 <ReactCSSTransitionGroup transitionName="Transition-qb-section">
