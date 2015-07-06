@@ -447,12 +447,13 @@
         ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
         (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
           (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
+            (log/info (format "Marked nested field %s.%s as inactive." @(:qualified-name field) nested-field-name))
             (upd Field nested-field-id :active false)))
 
         ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
         (doseq [[nested-field-name nested-field-type] nested-field-name->type]
           (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
-            (log/info (u/format-color 'blue "Found new nested field: %s.%s.%s" (:name @(:table field)) (:name field) (name nested-field-name)))
+            (log/info (u/format-color 'blue "Found new nested field: %s.%s" @(:qualified-name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
               ;; Now recursively sync this nested Field
               ;; Replace parent so deref doesn't need to do a DB call

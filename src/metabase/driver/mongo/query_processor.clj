@@ -1,6 +1,8 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
   (:require [clojure.core.match :refer [match]]
+            (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [colorize.core :as color]
@@ -39,8 +41,8 @@
     (with-mongo-connection [_ database]
       (case (keyword query-type)
         :query (let [generated-query (process-structured (:query query))]
-                 (when-not qp/*disable-qp-logging*
-                   (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
+                 (when-not false #_qp/*disable-qp-logging*
+                   (log/info (u/format-color 'green "\nMONGER FORM:\n%s\n"
                                               (->> generated-query
                                                    (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                                                    u/pprint-to-str) "\n")))                              ; so it's easier to read
@@ -87,8 +89,10 @@
 
 (defn- field->name
   "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
-  ^String [field]
-  (apply str (interpose "." (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
+  (^String [field separator]
+           (apply str (interpose separator (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
+  (^String [field]
+           (field->name field ".")))
 
 (defn- field->$str
   "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
@@ -178,36 +182,63 @@
       :avg ["avg" {$avg (field->$str field)}]
       :sum ["sum" {$sum (field->$str field)}])))
 
-(defn do-breakout
+;;; BREAKOUT FIELD NAME ESCAPING FOR $GROUP
+;; We're not allowed to use field names that contain a period in the Mongo aggregation $group stage.
+;; Not OK:
+;;   {"$group" {"source.username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
+;;
+;; For *nested* Fields, we'll replace the '.' with '___', and restore the original names afterward.
+;; Escaped:
+;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
+
+(defn ag-unescape-nested-field-names
+  "Restore the original, unescaped nested Field names in the keys of RESULTS.
+   E.g. `:source___service` becomes `:source.service`"
+  [results]
+  ;; Build a map of escaped key -> unescaped key by looking at the keys in the first result
+  ;; e.g. {:source___username :source.username}
+  (let [replacements (into {} (for [k (keys (first results))]
+                                (let [k-str     (name k)
+                                      unescaped (s/replace k-str #"___" ".")]
+                                  (when-not (= k-str unescaped)
+                                    {k (keyword unescaped)}))))]
+    ;; If the map is non-empty then map set/rename-keys over the results with it
+    (if-not (seq replacements)
+      results
+      (for [row results]
+        (set/rename-keys row replacements)))))
+
+(defn- do-breakout
   "Generate a Monger query from a structured QUERY dictionary that contains a `breakout` clause.
    Since the Monger query we generate looks very different from ones we generate when no `breakout` clause
    is present, this is essentialy a separate implementation :/"
   [{aggregation :aggregation, breakout-fields :breakout, order-by :order-by, limit :limit, :as query}]
-  (let [[ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
+  (let [;; Shadow the top-level definition of field->name with one that will use "___" as the separator instead of "."
+        field->name          (u/rpartial field->name "___")
+        [ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
         fields               (map field->name breakout-fields)
         $fields              (map field->$str breakout-fields)
         fields->$fields      (zipmap fields $fields)]
-    (aggregate {$group  (merge {"_id" (if (= (count fields) 1) (first $fields)
-                                          fields->$fields)}
-                               (when (and ag-field ag-clause)
-                                 {ag-field ag-clause})
-                               (->> fields->$fields
-                                    (map (fn [[field $field]]
-                                           (when-not (= field "_id")
-                                             {field {$first $field}})))
-                                    (into {})))}
-               {$sort    (->> order-by
-                              (mapcat (fn [{:keys [field direction]}]
-                                        [(field->name field) (case direction
-                                                               :ascending   1
-                                                               :descending -1)]))
-                              (apply sorted-map))}
-               {$project (merge {"_id" false}
-                                (when ag-field
-                                  {ag-field true})
-                                (zipmap fields (repeat true)))}
-               (when limit
-                 {$limit limit}))))
+    `(ag-unescape-nested-field-names
+      ~(aggregate {$group  (merge {"_id" (if (= (count fields) 1) (first $fields)
+                                             fields->$fields)}
+                                  (when (and ag-field ag-clause)
+                                    {ag-field ag-clause})
+                                  (into {} (for [[field $field] fields->$fields]
+                                             (when-not (= field "_id")
+                                               {field {$first $field}}))))}
+                  {$sort    (->> order-by
+                                 (mapcat (fn [{:keys [field direction]}]
+                                           [(field->name field) (case direction
+                                                                  :ascending   1
+                                                                  :descending -1)]))
+                                 (apply sorted-map))}
+                  {$project (merge {"_id" false}
+                                   (when ag-field
+                                     {ag-field true})
+                                   (zipmap fields (repeat true)))}
+                  (when limit
+                    {$limit limit})))))
 
 ;; ## PROCESS-STRUCTURED
 

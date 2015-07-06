@@ -97,9 +97,11 @@
   (let [[outer-tokens inner-tokens] (split-with (complement (partial contains? inner-q-tokens)) tokens)
         outer-tokens                (partition-tokens outer-q-tokens outer-tokens)
         inner-tokens                (partition-tokens inner-q-tokens inner-tokens)
-        query                       (macroexpand-all `(Q:expand-inner ~@inner-tokens))]
+        query                       (macroexpand-all `(Q:expand-inner ~@inner-tokens))
+        table                       (second (:source_table (:query query)))]
+    (assert table "No table specified. Did you include a `tbl`/`of` clause?")
     `(Q:wrap-fallback-captures (Q:expand-outer* ~outer-tokens
-                                                (symbol-macrolet [~'table ~(second (:source_table (:query query)))
+                                                (symbol-macrolet [~'table ~table
                                                                   ~'fl Q:field]
                                                   ~(macroexpand-all query))))))
 

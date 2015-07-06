@@ -9,7 +9,7 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.driver.query-processor.expand :as expand]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
@@ -326,6 +326,20 @@
             (and (seq join-table-ids)
                  (sel :one :fields [Field :id :table_id :name :description :base_type :special_type], :name (name col-kw), :table_id [in join-table-ids]))
 
+            ;; Otherwise if this is a nested Field recursively find the appropriate info
+            (let [name-components (s/split (name col-kw) #"\.")]
+              (when (> (count name-components) 1)
+                ;; Find the nested Field by recursing through each Field's :children
+                (loop [field-kw->field field-kw->field, [component & more] (map keyword name-components)]
+                  (when-let [f (field-kw->field component)]
+                    (if-not (seq more)
+                      ;; If the are no more components to recurse through give the resulting Field a qualified name like "source.service" and return it
+                      (assoc f :name (apply str (interpose "." name-components)))
+                      ;; Otherwise recurse with a map of child-name-kw -> child and the rest of the name components
+                      (recur (zipmap (map (comp keyword :name) (:children f))
+                                     (:children f))
+                             more))))))
+
             ;; Otherwise it is an aggregation column like :sum, build a map of information to return
             (merge (assert ag-type)
                    {:name        (name col-kw)
@@ -339,6 +353,7 @@
                      ;; count should always be IntegerField/number
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}
+
                      ;; Otherwise something went wrong !
                      :else                                   (do (log/error (u/format-color 'red "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
                                                                                             col-kw
@@ -346,7 +361,10 @@
                                                                  {:base_type    :UnknownField
                                                                   :special_type nil})))))
          ;; Add FK info the the resulting Fields
-         add-fields-extra-info)))
+         add-fields-extra-info
+
+         ;; Remove extra data from the resulting Fields
+         (map (u/rpartial dissoc :children :parent_id)))))
 
 (defn- post-annotate
   "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
@@ -360,11 +378,14 @@
           _                              (when-not *disable-qp-logging*
                                            (log/debug (u/format-color 'magenta "\nDriver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
-          fields                         (sel :many :fields [Field :id :table_id :name :description :base_type :special_type],
-                                              :table_id source-table-id, :active true, :parent_id nil)
+          fields                         (->> (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id],
+                                                   :table_id source-table-id, :active true)
+                                              field/unflatten-nested-fields)
           ordered-col-kws                (order-cols query results fields)]
       (assert (= (count (keys (first results))) (count ordered-col-kws))
-              (format "Order-cols returned an invalid number of keys. Expected: %d, got: %d" (count (keys (first results))) (count ordered-col-kws)))
+              (format "Order-cols returned an invalid number of keys.\nExpected: %d %s\nGot: %d %s"
+                      (count (keys (first results))) (vec (keys (first results)))
+                      (count ordered-col-kws)        (vec ordered-col-kws)))
       {:rows    (for [row results]
                   (mapv row ordered-col-kws))                                          ; might as well return each row and col info as vecs because we're not worried about making
        :columns (mapv name ordered-col-kws)                                            ; making them lazy, and results are easier to play with in the REPL / paste into unit tests

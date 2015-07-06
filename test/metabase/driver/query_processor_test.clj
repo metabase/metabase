@@ -1033,27 +1033,44 @@
      order venue...name))
 
 ;; Nested Field in AGGREGATION
+;; Let's see how many *distinct* venue names are mentioned
 (expect 99
   (Q run against geographical-tips using mongo
      return :data :rows first first
      aggregate distinct venue...name of tips))
 
-;;; Nested Field in BREAKOUT
+;; Now let's just get the regular count
+(expect 500
+  (Q run against geographical-tips using mongo
+     return :data :rows first first
+     aggregate count venue...name of tips))
 
-;; TODO - id/$ don't handle nested Fields ?
+;;; Nested Field in BREAKOUT
+;; Let's see how many tips we have by source.service
+(expect
+    {:rows    [["facebook" 107]
+               ["flare" 105]
+               ["foursquare" 100]
+               ["twitter" 98]
+               ["yelp" 90]]
+     :columns ["source.service" "count"]}
+  (Q run against geographical-tips using mongo
+     return :data (#(dissoc % :cols))
+     aggregate count of tips
+     breakout source...service))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
 (expect
-    [[1 {:name "Lucky's Gluten-Free Café"}]
-     [2 {:name "Joe's Homestyle Eatery"}]
-     [3 {:name "Lower Pac Heights Cage-Free Coffee House"}]
-     [4 {:name "Oakland European Liquor Store"}]
-     [5 {:name "Tenderloin Gormet Restaurant"}]
-     [6 {:name "Marina Modern Sushi"}]
-     [7 {:name "Sunset Homestyle Grill"}]
-     [8 {:name "Kyle's Low-Carb Grill"}]
-     [9 {:name "Mission Homestyle Churros"}]
+    [[1  {:name "Lucky's Gluten-Free Café"}]
+     [2  {:name "Joe's Homestyle Eatery"}]
+     [3  {:name "Lower Pac Heights Cage-Free Coffee House"}]
+     [4  {:name "Oakland European Liquor Store"}]
+     [5  {:name "Tenderloin Gormet Restaurant"}]
+     [6  {:name "Marina Modern Sushi"}]
+     [7  {:name "Sunset Homestyle Grill"}]
+     [8  {:name "Kyle's Low-Carb Grill"}]
+     [9  {:name "Mission Homestyle Churros"}]
      [10 {:name "Sameer's Pizza Liquor Store"}]]
   (Q run against geographical-tips using mongo
      return :data :rows
@@ -1061,26 +1078,3 @@
      order _id
      fields venue...name
      lim 10))
-
-
-;;; Nested-Nested Fields
-
-(defn y []
-  (datasets/with-dataset :mongo
-    (with-temp-db [_ (dataset-loader) defs/geographical-tips]
-      (sel :many Field :table_id &tips:id))))
-
-(defn x []
-  (datasets/with-dataset :mongo
-    (query-with-temp-db defs/geographical-tips
-      :aggregation  ["rows"]
-      :source_table &tips:id
-      :filter       ["=" ["." &tips.venue:id "name"] "Kyle's Low-Carb Grill"]
-      :limit        10)))
-
-(defn z []
-  (datasets/with-dataset :mongo
-    (metabase.driver.mongo.util/with-mongo-connection [^com.mongodb.DBApiLayer db (metabase.test.data/get-or-create-database! defs/geographical-tips)]
-      (doall (monger.query/with-collection db "tips"
-               (monger.query/find {:venue {:name "Kyle's Low-Carb Grill"}})
-               (monger.query/limit 10))))))
