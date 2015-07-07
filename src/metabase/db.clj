@@ -288,19 +288,15 @@
 
 ;; ## EXISTS?
 
-(defn -exists?
-  [entity kwargs]
-  (boolean (seq (k/select (i/entity->korma entity)
-                          (k/fields [:id])
-                          (k/where kwargs)
-                          (k/limit 1)))))
-
 (defmacro exists?
   "Easy way to see if something exists in the db.
 
     (exists? User :id 100)"
   [entity & {:as kwargs}]
-  `(-exists? ~entity '~(if (seq kwargs) kwargs {})))
+  `(boolean (seq (k/select (i/entity->korma ~entity)
+                           (k/fields [:id])
+                           (k/where ~(if (seq kwargs) kwargs {}))
+                           (k/limit 1)))))
 
 ;; ## CASADE-DELETE
 
