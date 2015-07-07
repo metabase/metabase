@@ -8,12 +8,12 @@
                              [user :refer [User current-user-fields]])))
 
 
-(def metabase-session-cookie "metabase.SESSION_ID")
-(def metabase-session-header "x-metabase-session")
-(def metabase-apikey-header "x-metabase-apikey")
+(def ^:const metabase-session-cookie "metabase.SESSION_ID")
+(def ^:const metabase-session-header "x-metabase-session")
+(def ^:const metabase-apikey-header "x-metabase-apikey")
 
-(def response-unauthentic {:status 401 :body "Unauthenticated"})
-(def response-forbidden {:status 403 :body "Forbidden"})
+(def ^:const response-unauthentic {:status 401 :body "Unauthenticated"})
+(def ^:const response-forbidden {:status 403 :body "Forbidden"})
 
 
 (defn wrap-sessionid
