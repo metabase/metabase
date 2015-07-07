@@ -33,7 +33,7 @@
    timestamped]
 
   (post-select [_ {:keys [creator_id] :as card}]
-    (map->CardInstance (assoc card :creator (delay (sel :one User :id creator_id)))))
+    (map->CardInstance (assoc card :creator (delay (User creator_id)))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)

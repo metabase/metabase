@@ -41,9 +41,9 @@
                                                :last_name last_name
                                                :is_active true
                                                :is_superuser false)
-                                             (sel :one User :id (:id existing-user)))
+                                             (User (:id existing-user)))
           ;; account already exists and is active, so do nothing and just return the account
-          :else (sel :one User :id (:id existing-user)))
+          :else (User (:id existing-user)))
         (hydrate :user :organization))))
 
 
@@ -76,7 +76,7 @@
                                :is_superuser (if (:is_superuser @*current-user*)
                                                is_superuser
                                                nil)))
-  (sel :one User :id id))
+  (User id))
 
 
 (defendpoint PUT "/:id/password"
@@ -88,7 +88,7 @@
   (let-404 [user (sel :one [User :password_salt :password] :id id :is_active true)]
     (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password"))
   (set-user-password id password)
-  (sel :one User :id id))
+  (User id))
 
 
 (defendpoint DELETE "/:id"

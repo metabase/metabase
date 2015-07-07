@@ -22,7 +22,7 @@
   (delay (korma-entity @users-table)))
 
 (def users-name-field
-  (delay (sel :one Field :id (id :users :name))))
+  (delay (Field (id :users :name))))
 
 ;; ACTIVE-TABLE-NAMES
 (expect

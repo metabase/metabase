@@ -12,10 +12,10 @@
 
 ;; ## GET /api/meta/field/:id
 (expect
-    (match-$ (sel :one Field :id (id :users :name))
+    (match-$ (Field (id :users :name))
       {:description nil
        :table_id (id :users)
-       :table (match-$ (sel :one Table :id (id :users))
+       :table (match-$ (Table (id :users))
                 {:description nil
                  :entity_type nil
                  :db (match-$ (db)
@@ -57,7 +57,7 @@
 ;; Check that we can update a Field
 ;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
 (expect-eval-actual-first
-    (match-$ (let [field (sel :one Field :id (id :venues :latitude))]
+    (match-$ (let [field (Field (id :venues :latitude))]
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
                (upd Field (id :venues :latitude) :special_type "latitude")
                ;; match against the modified Field

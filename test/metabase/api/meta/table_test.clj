@@ -57,7 +57,7 @@
 
 ;; ## GET /api/meta/table/:id
 (expect
-    (match-$ (sel :one Table :id (id :venues))
+    (match-$ (Table (id :venues))
       {:description nil
        :entity_type nil
        :db (match-$ (db)
@@ -80,7 +80,7 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d" (id :venues))))
 
 ;; ## GET /api/meta/table/:id/fields
-(expect [(match-$ (sel :one Field :id (id :categories :id))
+(expect [(match-$ (Field (id :categories :id))
            {:description         nil
             :table_id            (id :categories)
             :special_type        "id"
@@ -94,7 +94,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"})
-         (match-$ (sel :one Field :id (id :categories :name))
+         (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
             :special_type        "name"
@@ -112,7 +112,7 @@
 
 ;; ## GET /api/meta/table/:id/query_metadata
 (expect
-    (match-$ (sel :one Table :id (id :categories))
+    (match-$ (Table (id :categories))
       {:description nil
        :entity_type nil
        :db (match-$ (db)
@@ -124,7 +124,7 @@
               :organization_id nil
               :description nil})
        :name "CATEGORIES"
-       :fields [(match-$ (sel :one Field :id (id :categories :id))
+       :fields [(match-$ (Field (id :categories :id))
                   {:description nil
                    :table_id (id :categories)
                    :special_type "id"
@@ -138,7 +138,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :categories :name))
+                (match-$ (Field (id :categories :name))
                   {:description nil
                    :table_id (id :categories)
                    :special_type "name"
@@ -184,7 +184,7 @@
 ;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-    (match-$ (sel :one Table :id (id :users))
+    (match-$ (Table (id :users))
       {:description nil
        :entity_type nil
        :db (match-$ (db)
@@ -196,7 +196,7 @@
               :organization_id nil
               :description nil})
        :name "USERS"
-       :fields [(match-$ (sel :one Field :id (id :users :id))
+       :fields [(match-$ (Field (id :users :id))
                   {:description nil
                    :table_id (id :users)
                    :special_type "id"
@@ -210,7 +210,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :users :last_login))
+                (match-$ (Field (id :users :last_login))
                   {:description nil
                    :table_id (id :users)
                    :special_type "category"
@@ -224,7 +224,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "DateTimeField"})
-                (match-$ (sel :one Field :id (id :users :name))
+                (match-$ (Field (id :users :name))
                   {:description nil
                    :table_id (id :users)
                    :special_type "category"
@@ -283,7 +283,7 @@
 ;;; GET api/meta/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-    (match-$ (sel :one Table :id (id :users))
+    (match-$ (Table (id :users))
       {:description nil
        :entity_type nil
        :db (match-$ (db)
@@ -295,7 +295,7 @@
               :organization_id nil
               :description nil})
        :name "USERS"
-       :fields [(match-$ (sel :one Field :id (id :users :id))
+       :fields [(match-$ (Field (id :users :id))
                   {:description nil
                    :table_id (id :users)
                    :special_type "id"
@@ -309,7 +309,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :users :last_login))
+                (match-$ (Field (id :users :last_login))
                   {:description nil
                    :table_id (id :users)
                    :special_type "category"
@@ -323,7 +323,7 @@
                    :preview_display true
                    :created_at $
                    :base_type "DateTimeField"})
-                (match-$ (sel :one Field :id (id :users :name))
+                (match-$ (Field (id :users :name))
                   {:description nil
                    :table_id (id :users)
                    :special_type "category"
@@ -368,7 +368,7 @@
 
 ;; ## PUT /api/meta/table/:id
 (expect-eval-actual-first
-    (match-$ (let [table (sel :one Table :id (id :users))]
+    (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
                (upd Table (id :users) :entity_name nil :entity_type nil :description nil)
                table)
@@ -422,7 +422,7 @@
                  :special_type "fk"
                  :created_at $
                  :updated_at $
-                 :table (match-$ (sel :one Table :id (id :checkins))
+                 :table (match-$ (Table (id :checkins))
                           {:description nil
                            :entity_type nil
                            :name "CHECKINS"
@@ -454,7 +454,7 @@
                       :special_type "id"
                       :created_at $
                       :updated_at $
-                      :table (match-$ (sel :one Table :id (id :users))
+                      :table (match-$ (Table (id :users))
                                {:description nil
                                 :entity_type nil
                                 :name "USERS"

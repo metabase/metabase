@@ -36,7 +36,7 @@
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (let-404 [db (-> (sel :one Dashboard :id id)
+  (let-404 [db (-> (Dashboard id)
                    read-check
                    (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
@@ -50,7 +50,7 @@
                                :description description
                                :name name
                                :public_perms public_perms))
-  (sel :one Dashboard :id id))
+  (Dashboard id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."

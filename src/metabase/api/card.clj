@@ -57,7 +57,7 @@
 (defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (->404 (sel :one Card :id id)
+  (->404 (Card id)
          read-check
          (hydrate :creator :can_read :can_write)))
 
@@ -75,7 +75,7 @@
                                :name name
                                :public_perms public_perms
                                :visualization_settings visualization_settings))
-  (sel :one Card :id id))
+  (Card id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

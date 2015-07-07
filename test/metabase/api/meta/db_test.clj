@@ -160,12 +160,12 @@
 ;; These should come back in alphabetical order
 (expect
     (let [db-id (db-id)]
-      [(match-$ (sel :one Table :id (id :categories))
+      [(match-$ (Table (id :categories))
          {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Categories"})
-       (match-$ (sel :one Table :id (id :checkins))
+       (match-$ (Table (id :checkins))
          {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Checkins"})
-       (match-$ (sel :one Table :id (id :users))
+       (match-$ (Table (id :users))
          {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Users"})
-       (match-$ (sel :one Table :id (id :venues))
+       (match-$ (Table (id :venues))
          {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Venues"})])
   ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))
