@@ -51,7 +51,8 @@ module.exports = {
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
-            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
+            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') },
+            { test: /\.json$/, loader: 'json-loader'}
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
@@ -98,7 +99,8 @@ module.exports = {
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.js',
-            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js'
+            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
+            'googleapis':           __dirname + '/node_modules/googleapis/apis/index.js'
         }
     },
 
@@ -127,6 +129,15 @@ module.exports = {
             path: ['resources/frontend_client/app/css']
         }
     },
+
+    // no idea why we do this but it helps the ga stuff not shit out errors
+    node: {
+        net: "empty",
+        tls: "empty",
+        dns: "empty",
+        fs: "empty",
+        dgram: "empty"
+    }
 
     // SourceMaps
     // Normal source map works better but takes longer to build

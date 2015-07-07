@@ -122,14 +122,14 @@ export default React.createClass({
     },
 
     cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+        console.log('cell data', cellData, 'rowData');
         // TODO: should we be casting all values toString()?
-        cellData = (cellData !== null) ? cellData.toString() : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
         } else {
-            return (<div key={key}>{cellData}</div>);
+            return (<div key={key}>{this.props.data.rows[cellDataKey]}</div>);
         }
     },
 
@@ -204,7 +204,7 @@ export default React.createClass({
                 </Column>
             );
         });
-
+        console.log(this.props.data.rows.length);
         return (
             <Table
                 className="MB-DataTable"

@@ -20,7 +20,8 @@ export default React.createClass({
         setChartColorFn: React.PropTypes.func.isRequired,
         setSortFn: React.PropTypes.func.isRequired,
         cellIsClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
+        cellClickedFn: React.PropTypes.func,
+        needsAuth: React.PropTypes.bool.isRequired
     },
 
     visualizationTypeNames: {
@@ -298,6 +299,15 @@ export default React.createClass({
             );
         }
 
+        if(this.props.needsAuth) {
+            viz = (
+                <div>
+                    <h1>Connect to Google to allow Google Analytics Queries</h1>
+                    <a className="Button" onClick={this.props.authGA.bind()}>Connect to GA</a>
+                </div>
+            );
+        } else {
+
         if (!this.props.result) {
             viz = (
                 <div className="flex full layout-centered text-grey-1">
@@ -415,6 +425,7 @@ export default React.createClass({
                 }
             }
         }
+        }
 
         var wrapperClasses = cx({
             'relative': true,
@@ -434,7 +445,7 @@ export default React.createClass({
             'QueryBuilder-section': true,
             'pt2 lg-pt4': true
         });
-
+        console.log('result', this.props.result)
         return (
             <div className={wrapperClasses}>
                 {queryModified}

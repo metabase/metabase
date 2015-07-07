@@ -5,7 +5,7 @@
 
 var ExploreControllers = angular.module('corvus.explore.controllers', ['corvus.metabase.services']);
 
-ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
+ExploreControllers.controller('ExploreDatabaseList', ['$scope', '$location', 'Metabase', function($scope, $location, Metabase) {
 
     $scope.databases = [];
     $scope.currentDB = {};
@@ -29,4 +29,9 @@ ExploreControllers.controller('ExploreDatabaseList', ['$scope', 'Metabase', func
             console.log(error);
         })
     }
+
+    $scope.startGAQuery = function () {
+        $location.path("/card/create").search({'ga': 'true'});
+    };
+
 }]);

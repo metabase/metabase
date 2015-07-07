@@ -1,10 +1,12 @@
 'use strict';
-/*global _, document, confirm*/
+/*global _, document, confirm, console, moment*/
 
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
+import GAGuiQueryEditor from '../query_builder/ga_gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
+import GA from '../query_builder/ga.js';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -87,6 +89,19 @@ CardControllers.controller('CardDetail', [
                 native: {
                     query: ""
                 }
+            },
+            "ga": {
+                type: "ga",
+                profileId: null,
+                propertyId: null,
+                accountId: null,
+                query: {
+                    'ids': null,
+                    'start-date': moment().subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD'),
+                    'end-date': moment().format('YYYY-MM-DD'),
+                    'mertrics': '',  // GA API wants a , separated list of format 'ga:metric'
+                    'dimensions': '' // GA API wants a , separated list of format 'ga:dimesion'
+                }
             }
         };
 
@@ -95,6 +110,7 @@ CardControllers.controller('CardDetail', [
             tables = null,
             tableMetadata = null,
             tableForeignKeys = null,
+            needsAuth = false,
             isRunning = false,
             isObjectDetail = false,
             card = {
@@ -184,31 +200,31 @@ CardControllers.controller('CardDetail', [
                 tableMetadata = null;
                 tableForeignKeys = null;
 
-                // get table details
-                Metabase.table_query_metadata({
-                    'tableId': tableId
-                }).$promise.then(function (table) {
-                    // Decorate with valid operators
-                    // TODO: would be better if this was in our component
-                    var updatedTable = markupTableMetadata(table);
+                    // get table details
+                    Metabase.table_query_metadata({
+                        'tableId': tableId
+                    }).$promise.then(function (table) {
+                        // Decorate with valid operators
+                        // TODO: would be better if this was in our component
+                        var updatedTable = markupTableMetadata(table);
 
-                    tableMetadata = updatedTable;
+                        tableMetadata = updatedTable;
 
-                    renderAll();
-                }, function (error) {
-                    console.log('error getting table metadata', error);
-                });
+                        renderAll();
+                    }, function (error) {
+                        console.log('error getting table metadata', error);
+                    });
 
-                // get table fks
-                Metabase.table_fks({
-                    'tableId': tableId
-                }).$promise.then(function (fks) {
-                    tableForeignKeys = fks;
+                    // get table fks
+                    Metabase.table_fks({
+                        'tableId': tableId
+                    }).$promise.then(function (fks) {
+                        tableForeignKeys = fks;
 
-                    renderAll();
-                }, function (error) {
-                    console.log('error getting fks for table '+tableId, error);
-                });
+                        renderAll();
+                    }, function (error) {
+                        console.log('error getting fks for table '+tableId, error);
+                    });
             },
             runFn: function(dataset_query) {
                 isRunning = true;
@@ -277,6 +293,104 @@ CardControllers.controller('CardDetail', [
                 editorModel.isExpanded = !editorModel.isExpanded;
                 renderAll();
             }
+        };
+
+        window.card = card;
+
+        var gaModel = {
+            isRunning: false,
+            isExpanded: true,
+            properties: null,
+            query: null,
+            selectDimension: function (dimension) {
+                card.dataset_query.query.dimensions = dimension.id;
+                renderAll();
+            },
+            selectMetric: function (metric) {
+                card.dataset_query.query.metrics = metric.id;
+                renderAll();
+            },
+            selectSegment: function (segment) {
+                card.dataset_query.query.segment = segment.segmentId;
+                renderAll();
+            },
+            setAccountIdandProperyIdFn: function (accountId, propertyId) {
+                card.dataset_query.accountId = accountId;
+                card.dataset_query.propertyId = propertyId;
+                renderAll();
+
+
+                GA.queryProfiles(accountId, propertyId).then(function (result) {
+
+                    card.dataset_query.profileId = result.items[0].id;
+                    card.dataset_query.query.ids = 'ga:' + result.items[0].id;
+
+                });
+
+            },
+
+            setStartDate: function (date) {
+                console.log('change start', moment(date));
+                card.dataset_query.query['start-date'] = date;
+                renderAll();
+            },
+            setEndDate: function (date) {
+                console.log('change end', moment(date));
+                card.dataset_query.query['end-date'] = date;
+                renderAll();
+            },
+            runFn: function(dataset_query) {
+                isRunning = true;
+                renderAll();
+
+                // here we make a call to the GA core reporting api.
+                GA.queryCoreReportingApi(card.dataset_query.query).then(function (result) {
+                    console.log('query result from ga', result.result.rows);
+                    var data = result.result.rows;
+                    data = _.unzip(data);
+
+                    var formattedColumns = [],
+                        formattedRows = [],
+                        formattedCols = [];
+
+                    data.map(function (d, i) {
+                        // if the array index is 0, then its the header
+                       if(i === 0) {
+                           for(var h in d) {
+                               var header = d[h];
+                               formattedColumns.push(header);
+                               formattedCols.push({
+                                   name: header
+                               });
+                           }
+                       } else {
+                           for(var r in d) {
+                               console.log(d[r]);
+                               formattedRows.push([d[r]]);
+                           }
+                       }
+                   });
+
+
+                    var formattedResult = {
+                        data: {
+                            rows: formattedRows,
+                            cols: formattedCols,
+                            columns: formattedColumns
+                        }
+                    };
+
+                    window.formatted = formattedResult;
+
+                    console.log('formatted', formattedResult);
+
+                    queryResult = formattedResult;
+                    isRunning = false;
+                    card.display = "table";
+
+                    renderAll();
+                });
+            },
         };
 
         var visualizationModel = {
@@ -438,16 +552,24 @@ CardControllers.controller('CardDetail', [
 
         var renderEditor = function() {
             // ensure rendering model is up to date
-            editorModel.isRunning = isRunning;
-            editorModel.databases = databases;
-            editorModel.tables = tables;
-            editorModel.options = tableMetadata;
-            editorModel.tableForeignKeys = tableForeignKeys;
-            editorModel.query = card.dataset_query;
-            editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
+            if(card.dataset_query && card.dataset_query.type === "ga") {
+                gaModel.isRunning = isRunning;
+                gaModel.query = card.dataset_query;
+                gaModel.card = card;
+            } else {
+                editorModel.isRunning = isRunning;
+                editorModel.databases = databases;
+                editorModel.tables = tables;
+                editorModel.options = tableMetadata;
+                editorModel.tableForeignKeys = tableForeignKeys;
+                editorModel.query = card.dataset_query;
+                editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
+            }
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
+            } else if (card.dataset_query && card.dataset_query.type === "ga") {
+                React.render(new GAGuiQueryEditor(gaModel), document.getElementById('react_qb_editor'));
             } else {
                 React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
             }
@@ -460,6 +582,14 @@ CardControllers.controller('CardDetail', [
             visualizationModel.tableForeignKeys = tableForeignKeys;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
+            visualizationModel.needsAuth = needsAuth;
+            visualizationModel.authGA = function (event) {
+                GA.authorize(event).then(function (result) {
+                   console.log('we be result?');
+                   needsAuth = false;
+                   gaInit();
+               });
+           };
 
             React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
         };
@@ -564,18 +694,25 @@ CardControllers.controller('CardDetail', [
                 card = result;
                 cardJson = JSON.stringify(card);
 
-                // load metadata
-                editorModel.loadDatabaseInfoFn(card.dataset_query.database);
+                console.log(card);
+                if(card.dataset_query.type === "ga") {
+                    gaInit();
+                } else {
+                    // load metadata
+                    editorModel.loadDatabaseInfoFn(card.dataset_query.database);
 
-                if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
-                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                    if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
+                        editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                    }
+
+
+                    // run the query
+                    // TODO: is there a case where we wouldn't want this?
+                    editorModel.runFn(card.dataset_query);
+
+                    // trigger full rendering
+
                 }
-
-                // run the query
-                // TODO: is there a case where we wouldn't want this?
-                editorModel.runFn(card.dataset_query);
-
-                // trigger full rendering
                 renderAll();
 
             }, function (error) {
@@ -586,6 +723,38 @@ CardControllers.controller('CardDetail', [
             });
         };
 
+        function gaInit() {
+            GA.authorize()
+                .then(gaSetup)
+                .catch(function (err) {
+                   needsAuth = true;
+                   console.log(err);
+                   renderAll();
+               });
+        }
+
+        function gaSetup() {
+            GA.queryAccounts().then(function (result) {
+                GA.queryProperties(result.items[0].id).then(function (result) {
+                    console.log('properties results', result);
+                    gaModel.properties = result.items;
+                    renderAll();
+                    GA.columnList().then(function (result) {
+                       gaModel.metrics = result.metrics;
+                       gaModel.dimensions = result.dimensions;
+                       renderAll();
+                    });
+                    GA.querySegments().then(function (result) {
+                        console.log(result.items)
+                        gaModel.segments = result.items;
+                       renderAll();
+                   });
+                });
+            }).catch(function (err) {
+               console.log('whoops');
+           });
+        }
+
         // meant to be called once on controller startup
         var initAndRender = function() {
             if ($routeParams.cardId) {
@@ -594,6 +763,9 @@ CardControllers.controller('CardDetail', [
             } else if ($routeParams.clone) {
                 loadCardAndRender($routeParams.clone, true);
 
+            } else if ($routeParams.ga) {
+                resetCardQuery("ga");
+                gaInit();
             } else {
                 // starting a new card
 
@@ -657,6 +829,7 @@ CardControllers.controller('CardDetail', [
         // TODO: while we wait for the databases list we should put something on screen
         // grab our database list, then handle the rest
         Metabase.db_list(function (dbs) {
+            console.log("we be getting dbs no matter what?")
             databases = dbs;
 
             if (dbs.length < 1) {

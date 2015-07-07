@@ -21,10 +21,11 @@ export default React.createClass({
     },
 
     onChange: function(date) {
+        console.log('onchange date', moment(date))
         if (this.props.index) {
-            this.props.onChange(this.props.index, date);
+            this.props.onChange(this.props.index, moment(date).format('YYYY-MM-DD'));
         } else {
-            this.props.onChange(date);
+            this.props.onChange(moment(date).format('YYYY-MM-DD'));
         }
     },
 
