@@ -107,7 +107,4 @@
         new_order))
     {:result "success"}))
 
-;; TODO - GET /:id/segments
-;; TODO - POST /:id/segments
-
 (define-routes)

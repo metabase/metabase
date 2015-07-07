@@ -8,6 +8,22 @@
             metabase.db.internal
             [metabase.util :as u]))
 
+(defprotocol ICanReadWrite
+  (can-read?  [obj] [entity ^Integer id])
+  (can-write? [obj] [entity ^Integer id]))
+
+(defn extend-ICanReadWrite
+  "Add standard implementations of `can-read?` and `can-write?` to KLASS."
+  [klass & {:keys [read write]}]
+  (let [key->method #(case %
+                       :always    (constantly true)
+                       :superuser (fn [& args]
+                                    (:is_superuser @@(resolve 'metabase.api.common/*current-user*))))]
+    (extend klass
+      ICanReadWrite {:can-read?  (key->method read)
+                     :can-write? (key->method write)})))
+
+
 ;;; ## ---------------------------------------- ENTITIES ----------------------------------------
 
 (defprotocol IEntity
@@ -56,14 +72,15 @@
 
 (defn- identity-second [_ obj] obj)
 (def ^:private constantly-nil (constantly nil))
+(def ^:private constantly-true (constantly true))
 
 (def ^:const ^:private default-entity-method-implementations
-  {:pre-insert           #'identity-second
-   :post-insert          #'identity-second
-   :pre-update           #'identity-second
-   :post-update          #'constantly-nil
-   :post-select          #'identity-second
-   :pre-cascade-delete   #'constantly-nil})
+  {:pre-insert         #'identity-second
+   :post-insert        #'identity-second
+   :pre-update         #'identity-second
+   :post-update        #'constantly-nil
+   :post-select        #'identity-second
+   :pre-cascade-delete #'constantly-nil})
 
 (def ^:const ^:private type-fns
   {:json    {:in  'metabase.db.internal/write-json
@@ -112,17 +129,19 @@
 
 (defmacro defentity
   "Similar to korma `defentity`, but creates a new record type where you can specify protocol implementations."
-  [entity entity-forms & methods]
-  {:pre [(vector? entity-forms)
-         (every? list? methods)]}
+  [entity entity-forms & methods+specs]
+  {:pre [(vector? entity-forms)]}
   (let [entity-symb               (symbol (format "%sEntity" (name entity)))
         internal-post-select-symb (symbol (format "internal-post-select-%s" (name entity)))
-        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))]
+        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))
+        [methods specs]           (split-with list? methods+specs)]
     `(do
        (defrecord ~entity-symb []
          clojure.lang.IFn
          (~'invoke [~'this ~'id]
-           (-invoke-entity ~'this ~'id)))
+           (-invoke-entity ~'this ~'id))
+
+         ~@specs)
 
        (extend ~entity-symb
          IEntity ~(merge default-entity-method-implementations
@@ -140,7 +159,12 @@
                                (for [[method-name & impl] methods]
                                  {(keyword method-name) `(fn ~@impl)}))))
        (def ~entity
-         (~(symbol (format "map->%sEntity" (name entity))) ~entity-map)))))
+         (~(symbol (format "map->%sEntity" (name entity))) ~(assoc entity-map ::entity true))))))
+
+(defn metabase-entity?
+  "Is ENTITY a valid metabase model entity?"
+  [entity]
+  (::entity entity))
 
 
 ;;; # ---------------------------------------- INSTANCE ----------------------------------------

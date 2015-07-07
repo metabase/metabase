@@ -74,6 +74,14 @@
     :info        ; Non-numerical value that is not meant to be used
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
+(defrecord FieldInstance []
+  clojure.lang.IFn
+  (invoke [this k]
+    (get this k)))
+
+(extend-ICanReadWrite FieldInstance :read :always, :write :superuser)
+
+
 (defentity Field
   [(table :metabase_field)
    (hydration-keys destination field origin)
@@ -100,19 +108,21 @@
       (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
 
   (post-select [_ {:keys [table_id] :as field}]
-    (u/assoc* field
-      :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
-      :db                  (delay @(:db @(:table <>)))
-      :target              (delay (field->fk-field field))
-      :can_read            (delay @(:can_read @(:table <>)))
-      :can_write           (delay @(:can_write @(:table <>)))
-      :human_readable_name (when (name :field)
-                             (delay (common/name->human-readable-name (:name field))))))
+    (map->FieldInstance
+      (u/assoc* field
+        :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
+        :db                  (delay @(:db @(:table <>)))
+        :target              (delay (field->fk-field field))
+        :human_readable_name (when (name :field)
+                               (delay (common/name->human-readable-name (:name field)))))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (cascade-delete ForeignKey (where (or (= :origin_id id)
                                           (= :destination_id id))))
-    (cascade-delete 'metabase.models.field-values/FieldValues :field_id id) ))
+    (cascade-delete 'metabase.models.field-values/FieldValues :field_id id)))
+
+(extend-ICanReadWrite FieldEntity :read :always, :write :superuser)
+
 
 (defn field->fk-field
   "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.

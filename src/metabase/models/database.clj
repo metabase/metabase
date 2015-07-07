@@ -17,6 +17,8 @@
     (cond-> this
       (not (:is_superuser @*current-user*)) (dissoc :details))))
 
+(extend-ICanReadWrite DatabaseInstance :read :always, :write :superuser)
+
 (defentity Database
   [(table :metabase_database)
    (hydration-keys database db)
@@ -24,10 +26,9 @@
    timestamped]
 
   (post-select [_ db]
-    (map->DatabaseInstance
-     (assoc db
-            :can_read  (delay true)
-            :can_write (delay (:is_superuser @*current-user*)))))
+    (map->DatabaseInstance db))
 
   (pre-cascade-delete [_ {:keys [id] :as database}]
     (cascade-delete 'metabase.models.table/Table :db_id id)))
+
+(extend-ICanReadWrite DatabaseEntity :read :always, :write :superuser)
