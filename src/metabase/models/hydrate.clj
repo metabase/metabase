@@ -1,6 +1,7 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
   (:require [metabase.db :refer [sel]]
+            [metabase.models.interface :as models]
             [metabase.util :as u]))
 
 (declare batched-hydrate
@@ -131,14 +132,22 @@
   (if (can-batched-hydrate? results k) (batched-hydrate results k)
       (simple-hydrate results k)))
 
+(def ^:private hydration-k->method
+  "Methods that can be used to hydrate corresponding keys."
+  {:can_read  #(models/can-read? %)
+   :can_write #(models/can-write? %)})
+
 (defn- simple-hydrate
   "Hydrate keyword K in results by dereferencing corresponding delays when applicable."
   [results k]
   {:pre [(keyword? k)]}
   (map (fn [result]
          (let [v (k result)]
-           (if-not (delay? v) result      ; if v isn't a delay it's either already hydrated or nil.
-                   (assoc result k @v)))) ; don't barf on nil; just no-op
+           (cond
+             (delay? v)                    (assoc result k @v)                               ; hydrate delay if possible
+             (and (not v)
+                  (hydration-k->method k)) (assoc result k ((hydration-k->method k) result)) ; otherwise if no value exists look for a method we can use for hydration
+             :else                         result)))                                         ; otherwise don't barf, v may already be hydrated
        results))
 
 (defn- already-hydrated?

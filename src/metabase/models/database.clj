@@ -2,8 +2,7 @@
   (:require [korma.core :refer :all, :exclude [defentity]]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer :all]
-            (metabase.models [common :refer [assoc-permissions-sets]]
-                             [interface :refer :all])))
+            [metabase.models.interface :refer :all]))
 
 (defrecord DatabaseInstance []
   ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly

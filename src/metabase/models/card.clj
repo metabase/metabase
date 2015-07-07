@@ -2,8 +2,7 @@
   (:require [korma.core :refer :all, :exclude [defentity]]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :refer :all]
-            (metabase.models [common :refer :all]
-                             [interface :refer :all]
+            (metabase.models [interface :refer :all]
                              [user :refer [User]])))
 
 (def ^:const display-types
@@ -19,6 +18,14 @@
     :table
     :timeseries})
 
+(defrecord CardInstance []
+  clojure.lang.IFn
+  (invoke [this k]
+    (get this k)))
+
+(extend-ICanReadWrite CardInstance :read :public-perms, :write :public-perms)
+
+
 (defentity Card
   [(table :report_card)
    (hydration-keys card)
@@ -26,10 +33,10 @@
    timestamped]
 
   (post-select [_ {:keys [creator_id] :as card}]
-    (-> (assoc card
-               :creator (delay (sel :one User :id creator_id)))
-        assoc-permissions-sets))
+    (map->CardInstance (assoc card :creator (delay (sel :one User :id creator_id)))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
     (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id)))
+
+(extend-ICanReadWrite CardEntity :read :public-perms, :write :public-perms)

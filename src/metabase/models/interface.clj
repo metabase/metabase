@@ -8,20 +8,50 @@
             metabase.db.internal
             [metabase.util :as u]))
 
+;;; ## ---------------------------------------- PERMISSIONS CHECKING ----------------------------------------
+
 (defprotocol ICanReadWrite
   (can-read?  [obj] [entity ^Integer id])
   (can-write? [obj] [entity ^Integer id]))
 
+(defn- superuser? [& _]
+  (:is_superuser @@(resolve 'metabase.api.common/*current-user*)))
+
+(defn- owner?
+  ([{:keys [creator_id], :as obj}]
+   (assert creator_id "Can't check user permissions: object doesn't have :creator_id.")
+   (or (superuser?)
+       (= creator_id @(resolve 'metabase.api.common/*current-user-id*))))
+  ([entity id]
+   (or (superuser?)
+       (owner? (entity id)))))
+
+(defn- has-public-perms? [rw]
+  (let [perms (delay (require 'metabase.models.common)
+                     (case rw
+                       :r @(resolve 'metabase.models.common/perms-read)
+                       :w @(resolve 'metabase.models.common/perms-readwrite)))]
+    (fn -has-public-perms?
+      ([{:keys [public_perms], :as obj}]
+       (assert public_perms "Can't check user permissions: object doesn't have :public_perms.")
+       (or (owner? obj)
+           (>= public_perms @perms)))
+      ([entity id]
+       (or (owner? entity id)
+           (-has-public-perms? (entity id)))))))
+
 (defn extend-ICanReadWrite
   "Add standard implementations of `can-read?` and `can-write?` to KLASS."
   [klass & {:keys [read write]}]
-  (let [key->method #(case %
-                       :always    (constantly true)
-                       :superuser (fn [& args]
-                                    (:is_superuser @@(resolve 'metabase.api.common/*current-user*))))]
+  (let [key->method (fn [rw v]
+                      (case v
+                        :always       (constantly true)
+                        :public-perms (has-public-perms? rw)
+                        :owner        #'owner?
+                        :superuser    #'superuser?))]
     (extend klass
-      ICanReadWrite {:can-read?  (key->method read)
-                     :can-write? (key->method write)})))
+      ICanReadWrite {:can-read?  (key->method :r read)
+                     :can-write? (key->method :w write)})))
 
 
 ;;; ## ---------------------------------------- ENTITIES ----------------------------------------
@@ -102,15 +132,16 @@
 (defn -invoke-entity
   "Basically the same as `(sel :one Entity :id id)`." ; TODO - deduplicate with sel
   [entity id]
-  (when (metabase.config/config-bool :mb-db-logging)
-    (clojure.tools.logging/debug
-     "DB CALL: " (:name entity) id))
-  (let [[obj] (k/select (assoc entity :fields (::default-fields entity))
-                        (k/where {:id id})
-                        (k/limit 1))]
-    (some->> obj
-             (internal-post-select entity)
-             (post-select entity))))
+  (when id
+    (when (metabase.config/config-bool :mb-db-logging)
+      (clojure.tools.logging/debug
+       "DB CALL: " (:name entity) id))
+    (let [[obj] (k/select (assoc entity :fields (::default-fields entity))
+                          (k/where {:id id})
+                          (k/limit 1))]
+      (some->> obj
+               (internal-post-select entity)
+               (post-select entity)))))
 
 (defn- update-updated-at [obj]
   (assoc obj :updated_at (u/new-sql-timestamp)))
