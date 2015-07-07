@@ -102,7 +102,6 @@
 
 (defn- identity-second [_ obj] obj)
 (def ^:private constantly-nil (constantly nil))
-(def ^:private constantly-true (constantly true))
 
 (def ^:const ^:private default-entity-method-implementations
   {:pre-insert         #'identity-second
@@ -184,7 +183,8 @@
   {:pre [(vector? entity-forms)]}
   (let [entity-symb               (symbol (format "%sEntity" (name entity)))
         internal-post-select-symb (symbol (format "internal-post-select-%s" (name entity)))
-        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))
+        unevaled-entity-map       (macroexpand-all `(macrolet-entity-map ~entity ~@entity-forms))
+        entity-map                (eval unevaled-entity-map)
         [methods specs]           (split-with list? methods+specs)]
     `(do
        (defrecord ~entity-symb []
@@ -197,11 +197,13 @@
        (extend ~entity-symb
          IEntity ~(merge default-entity-method-implementations
                          {:internal-pre-insert  `(fn [~'_ obj#]
-                                                   (-> (apply-type-fns obj# :in ~entity-map)
+                                                   (-> obj#
+                                                       (apply-type-fns :in ~entity-map)
                                                        ~@(when (::timestamped entity-map)
                                                            [update-created-at-updated-at])))
                           :internal-pre-update  `(fn [~'_ obj#]
-                                                   (-> (apply-type-fns obj# :in ~entity-map)
+                                                   (-> obj#
+                                                       (apply-type-fns :in ~entity-map)
                                                        ~@(when (::timestamped entity-map)
                                                            [update-updated-at])))
                           :internal-post-select `(fn [~'_ obj#]
@@ -210,7 +212,7 @@
                                (for [[method-name & impl] methods]
                                  {(keyword method-name) `(fn ~@impl)}))))
        (def ~entity
-         (~(symbol (format "map->%sEntity" (name entity))) ~(assoc entity-map ::entity true))))))
+         (~(symbol (format "map->%sEntity" (name entity))) (assoc ~unevaled-entity-map ::entity true))))))
 
 (defn metabase-entity?
   "Is ENTITY a valid metabase model entity?"
