@@ -10,9 +10,7 @@
 (defentity QueryExecution
   [(table :query_queryexecution)
    (default-fields id uuid version json_query raw_query status started_at finished_at running_time error result_rows)
-   (types {:json_query  :json
-           :result_data :json
-           :status      :keyword})]
+   (types :json_query :json, :result_data :json, :status :keyword)]
 
   (post-select [_ {:keys [result_rows] :as query-execution}]
     ;; sadly we have 2 ways to reference the row count :(

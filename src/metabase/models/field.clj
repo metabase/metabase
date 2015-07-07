@@ -76,11 +76,9 @@
 
 (defentity Field
   [(table :metabase_field)
-   timestamped
-   (types {:base_type    :keyword
-           :field_type   :keyword
-           :special_type :keyword})
-   (hydration-keys destination field origin)]
+   (hydration-keys destination field origin)
+   (types :base_type :keyword, :field_type :keyword, :special_type :keyword)
+   timestamped]
 
   (pre-insert [_ field]
     (let [defaults {:active          true

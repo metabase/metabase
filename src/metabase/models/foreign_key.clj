@@ -16,8 +16,8 @@
 
 (defentity ForeignKey
   [(table :metabase_foreignkey)
-   timestamped
-   (types {:relationship :keyword})]
+   (types :relationship :keyword)
+   timestamped]
 
   (post-select [_ {:keys [origin_id destination_id] :as fk}]
     (assoc fk

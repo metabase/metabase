@@ -4,7 +4,8 @@
             [clojure.walk :refer [macroexpand-all]]
             [korma.core :as k]
             [medley.core :as m]
-            [metabase.config :as config]))
+            [metabase.config :as config]
+            [metabase.util :as u]))
 
 ;;; ## ---------------------------------------- ENTITIES ----------------------------------------
 
@@ -33,8 +34,6 @@
 
      The output of this function is ignored.")
 
-  (internal-post-select [this instance])
-
   (post-select [this instance]
     "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
      you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields.")
@@ -48,21 +47,22 @@
 
         (pre-cascade-delete [_ {database-id :id :as database}]
           (cascade-delete Card :database_id database-id)
-          ...)"))
+          ...)")
 
-(defn- identity-second
-  "Return the second arg as-is."
-  [_ obj]
-  obj)
+  (internal-pre-insert  [this instance])
+  (internal-pre-update  [this instance])
+  (internal-post-select [this instance]))
+
+(defn- identity-second [_ obj] obj)
+(def ^:private constantly-nil (constantly nil))
 
 (def ^:const ^:private default-entity-method-implementations
-  {:pre-insert           identity-second
-   :post-insert          identity-second
-   :pre-update           identity-second
-   :post-update          '(constantly nil)
-   :post-select          identity-second
-   :pre-cascade-delete   '(constantly nil)
-   :internal-post-select identity-second})
+  {:pre-insert           #'identity-second
+   :post-insert          #'identity-second
+   :pre-update           #'identity-second
+   :post-update          #'constantly-nil
+   :post-select          #'identity-second
+   :pre-cascade-delete   #'constantly-nil})
 
 (def ^:const ^:private type-fns
   {:json    {:in  'metabase.db.internal/write-json
@@ -70,8 +70,16 @@
    :keyword {:in  `name
              :out `keyword}})
 
-(defn- resolve-type-fns [types-map]
-  (m/map-vals #(:out (type-fns %)) types-map))
+(defmacro apply-type-fns [obj-binding direction entity-map]
+  {:pre [(symbol? obj-binding)
+         (keyword? direction)
+         (map? entity-map)]}
+  (let [fns (m/map-vals #(direction (type-fns %)) (::types entity-map))]
+    (if-not (seq fns) obj-binding
+            `(cond-> ~obj-binding
+               ~@(mapcat (fn [[k f]]
+                           [`(~k ~obj-binding) `(update-in [~k] ~f)])
+                         fns)))))
 
 (defn -invoke-entity [entity id]
   (future
@@ -86,15 +94,18 @@
            (internal-post-select entity)
            (post-select entity)))))
 
-(defmacro make-internal-post-select [obj kvs]
-  `(cond-> ~obj
-     ~@(mapcat (fn [[k f]]
-                 [`(~k ~obj) `(update-in [~k] ~f)])
-               (seq kvs))))
+(defn- update-updated-at [obj]
+  (assoc obj :updated_at (u/new-sql-timestamp)))
+
+(defn- update-created-at-updated-at [obj]
+  (let [ts (u/new-sql-timestamp)]
+    (assoc obj :created_at ts, :updated_at ts)))
 
 (defmacro macrolet-entity-map [entity & entity-forms]
-  `(macrolet [(~'default-fields [m# & fields#] `(assoc ~m# ::default-fields [~@(map keyword fields#)]))
-              (~'hydration-keys [m# & fields#] `(assoc ~m# :hydration-keys #{~@(map keyword fields#)}))]
+  `(macrolet [(~'default-fields [m# & fields#]       `(assoc ~m# ::default-fields [~@(map keyword fields#)]))
+              (~'timestamped    [m#]                 `(assoc ~m# ::timestamped true))
+              (~'types          [m# & {:as fields#}] `(assoc ~m# ::types ~fields#))
+              (~'hydration-keys [m# & fields#]       `(assoc ~m# :hydration-keys #{~@(map keyword fields#)}))]
      (-> (k/create-entity ~(name entity))
          ~@entity-forms)))
 
@@ -105,8 +116,7 @@
          (every? list? methods)]}
   (let [entity-symb               (symbol (format "%sEntity" (name entity)))
         internal-post-select-symb (symbol (format "internal-post-select-%s" (name entity)))
-        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))
-        type-fns                  (resolve-type-fns (:metabase.db/types entity-map))]
+        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))]
     `(do
        (defrecord ~entity-symb []
          clojure.lang.IFn
@@ -115,13 +125,20 @@
 
        (extend ~entity-symb
          IEntity ~(merge default-entity-method-implementations
-                         {:internal-post-select `(fn [~'_ ~'obj]
-                                                  ~(macroexpand-1 `(make-internal-post-select ~'obj ~type-fns)))}
+                         {:internal-pre-insert  `(fn [~'_ obj#]
+                                                   (-> (apply-type-fns obj# :in ~entity-map)
+                                                       ~@(when (::timestamped entity-map)
+                                                           [update-created-at-updated-at])))
+                          :internal-pre-update  `(fn [~'_ obj#]
+                                                   (-> (apply-type-fns obj# :in ~entity-map)
+                                                       ~@(when (::timestamped entity-map)
+                                                           [update-updated-at])))
+                          :internal-post-select `(fn [~'_ obj#]
+                                                   (apply-type-fns obj# :out ~entity-map))}
                          (into {}
                                (for [[method-name & impl] methods]
                                  {(keyword method-name) `(fn ~@impl)}))))
-
-       (def ~entity            ; ~(vary-meta entity assoc :const true)
+       (def ~entity
          (~(symbol (format "map->%sEntity" (name entity))) ~entity-map)))))
 
 

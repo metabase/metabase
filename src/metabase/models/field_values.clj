@@ -10,8 +10,7 @@
 (defentity FieldValues
   [(table :metabase_fieldvalues)
    timestamped
-   (types {:human_readable_values :json
-           :values                :json})]
+   (types :human_readable_values :json, :values :json)]
 
   (post-select [_ field-values]
     (update-in field-values [:human_readable_values] #(or % {}))))

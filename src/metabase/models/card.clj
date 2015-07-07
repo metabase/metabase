@@ -21,11 +21,9 @@
 
 (defentity Card
   [(table :report_card)
-   (types {:dataset_query          :json
-           :display                :keyword
-           :visualization_settings :json})
-   timestamped
-   (assoc :hydration-keys #{:card})]
+   (hydration-keys card)
+   (types :dataset_query :json, :display :keyword, :visualization_settings :json)
+   timestamped]
 
   (post-select [_ {:keys [creator_id] :as card}]
     (-> (assoc card

@@ -19,11 +19,10 @@
 
 (defentity Database
   [(table :metabase_database)
-   (types {:details :json
-           :engine  :keyword})
-   timestamped
-   (assoc :hydration-keys #{:database
-                            :db})]
+   (hydration-keys database db)
+   (types :details :json, :engine :keyword)
+   timestamped]
+
   (post-select [_ db]
     (map->DatabaseInstance
      (assoc db

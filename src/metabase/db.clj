@@ -2,7 +2,8 @@
   "Korma database definition and helper functions for interacting with the database."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [clojure.string :as str]
+            (clojure [set :as set]
+                     [string :as str])
             [environ.core :refer [env]]
             (korma [core :refer :all]
                    [db :refer :all])
@@ -131,63 +132,7 @@
     (apply setup-db args)))
 
 
-;; # UTILITY FUNCTIONS
-
-;; ## CAST-COLUMNS
-
-;; TODO - Doesn't Korma have similar `transformations` functionality? Investigate.
-
-(def ^:const ^:private type-fns
-  "A map of column type keywords to the functions that should be used to \"cast\"
-   them when going `:in` or `:out` of the database."
-  {:json    {:in  i/write-json
-             :out i/read-json}
-   :keyword {:in  name
-             :out keyword}})
-
-(defn types
-  "Tag columns in an entity definition with a type keyword.
-   This keyword will be used to automatically \"cast\" columns when they are present.
-
-    ;; apply ((type-fns :json) :in) -- cheshire/generate-string -- to value of :details before inserting into DB
-    ;; apply ((type-fns :json) :out) -- read-json -- to value of :details when reading from DB
-    (defentity Database
-      (types {:details :json}))"
-  [entity types-map]
-  {:pre [(every? keyword? (keys types-map))
-         (every? (partial contains? type-fns) (vals types-map))]}
-  (assoc entity ::types types-map))
-
-(defn apply-type-fns
-  "Recursively apply a sequence of functions associated with COLUMN-TYPE-PAIRS to OBJ.
-
-   COLUMN-TYPE-PAIRS should be the value of `(seq (::types korma-entity))`.
-   DIRECTION should be either `:in` or `:out`."
-  {:arglists '([direction column-type-pairs obj])}
-  [direction [[column column-type] & rest-pairs] obj]
-  (if-not column obj
-          (recur direction rest-pairs (if-not (column obj) obj
-                                              (update-in obj [column] (-> type-fns column-type direction))))))
-
-;; TODO - It would be good to allow custom types by just inserting the `{:in fn :out fn}` inline with the
-;; entity definition
-
-;; TODO - hydration-keys should be an entity function for the sake of prettiness
-
-
-;; ## TIMESTAMPED
-
-(defn timestamped
-  "Mark ENTITY as having `:created_at` *and* `:updated_at` fields.
-
-    (defentity Card
-      timestamped)
-
-   *  When a new object is created via `ins`, values for both fields will be generated.
-   *  When an object is updated via `upd`, `:updated_at` will be updated."
-  [entity]
-  (assoc entity ::timestamped true))
-
+;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------
 
 ;; ## UPD
 
@@ -202,10 +147,8 @@
   {:pre [(integer? entity-id)]}
   (let [obj (->> (assoc kwargs :id entity-id)
                  (models/pre-update entity)
-                 (#(dissoc % :id))
-                 (apply-type-fns :in (seq (::types entity))))
-        obj (cond-> obj
-              (::timestamped entity) (assoc :updated_at (u/new-sql-timestamp)))
+                 (models/internal-pre-update entity)
+                 (#(dissoc % :id)))
         result (-> (update entity (set-fields obj) (where {:id entity-id}))
                    (> 0))]
     (when result
@@ -335,7 +278,6 @@
 (defn -sel-transform [entity result]
   (->> result
        (models/internal-post-select entity)
-       #_(apply-type-fns :out (seq (::types entity)))
        (models/post-select entity)))
 
 (defmacro -sel-select
@@ -368,14 +310,10 @@
   [entity & {:as kwargs}]
   (let [vals (->> kwargs
                   (models/pre-insert entity)
-                  (apply-type-fns :in (seq (::types entity))))
-        vals (cond-> vals
-               (::timestamped entity) (assoc :created_at (u/new-sql-timestamp)
-                                             :updated_at (u/new-sql-timestamp)))
+                  (models/internal-pre-insert entity))
         {:keys [id]} (-> (insert entity (values vals))
-                         (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
-    (->> (sel :one entity :id id)
-         (models/post-insert entity))))
+                         (set/rename-keys {(keyword "scope_identity()") :id}))]
+    (models/post-insert entity (entity id))))
 
 
 ;; ## EXISTS?

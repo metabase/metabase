@@ -14,9 +14,9 @@
 
 (defentity Table
   [(table :metabase_table)
-   timestamped
    (hydration-keys table)
-   (types {:entity_type :keyword})]
+   (types :entity_type :keyword)
+   timestamped]
 
   (post-select [_ {:keys [id db db_id description] :as table}]
     (u/assoc* table
