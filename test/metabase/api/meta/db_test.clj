@@ -40,17 +40,30 @@
 ;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/meta/db/:id
+;; regular users *should not* see DB details
 (expect
     (match-$ (db)
-      {:created_at $
-       :engine "h2"
-       :id $
-       :details $
-       :updated_at $
-       :name "Test Database"
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :updated_at      $
+       :name            "Test Database"
        :organization_id nil
-       :description nil})
+       :description     nil})
   ((user->client :rasta) :get 200 (format "meta/db/%d" (db-id))))
+
+;; superusers *should* see DB details
+(expect
+    (match-$ (db)
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :details         $
+       :updated_at      $
+       :name            "Test Database"
+       :organization_id nil
+       :description     nil})
+  ((user->client :crowberto) :get 200 (format "meta/db/%d" (db-id))))
 
 ;; ## POST /api/meta/db
 ;; Check that we can create a Database
@@ -106,6 +119,7 @@
 
 ;; ## GET /api/meta/db
 ;; Test that we can get all the DBs for an Org, ordered by name
+;; Database details *should not* come back for Rasta since she's not a superuser
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
       (set (filter identity
@@ -115,7 +129,6 @@
                                {:created_at      $
                                 :engine          (name $engine)
                                 :id              $
-                                :details         $
                                 :updated_at      $
                                 :name            "Test Database"
                                 :organization_id nil
@@ -125,7 +138,6 @@
                              {:created_at      $
                               :engine          "postgres"
                               :id              $
-                              :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
                               :updated_at      $
                               :name            $
                               :organization_id nil

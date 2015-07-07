@@ -2,7 +2,8 @@
   (:require [korma.core :refer :all]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer :all]
-            [metabase.models.common :refer [assoc-permissions-sets]]))
+            (metabase.models [common :refer [assoc-permissions-sets]]
+                             [interface :refer :all])))
 
 
 (defentity Database
@@ -13,33 +14,23 @@
   (assoc :hydration-keys #{:database
                            :db}))
 
+(defrecord DatabaseInstance []
+  ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
+  clojure.lang.IFn
+  (invoke [this k]
+    (get this k))
+
+  IModelInstanceApiSerialze
+  (api-serialize [this]
+    ;; If current user isn't an admin strip out DB details which may include things like password
+    (cond-> this
+      (not (:is_superuser @*current-user*)) (dissoc :details))))
+
 (defmethod post-select Database [_ db]
-  (assoc db
-         :can_read     (delay true)
-         :can_write    (delay (:is_superuser @*current-user*))))
-
- {:created_at #inst "2015-06-30T19:51:45.294000000-00:00",
-   :engine :h2,
-   :id 3,
-   :details
-   {:db
-    "file:/Users/camsaul/metabase/target/Test_Database;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"},
-   :updated_at #inst "2015-06-30T19:51:45.294000000-00:00",
-   :name "Test Database",
-   :organization_id nil,
-   :description nil}
-
-{:description nil,
-   :organization_id nil,
-   :name "Test Database",
-   :updated_at #inst "2015-06-30T19:51:45.294000000-00:00",
-   :details
-   {:db
-    "file:/Users/camsaul/metabase/target/Test_Database;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"},
-   :id 3,
-   :engine "h2",
-   :created_at #inst "2015-06-30T19:51:45.294000000-00:00"}
-
+  (map->DatabaseInstance
+   (assoc db
+          :can_read  (delay true)
+          :can_write (delay (:is_superuser @*current-user*)))))
 
 (defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
   (cascade-delete 'metabase.models.table/Table :db_id id))

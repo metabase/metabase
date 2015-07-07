@@ -22,7 +22,6 @@
                        {:created_at $
                         :engine "h2"
                         :id $
-                        :details $
                         :updated_at $
                         :name "Test Database"
                         :organization_id nil

@@ -64,7 +64,6 @@
              {:created_at $
               :engine "h2"
               :id $
-              :details $
               :updated_at $
               :name "Test Database"
               :organization_id nil
@@ -120,7 +119,6 @@
              {:created_at $
               :engine "h2"
               :id $
-              :details $
               :updated_at $
               :name "Test Database"
               :organization_id nil
@@ -193,7 +191,6 @@
              {:created_at $
               :engine "h2"
               :id $
-              :details $
               :updated_at $
               :name "Test Database"
               :organization_id nil
@@ -293,7 +290,6 @@
              {:created_at $
               :engine "h2"
               :id $
-              :details $
               :updated_at $
               :name "Test Database"
               :organization_id nil
@@ -444,8 +440,7 @@
                                   :updated_at $,
                                   :id $,
                                   :engine "h2",
-                                  :created_at $
-                                  :details $})})})
+                                  :created_at $})})})
       :destination (match-$ users-id-field
                      {:id $
                       :table_id $

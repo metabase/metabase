@@ -3,7 +3,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id* check]]
             [metabase.util :as u]))
 
-(def timezones
+(def ^:const timezones
   ["GMT"
    "UTC"
    "US/Alaska"
@@ -17,11 +17,11 @@
 
 ;;; ALLEN'S PERMISSIONS IMPLEMENTATION
 
-(def perms-none 0)
-(def perms-read 1)
-(def perms-readwrite 2)
+(def ^:const perms-none 0)
+(def ^:const perms-read 1)
+(def ^:const perms-readwrite 2)
 
-(def permissions
+(def ^:const permissions
   [{:id perms-none :name "None"},
    {:id perms-read :name "Read Only"},
    {:id perms-readwrite :name "Read & Write"}])
