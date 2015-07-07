@@ -1,8 +1,11 @@
 (ns metabase.db.internal
   "Internal functions and macros used by the public-facing functions in `metabase.db`."
-  (:require [clojure.walk :as walk]
-            [cheshire.core :as cheshire]
-            [korma.core :refer [where]]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
+            [korma.core :refer [where], :as k]
+            [metabase.config :as config]
+            [metabase.models.interface :as models]
             [metabase.util :as u]))
 
 (declare entity->korma)
@@ -57,22 +60,105 @@
            :else entity))))
 
 
-;; ## READ-JSON
+;;; ## ---------------------------------------- SEL 2.0 FUNCTIONS ----------------------------------------
 
-(defn- read-json-str-or-clob
-  "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
-  [json-str]
-  (some-> (u/jdbc-clob->str json-str)
-          cheshire/parse-string))
+;;; Low-level sel implementation
 
-(defn read-json
-  "Read JSON-STRING (or JDBC Clob) as JSON and keywordize keys."
-  [json-string]
-  (->> (read-json-str-or-clob json-string)
-       walk/keywordize-keys))
+(defmacro sel-fn [& forms]
+  (let [forms               (sel-apply-kwargs forms)
+        entity-placeholder  (gensym "ENTITY--")]
+    (loop [query `(k/select* ~entity-placeholder), [[f & args] & more] forms]
+      (cond
+        f          (recur `(~f ~query ~@args) more)
+        (seq more) (recur query more)
+        :else      `[(fn [~entity-placeholder]
+                       ~query) ~(str query)]))))
 
-(defn write-json
-  "If OBJ is not already a string, encode it as JSON."
-  [obj]
-  (if (string? obj) obj
-      (cheshire/generate-string obj)))
+(defn sel-exec [entity [select-fn log-str]]
+  (let [[entity field-keys] (destructure-entity entity)
+        entity              (entity->korma entity)
+        entity+fields       (assoc entity :fields (or field-keys
+                                                            (:metabase.models.interface/default-fields entity)))]
+    ;; Log if applicable
+    (future
+      (when (config/config-bool :mb-db-logging)
+        (log/debug "DB CALL: " (:name entity)
+                   (or (:fields entity+fields) "*")
+                   (s/replace log-str #"korma.core/" ""))))
+
+    (->> (k/exec (select-fn entity+fields))
+         (map (partial models/internal-post-select entity))
+         (map (partial models/post-select entity)))))
+
+(defmacro sel* [entity & forms]
+  `(sel-exec ~entity (sel-fn ~@forms)))
+
+;;; :field
+
+(defmacro sel:field [[entity field] & forms]
+  `(let [field# ~field]
+     (map field# (sel* [~entity field#] ~@forms))))
+
+;;; :id
+
+(defmacro sel:id [entity & forms]
+  `(sel:field [~entity :id] ~@forms))
+
+;;; :fields
+
+(defn sel:fields* [fields results]
+  (for [result results]
+    (select-keys result fields)))
+
+(defmacro sel:fields [[entity & fields] & forms]
+  `(let [fields# ~(vec fields)]
+     (sel:fields* (set fields#) (sel* `[~~entity ~@fields#] ~@forms))))
+
+;;; :id->fields
+
+(defn sel:id->fields* [fields results]
+  (->> results
+       (map (u/rpartial select-keys fields))
+       (zipmap (map :id results))))
+
+(defmacro sel:id->fields [[entity & fields] & forms]
+  `(let [fields# ~(conj (set fields) :id)]
+     (sel:id->fields* fields# (sel* `[~~entity ~@fields#] ~@forms))))
+
+;;; :field->field
+
+(defn sel:field->field* [f1 f2 results]
+  (into {} (for [result results]
+             {(f1 result) (f2 result)})))
+
+(defmacro sel:field->field [[entity f1 f2] & forms]
+  `(let [f1# ~f1
+         f2# ~f2]
+     (sel:field->field* f1# f2# (sel* [~entity f1# f2#] ~@forms))))
+
+;;; : id->field
+
+(defmacro sel:id->field [[entity field] & forms]
+  `(sel:field->field [~entity :id ~field] ~@forms))
+
+;;; :field->id
+
+(defmacro sel:field->id [[entity field] & forms]
+  `(sel:field->field [~entity ~field :id] ~@forms))
+
+;;; :field->obj
+
+(defn sel:field->obj* [field results]
+  (into {} (for [result results]
+             {(field result) result})))
+
+(defmacro sel:field->obj [[entity field] & forms]
+  `(sel:field->obj* ~field (sel* ~entity ~@forms)))
+
+;;; :one & :many
+
+(defmacro sel:one [& args]
+  `(first (metabase.db/sel ~@args (k/limit 1))))
+
+(defmacro sel:many [& args]
+  `(metabase.db/sel ~@args))

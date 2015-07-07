@@ -5,13 +5,14 @@
             (clojure [set :as set]
                      [string :as str])
             [environ.core :refer [env]]
-            (korma [core :refer :all]
-                   [db :refer :all])
+            (korma [core :as k]
+                   [db :as kdb])
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.db.internal :refer :all :as i]
+            [metabase.db.internal :as i]
             [metabase.models.interface :as models]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.metabase.corvus.migrations.LiquibaseMigrations))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -32,30 +33,30 @@
   "Configure connection details for JDBC."
   []
   (case (config/config-kw :mb-db-type)
-    :h2 {:subprotocol "h2"
-         :classname   "org.h2.Driver"
-         :subname     (db-file)}
+    :h2       {:subprotocol "h2"
+               :classname   "org.h2.Driver"
+               :subname     (db-file)}
     :postgres {:subprotocol "postgresql"
-               :classname "org.postgresql.Driver"
-               :subname (str "//" (config/config-str :mb-db-host)
-                             ":" (config/config-str :mb-db-port)
-                             "/" (config/config-str :mb-db-dbname))
-               :user (config/config-str :mb-db-user)
-               :password (config/config-str :mb-db-pass)}))
+               :classname   "org.postgresql.Driver"
+               :subname     (str "//" (config/config-str :mb-db-host)
+                                 ":" (config/config-str :mb-db-port)
+                                 "/" (config/config-str :mb-db-dbname))
+               :user        (config/config-str :mb-db-user)
+               :password    (config/config-str :mb-db-pass)}))
 
 
 (defn setup-korma-db
   "Configure connection details for Korma."
   []
   (case (config/config-kw :mb-db-type)
-    :h2 (h2 {:db (db-file)
-             :naming {:keys   str/lower-case
-                      :fields str/upper-case}})
-    :postgres (postgres {:db       (config/config-str :mb-db-dbname)
-                         :port     (config/config-int :mb-db-port)
-                         :user     (config/config-str :mb-db-user)
-                         :password (config/config-str :mb-db-pass)
-                         :host     (config/config-str :mb-db-host)})))
+    :h2       (kdb/h2 {:db     (db-file)
+                       :naming {:keys   str/lower-case
+                                :fields str/upper-case}})
+    :postgres (kdb/postgres {:db       (config/config-str :mb-db-dbname)
+                             :port     (config/config-int :mb-db-port)
+                             :user     (config/config-str :mb-db-user)
+                             :password (config/config-str :mb-db-pass)
+                             :host     (config/config-str :mb-db-host)})))
 
 
 ;; ## CONNECTION
@@ -80,9 +81,9 @@
   [jdbc-db direction]
   (let [conn (jdbc/get-connection jdbc-db)]
     (case direction
-      :up    (com.metabase.corvus.migrations.LiquibaseMigrations/setupDatabase conn)
-      :down  (com.metabase.corvus.migrations.LiquibaseMigrations/teardownDatabase conn)
-      :print (com.metabase.corvus.migrations.LiquibaseMigrations/genSqlDatabase conn))))
+      :up    (LiquibaseMigrations/setupDatabase conn)
+      :down  (LiquibaseMigrations/teardownDatabase conn)
+      :print (LiquibaseMigrations/genSqlDatabase conn))))
 
 
 ;; ## SETUP-DB
@@ -125,7 +126,7 @@
     (log/info "Database Migrations Current ... CHECK")
 
     ;; Establish our 'default' Korma DB Connection
-    (default-connection (create-db korma-db))))
+    (kdb/default-connection (kdb/create-db korma-db))))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
@@ -149,7 +150,7 @@
                  (models/pre-update entity)
                  (models/internal-pre-update entity)
                  (#(dissoc % :id)))
-        result (-> (update entity (set-fields obj) (where {:id entity-id}))
+        result (-> (k/update entity (k/set-fields obj) (k/where {:id entity-id}))
                    (> 0))]
     (when result
       (models/post-update entity (assoc obj :id entity-id)))
@@ -168,12 +169,35 @@
   "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
    Returns a `204 (No Content)` response dictionary."
   [entity & {:as kwargs}]
-  (delete entity (where kwargs))
+  (k/delete entity (k/where kwargs))
   {:status 204
    :body nil})
 
 
 ;; ## SEL
+
+(comment
+  :id->field `(let [[entity# field#] ~entity]
+                (->> (sel :many :fields [entity# field# :id] ~@forms)
+                     (map (fn [{id# :id field-val# field#}]
+                            {id# field-val#}))
+                     (into {})))
+  :field->id `(let [[entity# field#] ~entity]
+                (->> (sel :many :fields [entity# field# :id] ~@forms)
+                     (map (fn [{id# :id field-val# field#}]
+                            {field-val# id#}))
+                     (into {})))
+  :field->field `(let [[entity# field1# field2#] ~entity]
+                   (->> (sel :many entity# ~@forms)
+                        (map (fn [obj#]
+                               {(field1# obj#) (field2# obj#)}))
+                        (into {})))
+  :field->obj `(let [[entity# field#] ~entity]
+                 (->> (sel :many entity# ~@forms)
+                      (map (fn [obj#]
+                             {(field# obj#) obj#}))
+                      (into {})))
+  )
 
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
@@ -235,69 +259,15 @@
 
     (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
     (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
-  {:arglists '([one-or-many option? entity & forms])}
-  [one-or-many & args]
-  {:pre [(contains? #{:one :many} one-or-many)]}
-  (if (= one-or-many :one)
-    `(first (sel :many ~@args (limit 1)))
-    (let [[option [entity & forms]] (u/optional keyword? args)]
-      (case option
-        :field  `(let [[entity# field#] ~entity]
-                   (map field#
-                        (sel :many [entity# field#] ~@forms)))
-        :id     `(sel :many :field [~entity :id] ~@forms)
-        :id->fields `(->> (sel :many :fields [~@entity :id] ~@forms)
-                          (map (fn [{id# :id :as obj#}]
-                                 {id# obj#}))
-                          (into {}))
-        :id->field `(let [[entity# field#] ~entity]
-                      (->> (sel :many :fields [entity# field# :id] ~@forms)
-                           (map (fn [{id# :id field-val# field#}]
-                                  {id# field-val#}))
-                           (into {})))
-        :field->id `(let [[entity# field#] ~entity]
-                      (->> (sel :many :fields [entity# field# :id] ~@forms)
-                           (map (fn [{id# :id field-val# field#}]
-                                  {field-val# id#}))
-                           (into {})))
-        :field->field `(let [[entity# field1# field2#] ~entity]
-                         (->> (sel :many entity# ~@forms)
-                              (map (fn [obj#]
-                                     {(field1# obj#) (field2# obj#)}))
-                              (into {})))
-        :field->obj `(let [[entity# field#] ~entity]
-                       (->> (sel :many entity# ~@forms)
-                            (map (fn [obj#]
-                                   {(field# obj#) obj#}))
-                            (into {})))
-        :fields `(let [[~'_ & fields# :as entity#] ~entity]
-                   (map #(select-keys % fields#)
-                        (sel :many entity# ~@forms)))
-        nil     `(-sel-select ~entity ~@forms)))))
-
-(defn -sel-transform [entity result]
-  (->> result
-       (models/internal-post-select entity)
-       (models/post-select entity)))
-
-(defmacro -sel-select
-  "Internal macro used by `sel` (don't call this directly).
-   Generates the korma `select` form."
-  [entity & forms]
-  (let [forms (sel-apply-kwargs forms)]                                          ; convert kwargs like `:id 1` to korma `where` clause
-    `(let [[entity# field-keys#] (destructure-entity ~entity)                    ; pull out field-keys if passed entity vector like `[entity & field-keys]`
-           entity# (entity->korma entity#)                                       ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
-           entity-select-form# (-> entity#                                       ; entity-select-form# is the tweaked version we'll pass to korma `select`
-                                   (assoc :fields (or field-keys#                ; tell korma which fields to grab. If `field-keys` weren't passed in vector do lookup at runtime
-                                                      (:metabase.models.interface/default-fields entity#))))]
-       (when (config/config-bool :mb-db-logging)
-         (log/debug "DB CALL: " (:name entity#)
-                  (or (:fields entity-select-form#) "*")
-                  ~@(mapv (fn [[form & args]]
-                            `[~(name form) ~(apply str (interpose " " args))])
-                          forms)))
-       (->> (select entity-select-form# ~@forms)
-            (map (partial -sel-transform entity#))))))
+  {:arglists '([options? entity & forms])}
+  [& args]
+  (let [[option args] (u/optional keyword? args)]
+    `(~(if option
+         ;; if an option was specified, hand off to macro named metabase.db.internal/sel:OPTION
+         (symbol (format "metabase.db.internal/sel:%s" (name option)))
+         ;; otherwise just hand off to low-level sel* macro
+         'metabase.db.internal/sel*)
+      ~@args)))
 
 
 ;; ## INS
@@ -311,30 +281,31 @@
   (let [vals (->> kwargs
                   (models/pre-insert entity)
                   (models/internal-pre-insert entity))
-        {:keys [id]} (-> (insert entity (values vals))
+        {:keys [id]} (-> (k/insert entity (k/values vals))
                          (set/rename-keys {(keyword "scope_identity()") :id}))]
     (models/post-insert entity (entity id))))
 
 
 ;; ## EXISTS?
 
-(defmacro exists?
+(defn exists?
   "Easy way to see if something exists in the db.
 
     (exists? User :id 100)"
   [entity & {:as kwargs}]
-  `(not (empty? (select (entity->korma ~entity)
-                        (fields [:id])
-                        ~@(when (seq kwargs)
-                            `[(where ~kwargs)])
-                        (limit 1)))))
+  (boolean (seq (k/select (i/entity->korma entity)
+                          (k/fields [:id])
+                          (k/where (if (seq kwargs) kwargs {}))
+                          (k/limit 1)))))
 
 ;; ## CASADE-DELETE
 
-(defn -cascade-delete [entity objects]
-  (dorun (for [obj objects]
-           (do (models/pre-cascade-delete entity obj)
-               (del entity :id (:id obj)))))
+(defn -cascade-delete [entity f]
+  (let [entity  (i/entity->korma entity)
+        results (i/sel-exec entity f)]
+    (dorun (for [obj results]
+             (do (models/pre-cascade-delete entity obj)
+                 (del entity :id (:id obj))))))
   {:status 204, :body nil})
 
 (defmacro cascade-delete
@@ -343,5 +314,4 @@
 
    Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
   [entity & kwargs]
-  `(let [entity#    (entity->korma ~entity)]
-     (-cascade-delete entity# (sel :many entity# ~@kwargs))))
+  `(-cascade-delete ~entity (i/sel-fn ~@kwargs)))

@@ -1,11 +1,11 @@
 (ns metabase.models.interface
   (:require (clojure.tools [logging :as log]
                            [macro :refer [macrolet]])
-            [clojure.walk :refer [macroexpand-all]]
+            [clojure.walk :refer [macroexpand-all], :as walk]
+            [cheshire.core :as cheshire]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.config :as config]
-            metabase.db.internal
             [metabase.util :as u]))
 
 ;;; ## ---------------------------------------- PERMISSIONS CHECKING ----------------------------------------
@@ -112,9 +112,29 @@
    :post-select        #'identity-second
    :pre-cascade-delete #'constantly-nil})
 
+;; ## ---------------------------------------- READ-JSON ----------------------------------------
+
+(defn- read-json-str-or-clob
+  "If JSON-STRING is a JDBC Clob, convert to a String. Then call `json/read-str`."
+  [json-str]
+  (some-> (u/jdbc-clob->str json-str)
+          cheshire/parse-string))
+
+(defn- read-json
+  "Read JSON-STRING (or JDBC Clob) as JSON and keywordize keys."
+  [json-string]
+  (->> (read-json-str-or-clob json-string)
+       walk/keywordize-keys))
+
+(defn- write-json
+  "If OBJ is not already a string, encode it as JSON."
+  [obj]
+  (if (string? obj) obj
+      (cheshire/generate-string obj)))
+
 (def ^:const ^:private type-fns
-  {:json    {:in  'metabase.db.internal/write-json
-             :out 'metabase.db.internal/read-json}
+  {:json    {:in  #'write-json
+             :out #'read-json}
    :keyword {:in  `name
              :out `keyword}})
 

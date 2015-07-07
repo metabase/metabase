@@ -52,9 +52,9 @@
   [& {:as kwargs}]
   (let [first-name (random-name)
         defaults {:first_name first-name
-                  :last_name (random-name)
-                  :email (.toLowerCase ^String (str first-name "@metabase.com"))
-                  :password first-name}]
+                  :last_name  (random-name)
+                  :email      (.toLowerCase ^String (str first-name "@metabase.com"))
+                  :password   first-name}]
     (->> (merge defaults kwargs)
          (m/mapply ins User))))
 
