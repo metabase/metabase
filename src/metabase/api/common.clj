@@ -415,21 +415,19 @@
   "Check whether we can read an existing OBJ, or ENTITY with ID."
   ([obj]
    (check-404 obj)
-   (check-403 (if (satisfies? models/ICanReadWrite obj) (models/can-read? obj)
-                  @(:can_read obj)))
+   (check-403 (models/can-read? obj))
    obj)
   ([entity id]
    {:pre [(models/metabase-entity? entity)
           (integer? id)]}
-   (if (satisfies? models/ICanReadWrite entity) (models/can-read? entity id)
+   (if (satisfies? models/ICanReadWrite entity)
        (read-check (entity id)))))
 
 (defn write-check
   "Check whether we can write an existing OBJ, or ENTITY with ID."
   ([obj]
    (check-404 obj)
-   (check-403 (if (satisfies? models/ICanReadWrite obj) (models/can-write? obj)
-                  @(:can_write obj)))
+   (check-403 (models/can-write? obj))
    obj)
   ([entity id]
    {:pre [(models/metabase-entity? entity)
