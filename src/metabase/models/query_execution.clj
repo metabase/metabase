@@ -9,6 +9,7 @@
 
 (defentity QueryExecution
   [(table :query_queryexecution)
+   (default-fields id uuid version json_query raw_query status started_at finished_at running_time error result_rows)
    (types {:json_query  :json
            :result_data :json
            :status      :keyword})]
@@ -18,18 +19,3 @@
     ;; sadly we have 2 ways to reference the row count :(
     (assoc query-execution
            :row_count (or result_rows 0))))
-
-;; default fields to return for `sel QueryExecution
-;; specifically excludes stored data columns
-(defmethod default-fields QueryExecution [_]
-  [:id
-   :uuid
-   :version
-   :json_query
-   :raw_query
-   :status
-   :started_at
-   :finished_at
-   :running_time
-   :error
-   :result_rows])

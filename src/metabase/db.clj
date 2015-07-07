@@ -253,13 +253,6 @@
 
 ;; ## SEL
 
-(defmulti default-fields
-  "The default fields that should be used for ENTITY by calls to `sel` if none are specified."
-  identity)
-
-(defmethod default-fields :default [_]
-  nil) ; by default return nil, which we'll take to mean "everything"
-
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
 
@@ -374,8 +367,8 @@
     `(let [[entity# field-keys#] (destructure-entity ~entity)                    ; pull out field-keys if passed entity vector like `[entity & field-keys]`
            entity# (entity->korma entity#)                                       ; entity## is the actual entity like `metabase.models.user/User` that we can dispatch on
            entity-select-form# (-> entity#                                       ; entity-select-form# is the tweaked version we'll pass to korma `select`
-                                   (assoc :fields (or field-keys#
-                                                      (default-fields entity#))))] ; tell korma which fields to grab. If `field-keys` weren't passed in vector do lookup at runtime
+                                   (assoc :fields (or field-keys#                ; tell korma which fields to grab. If `field-keys` weren't passed in vector do lookup at runtime
+                                                      (:metabase.models.interface/default-fields entity#))))]
        (when (config/config-bool :mb-db-logging)
          (log/debug "DB CALL: " (:name entity#)
                   (or (:fields entity-select-form#) "*")

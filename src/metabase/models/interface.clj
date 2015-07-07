@@ -1,5 +1,6 @@
 (ns metabase.models.interface
-  (:require [clojure.tools.logging :as log]
+  (:require (clojure.tools [logging :as log]
+                           [macro :refer [macrolet]])
             [clojure.walk :refer [macroexpand-all]]
             [korma.core :as k]
             [medley.core :as m]
@@ -44,7 +45,9 @@
     (when (metabase.config/config-bool :mb-db-logging)
       (clojure.tools.logging/debug
        "DB CALL: " (:name entity) id)))
-  (let [[obj] (k/select entity (k/where {:id id}) (k/limit 1))]
+  (let [[obj] (k/select (assoc entity :fields (::default-fields entity))
+                        (k/where {:id id})
+                        (k/limit 1))]
     (when obj
       (->> obj
            (internal-post-select entity)
@@ -56,14 +59,19 @@
                  [`(~k ~obj) `(update-in [~k] ~f)])
                (seq kvs))))
 
+(defmacro macrolet-entity-map [entity & entity-forms]
+  `(macrolet [(~'default-fields [m# & fields#] `(assoc ~m# ::default-fields [~@(map keyword fields#)]))
+              (~'hydration-keys [m# & fields#] `(assoc ~m# :hydration-keys #{~@(map keyword fields#)}))]
+     (-> (k/create-entity ~(name entity))
+         ~@entity-forms)))
+
 (defmacro defentity
   "Similar to korma `defentity`, but creates a new record type where you can specify protocol implementations."
   [entity entity-forms & specs]
   {:pre [vector? entity-forms]}
   (let [entity-symb               (symbol (format "%sEntity" (name entity)))
         internal-post-select-symb (symbol (format "internal-post-select-%s" (name entity)))
-        entity-map                (eval `(-> (k/create-entity ~(name entity))
-                                             ~@entity-forms))
+        entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))
         type-fns                  (resolve-type-fns (:metabase.db/types entity-map))]
     `(do
        (defrecord ~entity-symb []

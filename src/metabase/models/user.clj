@@ -10,25 +10,16 @@
 
 (defentity User
   [(table :core_user)
-   (assoc :hydration-keys #{:author :creator :user})]
+   (default-fields id email date_joined first_name last_name last_login is_superuser)
+   (hydration-keys author creator user)]
 
   IEntityPostSelect
   (post-select [_ user]
     (assoc user :common_name (str (:first_name user) " " (:last_name user)))))
 
-;; fields to return for Users other `*than current-user*`
-(defmethod default-fields User [_]
-  [:id
-   :email
-   :date_joined
-   :first_name
-   :last_name
-   :last_login
-   :is_superuser])
-
 (def ^:const current-user-fields
   "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
-  (concat (default-fields User)
+  (concat (:metabase.models.interface/default-fields User)
           [:is_active
            :is_staff])) ; but not `password` !
 
