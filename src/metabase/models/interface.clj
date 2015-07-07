@@ -5,6 +5,7 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.config :as config]
+            metabase.db.internal
             [metabase.util :as u]))
 
 ;;; ## ---------------------------------------- ENTITIES ----------------------------------------
@@ -81,18 +82,18 @@
                            [`(~k ~obj-binding) `(update-in [~k] ~f)])
                          fns)))))
 
-(defn -invoke-entity [entity id]
-  (future
-    (when (metabase.config/config-bool :mb-db-logging)
-      (clojure.tools.logging/debug
-       "DB CALL: " (:name entity) id)))
+(defn -invoke-entity
+  "Basically the same as `(sel :one Entity :id id)`." ; TODO - deduplicate with sel
+  [entity id]
+  (when (metabase.config/config-bool :mb-db-logging)
+    (clojure.tools.logging/debug
+     "DB CALL: " (:name entity) id))
   (let [[obj] (k/select (assoc entity :fields (::default-fields entity))
                         (k/where {:id id})
                         (k/limit 1))]
-    (when obj
-      (->> obj
-           (internal-post-select entity)
-           (post-select entity)))))
+    (some->> obj
+             (internal-post-select entity)
+             (post-select entity))))
 
 (defn- update-updated-at [obj]
   (assoc obj :updated_at (u/new-sql-timestamp)))
