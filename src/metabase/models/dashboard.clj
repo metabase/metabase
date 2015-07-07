@@ -11,13 +11,12 @@
   [(table :report_dashboard)
    timestamped]
 
-  IEntityPostSelect
   (post-select [_ {:keys [id creator_id description] :as dash}]
     (-> dash
         (assoc :creator       (delay (sel :one User :id creator_id))
                :description   (u/jdbc-clob->str description)
                :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
-        assoc-permissions-sets)))
+        assoc-permissions-sets))
 
-(defmethod pre-cascade-delete Dashboard [_ {:keys [id]}]
-  (cascade-delete DashboardCard :dashboard_id id))
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete DashboardCard :dashboard_id id)))

@@ -191,27 +191,6 @@
 
 ;; ## UPD
 
-(defmulti pre-update
-  "Multimethod that is called by `upd` before DB operations happen.
-   A good place to set updated values for fields like `updated_at`, or serialize maps into JSON."
-  (fn [entity _] entity))
-
-(defmethod pre-update :default [_ obj]
-  obj) ; default impl does no modifications to OBJ
-
-(defmulti post-update
-  "Multimethod that is called by `upd` after a SQL `UPDATE` *succeeds*.
-   (This gets called with whatever the output of `pre-update` was).
-
-   A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
-   when it is marked with `special_type` `:category`.
-
-   The output of this function is ignored."
-  (fn [entity _] entity))
-
-(defmethod post-update :default [_ _] ; default impl does nothing and returns nil
-  nil)
-
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
@@ -222,7 +201,7 @@
   [entity entity-id & {:as kwargs}]
   {:pre [(integer? entity-id)]}
   (let [obj (->> (assoc kwargs :id entity-id)
-                 (pre-update entity)
+                 (models/pre-update entity)
                  (#(dissoc % :id))
                  (apply-type-fns :in (seq (::types entity))))
         obj (cond-> obj
@@ -230,7 +209,7 @@
         result (-> (update entity (set-fields obj) (where {:id entity-id}))
                    (> 0))]
     (when result
-      (post-update entity (assoc obj :id entity-id)))
+      (models/post-update entity (assoc obj :id entity-id)))
     result))
 
 (defn upd-non-nil-keys
@@ -381,28 +360,6 @@
 
 ;; ## INS
 
-(defmulti pre-insert
-  "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
-   This provides an opportunity to do things like encode JSON or provide default values for certain fields.
-
-    (pre-insert Query [_ query]
-      (let [defaults {:version 1}]
-        (merge defaults query))) ; set some default values"
-  (fn [entity _] entity))
-
-(defmethod pre-insert :default [_ obj]
-  obj)   ; default impl returns object as is
-
-(defmulti post-insert
-  "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
-   A good place to do asynchronous tasks such as creating related objects.
-   Implementations should return the newly created object."
-  (fn [entity _] entity))
-
-;; Default implementation returns object as-is
-(defmethod post-insert :default [_ obj]
-  obj)
-
 (defn ins
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
@@ -410,7 +367,7 @@
    Returns newly created object by calling `sel`."
   [entity & {:as kwargs}]
   (let [vals (->> kwargs
-                  (pre-insert entity)
+                  (models/pre-insert entity)
                   (apply-type-fns :in (seq (::types entity))))
         vals (cond-> vals
                (::timestamped entity) (assoc :created_at (u/new-sql-timestamp)
@@ -418,7 +375,7 @@
         {:keys [id]} (-> (insert entity (values vals))
                          (clojure.set/rename-keys {(keyword "scope_identity()") :id}))]
     (->> (sel :one entity :id id)
-         (post-insert entity))))
+         (models/post-insert entity))))
 
 
 ;; ## EXISTS?
@@ -436,31 +393,17 @@
 
 ;; ## CASADE-DELETE
 
-(defmulti pre-cascade-delete
-  "Called by `cascade-delete` for each matching object that is about to be deleted.
-   Implementations should delete any objects related to this object by recursively
-   calling `cascade-delete`.
+(defn -cascade-delete [entity objects]
+  (dorun (for [obj objects]
+           (do (models/pre-cascade-delete entity obj)
+               (del entity :id (:id obj)))))
+  {:status 204, :body nil})
 
-    (defmethod pre-cascade-delete Database [_ {database-id :id :as database}]
-      (cascade-delete Card :database_id database-id)
-      ...)"
-  (fn [entity _]
-    entity))
-
-(defmethod pre-cascade-delete :default [_ instance]
-  instance)
-
-;; TODO - does this *really* need to be a macro?
 (defmacro cascade-delete
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
 
    Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
   [entity & kwargs]
-  `(let [entity# (entity->korma ~entity)
-         instances# (sel :many entity# ~@kwargs)]
-     (dorun (map (fn [instance#]
-                   (pre-cascade-delete entity# instance#)
-                   (del entity# :id (:id instance#)))
-                 instances#))
-     {:status 204, :body nil}))
+  `(let [entity#    (entity->korma ~entity)]
+     (-cascade-delete entity# (sel :many entity# ~@kwargs))))

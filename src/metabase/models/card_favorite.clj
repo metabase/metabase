@@ -9,8 +9,7 @@
   [(table :report_cardfavorite)
    timestamped]
 
-  IEntityPostSelect
   (post-select [_ {:keys [card_id owner_id] :as card-favorite}]
     (assoc card-favorite
-           :owner (delay (sel :one User :id owner_id))
+           :owner (delay (User owner_id))
            :card  (delay (Card card_id)))))

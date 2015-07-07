@@ -6,30 +6,63 @@
             [medley.core :as m]
             [metabase.config :as config]))
 
-(defprotocol IEntityPostSelect
+;;; ## ---------------------------------------- ENTITIES ----------------------------------------
+
+(defprotocol IEntity
+  (pre-insert [this instance]
+    "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
+     This provides an opportunity to do things like encode JSON or provide default values for certain fields.
+
+         (pre-insert [_ query]
+           (let [defaults {:version 1}]
+             (merge defaults query))) ; set some default values")
+
+  (post-insert [this instance]
+    "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
+     A good place to do asynchronous tasks such as creating related objects.
+     Implementations should return the newly created object.")
+
+  (pre-update [this instance]
+    "Called by `upd` before DB operations happen. A good place to set updated values for fields like `updated_at`, or serialize maps into JSON.")
+
+  (post-update [this instance]
+    "Called by `upd` after a SQL `UPDATE` *succeeds*. (This gets called with whatever the output of `pre-update` was).
+
+     A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
+     when it is marked with `special_type` `:category`.
+
+     The output of this function is ignored.")
+
+  (internal-post-select [this instance])
+
   (post-select [this instance]
     "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
-     you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields."))
+     you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields.")
 
-(defprotocol IModelInstanceApiSerialize
-  (api-serialize [this]
-    "Called on all objects being written out by the API. Default implementations return THIS as-is, but models can provide
-     custom methods to strip sensitive data, from non-admins, etc."))
+  (pre-cascade-delete [this instance]
+    "Called by `cascade-delete` for each matching object that is about to be deleted.
+     Implementations should delete any objects related to this object by recursively
+     calling `cascade-delete`.
 
-(defprotocol IEntityInternal
-  "Internal methods automatically defined by entities created with `defentity`."
-  (internal-post-select [this instance]))
+     The output of this function is ignored.
 
-(defn- identity-second [_ obj]
+        (pre-cascade-delete [_ {database-id :id :as database}]
+          (cascade-delete Card :database_id database-id)
+          ...)"))
+
+(defn- identity-second
+  "Return the second arg as-is."
+  [_ obj]
   obj)
 
-(extend Object
-  IEntityPostSelect          {:post-select          identity-second}
-  IEntityInternal            {:internal-post-select identity-second}
-  IModelInstanceApiSerialize {:api-serialize        identity})
-
-(extend nil
-  IModelInstanceApiSerialize {:api-serialize identity})
+(def ^:const ^:private default-entity-method-implementations
+  {:pre-insert           identity-second
+   :post-insert          identity-second
+   :pre-update           identity-second
+   :post-update          '(constantly nil)
+   :post-select          identity-second
+   :pre-cascade-delete   '(constantly nil)
+   :internal-post-select identity-second})
 
 (def ^:const ^:private type-fns
   {:json    {:in  'metabase.db.internal/write-json
@@ -67,22 +100,40 @@
 
 (defmacro defentity
   "Similar to korma `defentity`, but creates a new record type where you can specify protocol implementations."
-  [entity entity-forms & specs]
-  {:pre [vector? entity-forms]}
+  [entity entity-forms & methods]
+  {:pre [(vector? entity-forms)
+         (every? list? methods)]}
   (let [entity-symb               (symbol (format "%sEntity" (name entity)))
         internal-post-select-symb (symbol (format "internal-post-select-%s" (name entity)))
         entity-map                (eval `(macrolet-entity-map ~entity ~@entity-forms))
         type-fns                  (resolve-type-fns (:metabase.db/types entity-map))]
     `(do
        (defrecord ~entity-symb []
-         IEntityInternal
-         (internal-post-select [~'_ ~'obj]
-           ~(macroexpand-1 `(make-internal-post-select ~'obj ~type-fns)))
-
          clojure.lang.IFn
          (~'invoke [~'this ~'id]
-           (-invoke-entity ~'this ~'id))
+           (-invoke-entity ~'this ~'id)))
 
-         ~@specs)
+       (extend ~entity-symb
+         IEntity ~(merge default-entity-method-implementations
+                         {:internal-post-select `(fn [~'_ ~'obj]
+                                                  ~(macroexpand-1 `(make-internal-post-select ~'obj ~type-fns)))}
+                         (into {}
+                               (for [[method-name & impl] methods]
+                                 {(keyword method-name) `(fn ~@impl)}))))
+
        (def ~entity            ; ~(vary-meta entity assoc :const true)
          (~(symbol (format "map->%sEntity" (name entity))) ~entity-map)))))
+
+
+;;; # ---------------------------------------- INSTANCE ----------------------------------------
+
+(defprotocol IModelInstanceApiSerialize
+  (api-serialize [this]
+    "Called on all objects being written out by the API. Default implementations return THIS as-is, but models can provide
+     custom methods to strip sensitive data, from non-admins, etc."))
+
+(extend Object
+  IModelInstanceApiSerialize {:api-serialize identity})
+
+(extend nil
+  IModelInstanceApiSerialize {:api-serialize identity})

@@ -13,7 +13,6 @@
    (types {:human_readable_values :json
            :values                :json})]
 
-  IEntityPostSelect
   (post-select [_ field-values]
     (update-in field-values [:human_readable_values] #(or % {}))))
 

@@ -19,7 +19,6 @@
    timestamped
    (types {:relationship :keyword})]
 
-  IEntityPostSelect
   (post-select [_ {:keys [origin_id destination_id] :as fk}]
     (assoc fk
            :origin      (delay (sel :one 'metabase.models.field/Field :id origin_id))

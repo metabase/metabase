@@ -13,40 +13,39 @@
    (default-fields id email date_joined first_name last_name last_login is_superuser)
    (hydration-keys author creator user)]
 
-  IEntityPostSelect
+  (pre-insert [_ {:keys [email password] :as user}]
+    (assert (u/is-email? email))
+    (assert (and (string? password)
+                 (not (clojure.string/blank? password))))
+    (assert (not (:password_salt user))
+            "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+    (let [salt (.toString (java.util.UUID/randomUUID))
+          defaults {:date_joined  (u/new-sql-timestamp)
+                    :last_login   (u/new-sql-timestamp)
+                    :is_staff     true
+                    :is_active    true
+                    :is_superuser false}]
+      ;; always salt + encrypt the password before put new User in the DB
+      (merge defaults user {:password_salt salt
+                            :password (creds/hash-bcrypt (str salt password))})))
+
+  (pre-update [_ {:keys [email] :as user}]
+    (when email
+      (assert (u/is-email? email)))
+    user)
+
   (post-select [_ user]
-    (assoc user :common_name (str (:first_name user) " " (:last_name user)))))
+    (assoc user :common_name (str (:first_name user) " " (:last_name user))))
+
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'metabase.models.session/Session :user_id id)))
+
 
 (def ^:const current-user-fields
   "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
   (concat (:metabase.models.interface/default-fields User)
           [:is_active
            :is_staff])) ; but not `password` !
-
-(defmethod pre-insert User [_ {:keys [email password] :as user}]
-  (assert (u/is-email? email))
-  (assert (and (string? password)
-               (not (clojure.string/blank? password))))
-  (assert (not (:password_salt user))
-          "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-  (let [salt (.toString (java.util.UUID/randomUUID))
-        defaults {:date_joined (u/new-sql-timestamp)
-                  :last_login (u/new-sql-timestamp)
-                  :is_staff true
-                  :is_active true
-                  :is_superuser false}]
-    ;; always salt + encrypt the password before put new User in the DB
-    (merge defaults user {:password_salt salt
-                          :password (creds/hash-bcrypt (str salt password))})))
-
-(defmethod pre-update User [_ {:keys [email] :as user}]
-  (when email
-    (assert (u/is-email? email)))
-  user)
-
-(defmethod pre-cascade-delete User [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.session/Session :user_id id))
-
 
 ;; ## Related Functions
 

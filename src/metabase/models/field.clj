@@ -80,10 +80,27 @@
    (types {:base_type    :keyword
            :field_type   :keyword
            :special_type :keyword})
-   (assoc :hydration-keys #{:destination
-                            :field
-                            :origin})]
-  IEntityPostSelect
+   (hydration-keys destination field origin)]
+
+  (pre-insert [_ field]
+    (let [defaults {:active          true
+                    :preview_display true
+                    :field_type      :info
+                    :position        0}]
+      (merge defaults field)))
+
+  (post-insert [_ field]
+    (when (field-should-have-field-values? field)
+      (future (create-field-values field)))
+    field)
+
+  (post-update [this {:keys [id] :as field}]
+    ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
+    (when (or (contains? field :base_type)
+              (contains? field :field_type)
+              (contains? field :special_type))
+      (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
+
   (post-select [_ {:keys [table_id] :as field}]
     (u/assoc* field
       :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
@@ -92,7 +109,12 @@
       :can_read            (delay @(:can_read @(:table <>)))
       :can_write           (delay @(:can_write @(:table <>)))
       :human_readable_name (when (name :field)
-                             (delay (common/name->human-readable-name (:name field)))))))
+                             (delay (common/name->human-readable-name (:name field))))))
+
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete ForeignKey (where (or (= :origin_id id)
+                                          (= :destination_id id))))
+    (cascade-delete 'metabase.models.field-values/FieldValues :field_id id) ))
 
 (defn field->fk-field
   "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
@@ -101,28 +123,4 @@
   [{:keys [id special_type] :as field}]
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
-      (sel :one Field :id dest-id))))
-
-(defmethod pre-insert Field [_ field]
-  (let [defaults {:active          true
-                  :preview_display true
-                  :field_type      :info
-                  :position        0}]
-    (merge defaults field)))
-
-(defmethod post-insert Field [_ field]
-  (when (field-should-have-field-values? field)
-    (future (create-field-values field)))
-  field)
-
-(defmethod post-update Field [_ {:keys [id] :as field}]
-  ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
-  (when (or (contains? field :base_type)
-            (contains? field :field_type)
-            (contains? field :special_type))
-    (future (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type :field_type] :id id)))))
-
-(defmethod pre-cascade-delete Field [_ {:keys [id]}]
-  (cascade-delete ForeignKey (where (or (= :origin_id id)
-                                        (= :destination_id id))))
-  (cascade-delete 'metabase.models.field-values/FieldValues :field_id id))
+      (Field dest-id))))

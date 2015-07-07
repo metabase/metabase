@@ -24,25 +24,11 @@
    timestamped
    (assoc :hydration-keys #{:database
                             :db})]
-  IEntityPostSelect
   (post-select [_ db]
     (map->DatabaseInstance
      (assoc db
             :can_read  (delay true)
-            :can_write (delay (:is_superuser @*current-user*))))))
+            :can_write (delay (:is_superuser @*current-user*)))))
 
-
-(defmethod pre-cascade-delete Database [_ {:keys [id] :as database}]
-  (cascade-delete 'metabase.models.table/Table :db_id id))
-
-(defn x []
-  (sel :one Database :id 1))
-
-(defn y []
-  (Database 1))
-
-(defn z []
-  (println "X")
-  (time (dorun (repeatedly 1000 x))) ; ~ 1500 ms
-  (println "Y")
-  (time (dorun (repeatedly 1000 y)))) ; ~ 250 ms
+  (pre-cascade-delete [_ {:keys [id] :as database}]
+    (cascade-delete 'metabase.models.table/Table :db_id id)))

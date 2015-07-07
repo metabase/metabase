@@ -15,10 +15,9 @@
 (defentity Table
   [(table :metabase_table)
    timestamped
-   (types {:entity_type :keyword})
-   (assoc :hydration-keys #{:table})]
+   (hydration-keys table)
+   (types {:entity_type :keyword})]
 
-  IEntityPostSelect
   (post-select [_ {:keys [id db db_id description] :as table}]
     (u/assoc* table
       :db                  (or db (delay (sel :one db/Database :id db_id)))
@@ -36,7 +35,7 @@
       :can_read            (delay @(:can_read @(:db <>)))
       :can_write           (delay @(:can_write @(:db <>)))
       :human_readable_name (when (:name table)
-                             (delay (common/name->human-readable-name (:name table)))))))
+                             (delay (common/name->human-readable-name (:name table))))))
 
-(defmethod pre-cascade-delete Table [_ {:keys [id] :as table}]
-  (cascade-delete Field :table_id id))
+  (pre-cascade-delete [_ {:keys [id] :as table}]
+    (cascade-delete Field :table_id id)))

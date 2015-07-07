@@ -8,8 +8,8 @@
 
 (defentity Session
   [(table :core_session)
-   (belongs-to User {:fk :user_id})])
+   (belongs-to User {:fk :user_id})]
 
-(defmethod pre-insert Session [_ session]
-  (let [defaults {:created_at (u/new-sql-timestamp)}]
-    (merge defaults session)))
+  (pre-insert [_ session]
+    (let [defaults {:created_at (u/new-sql-timestamp)}]
+      (merge defaults session))))

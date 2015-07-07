@@ -27,12 +27,11 @@
    timestamped
    (assoc :hydration-keys #{:card})]
 
-  IEntityPostSelect
   (post-select [_ {:keys [creator_id] :as card}]
     (-> (assoc card
                :creator (delay (sel :one User :id creator_id)))
-        assoc-permissions-sets)))
+        assoc-permissions-sets))
 
-(defmethod pre-cascade-delete Card [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
-  (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id))
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
+    (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id)))

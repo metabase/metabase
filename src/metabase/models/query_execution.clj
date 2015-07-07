@@ -14,7 +14,6 @@
            :result_data :json
            :status      :keyword})]
 
-  IEntityPostSelect
   (post-select [_ {:keys [result_rows] :as query-execution}]
     ;; sadly we have 2 ways to reference the row count :(
     (assoc query-execution
