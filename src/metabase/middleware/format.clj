@@ -1,9 +1,8 @@
 (ns metabase.middleware.format
-  (:require [clojure.core.match :refer [match]]
-            (cheshire factory
+  (:require (cheshire factory
                       [generate :refer [add-encoder encode-str]])
             [medley.core :refer [filter-vals map-vals]]
-            [metabase.util :as util]))
+            [metabase.util :as u]))
 
 (declare -format-response)
 
@@ -16,7 +15,7 @@
 
 ;; stringify JDBC clobs
 (add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-                                    (.writeString json-generator (util/jdbc-clob->str clob))))
+                                    (.writeString json-generator (u/jdbc-clob->str clob))))
 
 ;; stringify Postgres binary objects (e.g. PostGIS geometries)
 (add-encoder org.postgresql.util.PGobject encode-str)
