@@ -20,7 +20,7 @@
   (invoke [this k]
     (get this k))
 
-  IModelInstanceApiSerialze
+  IModelInstanceApiSerialize
   (api-serialize [this]
     ;; If current user isn't an admin strip out DB details which may include things like password
     (cond-> this
