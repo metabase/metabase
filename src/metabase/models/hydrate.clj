@@ -26,15 +26,9 @@
   **Batched Hydration**
 
   Hydration attempts to do a *batched hydration* where possible.
-  If the key being hydrated is defined as one of some entity's `:hydration-keys`,
+  If the key being hydrated is defined as one of some entity's `:metabase.models.interface/hydration-keys`,
   `hydrate` will do a batched `sel` if a corresponding key ending with `_id`
   is found in the objects being hydrated.
-
-  `defentity` threads the resulting map through its forms using `->`, so define
-  `:hydration-keys` with `assoc`:
-
-    (defentity User
-      (assoc :hydration-keys #{:user}))
 
     (hydrate [{:user_id 100}, {:user_id 101}] :user)
 
@@ -183,34 +177,6 @@
                   (assoc result dest-key obj))))
           results))))
 
-;; #### Possible Improvements
-;; TODO - It would be *nice* to extend this to work with one-to-many relationships. e.g. `Dashboard -> Cards`
-;;
-;; It could work like this:
-;;
-;;     (defentity Card
-;;       (assoc :hydration-keys {:1t1 {:keys #{:card}}        ; (hydrate obj :card)    -> obj.card_id <-> Card.id
-;;                               :1tM {:keys #{:cards}
-;;                                     :fks #{:table_id}}}))  ; (hydrate table :cards) -> obj.id <-> Card.table_id
-;;
-;;     (-> (sel :many Table ...)
-;;         (hydrate :cards))
-;;
-;; 1.  `:hydration-keys` can be reworked to differentiate between one-to-one hydrations and one-to-many hydrations
-;;     (not sure on the exact format yet)
-;;
-;; 2.  one-to-many hydrations will additionally need to know what fields it has that can be used as Foreign Keys
-;;     -  Could we reflect on the DB and add this info at runtime?
-;;     -  Could we just use `belongs-to` / `has-one` / etc? (or an augmented version thereof) to specify foreign keys?
-;;
-;; 3.  We can infer that `:table_id` is an FK to `Table` because `Table` has `:table` defined as a hydration key.
-;;     `:table <-> :table_id`
-;;
-;; 4.  (This is the tricky part)
-;;     If we could somehow know that we are trying to hydrate `Tables`, we would know we could use `:id -> :table_id`
-;;     and could do a `(sel Card :table_id [in ids])`
-;;     -  We could add a key like `:_type :Table` (?) to results so we know the type
-
 
 ;; ### Helper Fns
 
@@ -218,15 +184,15 @@
   "Delay that returns map of `hydration-key` -> korma entity.
    e.g. `:user -> User`.
 
-   This is built pulling the `:hydration-keys` set from all of our entities."
+   This is built pulling the `::hydration-keys` set from all of our entities."
   (delay (->> (all-ns)
               (mapcat ns-publics)
               vals
               (map var-get)
-              (filter :hydration-keys)
-              (mapcat (fn [{:keys [hydration-keys] :as entity}]
+              (filter :metabase.models.interface/hydration-keys)
+              (mapcat (fn [{hydration-keys :metabase.models.interface/hydration-keys, :as entity}]
                         (assert (and (set? hydration-keys) (every? keyword? hydration-keys))
-                                (str ":hydration-keys should be a set of keywords. In: " entity))
+                                (str "::hydration-keys should be a set of keywords. In: " entity))
                         (map (u/rpartial vector entity)
                              hydration-keys)))
               (into {}))))

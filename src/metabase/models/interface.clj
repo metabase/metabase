@@ -154,7 +154,7 @@
   `(macrolet [(~'default-fields [m# & fields#]       `(assoc ~m# ::default-fields [~@(map keyword fields#)]))
               (~'timestamped    [m#]                 `(assoc ~m# ::timestamped true))
               (~'types          [m# & {:as fields#}] `(assoc ~m# ::types ~fields#))
-              (~'hydration-keys [m# & fields#]       `(assoc ~m# :hydration-keys #{~@(map keyword fields#)}))]
+              (~'hydration-keys [m# & fields#]       `(assoc ~m# ::hydration-keys #{~@(map keyword fields#)}))]
      (-> (k/create-entity ~(name entity))
          ~@entity-forms)))
 
