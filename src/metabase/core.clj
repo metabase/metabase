@@ -15,8 +15,7 @@
             [metabase.setup :as setup]
             [metabase.task :as task]
             [ring.adapter.jetty :as ring-jetty]
-            (ring.middleware [cookies :refer [wrap-cookies]]
-                             [gzip :refer [wrap-gzip]]
+            (ring.middleware [gzip :refer [wrap-gzip]]
                              [json :refer [wrap-json-response
                                            wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
@@ -40,7 +39,6 @@
       wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
       auth/wrap-apikey        ; looks for a Metabase API Key on the request and assocs as :metabase-apikey
       auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
-      wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
       wrap-session            ; reads in current HTTP session and sets :session/key
       wrap-gzip))             ; GZIP response if client can handle it
 
@@ -57,10 +55,7 @@
                          setup-token)]
     (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
                            setup-url
-                           "\n\n"))
-    ;; Attempt to browse URL on user's system; this will just fail silently if we can't do it
-    ;(browse-url setup-url)
-    ))
+                           "\n\n"))))
 
 
 (defn init
