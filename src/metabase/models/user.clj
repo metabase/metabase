@@ -1,15 +1,20 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
-            [korma.core :refer :all]
+            [korma.core :refer :all, :exclude [defentity]]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
+            [metabase.models.interface :refer :all]
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
 
 (defentity User
-  (table :core_user)
-  (assoc :hydration-keys #{:author :creator :user}))
+  [(table :core_user)
+   (assoc :hydration-keys #{:author :creator :user})]
+
+  IEntityPostSelect
+  (post-select [_ user]
+    (assoc user :common_name (str (:first_name user) " " (:last_name user)))))
 
 ;; fields to return for Users other `*than current-user*`
 (defmethod default-fields User [_]
@@ -21,15 +26,11 @@
    :last_login
    :is_superuser])
 
-(def current-user-fields
+(def ^:const current-user-fields
   "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
   (concat (default-fields User)
           [:is_active
            :is_staff])) ; but not `password` !
-
-(defmethod post-select User [_ user]
-  (-> user
-      (assoc :common_name   (str (:first_name user) " " (:last_name user)))))
 
 (defmethod pre-insert User [_ {:keys [email password] :as user}]
   (assert (u/is-email? email))

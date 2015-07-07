@@ -1,13 +1,16 @@
 (ns metabase.models.field
-  (:require [korma.core :refer :all]
+  (:require [korma.core :refer :all, :exclude [defentity]]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
                              [field-values :refer [field-should-have-field-values? create-field-values create-field-values-if-needed]]
+                             [foreign-key :refer [ForeignKey]]
                              [hydrate :refer [hydrate]]
-                             [foreign-key :refer [ForeignKey]])
+                             [interface :refer :all])
             [metabase.util :as u]))
+
+(declare field->fk-field)
 
 (def ^:const special-types
   "Possible values for `Field` `:special_type`."
@@ -72,14 +75,24 @@
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
 (defentity Field
-  (table :metabase_field)
-  timestamped
-  (types {:base_type    :keyword
-          :field_type   :keyword
-          :special_type :keyword})
-  (assoc :hydration-keys #{:destination
-                           :field
-                           :origin}))
+  [(table :metabase_field)
+   timestamped
+   (types {:base_type    :keyword
+           :field_type   :keyword
+           :special_type :keyword})
+   (assoc :hydration-keys #{:destination
+                            :field
+                            :origin})]
+  IEntityPostSelect
+  (post-select [_ {:keys [table_id] :as field}]
+    (u/assoc* field
+      :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
+      :db                  (delay @(:db @(:table <>)))
+      :target              (delay (field->fk-field field))
+      :can_read            (delay @(:can_read @(:table <>)))
+      :can_write           (delay @(:can_write @(:table <>)))
+      :human_readable_name (when (name :field)
+                             (delay (common/name->human-readable-name (:name field)))))))
 
 (defn field->fk-field
   "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
@@ -89,16 +102,6 @@
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (sel :one Field :id dest-id))))
-
-(defmethod post-select Field [_ {:keys [table_id] :as field}]
-  (u/assoc* field
-    :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
-    :db                  (delay @(:db @(:table <>)))
-    :target              (delay (field->fk-field field))
-    :can_read            (delay @(:can_read @(:table <>)))
-    :can_write           (delay @(:can_write @(:table <>)))
-    :human_readable_name (when (name :field)
-                           (delay (common/name->human-readable-name (:name field))))))
 
 (defmethod pre-insert Field [_ field]
   (let [defaults {:active          true

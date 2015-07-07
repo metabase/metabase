@@ -42,7 +42,7 @@
     *  Symbols like `'metabase.models.user/User` are handled the same way as strings."
   (memoize
    (fn -entity->korma [entity]
-     {:post [(= (type %) :korma.core/Entity)]}
+     ;; {:post [(= (type %) :korma.core/Entity)]}
      (cond (vector? entity) (-entity->korma (first entity))
            (string? entity) (-entity->korma (symbol entity))
            (symbol? entity) (try (eval entity)

@@ -9,10 +9,8 @@
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db.internal :refer :all :as i]
+            [metabase.models.interface :as models]
             [metabase.util :as u]))
-
-
-(declare post-select)
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -255,15 +253,6 @@
 
 ;; ## SEL
 
-(defmulti post-select
-  "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
-   you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields."
-  (fn [entity _] entity))
-
-;; Default implementation of post-select
-(defmethod post-select :default [_ result]
-  result)
-
 (defmulti default-fields
   "The default fields that should be used for ENTITY by calls to `sel` if none are specified."
   identity)
@@ -371,6 +360,12 @@
                         (sel :many entity# ~@forms)))
         nil     `(-sel-select ~entity ~@forms)))))
 
+(defn -sel-transform [entity result]
+  (->> result
+       (models/internal-post-select entity)
+       #_(apply-type-fns :out (seq (::types entity)))
+       (models/post-select entity)))
+
 (defmacro -sel-select
   "Internal macro used by `sel` (don't call this directly).
    Generates the korma `select` form."
@@ -388,8 +383,7 @@
                             `[~(name form) ~(apply str (interpose " " args))])
                           forms)))
        (->> (select entity-select-form# ~@forms)
-            (map (partial apply-type-fns :out (seq (::types entity#))))
-            (map (partial post-select entity#))))))                             ; map `post-select` over the results
+            (map (partial -sel-transform entity#))))))
 
 
 ;; ## INS

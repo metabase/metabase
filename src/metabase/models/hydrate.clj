@@ -209,12 +209,11 @@
   "Delay that returns map of `hydration-key` -> korma entity.
    e.g. `:user -> User`.
 
-   This is built pulling the `:hydration-keys` set from all korma entities."
+   This is built pulling the `:hydration-keys` set from all of our entities."
   (delay (->> (all-ns)
               (mapcat ns-publics)
               vals
               (map var-get)
-              (filter #(= (type %) :korma.core/Entity))
               (filter :hydration-keys)
               (mapcat (fn [{:keys [hydration-keys] :as entity}]
                         (assert (and (set? hydration-keys) (every? keyword? hydration-keys))

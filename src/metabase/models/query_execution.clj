@@ -1,16 +1,23 @@
 (ns metabase.models.query-execution
-  (:require [korma.core :refer :all]
+  (:require [korma.core :refer :all, :exclude [defentity]]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
-                             [database :refer [Database]])))
+                             [database :refer [Database]]
+                             [interface :refer :all])))
 
 
 (defentity QueryExecution
-  (table :query_queryexecution)
-  (types {:json_query  :json
-          :result_data :json
-          :status      :keyword}))
+  [(table :query_queryexecution)
+   (types {:json_query  :json
+           :result_data :json
+           :status      :keyword})]
+
+  IEntityPostSelect
+  (post-select [_ {:keys [result_rows] :as query-execution}]
+    ;; sadly we have 2 ways to reference the row count :(
+    (assoc query-execution
+           :row_count (or result_rows 0))))
 
 ;; default fields to return for `sel QueryExecution
 ;; specifically excludes stored data columns
@@ -26,7 +33,3 @@
    :running_time
    :error
    :result_rows])
-
-(defmethod post-select QueryExecution [_ {:keys [result_rows] :as query-execution}]
-  (assoc query-execution
-         :row_count (or result_rows 0))) ; sadly we have 2 ways to reference the row count :(
