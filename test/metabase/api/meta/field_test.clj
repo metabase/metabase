@@ -46,8 +46,7 @@
        :base_type       "TextField"
        :parent_id       nil
        :parent          nil})
-  ((user->client :rasta) :get
-  200 (format "meta/field/%d" (id :users :name))))
+  ((user->client :rasta) :get 200 (format "meta/field/%d" (id :users :name))))
 
 
 ;; ## GET /api/meta/field/:id/summary

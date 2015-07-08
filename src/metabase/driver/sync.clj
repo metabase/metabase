@@ -419,8 +419,8 @@
                           (and (or (nil? valid-base-types)
                                    (contains? valid-base-types base-type))
                                (re-matches name-pattern (s/lower-case field-name))
-                               (if top-level-only? (nil? (:parent_id field))
-                                   true)))
+                               (or (not top-level-only?)
+                                   (nil? (:parent_id field)))))
                         pattern+base-types+special-type+top-level-only?)))))
 
 (defn- auto-assign-field-special-type-by-name!
@@ -436,7 +436,7 @@
 
 (defn- sync-field-nested-fields! [driver field]
   (when (and (= (:base_type field) :DictionaryField)
-             (supports? driver :nested-fields)              ; if one of these is true
+             (supports? driver :nested-fields)                 ; if one of these is true
              (satisfies? ISyncDriverFieldNestedFields driver)) ; the other should be :wink:
     (let [nested-field-name->type (active-nested-field-name->type driver field)]
       (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys nested-field-name->type)))

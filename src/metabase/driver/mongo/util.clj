@@ -76,22 +76,29 @@
      (if *mongo-connection* (f# *mongo-connection*)
          (-with-mongo-connection f# ~database))))
 
-;; TODO - this is actually more sophisticated than the one used for annotation in the GenericSQL driver, which just takes the
-;; types of the values in the first row.
-;; We should move this somewhere where it can be shared amongst the drivers and rewrite GenericSQL to use it instead.
+;; TODO - this isn't neccesarily Mongo-specific; consider moving
 (defn values->base-type
-  "Given a sequence of values, return `Field` `base_type` in the most ghetto way possible.
+  "Given a sequence of values, return `Field.base_type` in the most ghetto way possible.
    This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
   [values-seq]
   {:pre [(sequential? values-seq)]}
+  (println (first values-seq))
   (or (->> values-seq
-           (filter identity)             ; TODO - why not do a query to return non-nil values of this column instead
-           (take 1000)                   ; it's probably fine just to consider the first 1,000 non-nil values when trying to type a column instead of iterating over the whole collection
+           ;; TODO - why not do a query to return non-nil values of this column instead
+           (filter identity)
+           ;; it's probably fine just to consider the first 1,000 *non-nil* values when trying to type a column instead
+           ;; of iterating over the whole collection. (VALUES-SEQ should be up to 10,000 values, but we don't know how many are
+           ;; nil)
+           (take 1000)
            (group-by type)
-           (map (fn [[type valus]]
-                  [type (count valus)]))
+           (map (fn [[klass valus]]
+                  (println [klass (count valus)])
+                  [klass (count valus)]))
            (sort-by second)
            first
            first
+           ((fn [klass]
+              (println klass)
+              klass))
            driver/class->base-type)
       :UnknownField))

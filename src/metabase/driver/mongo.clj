@@ -19,6 +19,13 @@
 
 (declare driver)
 
+;; TODO - this isn't necessarily Mongo-specific
+(def ^:private ^:const document-scanning-limit
+  "The maximum number of documents to scan to look for Fields.
+   We can't feasibly scan every document in a million+ document collection, so scan the first `document-scanning-limit`
+   documents and hope that the rest follow the same schema."
+  10000)
+
 ;;; ### Driver Helper Fns
 
 (defn- table->column-names
@@ -26,7 +33,7 @@
   [table]
   (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take 10000)                      ; it's probably enough to only consider the first 10,000 docs in the collection instead of iterating over potentially millions of them
+         (take document-scanning-limit)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -108,20 +115,19 @@
     ;; Build a map of nested-field-key -> type -> count
     ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
     (let [field->type->count (atom {})]
-      ;; Look at the first 1000 values
-      (doseq [val (take 1000 (field-values-lazy-seq this field))]
+      (doseq [val (take document-scanning-limit (field-values-lazy-seq this field))]
         (when (map? val)
           (doseq [[k v] val]
             (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
       ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
       (->> @field->type->count
            (m/map-vals (fn [type->count]
-                         (->> (seq type->count) ; convert to pairs of [type count]
-                              (sort-by second)  ; source by count
-                              last    ; take last item (highest count)
-                              first   ; keep just the type
+                         (->> (seq type->count)                 ; convert to pairs of [type count]
+                              (sort-by second)                  ; source by count
+                              last                              ; take last item (highest count)
+                              first                             ; keep just the type
                               (#(or (driver/class->base-type %) ; convert to corresponding Field base_type if possible
-                                    :UnknownField))))))))) ; fall back to :UnknownField for things like clojure.lang.PersistentVector
+                                    :UnknownField)))))))))      ; fall back to :UnknownField for things like clojure.lang.PersistentVector
 
 (def driver
   "Concrete instance of the MongoDB driver."

@@ -85,6 +85,7 @@
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"
-                                       "-Dmb.api.key=test-api-key"]}
+                                       "-Dmb.api.key=test-api-key"
+                                       "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all
                        :prep-tasks ^:replace ["npm" "webpack" "javac" "compile"]}})
