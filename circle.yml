@@ -1,38 +1,15 @@
 machine:
-  python:
-    version: 2.7.6
-  node:
-    version: 0.10.25
+  timezone:
+    America/Los_Angeles
   java:
     version:
       oraclejdk8
-  # Add AWS deploy-only creds
-  environment:
-    AWS_ACCESS_KEY_ID: AKIAJHJESLS47NJJF6VQ
-    AWS_SECRET_ACCESS_KEY: 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
-    AWS_DEFAULT_REGION: us-east-1
-    PRODUCTION_STACK_ID: e9b2d230-171f-44b1-af0b-3698b92efb2c
-    PRODUCTION_APP_ID: 14fbf2c2-cfc5-47a4-b8f6-bb659f103a03
-    STAGING_STACK_ID: 51c1dd2a-88ce-4a1b-ba2a-a09db65c4f5b
-    STAGING_APP_ID: c0929052-6c1a-4cff-99fe-6e2eb377643c
-dependencies:
-  override:
-    - pip install awscli==1.7.3
 test:
   override:
     # 0) runs unit tests w/ H2 local DB. Runs against both Mongo + H2 test datasets
     # 1) runs unit tests w/ Postgres local DB. Only runs against H2 test dataset so we can be sure tests work in either scenario
-    # 2) runs Eastwood linter
-    # 3) runs JS linter + Bikeshed linter
+    # 2) runs Eastwood linter + Bikeshed linter
+    # 3) runs JS linter + JS test
     # 4) runs lein uberjar
-    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=generic-sql,mongo lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood ;; 3) ./lint_js.sh && lein bikeshed --max-line-length 240 ;; 4) lein uberjar ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=generic-sql,mongo lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood && lein bikeshed --max-line-length 240 ;; 3) npm run lint && npm run build && npm run test ;; 4) CI_DISABLE_WEBPACK_MINIFICATION=1 lein uberjar ;; esac:
         parallel: true
-deployment:
-  production:
-    branch: prd
-    commands:
-      - ./deploy/deploy_aws.sh $PRODUCTION_STACK_ID $PRODUCTION_APP_ID
-  staging:
-    branch: master
-    commands:
-      - ./deploy/deploy_aws.sh $STAGING_STACK_ID $STAGING_APP_ID
