@@ -46,7 +46,7 @@
     margin-left: 1.2em;
 }
 .bullet:before {
-    content: "•";
+    content: "\2022";
     color: #6FB0EB;
     position: absolute;
     top: 0;
