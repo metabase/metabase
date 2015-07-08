@@ -62,7 +62,7 @@
   {include_sensitive_fields String->Boolean}
   (->404 (sel :one Table :id id)
          read-check
-         (hydrate :db [:fields [:target] [:human_readable_name]] :field_values :human_readable_name)
+         (hydrate :db [:fields :target :human_readable_name] :field_values :human_readable_name)
          (update-in [:fields] (if include_sensitive_fields
                                 ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                                 identity
