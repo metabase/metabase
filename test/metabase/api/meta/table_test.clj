@@ -57,18 +57,17 @@
 
 ;; ## GET /api/meta/table/:id
 (expect
-    (match-$ (sel :one Table :id (id :venues))
+    (match-$ (Table (id :venues))
       {:description nil
        :entity_type nil
        :db          (match-$ (db)
-                      {:created_at      $
-                       :engine          "h2"
-                       :id              $
-                       :details         $
-                       :updated_at      $
-                       :name            "Test Database"
+                      {:created_at $
+                       :engine "h2"
+                       :id $
+                       :updated_at $
+                       :name "Test Database"
                        :organization_id nil
-                       :description     nil})
+                       :description nil})
        :name        "VENUES"
        :rows        100
        :updated_at  $
@@ -81,7 +80,7 @@
   ((user->client :rasta) :get 200 (format "meta/table/%d" (id :venues))))
 
 ;; ## GET /api/meta/table/:id/fields
-(expect [(match-$ (sel :one Field :id (id :categories :id))
+(expect [(match-$ (Field (id :categories :id))
            {:description         nil
             :table_id            (id :categories)
             :special_type        "id"
@@ -97,7 +96,7 @@
             :base_type           "BigIntegerField"
             :parent_id           nil
             :parent              nil})
-         (match-$ (sel :one Field :id (id :categories :name))
+         (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
             :special_type        "name"
@@ -117,20 +116,19 @@
 
 ;; ## GET /api/meta/table/:id/query_metadata
 (expect
-    (match-$ (sel :one Table :id (id :categories))
+    (match-$ (Table (id :categories))
       {:description  nil
        :entity_type  nil
        :db           (match-$ (db)
                        {:created_at      $
                         :engine          "h2"
                         :id              $
-                        :details         $
                         :updated_at      $
                         :name            "Test Database"
                         :organization_id nil
                         :description     nil})
        :name         "CATEGORIES"
-       :fields       [(match-$ (sel :one Field :id (id :categories :id))
+       :fields       [(match-$ (Field (id :categories :id))
                         {:description     nil
                          :table_id        (id :categories)
                          :special_type    "id"
@@ -146,7 +144,7 @@
                          :base_type       "BigIntegerField"
                          :parent_id       nil
                          :parent          nil})
-                      (match-$ (sel :one Field :id (id :categories :name))
+                      (match-$ (Field (id :categories :name))
                         {:description     nil
                          :table_id        (id :categories)
                          :special_type    "name"
@@ -162,116 +160,8 @@
                          :base_type       "TextField"
                          :parent_id       nil
                          :parent          nil})]
-       :field_values {}
+       ;; :field_values {}
        :rows         75
-       :updated_at   $
-       :entity_name  nil
-       :active       true
-       :id           (id :categories)
-       :db_id        (db-id)
-       :created_at   $})
-  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (id :categories))))
-
-
-(def ^:private user-last-login-date-strs
-  "In an effort to be really annoying, the date strings returned by the API are different on Circle than they are locally.
-   Generate strings like '2014-01-01' at runtime so we get matching values."
-  (let [format-inst (fn [^java.util.Date inst]
-                      (format "%d-%02d-%02d"
-                              (+ (.getYear inst) 1900)
-                              (+ (.getMonth inst) 1)
-                              (.getDate inst)))]
-    (->> data/test-data
-         :table-definitions
-         first
-         :rows
-         (map second)
-         (map format-inst)
-         set
-         sort
-         vec)))
-
-;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
-;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
-(expect
-    (match-$ (sel :one Table :id (id :users))
-      {:description  nil
-       :entity_type  nil
-       :db           (match-$ (db)
-                       {:created_at      $
-                        :engine          "h2"
-                        :id              $
-                        :details         $
-                        :updated_at      $
-                        :name            "Test Database"
-                        :organization_id nil
-                        :description     nil})
-       :name         "USERS"
-       :fields       [(match-$ (sel :one Field :id (id :users :id))
-                        {:description     nil
-                         :table_id        (id :users)
-                         :special_type    "id"
-                         :name            "ID"
-                         :updated_at      $
-                         :active          true
-                         :id              $
-                         :field_type      "info"
-                         :position        0
-                         :target          nil
-                         :preview_display true
-                         :created_at      $
-                         :base_type       "BigIntegerField"
-                         :parent_id       nil
-                         :parent          nil})
-                      (match-$ (sel :one Field :id (id :users :last_login))
-                        {:description     nil
-                         :table_id        (id :users)
-                         :special_type    "category"
-                         :name            "LAST_LOGIN"
-                         :updated_at      $
-                         :active          true
-                         :id              $
-                         :field_type      "info"
-                         :position        0
-                         :target          nil
-                         :preview_display true
-                         :created_at      $
-                         :base_type       "DateTimeField"
-                         :parent_id       nil
-                         :parent          nil})
-                      (match-$ (sel :one Field :id (id :users :name))
-                        {:description     nil
-                         :table_id        (id :users)
-                         :special_type    "category"
-                         :name            "NAME"
-                         :updated_at      $
-                         :active          true
-                         :id              $
-                         :field_type      "info"
-                         :position        0
-                         :target          nil
-                         :preview_display true
-                         :created_at      $
-                         :base_type       "TextField"
-                         :parent_id       nil
-                         :parent          nil})
-                      (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
-                        {:description     nil
-                         :table_id        (id :users)
-                         :special_type    "category"
-                         :name            "PASSWORD"
-                         :updated_at      $
-                         :active          true
-                         :id              $
-                         :field_type      "sensitive"
-                         :position        0
-                         :target          nil
-                         :preview_display true
-                         :created_at      $
-                         :base_type       "TextField"
-                         :parent_id       nil
-                         :parent          nil})]
-       :rows         15
        :updated_at   $
        :entity_name  nil
        :active       true
@@ -302,20 +192,19 @@
 ;;; GET api/meta/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-    (match-$ (sel :one Table :id (id :users))
+    (match-$ (Table (id :users))
       {:description  nil
        :entity_type  nil
        :db           (match-$ (db)
                        {:created_at      $
                         :engine          "h2"
                         :id              $
-                        :details         $
                         :updated_at      $
                         :name            "Test Database"
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
-       :fields       [(match-$ (sel :one Field :id (id :users :id))
+       :fields       [(match-$ (Field (id :users :id))
                         {:description     nil
                          :table_id        (id :users)
                          :special_type    "id"
@@ -331,7 +220,7 @@
                          :base_type       "BigIntegerField"
                          :parent_id       nil
                          :parent          nil})
-                      (match-$ (sel :one Field :id (id :users :last_login))
+                      (match-$ (Field (id :users :last_login))
                         {:description     nil
                          :table_id        (id :users)
                          :special_type    "category"
@@ -347,7 +236,7 @@
                          :base_type       "DateTimeField"
                          :parent_id       nil
                          :parent          nil})
-                      (match-$ (sel :one Field :id (id :users :name))
+                      (match-$ (Field (id :users :name))
                         {:description     nil
                          :table_id        (id :users)
                          :special_type    "category"
@@ -394,7 +283,7 @@
 
 ;; ## PUT /api/meta/table/:id
 (expect-eval-actual-first
-    (match-$ (let [table (sel :one Table :id (id :users))]
+    (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
                (upd Table (id :users) :entity_name nil :entity_type nil :description nil)
                table)
@@ -438,6 +327,8 @@
       :origin         (match-$ checkins-user-field
                         {:id              $
                          :table_id        $
+                         :parent_id       nil
+                         :parent          nil
                          :name            "USER_ID"
                          :description     nil
                          :base_type       "IntegerField"
@@ -448,9 +339,7 @@
                          :special_type    "fk"
                          :created_at      $
                          :updated_at      $
-                         :parent_id       nil
-                         :parent          nil
-                         :table           (match-$ (sel :one Table :id (id :checkins))
+                         :table           (match-$ (Table (id :checkins))
                                             {:description nil
                                              :entity_type nil
                                              :name        "CHECKINS"
@@ -468,11 +357,12 @@
                                                              :updated_at      $,
                                                              :id              $,
                                                              :engine          "h2",
-                                                             :created_at      $
-                                                             :details         $})})})
+                                                             :created_at      $})})})
       :destination    (match-$ users-id-field
                         {:id              $
                          :table_id        $
+                         :parent_id       nil
+                         :parent          nil
                          :name            "ID"
                          :description     nil
                          :base_type       "BigIntegerField"
@@ -483,9 +373,7 @@
                          :special_type    "id"
                          :created_at      $
                          :updated_at      $
-                         :parent_id       nil
-                         :parent          nil
-                         :table           (match-$ (sel :one Table :id (id :users))
+                         :table           (match-$ (Table (id :users))
                                             {:description nil
                                              :entity_type nil
                                              :name        "USERS"

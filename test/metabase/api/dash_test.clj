@@ -44,8 +44,8 @@
      {:description     nil
       :can_read        true
       :ordered_cards   []
-      :creator         (-> (sel :one User :id (user->id :rasta))
-                         (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
+      :creator         (-> (User (user->id :rasta))
+                           (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
       :can_write       true
       :organization_id nil
       :name            $
@@ -99,7 +99,7 @@
 (expect-let [{:keys [id]} (create-dash (random-name))]
   nil
   (do ((user->client :rasta) :delete 204 (format "dash/%d" id))
-      (sel :one Dashboard :id id)))
+      (Dashboard id)))
 
 
 ;; # DASHBOARD CARD ENDPOINTS
@@ -115,7 +115,7 @@
            {:sizeX 2
             :card (match-$ card
                     {:description nil
-                     :creator (-> (sel :one User :id (user->id :rasta))
+                     :creator (-> (User (user->id :rasta))
                                   (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
                      :organization_id nil
                      :name $

@@ -122,7 +122,7 @@
 (expect-eval-actual-first nil
   (let [{:keys [id]} (post-card (random-name))]
     ((user->client :rasta) :delete 204 (format "card/%d" id))
-    (sel :one Card :id id)))
+    (Card id)))
 
 
 ;; # CARD FAVORITE STUFF

@@ -23,7 +23,7 @@
   (delay (korma-entity @users-table)))
 
 (def users-name-field
-  (delay (sel :one Field :id (id :users :name))))
+  (delay (Field (id :users :name))))
 
 
 ;; ## TEST PK SYNCING
@@ -77,16 +77,16 @@
          (upd Field field-id :special_type nil)
          (get-special-type-and-fk-exists?))
      ;; Run sync-table and they should be set again
-     (let [table (sel :one Table :id (id :checkins))]
+     (let [table (Table (id :checkins))]
        (driver/sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
 (expect :Mt1
-  (sync/determine-fk-type (sel :one Field :id (id :venues :category_id))))
+  (sync/determine-fk-type (Field (id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (sel :one Field :id (id :venues :id))))
+  (sync/determine-fk-type (Field (id :venues :id))))

@@ -12,42 +12,42 @@
 
 ;; ## GET /api/meta/field/:id
 (expect
-    (match-$ (sel :one Field :id (id :users :name))
-      {:description     nil
-       :table_id        (id :users)
-       :table           (match-$ (sel :one Table :id (id :users))
-                          {:description nil
-                           :entity_type nil
-                           :db          (match-$ (db)
-                                          {:created_at      $
-                                           :engine          "h2"
-                                           :id              $
-                                           :details         $
-                                           :updated_at      $
-                                           :name            "Test Database"
-                                           :organization_id nil
-                                           :description     nil})
-                           :name        "USERS"
-                           :rows        15
-                           :updated_at  $
-                           :entity_name nil
-                           :active      true
-                           :id          (id :users)
-                           :db_id       (db-id)
-                           :created_at  $})
-       :special_type    "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
-       :name            "NAME"
-       :updated_at      $
-       :active          true
-       :id              (id :users :name)
-       :field_type      "info"
-       :position        0
+    (match-$ (Field (id :users :name))
+      {:description nil
+       :table_id (id :users)
+       :table (match-$ (Table (id :users))
+                {:description nil
+                 :entity_type nil
+                 :db (match-$ (db)
+                       {:created_at $
+                        :engine "h2"
+                        :id $
+                        :updated_at $
+                        :name "Test Database"
+                        :organization_id nil
+                        :description nil})
+                 :name "USERS"
+                 :rows 15
+                 :updated_at $
+                 :entity_name nil
+                 :active true
+                 :id (id :users)
+                 :db_id (db-id)
+                 :created_at $})
+       :special_type "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
+       :name "NAME"
+       :updated_at $
+       :active true
+       :id (id :users :name)
+       :field_type "info"
+       :position 0
        :preview_display true
        :created_at      $
        :base_type       "TextField"
        :parent_id       nil
        :parent          nil})
-  ((user->client :rasta) :get 200 (format "meta/field/%d" (id :users :name))))
+  ((user->client :rasta) :get
+  200 (format "meta/field/%d" (id :users :name))))
 
 
 ;; ## GET /api/meta/field/:id/summary
@@ -60,7 +60,7 @@
 ;; Check that we can update a Field
 ;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
 (expect-eval-actual-first
-    (match-$ (let [field (sel :one Field :id (id :venues :latitude))]
+    (match-$ (let [field (Field (id :venues :latitude))]
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
                (upd Field (id :venues :latitude) :special_type "latitude")
                ;; match against the modified Field

@@ -1,13 +1,17 @@
 (ns metabase.models.field
-  (:require [korma.core :refer :all]
+  (:require [korma.core :refer :all, :exclude [defentity]]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
                              [field-values :refer [field-should-have-field-values? create-field-values create-field-values-if-needed]]
+                             [foreign-key :refer [ForeignKey]]
                              [hydrate :refer [hydrate]]
-                             [foreign-key :refer [ForeignKey]])
+                             [interface :refer :all])
             [metabase.util :as u]))
+
+(declare field->fk-field
+         qualified-name-components)
 
 (def ^:const special-types
   "Possible values for `Field` `:special_type`."
@@ -72,15 +76,61 @@
     :info        ; Non-numerical value that is not meant to be used
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
+(defrecord FieldInstance []
+  clojure.lang.IFn
+  (invoke [this k]
+    (get this k)))
+
+(extend-ICanReadWrite FieldInstance :read :always, :write :superuser)
+
+
 (defentity Field
-  (table :metabase_field)
-  timestamped
-  (types {:base_type    :keyword
-          :field_type   :keyword
-          :special_type :keyword})
-  (assoc :hydration-keys #{:destination
-                           :field
-                           :origin}))
+  [(table :metabase_field)
+   (hydration-keys destination field origin)
+   (types :base_type :keyword, :field_type :keyword, :special_type :keyword)
+   timestamped]
+
+  (pre-insert [_ field]
+    (let [defaults {:active          true
+                    :preview_display true
+                    :field_type      :info
+                    :position        0}]
+      (merge defaults field)))
+
+  (post-insert [_ field]
+    (when (field-should-have-field-values? field)
+      (future (create-field-values field)))
+    field)
+
+  (post-update [this {:keys [id] :as field}]
+    ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
+    (when (or (contains? field :base_type)
+              (contains? field :field_type)
+              (contains? field :special_type))
+      (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
+
+  (post-select [_ {:keys [table_id parent_id] :as field}]
+    (map->FieldInstance
+      (u/assoc* field
+        :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
+        :db                        (delay @(:db @(:table <>)))
+        :target                    (delay (field->fk-field field))
+        :human_readable_name       (when (name :field)
+                                     (delay (common/name->human-readable-name (:name field))))
+        :parent                    (when parent_id
+                                     (delay (sel :one Field :id parent_id)))
+        :children                  (delay (sel :many Field :parent_id (:id field)))
+        :qualified-name-components (delay (qualified-name-components <>))
+        :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
+
+  (pre-cascade-delete [this {:keys [id]}]
+    (cascade-delete this :parent_id id)
+    (cascade-delete ForeignKey (where (or (= :origin_id id)
+                                          (= :destination_id id))))
+    (cascade-delete 'metabase.models.field-values/FieldValues :field_id id)))
+
+(extend-ICanReadWrite FieldEntity :read :always, :write :superuser)
+
 
 (defn field->fk-field
   "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
@@ -89,7 +139,7 @@
   [{:keys [id special_type] :as field}]
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
-      (sel :one Field :id dest-id))))
+      (Field dest-id))))
 
 (defn unflatten-nested-fields
   "Take a sequence of both top-level and nested FIELDS, and return a sequence of top-level `Fields`
@@ -116,43 +166,3 @@
           (qualified-name-components @parent)
           [(:name @table)])
         (:name field)))
-
-(defmethod post-select Field [_ {:keys [table_id parent_id] :as field}]
-  (u/assoc* field
-    :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
-    :db                        (delay @(:db @(:table <>)))
-    :target                    (delay (field->fk-field field))
-    :can_read                  (delay @(:can_read @(:table <>)))
-    :can_write                 (delay @(:can_write @(:table <>)))
-    :human_readable_name       (when (name :field)
-                                 (delay (common/name->human-readable-name (:name field))))
-    :parent                    (when parent_id
-                                 (delay (sel :one Field :id parent_id)))
-    :children                  (delay (sel :many Field :parent_id (:id field)))
-    :qualified-name-components (delay (qualified-name-components <>))
-    :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>))))))
-
-(defmethod pre-insert Field [_ field]
-  (let [defaults {:active          true
-                  :preview_display true
-                  :field_type      :info
-                  :position        0}]
-    (merge defaults field)))
-
-(defmethod post-insert Field [_ field]
-  (when (field-should-have-field-values? field)
-    (future (create-field-values field)))
-  field)
-
-(defmethod post-update Field [_ {:keys [id] :as field}]
-  ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
-  (when (or (contains? field :base_type)
-            (contains? field :field_type)
-            (contains? field :special_type))
-    (future (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type :field_type] :id id)))))
-
-(defmethod pre-cascade-delete Field [_ {:keys [id]}]
-  (cascade-delete Field :parent_id id)
-  (cascade-delete ForeignKey (where (or (= :origin_id id)
-                                        (= :destination_id id))))
-  (cascade-delete 'metabase.models.field-values/FieldValues :field_id id))
