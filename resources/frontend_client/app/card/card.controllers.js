@@ -608,13 +608,16 @@ CardControllers.controller('CardDetail', [
                         if (databases[i].id === databaseId) {
                             card.dataset_query.database = databaseId;
 
-                            // load metadata
-                            editorModel.loadDatabaseInfoFn(card.dataset_query.database);
                         }
                     }
+                }
+
+                if (card.dataset_query.database != null) {
+                    // load metadata
+                    editorModel.loadDatabaseInfoFn(card.dataset_query.database);
 
                     // if we initialized our database safely and we have a table, lets handle that now
-                    if (card.dataset_query.database !== null && $routeParams.table !== undefined) {
+                    if ($routeParams.table != null) {
                         // TODO: do we need a security check here?  seems that if they have access to the db just use the table
                         card.dataset_query.query.source_table = parseInt($routeParams.table);
 
