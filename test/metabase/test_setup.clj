@@ -75,7 +75,7 @@
       (datasets/load-data! dataset)
 
       ;; Check that dataset is loaded and working
-      (assert (db/sel :one Table :id (datasets/table-name->id dataset :venues))
+      (assert (Table (datasets/table-name->id dataset :venues))
               (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
 
 (defn test-startup

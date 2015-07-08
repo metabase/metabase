@@ -1,16 +1,19 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [korma.core :refer :all]
-            [metabase.db :refer :all]
-            [metabase.util :as u]))
+            [korma.core :refer :all, :exclude [defentity]]
+            (metabase [db :refer :all]
+                      [util :as u])
+            [metabase.models.interface :refer :all]))
 
 ;; ## Entity + DB Multimethods
 
 (defentity FieldValues
-  (table :metabase_fieldvalues)
-  timestamped
-  (types {:human_readable_values :json
-          :values                :json}))
+  [(table :metabase_fieldvalues)
+   timestamped
+   (types :human_readable_values :json, :values :json)]
+
+  (post-select [_ field-values]
+    (update-in field-values [:human_readable_values] #(or % {}))))
 
 ;; columns:
 ;; *  :id
@@ -19,10 +22,6 @@
 ;; *  :created_at
 ;; *  :values                 (JSON-encoded array like ["table" "scalar" "pie"])
 ;; *  :human_readable_values  (JSON-encoded map like {:table "Table" :scalar "Scalar"}
-
-(defmethod post-select FieldValues [_ field-values]
-  (update-in field-values [:human_readable_values] #(or % {}))) ; return an empty map for :human_readable_values in cases where it is nil
-
 
 ;; ## `FieldValues` Helper Functions
 

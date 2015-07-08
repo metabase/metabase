@@ -3,8 +3,9 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             [environ.core :as env]
-            [korma.core :refer :all :exclude [delete]]
-            [metabase.db :refer [sel del]]))
+            [korma.core :refer :all :exclude [defentity delete]]
+            [metabase.db :refer [sel del]]
+            [metabase.models.interface :refer :all]))
 
 ;; Settings are a fast + simple way to create a setting that can be set
 ;; from the SuperAdmin page. They are saved to the Database, but intelligently
@@ -157,7 +158,7 @@
   (atom nil))
 
 (defentity Setting
-  (table :setting))
+  [(table :setting)])
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`)."

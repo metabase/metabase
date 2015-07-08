@@ -8,6 +8,7 @@
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
             [metabase.db.internal :refer [entity->korma]]
+            [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password])
   (:import com.metabase.corvus.api.ApiException
@@ -27,17 +28,6 @@
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
-
-
-;;; ## GENERAL HELPER FNS / MACROS
-
-;; TODO - move this to something like `metabase.util.debug`
-(defmacro with-current-user
-  "Primarily for debugging purposes. Evaulates BODY as if `*current-user*` was the User with USER-ID."
-  [user-id & body]
-  `(binding [*current-user-id* ~user-id
-             *current-user* (delay (sel :one 'metabase.models.user/User :id ~user-id))]
-     ~@body))
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
@@ -421,44 +411,26 @@
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 
 
-;; ## NEW PERMISSIONS CHECKING MACROS
-;; Since checking `@can_read`/`@can_write` is such a common pattern, these
-;; macros eliminate a bit of the redundancy around doing so.
-;; They support two forms:
-;;
-;;     (read-check my-table) ; checks @(:can_read my-table)
-;;     (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
-;;
-;; *  The first form is useful when you've already fetched an object (especially in threading forms such as `->404`).
-;; *  The second form takes care of fetching the object for you and is useful in cases where you won't need the object afterward
-;;    or want to combine the `sel` and permissions check statements into a single form.
-;;
-;; Both forms will throw a 404 if the object doesn't exist (saving you one more check!) and return the selected object.
-
-(defmacro read-check
-  "Checks that `@can_read` is true for this object."
+(defn read-check
+  "Check whether we can read an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
-      (check-403 @~'can_read)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-read? obj))
+   obj)
   ([entity id]
-   (cond
-     ;; simple optimization : since @can-read is always true for a Database
-     ;; the read-check macro will just resolve to true in this simple case
-     ;; use `name` so we can match 'Database or 'metabase.models.database/Database
-     ;;
-     ;; TODO - it would be nice to generalize the read-checking pattern, and make it
-     ;; a separate multimethod or protocol so other models besides DB can write optimized
-     ;; implementations. Currently, we always fetch an *entire* object to do read checking,
-     ;; which is wasteful.
-     (= (name entity) "Database") `(comment "@(:can-read database) is always true.") ; put some non-constant value here so Eastwood doesn't complain about unused return values
-     :else                        `(read-check (sel :one ~entity :id ~id)))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity)
+       (read-check (entity id)))))
 
-(defmacro write-check
-  "Checks that `@can_write` is true for this object."
+(defn write-check
+  "Check whether we can write an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
-      (check-403 @~'can_write)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-write? obj))
+   obj)
   ([entity id]
-   `(write-check (sel :one ~entity :id ~id))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity) (models/can-write? entity id)
+       (write-check (entity id)))))

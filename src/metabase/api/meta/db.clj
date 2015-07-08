@@ -64,7 +64,7 @@
 (defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (check-404 (sel :one Database :id id)))
+  (check-404 (Database id)))
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
@@ -75,7 +75,7 @@
                                :name name
                                :engine engine
                                :details details))
-  (sel :one Database :id id))
+  (Database id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Database`."
@@ -126,7 +126,7 @@
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
   [id]
-  (let-404 [db (sel :one Database :id id)]
+  (let-404 [db (Database id)]
     (write-check db)
     (future (driver/sync-database! db))) ; run sync-tables asynchronously
   {:status :ok})
