@@ -82,7 +82,6 @@
    This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
   [values-seq]
   {:pre [(sequential? values-seq)]}
-  (println (first values-seq))
   (or (->> values-seq
            ;; TODO - why not do a query to return non-nil values of this column instead
            (filter identity)
@@ -91,14 +90,12 @@
            ;; nil)
            (take 1000)
            (group-by type)
+           ;; create tuples like [Integer -count]. Make count negative so when we call (sort-by second) in the next step the rows
+           ;; with the highest count will be returned first (e.g. [Integer -100] will be sorted ahead of [Float -20])
            (map (fn [[klass valus]]
-                  (println [klass (count valus)])
-                  [klass (count valus)]))
+                  [klass (- 0 (count valus))]))
            (sort-by second)
            first
            first
-           ((fn [klass]
-              (println klass)
-              klass))
            driver/class->base-type)
       :UnknownField))

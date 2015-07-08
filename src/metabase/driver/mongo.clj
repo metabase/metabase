@@ -90,7 +90,7 @@
                  {(name column-name)
                   (field->base-type {:name                      (name column-name)
                                      :table                     (delay table)
-                                     :qualified-name-components (delay [(name column-name)])})}))))
+                                     :qualified-name-components (delay [(:name table) (name column-name)])})}))))
 
   (table-pks [_ _]
     #{"_id"})
@@ -106,6 +106,7 @@
              "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
      (let [table           @table
            name-components (rest @qualified-name-components)]
+       (assert (seq name-components))
        (map #(get-in % (map keyword name-components))
             (mq/with-collection *mongo-connection* (:name table)
               (mq/fields [(apply str (interpose "." name-components))]))))))
