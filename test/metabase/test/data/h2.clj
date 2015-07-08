@@ -63,7 +63,7 @@
 (defrecord H2DatasetLoader []
   generic/IGenericSQLDatasetLoader
   (generic/execute-sql! [_ database-definition raw-sql]
-    (log/info raw-sql)
+    (log/debug raw-sql)
     (k/exec-raw (korma-connection-pool database-definition) raw-sql))
 
   (generic/korma-entity [_ database-definition table-definition]

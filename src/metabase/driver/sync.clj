@@ -438,7 +438,7 @@
   (when (and (= (:base_type field) :DictionaryField)
              (supports? driver :nested-fields)                 ; if one of these is true
              (satisfies? ISyncDriverFieldNestedFields driver)) ; the other should be :wink:
-    (log/info (format "Syncing nested fields for '%s'..."  @(:qualified-name field)))
+    (log/debug (format "Syncing nested fields for '%s'..."  @(:qualified-name field)))
 
     (let [nested-field-name->type (active-nested-field-name->type driver field)]
       ;; fetch existing nested fields

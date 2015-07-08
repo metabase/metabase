@@ -987,10 +987,10 @@
      [426 "Kyle's Low-Carb Grill"]
      [470 "Kyle's Low-Carb Grill"]]
   (Q run against geographical-tips using mongo
-     return :data :rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
+     return :data :rows (map (fn [[id _ _  {venue-name :name}]] [id venue-name]))
      aggregate rows of tips
      filter = venue...name "Kyle's Low-Carb Grill"
-     order _id
+     order id
      lim 10))
 
 ;;; Nested Field in ORDER
@@ -1070,6 +1070,6 @@
   (Q run against geographical-tips using mongo
      return :data :rows
      aggregate rows of tips
-     order _id
+     order id
      fields venue...name
      lim 10))

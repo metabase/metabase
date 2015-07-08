@@ -88,15 +88,15 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
+           (log/info (u/format-color 'blue "Creating %s database %s..." (name engine) database-name))
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
-           (log/info (color/blue "Loading data..."))
+           (log/debug (color/blue "Loading data..."))
            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
+             (log/info (u/format-color 'blue "Loading data for table '%s'..." (:table-name table-definition)))
              (load-table-data! dataset-loader database-definition table-definition)
-             (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
+             (log/info (u/format-color 'blue "Inserted %d rows." (count (:rows table-definition)))))
 
            ;; Add DB object to Metabase DB
            (log/info (color/blue "Adding DB to Metabase..."))

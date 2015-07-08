@@ -47,7 +47,7 @@
 (defrecord PostgresDatasetLoader []
   generic/IGenericSQLDatasetLoader
   (generic/execute-sql! [_ database-definition raw-sql]
-    (log/info raw-sql)
+    (log/debug raw-sql)
     (execute! :db database-definition raw-sql))
 
   (generic/korma-entity [_ database-definition table-definition]
