@@ -35,7 +35,7 @@
             *sel-disable-logging* true]
     (sync-in-context driver database
       (fn []
-        (log/info (u/format-color 'blue "Syncing %s database %s..." (name (:engine database)) (:name database)))
+        (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
 
         (let [active-table-names (active-table-names driver database)
               table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
@@ -61,7 +61,7 @@
             (doseq [active-table-name active-table-names]
               (when-not (contains? existing-table-names active-table-name)
                 (ins Table :db_id (:id database), :active true, :name active-table-name)
-                (log/info (u/format-color 'blue "Found new table: %s.%s" (:name database) active-table-name))))))
+                (log/info (u/format-color 'blue "Found new table: '%s'" active-table-name))))))
 
         ;; Now sync the active tables
         (log/debug "Syncing active tables...")
@@ -112,10 +112,10 @@
   (let [tables-count (count active-tables)
         finished-tables-count (atom 0)]
     (doseq [table active-tables]
-      (log/debug (format "Syncing metadata for table %s.%s..." (:name @(:db table)) (:name table)))
+      (log/debug (format "Syncing metadata for table '%s'..." (:name table)))
       (sync-table-fields-metadata! driver table)
       (swap! finished-tables-count inc)
-      (log/info (u/format-color 'magenta "Synced %s.%s (%d/%d)" (:name @(:db table)) (:name table) @finished-tables-count tables-count)))))
+      (log/info (u/format-color 'magenta "Synced table '%s'. (%d/%d)" (:name table) @finished-tables-count tables-count)))))
 
 
 ;; ## sync-table steps.
@@ -131,7 +131,7 @@
       (when-not (= (:rows table) table-row-count)
         (upd Table (:id table) :rows table-row-count)))
     (catch Throwable e
-      (log/error (u/format-color 'red "Unable to update row_count for %s: %s" (:name table) (.getMessage e))))))
+      (log/error (u/format-color 'red "Unable to update row_count for '%s': %s" (:name table) (.getMessage e))))))
 
 
 ;; ### 2) sync-table-active-fields-and-pks!
@@ -163,7 +163,7 @@
         (doseq [[field-name field-id] existing-field-name->id]
           (when-not (contains? active-column-names field-name)
             (upd Field field-id :active false)
-            (log/info (u/format-color 'cyan "Marked field %s.%s.%s as inactive." (:name database) (:name table) field-name)))))
+            (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
       ;; Next, create new Fields as needed
       (let [existing-field-names (set (keys existing-field-name->id))]
@@ -210,7 +210,7 @@
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (table-name->id dest-table-name)]
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
-                  (log/info (format "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
+                  (log/info (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
                   (ins ForeignKey
                     :origin_id      fk-column-id
                     :destination_id dest-column-id
@@ -447,13 +447,13 @@
         ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
         (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
           (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
-            (log/info (u/format-color 'cyan "Marked nested field %s.%s as inactive." @(:qualified-name field) nested-field-name))
+            (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." @(:qualified-name field) nested-field-name))
             (upd Field nested-field-id :active false)))
 
         ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
         (doseq [[nested-field-name nested-field-type] nested-field-name->type]
           (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
-            (log/info (u/format-color 'blue "Found new nested field: %s.%s" @(:qualified-name field) (name nested-field-name)))
+            (log/info (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
               ;; Now recursively sync this nested Field
               ;; Replace parent so deref doesn't need to do a DB call

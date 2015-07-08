@@ -13,7 +13,8 @@
             (metabase.test.data [data :as data]
                                 [datasets :as datasets :refer [*dataset*]]
                                 [h2 :as h2]
-                                [interface :refer :all]))
+                                [interface :refer :all])
+            [metabase.util :as u])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
@@ -154,7 +155,8 @@
   {:pre [(integer? table-id)]}
   (->> (binding [*sel-disable-logging* true]
          (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil))
-       (m/map-keys s/lower-case)))
+       (m/map-keys s/lower-case)
+       (m/map-keys (u/rpartial s/replace #"^_id$" "id")))) ; rename Mongo _id fields to ID so we can use the same name for any driver
 
 (defn- db-id->table-name->table
   "Return a map of lowercased `Table` names -> Tables for `Database` with DATABASE-ID.
