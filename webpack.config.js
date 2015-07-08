@@ -51,7 +51,7 @@ module.exports = {
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
-            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
+            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?-restructuring&compatibility!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
@@ -125,7 +125,8 @@ module.exports = {
         },
         import: {
             path: ['resources/frontend_client/app/css']
-        }
+        },
+        compress: false
     },
 
     // SourceMaps
