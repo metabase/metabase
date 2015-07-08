@@ -18,19 +18,9 @@
          :user "camsaul"}
   (database->connection-details {:details {:ssl    false
                                            :host   "localhost"
-                                           :port   "5432"
+                                           :port   5432
                                            :dbname "bird_sightings"
                                            :user   "camsaul"}}))
-
-;; ## legacy
-(expect {:db "bird_sightings"
-         :ssl nil
-         :db-type :postgres
-         :make-pool? false
-         :user "camsaul"
-         :port 5432
-         :host "localhost"}
-  (database->connection-details {:details {:conn_str "host=localhost port=5432 dbname=bird_sightings user=camsaul"}}))
 
 
 ;; # Check that SSL params get added the connection details in the way we'd like
@@ -43,7 +33,7 @@
      :make-pool? true}
   (connection-details->connection-spec {:ssl    false
                                         :host   "localhost"
-                                        :port   "5432"
+                                        :port   5432
                                         :dbname "bird_sightings"
                                         :user   "camsaul"}))
 

@@ -1,7 +1,8 @@
 'use strict';
-/*global SelectionModule*/
 
-var DatabaseSelector = React.createClass({
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'DatabaseSelector',
     propTypes: {
         currentDatabaseId: React.PropTypes.number.isRequired,

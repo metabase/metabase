@@ -1,14 +1,15 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes POST DELETE]]
+            [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as korma]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password]]
-                             [session :refer [Session]])
+                             [session :refer [Session]]
+                             [setting :as setting])
             [metabase.util.password :as pass]))
 
 
@@ -19,7 +20,8 @@
    password [Required NonEmptyString]}
   (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
     (checkp (not (nil? user))
-      (symbol "email") "no account found for the given email")
+    ; Don't leak whether the account doesn't exist or the password was incorrect
+      (symbol "password") "did not match stored password")
     (checkp (pass/verify-password password (:password_salt user) (:password user))
       (symbol "password") "did not match stored password")
     (let [session-id (str (java.util.UUID/randomUUID))]
@@ -50,11 +52,12 @@
   (let [{user-id :id} (sel :one User :email email)
         reset-token (java.util.UUID/randomUUID)
         password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    (checkp (not (nil? user-id))
-      (symbol "email") "no account found for the given email")
-    (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-    (email/send-password-reset-email email server-name password-reset-url)
-    (log/info password-reset-url)))
+    ; Don't leak whether the account doesn't exist, just pretend everything is ok
+    (if (not (nil? user-id))
+      (do
+        (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
+        (email/send-password-reset-email email server-name password-reset-url)
+        (log/info password-reset-url)))))
 
 
 (defendpoint POST "/reset_password"
@@ -70,5 +73,12 @@
       (symbol "token") "Reset token has expired")
     (set-user-password (:id user) password)
     {:success true}))
+
+
+(defendpoint GET "/properties"
+  "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
+  []
+  (filter #(= (:key %) :site-name) (setting/all-with-descriptions)))
+
 
 (define-routes)

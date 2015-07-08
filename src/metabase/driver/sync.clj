@@ -34,7 +34,7 @@
   (binding [qp/*disable-qp-logging* true]
     (sync-in-context driver database
       (fn []
-        (log/info (color/blue (format "Syncing database %s..." (:name database))))
+        (log/info (u/format-color 'blue "Syncing %s database %s..." (name (:engine database)) (:name database)))
 
         (let [active-table-names (active-table-names driver database)
               table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
@@ -68,7 +68,7 @@
              (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
              (sync-database-active-tables! driver))
 
-        (log/info (color/blue (format "Finished syncing database %s." (:name database))))))))
+        (log/info (u/format-color 'blue "Finished syncing %s database %s." (name (:engine database)) (:name database)))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
@@ -402,7 +402,7 @@
                                          [#"^zipcode$"      int-or-text :zip_code]]]
     ;; Check that all the pattern tuples are valid
     (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
-      (assert (u/regex? name-pattern))
+      (assert (= (type name-pattern) java.util.regex.Pattern))
       (assert (every? (partial contains? field/base-types) base-types))
       (assert (contains? field/special-types special-type)))
 

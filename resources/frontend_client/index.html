@@ -7,189 +7,86 @@
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <title>Metabase</title>
-        <link href="/app/bower_components/angular-xeditable/dist/css/xeditable.css" rel="stylesheet" />
-        <link href="/app/bower_components/angular-gridster/dist/angular-gridster.min.css" rel="stylesheet" />
-        <link href="/app/bower_components/react-date-picker/react-datepicker.css" rel="stylesheet" />
-        <link href="/app/bower_components/dc.js/dc.css" rel="stylesheet" />
-        <link rel="stylesheet" href="/app/dist/corvus.css" />
-        <script src="/app/bower_components/angular/angular.min.js"></script>
+
+        <link rel="stylesheet" href="/app/dist/styles.bundle.css"/>
+        <script charset="utf-8" src="/app/dist/vendor.bundle.js"></script>
+        <script charset="utf-8" src="/app/dist/app.bundle.js"></script>
     </head>
 
     <body ng-controller="Corvus">
-
         <div ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
-            <nav class="CoreNav clearfix" ng-show="nav === 'main'">
-                <div class="col col-sm-12">
-                    <div class="NavItem float-left" ng-if="!user.is_multi_org">
-                        <span class="NavItem-text">{{currentOrg.name}}</span>
-                    </div>
-                    <div class="NavItem Dropdown float-left" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
-                        <span dropdown-toggle>
-                            <span class="NavItem-text" ng-bind="currentOrg.name"></span>
-                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
-                        </span>
-                        <ul class="Dropdown-content">
-                            <li ng-repeat="organization in userMemberOf">
-                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug)">{{organization.name}}</a>
+            <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
+                <div class="wrapper flex align-center">
+                    <a class="NavItem cursor-pointer text-white flex align-center" href="/">
+                        <mb-logo-icon class="text-white"></mb-logo-icon>
+                    </a>
+                    <div class="DashboardDropdown Dropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
+                        <a class="NavItem text-white cursor-pointer p2 flex align-center" dropdown-toggle>
+                            Dashboards
+                            <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
+                        </a>
+                        <ul class="Dropdown-content" ng-controller="DashList">
+                            <li ng-repeat="dash in dashboards">
+                                <a class="Dropdown-item link flex align-center text-normal" href="/dash/{{dash.id}}">
+                                    {{dash.name}}
+                                    <mb-icon class="ml1 text-grey-4 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
+                                </a>
                             </li>
                         </ul>
                     </div>
-                    <ul class="float-left ml4">
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/dash/" selectable-nav-item="dashboards">
-                                <mb-icon class="IconWrapper" name="dashboards"/></mb-icon>
-                                <span class="NavItem-text">Dashboards</span>
-                            </a>
-                        </li>
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/card/" selectable-nav-item="cards">
-                                <mb-icon class="IconWrapper" name="cards"></mb-icon>
-                                <span class="NavItem-text">Cards</span>
-                            </a>
-                        </li>
-                        <li class="inline-block">
-                            <a class="NavItem NavItem-withIcon" cv-org-href="/explore/" selectable-nav-item="explore">
-                                <mb-icon class="IconWrapper" name="explore"></mb-icon>
-                                <span class="NavItem-text">Explore</span>
-                            </a>
-                        </li>
-                    </ul>
-                    <ul class="float-right">
-                        <li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">
-                            <a class="NavItem" selectable-nav-item="settings" dropdown-toggle>
-                                <span class="NavItem-text" ng-if="!user.first_name">Me</span>
-                                <span class="NavItem-text" ng-if="user.first_name">{{user.first_name}}</span>
-                                <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
-                            </a>
-                            <ul class="Dropdown-content right">
-                                <li class="" ><a class="link" href="/user/edit_current">Account Settings</a></li>
-                                <li class="" ><a class="link" ng-if="userIsAdmin" cv-org-href="/admin/">Admin</a></li>
-                                <li class="" ><a class="link" ng-if="userIsSuperuser" href="/superadmin/">Site Administration</a></li>
-                                <li class="" ><a class="link" href="/auth/logout">Logout</a></li>
-                            </ul>
-                        </li>
-                    </ul>
+                    <div class="UserDropdown Dropdown flex-align-right" dropdown on-toggle="toggled(open)">
+                        <mb-profile-link class="NavItem text-white" user="user" context="nav"></mb-profile-link>
+                        <ul class="Dropdown-content right">
+                            <li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>
+                            <li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>
+                        </ul>
+                    </div>
+                    <a class="AdminLink NavItem hide sm-show sm-ml1 md-ml2" ng-if="user.is_superuser" href="/admin/">
+                        <mb-icon class="text-white" name="gear" width="16px" height="16px"></mb-icon>
+                    </a>
                 </div>
             </nav>
 
             <!-- ADMIN NAV -->
             <nav class="AdminNav" ng-show="nav === 'admin'">
                 <div class="wrapper flex align-center">
-                    <!-- org title -->
-                    <div class="NavTitle flex align-center" ng-if="!user.is_multi_org">
+                    <div class="NavTitle flex align-center">
                         <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
-                        <span class="NavItem-text">{{currentOrg.name}} Admin</span>
-                    </div>
-                    <div class="NavTitle flex align-center Dropdown" dropdown on-toggle="toggled(open)" ng-if="user.is_multi_org">
-                        <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
-                        <span dropdown-toggle>
-                            <span class="NavItem-text">{{currentOrg.name}} Admin</span>
-                            <mb-icon name="chevrondown" width="8px" height="8px"></mb-icon>
-                        </span>
-                        <ul class="Dropdown-content left">
-                            <li ng-repeat="organization in userMemberOf">
-                                <a class="link block py1" href="#" ng-click="changeCurrOrg(organization.slug, true)">{{organization.name}}</a>
-                            </li>
-                        </ul>
+                        <span class="NavItem-text ml1 hide sm-show">Site Administration</span>
                     </div>
 
                     <!-- admin sections -->
-                    <ul class="ml4 flex flex-full">
+                    <ul class="sm-ml4 flex flex-full">
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/org')}" cv-org-href="/admin/org/">
-                                <span class="NavItem-text">Organization</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
+                                Settings
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/people')}" cv-org-href="/admin/people/">
-                                <span class="NavItem-text">People</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/people')}" href="/admin/people/">
+                                People
                             </a>
                         </li>
                         <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/admin/databases')}" cv-org-href="/admin/databases/">
-                                <span class="NavItem-text">Databases</span>
-                            </a>
-                        </li>
-                    </ul>
-
-                    <!-- user profile dropdown -->
-                    <mb-profile-link user="user" context="nav"></mb-profile-link>
-                </div>
-            </nav>
-
-            <!-- SITE ADMINISTRATION (SUPER ADMIN) NAV -->
-            <nav class="AdminNav" ng-show="nav === 'superadmin'">
-                <div class="wrapper flex align-center">
-                    <div class="NavTitle flex align-center">
-                        <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
-                        <span class="NavItem-text ml1">Site Administration</span>
-                    </div>
-
-                    <ul class="ml4 flex flex-full">
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/settings')}" href="/superadmin/settings/">
-                                <span class="NavItem-text">Global Settings</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="NavItem" ng-class="{ 'is--selected' : isActive('/superadmin/organization')}" href="/superadmin/organization/">
-                                <span class="NavItem-text">Organizations</span>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
+                                Databases
                             </a>
                         </li>
                     </ul>
 
                     <!-- user profile dropdown -->
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
+                    <a class="text-white ml1 md-ml2" href="/">
+                        <mb-icon name="return" width="22px" height="22px"></mb-icon>
+                    </a>
                 </div>
             </nav>
-
         </div>
 
-        <div class="MainContent flex flex-column full-height" ng-view></div>
+        <main class="full-height flex flex-column" ng-view></main>
     </body>
 
-    <!-- JS INCLUDES -->
-    <!-- vendor js -->
-    <script src="/app/bower_components/react/react-with-addons.min.js"></script>
-    <script src="/app/bower_components/react-onclickoutside/index.js"></script>
-    <script src="/app/bower_components/moment/min/moment.min.js"></script>
-    <script src="/app/bower_components/tether/tether.min.js"></script>
-    <script src="/app/bower_components/react-date-picker/react-datepicker.js"></script>
-
-
-    <script src="/app/bower_components/jquery/dist/jquery.min.js"></script>
-    <script src="/app/bower_components/underscore/underscore-min.js"></script>
-    <script src="/app/bower_components/fastclick/lib/fastclick.js"></script>
-
-    <script src="/app/bower_components/angular-route/angular-route.min.js"></script>
-    <script src="/app/bower_components/angular-resource/angular-resource.min.js"></script>
-    <script src="/app/bower_components/angular-cookies/angular-cookies.min.js"></script>
-    <script src="/app/bower_components/angular-animate/angular-animate.min.js"></script>
-    <script src="/app/bower_components/angular-sanitize/angular-sanitize.min.js"></script>
-    <script src="/app/bower_components/angular-xeditable/dist/js/xeditable.min.js"></script>
-    <script src="/app/bower_components/angular-cookie/angular-cookie.min.js"></script>
-    <script src="/app/bower_components/javascript-detect-element-resize/detect-element-resize.js"></script>
-    <script src="/app/bower_components/angular-gridster/dist/angular-gridster.min.js"></script>
-    <script src="/app/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
-    <script src="/app/bower_components/angular-http-auth/src/http-auth-interceptor.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/ace.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/mode-sql.js"></script>
-    <script src="/app/bower_components/ace-builds/src-min-noconflict/ext-language_tools.js"></script>
-    <script src="/app/bower_components/angular-ui-ace/ui-ace.min.js"></script>
-    <script src="/app/bower_components/angularytics/dist/angularytics.min.js"></script>
-    <script src="/app/bower_components/ng-sortable/dist/ng-sortable.min.js"></script>
-    <script src="/app/bower_components/angular-readable-time/angular-readable-time.min.js"></script>
-
-    <script src="/app/bower_components/d3/d3.min.js"></script>
-    <script src="/app/bower_components/crossfilter/crossfilter.min.js"></script>
-    <script src="/app/bower_components/dc.js/dc.min.js"></script>
-
-    <script src="/app/js/google_maps.js"></script>
-
-    <!-- dist app -->
-    <script src="/app/dist/app.js"></script>
-    <script src="/app/dist/query_builder.js" type="text/javascript"></script>
 
     <script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
     <script>

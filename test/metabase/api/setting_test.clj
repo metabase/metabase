@@ -5,8 +5,9 @@
                                                    setting-exists?
                                                    test-setting-1
                                                    test-setting-2]])
-            [metabase.test-data :refer :all]
-            [metabase.test.util :refer :all]))
+            (metabase.test [data :refer :all]
+                           [util :refer :all])
+            [metabase.test.data.users :refer :all]))
 
 ;; ## Helper Fns
 (defn fetch-all-settings  []
@@ -25,7 +26,7 @@
     (do (set-settings nil "FANCY")
         (fetch-all-settings)))
 
-;; Check that a non-superuser can't read settings
+;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :get 403 "setting"))
 

@@ -1,7 +1,9 @@
 'use strict';
-/*global _, DateFilter, SelectionModule, Icon */
+/*global _ */
 
-var AggregationWidget = React.createClass({
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'AggregationWidget',
     propTypes: {
         aggregation: React.PropTypes.array.isRequired,
@@ -11,7 +13,7 @@ var AggregationWidget = React.createClass({
 
     getDefaultProps: function() {
         return {
-            querySectionClasses: 'Query-section flex align-center'
+            querySectionClasses: 'Query-section mt1 md-mt2 flex align-center'
         };
     },
 
@@ -112,6 +114,8 @@ var AggregationWidget = React.createClass({
                     placeholder="What data?"
                     items={this.state.availableAggregations}
                     display="name"
+                    descriptionKey="description"
+                    expandFilter={(item) => !item.advanced}
                     selectedValue={this.props.aggregation[0]}
                     selectedKey="short"
                     isInitiallyOpen={aggregationListOpen}

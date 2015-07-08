@@ -33,7 +33,7 @@
                  [compojure "1.3.4"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [korma "0.4.1"]                                      ; SQL lib
+                 [korma "0.4.2"]                                      ; SQL lib
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -66,7 +66,7 @@
                                   [expectations "2.1.1"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.2.0"]]
-                   :plugins [[cider/cider-nrepl "0.9.0-SNAPSHOT"]     ; Interactive development w/ cider NREPL in Emacs
+                   :plugins [[cider/cider-nrepl "0.9.0"]              ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
                              [lein-ancient "0.6.5"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
@@ -89,4 +89,4 @@
                                        "-Dmb.jetty.port=3001"
                                        "-Dmb.api.key=test-api-key"]}
              :uberjar {:aot :all
-                       :prep-tasks ["npm" "gulp" "javac" "compile"]}})
+                       :prep-tasks ^:replace ["npm" "webpack" "javac" "compile"]}})

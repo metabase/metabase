@@ -1,11 +1,9 @@
 (ns metabase.bootstrap
   "Functions for creating new Orgs/Users from the command-line / REPL."
-  (:require (metabase [db :refer :all]
-                      [test-data :as data])
+  (:require [metabase.db :refer :all]
             (metabase.models [database :refer [Database]]
-                             [org :refer [Org]]
-                             [org-perm :refer [OrgPerm]]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.test.data :refer :all]))
 
 (declare bootstrap-user
          prompt-read-line
@@ -14,9 +12,8 @@
 ;; # BOOTSTRAPPING
 
 (defn bootstrap
-  "Create a `User` (and, optionally, `Org`) for development purposes.
-   You may optionally load the test data and use the test `Org`.
-   Permissions will be created for `User` <-> `Org`."
+  "Create a `User` for development purposes.
+   You may optionally load the test data."
   []
   (setup-db :auto-migrate true)
   (let [{:keys [email]} (bootstrap-user)]
@@ -25,18 +22,8 @@
 
 ;; # (INTERNAL)
 
-(defn- bootstrap-org
-  "Create a new Organization."
-  []
-  (let [org-name (prompt-read-line "Org name" "Default")]
-    (or (sel :one Org :name org-name)
-        (ins Org
-          :name org-name
-          :slug (prompt-read-line "Org slug" "default")
-          :inherits true))))
-
 (defn- bootstrap-user
-  "Create a new User (creating a new Org too if needed). Org perms between User & Org will be created."
+  "Create a new User."
   []
   (let [email (prompt-read-line "User email" "cam@metabase.com")
         ;; create User if needed
@@ -46,18 +33,7 @@
                       :first_name (prompt-read-line "User first name" "Cam")
                       :last_name (prompt-read-line "User last name" "Saul")
                       :is_superuser (prompt-read-line-boolean "Make this user a superuser?" "true")
-                      :password (prompt-read-line "User password" "password")))
-        use-test-org? (prompt-read-line-boolean "Should we use the test data? (User will be added to \"Test Organization\")" "true")
-        org (if use-test-org? (do @data/test-db   ; load the test data reaaallly quick
-                                  @data/test-org)
-                (bootstrap-org))]
-    ;; create OrgPerm if needed
-    (or (sel :one OrgPerm :organization_id (:id org) :user_id (:id user))
-        (let [admin? (prompt-read-line-boolean "Make user an admin?" "true")]
-          (ins OrgPerm
-               :organization_id (:id org)
-               :user_id (:id user)
-               :admin admin?)))
+                      :password (prompt-read-line "User password" "password")))]
     user))
 
 (defn- prompt-read-line

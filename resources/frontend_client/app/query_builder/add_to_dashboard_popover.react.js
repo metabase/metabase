@@ -1,7 +1,14 @@
 'use strict';
-/*global cx, ReactCSSTransitionGroup, OnClickOutside, FormField, SelectionModule, Icon */
 
-var AddToDashboardPopover = React.createClass({
+import OnClickOutside from 'react-onclickoutside';
+
+import FormField from './form_field.react';
+import Icon from './icon.react';
+
+var cx = React.addons.classSet;
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'AddToDashboardPopover',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -25,8 +32,7 @@ var AddToDashboardPopover = React.createClass({
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
-            'orgId': this.props.card.organization.id,
-            'filterMode': 'all'
+            'filterMode': 'mine'
         }, function(result) {
             component.setState({
                 dashboards: result
@@ -86,7 +92,6 @@ var AddToDashboardPopover = React.createClass({
 
         // populate a new Dash object
         var newDash = {
-            'organization': this.props.card.organization.id,
             'name': (name && name.length > 0) ? name : null,
             'description': (description && description.length > 0) ? name : null,
             'public_perms': 0
@@ -96,6 +101,9 @@ var AddToDashboardPopover = React.createClass({
         var component = this;
         this.props.dashboardApi.create(newDash, function(result) {
             component.addToExistingDash(result, true);
+
+            // send out a notice that we created a new dashboard
+            component.props.broadcastEventFn("dashboard:create", result.id);
         }, function(error) {
             component.setState({
                 errors: error
@@ -136,8 +144,7 @@ var AddToDashboardPopover = React.createClass({
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Others can read</option>),
-            (<option key="2" value={2}>Others can modify</option>)
+            (<option key="1" value={1}>Public (Others can read)</option>)
         ];
 
         var formError;
@@ -245,13 +252,13 @@ var AddToDashboardPopover = React.createClass({
             content = this.renderCreateDashboardForm();
         } else if (this.state.newDashSuccess) {
             dashDetails = this.state.newDashSuccess;
-            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashLink = "/dash/"+dashDetails.id;
 
             content = this.renderSuccess("Your dashboard, " + dashDetails.name + " was created and " + this.props.card.name + " was added.", dashLink);
 
         } else if (this.state.existingDashSuccess) {
             dashDetails = this.state.existingDashSuccess;
-            dashLink = "/"+this.props.card.organization.slug+"/dash/"+dashDetails.id;
+            dashLink = "/dash/"+dashDetails.id;
 
             content = this.renderSuccess(this.props.card.name + " was added to " + dashDetails.name, dashLink);
         } else {

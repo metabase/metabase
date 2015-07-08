@@ -8,7 +8,6 @@
                              [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
-                             [org :refer [Org]]
                              [user :refer [User]])))
 
 (defannotation CardFilterOption
@@ -22,18 +21,17 @@
   (checkp-contains? card/display-types symb (keyword value)))
 
 (defendpoint GET "/"
-  "Get all the `Cards` for an `Org`. With param `f` (default is `all`), restrict cards as follows:
+  "Get all the `Cards`. With param `f` (default is `all`), restrict cards as follows:
 
-   *  `all`  Return all `Cards` for `Org` which were created by current user or are publicly visible
-   *  `mine` Return all `Cards` for `Org` created by current user
+   *  `all`  Return all `Cards` which were created by current user or are publicly visible
+   *  `mine` Return all `Cards` created by current user
    *  `fav`  Return all `Cards` favorited by the current user"
-  [org f]
-  {org Required, f CardFilterOption}
-  (read-check Org org)
+  [f]
+  {f CardFilterOption}
   (-> (case (or f :all) ; default value for `f` is `:all`
-        :all  (sel :many Card :organization_id org (order :name :ASC) (where (or {:creator_id *current-user-id*}
-                                                                                 {:public_perms [> common/perms-none]})))
-        :mine (sel :many Card :organization_id org :creator_id *current-user-id* (order :name :ASC))
+        :all  (sel :many Card (order :name :ASC) (where (or {:creator_id *current-user-id*}
+                                                            {:public_perms [> common/perms-none]})))
+        :mine (sel :many Card :creator_id *current-user-id* (order :name :ASC))
         :fav  (->> (-> (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
                        (hydrate :card))
                    (map :card)
@@ -42,28 +40,26 @@
 
 (defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name organization public_perms visualization_settings]} :body}]
+  [:as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]
    display      [Required CardDisplayType]}
   ;; TODO - which other params are required?
-  (read-check Org organization)
   (ins Card
     :creator_id *current-user-id*
     :dataset_query dataset_query
     :description description
     :display display
     :name name
-    :organization_id organization
     :public_perms public_perms
     :visualization_settings visualization_settings))
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (->404 (sel :one Card :id id)
+  (->404 (Card id)
          read-check
-         (hydrate :can_read :can_write :organization)))
+         (hydrate :creator :can_read :can_write)))
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
@@ -79,7 +75,7 @@
                                :name name
                                :public_perms public_perms
                                :visualization_settings visualization_settings))
-  (sel :one Card :id id))
+  (Card id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

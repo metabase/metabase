@@ -11,7 +11,7 @@
         </span>
     </div>
     <div class="mt2 full">
-        <a e-class="full" href="#" editable-text="table.description" onaftersave="console.log('nyi', $index)">
+        <a e-class="full" href="#" ng-class="{EditedEntity: table.description }" editable-text="table.description" onaftersave="inlineSave()">
             {{table.description || "Add a description..."}}
         </a>
     </div>

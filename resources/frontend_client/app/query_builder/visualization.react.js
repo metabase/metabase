@@ -1,21 +1,44 @@
 'use strict';
-/*global cx, CardRenderer, PopoverWithTrigger, QueryVisualizationTable, QueryVisualizationChart*/
 
+import { CardRenderer } from '../card/card.charting';
+import Icon from './icon.react';
+import PopoverWithTrigger from './popover_with_trigger.react';
+import QueryVisualizationTable from './visualization_table.react';
+import QueryVisualizationChart from './visualization_chart.react';
+import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
+
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
-var QueryVisualization = React.createClass({
+export default React.createClass({
     displayName: 'QueryVisualization',
     propTypes: {
         visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
         setDisplayFn: React.PropTypes.func.isRequired,
-        setChartColorFn: React.PropTypes.func.isRequired
+        setChartColorFn: React.PropTypes.func.isRequired,
+        setSortFn: React.PropTypes.func.isRequired,
+        cellIsClickableFn: React.PropTypes.func,
+        cellClickedFn: React.PropTypes.func
+    },
+
+    visualizationTypeNames: {
+        'scalar':  { displayName: 'Number',      iconName: 'number' },
+        'table':   { displayName: 'Table',       iconName: 'table' },
+        'line':    { displayName: 'Line',        iconName: 'line' },
+        'bar':     { displayName: 'Bar',         iconName: 'bar' },
+        'pie':     { displayName: 'Pie',         iconName: 'pie' },
+        'area':    { displayName: 'Area',        iconName: 'area' },
+        'state':   { displayName: 'State map',   iconName: 'statemap' },
+        'country': { displayName: 'Country map', iconName: 'countrymap' },
+        'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
     },
 
     getDefaultProps: function() {
         return {
-            maxTableRows: 500,
+            // NOTE: this should be more dynamic from the backend, it's set based on the query lang
+            maxTableRows: 2000,
             visualizationTypes: [
                 'scalar',
                 'table',
@@ -69,48 +92,92 @@ var QueryVisualization = React.createClass({
 
     isSensibleChartDisplay: function(display) {
         var data = (this.props.result) ? this.props.result.data : null;
-
-        if (display === "table") {
-            // table is always appropriate
-            return true;
-
-        } else if (display === "scalar" && data &&
-                    data.rows && data.rows.length === 1 &&
-                    data.cols && data.cols.length === 1) {
-            // a 1x1 data set is appropriate for a scalar
-            return true;
-
-        } else if (display === "pin_map" && data && this.hasLatitudeAndLongitudeColumns(data.cols)) {
-            // when we have a latitude and longitude a pin map is cool
-            return true;
-
-        } else if ((display === "line" || display === "area") && data &&
-                    data.rows && data.rows.length > 1 &&
-                    data.cols && data.cols.length > 1) {
-            // if we have 2x2 or more then that's enough to make a line/area chart
-            return true;
-
-        } else if (this.isChartDisplay(display) && data &&
-                    data.cols && data.cols.length > 1) {
-            // general check for charts is that they require 2 columns
-            return true;
+        switch (display) {
+            case "table":
+                // table is always appropriate
+                return true;
+            case "scalar":
+                // a 1x1 data set is appropriate for a scalar
+                return (data && data.rows && data.rows.length === 1 && data.cols && data.cols.length === 1);
+            case "pin_map":
+                // when we have a latitude and longitude a pin map is cool
+                return (data && this.hasLatitudeAndLongitudeColumns(data.cols));
+            case "line":
+            case "area":
+                // if we have 2x2 or more then that's enough to make a line/area chart
+                return (data && data.rows && data.rows.length > 1 && data.cols && data.cols.length > 1);
+            case "country":
+            case "state":
+                return (data && data.cols && data.cols.length > 1 && data.cols[0].base_type === "TextField");
+            case "bar":
+            case "pie":
+            default:
+                // general check for charts is that they require 2 columns
+                return (data && data.cols && data.cols.length > 1);
         }
-
-        return false;
     },
 
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function(event) {
+    setDisplay: function(type) {
         // notify our parent about our change
-        this.props.setDisplayFn(event.target.value);
+        this.props.setDisplayFn(type);
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
+    },
+
+    renderChartTypePicker: function() {
+        var tetherOptions = {
+            attachment: 'bottom center',
+            targetAttachment: 'top center',
+            targetOffset: '-15px 0'
+        };
+        var currentIconName = this.visualizationTypeNames[this.props.card.display].iconName;
+        var chartTypeButton = (
+                <div className="inline-block">
+                    <span className="ChartType-button text-brand text-brand-hover shadowed flex layout-centered">
+                        <Icon name={currentIconName} width="30px" height="30px"></Icon>
+                    </span>
+                </div>
+        );
+
+        var displayOptions = this.props.visualizationTypes.map((type, index) => {
+            var classes = cx({
+                'p2': true,
+                'flex': true,
+                'align-center': true,
+                'cursor-pointer': true,
+                'bg-brand-hover': true,
+                'text-white-hover': true,
+                'ChartType--selected': type === this.props.card.display,
+                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
+            });
+            var displayName = this.visualizationTypeNames[type].displayName;
+            var iconName = this.visualizationTypeNames[type].iconName;
+            return (
+                <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
+                    <Icon name={iconName} width="24px" height="24px"/>
+                    <span className="ml1">{displayName}</span>
+                </li>
+            );
+        });
+        return (
+            <span className="flex align-center">
+                Visualize as
+                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow ChartType-popover"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={chartTypeButton}>
+                    <ul className="">
+                        {displayOptions}
+                    </ul>
+                </PopoverWithTrigger>
+            </span>
+        );
     },
 
     renderChartColorPicker: function() {
@@ -155,37 +222,52 @@ var QueryVisualization = React.createClass({
         }
     },
 
-    renderVizControls: function() {
-        if (this.props.result && this.props.result.error === undefined) {
-            var displayOptions = [];
-            for (var i = 0; i < this.props.visualizationTypes.length; i++) {
-                var val = this.props.visualizationTypes[i];
+    clickedForeignKey: function(fk) {
+        this.props.followForeignKeyFn(fk);
+    },
 
-                if (this.isSensibleChartDisplay(val)) {
-                    displayOptions.push(
-                        <option key={i} value={val}>{val}</option>
-                    );
-                } else {
-                    // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
-                    displayOptions.push(
-                        <option key={i+'_'} value={val}>{val} (not sensible)</option>
-                    );
-                }
+    renderFooter: function(tableFootnote) {
+        if (this.props.isObjectDetail) {
+            if (!this.props.tableForeignKeys) return false;
+
+            var component = this;
+            var relationships = this.props.tableForeignKeys.map(function(fk) {
+                var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
+                return (
+                    <li className="block mb1 lg-mb2">
+                        <a className="QueryOption inline-block no-decoration p2 lg-p2" key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
+                            {relationName}
+                        </a>
+                    </li>
+                )
+            });
+
+            return (
+                <div className="VisualizationSettings wrapper QueryBuilder-section clearfix">
+                    <h3 className="mb1 lg-mb2">Relationships:</h3>
+                    <ul>
+                        {relationships}
+                    </ul>
+                </div>
+            );
+
+        } else {
+            var vizControls;
+            if (this.props.result && this.props.result.error === undefined) {
+                vizControls = (
+                    <div className="flex">
+                        {this.renderChartTypePicker()}
+                        {this.renderChartColorPicker()}
+                    </div>
+                );
             }
 
             return (
-                <div>
-                    Show as:
-                    <label className="Select ml2">
-                        <select onChange={this.setDisplay} value={this.props.card.display}>
-                            {displayOptions}
-                        </select>
-                    </label>
-                    {this.renderChartColorPicker()}
+                <div className="VisualizationSettings wrapper flex">
+                    {vizControls}
+                    {tableFootnote}
                 </div>
             );
-        } else {
-            return false;
         }
     },
 
@@ -202,13 +284,23 @@ var QueryVisualization = React.createClass({
     },
 
     render: function() {
-        var viz,
+        var loading,
+            viz,
             queryModified,
-            rowMaxMessage;
+            tableFootnote;
+
+        if(this.props.isRunning) {
+            loading = (
+                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
+                    {this.loader()}
+                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
+                </div>
+            );
+        }
 
         if (!this.props.result) {
             viz = (
-                <div className="flex full layout-centered text-brand">
+                <div className="flex full layout-centered text-grey-1">
                     <h1>If you give me some data I can show you something cool.  Run a Query!</h1>
                 </div>
             );
@@ -234,7 +326,15 @@ var QueryVisualization = React.createClass({
                 );
 
             } else if (this.props.result.data) {
-                if (this.props.result.data.rows.length === 0) {
+                if (this.props.isObjectDetail) {
+                    viz = (
+                        <QueryVisualizationObjectDetailTable
+                            data={this.props.result.data}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn} />
+                    );
+
+                } else if (this.props.result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
                     viz = (
                         <div className="QueryError flex full align-center text-brand">
@@ -262,19 +362,36 @@ var QueryVisualization = React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    if(this.props.result.data.rows.length > this.props.maxTableRows) {
-                        rowMaxMessage = (
-                            <div className="mt1">
-                                <span className="Badge Badge--headsUp mr2">Too many rows to display!</span>
-                                Previewing <b>{this.props.maxTableRows}</b> of <b>{this.props.result.data.rows.length}</b> total.
+                    // when we are displaying a data grid, setup a footnote which provides some row information
+                    if (this.props.result.data.rows_truncated ||
+                            (this.props.card.dataset_query.type === "query" &&
+                                this.props.card.dataset_query.query.aggregation[0] === "rows" &&
+                                this.props.result.data.rows.length === 2000)) {
+                        tableFootnote = (
+                            <div className="flex-align-right mt1">
+                                <span className="Badge Badge--headsUp mr2">Too many rows!</span>
+                                Result data was capped at <b>{this.props.result.row_count}</b> rows.
+                            </div>
+                        );
+                    } else {
+                        tableFootnote = (
+                            <div className="flex-align-right mt1">
+                                Showing <b>{this.props.result.row_count}</b> rows.
                             </div>
                         );
                     }
 
+                    var sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
+                                    this.props.card.dataset_query.query.order_by : null;
                     viz = (
                         <QueryVisualizationTable
                             data={this.props.result.data}
-                            maxRows={this.props.maxTableRows} />
+                            maxRows={this.props.maxTableRows}
+                            setSortFn={this.props.setSortFn}
+                            sort={sort}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn}
+                        />
                     );
 
                 } else {
@@ -288,8 +405,8 @@ var QueryVisualization = React.createClass({
                 }
 
                 // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !rowMaxMessage) {
-                    rowMaxMessage = (
+                if (this.props.result.data.rows_truncated && !tableFootnote) {
+                    tableFootnote = (
                         <div className="mt1">
                             <span className="Badge Badge--headsUp mr2">Too many rows!</span>
                             Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
@@ -299,42 +416,33 @@ var QueryVisualization = React.createClass({
             }
         }
 
-        var loading;
-
-        if(this.props.isRunning) {
-            loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
-                    {this.loader()}
-                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
-                </div>
-            );
-        }
+        var wrapperClasses = cx({
+            'relative': true,
+            'full': true,
+            'flex': !this.props.isObjectDetail,
+            'flex-column': !this.props.isObjectDetail
+        });
 
         var visualizationClasses = cx({
             'Visualization': true,
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning,
+            'wrapper': true,
             'full': true,
             'flex': true,
             'flex-full': true,
-            'QueryBuilder-section': true
+            'QueryBuilder-section': true,
+            'pt2 lg-pt4': true
         });
 
         return (
-            <div className="relative full flex flex-column">
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {queryModified}
-                </ReactCSSTransitionGroup>
+            <div className={wrapperClasses}>
+                {queryModified}
                 {loading}
-                <ReactCSSTransitionGroup className={visualizationClasses} transitionName="animation-viz">
+                <div className={visualizationClasses}>
                     {viz}
-                </ReactCSSTransitionGroup>
-                <div className="VisualizationSettings QueryBuilder-section clearfix">
-                    <div className="float-right">
-                        {rowMaxMessage}
-                    </div>
-                    {this.renderVizControls()}
                 </div>
+                {this.renderFooter(tableFootnote)}
             </div>
         );
     }

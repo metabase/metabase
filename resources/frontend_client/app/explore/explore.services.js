@@ -6,6 +6,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     // Valid Operators per field
 
     var DateBaseTypes = ['DateTimeField', 'DateField'];
+    var DateSpecialTypes = ['timestamp_milliseconds', 'timestamp_seconds'];
     var NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
     var SummableBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
     var CategoryBaseTypes = ["BooleanField"];
@@ -20,7 +21,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     function isDate(field) {
-        return isInTypes(field.base_type, DateBaseTypes);
+        return isInTypes(field.base_type, DateBaseTypes) || isInTypes(field.special_type, DateSpecialTypes);
     }
 
     function isNumber(field) {
@@ -36,7 +37,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     function isDimension(field) {
-        return isDate(field) || isCategory(field);
+        return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']);
     }
 
 
@@ -264,40 +265,52 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         return shortenFields(_.filter(fields, isDimension));
     }
 
-
-
     var Aggregators = [{
-        'name': "Bare Rows",
+        "name": "Raw data",
         "short": "rows",
+        "description": "Just a table with the rows in the answer, no additional operations.",
+        "advanced": false,
         "validFieldsFilters": []
     }, {
-        'name': "Total count",
+        "name": "Count",
         "short": "count",
+        "description": "Total number of rows in the answer.",
+        "advanced": false,
         "validFieldsFilters": []
     }, {
-        'name': "Sum of ",
+        "name": "Sum",
         "short": "sum",
+        "description": "Sum of all the values of a column.",
+        "advanced": false,
         "validFieldsFilters": [summableFields]
     }, {
-        'name': "Cumulative Sum of ",
-        "short": "cum_sum",
+        "name": "Average",
+        "short": "avg",
+        "description": "Average of all the values of a column",
+        "advanced": false,
         "validFieldsFilters": [summableFields]
     }, {
-        'name': "# distinct values of",
+        "name": "Number of distinct values",
         "short": "distinct",
+        "description":  "Number of unique values of a column among all the rows in the answer.",
+        "advanced": true,
         "validFieldsFilters": [allFields]
     }, {
-        'name': "Standard Deviation of ",
-        "short": "stddev",
+        "name": "Cumulative sum",
+        "short": "cum_sum",
+        "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+        "advanced": true,
         "validFieldsFilters": [summableFields]
     }, {
-        'name': "Average of ",
-        "short": "avg",
+        "name": "Standard deviation",
+        "short": "stddev",
+        "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
+        "advanced": true,
         "validFieldsFilters": [summableFields]
     }];
 
     var BreakoutAggregator = {
-        'name': "Break out by dimension",
+        "name": "Break out by dimension",
         "short": "breakout",
         "validFieldsFilters": [dimensionFields]
     };
@@ -306,6 +319,8 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         return {
             'name': aggregator.name,
             'short': aggregator.short,
+            'description': aggregator.description || '',
+            'advanced': aggregator.advanced || false,
             'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
                 return validFieldsFilterFn(fields);
             })

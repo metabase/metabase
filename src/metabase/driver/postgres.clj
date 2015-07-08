@@ -90,28 +90,9 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn is-legacy-conn-details?
-  "Is DETAILS-MAP a legacy map (i.e., does it only contain `conn_str`)?"
-  [details-map]
-  {:pre [(map? details-map)]}
-  (not (:dbname details-map)))
-
-(defn parse-legacy-conn-str
-  "Parse a legacy `database.details.conn_str` CONNECTION-STRING and return a new-style map."
-  [connection-string]
-  {:pre [(string? connection-string)]}
-  (let [{:keys [port] :as details} (-<>> connection-string
-                                         (s/split <> #" ")                       ; split into k=v pairs
-                                         (map (fn [pair]                          ; convert to {:k v} pairs
-                                                (let [[k v] (s/split pair #"=")]
-                                                  {(keyword k) v})))
-                                         (reduce conj {}))]
-    (cond-> details
-      (string? port) (assoc :port (Integer/parseInt port)))))
 
 (defn- database->connection-details [{:keys [details]}]
-  (let [{:keys [host port] :as details} (if (is-legacy-conn-details? details) (parse-legacy-conn-str (:conn_str details))
-                                            details)]
+  (let [{:keys [host port]} details]
     (-> details
         (assoc :host       host
                :make-pool? false
@@ -127,13 +108,30 @@
 (defn- timezone->set-timezone-sql [timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
+(defn- cast-timestamp-seconds-field-to-date-fn [table-name field-name]
+  {:pre [(string? table-name)
+         (string? field-name)]}
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 second'))::date" table-name field-name))
+
+(defn- cast-timestamp-milliseconds-field-to-date-fn [table-name field-name]
+  {:pre [(string? table-name)
+         (string? field-name)]}
+  (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 millisecond'))::date" table-name field-name))
+
+(def ^:private ^:const uncastify-timestamp-regex
+  ;; TODO - this doesn't work
+  #"TO_TIMESTAMP\([^.\s]+\.([^.\s]+)(?: / 1000)?\)::date")
 
 ;; ## DRIVER
 
 (def ^:const driver
   (generic-sql/map->SqlDriver
-   {:column->base-type                   column->base-type
-    :connection-details->connection-spec connection-details->connection-spec
-    :database->connection-details        database->connection-details
-    :sql-string-length-fn                :CHAR_LENGTH
-    :timezone->set-timezone-sql          timezone->set-timezone-sql}))
+   {:additional-supported-features                #{:set-timezone}
+    :column->base-type                            column->base-type
+    :connection-details->connection-spec          connection-details->connection-spec
+    :database->connection-details                 database->connection-details
+    :sql-string-length-fn                         :CHAR_LENGTH
+    :timezone->set-timezone-sql                   timezone->set-timezone-sql
+    :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
+    :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
+    :uncastify-timestamp-regex                    uncastify-timestamp-regex}))

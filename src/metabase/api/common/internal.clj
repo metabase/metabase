@@ -129,8 +129,7 @@
    A param with name matching PARAM-PATTERN should be considered to be of AUTO-PARSE-TYPE."
   [[#"^uuid$"       :uuid]
    [#"^session_id$" :uuid]
-   [#"^[\w-_]*id$"  :int]
-   [#"^org$"        :int]])
+   [#"^[\w-_]*id$"  :int]])
 
 (defn arg-type
   "Return a key into `*auto-parse-types*` if ARG has a matching pattern in `*auto-parse-arg-name-patterns*`.
@@ -164,7 +163,8 @@
     (route-arg-keywords \"/:id/cards\") -> [:id]"
   [route]
   (->> (re-seq #":([\w-]+)" route)
-       (map (u/fn-> second keyword))))
+       (map second)
+       (map keyword)))
 
 (defn typify-args
   "Given a sequence of keyword ARGS, return a sequence of `[:arg pattern :arg pattern ...]`

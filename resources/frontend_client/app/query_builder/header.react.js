@@ -1,10 +1,17 @@
 'use strict';
-/*global setTimeout, clearTimeout, Saver, ActionButton, Popover, Icon, QueryModeToggle, AddToDashboard*/
+/*global setTimeout, clearTimeout*/
 
-var cx = React.addons.classSet,
-    ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+import ActionButton from './action_button.react';
+import AddToDashboard from './add_to_dashboard.react';
+import CardFavoriteButton from './card_favorite_button.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+import QueryModeToggle from './query_mode_toggle.react';
+import Saver from './saver.react';
 
-var QueryHeader = React.createClass({
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -12,7 +19,7 @@ var QueryHeader = React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
-        downloadLink: React.PropTypes.string
+        downloadLink: React.PropTypes.string,
     },
 
     getInitialState: function() {
@@ -64,6 +71,10 @@ var QueryHeader = React.createClass({
         return this.saveCard(this.props.card);
     },
 
+    cloneCard: function() {
+        this.props.cloneCardFn(this.props.card.id);
+    },
+
     saveCard: function(card) {
         var component = this,
             apiCall;
@@ -99,6 +110,16 @@ var QueryHeader = React.createClass({
         return apiCall.$promise;
     },
 
+    deleteCard: function () {
+        var card = this.props.card,
+            component = this;
+
+        var apiCall = this.props.cardApi.delete({'cardId': card.id}, function () {
+            component.props.notifyCardDeletedFn();
+        });
+
+    },
+
     setQueryMode: function(mode) {
         // we need to update our dirty state here
         var component = this;
@@ -108,39 +129,38 @@ var QueryHeader = React.createClass({
             component.props.setQueryModeFn(mode);
         });
     },
+
     permissions: function() {
-        var text;
-        switch(this.props.card.public_perms) {
-            case 0:
-                text = 'Private';
-                break;
-            case 1:
-                text = 'Others can read';
-                break;
-            case 2:
-                text = 'Others can modify';
-                break;
-            default:
-                return 'Error';
+        var permission;
+        if(this.props.card.public_perms) {
+            switch(this.props.card.public_perms) {
+                case 0:
+                    permission = (
+                        <span className="ml1 sm-ml1 text-grey-3">
+                            <Icon name="lock" width="12px" height="12px" />
+                        </span>
+                    )
+                    break;
+                default:
+                    return '';
+            }
+            return permission;
         }
-        return (
-            <span className="Badge Badge--permissions ml2">
-                {text}
-            </span>
-        );
     },
 
     render: function() {
         var title = this.props.card.name || "What would you like to know?";
 
         var editButton;
-        if (!this.cardIsNew()) {
+        if (!this.cardIsNew() && this.props.card.is_creator) {
             editButton = (
                 <Saver
                     card={this.props.card}
                     saveFn={this.props.notifyCardChangedFn}
                     saveButtonText="Done"
                     className='inline-block ml1 link'
+                    canDelete={this.props.card.is_creator}
+                    deleteFn={this.deleteCard}
                 />
             );
         }
@@ -154,9 +174,10 @@ var QueryHeader = React.createClass({
                     saveFn={this.saveCard}
                     buttonText="Save"
                     saveButtonText="Create card"
+                    canDelete={false}
                 />
             );
-        } else if (this.cardIsDirty() || this.state.recentlySaved) {
+        } else if ((this.cardIsDirty() || this.state.recentlySaved) && this.props.card.is_creator) {
             // for existing cards we render a very simply ActionButton
             saveButton = (
                 <ActionButton
@@ -180,6 +201,15 @@ var QueryHeader = React.createClass({
             );
         }
 
+        var cloneButton;
+        if (this.props.card.id) {
+            cloneButton = (
+                <span className="mx1 text-grey-4 text-brand-hover">
+                    <Icon name='clone' width="18px" height="18px" onClick={this.cloneCard}></Icon>
+                </span>
+            );
+        }
+
         var queryModeToggle;
         if (this.cardIsNew() && !this.cardIsDirty()) {
             queryModeToggle = (
@@ -190,28 +220,45 @@ var QueryHeader = React.createClass({
             );
         }
 
+        var cardFavorite;
+        if (!this.cardIsNew()) {
+            cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
+        }
+
+
+
+        var attribution;
+
+        if(this.props.card.creator) {
+            attribution = (
+                <div className="Entity-attribution">
+                    Asked by {this.props.card.creator.common_name}
+                </div>
+            )
+        }
+
         return (
-            <div className="QueryHeader QueryBuilder-section flex align-center">
-                <div className="QueryHeader-details">
-                    <h1 className="QueryName">{title}</h1>
-                    {this.permissions()}
-                    {editButton}
+            <div className="border-bottom py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+                <div className="Entity">
+                    <div className="flex align-center">
+                        <h1 className="Entity-title">{title}</h1>
+                        {this.permissions()}
+                        {editButton}
+                    </div>
+                    {attribution}
                 </div>
 
-                <div className="QueryHeader-actions">
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {saveButton}
-                    </ReactCSSTransitionGroup>
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {downloadButton}
-                    </ReactCSSTransitionGroup>
+                <div className="QueryHeader-actions flex-align-right">
+                    {cloneButton}
+                    {downloadButton}
+                    {cardFavorite}
                     <AddToDashboard
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                     />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-querybutton">
-                        {queryModeToggle}
-                    </ReactCSSTransitionGroup>
+                    {saveButton}
+                    {queryModeToggle}
                 </div>
             </div>
         );

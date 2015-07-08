@@ -1,7 +1,11 @@
 'use strict';
-/*global cx, setTimeout, clearTimeout, OnClickOutside, SelectionModule, Icon*/
+/*global setTimeout, clearTimeout*/
 
-var ActionButton = React.createClass({
+import Icon from './icon.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'ActionButton',
     propTypes: {
         actionFn: React.PropTypes.func.isRequired
@@ -10,9 +14,9 @@ var ActionButton = React.createClass({
     getDefaultProps: function() {
         return {
             normalText: "Save",
-            activeText: "Saving ...",
+            activeText: "Saving...",
             failedText: "Save failed",
-            successText: "Save succeeded",
+            successText: "Saved",
             className: 'Button'
         };
     },

@@ -1,6 +1,6 @@
 'use strict';
 
-var RunButton = React.createClass({
+export default React.createClass({
     displayName: 'RunButton',
     propTypes: {
         canRun: React.PropTypes.bool.isRequired,

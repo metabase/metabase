@@ -1,10 +1,10 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (metabase [db :refer [sel]]
-                      [test-data :refer :all])
+            [metabase.db :refer [sel]]
             [metabase.models.setting :refer [defsetting Setting] :as setting]
-            [metabase.test.util :refer :all]))
+            (metabase.test [data :refer :all]
+                           [util :refer :all])))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched

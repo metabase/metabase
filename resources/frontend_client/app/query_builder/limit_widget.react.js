@@ -1,7 +1,9 @@
 'use strict';
-/*global DateFilter, SelectionModule, Icon */
 
-var LimitWidget = React.createClass({
+import Icon from './icon.react';
+import SelectionModule from './selection_module.react';
+
+export default React.createClass({
     displayName: 'LimitWidget',
     propTypes: {
         limit: React.PropTypes.number,

@@ -2,42 +2,9 @@
   (:require [expectations :refer :all]
             [metabase.api.common :refer :all]
             [metabase.api.common.internal :refer :all]
-            [metabase.api.org-test :refer [create-org]]
-            [metabase.test-data :refer :all]
-            [metabase.test-data.create :refer [create-user]]
-            [metabase.test.util :refer :all]
-            [metabase.util :refer [regex= regex?]])
+            [metabase.test.data :refer :all]
+            [metabase.test.util :refer :all])
   (:import com.metabase.corvus.api.ApiException))
-
-;;; TESTS FOR CURRENT-USER-PERMS-FOR-ORG
-;; admins should get :admin
-(expect :admin
-    (with-current-user (user->id :rasta)
-      (current-user-perms-for-org @org-id)))
-
-;; superusers should always get :admin whether they have org perms or not
-(expect-let [{org-id :id} (create-org (random-name))]
-  :admin
-  (with-current-user (user->id :crowberto)
-      (current-user-perms-for-org org-id)))
-
-(expect :admin
-    (with-current-user (user->id :crowberto)
-      (current-user-perms-for-org @org-id)))
-
-;; other users should get :default or nil depending on if they have an Org Perm
-(expect :default
-    (with-current-user (user->id :lucky)
-      (current-user-perms-for-org @org-id)))
-
-(expect nil
-    (with-current-user (:id (create-user))
-      (current-user-perms-for-org @org-id)))
-
-;; Should get a 404 for an Org that doesn't exist
-(expect ApiException
-  (with-current-user (user->id :crowberto)
-    (current-user-perms-for-org 1000)))
 
 
 ;;; TESTS FOR CHECK (ETC)

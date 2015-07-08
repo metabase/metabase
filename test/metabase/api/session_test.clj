@@ -4,12 +4,11 @@
             [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
-            [metabase.test-data :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
-            [metabase.test.util :refer [random-name expect-eval-actual-first]]
-            [metabase.test-data :refer :all]
-            [metabase.test-data.create :refer [create-user]]))
+            [metabase.test.data :refer :all]
+            [metabase.test.data.users :refer :all]
+            [metabase.test.util :refer [random-name expect-eval-actual-first]]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -26,7 +25,8 @@
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
-(expect {:errors {:email "no account found for the given email"}}
+;; Return same error as incorrect password to avoid leaking existence of user
+(expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking
@@ -41,7 +41,7 @@
   (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
     (assert session_id)
     ((user->client :rasta) :delete 204 "session" :session_id session_id)
-    (sel :one Session :id session_id)))
+    (Session session_id)))
 
 
 ;; ## POST /api/session/forgot_password
@@ -63,9 +63,9 @@
 (expect {:errors {:email "field is a required param."}}
   (client :post 400 "session/forgot_password" {}))
 
-;; Test that email not found gives 404
-(expect {:errors {:email "no account found for the given email"}}
-  (client :post 400 "session/forgot_password" {:email "not-found@metabase.com"}))
+;; Test that email not found also gives 200 as to not leak existence of user
+(expect nil
+  (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password
@@ -113,3 +113,13 @@
     (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
+
+
+;; GET /session/properties
+;; Check that a non-superuser can't read settings
+(expect
+  [{:value nil
+    :key "site-name"
+    :description "The name used for this instance of Metabase."
+    :default "Metabase"}]
+  ((user->client :rasta) :get 200 "session/properties"))

@@ -1,13 +1,12 @@
 (ns metabase.db.metadata-queries-test
   (:require [expectations :refer :all]
-            (metabase [db :refer :all]
-                      [test-data :refer :all]
-                      test-setup)
+            [metabase.db :refer :all]
             [metabase.db.metadata-queries :refer :all]
-            [metabase.models.field :refer [Field]]))
+            [metabase.models.field :refer [Field]]
+            [metabase.test.data :refer :all]))
 
 (defn- fetch-field [table-kw field-kw]
-  (sel :one Field :id (field->id table-kw field-kw)))
+  (sel :one Field :id (id table-kw field-kw)))
 
 ;; ### FIELD-DISTINCT-COUNT
 (expect 100
