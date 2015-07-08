@@ -16,4 +16,6 @@ export MB_DB_PORT=$RDS_PORT
 # TODO: dynamically determine type, probably using the port number
 export MB_DB_TYPE=postgres
 
-java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -jar /app/metabase-standalone.jar
+export JVM_OPTS="${JVM_OPTS} -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+
+java $JVM_OPTS -javaagent:/app/newrelic.jar -jar /app/metabase-standalone.jar
