@@ -109,7 +109,7 @@
               (contains? field :special_type))
       (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
 
-  (post-select [_ {:keys [table_id parent_id] :as field}]
+  (post-select [this {:keys [table_id parent_id] :as field}]
     (map->FieldInstance
       (u/assoc* field
         :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
@@ -118,8 +118,8 @@
         :human_readable_name       (when (name :field)
                                      (delay (common/name->human-readable-name (:name field))))
         :parent                    (when parent_id
-                                     (delay (sel :one Field :id parent_id)))
-        :children                  (delay (sel :many Field :parent_id (:id field)))
+                                     (delay (this parent_id)))
+        :children                  (delay (sel :many this :parent_id (:id field)))
         :qualified-name-components (delay (qualified-name-components <>))
         :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
 

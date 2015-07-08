@@ -153,8 +153,9 @@
   [entity id]
   (when id
     (when (metabase.config/config-bool :mb-db-logging)
-      (clojure.tools.logging/debug
-       "DB CALL: " (:name entity) id))
+      (when-not @(resolve 'metabase.db/*sel-disable-logging*)
+        (clojure.tools.logging/debug
+         "DB CALL: " (:name entity) id)))
     (let [[obj] (k/select (assoc entity :fields (::default-fields entity))
                           (k/where {:id id})
                           (k/limit 1))]

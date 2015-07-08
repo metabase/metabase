@@ -176,28 +176,7 @@
 
 ;; ## SEL
 
-(comment
-  :id->field `(let [[entity# field#] ~entity]
-                (->> (sel :many :fields [entity# field# :id] ~@forms)
-                     (map (fn [{id# :id field-val# field#}]
-                            {id# field-val#}))
-                     (into {})))
-  :field->id `(let [[entity# field#] ~entity]
-                (->> (sel :many :fields [entity# field# :id] ~@forms)
-                     (map (fn [{id# :id field-val# field#}]
-                            {field-val# id#}))
-                     (into {})))
-  :field->field `(let [[entity# field1# field2#] ~entity]
-                   (->> (sel :many entity# ~@forms)
-                        (map (fn [obj#]
-                               {(field1# obj#) (field2# obj#)}))
-                        (into {})))
-  :field->obj `(let [[entity# field#] ~entity]
-                 (->> (sel :many entity# ~@forms)
-                      (map (fn [obj#]
-                             {(field# obj#) obj#}))
-                      (into {})))
-  )
+(def ^:dynamic *sel-disable-logging* false)
 
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
