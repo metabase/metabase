@@ -1,18 +1,9 @@
+;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
             [clojure.java.browse :refer [browse-url]]
             [colorize.core :as color]
-            [medley.core :as medley]
-            [metabase.config :as config]
-            [metabase.db :as db]
-            (metabase.middleware [auth :as auth]
-                                 [log-api-call :refer :all]
-                                 [format :refer :all])
-            [metabase.models.user :refer [User]]
-            [metabase.routes :as routes]
-            [metabase.setup :as setup]
-            [metabase.task :as task]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -20,24 +11,41 @@
                                            wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])))
+                             [session :refer [wrap-session]])
+            [medley.core :as medley]
+            (metabase [config :as config]
+                      [db :as db]
+                      [routes :as routes]
+                      [setup :as setup]
+                      [task :as task])
+            (metabase.middleware [auth :as auth]
+                                 [log-api-call :refer :all]
+                                 [format :refer :all])
+            (metabase.models [setting :refer [defsetting]]
+                             [user :refer [User]])))
+
+;; ## CONFIG
+
+(defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
 
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
       (log-api-call :request :response)
-      format-response         ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      (wrap-json-body         ; extracts json POST body and makes it avaliable on request
+      format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
+      (wrap-json-body              ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params     ; converts string keys in :params to keyword keys
-      wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
-      auth/wrap-apikey        ; looks for a Metabase API Key on the request and assocs as :metabase-apikey
-      auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
-      wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
-      wrap-session            ; reads in current HTTP session and sets :session/key
-      wrap-gzip))             ; GZIP response if client can handle it
+      wrap-json-response           ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params          ; converts string keys in :params to keyword keys
+      wrap-params                  ; parses GET and POST params as :query-params/:form-params and both as :params
+      auth/bind-current-user       ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+      auth/wrap-current-user-id    ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
+      auth/wrap-api-key            ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
+      auth/wrap-session-id         ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      wrap-cookies                 ; Parses cookies in the request map and assocs as :cookies
+      wrap-session                 ; reads in current HTTP session and sets :session/key
+      wrap-gzip))                  ; GZIP response if client can handle it
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -52,10 +60,7 @@
                          setup-token)]
     (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
                            setup-url
-                           "\n\n"))
-    ;; Attempt to browse URL on user's system; this will just fail silently if we can't do it
-    ;(browse-url setup-url)
-    ))
+                           "\n\n"))))
 
 
 (defn init

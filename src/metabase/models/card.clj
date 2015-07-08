@@ -1,10 +1,8 @@
 (ns metabase.models.card
-  (:require [cheshire.core :as cheshire]
-            [korma.core :refer :all]
-            [metabase.api.common :refer [*current-user-id* org-perms-case]]
+  (:require [korma.core :refer :all, :exclude [defentity]]
+            [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :refer :all]
-            (metabase.models [common :refer :all]
-                             [org :refer [Org]]
+            (metabase.models [interface :refer :all]
                              [user :refer [User]])))
 
 (def ^:const display-types
@@ -20,20 +18,25 @@
     :table
     :timeseries})
 
+(defrecord CardInstance []
+  clojure.lang.IFn
+  (invoke [this k]
+    (get this k)))
+
+(extend-ICanReadWrite CardInstance :read :public-perms, :write :public-perms)
+
+
 (defentity Card
-  (table :report_card)
-  (types {:dataset_query          :json
-          :display                :keyword
-          :visualization_settings :json})
-  timestamped
-  (assoc :hydration-keys #{:card}))
+  [(table :report_card)
+   (hydration-keys card)
+   (types :dataset_query :json, :display :keyword, :visualization_settings :json)
+   timestamped]
 
-(defmethod post-select Card [_ {:keys [organization_id creator_id] :as card}]
-  (-> (assoc card
-             :creator      (delay (sel :one User :id creator_id))
-             :organization (delay (sel :one Org :id organization_id)))
-      assoc-permissions-sets))
+  (post-select [_ {:keys [creator_id] :as card}]
+    (map->CardInstance (assoc card :creator (delay (User creator_id)))))
 
-(defmethod pre-cascade-delete Card [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
-  (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id))
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
+    (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id)))
+
+(extend-ICanReadWrite CardEntity :read :public-perms, :write :public-perms)

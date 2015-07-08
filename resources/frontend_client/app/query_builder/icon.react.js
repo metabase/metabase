@@ -1,12 +1,13 @@
 'use strict';
-/* global ICON_PATHS */
 
-var Icon = React.createClass({
+import ICON_PATHS from 'metabase/icon_paths';
+
+export default React.createClass({
     displayName: 'Icon',
     getDefaultProps: function () {
        return {
-          width: 32,
-          height: 32,
+          width: '32px',
+          height: '32px',
           fill: 'currentcolor'
        };
     },

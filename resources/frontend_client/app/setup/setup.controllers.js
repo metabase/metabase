@@ -1,6 +1,6 @@
 'use strict';
 
-var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services', 'corvus.setup.services']);
+var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services', 'corvusadmin.settings.services', 'corvus.setup.services']);
 
 SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams', 'AppState',
     function($scope, $location, $routeParams, AppState) {
@@ -14,8 +14,8 @@ SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams',
     }
 ]);
 
-SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'Organization', 'User', 'AppState', 'Setup', 'Metabase', 'CorvusCore',
-    function($scope, $routeParams, $location, $timeout, ipCookie, Organization, User, AppState, Setup, Metabase, CorvusCore) {
+SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'User', 'AppState', 'Setup', 'SettingsAdminServices',
+    function($scope, $routeParams, $location, $timeout, ipCookie, User, AppState, Setup, SettingsAdminServices) {
         $scope.activeStep = "user";
         $scope.completedSteps = {
             user: false,
@@ -108,26 +108,13 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
             }
         }
 
-        function createOrUpdateOrg() {
-            // TODO - we need some logic to slugify the name specified.  can't have spaces, caps, etc.
-            if (AppState.model.currentOrg) {
-                return Organization.update({
-                    'id': AppState.model.currentOrg.id,
-                    'name': $scope.newUser.orgName,
-                    'slug': $scope.newUser.orgName
-                }).$promise;
-            } else {
-                return Organization.create({
-                    'name': $scope.newUser.orgName,
-                    'slug': $scope.newUser.orgName
-                }).$promise.then(function(org) {
-                    console.log('first org created', org);
-
-                    // switch the org
-                    // TODO - make sure this is up to snuff from a security standpoint
-                    AppState.switchOrg(org.slug);
-                });
-            }
+        function setSiteName() {
+            return SettingsAdminServices.put({
+                'key': 'site-name',
+                'value': $scope.newUser.siteName
+            }).$promise.then(function(success) {
+                // anything we need to do here?
+            });
         }
 
         $scope.createOrgAndUser = function() {
@@ -135,8 +122,7 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
             // NOTE: this should both create the user AND log us in and return a session id
             createOrUpdateUser().then(function() {
                 // now that we should be logged in and our session cookie is established, lets do the rest of the work
-                // create our first Organization
-                return createOrUpdateOrg();
+                return setSiteName();
             }).then(function() {
                 // reset error in case there were previous errors
                 $scope.error = null;

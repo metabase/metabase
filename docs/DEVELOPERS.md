@@ -9,20 +9,21 @@
 
 ## Build
 
-Install clojure + npm/bower requirements with
+Install clojure + npm requirements with
 
     lein deps
     lein npm
 
 Build the application JS and CSS with
 
-    lein gulp
+    lein webpack
 
 When developing the frontend client, you'll want to watch for changes,
-so run the default gulp task.
+so run webpack with the '-w' flag.
 
-    ./node_modules/gulp/bin/gulp.js
+    ./node_modules/webpack/bin/webpack.js -w
 
+Note that changes to CSS variables will only be picked up when webpack is restarted.
 
 ## Usage
 
@@ -76,12 +77,6 @@ You can update the GitHub pages documentation using
     make dox
 
 You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
-
-## Migration Summary
-
-    lein migration-summary
-
-Will give you a list of all tables + fields in the Metabase DB.
 
 ## Bootstrapping (for Development)
 
@@ -142,7 +137,7 @@ Once's this repo is made public, this Clojars badge will work and show the statu
 
 In general, we like to have an open issue for every pull request as a place to discuss the nature of any bug or proposed improvement. Each pull request should address a single issue, and contain both the fix as well as a description of how the pull request and tests that validate that the PR fixes the issue in question.
 
-For significant feature additions, it is expected that discussion will have taken place in the attached issue. Any feature that requires a major decision to be reached will need to have an explicit design document written. The goals of this document are to make explicit the assumptions, constraints and tradeoffs any given feature implementation will contain. The point is not to generate documentation but to allow discussion to reference a specific proposed design and to allow others to consider the implications of a given design. 
+For significant feature additions, it is expected that discussion will have taken place in the attached issue. Any feature that requires a major decision to be reached will need to have an explicit design document written. The goals of this document are to make explicit the assumptions, constraints and tradeoffs any given feature implementation will contain. The point is not to generate documentation but to allow discussion to reference a specific proposed design and to allow others to consider the implications of a given design.
 
 We don't like getting sued, so for every commit we require a Linux Kernel style developer certificate. If you agree to the below terms (from http://developercertificate.org/)
 

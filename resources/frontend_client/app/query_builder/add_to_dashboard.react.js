@@ -1,7 +1,12 @@
 'use strict';
-/*global cx, OnClickOutside, Popover, AddToDashboardPopover, SelectionModule, Icon, ReactCSSTransitionGroup*/
 
-var AddToDashboard = React.createClass({
+import AddToDashboardPopover from './add_to_dashboard_popover.react';
+import Icon from './icon.react';
+import Popover from './popover.react';
+
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+export default React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {
         card: React.PropTypes.object.isRequired,
@@ -34,6 +39,7 @@ var AddToDashboard = React.createClass({
                     <AddToDashboardPopover
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
+                        broadcastEventFn={this.props.broadcastEventFn}
                         closePopoverFn={this.toggleModal}
                     />
                 </Popover>
@@ -51,12 +57,10 @@ var AddToDashboard = React.createClass({
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
-                <a className="mx1" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
+                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
                     <Icon name='addtodash' />
                 </a>
-                <ReactCSSTransitionGroup transitionName="Transition-popover">
-                    {this.addToDash()}
-                </ReactCSSTransitionGroup>
+                {this.addToDash()}
             </span>
         );
     }

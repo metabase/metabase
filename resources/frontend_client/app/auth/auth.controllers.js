@@ -2,7 +2,6 @@
 /*jslint browser:true*/
 /*jslint devel:true */
 /*global _*/
-/*global $*/
 
 var AuthControllers = angular.module('corvus.auth.controllers', [
     'ipCookie',
@@ -57,8 +56,8 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
         };
 
         // do a quick check if the user is already logged in.  if so then send them somewhere better.
-        if (AppState.model.currentUser && AppState.model.currentUser.memberOf().length > 0) {
-            $location.path('/' + AppState.model.currentUser.memberOf()[0].slug + '/');
+        if (AppState.model.currentUser) {
+            $location.path('/');
         }
     }
 ]);

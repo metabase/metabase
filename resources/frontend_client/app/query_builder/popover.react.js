@@ -1,7 +1,7 @@
 'use strict';
-/*global document, cx, Tether*/
+/*global document, Tether*/
 
-var Popover = React.createClass({
+export default React.createClass({
     displayName: 'Popover',
 
     componentWillMount: function() {

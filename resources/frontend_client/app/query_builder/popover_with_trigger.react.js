@@ -1,7 +1,9 @@
 'use strict';
-/*global document, cx, PopoverContent, Tether*/
+/*global document, Tether*/
 
-var PopoverWithTrigger = React.createClass({
+import PopoverContent from './popover_content.react'
+
+export default React.createClass({
     displayName: 'PopoverWithTrigger',
 
     getInitialState: function() {
@@ -30,12 +32,14 @@ var PopoverWithTrigger = React.createClass({
     },
 
     componentWillUnmount: function() {
-        this._tether.destroy();
+        if (this._tether) {
+            this._tether.destroy();
+            this._tether = undefined;
+        }
         React.unmountComponentAtNode(this._popoverElement);
         if (this._popoverElement.parentNode) {
             this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
-        this._tether = undefined;
     },
 
     toggleModal: function() {

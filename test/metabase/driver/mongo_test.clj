@@ -9,8 +9,8 @@
             [metabase.driver.mongo.test-data :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test-data.data :refer [test-data]]
-            [metabase.test.data.datasets :as datasets]
+            (metabase.test.data [data :refer [test-data]]
+                                [datasets :as datasets])
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]]))
 
 ;; ## Logic for selectively running mongo
@@ -64,12 +64,6 @@
 
 ;; ## Tests for connection functions
 
-;; legacy
-(expect-when-testing-mongo true
-  (driver/can-connect? {:engine  :mongo
-                        :details {:conn_str "mongodb://localhost:27017/metabase-test"}}))
-
-;; new-style
 (expect-when-testing-mongo true
   (driver/can-connect? {:engine  :mongo
                         :details {:host   "localhost"
@@ -78,11 +72,14 @@
 
 (expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
-                        :details {:conn_str "mongodb://123.4.5.6/bad-db-name?connectTimeoutMS=50"}})) ; timeout after 50ms instead of 10s so test's don't take forever
+                        :details {:host   "123.4.5.6"
+                                  :dbname "bad-db-name"}}))
 
 (expect-when-testing-mongo false
   (driver/can-connect? {:engine :mongo
-                        :details {:conn_str "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}}))
+                        :details {:host   "localhost"
+                                  :port   3000
+                                  :dbname "bad-db-name"}}))
 
 (expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {}))
@@ -118,10 +115,10 @@
 
 ;; ### table->column-names
 (expect-when-testing-mongo
-    [#{:_id :name}
-     #{:_id :date :venue_id :user_id}
-     #{:_id :name :last_login}
-     #{:_id :name :longitude :latitude :price :category_id}]
+    [#{:_id :name}                                           ; categories
+     #{:_id :date :venue_id :user_id}                        ; checkins
+     #{:_id :name :last_login :password}                     ; users
+     #{:_id :name :longitude :latitude :price :category_id}] ; venues
   (->> table-names
        (map table-name->fake-table)
        (map table->column-names)))
@@ -149,10 +146,10 @@
 
 ;; ### active-column-names->type
 (expect-when-testing-mongo
-    [{"_id" :IntegerField, "name" :TextField}
-     {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}
-     {"_id" :IntegerField, "name" :TextField, "last_login" :DateField}
-     {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}]
+    [{"_id" :IntegerField, "name" :TextField}                                                                                                       ; categories
+     {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}                                                    ; checkins
+     {"_id" :IntegerField, "password" :TextField, "name" :TextField, "last_login" :DateField}                                                       ; users
+     {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
   (->> table-names
        (map table-name->fake-table)
        (mapv (partial i/active-column-names->type mongo/driver))))
@@ -169,29 +166,33 @@
 
 ;; Test that Tables got synced correctly, and row counts are correct
 (expect-when-testing-mongo
-    [{:rows 75, :active true, :name "categories"}
+    [{:rows 75,   :active true, :name "categories"}
      {:rows 1000, :active true, :name "checkins"}
-     {:rows 15, :active true, :name "users"}
-     {:rows 100, :active true, :name "venues"}]
+     {:rows 15,   :active true, :name "users"}
+     {:rows 100,  :active true, :name "venues"}]
   (sel :many :fields [Table :name :active :rows] :db_id @mongo-test-db-id (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
-    [[{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]
-     [{:special_type :id, :base_type :IntegerField, :name "_id"}
-      {:special_type :category, :base_type :DateField, :name "last_login"}
-      {:special_type :category, :base_type :TextField, :name "name"}]]
+    [[{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type nil,        :base_type :DateField,    :name "date"}
+      {:special_type :category,  :base_type :IntegerField, :name "user_id"}
+      {:special_type nil,        :base_type :IntegerField, :name "venue_id"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :category,  :base_type :DateField,    :name "last_login"}
+      {:special_type :category,  :base_type :TextField,    :name "name"}
+      {:special_type :category,  :base_type :TextField,    :name "password"}]
+     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
+      {:special_type :category,  :base_type :IntegerField, :name "category_id"}
+      {:special_type :latitude,  :base_type :FloatField,   :name "latitude"}
+      {:special_type :longitude, :base_type :FloatField,   :name "longitude"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}
+      {:special_type :category,  :base_type :IntegerField, :name "price"}]]
   (let [table->fields (fn [table-name]
                         (sel :many :fields [Field :name :base_type :special_type]
                              :active true
-                             :table_id (table-name->id :users)
+                             :table_id (sel :one :id Table :db_id @mongo-test-db-id, :name (name table-name))
                              (k/order :name)))]
     (map table->fields table-names)))

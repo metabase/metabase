@@ -6,12 +6,8 @@
             [colorize.core :as color]
             [korma.core :as korma]
             [korma.db :as kdb]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.context :as context]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])))
+            [metabase.driver.query-processor :as qp]))
 
 ;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
 (defn- db->connection-spec [database]
@@ -31,9 +27,6 @@
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
       (-db->korma-db (select-keys database [:engine :details])))))
-
-#_(defn db->korma-db [database]
-    (kdb/create-db (db->connection-spec database)))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -69,60 +62,16 @@
        ~@body)))
 
 (defn korma-entity
-  "Return a Korma entity for TABLE.
+  "Return a Korma entity for [DB and] TABLE .
 
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
-  [{:keys [name db] :as table}]
-  {:pre [(delay? db)]}
-  {:table name
-   :pk    :id
-   :db    (db->korma-db @db)})
-
-(defn table-id->korma-entity
-  "Lookup `Table` with TABLE-ID and return a korma entity that can be used in a korma form."
-  [table-id]
-  {:pre  [(integer? table-id)]
-   :post [(map? %)]}
-  (korma-entity (or (and (= (:id context/*table*) table-id)
-                         context/*table*)
-                    (sel :one Table :id table-id)
-                    (throw (Exception. (format "Table with ID %d doesn't exist!" table-id))))))
-
-(defn castify-field
-  "Wrap Field in a SQL `CAST` statement if needed (i.e., it's a `:DateTimeField`).
-
-    (castify :name :TextField)     -> :name
-    (castify :date :DateTimeField) -> (raw \"CAST(\"date\" AS DATE)"
-  [field-name field-base-type]
-  {:pre [(string? field-name)
-         (keyword? field-base-type)]}
-  ;; do we need to cast DateFields ? or just DateTimeFields ?
-  (if (contains? #{:DateField :DateTimeField} field-base-type) `(korma/raw ~(format "CAST(\"%s\" AS DATE)" field-name))
-      (keyword field-name)))
-
-(defn field-name+base-type->castified-key
-  "Like `castify-field`, but returns a keyword that should match the one returned in results."
-  [field-name field-base-type]
-  {:pre [(string? field-name)
-         (keyword? field-base-type)]
-   :post [(keyword? %)]}
-  (if (contains? #{:DateField :DateTimeField} field-base-type) (keyword (format "CAST(%s AS DATE)" field-name))
-      (keyword field-name)))
-
-(def field-id->kw
-  "Given a metabase `Field` ID, return a keyword for use in the Korma form (or a casted raw string for date fields)."
-  (memoize                         ; This can be memozied since the names and base_types of Fields never change
-   (fn [field-id]                   ; *  if a field is renamed the old field will just be marked as `inactive` and a new Field will be created
-     {:pre [(integer? field-id)]}  ; *  if a field's type *actually* changes we have no logic in driver.generic-sql.sync to handle that case any way (TODO - fix issue?)
-     (if-let [{field-name :name, field-type :base_type} (sel :one [Field :name :base_type] :id field-id)]
-       (castify-field field-name field-type)
-       (throw (Exception. (format "Field with ID %d doesn't exist!" field-id)))))))
-
-(def date-field-id?
-  "Does FIELD-ID correspond to a field that is a Date?"
-  (memoize        ; memoize since the base_type of a Field isn't going to change
-   (fn [field-id]
-     (contains? #{:DateField :DateTimeField}
-                (sel :one :field [Field :base_type] :id field-id)))))
+  ([{db-delay :db, :as table}]
+   {:pre [(delay? db-delay)]}
+   (korma-entity @db-delay table))
+  ([db {table-name :name}]
+   {:pre [(map? db)]}
+   {:table table-name
+    :pk    :id
+    :db    (db->korma-db db)}))

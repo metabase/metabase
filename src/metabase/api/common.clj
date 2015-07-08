@@ -8,6 +8,7 @@
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
             [metabase.db.internal :refer [entity->korma]]
+            [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password])
   (:import com.metabase.corvus.api.ApiException
@@ -27,44 +28,6 @@
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
-
-
-;;; ## GENERAL HELPER FNS / MACROS
-
-;; TODO - move this to something like `metabase.util.debug`
-(defmacro with-current-user
-  "Primarily for debugging purposes. Evaulates BODY as if `*current-user*` was the User with USER-ID."
-  [user-id & body]
-  `(binding [*current-user-id* ~user-id
-             *current-user* (delay (sel :one 'metabase.models.user/User :id ~user-id))]
-     ~@body))
-
-(defn current-user-perms-for-org
-  "TODO - A very similar implementation exists in `metabase.models`. Find some way to combine them."
-  [org-id]
-  (when *current-user-id*
-    (let [[{org-id :id
-            [{admin? :admin}] :org-perms}] (select (-> (entity->korma 'metabase.models.org/Org)                ; this is a complicated join but Org permissions checking
-                                                       (entity-fields [:id]))                                  ; is a very common case so optimization is worth it here
-                                                   (where {:id org-id})
-                                                   (with (-> (entity->korma 'metabase.models.org-perm/OrgPerm)
-                                                             (entity-fields [:admin]))
-                                                         (where {:organization_id org-id
-                                                                 :user_id *current-user-id*})))
-            superuser? (sel :one :field ['metabase.models.user/User :is_superuser] :id *current-user-id*)]
-      (check-404 org-id)
-      (cond
-        superuser?      :admin
-        admin?          :admin
-        (false? admin?) :default ; perm still exists but admin = false
-        :else           nil))))
-
-(defmacro org-perms-case
-  "Evaluates BODY inside a case statement based on `*current-user*`'s perms for Org with ORG-ID.
-   Case will be `nil`, `:default`, or `:admin`."
-  [org-id & body]
-  `(case (current-user-perms-for-org ~org-id)
-     ~@body))
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
@@ -338,7 +301,7 @@
   [symb value :nillable]
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
-         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb))))
+         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb)))) ; TODO - why aren't we re-throwing these exceptions ?
 
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
@@ -346,6 +309,15 @@
   (try (clojure.walk/keywordize-keys (json/parse-string value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
+
+(defannotation String->Boolean
+  "Param is converted from `\"true\"` or `\"false\"` to the corresponding boolean."
+  [symb value :nillable]
+  (cond
+    (= value "true")  true
+    (= value "false") false
+    (nil? value)      nil
+    :else             (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid boolean." value)))))
 
 (defannotation Integer
   "Param must be an integer (this does *not* cast the param)."
@@ -439,38 +411,26 @@
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 
 
-;; ## NEW PERMISSIONS CHECKING MACROS
-;; Since checking `@can_read`/`@can_write` is such a common pattern, these
-;; macros eliminate a bit of the redundancy around doing so.
-;; They support two forms:
-;;
-;;     (read-check my-table) ; checks @(:can_read my-table)
-;;     (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
-;;
-;; *  The first form is useful when you've already fetched an object (especially in threading forms such as `->404`).
-;; *  The second form takes care of fetching the object for you and is useful in cases where you won't need the object afterward
-;;    or want to combine the `sel` and permissions check statements into a single form.
-;;
-;; Both forms will throw a 404 if the object doesn't exist (saving you one more check!) and return the selected object.
-
-(defmacro read-check
-  "Checks that `@can_read` is true for this object."
+(defn read-check
+  "Check whether we can read an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
-      (check-403 @~'can_read)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-read? obj))
+   obj)
   ([entity id]
-   (if (= (name entity) "Org")
-     `(check-403 (current-user-perms-for-org ~id)) ; current-user-perms-for-org is faster, optimize this common usage
-     `(read-check (sel :one ~entity :id ~id)))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity)
+       (read-check (entity id)))))
 
-(defmacro write-check
-  "Checks that `@can_write` is true for this object."
+(defn write-check
+  "Check whether we can write an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
-      (check-403 @~'can_write)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-write? obj))
+   obj)
   ([entity id]
-   (if (= (name entity) "Org")
-     `(check-403 (= (current-user-perms-for-org ~id) :admin))
-     `(write-check (sel :one ~entity :id ~id)))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity) (models/can-write? entity id)
+       (write-check (entity id)))))

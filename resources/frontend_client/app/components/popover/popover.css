@@ -31,20 +31,39 @@
 	border-bottom: 10px solid transparent;
 }
 
-/* create a slightly larger arrow for border purposes */
-.PopoverBody--withArrow:before {
+/* create a slightly larger arrow on the top for border purposes */
+.tether-element-attached-top .PopoverBody--withArrow:before {
 	top: -20px;
 	border-bottom-color: #ddd;
 }
 
-/* create a smaller inset arrow */
-.PopoverBody:after {
+/* create a smaller inset arrow on the top */
+.tether-element-attached-top .PopoverBody--withArrow:after {
 	top: -18px;
 	border-bottom-color: #fff;
+}
+
+/* create a slightly larger arrow on the bottom for border purposes */
+.tether-element-attached-bottom .PopoverBody--withArrow:before {
+	bottom: -20px;
+	border-top-color: #ddd;
+}
+
+/* create a smaller inset arrow on the bottom */
+.tether-element-attached-bottom .PopoverBody--withArrow:after {
+	bottom: -18px;
+	border-top-color: #fff;
 }
 
 /* if the tether element is attached right, move our arrows right */
 .tether-target-attached-right .PopoverBody--withArrow:before,
 .tether-target-attached-right .PopoverBody--withArrow:after {
 	right: 12px;
+}
+
+/* if the tether element is attached center, move our arrows to the center */
+.tether-element-attached-center .PopoverBody--withArrow:before,
+.tether-element-attached-center .PopoverBody--withArrow:after {
+	margin-left: 50%;
+	left: -10px;
 }

@@ -1,16 +1,19 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [korma.core :refer :all]
-            [metabase.db :refer :all]
-            [metabase.util :as u]))
+            [korma.core :refer :all, :exclude [defentity]]
+            (metabase [db :refer :all]
+                      [util :as u])
+            [metabase.models.interface :refer :all]))
 
 ;; ## Entity + DB Multimethods
 
 (defentity FieldValues
-  (table :metabase_fieldvalues)
-  timestamped
-  (types {:human_readable_values :json
-          :values                :json}))
+  [(table :metabase_fieldvalues)
+   timestamped
+   (types :human_readable_values :json, :values :json)]
+
+  (post-select [_ field-values]
+    (update-in field-values [:human_readable_values] #(or % {}))))
 
 ;; columns:
 ;; *  :id
@@ -20,20 +23,18 @@
 ;; *  :values                 (JSON-encoded array like ["table" "scalar" "pie"])
 ;; *  :human_readable_values  (JSON-encoded map like {:table "Table" :scalar "Scalar"}
 
-(defmethod post-select FieldValues [_ field-values]
-  (update-in field-values [:human_readable_values] #(or % {}))) ; return an empty map for :human_readable_values in cases where it is nil
-
-
 ;; ## `FieldValues` Helper Functions
 
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type] :as field}]
-  {:pre [(contains? field :base_type)
+  [{:keys [base_type special_type field_type] :as field}]
+  {:pre [field_type
+         (contains? field :base_type)
          (contains? field :special_type)]}
-  (or (contains? #{:category :city :state :country} (keyword special_type))
-      (= (keyword base_type) :BooleanField)))
+  (and (not= (keyword field_type) :sensitive)
+       (or (contains? #{:category :city :state :country} (keyword special_type))
+           (= (keyword base_type) :BooleanField))))
 
 (def ^:private field-distinct-values
   (u/runtime-resolved-fn 'metabase.db.metadata-queries 'field-distinct-values))

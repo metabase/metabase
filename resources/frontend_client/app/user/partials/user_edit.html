@@ -1,28 +1,28 @@
-
-<form class="Form bordered rounded" name="accountSettings" ng-controller="AccountSettingsController as c" novalidate ng-submit="c.submit()" cv-form="c.accountSettingsUser">
-    <div class="Form-group clearfix">
-        <div class="float-left half" cv-error-flag="first_name">
-            <label class="my1 block full" for="first_name">First Name</label>
-            <input class="input block full" ng-model="c.accountSettingsUser.first_name" type="text" name="first_name" placeholder="First Name">
-            <fielderrors for="first_name"></fielderrors>
+<div ng-controller="AccountSettingsController">
+    <form class="Form-new bordered rounded shadowed" name="form" novalidate>
+        <div class="Form-field" mb-form-field="first_name">
+            <mb-form-label display-name="First name" field-name="first_name"></mb-form-label>
+            <input class="Form-input Form-offset full" name="first_name" placeholder="John" ng-model="editUser.first_name" required autofocus />
+            <span class="Form-charm"></span>
         </div>
 
-        <div class="float-left half" cv-error-flag="last_name">
-            <label class="my1 block full" for="last_name">Last Name</label>
-            <input class="input block full" ng-model="c.accountSettingsUser.last_name" type="text" name="last_name" placeholder="Last Name">
-            <fielderrors for="last_name"></fielderrors>
+        <div class="Form-field" mb-form-field="last_name">
+            <mb-form-label display-name="Last name" field-name="last_name"></mb-form-label>
+            <input class="Form-input Form-offset full" name="last_name" placeholder="Doe" ng-model="editUser.last_name" required />
+            <span class="Form-charm"></span>
         </div>
-    </div>
-    <div class="Form-group" cv-error-flag="email">
-        <label class="my1 block" for="email">E-Mail</label>
-        <input class="input block full" ng-model="c.accountSettingsUser.email" type="email" name="email" placeholder="E-Mail" required>
-        <fielderrors for="email"></fielderrors>
-    </div>
 
-    <div class="Form-group border-top">
-        <button type="submit" class="Button Button--primary" ng-disabled="!form.$dirty || form.$invalid">Save</button>
-        <button type="button" class="Button" cv-reset-button ng-disabled="!form.$dirty">Reset</button>
-    </div>
+        <div class="Form-field" mb-form-field="email">
+            <mb-form-label display-name="Email" field-name="email"></mb-form-label>
+            <input class="Form-input Form-offset full" name="email" placeholder="johndoe@mycompany.com" ng-model="editUser.email" required />
+            <span class="Form-charm"></span>
+        </div>
 
-    <div cv-form-status></div>
-</form>
+        <div class="Form-actions">
+            <button class="Button" ng-class="{'Button--primary': form.$valid}" ng-click="save(editUser)" ng-disabled="!form.$valid">
+                Save
+            </button>
+            <mb-form-message></mb-form-message>
+        </div>
+    </form>
+</div>

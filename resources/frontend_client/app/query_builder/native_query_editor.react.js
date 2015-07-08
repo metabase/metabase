@@ -1,7 +1,10 @@
 'use strict';
-/*global ace, RunButton, SelectionModule, DatabaseSelector*/
+/*global ace*/
 
-var NativeQueryEditor = React.createClass({
+import RunButton from './run_button.react';
+import DatabaseSelector from './database_selector.react';
+
+export default React.createClass({
     displayName: 'NativeQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,
@@ -129,17 +132,19 @@ var NativeQueryEditor = React.createClass({
 
         return (
             <div className="QueryBuilder-section border-bottom">
-                <div id="id_sql" className="Query-section bordered mt4"></div>
-                <div className="py2 clearfix">
-                    <div className="float-right">
-                        <RunButton
-                            canRun={this.canRunQuery()}
-                            isRunning={this.props.isRunning}
-                            runFn={this.runQuery}
-                        />
-                    </div>
-                    <div className="float-left">
-                        {dbSelector}
+                <div className="wrapper">
+                    <div id="id_sql" className="Query-section bordered mt2"></div>
+                    <div className="py2 clearfix">
+                        <div className="float-right">
+                            <RunButton
+                                canRun={this.canRunQuery()}
+                                isRunning={this.props.isRunning}
+                                runFn={this.runQuery}
+                            />
+                        </div>
+                        <div className="float-left">
+                            {dbSelector}
+                        </div>
                     </div>
                 </div>
             </div>

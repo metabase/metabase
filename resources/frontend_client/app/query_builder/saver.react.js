@@ -1,11 +1,17 @@
 'use strict';
-/*global cx, OnClickOutside, FormField, SelectionModule*/
 
-var Saver = React.createClass({
+import OnClickOutside from 'react-onclickoutside';
+
+import FormField from './form_field.react';
+
+var cx = React.addons.classSet;
+
+export default React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,
-        saveFn: React.PropTypes.func.isRequired
+        saveFn: React.PropTypes.func.isRequired,
+        deleteFn: React.PropTypes.func
     },
     mixins: [OnClickOutside],
 
@@ -79,6 +85,19 @@ var Saver = React.createClass({
         });
     },
 
+    renderCardDelete: function () {
+        if(this.props.canDelete) {
+           return (
+                <div className="Form-field">
+                    <label className="Form-label Form-offset mb1"><span>Danger zone</span>:</label>
+                    <label className="Form-offset">
+                        <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                    </label>
+                </div>
+           )
+        }
+    },
+
     renderCardSaveForm: function() {
         if (!this.state.modalOpen) {
             return false;
@@ -87,8 +106,7 @@ var Saver = React.createClass({
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Others can read</option>),
-            (<option key="2" value={2}>Others can modify</option>)
+            (<option key="1" value={1}>Public (others can read)</option>)
         ];
 
         var formError;
@@ -140,12 +158,13 @@ var Saver = React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms" defaultValue={this.props.card.public_perms}>
+                        <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
                             {privacyOptions}
                         </select>
                     </label>
                 </FormField>
 
+                {this.renderCardDelete()}
                 <div className="Form-actions">
                     <button className={buttonClasses}>
                         {this.props.saveButtonText}

@@ -4,7 +4,6 @@
             (metabase.api [card :as card]
                           [dash :as dash]
                           [notify :as notify]
-                          [org :as org]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -16,18 +15,13 @@
                                [table :as table])
             [metabase.middleware.auth :as auth]))
 
-(defn- +apikey
+(def ^:private +apikey
   "Wrap API-ROUTES so they may only be accessed with proper apikey credentials."
-  [api-routes]
-  (-> api-routes
-      auth/enforce-apikey))
+  auth/enforce-api-key)
 
-(defn- +auth
+(def ^:private +auth
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
-  [api-routes]
-  (-> api-routes
-      auth/bind-current-user
-      auth/enforce-authentication))
+  auth/enforce-authentication)
 
 (defroutes routes
   (context "/card"         [] (+auth card/routes))
@@ -38,7 +32,6 @@
   (context "/meta/field"   [] (+auth field/routes))
   (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
-  (context "/org"          [] (+auth org/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)

@@ -5,7 +5,7 @@
             (metabase.models [setting :as setting])))
 
 (defendpoint GET "/"
-  "Get all `Settings` and their values. You must be a superuser to do this."
+  "Get all `Settings` and their values. Superusers get all settings, normal users get public settings only."
   []
   (check-superuser)
   (setting/all-with-descriptions))

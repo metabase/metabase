@@ -1,17 +1,14 @@
 (ns metabase.driver.sync.queries
   "Predefined QP queries that can be used to get metadata for syncing."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.context :as context]))
+  (:require [metabase.driver :as driver]))
 
 (defn- qp-query [table query-dict]
-  (binding [context/*table* table
-            context/*database* @(:db table)]
-    (-> (driver/process-query {:database (:db_id table)
-                               :type "query"
-                               :query (assoc query-dict
-                                             :source_table (:id table))})
-        :data
-        :rows)))
+  (-> (driver/process-query {:database (:db_id table)
+                             :type "query"
+                             :query (assoc query-dict
+                                           :source_table (:id table))})
+      :data
+      :rows))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."
