@@ -3,7 +3,6 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
@@ -49,7 +48,7 @@
           (doseq [[table-name table-id] table-name->id]
             (when-not (contains? active-table-names table-name)
               (upd Table table-id :active false)
-              (log/info (format "Marked table %s.%s as inactive." (:name database) table-name))
+              (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
 
               ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
               (k/update Field
@@ -62,7 +61,7 @@
             (doseq [active-table-name active-table-names]
               (when-not (contains? existing-table-names active-table-name)
                 (ins Table :db_id (:id database), :active true, :name active-table-name)
-                (log/info (format "Found new table: %s.%s" (:name database) active-table-name))))))
+                (log/info (u/format-color 'blue "Found new table: %s.%s" (:name database) active-table-name))))))
 
         ;; Now sync the active tables
         (log/debug "Syncing active tables...")
@@ -70,7 +69,7 @@
              (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
              (sync-database-active-tables! driver))
 
-        (log/info (u/format-color 'blue "Finished syncing %s database %s." (name (:engine database)) (:name database)))))))
+        (log/info (u/format-color 'magenta "Finished syncing %s database %s." (name (:engine database)) (:name database)))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
@@ -93,18 +92,18 @@
   [driver active-tables]
   ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
   ;; going to block while they run for the time being. (TODO - fix this)
-  (log/debug (color/green "Updating table row counts..."))
+  (log/debug "Updating table row counts...")
   (doseq [table active-tables]
     (u/try-apply update-table-row-count! table))
 
   ;; Next, create new Fields / mark inactive Fields / mark PKs for each table
   ;; (TODO - this was originally done in parallel but it was only marginally faster, and harder to debug. Should we switch back at some point?)
-  (log/debug (color/green "Syncing active Fields + PKs..."))
+  (log/debug "Syncing active fields + PKs...")
   (doseq [table active-tables]
     (u/try-apply sync-table-active-fields-and-pks! driver table))
 
   ;; Once that's finished, we can sync FKs
-  (log/debug (color/green "Syncing FKs..."))
+  (log/debug "Syncing FKs...")
   (doseq [table active-tables]
     (u/try-apply sync-table-fks! driver table))
 
@@ -113,10 +112,10 @@
   (let [tables-count (count active-tables)
         finished-tables-count (atom 0)]
     (doseq [table active-tables]
-      (log/debug (color/green (format "Syncing metadata for %s.%s..." (:name @(:db table)) (:name table))))
+      (log/debug (format "Syncing metadata for table %s.%s..." (:name @(:db table)) (:name table)))
       (sync-table-fields-metadata! driver table)
       (swap! finished-tables-count inc)
-      (log/info (color/blue (format "Synced %s.%s (%d/%d)" (:name @(:db table)) (:name table) @finished-tables-count tables-count))))))
+      (log/info (u/format-color 'magenta "Synced %s.%s (%d/%d)" (:name @(:db table)) (:name table) @finished-tables-count tables-count)))))
 
 
 ;; ## sync-table steps.
@@ -132,7 +131,7 @@
       (when-not (= (:rows table) table-row-count)
         (upd Table (:id table) :rows table-row-count)))
     (catch Throwable e
-      (log/error (color/red (format "Unable to update row_count for %s: %s" (:name table) (.getMessage e)))))))
+      (log/error (u/format-color 'red "Unable to update row_count for %s: %s" (:name table) (.getMessage e))))))
 
 
 ;; ### 2) sync-table-active-fields-and-pks!
@@ -143,7 +142,7 @@
   {:pre [(set? pk-fields)
          (every? string? pk-fields)]}
   (doseq [{field-name :name field-id :id} (sel :many :fields [Field :name :id], :table_id (:id table), :special_type nil, :name [in pk-fields], :parent_id nil)]
-    (log/info (format "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
+    (log/info (u/format-color 'green "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
     (upd Field field-id :special_type :id)))
 
 (defn sync-table-active-fields-and-pks!
@@ -164,12 +163,13 @@
         (doseq [[field-name field-id] existing-field-name->id]
           (when-not (contains? active-column-names field-name)
             (upd Field field-id :active false)
-            (log/info (format "Marked field %s.%s.%s as inactive." (:name database) (:name table) field-name)))))
+            (log/info (u/format-color 'cyan "Marked field %s.%s.%s as inactive." (:name database) (:name table) field-name)))))
 
       ;; Next, create new Fields as needed
       (let [existing-field-names (set (keys existing-field-name->id))]
         (doseq [[active-field-name active-field-type] active-column-names->type]
           (when-not (contains? existing-field-names active-field-name)
+            (log/info (u/format-color 'blue "Found new field: '%s.%s'" (:name table) active-field-name))
             (ins Field
               :table_id  (:id table)
               :name      active-field-name
@@ -299,7 +299,7 @@
       (assert (>= percent-urls 0.0))
       (assert (<= percent-urls 100.0))
       (when (> percent-urls percent-valid-url-threshold)
-        (log/info (format "Field '%s.%s' is %d%% URLs. Marking it as a URL." (:name @(:table field)) (:name field) (int (math/round (* 100 percent-urls)))))
+        (log/info (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
         (upd Field (:id field) :special_type :url)
         (assoc field :special_type :url)))))
 
@@ -317,7 +317,7 @@
     (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
       (when (and (> cardinality 0)
                  (< cardinality low-cardinality-threshold))
-        (log/info (format "Field '%s.%s' has %d unique values. Marking it as a category." (:name @(:table field)) (:name field) cardinality))
+        (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
         (upd Field (:id field) :special_type :category)
         (assoc field :special_type :category)))))
 
@@ -352,7 +352,7 @@
     (let [avg-len (field-avg-length driver field)]
       (assert (integer? avg-len) "field-avg-length should return an integer.")
       (when (> avg-len average-length-no-preview-threshold)
-        (log/info (format "Field '%s.%s' has an average length of %d. Not displaying it in previews." (:name @(:table field)) (:name field) avg-len))
+        (log/info (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
         (upd Field (:id field) :preview_display false)
         (assoc field :preview_display false)))))
 
@@ -428,8 +428,8 @@
   [field]
   (when-not (:special_type field)
     (when-let [[pattern _ special-type] (field->name-inferred-special-type field)]
-      (log/info (format "%s '%s.%s' matches '%s'. Setting special_type to '%s'."
-                        (name (:base_type field)) (:name @(:table field)) (:name field) pattern (name special-type)))
+      (log/info (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
+                                (name (:base_type field)) @(:qualified-name field) pattern (name special-type)))
       (upd Field (:id field) :special_type special-type)
       (assoc field :special_type special-type))))
 
@@ -438,16 +438,16 @@
   (when (and (= (:base_type field) :DictionaryField)
              (supports? driver :nested-fields)                 ; if one of these is true
              (satisfies? ISyncDriverFieldNestedFields driver)) ; the other should be :wink:
-    (let [nested-field-name->type (active-nested-field-name->type driver field)]
-      (log/info (u/format-color 'green "Syncing subfields for '%s.%s': %s"  (:name @(:table field)) (:name field) (keys nested-field-name->type)))
+    (log/info (format "Syncing nested fields for '%s'..."  @(:qualified-name field)))
 
+    (let [nested-field-name->type (active-nested-field-name->type driver field)]
       ;; fetch existing nested fields
       (let [existing-nested-field-name->id (sel :many :field->id [Field :name], :table_id (:table_id field), :active true, :parent_id (:id field))]
 
         ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
         (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
           (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
-            (log/info (format "Marked nested field %s.%s as inactive." @(:qualified-name field) nested-field-name))
+            (log/info (u/format-color 'cyan "Marked nested field %s.%s as inactive." @(:qualified-name field) nested-field-name))
             (upd Field nested-field-id :active false)))
 
         ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
