@@ -205,7 +205,7 @@ export default React.createClass({
         if (this.props.card.id) {
             cloneButton = (
                 <span className="mx1 text-grey-4 text-brand-hover">
-                    <Icon name='clone' width="18px" height="18px" onClick={this.cloneCard}></Icon>
+                    <Icon name='clone' onClick={this.cloneCard}></Icon>
                 </span>
             );
         }
