@@ -433,7 +433,7 @@ CardControllers.controller('CardDetail', [
                 headerModel.downloadLink = null;
             }
 
-            React.render(new QueryHeader(headerModel), document.getElementById('react_qb_header'));
+            React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
         };
 
         function renderEditor() {
@@ -447,9 +447,9 @@ CardControllers.controller('CardDetail', [
             editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
             if (card.dataset_query && card.dataset_query.type === "native") {
-                React.render(new NativeQueryEditor(editorModel), document.getElementById('react_qb_editor'));
+                React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             } else {
-                React.render(new GuiQueryEditor(editorModel), document.getElementById('react_qb_editor'));
+                React.render(<GuiQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             }
         };
 
@@ -461,7 +461,7 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 
-            React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
+            React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         };
 
         function renderAll() {
