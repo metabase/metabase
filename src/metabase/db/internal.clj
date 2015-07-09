@@ -137,6 +137,17 @@
          f2# ~f2]
      (sel:field->field* f1# f2# (sel* [~entity f1# f2#] ~@forms))))
 
+;;; :field->fields
+
+(defn sel:field->fields* [key-field other-fields results]
+  (into {} (for [result results]
+             {(key-field result) (select-keys result other-fields)})))
+
+(defmacro sel:field->fields [[entity key-field & other-fields] & forms]
+  `(let [key-field# ~key-field
+         other-fields# ~(vec other-fields)]
+     (sel:field->fields* key-field# other-fields# (sel* `[~~entity ~key-field# ~@other-fields#] ~@forms))))
+
 ;;; : id->field
 
 (defmacro sel:id->field [[entity field] & forms]

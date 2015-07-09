@@ -132,8 +132,7 @@
                               (sort-by second)                  ; source by count
                               last                              ; take last item (highest count)
                               first                             ; keep just the type
-                              (#(or (driver/class->base-type %) ; convert to corresponding Field base_type if possible
-                                    :UnknownField)))))))))      ; fall back to :UnknownField for things like clojure.lang.PersistentVector
+                              driver/class->base-type)))))))    ; get corresponding Field base_type
 
 (def driver
   "Concrete instance of the MongoDB driver."

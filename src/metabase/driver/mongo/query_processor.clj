@@ -213,9 +213,9 @@
    is present, this is essentialy a separate implementation :/"
   [{aggregation :aggregation, breakout-fields :breakout, order-by :order-by, limit :limit, :as query}]
   (let [;; Shadow the top-level definition of field->name with one that will use "___" as the separator instead of "."
-        field->name          (u/rpartial field->name "___")
+        field->escaped-name  (u/rpartial field->name "___")
         [ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
-        fields               (map field->name breakout-fields)
+        fields               (map field->escaped-name breakout-fields)
         $fields              (map field->$str breakout-fields)
         fields->$fields      (zipmap fields $fields)]
     `(ag-unescape-nested-field-names
@@ -228,7 +228,7 @@
                                                {field {$first $field}}))))}
                   {$sort    (->> order-by
                                  (mapcat (fn [{:keys [field direction]}]
-                                           [(field->name field) (case direction
+                                           [(field->escaped-name field) (case direction
                                                                   :ascending   1
                                                                   :descending -1)]))
                                  (apply sorted-map))}

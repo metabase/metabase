@@ -90,12 +90,11 @@
            ;; nil)
            (take 1000)
            (group-by type)
-           ;; create tuples like [Integer -count]. Make count negative so when we call (sort-by second) in the next step the rows
-           ;; with the highest count will be returned first (e.g. [Integer -100] will be sorted ahead of [Float -20])
+           ;; create tuples like [Integer count].
            (map (fn [[klass valus]]
-                  [klass (- 0 (count valus))]))
+                  [klass (count valus)]))
            (sort-by second)
-           first
-           first
-           driver/class->base-type)
+           last                     ; last result will be tuple with highest count
+           first                    ; keep just the type
+           driver/class->base-type) ; convert to Field base_type
       :UnknownField))

@@ -151,8 +151,8 @@
   (let [database @(:db table)]
     ;; Now do the syncing for Table's Fields
     (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
-    (let [active-column-names->type (active-column-names->type driver table)
-          existing-field-name->id   (sel :many :field->id [Field :name], :table_id (:id table), :active true, :parent_id nil)]
+    (let [active-column-names->type  (active-column-names->type driver table)
+          existing-field-name->field (sel :many :field->fields [Field :name :base_type :id], :table_id (:id table), :active true, :parent_id nil)]
 
       (assert (map? active-column-names->type) "active-column-names->type should return a map.")
       (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
@@ -160,20 +160,27 @@
 
       ;; As above, first mark inactive Fields
       (let [active-column-names (set (keys active-column-names->type))]
-        (doseq [[field-name field-id] existing-field-name->id]
+        (doseq [[field-name {field-id :id}] existing-field-name->field]
           (when-not (contains? active-column-names field-name)
             (upd Field field-id :active false)
             (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
-      ;; Next, create new Fields as needed
-      (let [existing-field-names (set (keys existing-field-name->id))]
+      ;; Create new Fields, update existing types if needed
+      (let [existing-field-names (set (keys existing-field-name->field))]
         (doseq [[active-field-name active-field-type] active-column-names->type]
-          (when-not (contains? existing-field-names active-field-name)
-            (log/info (u/format-color 'blue "Found new field: '%s.%s'" (:name table) active-field-name))
-            (ins Field
-              :table_id  (:id table)
-              :name      active-field-name
-              :base_type active-field-type))))
+          ;; If Field doesn't exist create it
+          (if-not (contains? existing-field-names active-field-name)
+            (do (log/info (u/format-color 'blue "Found new field: '%s.%s'" (:name table) active-field-name))
+                (ins Field
+                  :table_id  (:id table)
+                  :name      active-field-name
+                  :base_type active-field-type))
+            ;; Otherwise update the Field type if needed
+            (let [{existing-base-type :base_type, existing-field-id :id} (existing-field-name->field active-field-name)]
+              (when-not (= active-field-type existing-base-type)
+                (log/info (u/format-color 'blue "Field '%s.%s' has changed from a %s to a %s." (:name table) active-field-name existing-base-type active-field-type))
+                (upd Field existing-field-id :base_type active-field-type))))))
+      ;; TODO - we need to add functionality to update nested Field base types as well!
 
       ;; Now mark PK fields as such if needed
       (let [pk-fields (table-pks driver table)]

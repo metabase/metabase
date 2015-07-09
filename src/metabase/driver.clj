@@ -32,22 +32,26 @@
               :name    "MongoDB"
               :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
 
-(def ^:const class->base-type
-  "Map of classes returned from DB call to metabase.models.field/base-types"
-  {clojure.lang.PersistentArrayMap :DictionaryField ; are there other map types we need to account for ?
-   Boolean                         :BooleanField
-   Double                          :FloatField
-   Float                           :FloatField
-   Integer                         :IntegerField
-   Long                            :IntegerField
-   String                          :TextField
-   java.math.BigDecimal            :DecimalField
-   java.math.BigInteger            :BigIntegerField
-   java.sql.Date                   :DateField
-   java.sql.Timestamp              :DateTimeField
-   java.util.Date                  :DateField
-   java.util.UUID                  :TextField
-   org.postgresql.util.PGobject    :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
+(defn class->base-type
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  [klass]
+  (or ({Boolean                         :BooleanField
+        Double                          :FloatField
+        Float                           :FloatField
+        Integer                         :IntegerField
+        Long                            :IntegerField
+        String                          :TextField
+        java.math.BigDecimal            :DecimalField
+        java.math.BigInteger            :BigIntegerField
+        java.sql.Date                   :DateField
+        java.sql.Timestamp              :DateTimeField
+        java.util.Date                  :DateField
+        java.util.UUID                  :TextField
+        org.postgresql.util.PGobject    :UnknownField} klass)
+      (cond
+        (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
+      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
+          :UnknownField)))
 
 ;; ## Driver Lookup
 
