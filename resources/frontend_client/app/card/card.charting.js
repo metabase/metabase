@@ -311,9 +311,10 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
             xAxis.tickValues(visibleKeys);
         }
+        xAxis.tickFormat((d) => d == null ? '[unset]' : d);
     } else {
         xAxis.ticks(0);
-        xAxis.tickFormat(function(d) { return ""; });
+        xAxis.tickFormat('');
     }
 
     chart.x(d3.scale.ordinal().domain(keys))
@@ -799,6 +800,9 @@ export var CardRenderer = {
                             var index = _.indexOf(keys, d.key);
                             return settings.pie.colors[index % settings.pie.colors.length];
                         })
+                        .label(function(row) {
+                            return row.key == null ? '[unset]' : row.key;
+                        })
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
@@ -806,6 +810,8 @@ export var CardRenderer = {
                             return d.key + ': ' + d.value + ' (' + percent + '%)';
                         });
 
+            // disables ability to select slices
+            chart.filter = function() {};
 
         applyChartTooltips(chart, card, result.cols);
 
