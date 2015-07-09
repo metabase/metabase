@@ -423,7 +423,7 @@ CardControllers.controller('CardDetail', [
 
         // =====  REACT render functions
 
-        var renderHeader = function() {
+        function renderHeader() {
             // ensure rendering model is up to date
             headerModel.card = angular.copy(card);
 
@@ -436,7 +436,7 @@ CardControllers.controller('CardDetail', [
             React.render(new QueryHeader(headerModel), document.getElementById('react_qb_header'));
         };
 
-        var renderEditor = function() {
+        function renderEditor() {
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.databases = databases;
@@ -453,7 +453,7 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        var renderVisualization = function() {
+        function renderVisualization() {
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
@@ -464,7 +464,7 @@ CardControllers.controller('CardDetail', [
             React.render(new QueryVisualization(visualizationModel), document.getElementById('react_qb_viz'));
         };
 
-        var renderAll = function() {
+        function renderAll() {
             renderHeader();
             renderEditor();
             renderVisualization();
@@ -473,7 +473,7 @@ CardControllers.controller('CardDetail', [
 
         // =====  Local helper functions
 
-        var isObjectDetailQuery = function(card, data) {
+        function isObjectDetailQuery(card, data) {
             var response = false;
 
             // "rows" type query w/ an '=' filter against the PK column
@@ -516,12 +516,12 @@ CardControllers.controller('CardDetail', [
             return response;
         };
 
-        var markupTableMetadata = function(table) {
+        function markupTableMetadata(table) {
             var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
         };
 
-        var resetCardQuery = function(mode) {
+        function resetCardQuery(mode) {
             var queryTemplate = angular.copy(newQueryTemplates[mode]);
             if (queryTemplate) {
 
@@ -544,7 +544,7 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        var loadCardAndRender = function(cardId, cloning) {
+        function loadCardAndRender(cardId, cloning) {
             Card.get({
                 'cardId': cardId
             }, function (result) {
@@ -587,7 +587,7 @@ CardControllers.controller('CardDetail', [
         };
 
         // meant to be called once on controller startup
-        var initAndRender = function() {
+        function initAndRender() {
             if ($routeParams.cardId) {
                 loadCardAndRender($routeParams.cardId, false);
 
