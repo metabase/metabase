@@ -222,19 +222,19 @@
 (defn- order-cols
   "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
    FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
-  [{{breakout-fields :breakout, fields-fields :fields, fields-is-implicit :fields-is-implicit} :query} results fields]
-  {:post [(= (set %)
-             (set (keys (first results))))]}
-  (let [;; TODO - This function was written before the advent of the expanded query it is designed to work with Field IDs rather than expanded forms
-        ;; Since this logic is delicate I've side-stepped the issue by converting the expanded Fields back to IDs for the time being.
-        ;; We should carefully re-work this function to use expanded Fields so we don't need the complicated logic below to fetch their names
+  [{{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, fields-fields :fields, fields-is-implicit :fields-is-implicit} :query} results fields]
+  (let [;; Get all the column name keywords returned by the results
+        result-kws       (set (keys (first results)))
+        valid-kw?        (partial contains? result-kws)
+
         breakout-ids     (map :field-id breakout-fields)
 
-        breakout-kws     (for [field breakout-fields]
-                           (->> (rest (expand/qualified-name-components field)) ; TODO - this "qualified name for results" should be calculated in the Query expander
-                                (interpose ".")
-                                (apply str)
-                                keyword))
+        breakout-kws     (->> (for [field breakout-fields]
+                                (->> (rest (expand/qualified-name-components field)) ; TODO - this "qualified name for results" should be calculated in the Query expander
+                                     (interpose ".")
+                                     (apply str)
+                                     keyword))
+                              (filter valid-kw?))
 
         fields-ids       (map :field-id fields-fields)
 
@@ -259,9 +259,6 @@
                               (filter (complement (partial contains? (set breakout-ids))))
                               distinct)
 
-        ;; Get all the column name keywords returned by the results
-        result-kws       (set (keys (first results)))
-
         ;; Make a helper function that will take a sequence of Field IDs and convert them to corresponding column name keywords.
         ;; Don't include names that aren't part of RESULT-KWS: we fetch *all* the Fields for a Table regardless of the Query, so
         ;; there are likely some unused ones.
@@ -269,26 +266,34 @@
                            (some->> (map field-id->field field-ids)
                                     (map :name)
                                     (map keyword)
-                                    (filter (partial contains? result-kws))))
+                                    (filter valid-kw?)))
 
         ;; Use fn above to get the keyword column names of other non-aggregation fields [#3 and #4]
         non-breakout-kws (ids->kws non-breakout-ids)
 
-        ;; Now get all the keyword column names specific to aggregation, such as :sum or :count [#2].
-        ;; Just get all the items in RESULT-KWS that *aren't* part of BREAKOUT-KWS or NON-BREAKOUT-KWS
-        ag-kws           (->> result-kws
-                              ;; TODO - Currently, this will never be more than a single Field, since we only
-                              ;; support a single aggregation clause at this point. When we add support for
-                              ;; multiple aggregation clauses, we'll need to add some logic to make sure they're
-                              ;; being ordered correctly, e.g. the first aggregate column before the second, etc.
-                              (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
-    (assert (<= (count ag-kws) 1)
-      (format "Invalid number of aggregate columns: %d" (count ag-kws)))
+        ;; Get the aggregate column if any
+        ag-kws           (when (and ag-type
+                                    (not= ag-type :rows))
+                           (let [ag (if (= ag-type :distinct) :count
+                                        ag-type)]
+                             [ag]))
+
+        ;; Collect all other Fields
+        other-kws        (->> result-kws
+                              (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws ag-kws)))))
+                              sort)] ; sort by name so results are deterministic
+
+    (when (seq other-kws)
+      (log/warn (u/format-color 'red "Warning: not 100%% sure how to order these columns: %s" (vec other-kws))))
 
     ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
     (when-not *disable-qp-logging*
-      (log/debug (u/format-color 'magenta "Using this ordering: breakout: %s, ag: %s, other: %s" (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws))))
-    (concat breakout-kws ag-kws non-breakout-kws)))
+      (log/debug (u/format-color 'magenta "Using this ordering: breakout: %s, ag: %s, non-breakout: %s, other: %s"
+                                 (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws) (vec other-kws))))
+    (let [ordered-kws (concat breakout-kws ag-kws non-breakout-kws other-kws)]
+      (assert (= (set ordered-kws) result-kws)
+        (format "Order-cols returned invalid results: expected %s, got %s" result-kws (set ordered-kws)))
+      ordered-kws)))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."

@@ -912,22 +912,22 @@
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
 (datasets/expect-with-datasets #{:h2 :postgres}
-  [["In the Park" 772]
-   ["Working at a Pet Store" 894]
-   ["At the Airport" 684]
-   ["At a Restaurant" 199]
-   ["Working as a Limo Driver" 33]
-   ["At Starbucks" 902]
-   ["On TV" 927]
-   ["At a Restaurant" 996]
-   ["Wearing a Biggie Shirt" 897]
-   ["In the Expa Office" 499]]
-  (->> (query-with-temp-db defs/tupac-sightings
-         :source_table &sightings:id
-         :fields       [&sightings.id:id ["fk->" &sightings.category_id:id &categories.name:id]]
-         :order_by     [[&sightings.timestamp:id "descending"]]
-         :limit        10)
-       :data :rows))
+  [[772 "In the Park"]
+   [894 "Working at a Pet Store"]
+   [684 "At the Airport"]
+   [199 "At a Restaurant"]
+   [33 "Working as a Limo Driver"]
+   [902 "At Starbucks"]
+   [927 "On TV"]
+   [996 "At a Restaurant"]
+   [897 "Wearing a Biggie Shirt"]
+   [499 "In the Expa Office"]]
+  (Q run against tupac-sightings
+     return :data :rows
+     of sightings
+     fields id category_id->categories.name
+     order timestamp-
+     lim 10))
 
 
 ;; 1. Check that we can order by Foreign Keys
