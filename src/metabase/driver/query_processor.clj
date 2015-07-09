@@ -393,7 +393,7 @@
                                                  (for [row results]
                                                    (m/map-keys uncastify-fn row)))
           _                              (when-not *disable-qp-logging*
-                                           (log/debug (u/format-color 'magenta "\nDriver QP returned results with keys: %s." (vec (keys (first results))))))
+                                           (log/debug (u/format-color 'magenta "Driver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
           fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
           ordered-col-kws                (order-cols query results fields)]
