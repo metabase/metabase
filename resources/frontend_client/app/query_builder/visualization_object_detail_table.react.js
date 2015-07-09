@@ -1,5 +1,6 @@
 'use strict';
 
+import ExpandableString from './expandable_string.react';
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
 
@@ -13,38 +14,14 @@ export default React.createClass({
         data: React.PropTypes.object
     },
 
-    getInitialState: function() {
-        return {
-            width: 0,
-            height: 0
-        };
-    },
+    getIdValue: function() {
+        if (!this.props.data) return null;
 
-    componentDidMount: function() {
-        this.calculateSizing(this.getInitialState());
-    },
-
-    componentDidUpdate: function(prevProps, prevState) {
-        this.calculateSizing(prevState);
-    },
-
-    calculateSizing: function(prevState) {
-        var element = this.getDOMNode(); //React.findDOMNode(this);
-
-        // account for padding above our parent
-        var style = window.getComputedStyle(element.parentElement, null);
-        var paddingTop = Math.ceil(parseFloat(style.getPropertyValue("padding-top")));
-
-        var width = element.parentElement.offsetWidth;
-        var height = element.parentElement.offsetHeight - paddingTop;
-
-        if (width !== prevState.width || height !== prevState.height) {
-            var updatedState = {
-                width: width,
-                height: height
-            };
-
-            this.setState(updatedState);
+        for (var i=0; i < this.props.data.cols.length; i++) {
+            var coldef = this.props.data.cols[i];
+            if (coldef.special_type === "id") {
+                return this.props.data.rows[0][i];
+            }
         }
     },
 
@@ -68,16 +45,96 @@ export default React.createClass({
             var colValue = (row[0] !== null) ? row[0].name.toString() : null;
             return (<div key={key}>{colValue}</div>);
         } else {
-            // TODO: should we be casting all values toString()?
-            var cellValue = (row[1] !== null) ? row[1].toString() : null;
+
+            var cellValue;
+            if (row[1] === null) {
+                cellValue = (<span className="text-grey-2">No Data</span>);
+
+            } else if(row[0].special_type === "json") {
+                var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
+                cellValue = (<pre>{formattedJson}</pre>);
+
+            } else {
+                // TODO: should we be casting all values toString()?
+                cellValue = (<ExpandableString str={row[1].toString()} length={140}></ExpandableString>);
+            }
 
             // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
             if (this.props.cellIsClickableFn(0, rowIndex)) {
-                return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a>);
+                return (<div key={key}><a className="link" href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a></div>);
             } else {
                 return (<div key={key}>{cellValue}</div>);
             }
         }
+    },
+
+    clickedForeignKey: function(fk) {
+        this.props.followForeignKeyFn(fk);
+    },
+
+    renderDetailsTable: function() {
+        var rows = [];
+        for (var i=0; i < this.props.data.cols.length; i++) {
+            var row = this.rowGetter(i),
+                keyCell = this.cellRenderer(row[0], 'field', row, i, 0),
+                valueCell = this.cellRenderer(row[1], 'value', row, i, 0);
+
+            rows[i] = (
+                <tr key={i}>
+                    <td>{keyCell}</td>
+                    <td>{valueCell}</td>
+                </tr>
+            );
+        }
+
+        return (
+            <table className="wrapper">
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+        );
+    },
+
+    renderFkCountOrSpinner: function(fkOriginId) {
+        var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>);
+        if (this.props.tableForeignKeyReferences) {
+            var fkCountInfo = this.props.tableForeignKeyReferences[fkOriginId];
+            if (fkCountInfo && fkCountInfo["status"] === 1) {
+                var count = fkCountInfo["value"];
+                fkCount = (<span>{count}</span>)
+            }
+        }
+
+        return fkCount;
+    },
+
+    renderRelationships: function() {
+        if (!this.props.tableForeignKeys) return false;
+
+        if (this.props.tableForeignKeys.length < 1) {
+            return (<p>No relationships found.</p>);
+        }
+
+        var component = this;
+        var relationships = this.props.tableForeignKeys.map(function(fk) {
+            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name,
+                referenceCount = component.renderFkCountOrSpinner(fk.origin.id);
+
+            return (
+                <li className="block mb1 lg-mb2 border-bottom">
+                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                        {referenceCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    </div>
+                </li>
+            )
+        });
+
+        return (
+            <ul className="wrapper">
+                {relationships}
+            </ul>
+        );
     },
 
     render: function() {
@@ -85,40 +142,32 @@ export default React.createClass({
             return false;
         }
 
-        var fieldColumnWidth = 150,
-            valueColumnWidth = (this.state.width - fieldColumnWidth),
-            headerHeight = 50,
-            rowHeight = 35,
-            totalHeight = (this.props.data.cols.length * rowHeight) + headerHeight + 2; // 2 extra pixels for border
+        var tableName = (this.props.tableMetadata) ? this.props.tableMetadata.name : "Unknown",
+            // TODO: once we nail down the "title" column of each table this should be something other than the id
+            idValue = this.getIdValue();
 
         return (
-            <Table
-                className="MB-DataTable"
-                rowHeight={rowHeight}
-                rowGetter={this.rowGetter}
-                rowsCount={this.props.data.cols.length}
-                width={this.state.width}
-                height={totalHeight}
-                headerHeight={headerHeight}>
-
-                <Column
-                    className="MB-DataTable-column"
-                    width={fieldColumnWidth}
-                    isResizable={false}
-                    cellRenderer={this.cellRenderer}
-                    dataKey={'field'}
-                    label={'Field'}>
-                </Column>
-
-                <Column
-                    className="MB-DataTable-column"
-                    width={valueColumnWidth}
-                    isResizable={false}
-                    cellRenderer={this.cellRenderer}
-                    dataKey={'value'}
-                    label={'Value'}>
-                </Column>
-            </Table>
+            <div className="wrapper">
+                <div className="bordered">
+                    <div className="Grid border-bottom">
+                        <div className="Grid-cell border-right">
+                            <div className="wrapper">
+                                <span>{tableName}</span>
+                                <h2>{idValue}</h2>
+                            </div>
+                        </div>
+                        <div className="Grid-cell Cell--1of3">
+                            <div className="wrapper">
+                                <Icon name='cards' width="12px" height="12px" /> This {tableName} is connected to.
+                            </div>
+                        </div>
+                    </div>
+                    <div className="Grid">
+                        <div className="Grid-cell border-right">{this.renderDetailsTable()}</div>
+                        <div className="Grid-cell Cell--1of3">{this.renderRelationships()}</div>
+                    </div>
+                </div>
+            </div>
         );
     }
 });
