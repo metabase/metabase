@@ -434,7 +434,7 @@ CardControllers.controller('CardDetail', [
             }
 
             React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
-        };
+        }
 
         function renderEditor() {
             // ensure rendering model is up to date
@@ -451,7 +451,7 @@ CardControllers.controller('CardDetail', [
             } else {
                 React.render(<GuiQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             }
-        };
+        }
 
         function renderVisualization() {
             // ensure rendering model is up to date
@@ -462,13 +462,13 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isObjectDetail = isObjectDetail;
 
             React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
-        };
+        }
 
         function renderAll() {
             renderHeader();
             renderEditor();
             renderVisualization();
-        };
+        }
 
 
         // =====  Local helper functions
@@ -514,12 +514,12 @@ CardControllers.controller('CardDetail', [
             }
 
             return response;
-        };
+        }
 
         function markupTableMetadata(table) {
             var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
-        };
+        }
 
         function resetCardQuery(mode) {
             var queryTemplate = angular.copy(newQueryTemplates[mode]);
@@ -542,7 +542,7 @@ CardControllers.controller('CardDetail', [
                 queryResult = null;
                 card.display = "table";
             }
-        };
+        }
 
         function loadCardAndRender(cardId, cloning) {
             Card.get({
@@ -584,7 +584,7 @@ CardControllers.controller('CardDetail', [
                     $location.path('/');
                 }
             });
-        };
+        }
 
         // meant to be called once on controller startup
         function initAndRender() {
@@ -630,7 +630,7 @@ CardControllers.controller('CardDetail', [
 
                 renderAll();
             }
-        };
+        }
 
         // When the window is resized we need to re-render, mainly so that our visualization pane updates
         // Debounce the function to improve resizing performance.
