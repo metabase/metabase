@@ -1073,3 +1073,26 @@
      order id
      fields venue...name
      lim 10))
+
+
+;;; Nested Field w/ ordering by aggregation
+(expect
+    [["jane" 4]
+     ["kyle" 5]
+     ["tupac" 5]
+     ["jessica" 6]
+     ["bob" 7]
+     ["lucky_pigeon" 7]
+     ["joe" 8]
+     ["mandy" 8]
+     ["amy" 9]
+     ["biggie" 9]
+     ["sameer" 9]
+     ["cam_saul" 10]
+     ["rasta_toucan" 13]
+     [nil 400]]
+  (Q run against geographical-tips using mongo
+     return :data :rows
+     aggregate count of tips
+     breakout source...mayor
+     order ag.0))

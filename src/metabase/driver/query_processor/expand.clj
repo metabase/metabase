@@ -83,11 +83,25 @@
 
 ;; ## -------------------- Expansion - Impl --------------------
 
-(def ^:private ^:dynamic *driver* nil)
+(def ^:private ^:dynamic *field-ids*
+  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *original-query-dict*
+  "The entire original Query dict being expanded."
+  nil)
+
+(def ^:private ^:dynamic *fk-field-ids*
+  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
+  nil)
+
+(def ^:private ^:dynamic *table-ids*
+  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
+  nil)
 
 (defn- assert-driver-supports [^Keyword feature]
-  {:pre [*driver*]}
-  (i/assert-driver-supports *driver* feature))
+  {:pre [(:driver *original-query-dict*)]}
+  (i/assert-driver-supports (:driver *original-query-dict*) feature))
 
 (defn- non-empty-clause? [clause]
   (and clause
@@ -105,18 +119,6 @@
                                        (set/rename-keys <> {:order_by     :order-by
                                                             :source_table :source-table})
                                        (m/filter-vals non-empty-clause? <>))))
-
-(def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
-  nil)
-
-(def ^:private ^:dynamic *fk-field-ids*
-  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
-  nil)
-
-(def ^:private ^:dynamic *table-ids*
-  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
-  nil)
 
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
@@ -205,11 +207,11 @@
 
 (defn expand
   "Expand a QUERY-DICT."
-  [{:keys [driver], :as query-dict}]
-  (binding [*driver*       driver
-            *field-ids*    (atom #{})
-            *fk-field-ids* (atom #{})
-            *table-ids*    (atom #{})]
+  [query-dict]
+  (binding [*original-query-dict* query-dict
+            *field-ids*           (atom #{})
+            *fk-field-ids*        (atom #{})
+            *table-ids*           (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
@@ -441,8 +443,15 @@
 
 ;; ## -------------------- Order-By --------------------
 
-(defrecord OrderByAggregateField [^Keyword source  ; e.g. :aggregation
-                                  ^Integer index]) ; e.g. 0
+(defrecord OrderByAggregateField [^Keyword source           ; Name used in original query. Always :aggregation for right now
+                                  ^Integer index            ; e.g. 0
+                                  ^Aggregation aggregation] ; The aggregation clause being referred to
+  IField
+  (qualified-name-components [_]
+    ;; Return something like [nil "count"]
+    ;; nil is used where Table name would normally go
+    [nil (name (:aggregation-type aggregation))]))
+
 
 (defrecord OrderBySubclause [^Field   field       ; or aggregate Field?
                              ^Keyword direction]) ; either :ascending or :descending
@@ -453,8 +462,10 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]    (->OrderBySubclause (->OrderByAggregateField :aggregation index)
-                                                           (parse-order-by-direction direction))
+  [["aggregation" index] direction]    (let [{{:keys [aggregation]} :query} *original-query-dict*]
+                                            (assert aggregation "Query does not contain an aggregation clause.")
+                                            (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
+                                                                (parse-order-by-direction direction)))
   [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
                                                            (parse-order-by-direction direction)))
 (defparser parse-order-by
