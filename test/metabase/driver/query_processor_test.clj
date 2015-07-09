@@ -876,20 +876,18 @@
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; The top 10 cities by number of Tupac sightings
-;; Test that we can breakout on an FK field
-;; (Note how the FK Field is returned in the results)
-;; TODO - this is broken for Postgres! Returns columns in the wrong order
-(datasets/expect-with-dataset :h2
-  [[16 "Arlington"]
-   [15 "Albany"]
-   [14 "Portland"]
-   [13 "Louisville"]
-   [13 "Philadelphia"]
-   [12 "Anchorage"]
-   [12 "Lincoln"]
-   [11 "Houston"]
-   [11 "Irvine"]
-   [11 "Lakeland"]]
+;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
+(datasets/expect-with-datasets #{:h2 :postgres}
+  [["Arlington" 16]
+   ["Albany" 15]
+   ["Portland" 14]
+   ["Louisville" 13]
+   ["Philadelphia" 13]
+   ["Anchorage" 12]
+   ["Lincoln" 12]
+   ["Houston" 11]
+   ["Irvine" 11]
+   ["Lakeland" 11]]
   (Q run with db tupac-sightings
      return :data :rows
      tbl sightings
@@ -949,13 +947,11 @@
    [2 11 524]
    [2 13 77]
    [2 13 202]]
-  (->> (query-with-temp-db defs/tupac-sightings
-         :source_table &sightings:id
-         :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
-                        [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
-                        [&sightings.id:id "ascending"]]
-         :limit        10)
-       :data :rows (map butlast) (map reverse))) ; drop timestamps. reverse ordering to make the results columns order match order_by
+  (Q run against tupac-sightings
+     return :data :rows (map butlast) (map reverse) ; drop timestamps. reverse ordering to make the results columns order match order_by
+     of sightings
+     order city_id->cities.name+ category_id->categories.name- id+
+     lim 10))
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo

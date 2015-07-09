@@ -226,9 +226,16 @@
   {:post [(= (set %)
              (set (keys (first results))))]}
   (let [;; TODO - This function was written before the advent of the expanded query it is designed to work with Field IDs rather than expanded forms
-        ;; Since this logic is delecate I've side-stepped the issue by converting the expanded Fields back to IDs for the time being.
+        ;; Since this logic is delicate I've side-stepped the issue by converting the expanded Fields back to IDs for the time being.
         ;; We should carefully re-work this function to use expanded Fields so we don't need the complicated logic below to fetch their names
         breakout-ids     (map :field-id breakout-fields)
+
+        breakout-kws     (for [field breakout-fields]
+                           (->> (rest (expand/qualified-name-components field)) ; TODO - this "qualified name for results" should be calculated in the Query expander
+                                (interpose ".")
+                                (apply str)
+                                keyword))
+
         fields-ids       (map :field-id fields-fields)
 
         field-id->field  (zipmap (map :id fields) fields)
@@ -237,8 +244,8 @@
         fields-ids       (when-not fields-is-implicit fields-ids)
         all-field-ids    (->> fields    ; Sort the Fields.
                               (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
-                                         [position                                ; [position special-type-group name]
-                                          (cond                                   ; and Clojure will take care of the rest.
+                                         [position ; [position special-type-group name]
+                                          (cond ; and Clojure will take care of the rest.
                                             (= special_type :id)   0
                                             (= special_type :name) 1
                                             :else                  2)
@@ -264,8 +271,7 @@
                                     (map keyword)
                                     (filter (partial contains? result-kws))))
 
-        ;; Use fn above to get the keyword column names of breakout clause fields [#1] + fields clause fields / other non-aggregation fields [#3 and #4]
-        breakout-kws     (ids->kws breakout-ids)
+        ;; Use fn above to get the keyword column names of other non-aggregation fields [#3 and #4]
         non-breakout-kws (ids->kws non-breakout-ids)
 
         ;; Now get all the keyword column names specific to aggregation, such as :sum or :count [#2].
@@ -276,6 +282,8 @@
                               ;; multiple aggregation clauses, we'll need to add some logic to make sure they're
                               ;; being ordered correctly, e.g. the first aggregate column before the second, etc.
                               (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
+    (assert (<= (count ag-kws) 1)
+      (format "Invalid number of aggregate columns: %d" (count ag-kws)))
 
     ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
     (when-not *disable-qp-logging*
@@ -378,17 +386,17 @@
           _                              (when-not *disable-qp-logging*
                                            (log/debug (u/format-color 'magenta "\nDriver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
-          fields                         (->> (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id],
-                                                   :table_id source-table-id, :active true)
-                                              field/unflatten-nested-fields)
+          fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
           ordered-col-kws                (order-cols query results fields)]
+
       (assert (= (count (keys (first results))) (count ordered-col-kws))
               (format "Order-cols returned an invalid number of keys.\nExpected: %d %s\nGot: %d %s"
                       (count (keys (first results))) (vec (keys (first results)))
                       (count ordered-col-kws)        (vec ordered-col-kws)))
+
       {:rows    (for [row results]
-                  (mapv row ordered-col-kws))                                          ; might as well return each row and col info as vecs because we're not worried about making
-       :columns (mapv name ordered-col-kws)                                            ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
+                  (mapv row ordered-col-kws))                                                      ; might as well return each row and col info as vecs because we're not worried about making
+       :columns (mapv name ordered-col-kws)                                                        ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
        :cols    (vec (get-cols-info query fields ordered-col-kws join-table-ids))})))  ; as vecs. Make sure :rows stays lazy!
 
 

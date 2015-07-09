@@ -182,8 +182,9 @@
   (assoc query :order_by (vec (for [field fields]
                                 `(Q:order* ~field)))))
 
-(defmacro Q:order* [field]
-  (let [[_ field +-] (re-matches #"^([^\-+]+)([\-+])?$" (name field))]
+(defmacro Q:order* [field-symb]
+  (let [[_ field +-] (re-matches #"^(.+[^\-+])([\-+])?$" (name field-symb))]
+    (assert field (format "Invalid field passed to order: '%s'" field-symb))
     [`(~'fl ~(symbol field)) (case (keyword (or +- '+))
                                :+ "ascending"
                                :- "descending")]))
