@@ -45,6 +45,10 @@
                first))))
 
   ;; Query Processing
+  (wrap-process-query-middleware [_ qp]
+    (fn [query]
+      (qp query))) ; Nothing to do here
+
   (process-query [_ query]
     (qp/process-and-run query))
 

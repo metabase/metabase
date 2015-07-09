@@ -71,6 +71,11 @@
     (can-connect? this {:details details}))
 
 ;;; ### QP
+  (wrap-process-query-middleware [_ qp]
+    (fn [query]
+      (with-mongo-connection [^com.mongodb.DBApiLayer conn (:database query)]
+        (qp query))))
+
   (process-query [_ query]
     (qp/process-and-run query))
 

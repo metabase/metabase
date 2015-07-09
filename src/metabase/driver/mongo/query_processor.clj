@@ -36,20 +36,19 @@
 
 (defn process-and-run
   "Process and run a MongoDB QUERY."
-  [{query-type :type, database :database, :as query}]
+  [{query-type :type, :as query}]
   (binding [*query* query]
-    (with-mongo-connection [_ database]
-      (case (keyword query-type)
-        :query (let [generated-query (process-structured (:query query))]
-                 (when-not qp/*disable-qp-logging*
-                   (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
-                                              (->> generated-query
-                                                   (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
-                                                   u/pprint-to-str) "\n")))                              ; so it's easier to read
-                 {:results (eval generated-query)})
-        :native (let [results (eval-raw-command (:query (:native query)))]
-                  {:results (if (sequential? results) results
-                                [results])})))))
+    (case (keyword query-type)
+      :query (let [generated-query (process-structured (:query query))]
+               (when-not qp/*disable-qp-logging*
+                 (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
+                                            (->> generated-query
+                                                 (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
+                                                 u/pprint-to-str) "\n"))) ; so it's easier to read
+                {:results (eval generated-query)})
+      :native (let [results (eval-raw-command (:query (:native query)))]
+                {:results (if (sequential? results) results
+                              [results])}))))
 
 
 ;; # NATIVE QUERY PROCESSOR

@@ -341,7 +341,8 @@
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
      (when (non-empty-clause? form#)
        (match form#
-         ~@match-forms))))
+         ~@match-forms
+         form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
 
 ;; ## -------------------- Aggregation --------------------
 
@@ -412,13 +413,13 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) min max]
+  ["BETWEEN" (field-id :guard Field?) (min :guard identity) (max :guard identity)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) val]
+  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard identity)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
@@ -427,10 +428,7 @@
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)
-                      :field       (ph field-id)})
-
-  clause
-  (throw (Exception. (format "Invalid filter clause: %s" clause))))
+                      :field       (ph field-id)}))
 
 (defparser parse-filter
   ["AND" & subclauses] (map->Filter {:compound-type :and

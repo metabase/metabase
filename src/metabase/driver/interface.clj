@@ -53,7 +53,13 @@
   (process-query [this query]
     "Process a native or structured query.
      (Don't use this directly; instead, use `metabase.driver/process-query`,
-     which does things like preprocessing before calling the appropriate implementation.)"))
+     which does things like preprocessing before calling the appropriate implementation.)")
+  (wrap-process-query-middleware [this qp-fn]
+    "Custom QP middleware for this driver.
+     Like `sync-in-context`, but for running queries rather than syncing. This is basically around-advice for the QP pre and post-processing stages.
+     This should be used to do things like open DB connections that need to remain open for the duration of post-processing.
+     This middleware is injected into the QP middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
+     See the Mongo driver for and example of how this is intended to be used."))
 
 
 ;; ## ISyncDriverTableFKs Protocol (Optional)

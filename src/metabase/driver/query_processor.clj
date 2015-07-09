@@ -252,12 +252,12 @@
                                           name]))
                               (map :id)) ; Return the sorted IDs
 
-        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
-        ;; Then filter out ones that appear in breakout clause and remove duplicates
-        ;; which effectively gives us parts #3 and #4 from above.
-        non-breakout-ids (->> (concat fields-ids all-field-ids)
-                              (filter (complement (partial contains? (set breakout-ids))))
-                              distinct)
+        ;; Get the aggregate column if any
+        ag-kws           (when (and ag-type
+                                    (not= ag-type :rows))
+                           (let [ag (if (= ag-type :distinct) :count
+                                        ag-type)]
+                             [ag]))
 
         ;; Make a helper function that will take a sequence of Field IDs and convert them to corresponding column name keywords.
         ;; Don't include names that aren't part of RESULT-KWS: we fetch *all* the Fields for a Table regardless of the Query, so
@@ -268,15 +268,16 @@
                                     (map keyword)
                                     (filter valid-kw?)))
 
-        ;; Use fn above to get the keyword column names of other non-aggregation fields [#3 and #4]
-        non-breakout-kws (ids->kws non-breakout-ids)
+        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
+        ;; Then filter out ones that appear in breakout clause and remove duplicates
+        ;; which effectively gives us parts #3 and #4 from above.
+        non-breakout-ids (->> (concat fields-ids all-field-ids)
+                              (filter (complement (partial contains? (set breakout-ids))))
+                              distinct)
 
-        ;; Get the aggregate column if any
-        ag-kws           (when (and ag-type
-                                    (not= ag-type :rows))
-                           (let [ag (if (= ag-type :distinct) :count
-                                        ag-type)]
-                             [ag]))
+        ;; Use fn above to get the keyword column names of other non-aggregation fields [#3 and #4]
+        non-breakout-kws (->> (ids->kws non-breakout-ids)
+                              (filter (complement (partial contains? (set ag-kws)))))
 
         ;; Collect all other Fields
         other-kws        (->> result-kws
@@ -290,9 +291,12 @@
     (when-not *disable-qp-logging*
       (log/debug (u/format-color 'magenta "Using this ordering: breakout: %s, ag: %s, non-breakout: %s, other: %s"
                                  (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws) (vec other-kws))))
+
     (let [ordered-kws (concat breakout-kws ag-kws non-breakout-kws other-kws)]
-      (assert (= (set ordered-kws) result-kws)
-        (format "Order-cols returned invalid results: expected %s, got %s" result-kws (set ordered-kws)))
+      (assert (and (= (set ordered-kws) result-kws)
+                   (= (count ordered-kws) (count result-kws)))
+        (format "Order-cols returned invalid results: expected %s, got %s\nbreakout: %s, ag: %s, non-breakout: %s, other: %s" result-kws (vec ordered-kws)
+                (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws) (vec other-kws)))
       ordered-kws)))
 
 (defn- add-fields-extra-info
@@ -394,11 +398,6 @@
           fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
           ordered-col-kws                (order-cols query results fields)]
 
-      (assert (= (count (keys (first results))) (count ordered-col-kws))
-              (format "Order-cols returned an invalid number of keys.\nExpected: %d %s\nGot: %d %s"
-                      (count (keys (first results))) (vec (keys (first results)))
-                      (count ordered-col-kws)        (vec ordered-col-kws)))
-
       {:rows    (for [row results]
                   (mapv row ordered-col-kws))                                                      ; might as well return each row and col info as vecs because we're not worried about making
        :columns (mapv name ordered-col-kws)                                                        ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
@@ -446,9 +445,11 @@
       (qp query))))
 
 (defn- process-structured [{:keys [driver], :as query}]
-  (let [driver-process-query (partial i/process-query driver)]
+  (let [driver-process-query      (partial i/process-query driver)
+        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
+          driver-wrap-process-query
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
@@ -461,8 +462,10 @@
           driver-process-query) query)))
 
 (defn- process-native [{:keys [driver], :as query}]
-  (let [driver-process-query (partial i/process-query driver)]
+  (let [driver-process-query      (partial i/process-query driver)
+        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
     ((<<- wrap-catch-exceptions
+          driver-wrap-process-query
           post-add-row-count-and-status
           post-convert-unix-timestamps-to-dates
           limit
