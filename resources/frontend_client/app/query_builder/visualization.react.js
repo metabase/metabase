@@ -310,7 +310,8 @@ export default React.createClass({
                             tableForeignKeys={this.props.tableForeignKeys}
                             tableForeignKeyReferences={this.props.tableForeignKeyReferences}
                             cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn} />
+                            cellClickedFn={this.props.cellClickedFn}
+                            followForeignKeyFn={this.props.followForeignKeyFn} />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {
