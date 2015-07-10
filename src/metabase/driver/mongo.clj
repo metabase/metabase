@@ -19,13 +19,6 @@
 
 (declare driver)
 
-;; TODO - this isn't necessarily Mongo-specific
-(def ^:private ^:const document-scanning-limit
-  "The maximum number of documents to scan to look for Fields.
-   We can't feasibly scan every document in a million+ document collection, so scan the first `document-scanning-limit`
-   documents and hope that the rest follow the same schema."
-  10000)
-
 ;;; ### Driver Helper Fns
 
 (defn- table->column-names
@@ -33,7 +26,7 @@
   [table]
   (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take document-scanning-limit)
+         (take max-sync-lazy-seq-results)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -100,7 +93,6 @@
   (table-pks [_ _]
     #{"_id"})
 
-  ISyncDriverFieldValues
   (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
     (assert (and (map? field)
                  (delay? qualified-name-components)
@@ -121,7 +113,7 @@
     ;; Build a map of nested-field-key -> type -> count
     ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
     (let [field->type->count (atom {})]
-      (doseq [val (take document-scanning-limit (field-values-lazy-seq this field))]
+      (doseq [val (take max-sync-lazy-seq-results (field-values-lazy-seq this field))]
         (when (map? val)
           (doseq [[k v] val]
             (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))

@@ -3,6 +3,7 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
@@ -16,6 +17,7 @@
 
 (declare auto-assign-field-special-type-by-name!
          mark-category-field!
+         mark-json-field!
          mark-no-preview-display-field!
          mark-url-field!
          sync-database-active-tables!
@@ -90,32 +92,33 @@
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
   [driver active-tables]
-  ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
-  ;; going to block while they run for the time being. (TODO - fix this)
-  (log/debug "Updating table row counts...")
-  (doseq [table active-tables]
-    (u/try-apply update-table-row-count! table))
-
-  ;; Next, create new Fields / mark inactive Fields / mark PKs for each table
-  ;; (TODO - this was originally done in parallel but it was only marginally faster, and harder to debug. Should we switch back at some point?)
-  (log/debug "Syncing active fields + PKs...")
-  (doseq [table active-tables]
-    (u/try-apply sync-table-active-fields-and-pks! driver table))
-
-  ;; Once that's finished, we can sync FKs
-  (log/debug "Syncing FKs...")
-  (doseq [table active-tables]
-    (u/try-apply sync-table-fks! driver table))
-
-  ;; After that, we can sync the metadata for all active Fields
-  ;; Now sync all active fields
-  (let [tables-count (count active-tables)
-        finished-tables-count (atom 0)]
+  ;; Sort the Tables by name so it's easier / nicer to look at the logging
+  (let [active-tables (sort-by :name active-tables)]
+    ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so going to block while they run for the time being.
+    (log/debug "Updating table row counts...")
     (doseq [table active-tables]
-      (log/debug (format "Syncing metadata for table '%s'..." (:name table)))
-      (sync-table-fields-metadata! driver table)
-      (swap! finished-tables-count inc)
-      (log/info (u/format-color 'magenta "Synced table '%s'. (%d/%d)" (:name table) @finished-tables-count tables-count)))))
+      (u/try-apply update-table-row-count! table))
+
+    ;; Next, create new Fields / mark inactive Fields / mark PKs for each table
+    ;; (TODO - this was originally done in parallel but it was only marginally faster, and harder to debug. Should we switch back at some point?)
+    (log/debug "Syncing active fields + PKs...")
+    (doseq [table active-tables]
+      (u/try-apply sync-table-active-fields-and-pks! driver table))
+
+    ;; Once that's finished, we can sync FKs
+    (log/debug "Syncing FKs...")
+    (doseq [table active-tables]
+      (u/try-apply sync-table-fks! driver table))
+
+    ;; After that, we can sync the metadata for all active Fields
+    ;; Now sync all active fields
+    (let [tables-count (count active-tables)
+          finished-tables-count (atom 0)]
+      (doseq [table active-tables]
+        (log/debug (format "Syncing metadata for table '%s'..." (:name table)))
+        (sync-table-fields-metadata! driver table)
+        (swap! finished-tables-count inc)
+        (log/info (u/format-color 'magenta "Synced table '%s'. (%d/%d)" (:name table) @finished-tables-count tables-count))))))
 
 
 ;; ## sync-table steps.
@@ -231,7 +234,7 @@
   "Call `sync-field!` for every active Field for TABLE."
   [driver table]
   {:pre [(map? table)]}
-  (let [active-fields (sel :many Field, :table_id (:id table), :active true, :parent_id nil)]
+  (let [active-fields (sel :many Field, :table_id (:id table), :active true, :parent_id nil, (k/order :name))]
     (doseq [field active-fields]
       ;; replace the normal delay for the Field with one that just returns the existing Table so we don't need to re-fetch
       (u/try-apply sync-field! driver (assoc field :table (delay table))))))
@@ -258,8 +261,9 @@
   (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
                  (mark-url-field! driver)
-                 mark-category-field!
                  (mark-no-preview-display-field! driver)
+                 mark-category-field!
+                 (mark-json-field! driver)
                  auto-assign-field-special-type-by-name!
                  (sync-field-nested-fields! driver)))
 
@@ -289,11 +293,9 @@
 (extend-protocol ISyncDriverFieldPercentUrls ; Default implementation
   Object
   (field-percent-urls [this field]
-    (assert (extends? ISyncDriverFieldValues (class this))
-            "A sync driver implementation that doesn't implement ISyncDriverFieldPercentURLs must implement ISyncDriverFieldValues.")
     (let [field-values (->> (field-values-lazy-seq this field)
                             (filter identity)
-                            (take 10000))]                     ; Considering the first 10,000 rows is probably fine; don't want to have to do a full scan over millions
+                            (take max-sync-lazy-seq-results))]
       (percent-valid-urls field-values))))
 
 (defn mark-url-field!
@@ -318,9 +320,10 @@
   40)
 
 (defn mark-category-field!
-  "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
+  "If FIELD doesn't yet have a `special_type`, has values of a reasonable length (i.e., it wasn't marked `preview_display` = `false`), and  has low cardinality, mark it as a category."
   [field]
-  (when-not (:special_type field)
+  (when (and (not (:special_type field))
+             (:preview_display field))
     (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
       (when (and (> cardinality 0)
                  (< cardinality low-cardinality-threshold))
@@ -338,11 +341,9 @@
 (extend-protocol ISyncDriverFieldAvgLength ; Default implementation
   Object
   (field-avg-length [this field]
-    (assert (extends? ISyncDriverFieldValues (class this))
-            "A sync driver implementation that doesn't implement ISyncDriverFieldAvgLength must implement ISyncDriverFieldValues.")
     (let [field-values (->> (field-values-lazy-seq this field)
                             (filter identity)
-                            (take 10000))                      ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
+                            (take max-sync-lazy-seq-results))                      ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
           field-values-count (count field-values)]
       (if (= field-values-count 0) 0
           (int (math/round (/ (->> field-values
@@ -362,6 +363,31 @@
         (log/info (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
         (upd Field (:id field) :preview_display false)
         (assoc field :preview_display false)))))
+
+
+;; ### mark-json-field!
+
+(defn mark-json-field! [driver field]
+  (when (and (not (:special_type field))
+             (contains? #{:CharField :TextField} (:base_type field)))
+    (try
+      (let [valid-json-values-balance (atom 0)]
+        (doseq [val (field-values-lazy-seq driver field)]
+          (if (s/blank? val)
+            (swap! valid-json-values-balance dec)
+            ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other types of valid JSON values as :json
+            ;; (e.g. a string representation of a number or boolean)
+            (let [val (json/parse-string val)]
+              (when (not (or (map? val)
+                             (sequential? val)))
+                (throw (Exception.)))
+              (swap! valid-json-values-balance inc))))
+
+        (when (> @valid-json-values-balance 0)
+          (log/info (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+          (upd Field (:id field) :special_type :json, :preview_display false)
+          (assoc field :special_type :json, :preview_display false)))
+      (catch Throwable _))))
 
 
 ;; ### auto-assign-field-special-type-by-name!

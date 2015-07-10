@@ -6,13 +6,22 @@
             (metabase.driver [interface :refer :all]
                              [sync :as driver-sync])
             (metabase.driver.generic-sql [query-processor :as qp]
-                                         [util :refer :all])))
+                                         [util :refer :all])
+            [metabase.util :as u]))
 
 (def ^:private ^:const sql-driver-features
   "Features supported by *all* Generic SQL drivers."
   #{:foreign-keys
     :standard-deviation-aggregations
     :unix-timestamp-special-type-fields})
+
+(def ^:private ^:const field-values-lazy-seq-chunk-size
+  "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
+  ;; Hopefully this is a good balance between
+  ;; 1. Not doing too many DB calls
+  ;; 2. Not running out of mem
+  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
+  500)
 
 (defrecord SqlDriver [ ;; A set of additional features supported by a specific driver implmentation, e.g. :set-timezone for :postgres
                       additional-supported-features
@@ -80,6 +89,28 @@
            jdbc/result-set-seq
            (map :column_name)
            set)))
+
+  (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
+    (assert (and (map? field)
+                 (delay? qualified-name-components)
+                 (delay? table))
+      (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
+    (let [table           @table
+          name-components (rest @qualified-name-components)
+          fetch-chunk     (fn -fetch-chunk [start step limit]
+                            (lazy-seq
+                             (let [results (->> (k/select (korma-entity table)
+                                                          (k/fields (:name field))
+                                                          (k/offset start)
+                                                          (k/limit (+ start step)))
+                                                (map (keyword (:name field)))
+                                                (map (if (contains? #{:TextField :CharField} (:base_type field)) u/jdbc-clob->str
+                                                         identity)))]
+                               (concat results (when (and (seq results)
+                                                          (< (+ start step) limit)
+                                                          (= (count results) step))
+                                                 (-fetch-chunk (+ start step) step limit))))))]
+      (fetch-chunk 0 field-values-lazy-seq-chunk-size max-sync-lazy-seq-results)))
 
   ISyncDriverTableFKs
   (table-fks [_ table]
