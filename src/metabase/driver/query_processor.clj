@@ -69,7 +69,7 @@
     (qp (if (or (not (= ag-type :rows)) breakout fields) query
             (-> query
                 (assoc-in [:query :fields-is-implicit] true)
-                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id], :table_id source-table-id, :active true,
+                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id], :table_id source-table-id, :active true,
                                                      :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
                                                 (map expand/rename-mb-field-keys)
                                                 (map expand/map->Field)
@@ -175,12 +175,13 @@
 (defn- limit
   "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
-  (fn [{{{ag-type :aggregation-type} :aggregation, limit :limit} :query, :as query}]
+  (fn [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query, :as query}]
     (let [query   (cond-> query
                     (and (not limit)
+                         (not page)
                          (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
-      (update-in results [:rows] (partial take max-result-rows)))))
+      (update results :rows (partial take max-result-rows)))))
 
 
 (defn- pre-log-query [qp]

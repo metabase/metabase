@@ -1,7 +1,6 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
