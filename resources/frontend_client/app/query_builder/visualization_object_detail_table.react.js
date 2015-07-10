@@ -2,6 +2,7 @@
 
 import ExpandableString from './expandable_string.react';
 import FixedDataTable from 'fixed-data-table';
+import Humanize from 'humanize';
 import Icon from './icon.react';
 import IconBorder from './icon_border.react';
 import LoadingSpinner from './../components/icons/loading.react';
@@ -101,11 +102,11 @@ export default React.createClass({
 
         var component = this;
         var relationships = this.props.tableForeignKeys.map(function(fk) {
-            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
 
             var fkCount = (
                 <LoadingSpinner />
             ),
+                fkCountValue = 0,
                 fkClickable = false;
             if (component.props.tableForeignKeyReferences) {
                 var fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
@@ -113,6 +114,7 @@ export default React.createClass({
                     fkCount = (<span>{fkCountInfo["value"]}</span>);
 
                     if (fkCountInfo["value"]) {
+                        fkCountValue = fkCountInfo["value"];
                         fkClickable = true;
                     }
                 }
@@ -122,6 +124,8 @@ export default React.createClass({
                     <Icon name='chevronright' width="10px" height="10px" />
                 </IconBorder>
             );
+
+            var relationName = Humanize.pluralize(fkCountValue, (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name);
 
             var info = (
                 <div>
