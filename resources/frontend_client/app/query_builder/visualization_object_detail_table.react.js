@@ -47,8 +47,8 @@ export default React.createClass({
         } else {
 
             var cellValue;
-            if (row[1] === null) {
-                cellValue = (<span className="text-grey-2">No Data</span>);
+            if (row[1] === null || (typeof row[1] === "string" && row[1].length === 0)) {
+                cellValue = (<span className="text-grey-2">Empty</span>);
 
             } else if(row[0].special_type === "json") {
                 var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
@@ -94,19 +94,6 @@ export default React.createClass({
                 </tbody>
             </table>
         );
-    },
-
-    renderFkCountOrSpinner: function(fkOriginId) {
-        var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>);
-        if (this.props.tableForeignKeyReferences) {
-            var fkCountInfo = this.props.tableForeignKeyReferences[fkOriginId];
-            if (fkCountInfo && fkCountInfo["status"] === 1) {
-                var count = fkCountInfo["value"];
-                fkCount = (<span>{count}</span>)
-            }
-        }
-
-        return fkCount;
     },
 
     renderRelationships: function() {
