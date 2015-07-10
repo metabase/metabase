@@ -10,14 +10,15 @@
             [metabase.driver.query-processor :as qp]))
 
 ;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
-(defn- db->connection-spec [database]
+(defn- db->connection-spec [{{:keys [short-lived?]} :details, :as database}]
   (let [driver                              (driver/engine->driver (:engine database))
         database->connection-details        (:database->connection-details driver)
         connection-details->connection-spec (:connection-details->connection-spec driver)]
-    (-> database
-        database->connection-details
-        connection-details->connection-spec
-        (assoc :make-pool? true))))     ; need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
+    (merge (-> database database->connection-details connection-details->connection-spec)
+           ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
+           ;; TODO - what will we do once we have CLOBS in temp DBs?
+           (when-not short-lived?
+             {:make-pool? true}))))
 
 (def ^{:arglists '([database])}
   db->korma-db

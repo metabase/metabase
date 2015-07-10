@@ -33,10 +33,11 @@
 
 (defn- connection-details
   "Return a Metabase `Database.details` for H2 database defined by DATABASE-DEFINITION."
-  [^DatabaseDefinition database-definition]
-  {:db (format (if (:short-lived? database-definition) "file:%s" ; for short-lived connections don't create a server thread and don't use a keep-alive connection
+  [^DatabaseDefinition {:keys [short-lived?], :as database-definition}]
+  {:db (format (if short-lived? "file:%s" ; for short-lived connections don't create a server thread and don't use a keep-alive connection
                    "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1")
-               (filename database-definition))})
+               (filename database-definition))
+   :short-lived? short-lived?})
 
 (defn- korma-connection-pool
   "Return an H2 korma connection pool to H2 database defined by DATABASE-DEFINITION."
