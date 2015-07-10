@@ -29,9 +29,7 @@
                                 :ttl/threshold (* 60 1000))]
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
-      (let [r (-db->korma-db (select-keys database [:engine :details]))]
-        (println "R:\n" (metabase.util/pprint-to-str 'green r))
-        r))))
+      (-db->korma-db (select-keys database [:engine :details])))))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
