@@ -370,3 +370,22 @@
 .ChartType--notSensible {
     opacity: 0.5;
 }
+
+.DataReference {
+    width: 0px;
+    background-color: #F9FBFC;
+    transition: width 0.5s;
+    overflow: hidden;
+}
+
+.DataReference--visible {
+    width: 300px;
+}
+
+.DataReference-container {
+    width: 300px;
+}
+
+.DataReference h1 {
+    font-size: 20pt;
+}

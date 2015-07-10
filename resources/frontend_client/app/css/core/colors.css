@@ -13,6 +13,10 @@
   --error-color: #EF8C8C;
 }
 
+.text-default {
+    color: var(--default-font-color) !important;
+}
+
 /* white */
 .text-white,
 .text-white-hover:hover { color: #fff; }

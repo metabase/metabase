@@ -20,6 +20,7 @@ export default React.createClass({
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string,
+        toggleReference: React.PropTypes.func.isRequired,
     },
 
     getInitialState: function() {
@@ -130,6 +131,10 @@ export default React.createClass({
         });
     },
 
+    toggleReference: function() {
+        this.props.toggleReference();
+    },
+
     permissions: function() {
         var permission;
         if(this.props.card.public_perms) {
@@ -225,7 +230,22 @@ export default React.createClass({
             cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
         }
 
+        var addToDashButton;
+        if (this.props.card.id != undefined) {
+            addToDashButton = (
+                <AddToDashboard
+                    card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
+                    broadcastEventFn={this.props.broadcastEventFn}
+                />
+            )
+        }
 
+        var dataReferenceButton = (
+            <span className="mx1 text-grey-4 text-brand-hover">
+                <Icon name='reference' onClick={this.toggleReference}></Icon>
+            </span>
+        );
 
         var attribution;
 
@@ -234,7 +254,21 @@ export default React.createClass({
                 <div className="Entity-attribution">
                     Asked by {this.props.card.creator.common_name}
                 </div>
-            )
+            );
+        }
+
+        var hasLeft = !!downloadButton;
+        var hasMiddle = !!(cardFavorite || cloneButton || addToDashButton);
+        var hasRight = !!dataReferenceButton;
+
+        var dividerLeft;
+        if (hasLeft && (hasMiddle || hasRight)) {
+            dividerLeft = <div className="border-right border-dark">&nbsp;</div>
+        }
+
+        var dividerRight;
+        if (hasRight && hasMiddle) {
+            dividerRight = <div className="border-right border-dark">&nbsp;</div>
         }
 
         return (
@@ -249,14 +283,18 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
-                    {cloneButton}
                     {downloadButton}
+
+                    {dividerLeft}
+
                     {cardFavorite}
-                    <AddToDashboard
-                        card={this.props.card}
-                        dashboardApi={this.props.dashboardApi}
-                        broadcastEventFn={this.props.broadcastEventFn}
-                    />
+                    {cloneButton}
+                    {addToDashButton}
+
+                    {dividerRight}
+
+                    {dataReferenceButton}
+
                     {saveButton}
                     {queryModeToggle}
                 </div>

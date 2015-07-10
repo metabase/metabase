@@ -1,5 +1,10 @@
-<div class="QueryBuilder mt2">
-    <div id="react_qb_header"></div>
-    <div id="react_qb_editor"></div>
-    <div class="QueryVisualization" id="react_qb_viz"></div>
+<div class="flex flex-row full-height">
+    <div class="QueryBuilder mt2 flex-full">
+        <div id="react_qb_header"></div>
+        <div id="react_qb_editor"></div>
+        <div class="QueryVisualization" id="react_qb_viz"></div>
+    </div>
+    <div class="DataReference" id="react_data_reference" ng-class="{ 'DataReference--visible': isShowingReference }">
+        reference
+    </div>
 </div>

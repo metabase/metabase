@@ -1,6 +1,7 @@
 'use strict';
 /*global _, document, confirm*/
 
+import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
@@ -90,6 +91,8 @@ CardControllers.controller('CardDetail', [
             }
         };
 
+        $scope.isShowingReference = true;
+
         var queryResult = null,
             databases = null,
             tables = null,
@@ -152,7 +155,8 @@ CardControllers.controller('CardDetail', [
             },
             cloneCardFn: function(cardId) {
                 $scope.$apply(() => $location.url('/card/create?clone='+cardId));
-            }
+            },
+            toggleReference: toggleReference
         };
 
         var editorModel = {
@@ -420,6 +424,15 @@ CardControllers.controller('CardDetail', [
             }
         };
 
+        var dataReferenceModel = {
+            Metabase: Metabase,
+            closeFn: toggleReference,
+            notifyQueryModifiedFn: function(dataset_query) {
+                // we are being told that the query has been modified
+                card.dataset_query = dataset_query;
+                renderAll();
+            },
+        };
 
         // =====  REACT render functions
 
@@ -464,10 +477,18 @@ CardControllers.controller('CardDetail', [
             React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
 
+        function renderDataReference() {
+            dataReferenceModel.databases = databases;
+            dataReferenceModel.tableMetadata = tableMetadata;
+            dataReferenceModel.query = card.dataset_query;
+            React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
+        }
+
         function renderAll() {
             renderHeader();
             renderEditor();
             renderVisualization();
+            renderDataReference();
         }
 
 
@@ -519,6 +540,11 @@ CardControllers.controller('CardDetail', [
         function markupTableMetadata(table) {
             var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
+        }
+
+        function toggleReference() {
+            $scope.isShowingReference = !$scope.isShowingReference;
+            $scope.$digest();
         }
 
         function resetCardQuery(mode) {

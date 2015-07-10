@@ -47,12 +47,6 @@ export default React.createClass({
         }
     },
     render: function () {
-        // if we don't have a saved card then don't render anything
-        // TODO: we should probably do this in the header
-        if (this.props.card.id === undefined) {
-            return false;
-        }
-
         // TODO: if our card is dirty should we disable this button?
         //       ex: someone modifies a query but hasn't run/save the change?
         return (

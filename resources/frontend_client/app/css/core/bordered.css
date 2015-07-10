@@ -38,6 +38,10 @@
     border-color: rgba(255,255,255,0.2) !important;
 }
 
+.border-dark {
+    border-color: rgba(0,0,0,0.2) !important;
+}
+
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */

@@ -42,6 +42,11 @@
   transition: border .3s linear;
 }
 
+.Button--small {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.6rem;
+}
+
 .Button--primary {
   color: #fff;
   background: var(--primary-button-bg-color);
@@ -56,6 +61,12 @@
 
 .Button--cancel {
   border-radius: 99px;
+}
+
+.Button--white {
+    background-color: white;
+    color: color(var(--base-grey) shade(30%)) !important;
+    border-color: color(var(--base-grey) shade(30%));
 }
 
 .Button-group {
@@ -96,6 +107,21 @@
 .Button-group--blue .Button--active {
   background-color: rgb(227,238,250);
   color: rgb(74,144,226);
+}
+
+.Button-group--brand {
+  border-color: white;
+}
+
+.Button-group--brand .Button {
+  border-color: white;
+  color: var(--brand-color);
+  background-color: #E5E5E5;
+}
+
+.Button-group--brand .Button--active {
+  background-color: var(--brand-color);
+  color: white;
 }
 
 .Button:disabled {
