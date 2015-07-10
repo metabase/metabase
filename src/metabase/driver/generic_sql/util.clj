@@ -14,19 +14,24 @@
   (let [driver                              (driver/engine->driver (:engine database))
         database->connection-details        (:database->connection-details driver)
         connection-details->connection-spec (:connection-details->connection-spec driver)]
-    (-> database database->connection-details connection-details->connection-spec)))
+    (-> database
+        database->connection-details
+        connection-details->connection-spec
+        (assoc :make-pool? true))))     ; need to make a pool or the connection will be closed before we get a change to unCLOB-er the results during JSON serialization
 
-(def ^{:arglists '([database])} db->korma-db
+(def ^{:arglists '([database])}
+  db->korma-db
   "Return a Korma database definition for DATABASE.
    This does a little bit of smart caching (for 60 seconds) to avoid creating new connections when unneeded."
   (let [-db->korma-db (memo/ttl (fn [database]
                                   (log/debug (color/red "Creating a new DB connection..."))
-                                  (assoc (kdb/create-db (db->connection-spec database))
-                                         :make-pool? true))
+                                  (kdb/create-db (db->connection-spec database)))
                                 :ttl/threshold (* 60 1000))]
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
-      (-db->korma-db (select-keys database [:engine :details])))))
+      (let [r (-db->korma-db (select-keys database [:engine :details]))]
+        (println "R:\n" (metabase.util/pprint-to-str 'green r))
+        r))))
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -67,6 +72,7 @@
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
+  {:arglists '([table] [db table])}
   ([{db-delay :db, :as table}]
    {:pre [(delay? db-delay)]}
    (korma-entity @db-delay table))
