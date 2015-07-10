@@ -1,6 +1,8 @@
 'use strict';
 
-import ICON_PATHS from 'metabase/icon_paths';
+import { ICON_PATHS } from 'metabase/icon_paths';
+
+// TODO: support ICON_SVGS
 
 /*
     GENERIC ICONS
