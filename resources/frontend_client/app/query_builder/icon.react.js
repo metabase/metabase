@@ -8,14 +8,15 @@ export default React.createClass({
        return {
           width: '32px',
           height: '32px',
-          fill: 'currentcolor'
+          fill: 'currentcolor',
+          bordered: false,
+          rounded: false,
        };
     },
-    render: function () {
-        var iconPath = ICON_PATHS[this.props.name],
-            path;
+    renderIcon: function () {
+        var path;
+        var iconPath = ICON_PATHS[this.props.name];
 
-        // handle multi path icons which appear as non strings
         if(typeof(iconPath) != 'string') {
             // create a path for each path present
             path = iconPath.map(function (path) {
@@ -24,11 +25,31 @@ export default React.createClass({
         } else {
             path = (<path d={iconPath} />);
         }
-
         return (
             <svg viewBox="0 0 32 32" {... this.props} className={'Icon Icon-' + this.props.name}>
                 {path}
             </svg>
         );
+    },
+    renderBordered: function () {
+        return (
+            <span className="text-error">
+                {this.renderIcon()}
+            </span>
+        );
+    },
+    render: function () {
+        var props = this.props;
+
+        if(this.props.bordered || this.props.rounded) {
+            var iconClasses;
+            return (
+                <span className={iconClasses}>
+                    {this.renderIcon()}
+                </span>
+            );
+        } else {
+            return this.renderIcon();
+        }
     }
 });

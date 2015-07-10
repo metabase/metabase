@@ -88,7 +88,7 @@ export default React.createClass({
         }
 
         return (
-            <table className="wrapper">
+            <table className="p4">
                 <tbody>
                     {rows}
                 </tbody>
@@ -122,9 +122,15 @@ export default React.createClass({
                 referenceCount = component.renderFkCountOrSpinner(fk.origin.id);
 
             return (
-                <li className="block mb1 lg-mb2 border-bottom">
-                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
-                        {referenceCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                <li className="block mb1 py2 border-bottom text-dark cursor-pointer text-brand-hover">
+                    <div className="flex align-center" key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                        <div>
+                            <h2>{referenceCount}</h2>
+                            <h3>{relationName}</h3>
+                        </div>
+                        <span className="UserNick flex-align-right">
+                            <Icon name='chevronright' width="12px" height="12px" />
+                        </span>
                     </div>
                 </li>
             )
@@ -147,24 +153,24 @@ export default React.createClass({
             idValue = this.getIdValue();
 
         return (
-            <div className="wrapper">
+            <div className="wrapper wrapper--trim">
                 <div className="bordered">
                     <div className="Grid border-bottom">
-                        <div className="Grid-cell border-right">
-                            <div className="wrapper">
+                        <div className="Grid-cell p4 border-right">
+                            <div className="text-brand">
                                 <span>{tableName}</span>
-                                <h2>{idValue}</h2>
+                                <h1>{idValue}</h1>
                             </div>
                         </div>
-                        <div className="Grid-cell Cell--1of3">
-                            <div className="wrapper">
-                                <Icon name='cards' width="12px" height="12px" /> This {tableName} is connected to.
+                        <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
+                            <div className="p4">
+                                <Icon name="connections" width="12px" height="12px" /> This {tableName} is connected to.
                             </div>
                         </div>
                     </div>
                     <div className="Grid">
                         <div className="Grid-cell border-right">{this.renderDetailsTable()}</div>
-                        <div className="Grid-cell Cell--1of3">{this.renderRelationships()}</div>
+                        <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                     </div>
                 </div>
             </div>

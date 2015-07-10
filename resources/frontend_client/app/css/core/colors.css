@@ -2,13 +2,13 @@
   --brand-color: #509EE3;
 
   --base-grey: #f8f8f8;
-  --alt-bg-color: #F4F6F8;
+  --alt-color: #F5F7F9;
 
   --success-color: #9CC177;
   --headsup-color: #F5A623;
 
   --gold-color: #F9D45C;
-
+  --dark-color: #4C545B;
   --error-color: #EF8C8C;
 }
 
@@ -59,9 +59,10 @@
     color: var(--gold-color);
 }
 
-.bg-gold {
-    background-color: var(--gold-color);
-}
+.bg-gold { background-color: var(--gold-color); }
+
+/* alt */
+.bg-alt { background-color: var(--alt-color); }
 
 /* grey */
 
