@@ -972,7 +972,7 @@
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-(expect
+(datasets/expect-when-testing-dataset :mongo
     [[8   "Kyle's Low-Carb Grill"]
      [67  "Kyle's Low-Carb Grill"]
      [80  "Kyle's Low-Carb Grill"]
@@ -991,7 +991,7 @@
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
-(expect
+(datasets/expect-when-testing-dataset :mongo
     [[446
       {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
       {:large  "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/large.jpg",
@@ -1025,20 +1025,20 @@
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
-(expect 99
+(datasets/expect-when-testing-dataset :mongo 99
   (Q run against geographical-tips using mongo
      return :data :rows first first
      aggregate distinct venue...name of tips))
 
 ;; Now let's just get the regular count
-(expect 500
+(datasets/expect-when-testing-dataset :mongo 500
   (Q run against geographical-tips using mongo
      return :data :rows first first
      aggregate count venue...name of tips))
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
-(expect
+(datasets/expect-when-testing-dataset :mongo
     {:rows    [["facebook" 107]
                ["flare" 105]
                ["foursquare" 100]
@@ -1052,7 +1052,7 @@
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
-(expect
+(datasets/expect-when-testing-dataset :mongo
     [[1  {:name "Lucky's Gluten-Free Café"}]
      [2  {:name "Joe's Homestyle Eatery"}]
      [3  {:name "Lower Pac Heights Cage-Free Coffee House"}]
@@ -1072,7 +1072,7 @@
 
 
 ;;; Nested Field w/ ordering by aggregation
-(expect
+(datasets/expect-when-testing-dataset :mongo
     [["jane" 4]
      ["kyle" 5]
      ["tupac" 5]

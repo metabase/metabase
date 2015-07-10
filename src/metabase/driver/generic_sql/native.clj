@@ -1,6 +1,5 @@
 (ns metabase.driver.generic-sql.native
   "The `native` query processor."
-  (:import com.metabase.corvus.api.ApiException)
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (korma [core :as korma]
