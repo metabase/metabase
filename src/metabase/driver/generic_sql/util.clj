@@ -17,7 +17,7 @@
     (-> database
         database->connection-details
         connection-details->connection-spec
-        (assoc :make-pool? true))))     ; need to make a pool or the connection will be closed before we get a change to unCLOB-er the results during JSON serialization
+        (assoc :make-pool? true))))     ; need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
 
 (def ^{:arglists '([database])}
   db->korma-db
