@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.string :as s]
             [clojure.walk :as walk]
-            [korma.core :refer :all]
+            [korma.core :refer :all, :exclude [update]]
             [metabase.config :as config]
             [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]

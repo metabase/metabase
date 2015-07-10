@@ -1,7 +1,7 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             [metabase.middleware.auth :as auth]
@@ -217,7 +217,7 @@
 (let [user-last-name (random-name)]
   (expect-eval-actual-first
       (let [{user-id :id} (sel :one User :last_name user-last-name)]
-        (sel :one :fields [Session :id] :user_id user-id (order :created_at :desc))) ; get the latest Session for this User
+        (sel :one :fields [Session :id] :user_id user-id (k/order :created_at :desc))) ; get the latest Session for this User
     (let [password {:old "password"
                     :new "whateverUP12!!"}
           {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name)

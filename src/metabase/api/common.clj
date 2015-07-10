@@ -3,8 +3,8 @@
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
-            [korma.core :refer :all :exclude [update]]
-            [medley.core :refer :all]
+            [korma.core :as k]
+            [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
             [metabase.db.internal :refer [entity->korma]]
@@ -327,7 +327,7 @@
 (defannotation Boolean
   "Param must be a boolean (this does *not* cast the param)."
   [symb value :nillable]
-  (checkp-with boolean? symb value "value must be a boolean."))
+  (checkp-with m/boolean? symb value "value must be a boolean."))
 
 (defannotation Dict
   "Param must be a dictionary (this does *not* cast the param)."
@@ -406,7 +406,7 @@
    `defendpoint` in the current namespace."
   [& additional-routes]
   (let [api-routes (->> (ns-publics *ns*)
-                        (filter-vals #(:is-endpoint? (meta %)))
+                        (m/filter-vals #(:is-endpoint? (meta %)))
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 

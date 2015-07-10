@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
-            [korma.core :as korma]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
@@ -18,7 +18,7 @@
   [:as {{:keys [email password] :as body} :body}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
+  (let [user (sel :one :fields [User :id :password_salt :password] :email email (k/where {:is_active true}))]
     (checkp (not (nil? user))
     ; Don't leak whether the account doesn't exist or the password was incorrect
       (symbol "password") "did not match stored password")

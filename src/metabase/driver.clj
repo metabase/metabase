@@ -1,7 +1,7 @@
 (ns metabase.driver
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
-            [medley.core :refer :all]
+            [medley.core :as m]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
@@ -227,7 +227,7 @@
   (if id
     ;; execution has already been saved, so update it
     (do
-      (mapply upd QueryExecution id query-execution)
+      (m/mapply upd QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (mapply ins QueryExecution query-execution)))
+    (m/mapply ins QueryExecution query-execution)))

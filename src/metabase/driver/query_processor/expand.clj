@@ -110,15 +110,17 @@
                 (not (every? nil? clause))))))
 
 (defn- parse [query-dict]
-  (update-in query-dict [:query] #(-<> (assoc %
-                                              :aggregation (parse-aggregation (:aggregation %))
-                                              :breakout    (parse-breakout    (:breakout %))
-                                              :fields      (parse-fields      (:fields %))
-                                              :filter      (parse-filter      (:filter %))
-                                              :order_by    (parse-order-by    (:order_by %)))
-                                       (set/rename-keys <> {:order_by     :order-by
-                                                            :source_table :source-table})
-                                       (m/filter-vals non-empty-clause? <>))))
+  ;; TODO - we should parse the Page clause so we can validate it
+  ;; And convert to a limit / offset clauses
+  (update query-dict :query #(-<> (assoc %
+                                         :aggregation (parse-aggregation (:aggregation %))
+                                         :breakout    (parse-breakout    (:breakout %))
+                                         :fields      (parse-fields      (:fields %))
+                                         :filter      (parse-filter      (:filter %))
+                                         :order_by    (parse-order-by    (:order_by %)))
+                                  (set/rename-keys <> {:order_by     :order-by
+                                                       :source_table :source-table})
+                                  (m/filter-vals non-empty-clause? <>))))
 
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
@@ -350,15 +352,15 @@
                         ^Field field])
 
 (defparser parse-aggregation
-  ["rows"]              (->Aggregation :rows nil)
-  ["count"]             (->Aggregation :count nil)
-  ["avg" field-id]      (->Aggregation :avg (ph field-id))
-  ["count" field-id]    (->Aggregation :count (ph field-id))
-  ["distinct" field-id] (->Aggregation :distinct (ph field-id))
-  ["stddev" field-id]   (do (assert-driver-supports :standard-deviation-aggregations)
-                            (->Aggregation :stddev (ph field-id)))
-  ["sum" field-id]      (->Aggregation :sum (ph field-id))
-  ["cum_sum" field-id]  (->Aggregation :cumulative-sum (ph field-id)))
+  ["rows"]                              (->Aggregation :rows nil)
+  ["count"]                             (->Aggregation :count nil)
+  ["avg" (field-id :guard Field?)]      (->Aggregation :avg (ph field-id))
+  ["count" (field-id :guard Field?)]    (->Aggregation :count (ph field-id))
+  ["distinct" (field-id :guard Field?)] (->Aggregation :distinct (ph field-id))
+  ["stddev" (field-id :guard Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
+                                            (->Aggregation :stddev (ph field-id)))
+  ["sum" (field-id :guard Field?)]      (->Aggregation :sum (ph field-id))
+  ["cum_sum" (field-id :guard Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
 
 
 ;; ## -------------------- Breakout --------------------

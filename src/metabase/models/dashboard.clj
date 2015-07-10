@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard
-  (:require [korma.core :refer :all, :exclude [defentity]]
+  (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [dashboard-card :refer [DashboardCard]]
