@@ -97,6 +97,8 @@
       (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
     (let [table           @table
           name-components (rest @qualified-name-components)
+          ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
+          ;; with a recursive call to (lazily) fetch the next chunk of results, until we run out of results or hit the limit.
           fetch-chunk     (fn -fetch-chunk [start step limit]
                             (lazy-seq
                              (let [results (->> (k/select (korma-entity table)
