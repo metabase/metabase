@@ -1,6 +1,6 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
-            [korma.core :refer :all, :exclude [defentity]]
+            [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.models.interface :refer :all]

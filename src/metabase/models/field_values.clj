@@ -1,6 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [korma.core :refer :all, :exclude [defentity]]
+            [korma.core :refer :all, :exclude [defentity update]]
             (metabase [db :refer :all]
                       [util :as u])
             [metabase.models.interface :refer :all]))

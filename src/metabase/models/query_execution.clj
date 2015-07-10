@@ -1,5 +1,5 @@
 (ns metabase.models.query-execution
-  (:require [korma.core :refer :all, :exclude [defentity]]
+  (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.api.common :refer [check]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]

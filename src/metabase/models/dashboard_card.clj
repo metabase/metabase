@@ -1,6 +1,6 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.core :refer :all, :exclude [defentity]]
+            [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
                              [interface :refer :all])))

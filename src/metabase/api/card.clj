@@ -1,6 +1,6 @@
 (ns metabase.api.card
   (:require [compojure.core :refer [GET POST DELETE PUT]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -29,9 +29,9 @@
   [f]
   {f CardFilterOption}
   (-> (case (or f :all) ; default value for `f` is `:all`
-        :all  (sel :many Card (order :name :ASC) (where (or {:creator_id *current-user-id*}
-                                                            {:public_perms [> common/perms-none]})))
-        :mine (sel :many Card :creator_id *current-user-id* (order :name :ASC))
+        :all  (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
+                                                              {:public_perms [> common/perms-none]})))
+        :mine (sel :many Card :creator_id *current-user-id* (k/order :name :ASC))
         :fav  (->> (-> (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
                        (hydrate :card))
                    (map :card)

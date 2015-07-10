@@ -1,7 +1,7 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -20,7 +20,7 @@
 (defendpoint GET "/"
   "Fetch all `Databases`."
   []
-  (sel :many Database (order :name)))
+  (sel :many Database (k/order :name)))
 
 (defendpoint POST "/"
   "Add a new `Database`."
@@ -112,7 +112,7 @@
   "Get a list of all `Tables` in `Database`."
   [id]
   (read-check Database id)
-  (-> (sel :many Table :db_id id :active true (order :name))
+  (-> (sel :many Table :db_id id :active true (k/order :name))
       (hydrate :human_readable_name)))
 
 (defendpoint GET "/:id/idfields"
