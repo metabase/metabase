@@ -373,6 +373,14 @@
 /* object detail */
 .ObjectDetail {
     border: 1px solid #DEDEDE;
+    min-width: 906px;
+    margin: 0 auto;
+}
+
+@media screen and (--breakpoint-min-lg) {
+   .ObjectDetail {
+       min-width: 1140px;
+   }
 }
 
 .ObjectDetail-headingGroup {

@@ -180,28 +180,26 @@ export default React.createClass({
             idValue = this.getIdValue();
 
         return (
-            <div className="wrapper wrapper--trim">
-                <div className="ObjectDetail rounded">
-                    <div className="Grid ObjectDetail-headingGroup">
-                        <div className="Grid-cell ObjectDetail-infoMain p4 ml2 ">
-                            <div className="text-brand text-bold">
-                                <span>{tableName}</span>
-                                <h1>{idValue}</h1>
-                            </div>
+            <div className="ObjectDetail rounded">
+                <div className="Grid ObjectDetail-headingGroup">
+                    <div className="Grid-cell ObjectDetail-infoMain p4 ml2 ">
+                        <div className="text-brand text-bold">
+                            <span>{tableName}</span>
+                            <h1>{idValue}</h1>
                         </div>
-                        <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-                            <div className="p4 flex align-center text-bold text-grey-3">
-                                <Icon name="connections" width="32px" height="32px" />
-                                <div>
-                                    This <span className="text-dark">{tableName}</span> is connected to.
-                                </div>
+                    </div>
+                    <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
+                        <div className="p4 flex align-center text-bold text-grey-3">
+                            <Icon name="connections" width="32px" height="32px" />
+                            <div>
+                                This <span className="text-dark">{tableName}</span> is connected to.
                             </div>
                         </div>
                     </div>
-                    <div className="Grid">
-                        <div className="Grid-cell ObjectDetail-infoMain pt4">{this.renderDetailsTable()}</div>
-                        <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
-                    </div>
+                </div>
+                <div className="Grid">
+                    <div className="Grid-cell ObjectDetail-infoMain pt4">{this.renderDetailsTable()}</div>
+                    <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                 </div>
             </div>
         );
