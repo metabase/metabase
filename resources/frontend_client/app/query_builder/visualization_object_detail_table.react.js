@@ -118,14 +118,39 @@ export default React.createClass({
 
         var component = this;
         var relationships = this.props.tableForeignKeys.map(function(fk) {
-            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name,
-                referenceCount = component.renderFkCountOrSpinner(fk.origin.id);
+            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
+
+            var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>),
+                fkClickable = false;
+            if (component.props.tableForeignKeyReferences) {
+                var fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
+                if (fkCountInfo && fkCountInfo["status"] === 1) {
+                    fkCount = (<span>{fkCountInfo["value"]}</span>);
+
+                    if (fkCountInfo["value"]) {
+                        fkClickable = true;
+                    }
+                }
+            }
+
+            var fkReference;
+            if (fkClickable) {
+                fkReference = (
+                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    </div>
+                );
+            } else {
+                fkReference = (
+                    <div key={fk.id}>
+                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    </div>
+                );
+            }
 
             return (
                 <li className="block mb1 lg-mb2 border-bottom">
-                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
-                        {referenceCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
-                    </div>
+                    {fkReference}
                 </li>
             )
         });
