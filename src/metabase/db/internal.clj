@@ -35,14 +35,15 @@
   (if-not (vector? entity) [entity nil]
           [(first entity) (vec (rest entity))]))
 
-(def entity->korma
+(def ^{:arglists '([entity])} entity->korma
   "Convert an ENTITY argument to `sel` into the form we should pass to korma `select` and to various multi-methods such as
    `post-select`.
 
     *  If entity is a vector like `[User :name]`, only keeps the first arg (`User`)
     *  Converts fully-qualified entity name strings like `\"metabase.models.user/User\"` to the corresponding entity
        and requires their namespace if needed.
-    *  Symbols like `'metabase.models.user/User` are handled the same way as strings."
+    *  Symbols like `'metabase.models.user/User` are handled the same way as strings.
+    *  Infers the namespace of unqualified symbols like `'CardFavorite`"
   (memoize
    (fn -entity->korma [entity]
      {:post [(:metabase.models.interface/entity %)]}
@@ -50,13 +51,15 @@
            (string? entity) (-entity->korma (symbol entity))
            (symbol? entity) (try (eval entity)
                                  (catch clojure.lang.Compiler$CompilerException _ ; a wrapped ClassNotFoundException
-                                   (-> entity
-                                       str
-                                       (.split "/")
-                                       first
-                                       symbol
-                                       require)
-                                   (eval entity)))
+                                   (let [[_ ns symb] (re-matches #"^(?:([^/]+)/)?([^/]+)$" (str entity))
+                                         _    (assert symb)
+                                         ns   (symbol (or ns
+                                                          (str "metabase.models." (-> symb
+                                                                                      (s/replace #"([a-z])([A-Z])" "$1-$2") ; convert something like CardFavorite
+                                                                                      s/lower-case)))) ; to ns like metabase.models.card_favorite
+                                         symb (symbol symb)]
+                                     (require ns)
+                                     @(ns-resolve ns symb))))
            :else entity))))
 
 

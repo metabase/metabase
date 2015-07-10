@@ -14,7 +14,7 @@
          qualified-name-components)
 
 (def ^:const special-types
-  "Possible values for `Field` `:special_type`."
+  "Possible values for `Field.special_type`."
   #{:avatar
     :category
     :city
@@ -55,7 +55,7 @@
    :zip_code          "Zip Code"})
 
 (def ^:const base-types
-  "Possible values for `Field` `:base_type`."
+  "Possible values for `Field.base_type`."
   #{:BigIntegerField
     :BooleanField
     :CharField
