@@ -1,6 +1,5 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
@@ -49,21 +48,3 @@
 ;; ## TEST FIELD-AVG-LENGTH
 (expect 13
   (i/field-avg-length h2/driver @users-name-field))
-
-
-;; ## TEST CHECK-FOR-URLS
-;; (expect 0.375
-;;   (with-temp-table [table {:url "VARCHAR(254)"}]
-;;     (insert table
-;;             (values [{:url "http://www.google.com"}   ; 1/1 *
-;;                      {:url nil}                       ; 1/1 (ignored)
-;;                      {:url "https://amazon.co.uk"}    ; 2/2 *
-;;                      {:url "http://what.com?ok=true"} ; 3/3 *
-;;                      {:url "http://missing-period"}   ; 3/4
-;;                      {:url "ftp://not-http"}          ; 3/5
-;;                      {:url "http//amazon.com.uk"}     ; 3/6
-;;                      {:url "Not a URL"}               ; 3/7
-;;                      {:url "Not-a-url"}]))            ; 3/8
-;;     (i/field-percent-urls h2/driver {:name "URL"
-;;                                      :table (delay (assoc table
-;;                                                           :db test-db))})))

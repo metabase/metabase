@@ -188,7 +188,9 @@
     (when-not *disable-qp-logging*
       (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED:\n%s"
                                  ;; obscure DB details when logging
-                                 (u/pprint-to-str (assoc-in query [:database :details] "**********")))))
+                                 (u/pprint-to-str (-> query
+                                                      (assoc-in [:database :details] "**********")
+                                                      (update :driver class))))))
     (qp query)))
 
 
