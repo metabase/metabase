@@ -84,4 +84,4 @@
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
 
 
-.text-dark { color: #797979; }
+.text-dark { color: var(--dark-color); }

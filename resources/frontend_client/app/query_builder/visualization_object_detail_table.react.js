@@ -3,6 +3,8 @@
 import ExpandableString from './expandable_string.react';
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
+import IconBorder from './icon_border.react';
+import LoadingSpinner from './../components/icons/loading.react';
 
 var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;
@@ -101,7 +103,9 @@ export default React.createClass({
         var relationships = this.props.tableForeignKeys.map(function(fk) {
             var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
 
-            var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>),
+            var fkCount = (
+                <LoadingSpinner />
+            ),
                 fkClickable = false;
             if (component.props.tableForeignKeyReferences) {
                 var fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
@@ -113,31 +117,54 @@ export default React.createClass({
                     }
                 }
             }
+            var chevron = (
+                <IconBorder className="flex-align-right">
+                    <Icon name='chevronright' width="10px" height="10px" />
+                </IconBorder>
+            );
 
+            var info = (
+                <div>
+                    <h2>{fkCount}</h2>
+                    <h5 className="block">{relationName}</h5>
+                 </div>
+            );
             var fkReference;
+            var referenceClasses = cx({
+                'flex': true,
+                'align-center': true,
+                'my2': true,
+                'border-bottom': true,
+                'text-brand-hover': fkClickable,
+                'cursor-pointer': fkClickable,
+                'text-dark': fkClickable,
+                'text-grey-3': !fkClickable
+            });
+
             if (fkClickable) {
                 fkReference = (
-                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
-                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    <div className={referenceClasses} key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                        {info}
+                        {chevron}
                     </div>
                 );
             } else {
                 fkReference = (
-                    <div key={fk.id}>
-                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    <div className={referenceClasses} key={fk.id}>
+                        {info}
                     </div>
                 );
             }
 
             return (
-                <li className="block mb1 py2 border-bottom text-dark cursor-pointer text-brand-hover">
+                <li>
                     {fkReference}
                 </li>
-            )
+            );
         });
 
         return (
-            <ul className="wrapper">
+            <ul className="px4">
                 {relationships}
             </ul>
         );
@@ -154,23 +181,25 @@ export default React.createClass({
 
         return (
             <div className="wrapper wrapper--trim">
-                <div className="bordered rounded">
-                    <div className="Grid border-bottom">
-                        <div className="Grid-cell p4 ml2 border-right">
-                            <div className="text-brand text-bol">
+                <div className="ObjectDetail rounded">
+                    <div className="Grid ObjectDetail-headingGroup">
+                        <div className="Grid-cell ObjectDetail-infoMain p4 ml2 ">
+                            <div className="text-brand text-bold">
                                 <span>{tableName}</span>
                                 <h1>{idValue}</h1>
                             </div>
                         </div>
                         <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-                            <div className="p4 flex align-center text-bold">
-                                <Icon name="connections" width="12px" height="12px" />
-                                This <span className="text-dark">{tableName}</span> is connected to.
+                            <div className="p4 flex align-center text-bold text-grey-3">
+                                <Icon name="connections" width="32px" height="32px" />
+                                <div>
+                                    This <span className="text-dark">{tableName}</span> is connected to.
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div className="Grid">
-                        <div className="Grid-cell border-right pt4">{this.renderDetailsTable()}</div>
+                        <div className="Grid-cell ObjectDetail-infoMain pt4">{this.renderDetailsTable()}</div>
                         <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                     </div>
                 </div>

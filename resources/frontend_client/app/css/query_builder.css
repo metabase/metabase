@@ -370,3 +370,16 @@
 .ChartType--notSensible {
     opacity: 0.5;
 }
+/* object detail */
+.ObjectDetail {
+    border: 1px solid #DEDEDE;
+}
+
+.ObjectDetail-headingGroup {
+    border-bottom: 1px solid #DEDEDE;
+}
+
+.ObjectDetail-infoMain {
+    border-right: 1px solid #DEDEDE;
+    margin-left: 2.4rem;
+}

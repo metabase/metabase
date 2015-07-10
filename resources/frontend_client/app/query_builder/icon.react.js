@@ -9,11 +9,9 @@ export default React.createClass({
           width: '32px',
           height: '32px',
           fill: 'currentcolor',
-          bordered: false,
-          rounded: false,
        };
     },
-    renderIcon: function () {
+    render: function () {
         var path;
         var iconPath = ICON_PATHS[this.props.name];
 
@@ -30,26 +28,5 @@ export default React.createClass({
                 {path}
             </svg>
         );
-    },
-    renderBordered: function () {
-        return (
-            <span className="text-error">
-                {this.renderIcon()}
-            </span>
-        );
-    },
-    render: function () {
-        var props = this.props;
-
-        if(this.props.bordered || this.props.rounded) {
-            var iconClasses;
-            return (
-                <span className={iconClasses}>
-                    {this.renderIcon()}
-                </span>
-            );
-        } else {
-            return this.renderIcon();
-        }
     }
 });
