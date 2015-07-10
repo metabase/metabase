@@ -61,7 +61,6 @@ export default React.createClass({
     },
 
     render: function() {
-        console.log(this.props, this.state)
         var name = inflection.humanize(this.props.field.name);
         return (
             <div>

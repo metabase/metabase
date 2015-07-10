@@ -1,6 +1,7 @@
 'use strict';
 
 import Icon from './icon.react';
+import DataReferenceQueryButton from './data_reference_query_button.react';
 import inflection from 'inflection';
 
 var cx = React.addons.classSet;
@@ -19,6 +20,22 @@ export default React.createClass({
         this.setState({ pane: name });
     },
 
+    setQueryAllRows: function() {
+        var query = {
+            database:  this.state.table.db_id,
+            query: {
+                "aggregation": ["rows"],
+                "breakout": [],
+                "filter": [],
+                "source_table": this.state.table.id
+            },
+            type: "query"
+        };
+        console.log(query);
+        this.props.notifyQueryModifiedFn(query);
+        // this.props.runFn(query);
+    },
+
     render: function(page) {
         var table = this.state.table;
         if (table === undefined) {
@@ -31,16 +48,17 @@ export default React.createClass({
         }
         if (table) {
             var name = inflection.humanize(table.name);
-            var rowStats;
+            var queryButton;
             if (table.rows != null) {
                 var words = inflection.humanize(table.name, true).split(" ");
                 words.push(inflection.inflect(words.pop(), table.rows)); // inflect the last word
-                rowStats = <p>There {table.rows === 1 ? "is" : "are"} {table.rows} {words.join(" ")}</p>
+                var text = "Show all " + table.rows.toLocaleString() + " rows in " + name
+                queryButton = (<DataReferenceQueryButton icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var fieldCount = table.fields.length + " " + inflection.inflect("field", table.fields.length);
             var panes = {
                 "fields": fieldCount,
-                "metrics": "0 Metrics",
+                // "metrics": "0 Metrics",
                 "connections": "O Connections"
             };
             var tabs = Object.keys(panes).map((name) => {
@@ -70,7 +88,7 @@ export default React.createClass({
                 <div>
                     <h1>{name}</h1>
                     <p>{table.description}</p>
-                    {rowStats}
+                    {queryButton}
                     <div className="Button-group Button-group--brand text-uppercase">
                         {tabs}
                     </div>
