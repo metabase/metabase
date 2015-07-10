@@ -47,8 +47,8 @@ export default React.createClass({
         } else {
 
             var cellValue;
-            if (row[1] === null) {
-                cellValue = (<span className="text-grey-2">No Data</span>);
+            if (row[1] === null || (typeof row[1] === "string" && row[1].length === 0)) {
+                cellValue = (<span className="text-grey-2">Empty</span>);
 
             } else if(row[0].special_type === "json") {
                 var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
@@ -90,19 +90,6 @@ export default React.createClass({
         return rows;
     },
 
-    renderFkCountOrSpinner: function(fkOriginId) {
-        var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>);
-        if (this.props.tableForeignKeyReferences) {
-            var fkCountInfo = this.props.tableForeignKeyReferences[fkOriginId];
-            if (fkCountInfo && fkCountInfo["status"] === 1) {
-                var count = fkCountInfo["value"];
-                fkCount = (<span>{count}</span>)
-            }
-        }
-
-        return fkCount;
-    },
-
     renderRelationships: function() {
         if (!this.props.tableForeignKeys) return false;
 
@@ -112,20 +99,39 @@ export default React.createClass({
 
         var component = this;
         var relationships = this.props.tableForeignKeys.map(function(fk) {
-            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name,
-                referenceCount = component.renderFkCountOrSpinner(fk.origin.id);
+            var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
+
+            var fkCount = (<span><Icon name='check' width="12px" height="12px" /></span>),
+                fkClickable = false;
+            if (component.props.tableForeignKeyReferences) {
+                var fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
+                if (fkCountInfo && fkCountInfo["status"] === 1) {
+                    fkCount = (<span>{fkCountInfo["value"]}</span>);
+
+                    if (fkCountInfo["value"]) {
+                        fkClickable = true;
+                    }
+                }
+            }
+
+            var fkReference;
+            if (fkClickable) {
+                fkReference = (
+                    <div key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    </div>
+                );
+            } else {
+                fkReference = (
+                    <div key={fk.id}>
+                        {fkCount} {relationName} <span className="UserNick"><Icon name='chevronright' width="12px" height="12px" /></span>
+                    </div>
+                );
+            }
 
             return (
                 <li className="block mb1 py2 border-bottom text-dark cursor-pointer text-brand-hover">
-                    <div className="cursor-pointer flex align-center" key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
-                        <div>
-                            <h2>{referenceCount}</h2>
-                            <h4>{relationName}</h4>
-                        </div>
-                        <span className="UserNick flex-align-right">
-                            <Icon name='chevronright' width="12px" height="12px" />
-                        </span>
-                    </div>
+                    {fkReference}
                 </li>
             )
         });
