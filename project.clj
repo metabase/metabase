@@ -59,7 +59,8 @@
          :init metabase.core/init}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
-             :exclude-linters [:constant-test]}                       ; korma macros generate some formats with if statements that are always logically true or false
+             :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
+                               :suspicious-expression]}               ; core.match macros generate some forms like (and expr) which is "suspicious"
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]  ; REPL <3
                                   [expectations "2.1.1"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
@@ -85,6 +86,7 @@
                             :jvm-opts ["-Dmb.db.file=target/metabase-test"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3001"
-                                       "-Dmb.api.key=test-api-key"]}
+                                       "-Dmb.api.key=test-api-key"
+                                       "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all
                        :prep-tasks ^:replace ["npm" "webpack" "javac" "compile"]}})

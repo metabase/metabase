@@ -37,3 +37,5 @@
 
 ;; Places, times, and circumstances where Tupac was sighted
 (def-database-definition-edn tupac-sightings)
+
+(def-database-definition-edn geographical-tips)

@@ -9,7 +9,7 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             [metabase.driver.query-processor.expand :as expand]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
@@ -30,10 +30,6 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
-(def ^:dynamic *driver*
-  "The driver currently being used to process this query."
-  (atom nil))
-
 
 ;; +----------------------------------------------------------------------------------------------------+
 ;; |                                     QP INTERNAL IMPLEMENTATION                                     |
@@ -50,7 +46,7 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (expand/expand *driver* query))))
+    (qp (expand/expand query))))
 
 
 (defn- post-add-row-count-and-status
@@ -73,8 +69,8 @@
     (qp (if (or (not (= ag-type :rows)) breakout fields) query
             (-> query
                 (assoc-in [:query :fields-is-implicit] true)
-                (assoc-in [:query :fields] (->> (sel :many [Field :name :base_type :special_type :table_id], :table_id source-table-id, :active true,
-                                                     :preview_display true, :field_type [not= "sensitive"], (k/order :position :asc), (k/order :id :desc))
+                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id], :table_id source-table-id, :active true,
+                                                     :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
                                                 (map expand/rename-mb-field-keys)
                                                 (map expand/map->Field)
                                                 (map #(expand/resolve-table % {source-table-id source-table})))))))))
@@ -171,8 +167,7 @@
 
 (defn- cumulative-sum [qp]
   (fn [query]
-    (let [[cumulative-sum-field query] (pre-cumulative-sum query)
-          results                      (qp query)]
+    (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
       (cond->> (qp query)
         cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))))
 
@@ -180,9 +175,10 @@
 (defn- limit
   "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
-  (fn [{{{ag-type :aggregation-type} :aggregation} :query, :as query}]
+  (fn [{{{ag-type :aggregation-type} :aggregation, limit :limit} :query, :as query}]
     (let [query   (cond-> query
-                    (= ag-type :rows) (assoc :limit max-result-bare-rows))
+                    (and (not limit)
+                         (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
       (update-in results [:rows] (partial take max-result-rows)))))
 
@@ -226,13 +222,20 @@
 (defn- order-cols
   "Construct a sequence of column keywords that should be used for pulling ordered rows from RESULTS.
    FIELDS should be a sequence of all `Fields` for the `Table` associated with QUERY."
-  [{{breakout-fields :breakout, fields-fields :fields, fields-is-implicit :fields-is-implicit} :query} results fields]
-  {:post [(= (set %)
-             (set (keys (first results))))]}
-  (let [;; TODO - This function was written before the advent of the expanded query it is designed to work with Field IDs rather than expanded forms
-        ;; Since this logic is delecate I've side-stepped the issue by converting the expanded Fields back to IDs for the time being.
-        ;; We should carefully re-work this function to use expanded Fields so we don't need the complicated logic below to fetch their names
+  [{{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, fields-fields :fields, fields-is-implicit :fields-is-implicit} :query} results fields]
+  (let [;; Get all the column name keywords returned by the results
+        result-kws       (set (keys (first results)))
+        valid-kw?        (partial contains? result-kws)
+
         breakout-ids     (map :field-id breakout-fields)
+
+        breakout-kws     (->> (for [field breakout-fields]
+                                (->> (rest (expand/qualified-name-components field)) ; TODO - this "qualified name for results" should be calculated in the Query expander
+                                     (interpose ".")
+                                     (apply str)
+                                     keyword))
+                              (filter valid-kw?))
+
         fields-ids       (map :field-id fields-fields)
 
         field-id->field  (zipmap (map :id fields) fields)
@@ -241,23 +244,20 @@
         fields-ids       (when-not fields-is-implicit fields-ids)
         all-field-ids    (->> fields    ; Sort the Fields.
                               (sort-by (fn [{:keys [position special_type name]}] ; For each field generate a vector of
-                                         [position                                ; [position special-type-group name]
-                                          (cond                                   ; and Clojure will take care of the rest.
+                                         [position ; [position special-type-group name]
+                                          (cond ; and Clojure will take care of the rest.
                                             (= special_type :id)   0
                                             (= special_type :name) 1
                                             :else                  2)
                                           name]))
                               (map :id)) ; Return the sorted IDs
 
-        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
-        ;; Then filter out ones that appear in breakout clause and remove duplicates
-        ;; which effectively gives us parts #3 and #4 from above.
-        non-breakout-ids (->> (concat fields-ids all-field-ids)
-                              (filter (complement (partial contains? (set breakout-ids))))
-                              distinct)
-
-        ;; Get all the column name keywords returned by the results
-        result-kws       (set (keys (first results)))
+        ;; Get the aggregate column if any
+        ag-kws           (when (and ag-type
+                                    (not= ag-type :rows))
+                           (let [ag (if (= ag-type :distinct) :count
+                                        ag-type)]
+                             [ag]))
 
         ;; Make a helper function that will take a sequence of Field IDs and convert them to corresponding column name keywords.
         ;; Don't include names that aren't part of RESULT-KWS: we fetch *all* the Fields for a Table regardless of the Query, so
@@ -266,23 +266,38 @@
                            (some->> (map field-id->field field-ids)
                                     (map :name)
                                     (map keyword)
-                                    (filter (partial contains? result-kws))))
+                                    (filter valid-kw?)))
 
-        ;; Use fn above to get the keyword column names of breakout clause fields [#1] + fields clause fields / other non-aggregation fields [#3 and #4]
-        breakout-kws     (ids->kws breakout-ids)
-        non-breakout-kws (ids->kws non-breakout-ids)
+        ;; Concat the Fields clause IDs + the sequence of all Fields ID for the Table.
+        ;; Then filter out ones that appear in breakout clause and remove duplicates
+        ;; which effectively gives us parts #3 and #4 from above.
+        non-breakout-ids (->> (concat fields-ids all-field-ids)
+                              (filter (complement (partial contains? (set breakout-ids))))
+                              distinct)
 
-        ;; Now get all the keyword column names specific to aggregation, such as :sum or :count [#2].
-        ;; Just get all the items in RESULT-KWS that *aren't* part of BREAKOUT-KWS or NON-BREAKOUT-KWS
-        ag-kws           (->> result-kws
-                              ;; TODO - Currently, this will never be more than a single Field, since we only
-                              ;; support a single aggregation clause at this point. When we add support for
-                              ;; multiple aggregation clauses, we'll need to add some logic to make sure they're
-                              ;; being ordered correctly, e.g. the first aggregate column before the second, etc.
-                              (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws))))))]
+        ;; Use fn above to get the keyword column names of other non-aggregation fields [#3 and #4]
+        non-breakout-kws (->> (ids->kws non-breakout-ids)
+                              (filter (complement (partial contains? (set ag-kws)))))
+
+        ;; Collect all other Fields
+        other-kws        (->> result-kws
+                              (filter (complement (partial contains? (set (concat breakout-kws non-breakout-kws ag-kws)))))
+                              sort)] ; sort by name so results are deterministic
+
+    (when (seq other-kws)
+      (log/warn (u/format-color 'red "Warning: not 100%% sure how to order these columns: %s" (vec other-kws))))
 
     ;; Now combine the breakout [#1] + aggregate [#2] + "non-breakout" [#3 &  #4] column name keywords into a single sequence
-    (concat breakout-kws ag-kws non-breakout-kws)))
+    (when-not *disable-qp-logging*
+      (log/debug (u/format-color 'magenta "Using this ordering: breakout: %s, ag: %s, non-breakout: %s, other: %s"
+                                 (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws) (vec other-kws))))
+
+    (let [ordered-kws (concat breakout-kws ag-kws non-breakout-kws other-kws)]
+      (assert (and (= (set ordered-kws) result-kws)
+                   (= (count ordered-kws) (count result-kws)))
+        (format "Order-cols returned invalid results: expected %s, got %s\nbreakout: %s, ag: %s, non-breakout: %s, other: %s" result-kws (vec ordered-kws)
+                (vec breakout-kws) (vec ag-kws) (vec non-breakout-kws) (vec other-kws)))
+      ordered-kws)))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
@@ -328,6 +343,20 @@
             (and (seq join-table-ids)
                  (sel :one :fields [Field :id :table_id :name :description :base_type :special_type], :name (name col-kw), :table_id [in join-table-ids]))
 
+            ;; Otherwise if this is a nested Field recursively find the appropriate info
+            (let [name-components (s/split (name col-kw) #"\.")]
+              (when (> (count name-components) 1)
+                ;; Find the nested Field by recursing through each Field's :children
+                (loop [field-kw->field field-kw->field, [component & more] (map keyword name-components)]
+                  (when-let [f (field-kw->field component)]
+                    (if-not (seq more)
+                      ;; If the are no more components to recurse through give the resulting Field a qualified name like "source.service" and return it
+                      (assoc f :name (apply str (interpose "." name-components)))
+                      ;; Otherwise recurse with a map of child-name-kw -> child and the rest of the name components
+                      (recur (zipmap (map (comp keyword :name) (:children f))
+                                     (:children f))
+                             more))))))
+
             ;; Otherwise it is an aggregation column like :sum, build a map of information to return
             (merge (assert ag-type)
                    {:name        (name col-kw)
@@ -341,6 +370,7 @@
                      ;; count should always be IntegerField/number
                      (= col-kw :count)                       {:base_type    :IntegerField
                                                               :special_type :number}
+
                      ;; Otherwise something went wrong !
                      :else                                   (do (log/error (u/format-color 'red "Annotation failed: don't know what to do with Field '%s'.\nExpected these Fields:\n%s"
                                                                                             col-kw
@@ -348,7 +378,10 @@
                                                                  {:base_type    :UnknownField
                                                                   :special_type nil})))))
          ;; Add FK info the the resulting Fields
-         add-fields-extra-info)))
+         add-fields-extra-info
+
+         ;; Remove extra data from the resulting Fields
+         (map (u/rpartial dissoc :children :parent_id)))))
 
 (defn- post-annotate
   "Take a sequence of RESULTS of executing QUERY and return the \"annotated\" results we pass to postprocessing -- the map with `:cols`, `:columns`, and `:rows`.
@@ -359,13 +392,15 @@
           results                        (if-not uncastify-fn results
                                                  (for [row results]
                                                    (m/map-keys uncastify-fn row)))
+          _                              (when-not *disable-qp-logging*
+                                           (log/debug (u/format-color 'magenta "Driver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
-          fields                         (sel :many :fields [Field :id :table_id :name :description :base_type :special_type],
-                                              :table_id source-table-id, :active true)
+          fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
           ordered-col-kws                (order-cols query results fields)]
+
       {:rows    (for [row results]
-                  (mapv row ordered-col-kws))                                          ; might as well return each row and col info as vecs because we're not worried about making
-       :columns (mapv name ordered-col-kws)                                            ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
+                  (mapv row ordered-col-kws))                                                      ; might as well return each row and col info as vecs because we're not worried about making
+       :columns (mapv name ordered-col-kws)                                                        ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
        :cols    (vec (get-cols-info query fields ordered-col-kws join-table-ids))})))  ; as vecs. Make sure :rows stays lazy!
 
 
@@ -400,10 +435,21 @@
 ;;
 ;; Pre-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-(defn- process-structured [driver query]
-  (let [driver-process-query (partial i/process-query driver)]
+(defn- wrap-guard-multiple-calls
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
+  [qp]
+  (let [called? (atom false)]
+    (fn [query]
+      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+      (reset! called? true)
+      (qp query))))
+
+(defn- process-structured [{:keys [driver], :as query}]
+  (let [driver-process-query      (partial i/process-query driver)
+        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
+          driver-wrap-process-query
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
@@ -412,21 +458,27 @@
           limit
           post-annotate
           pre-log-query
+          wrap-guard-multiple-calls
           driver-process-query) query)))
 
-(defn- process-native [driver query]
-  (let [driver-process-query (partial i/process-query driver)]
+(defn- process-native [{:keys [driver], :as query}]
+  (let [driver-process-query      (partial i/process-query driver)
+        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
     ((<<- wrap-catch-exceptions
+          driver-wrap-process-query
           post-add-row-count-and-status
           post-convert-unix-timestamps-to-dates
           limit
+          wrap-guard-multiple-calls
           driver-process-query) query)))
 
 (defn process
   "Process a QUERY and return the results."
   [driver query]
-  (binding [*driver* driver]
-    ((case (keyword (:type query))
-       :native process-native
-       :query  process-structured)
-     driver query)))
+  (when-not *disable-qp-logging*
+    (log/debug (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
+  ((case (keyword (:type query))
+     :native process-native
+     :query  process-structured)
+   (assoc query
+          :driver driver)))

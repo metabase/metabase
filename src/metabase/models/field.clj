@@ -10,7 +10,8 @@
                              [interface :refer :all])
             [metabase.util :as u]))
 
-(declare field->fk-field)
+(declare field->fk-field
+         qualified-name-components)
 
 (def ^:const special-types
   "Possible values for `Field` `:special_type`."
@@ -61,6 +62,7 @@
     :DateField
     :DateTimeField
     :DecimalField
+    :DictionaryField
     :FloatField
     :IntegerField
     :TextField
@@ -107,16 +109,22 @@
               (contains? field :special_type))
       (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
 
-  (post-select [_ {:keys [table_id] :as field}]
+  (post-select [this {:keys [table_id parent_id] :as field}]
     (map->FieldInstance
       (u/assoc* field
-        :table               (delay (sel :one 'metabase.models.table/Table :id table_id))
-        :db                  (delay @(:db @(:table <>)))
-        :target              (delay (field->fk-field field))
-        :human_readable_name (when (name :field)
-                               (delay (common/name->human-readable-name (:name field)))))))
+        :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
+        :db                        (delay @(:db @(:table <>)))
+        :target                    (delay (field->fk-field field))
+        :human_readable_name       (when (name :field)
+                                     (delay (common/name->human-readable-name (:name field))))
+        :parent                    (when parent_id
+                                     (delay (this parent_id)))
+        :children                  (delay (sel :many this :parent_id (:id field)))
+        :qualified-name-components (delay (qualified-name-components <>))
+        :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
 
-  (pre-cascade-delete [_ {:keys [id]}]
+  (pre-cascade-delete [this {:keys [id]}]
+    (cascade-delete this :parent_id id)
     (cascade-delete ForeignKey (where (or (= :origin_id id)
                                           (= :destination_id id))))
     (cascade-delete 'metabase.models.field-values/FieldValues :field_id id)))
@@ -132,3 +140,29 @@
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
+
+(defn unflatten-nested-fields
+  "Take a sequence of both top-level and nested FIELDS, and return a sequence of top-level `Fields`
+   with nested `Fields` moved into sequences keyed by `:children` in their parents.
+
+     (unflatten-nested-fields [{:id 1, :parent_id nil}, {:id 2, :parent_id 1}])
+       -> [{:id 1, :parent_id nil, :children [{:id 2, :parent_id 1, :children nil}]}]
+
+   You may optionally specify a different PARENT-ID-KEY; the default is `:parent_id`."
+  ([fields]
+   (unflatten-nested-fields fields :parent_id))
+  ([fields parent-id-key]
+   (let [parent-id->fields (group-by parent-id-key fields)
+         resolve-children  (fn resolve-children [field]
+                             (assoc field :children (map resolve-children
+                                                         (parent-id->fields (:id field)))))]
+     (map resolve-children (parent-id->fields nil)))))
+
+(defn- qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  [{:keys [table parent], :as field}]
+  {:pre [(delay? table)]}
+  (conj (if parent
+          (qualified-name-components @parent)
+          [(:name @table)])
+        (:name field)))

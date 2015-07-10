@@ -41,15 +41,14 @@
 
 (defn create-field-values
   "Create `FieldValues` for a `Field`."
-  {:arglists '([field]
-               [field human-readable-values])}
-  [{field-id :id :as field} & [human-readable-values]]
+  {:arglists '([field] [field human-readable-values])}
+  [{field-id :id, field-name :name, :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
-         (:table field)]}                                              ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
-  (log/debug (format "Creating FieldValues for Field %d..." field-id))
+         (:table field)]} ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
+  (log/debug (format "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
   (ins FieldValues
-    :field_id field-id
-    :values (field-distinct-values field)
+    :field_id              field-id
+    :values                (field-distinct-values field)
     :human_readable_values human-readable-values))
 
 (defn create-field-values-if-needed

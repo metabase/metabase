@@ -40,6 +40,7 @@
                      [string :as s]
                      [walk :as walk])
             [medley.core :as m]
+            [korma.core :as k]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             [metabase.driver.interface :as i]
@@ -54,7 +55,8 @@
          parse-breakout
          parse-fields
          parse-filter
-         parse-order-by)
+         parse-order-by
+         ph)
 
 
 ;; ## -------------------- Protocols --------------------
@@ -81,17 +83,31 @@
 
 ;; ## -------------------- Expansion - Impl --------------------
 
-(def ^:private ^:dynamic *driver* nil)
+(def ^:private ^:dynamic *field-ids*
+  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *original-query-dict*
+  "The entire original Query dict being expanded."
+  nil)
+
+(def ^:private ^:dynamic *fk-field-ids*
+  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
+  nil)
+
+(def ^:private ^:dynamic *table-ids*
+  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
+  nil)
 
 (defn- assert-driver-supports [^Keyword feature]
-  {:pre [*driver*]}
-  (i/assert-driver-supports *driver* feature))
+  {:pre [(:driver *original-query-dict*)]}
+  (i/assert-driver-supports (:driver *original-query-dict*) feature))
 
 (defn- non-empty-clause? [clause]
   (and clause
        (or (not (sequential? clause))
            (and (seq clause)
-                (every? identity clause)))))
+                (not (every? nil? clause))))))
 
 (defn- parse [query-dict]
   (update-in query-dict [:query] #(-<> (assoc %
@@ -104,18 +120,6 @@
                                                             :source_table :source-table})
                                        (m/filter-vals non-empty-clause? <>))))
 
-(def ^:private ^:dynamic *field-ids*
-  "Bound to an atom containing a set of `Field` IDs referenced in the query being expanded."
-  nil)
-
-(def ^:private ^:dynamic *fk-field-ids*
-  "Bound to an atom containing a set of Foreign Key `Field` IDs (on the `source-table`) that we should use for joining to additional `Tables`."
-  nil)
-
-(def ^:private ^:dynamic *table-ids*
-  "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
-  nil)
-
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
   [field]
@@ -123,18 +127,29 @@
                           :name         :field-name
                           :special_type :special-type
                           :base_type    :base-type
-                          :table_id     :table-id}))
+                          :table_id     :table-id
+                          :parent_id    :parent-id}))
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
-  [expanded-query-dict field-ids]
-  (if-not (seq field-ids) expanded-query-dict ; No need to do a DB call or walk expanded-query-dict if we didn't see any Field IDs
-          (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id] :id [in field-ids])
-                            (m/map-vals rename-mb-field-keys))]
-            (reset! *table-ids* (set (map :table-id (vals fields))))
-            ;; This is performed depth-first so we don't end up walking the newly-created Field/Value objects
-            ;; they may have nil values; this was we don't have to write an implementation of resolve-field for nil
-            (walk/postwalk #(resolve-field % fields) expanded-query-dict))))
+  [expanded-query-dict field-ids & [count]]
+  (if-not (seq field-ids)
+    ;; Base case: if there's no field-ids to expand we're done
+    expanded-query-dict
+
+    ;; Re-bind *field-ids* in case we need to do recursive Field resolution
+    (binding [*field-ids* (atom #{})]
+      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id], :id [in field-ids])
+                        (m/map-vals rename-mb-field-keys)
+                        (m/map-vals #(assoc % :parent (when (:parent-id %)
+                                                        (ph (:parent-id %))))))]
+        (swap! *table-ids* set/union (set (map :table-id (vals fields))))
+
+        ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
+        ;; We can't use recur here because binding wraps body in try/catch
+        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
+                        @*field-ids*
+                        (inc (or count 0)))))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
@@ -192,11 +207,11 @@
 
 (defn expand
   "Expand a QUERY-DICT."
-  [driver query-dict]
-  (binding [*driver*       driver
-            *field-ids*    (atom #{})
-            *fk-field-ids* (atom #{})
-            *table-ids*    (atom #{})]
+  [query-dict]
+  (binding [*original-query-dict* query-dict
+            *field-ids*           (atom #{})
+            *fk-field-ids*        (atom #{})
+            *table-ids*           (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
@@ -206,17 +221,40 @@
 
 ;; ## -------------------- Field + Value --------------------
 
+(defprotocol IField
+  "Methods specific to the Query Expander `Field` record type."
+  (qualified-name-components [this]
+    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
+
 ;; Field is the expansion of a Field ID in the standard QL
 (defrecord Field [^Integer field-id
                   ^String  field-name
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer table-id
-                  ^String  table-name]
+                  ^String  table-name
+                  ^Integer parent-id
+                  parent] ; Field once its resolved; FieldPlaceholder before that
   IResolve
+  (resolve-field [this field-id->fields]
+    (cond
+      parent          (if (= (type parent) Field)
+                        this
+                        (resolve-field parent field-id->fields))
+      parent-id       (assoc this :parent (or (field-id->fields parent-id)
+                                              (ph parent-id)))
+      :else           this))
+
   (resolve-table [this table-id->table]
     (assoc this :table-name (:name (or (table-id->table table-id)
-                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))))))
+                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
+
+  IField
+  (qualified-name-components [this]
+    (conj (if parent
+            (qualified-name-components parent)
+            [table-name])
+          field-name)))
 
 (defn- Field?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
@@ -243,9 +281,13 @@
 (defrecord FieldPlaceholder [^Integer field-id]
   IResolve
   (resolve-field [this field-id->fields]
-    (-> (:field-id this)
-        field-id->fields
-        map->Field)))
+    (or
+     ;; try to resolve the Field with the ones available in field-id->fields
+     (some->> (field-id->fields field-id)
+              (merge this)
+              map->Field)
+     ;; If that fails just return ourselves as-is
+     this)))
 
 (defn- parse-value
   "Convert the `value` of a `Value` to a date or timestamp if needed.
@@ -276,14 +318,17 @@
    If `*field-ids*` is bound, "
   ([field-id]
    (match field-id
-     (field-id :guard integer?)        (do (swap! *field-ids* conj field-id)
-                                           (->FieldPlaceholder field-id))
-     ["fk->"
-      (fk-field-id :guard integer?)
-      (dest-field-id :guard integer?)] (do (assert-driver-supports :foreign-keys)
-                                           (swap! *field-ids* conj dest-field-id)
-                                           (swap! *fk-field-ids* conj fk-field-id)
-                                           (->FieldPlaceholder dest-field-id))))
+     (id :guard integer?)
+     (do (swap! *field-ids* conj id)
+         (->FieldPlaceholder id))
+
+     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)]
+     (do (assert-driver-supports :foreign-keys)
+         (swap! *field-ids* conj dest-field-id)
+         (swap! *fk-field-ids* conj fk-field-id)
+         (->FieldPlaceholder dest-field-id))
+
+      _ (throw (Exception. (str "Invalid field: " field-id)))))
   ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
@@ -296,7 +341,8 @@
   `(defn ~(vary-meta fn-name assoc :private true) [form#]
      (when (non-empty-clause? form#)
        (match form#
-         ~@match-forms))))
+         ~@match-forms
+         form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
 
 ;; ## -------------------- Aggregation --------------------
 
@@ -358,7 +404,7 @@
 ;; ### Parsers
 
 (defparser parse-filter-subclause
-  ["INSIDE" lat-field lon-field lat-max lon-min lat-min lon-max]
+  ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
                                      :min   (ph lat-field lat-min)
@@ -367,18 +413,18 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" field-id min max]
+  ["BETWEEN" (field-id :guard Field?) (min :guard identity) (max :guard identity)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [filter-type field-id val]
+  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard identity)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
-  [filter-type field-id]
+  [(filter-type :guard string?) (field-id :guard Field?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)
@@ -395,8 +441,15 @@
 
 ;; ## -------------------- Order-By --------------------
 
-(defrecord OrderByAggregateField [^Keyword source  ; e.g. :aggregation
-                                  ^Integer index]) ; e.g. 0
+(defrecord OrderByAggregateField [^Keyword source           ; Name used in original query. Always :aggregation for right now
+                                  ^Integer index            ; e.g. 0
+                                  ^Aggregation aggregation] ; The aggregation clause being referred to
+  IField
+  (qualified-name-components [_]
+    ;; Return something like [nil "count"]
+    ;; nil is used where Table name would normally go
+    [nil (name (:aggregation-type aggregation))]))
+
 
 (defrecord OrderBySubclause [^Field   field       ; or aggregate Field?
                              ^Keyword direction]) ; either :ascending or :descending
@@ -407,8 +460,10 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]    (->OrderBySubclause (->OrderByAggregateField :aggregation index)
-                                                           (parse-order-by-direction direction))
+  [["aggregation" index] direction]    (let [{{:keys [aggregation]} :query} *original-query-dict*]
+                                            (assert aggregation "Query does not contain an aggregation clause.")
+                                            (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
+                                                                (parse-order-by-direction direction)))
   [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
                                                            (parse-order-by-direction direction)))
 (defparser parse-order-by

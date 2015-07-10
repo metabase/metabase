@@ -82,9 +82,10 @@
     ;; Log if applicable
     (future
       (when (config/config-bool :mb-db-logging)
-        (log/debug "DB CALL: " (:name entity)
-                   (or (:fields entity+fields) "*")
-                   (s/replace log-str #"korma.core/" ""))))
+        (when-not @(resolve 'metabase.db/*sel-disable-logging*)
+          (log/debug "DB CALL: " (:name entity)
+                     (or (:fields entity+fields) "*")
+                     (s/replace log-str #"korma.core/" "")))))
 
     (->> (k/exec (select-fn entity+fields))
          (map (partial models/internal-post-select entity))
@@ -135,6 +136,17 @@
   `(let [f1# ~f1
          f2# ~f2]
      (sel:field->field* f1# f2# (sel* [~entity f1# f2#] ~@forms))))
+
+;;; :field->fields
+
+(defn sel:field->fields* [key-field other-fields results]
+  (into {} (for [result results]
+             {(key-field result) (select-keys result other-fields)})))
+
+(defmacro sel:field->fields [[entity key-field & other-fields] & forms]
+  `(let [key-field# ~key-field
+         other-fields# ~(vec other-fields)]
+     (sel:field->fields* key-field# other-fields# (sel* `[~~entity ~key-field# ~@other-fields#] ~@forms))))
 
 ;;; : id->field
 
