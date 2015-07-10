@@ -10,7 +10,8 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns]])))
+                           [util :refer [resolve-private-fns]])
+            [metabase.util :as u]))
 
 (def users-table
   (delay (sel :one Table :name "USERS")))
@@ -82,10 +83,11 @@
 
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
+(def determine-fk-type (u/runtime-resolved-fn 'metabase.driver.sync 'determine-fk-type))
 (expect :Mt1
-  (sync/determine-fk-type (Field (id :venues :category_id))))
+  (determine-fk-type (Field (id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (Field (id :venues :id))))
+  (determine-fk-type (Field (id :venues :id))))

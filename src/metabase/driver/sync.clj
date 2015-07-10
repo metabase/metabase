@@ -86,7 +86,7 @@
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
 
-(defn sync-database-active-tables!
+(defn- sync-database-active-tables!
   "Sync active tables by running each of the sync table steps.
    Note that we want to completely finish each step for *all* tables before starting the next, since they depend on the results of the previous step.
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
@@ -125,7 +125,7 @@
 
 ;; ### 1) update-table-row-count!
 
-(defn update-table-row-count!
+(defn- update-table-row-count!
   "Update the row count of TABLE if it has changed."
   [table]
   {:pre [(integer? (:id table))]}
@@ -139,7 +139,7 @@
 
 ;; ### 2) sync-table-active-fields-and-pks!
 
-(defn update-table-pks!
+(defn- update-table-pks!
   "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
   [table pk-fields]
   {:pre [(set? pk-fields)
@@ -148,7 +148,7 @@
     (log/info (u/format-color 'green "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
     (upd Field field-id :special_type :id)))
 
-(defn sync-table-active-fields-and-pks!
+(defn- sync-table-active-fields-and-pks!
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
   [driver table]
   (let [database @(:db table)]
@@ -192,7 +192,7 @@
 
 ;; ### 3) sync-table-fks!
 
-(defn determine-fk-type
+(defn- determine-fk-type
   "Determine whether a FK is `:1t1`, or `:Mt1`.
    Do this by getting the count and distinct counts of source `Field`.
 
@@ -204,7 +204,7 @@
     (if (= field-count field-distinct-count) :1t1
         :Mt1)))
 
-(defn sync-table-fks! [driver table]
+(defn- sync-table-fks! [driver table]
   (when (extends? ISyncDriverTableFKs (type driver))
     (let [fks (table-fks driver table)]
       (assert (and (set? fks)
@@ -230,7 +230,7 @@
 
 ;; ### 4) sync-table-fields-metadata!
 
-(defn sync-table-fields-metadata!
+(defn- sync-table-fields-metadata!
   "Call `sync-field!` for every active Field for TABLE."
   [driver table]
   {:pre [(map? table)]}
@@ -253,7 +253,7 @@
                              (or (u/try-apply ~f ~@args field#)
                                  field#)))))))))
 
-(defn sync-field!
+(defn- sync-field!
   "Sync the metadata for FIELD, marking urls, categories, etc. when applicable."
   [driver field]
   {:pre [driver
@@ -277,7 +277,7 @@
   "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
   0.95)
 
-(defn percent-valid-urls
+(defn- percent-valid-urls
   "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
   [vs]
   (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
@@ -298,7 +298,7 @@
                             (take max-sync-lazy-seq-results))]
       (percent-valid-urls field-values))))
 
-(defn mark-url-field!
+(defn- mark-url-field!
   "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
   [driver field]
   (when (and (not (:special_type field))
@@ -319,7 +319,7 @@
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
-(defn mark-category-field!
+(defn- mark-category-field!
   "If FIELD doesn't yet have a `special_type`, has values of a reasonable length (i.e., it wasn't marked `preview_display` = `false`), and  has low cardinality, mark it as a category."
   [field]
   (when (and (not (:special_type field))
@@ -352,7 +352,7 @@
                                    (reduce +))
                               field-values-count)))))))
 
-(defn mark-no-preview-display-field!
+(defn- mark-no-preview-display-field!
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [driver field]
   (when (and (:preview_display field)
@@ -367,7 +367,10 @@
 
 ;; ### mark-json-field!
 
-(defn mark-json-field! [driver field]
+(defn- mark-json-field!
+  "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
+   are valid serialized JSON dictionaries or arrays."
+  [driver field]
   (when (and (not (:special_type field))
              (contains? #{:CharField :TextField} (:base_type field)))
     (try
