@@ -80,20 +80,14 @@ export default React.createClass({
                 valueCell = this.cellRenderer(row[1], 'value', row, i, 0);
 
             rows[i] = (
-                <tr key={i}>
-                    <td>{keyCell}</td>
-                    <td>{valueCell}</td>
-                </tr>
+                <div className="Grid px4 ml2 mb2" key={i}>
+                    <div className="Grid-cell">{keyCell}</div>
+                    <div className="Grid-cell text-bold text-dark">{valueCell}</div>
+                </div>
             );
         }
 
-        return (
-            <table className="p4">
-                <tbody>
-                    {rows}
-                </tbody>
-            </table>
-        );
+        return rows;
     },
 
     renderFkCountOrSpinner: function(fkOriginId) {
@@ -123,10 +117,10 @@ export default React.createClass({
 
             return (
                 <li className="block mb1 py2 border-bottom text-dark cursor-pointer text-brand-hover">
-                    <div className="flex align-center" key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                    <div className="cursor-pointer flex align-center" key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
                         <div>
                             <h2>{referenceCount}</h2>
-                            <h3>{relationName}</h3>
+                            <h4>{relationName}</h4>
                         </div>
                         <span className="UserNick flex-align-right">
                             <Icon name='chevronright' width="12px" height="12px" />
@@ -154,22 +148,23 @@ export default React.createClass({
 
         return (
             <div className="wrapper wrapper--trim">
-                <div className="bordered">
+                <div className="bordered rounded">
                     <div className="Grid border-bottom">
-                        <div className="Grid-cell p4 border-right">
-                            <div className="text-brand">
+                        <div className="Grid-cell p4 ml2 border-right">
+                            <div className="text-brand text-bol">
                                 <span>{tableName}</span>
                                 <h1>{idValue}</h1>
                             </div>
                         </div>
                         <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-                            <div className="p4">
-                                <Icon name="connections" width="12px" height="12px" /> This {tableName} is connected to.
+                            <div className="p4 flex align-center text-bold">
+                                <Icon name="connections" width="12px" height="12px" />
+                                This <span className="text-dark">{tableName}</span> is connected to.
                             </div>
                         </div>
                     </div>
                     <div className="Grid">
-                        <div className="Grid-cell border-right">{this.renderDetailsTable()}</div>
+                        <div className="Grid-cell border-right pt4">{this.renderDetailsTable()}</div>
                         <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                     </div>
                 </div>
