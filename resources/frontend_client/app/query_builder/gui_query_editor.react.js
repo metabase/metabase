@@ -20,11 +20,12 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
-        defaultQuery: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
         isExpanded: React.PropTypes.bool.isRequired,
-        runFn: React.PropTypes.func.isRequired,
-        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired,
+        setQueryFn: React.PropTypes.func.isRequired,
+        setDatabaseFn: React.PropTypes.func.isRequired,
+        setSourceTableFn: React.PropTypes.func.isRequired,
         toggleExpandCollapseFn: React.PropTypes.func.isRequired
     },
 
@@ -35,38 +36,15 @@ export default React.createClass({
     },
 
     setQuery: function(dataset_query) {
-        this.props.notifyQueryModifiedFn(dataset_query);
+        this.props.setQueryFn(dataset_query);
     },
 
     setDatabase: function(databaseId) {
-        if (databaseId !== this.props.query.database) {
-            // reset to a brand new query
-            var query = this.props.defaultQuery;
-
-            // set our new database on the query
-            query.database = databaseId;
-
-            // notify parent that we've started over
-            // TODO: should this clear the visualization as well?
-            this.props.notifyQueryModifiedFn(query);
-
-            // load rest of the data we need
-            this.props.loadDatabaseInfoFn(databaseId);
-        }
+        this.props.setDatabaseFn(databaseId);
     },
 
     setSourceTable: function(sourceTable) {
-        // this will either be the id or an object with an id
-        var tableId = sourceTable.id || sourceTable;
-        this.props.loadTableInfoFn(tableId);
-
-        // when the table changes we reset everything else in the query, except the database of course
-        // TODO: should this clear the visualization as well?
-        var query = this.props.defaultQuery;
-        query.database = this.props.query.database;
-        query.query.source_table = tableId;
-
-        this.setQuery(query);
+        this.props.setSourceTableFn(sourceTable);
     },
 
     canRun: function() {
@@ -74,8 +52,7 @@ export default React.createClass({
     },
 
     runQuery: function() {
-        Query.cleanQuery(this.props.query.query);
-        this.props.runFn(this.props.query);
+        this.props.runQueryFn(this.props.query);
     },
 
     addDimension: function() {

@@ -37,8 +37,7 @@ export default React.createClass({
                         var tableName = inflection.humanize(table.name);
                         var classes = cx({
                             'p1' : true,
-                            'border-bottom': index !== dbTables.length - 1,
-                            'bg-error': this.props.query.query.source_table === table.id
+                            'border-bottom': index !== dbTables.length - 1
                         })
                         return (
                             <li className={classes}>
@@ -47,9 +46,8 @@ export default React.createClass({
                         );
                     });
                 }
-                var classes = cx({ 'bg-success': this.props.query.database === database.id });
                 return (
-                    <li className={classes}>
+                    <li>
                         <div className="my2">
                             <h2 className="inline-block">{database.name}</h2>
                             <span className="ml1">{tableCount}</span>

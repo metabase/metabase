@@ -7,6 +7,8 @@ import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
+import Query from '../query_builder/query';
+
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
 
@@ -166,110 +168,11 @@ CardControllers.controller('CardDetail', [
             tables: null,
             options: null,
             tableForeignKeys: null,
-            defaultQuery: null,
             query: null,
-            initialQuery: null,
-            loadDatabaseInfoFn: function(databaseId) {
-                tables = null;
-                tableMetadata = null;
-
-                // get tables for db
-                Metabase.db_tables({
-                    'dbId': databaseId
-                }).$promise.then(function (tables_list) {
-                    tables = tables_list;
-
-                    renderAll();
-                }, function (error) {
-                    console.log('error getting tables', error);
-                });
-            },
-            loadTableInfoFn: function(tableId) {
-                tableMetadata = null;
-                tableForeignKeys = null;
-
-                // get table details
-                Metabase.table_query_metadata({
-                    'tableId': tableId
-                }).$promise.then(function (table) {
-                    // Decorate with valid operators
-                    // TODO: would be better if this was in our component
-                    var updatedTable = markupTableMetadata(table);
-
-                    tableMetadata = updatedTable;
-
-                    renderAll();
-                }, function (error) {
-                    console.log('error getting table metadata', error);
-                });
-
-                // get table fks
-                Metabase.table_fks({
-                    'tableId': tableId
-                }).$promise.then(function (fks) {
-                    tableForeignKeys = fks;
-
-                    renderAll();
-                }, function (error) {
-                    console.log('error getting fks for table '+tableId, error);
-                });
-            },
-            runFn: function(dataset_query) {
-                isRunning = true;
-                renderAll();
-
-                // make our api call
-                var firstRunNewCard = (queryResult === null && card.id === undefined);
-                Metabase.dataset(dataset_query, function (result) {
-                    queryResult = result;
-                    isRunning = false;
-
-                    // do a quick test to see if we are meant to render and object detail view or normal results
-                    if(isObjectDetailQuery(card, queryResult.data)) {
-                        isObjectDetail = true;
-                    } else {
-                        isObjectDetail = false;
-                    }
-
-                    // try a little logic to pick a smart display for the data
-                    if (card.display !== "scalar" &&
-                            queryResult.data.rows &&
-                            queryResult.data.rows.length === 1 &&
-                            queryResult.data.columns.length === 1) {
-                        // if we have a 1x1 data result then this should always be viewed as a scalar
-                        card.display = "scalar";
-
-                    } else if (card.display === "scalar" &&
-                                queryResult.data.rows &&
-                                (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
-                        // any time we were a scalar and now have more than 1x1 data switch to table view
-                        card.display = "table";
-
-                    } else if (dataset_query.type === "query" &&
-                            dataset_query.query.aggregation &&
-                            dataset_query.query.aggregation.length > 0 &&
-                            dataset_query.query.aggregation[0] === "rows") {
-                        // if our query aggregation is "rows" then ALWAYS set the display to "table"
-                        card.display = "table";
-                    }
-
-                    renderAll();
-
-                }, function (error) {
-                    isRunning = false;
-                    // TODO: we should update the api so that we get better error messaging from the api on query fails
-                    queryResult = {
-                        error: "Oh snap!  Something went wrong running your query :sad:"
-                    };
-
-                    renderAll();
-                });
-            },
-            notifyQueryModifiedFn: function(dataset_query) {
-                // we are being told that the query has been modified
-                card.dataset_query = dataset_query;
-                renderAll();
-            },
+            runQueryFn: runQuery,
+            setQueryFn: setQuery,
+            setDatabaseFn: setDatabase,
+            setSourceTableFn: setSourceTable,
             autocompleteResultsFn: function(prefix) {
                 var apiCall = Metabase.db_autocomplete_suggestions({
                     dbId: card.dataset_query.database,
@@ -347,7 +250,7 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.order_by = [sortClause];
 
                     // run updated query
-                    editorModel.runFn(card.dataset_query);
+                    runQuery(card.dataset_query);
                 }
             },
             cellIsClickableFn: function(rowIndex, columnIndex) {
@@ -381,7 +284,7 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
                     // run it
-                    editorModel.runFn(card.dataset_query);
+                    runQuery(card.dataset_query);
 
                 } else if (coldef.special_type === "fk") {
                     // action is on an FK column
@@ -392,10 +295,10 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
 
                     // load table metadata now that we are switching to a new table
-                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                    loadTableInfo(card.dataset_query.query.source_table);
 
                     // run it
-                    editorModel.runFn(card.dataset_query);
+                    runQuery(card.dataset_query);
                 }
             },
             followForeignKeyFn: function(fk) {
@@ -417,21 +320,16 @@ CardControllers.controller('CardDetail', [
                 card.dataset_query.query.filter = ["AND", ["=", fk.origin.id, originValue]];
 
                 // load table metadata now that we are switching to a new table
-                editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                loadTableInfo(card.dataset_query.query.source_table);
 
                 // run it
-                editorModel.runFn(card.dataset_query);
+                runQuery(card.dataset_query);
             }
         };
 
         var dataReferenceModel = {
             Metabase: Metabase,
-            closeFn: toggleDataReference,
-            notifyQueryModifiedFn: function(dataset_query) {
-                // we are being told that the query has been modified
-                card.dataset_query = dataset_query;
-                renderAll();
-            },
+            closeFn: toggleDataReference
         };
 
         // =====  REACT render functions
@@ -458,7 +356,6 @@ CardControllers.controller('CardDetail', [
             editorModel.options = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
-            editorModel.defaultQuery = angular.copy(newQueryTemplates[card.dataset_query.type]);
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
@@ -494,6 +391,157 @@ CardControllers.controller('CardDetail', [
 
 
         // =====  Local helper functions
+
+        function runQuery(dataset_query) {
+            Query.cleanQuery(dataset_query.query);
+            isRunning = true;
+
+            renderAll();
+
+            // make our api call
+            var firstRunNewCard = (queryResult === null && card.id === undefined);
+            Metabase.dataset(dataset_query, function (result) {
+                queryResult = result;
+                isRunning = false;
+
+                // do a quick test to see if we are meant to render and object detail view or normal results
+                if(isObjectDetailQuery(card, queryResult.data)) {
+                    isObjectDetail = true;
+                } else {
+                    isObjectDetail = false;
+                }
+
+                // try a little logic to pick a smart display for the data
+                if (card.display !== "scalar" &&
+                        queryResult.data.rows &&
+                        queryResult.data.rows.length === 1 &&
+                        queryResult.data.columns.length === 1) {
+                    // if we have a 1x1 data result then this should always be viewed as a scalar
+                    card.display = "scalar";
+
+                } else if (card.display === "scalar" &&
+                            queryResult.data.rows &&
+                            (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                    // any time we were a scalar and now have more than 1x1 data switch to table view
+                    card.display = "table";
+
+                } else if (dataset_query.type === "query" &&
+                        dataset_query.query.aggregation &&
+                        dataset_query.query.aggregation.length > 0 &&
+                        dataset_query.query.aggregation[0] === "rows") {
+                    // if our query aggregation is "rows" then ALWAYS set the display to "table"
+                    card.display = "table";
+                }
+
+                renderAll();
+
+            }, function (error) {
+                isRunning = false;
+                // TODO: we should update the api so that we get better error messaging from the api on query fails
+                queryResult = {
+                    error: "Oh snap!  Something went wrong running your query :sad:"
+                };
+
+                renderAll();
+            });
+        }
+
+        function getDefaultQuery() {
+            return angular.copy(newQueryTemplates[card.dataset_query.type]);
+        }
+
+        function loadTableInfo(tableId) {
+            tableMetadata = null;
+            tableForeignKeys = null;
+
+            // get table details
+            Metabase.table_query_metadata({
+                'tableId': tableId
+            }).$promise.then(function (table) {
+                // Decorate with valid operators
+                // TODO: would be better if this was in our component
+                var updatedTable = markupTableMetadata(table);
+
+                tableMetadata = updatedTable;
+
+                renderAll();
+            }, function (error) {
+                console.log('error getting table metadata', error);
+            });
+
+            // get table fks
+            Metabase.table_fks({
+                'tableId': tableId
+            }).$promise.then(function (fks) {
+                tableForeignKeys = fks;
+
+                renderAll();
+            }, function (error) {
+                console.log('error getting fks for table '+tableId, error);
+            });
+        }
+
+        function loadDatabaseInfo(databaseId) {
+            tables = null;
+            tableMetadata = null;
+
+            // get tables for db
+            Metabase.db_tables({
+                'dbId': databaseId
+            }).$promise.then(function (tables_list) {
+                tables = tables_list;
+
+                renderAll();
+            }, function (error) {
+                console.log('error getting tables', error);
+            });
+        }
+
+        function setDatabase(databaseId) {
+            if (databaseId !== card.dataset_query.database) {
+                // reset to a brand new query
+                var query = getDefaultQuery();
+
+                // set our new database on the query
+                query.database = databaseId;
+
+                // carry over our previous query if we had one
+                if (card.dataset_query.native) {
+                    query.native.query = card.dataset_query.native.query;
+                }
+
+                // notify parent that we've started over
+                // TODO: should this clear the visualization as well?
+                notifyQueryModified(query);
+
+                // load rest of the data we need
+                loadDatabaseInfo(databaseId);
+            }
+        }
+
+        function setSourceTable(sourceTable) {
+            // this will either be the id or an object with an id
+            var tableId = sourceTable.id || sourceTable;
+            loadTableInfo(tableId);
+
+            // when the table changes we reset everything else in the query, except the database of course
+            // TODO: should this clear the visualization as well?
+            var query = getDefaultQuery();
+            query.database = card.dataset_query.database;
+            query.query.source_table = tableId;
+
+            setQuery(query);
+        }
+
+        function notifyQueryModified(dataset_query) {
+            // we are being told that the query has been modified
+            card.dataset_query = dataset_query;
+            renderAll();
+        }
+
+        function setQuery(dataset_query) {
+            notifyQueryModified(dataset_query);
+        }
 
         function isObjectDetailQuery(card, data) {
             var response = false;
@@ -593,15 +641,15 @@ CardControllers.controller('CardDetail', [
                 cardJson = JSON.stringify(card);
 
                 // load metadata
-                editorModel.loadDatabaseInfoFn(card.dataset_query.database);
+                loadDatabaseInfo(card.dataset_query.database);
 
                 if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
-                    editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                    loadTableInfo(card.dataset_query.query.source_table);
                 }
 
                 // run the query
                 // TODO: is there a case where we wouldn't want this?
-                editorModel.runFn(card.dataset_query);
+                runQuery(card.dataset_query);
 
                 // trigger full rendering
                 renderAll();
@@ -642,7 +690,7 @@ CardControllers.controller('CardDetail', [
 
                 if (card.dataset_query.database != null) {
                     // load metadata
-                    editorModel.loadDatabaseInfoFn(card.dataset_query.database);
+                    loadDatabaseInfo(card.dataset_query.database);
 
                     // if we initialized our database safely and we have a table, lets handle that now
                     if ($routeParams.table != null) {
@@ -650,7 +698,7 @@ CardControllers.controller('CardDetail', [
                         card.dataset_query.query.source_table = parseInt($routeParams.table);
 
                         // load table metadata
-                        editorModel.loadTableInfoFn(card.dataset_query.query.source_table);
+                        loadTableInfo(card.dataset_query.query.source_table);
                     }
                 }
 
