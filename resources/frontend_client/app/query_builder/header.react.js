@@ -9,6 +9,7 @@ import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
@@ -20,7 +21,8 @@ export default React.createClass({
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string,
-        toggleReference: React.PropTypes.func.isRequired,
+        isShowingDataReference: React.PropTypes.bool.isRequired,
+        toggleDataReference: React.PropTypes.func.isRequired,
     },
 
     getInitialState: function() {
@@ -131,8 +133,8 @@ export default React.createClass({
         });
     },
 
-    toggleReference: function() {
-        this.props.toggleReference();
+    toggleDataReference: function() {
+        this.props.toggleDataReference();
     },
 
     permissions: function() {
@@ -209,9 +211,9 @@ export default React.createClass({
         var cloneButton;
         if (this.props.card.id) {
             cloneButton = (
-                <span className="mx1 text-grey-4 text-brand-hover">
+                <a href="#" className="mx1 text-grey-4 text-brand-hover">
                     <Icon name='clone' onClick={this.cloneCard}></Icon>
-                </span>
+                </a>
             );
         }
 
@@ -241,10 +243,18 @@ export default React.createClass({
             )
         }
 
+        console.log(this.props);
+        var dataReferenceButtonClasses = cx({
+            'mx1': true,
+            'transition-color': true,
+            'text-grey-4': !this.props.isShowingDataReference,
+            'text-brand': this.props.isShowingDataReference,
+            'text-brand-hover': !this.state.favorite
+        });
         var dataReferenceButton = (
-            <span className="mx1 text-grey-4 text-brand-hover">
-                <Icon name='reference' onClick={this.toggleReference}></Icon>
-            </span>
+            <a href="#" className={dataReferenceButtonClasses}>
+                <Icon name='reference' onClick={this.toggleDataReference}></Icon>
+            </a>
         );
 
         var attribution;

@@ -77,8 +77,9 @@ export default React.createClass({
         var iconClasses = cx({
             'mx1': true,
             'transition-color': true,
-            'text-grey-3': !this.state.favorite,
-            'text-gold': this.state.favorite
+            'text-grey-4': !this.state.favorite,
+            'text-gold': this.state.favorite,
+            'text-brand-hover': !this.state.favorite
         });
 
         return (

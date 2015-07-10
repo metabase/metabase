@@ -91,7 +91,7 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        $scope.isShowingReference = true;
+        $scope.isShowingDataReference = true;
 
         var queryResult = null,
             databases = null,
@@ -156,7 +156,7 @@ CardControllers.controller('CardDetail', [
             cloneCardFn: function(cardId) {
                 $scope.$apply(() => $location.url('/card/create?clone='+cardId));
             },
-            toggleReference: toggleReference
+            toggleDataReference: toggleDataReference
         };
 
         var editorModel = {
@@ -426,7 +426,7 @@ CardControllers.controller('CardDetail', [
 
         var dataReferenceModel = {
             Metabase: Metabase,
-            closeFn: toggleReference,
+            closeFn: toggleDataReference,
             notifyQueryModifiedFn: function(dataset_query) {
                 // we are being told that the query has been modified
                 card.dataset_query = dataset_query;
@@ -439,6 +439,7 @@ CardControllers.controller('CardDetail', [
         function renderHeader() {
             // ensure rendering model is up to date
             headerModel.card = angular.copy(card);
+            headerModel.isShowingDataReference = $scope.isShowingDataReference;
 
             if (queryResult && !queryResult.error) {
                 headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
@@ -542,9 +543,10 @@ CardControllers.controller('CardDetail', [
             return QueryUtils.populateQueryOptions(updatedTable);
         }
 
-        function toggleReference() {
-            $scope.isShowingReference = !$scope.isShowingReference;
+        function toggleDataReference() {
+            $scope.isShowingDataReference = !$scope.isShowingDataReference;
             $scope.$digest();
+            renderAll();
         }
 
         function resetCardQuery(mode) {
