@@ -6,6 +6,13 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    transition: margin-right 0.5s;
+    background-color: white;
+    box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
+ }
+
+.QueryBuilder--showDataReference {
+    margin-right: 300px;
 }
 
 .QueryHeader-details,
@@ -372,14 +379,14 @@
 }
 
 .DataReference {
-    width: 0px;
-    background-color: #F9FBFC;
-    transition: width 0.5s;
-    overflow: hidden;
-}
-
-.DataReference--visible {
+    z-index: -1;
+    position: absolute;
+    top: 0;
+    right: 0;
     width: 300px;
+    height: 100%;
+    background-color: #F9FBFC;
+    overflow: hidden;
 }
 
 .DataReference-container {
