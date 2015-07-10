@@ -369,13 +369,14 @@
 
 (defn- mark-json-field!
   "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
-   are valid serialized JSON dictionaries or arrays."
+   are valid serialized JSON dictionarie"
   [driver field]
   (when (and (not (:special_type field))
              (contains? #{:CharField :TextField} (:base_type field)))
     (try
       (let [valid-json-values-balance (atom 0)]
-        (doseq [val (field-values-lazy-seq driver field)]
+        (doseq [val (->> (field-values-lazy-seq driver field)
+                         (take max-sync-lazy-seq-results))]
           (if (s/blank? val)
             (swap! valid-json-values-balance dec)
             ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other types of valid JSON values as :json
