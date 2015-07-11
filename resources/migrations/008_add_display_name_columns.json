@@ -2,9 +2,22 @@
   "databaseChangeLog": [
     {
       "changeSet": {
-        "id": "7",
+        "id": "8",
         "author": "tlrobinson",
         "changes": [
+          {
+            "addColumn": {
+              "tableName": "metabase_table",
+              "columns": [
+                {
+                  "column": {
+                    "name": "display_name",
+                    "type": "varchar(254)"
+                  }
+                }
+              ]
+            }
+          },
           {
             "addColumn": {
               "tableName": "metabase_field",

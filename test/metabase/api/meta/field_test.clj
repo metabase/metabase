@@ -28,6 +28,7 @@
                         :organization_id nil
                         :description nil})
                  :name "USERS"
+                 :display_name "Users"
                  :rows 15
                  :updated_at $
                  :entity_name nil
@@ -37,6 +38,7 @@
                  :created_at $})
        :special_type "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
        :name "NAME"
+       :display_name "Name"
        :updated_at $
        :active true
        :id (id :users :name)
@@ -59,6 +61,7 @@
 ;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
 (expect-eval-actual-first
     (match-$ (let [field (sel :one Field :id (id :venues :latitude))]
+               (clojure.pprint/pprint field)
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
                (upd Field (id :venues :latitude) :special_type "latitude")
                ;; match against the modified Field
@@ -67,6 +70,7 @@
        :table_id (id :venues)
        :special_type "fk"
        :name "LATITUDE"
+       :display_name nil
        :updated_at $
        :active true
        :id $

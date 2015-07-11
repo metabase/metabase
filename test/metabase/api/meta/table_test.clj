@@ -28,25 +28,25 @@
 (expect (set (reduce concat (for [dataset-name @datasets/test-dataset-names]
                               (datasets/with-dataset-when-testing dataset-name
                                 [{:name                (format-name "categories")
-                                  :human_readable_name "Categories"
+                                  :display_name        "Categories"
                                   :db_id               (db-id)
                                   :active              true
                                   :rows                75
                                   :id                  (id :categories)}
                                  {:name                (format-name "checkins")
-                                  :human_readable_name "Checkins"
+                                  :display_name        "Checkins"
                                   :db_id               (db-id)
                                   :active              true
                                   :rows                1000
                                   :id                  (id :checkins)}
                                  {:name                (format-name "users")
-                                  :human_readable_name "Users"
+                                  :display_name        "Users"
                                   :db_id               (db-id)
                                   :active              true
                                   :rows                15
                                   :id                  (id :users)}
                                  {:name                (format-name "venues")
-                                  :human_readable_name "Venues"
+                                  :display_name        "Venues"
                                   :db_id               (db-id)
                                   :active              true
                                   :rows                100
@@ -70,6 +70,7 @@
               :organization_id nil
               :description nil})
        :name "VENUES"
+       :display_name "Venues"
        :rows 100
        :updated_at $
        :entity_name nil
@@ -86,7 +87,7 @@
             :table_id            (id :categories)
             :special_type        "id"
             :name                "ID"
-            :human_readable_name "Id"
+            :display_name        "Id"
             :updated_at          $
             :active              true
             :id                  (id :categories :id)
@@ -100,7 +101,7 @@
             :table_id            (id :categories)
             :special_type        "name"
             :name                "NAME"
-            :human_readable_name "Name"
+            :display_name        "Name"
             :updated_at          $
             :active              true
             :id                  (id :categories :name)
@@ -126,11 +127,13 @@
               :organization_id nil
               :description nil})
        :name "CATEGORIES"
+       :display_name "Categories"
        :fields [(match-$ (sel :one Field :id (id :categories :id))
                   {:description nil
                    :table_id (id :categories)
                    :special_type "id"
                    :name "ID"
+                   :display_name "Id"
                    :updated_at $
                    :active true
                    :id $
@@ -145,6 +148,7 @@
                    :table_id (id :categories)
                    :special_type "name"
                    :name "NAME"
+                   :display_name "Name"
                    :updated_at $
                    :active true
                    :id $
@@ -199,11 +203,13 @@
               :organization_id nil
               :description nil})
        :name "USERS"
+       :display_name "Users"
        :fields [(match-$ (sel :one Field :id (id :users :id))
                   {:description nil
                    :table_id (id :users)
                    :special_type "id"
                    :name "ID"
+                   :display_name "Id"
                    :updated_at $
                    :active true
                    :id $
@@ -218,6 +224,7 @@
                    :table_id (id :users)
                    :special_type "category"
                    :name "LAST_LOGIN"
+                   :display_name "Last Login"
                    :updated_at $
                    :active true
                    :id $
@@ -232,6 +239,7 @@
                    :table_id (id :users)
                    :special_type "category"
                    :name "NAME"
+                   :display_name "Name"
                    :updated_at $
                    :active true
                    :id $
@@ -246,6 +254,7 @@
                    :table_id (id :users)
                    :special_type "category"
                    :name "PASSWORD"
+                   :display_name "Password"
                    :updated_at $
                    :active true
                    :id $
@@ -299,11 +308,13 @@
               :organization_id nil
               :description nil})
        :name "USERS"
+       :display_name "Users"
        :fields [(match-$ (sel :one Field :id (id :users :id))
                   {:description nil
                    :table_id (id :users)
                    :special_type "id"
                    :name "ID"
+                   :display_name "Id"
                    :updated_at $
                    :active true
                    :id $
@@ -318,6 +329,7 @@
                    :table_id (id :users)
                    :special_type "category"
                    :name "LAST_LOGIN"
+                   :display_name "Last Login"
                    :updated_at $
                    :active true
                    :id $
@@ -332,6 +344,7 @@
                    :table_id (id :users)
                    :special_type "category"
                    :name "NAME"
+                   :display_name "Name"
                    :updated_at $
                    :active true
                    :id $
@@ -374,7 +387,7 @@
 (expect-eval-actual-first
     (match-$ (let [table (sel :one Table :id (id :users))]
                ;; reset Table back to its original state
-               (upd Table (id :users) :entity_name nil :entity_type nil :description nil)
+               (upd Table (id :users) :display_name "Users" :entity_type nil :description nil)
                table)
       {:description "What a nice table!"
        :entity_type "person"
@@ -390,15 +403,16 @@
        :name "USERS"
        :rows 15
        :updated_at $
-       :entity_name "Userz"
+       :display_name "Userz"
+       :entity_name nil
        :active true
        :pk_field (deref $pk_field)
        :id $
        :db_id (db-id)
        :created_at $})
-  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:entity_name "Userz"
-                                                                                       :entity_type "person"
-                                                                                       :description "What a nice table!"})
+  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:display_name "Userz"
+                                                                                :entity_type "person"
+                                                                                :description "What a nice table!"})
       ((user->client :crowberto) :get 200 (format "meta/table/%d" (id :users)))))
 
 
@@ -417,6 +431,7 @@
                 {:id $
                  :table_id $
                  :name "USER_ID"
+                 :display_name "User Id"
                  :description nil
                  :base_type "IntegerField"
                  :preview_display $
@@ -430,6 +445,7 @@
                           {:description nil
                            :entity_type nil
                            :name "CHECKINS"
+                           :display_name "Checkins"
                            :rows 1000
                            :updated_at $
                            :entity_name nil
@@ -450,6 +466,7 @@
                      {:id $
                       :table_id $
                       :name "ID"
+                      :display_name "Id"
                       :description nil
                       :base_type "BigIntegerField"
                       :preview_display $
@@ -463,6 +480,7 @@
                                {:description nil
                                 :entity_type nil
                                 :name "USERS"
+                                :display_name "Users"
                                 :rows 15
                                 :updated_at $
                                 :entity_name nil

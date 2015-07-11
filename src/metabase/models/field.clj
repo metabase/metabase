@@ -96,17 +96,15 @@
     :db                  (delay @(:db @(:table <>)))
     :target              (delay (field->fk-field field))
     :can_read            (delay @(:can_read @(:table <>)))
-    :can_write           (delay @(:can_write @(:table <>)))
-    :human_readable_name (when (:name field)
-                           (delay (or (:display_name field)
-                                      (common/name->human-readable-name (:name field)))))))
+    :can_write           (delay @(:can_write @(:table <>)))))
 
 
 (defmethod pre-insert Field [_ field]
   (let [defaults {:active          true
                   :preview_display true
                   :field_type      :info
-                  :position        0}]
+                  :position        0
+                  :display_name    (common/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
 (defmethod post-insert Field [_ field]
