@@ -83,7 +83,7 @@ export default React.createClass({
                 valueCell = this.cellRenderer(row[1], 'value', row, i, 0);
 
             rows[i] = (
-                <div className="Grid px4 ml2 mb2" key={i}>
+                <div className="Grid mb2" key={i}>
                     <div className="Grid-cell">{keyCell}</div>
                     <div className="Grid-cell text-bold text-dark">{valueCell}</div>
                 </div>
@@ -104,7 +104,7 @@ export default React.createClass({
         var relationships = this.props.tableForeignKeys.map(function(fk) {
 
             var fkCount = (
-                <LoadingSpinner />
+                <LoadingSpinner width="25px" height="25px" />
             ),
                 fkCountValue = 0,
                 fkClickable = false;
@@ -138,6 +138,7 @@ export default React.createClass({
                 'flex': true,
                 'align-center': true,
                 'my2': true,
+                'pb2': true,
                 'border-bottom': true,
                 'text-brand-hover': fkClickable,
                 'cursor-pointer': fkClickable,
@@ -186,7 +187,7 @@ export default React.createClass({
         return (
             <div className="ObjectDetail rounded">
                 <div className="Grid ObjectDetail-headingGroup">
-                    <div className="Grid-cell ObjectDetail-infoMain p4 ml2 ">
+                    <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 ">
                         <div className="text-brand text-bold">
                             <span>{tableName}</span>
                             <h1>{idValue}</h1>
@@ -202,7 +203,7 @@ export default React.createClass({
                     </div>
                 </div>
                 <div className="Grid">
-                    <div className="Grid-cell ObjectDetail-infoMain pt4">{this.renderDetailsTable()}</div>
+                    <div className="Grid-cell ObjectDetail-infoMain p4">{this.renderDetailsTable()}</div>
                     <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                 </div>
             </div>
