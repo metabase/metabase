@@ -325,7 +325,8 @@ export default React.createClass({
             if (this.canSortByAggregateField()) {
                 breakoutFieldList.push({
                     id: ["aggregation",  0],
-                    name: this.props.query.query.aggregation[0] // e.g. "sum"
+                    name: this.props.query.query.aggregation[0], // e.g. "sum"
+                    display_name: this.props.query.query.aggregation[0]
                 });
             }
 

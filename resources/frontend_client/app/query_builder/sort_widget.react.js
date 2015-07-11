@@ -52,7 +52,7 @@ export default React.createClass({
                 <div className={this.sectionClassName}>
                     <SelectionModule
                         action={this.setField}
-                        display='name'
+                        display='display_name'
                         index={0}
                         items={this.props.fieldList}
                         placeholder="Sort by ..."
