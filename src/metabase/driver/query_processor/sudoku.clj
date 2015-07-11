@@ -1,0 +1,65 @@
+(ns metabase.driver.query-processor.sudoku
+  (:refer-clojure :exclude [==])
+  (:require [clojure.core.logic :refer :all]
+            [clojure.core.logic.fd :as fd]))
+
+(defn- solve-board [hints & {:keys [max-solutions], :or {max-solutions 1}}]
+  (let [vars       (repeatedly 81 lvar)
+        rows       (mapv vec (partition 9 vars))
+        cols       (apply map vector rows)
+        squares    (for [corner-x (range 0 9 3)
+                         corner-y (range 0 9 3)]
+                     (for [x (range corner-x (+ corner-x 3))
+                           y (range corner-y (+ corner-y 3))]
+                       (get-in rows [x y])))
+        init-hints (fn init-hints [[var & more-vars] [hint & more-hints]]
+                     (cond
+                       (not var)    succeed
+                       (zero? hint) (init-hints more-vars more-hints)
+                       :else        (all (== var hint)
+                                         (init-hints more-vars more-hints))))]
+    (run max-solutions [q]
+      (== q vars)
+      (everyg #(fd/in % (fd/domain 1 2 3 4 5 6 7 8 9)) vars)
+      (init-hints vars hints)
+      (everyg fd/distinct rows)
+      (everyg fd/distinct cols)
+      (everyg fd/distinct squares))))
+
+(defn- rando-solved-board []
+  (or (first (solve-board (loop [[position & more] (take 10 (shuffle (range 0 81))), board (vec (repeat 81 0))] ; stick 10 rand digits in a grid & try to solve
+                            (if-not position board
+                                    (recur more (assoc board position (inc (rand-int 9))))))))
+      (recur)))                                                                                                 ; if unsolvable try again
+
+(defn rando-board [difficulty]
+  (let [num-holes        (- 81 ({:easy 48, :medium 36, :hard 24} difficulty))
+        solved-board     (vec (rando-solved-board))
+        holes-seq        (shuffle (range 0 81))
+        unique-solution? #(= 1 (count (solve-board % :max-solutions 2)))]
+    (loop [[hole & more] holes-seq, remaining-holes num-holes, board solved-board]
+      (cond
+        (zero? remaining-holes) board
+        (not hole)              (recur (shuffle holes-seq) num-holes solved-board) ; if we run out of possible holes to dig start over with shuffled sequence of hole positions
+        :else                   (let [new-board (assoc board hole 0)]
+                                  (if (unique-solution? new-board)                 ; try digging a hole
+                                    (recur more (dec remaining-holes) new-board)   ; if board is still solvable, recurse with new board state
+                                    (recur more remaining-holes board)))))))       ; otherwise throw out the bad hole position and recurse
+
+(defn- print-board [board]
+  (when (seq board)
+    (let [board (vec board)]
+      (doseq [row (range 0 9)]
+        (when (= (mod row 3) 0)
+          (println (str "+-----------------+-----------------+-----------------+\n"
+                        "|                 |                 |                 |")))
+        (doseq [col (range 0 9)]
+          (let [val (board (+ (* row 9) col))]
+            (when (= (mod col 3) 0)
+              (print "|  "))
+            (print " ")
+            (print (if (zero? val) " " val))
+            (print "   ")))
+        (print "|\n")
+        (println "|                 |                 |                 |"))
+      (println "+-----------------+-----------------+-----------------+"))))
