@@ -26,6 +26,7 @@
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
+         update-table-display-name!
          update-table-row-count!)
 
 ;; ## sync-database! and sync-table!
