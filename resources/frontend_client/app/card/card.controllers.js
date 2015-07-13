@@ -93,7 +93,7 @@ CardControllers.controller('CardDetail', [
             }
         };
 
-        $scope.isShowingDataReference = true;
+        $scope.isShowingDataReference = false;
 
         var queryResult = null,
             databases = null,
@@ -601,11 +601,13 @@ CardControllers.controller('CardDetail', [
         }
 
         function toggleDataReference() {
-            $scope.isShowingDataReference = !$scope.isShowingDataReference;
-            $scope.$digest();
-            renderAll();
-            // render again after 500ms to wait for animation to complete
-            window.setTimeout(renderAll, 500);
+            $scope.$apply(function() {
+                $scope.isShowingDataReference = !$scope.isShowingDataReference;
+                renderAll();
+                // render again after 500ms to wait for animation to complete
+                // FIXME: if previous render takes too long this is missed
+                window.setTimeout(renderAll, 500);
+            });
         }
 
         function resetCardQuery(mode) {
@@ -683,6 +685,9 @@ CardControllers.controller('CardDetail', [
 
             } else {
                 // starting a new card
+
+                // show data reference
+                $scope.isShowingDataReference = true;
 
                 // this is just an easy way to ensure defaults are all setup
                 resetCardQuery("query");
