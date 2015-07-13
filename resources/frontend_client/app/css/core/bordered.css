@@ -26,6 +26,22 @@
   border-top: none;
 }
 
+.border-column-divider {
+  border-right: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.border-column-divider:last-child {
+  border-right: none;
+}
+
+.border-row-divider {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.border-row-divider:last-child {
+  border-bottom: none;
+}
+
 .border-right {
   border-right: var(--border-size) var(--border-style) var(--border-color);
 }

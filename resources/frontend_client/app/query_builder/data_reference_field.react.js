@@ -130,12 +130,12 @@ export default React.createClass({
 
         var usefulQuestions = [];
         if (this.props.field.special_type === "number") {
-            usefulQuestions.push(<li key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
+            usefulQuestions.push(<li className="border-row-divider" key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
         }
-        usefulQuestions.push(<li key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
+        usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
         var queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
-        usefulQuestions.push(<li key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
-        usefulQuestions.push(<li key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
+        usefulQuestions.push(<li className="border-row-divider" key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
+        usefulQuestions.push(<li className="border-row-divider" key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
 
         return (
             <div>
@@ -143,7 +143,7 @@ export default React.createClass({
                 <p>{this.props.field.description}</p>
                 {useForCurrentQuestion}
                 <p className="text-bold">Potentially useful questions</p>
-                <ul className="DataReference-usefulQuestions">{usefulQuestions}</ul>
+                <ul>{usefulQuestions}</ul>
             </div>
         );
     },

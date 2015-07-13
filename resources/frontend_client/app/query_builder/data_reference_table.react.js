@@ -81,10 +81,9 @@ export default React.createClass({
             var pane;
             if (this.state.pane === "fields") {
                 var fields = table.fields.map((field, index) => {
-                    var classes = cx({ 'p1' : true, 'border-bottom': index !== table.fields.length - 1 })
                     var name =  inflection.humanize(field.name);
                     return (
-                        <li key={field.id} className={classes}>
+                        <li key={field.id} className="p1 border-row-divider">
                             <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
                         </li>
                     );
