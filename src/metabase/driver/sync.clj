@@ -10,12 +10,13 @@
                              [query-processor :as qp])
             [metabase.driver.sync.queries :as queries]
             (metabase.models [field :refer [Field] :as field]
+                             [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
 (declare auto-assign-field-special-type-by-name!
-         mark-category-field!
+         mark-category-field-or-update-field-values!
          mark-no-preview-display-field!
          mark-url-field!
          sync-database-active-tables!
@@ -258,7 +259,7 @@
   (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
                  (mark-url-field! driver)
-                 mark-category-field!
+                 mark-category-field-or-update-field-values!
                  (mark-no-preview-display-field! driver)
                  auto-assign-field-special-type-by-name!
                  (sync-field-nested-fields! driver)))
@@ -311,22 +312,31 @@
         (assoc field :special_type :url)))))
 
 
-;; ### mark-category-field!
+;; ### mark-category-field-or-update-field-values!
 
 (def ^:const ^:private low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
-(defn mark-category-field!
+(defn- mark-category-field!
   "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
   [field]
-  (when-not (:special_type field)
-    (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
-      (when (and (> cardinality 0)
-                 (< cardinality low-cardinality-threshold))
-        (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
-        (upd Field (:id field) :special_type :category)
-        (assoc field :special_type :category)))))
+  (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
+    (when (and (> cardinality 0)
+               (< cardinality low-cardinality-threshold))
+      (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
+      (upd Field (:id field) :special_type :category)
+      (assoc field :special_type :category))))
+
+(defn- mark-category-field-or-update-field-values!
+  "If FIELD doesn't yet have a `special_type`, call `mark-category-field!` to (possibly) mark it as a `:category`.
+   Otherwise if FIELD is already a `:category` update its `FieldValues`."
+  [field]
+  (cond
+    (not (:special_type field))                          (mark-category-field! field)
+    (field-values/field-should-have-field-values? field) (do (log/debug (format "Updating values for field '%s'..." @(:qualified-name field)))
+                                                             (field-values/update-field-values! field)
+                                                             field)))
 
 
 ;; ### mark-no-preview-display-field!
