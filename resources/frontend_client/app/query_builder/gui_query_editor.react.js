@@ -290,6 +290,7 @@ export default React.createClass({
                 if(index > 0) {
                     return (
                         <FilterWidget
+                            key={filter[1]}
                             placeholder="Item"
                             filter={filter}
                             filterFieldList={filterFieldList}

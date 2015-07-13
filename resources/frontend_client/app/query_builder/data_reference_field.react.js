@@ -104,7 +104,7 @@ export default React.createClass({
             var validBreakout = this.state.table && this.state.table.breakout_options.fields.filter((f) => f[0] === this.props.field.id).length > 0;
             var useForCurrentQuestionArray = [];
             useForCurrentQuestionArray.push(
-                <li className="mt1">
+                <li key="filter-by" className="mt1">
                     <a className="Button Button--white text-default no-decoration" href="#" onClick={this.filterBy}>
                         <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
                         </a>
@@ -112,7 +112,7 @@ export default React.createClass({
             );
             if (validBreakout) {
                 useForCurrentQuestionArray.push(
-                    <li className="mt1">
+                    <li key="group-by" className="mt1">
                         <a className="Button Button--white text-default no-decoration" href="#" onClick={this.groupBy}>
                             <Icon className="mr2" name="add" width="12px" height="12px" /> Group by {name}
                         </a>
@@ -129,12 +129,12 @@ export default React.createClass({
 
         var usefulQuestions = [];
         if (this.props.field.special_type === "number") {
-            usefulQuestions.push(<li><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
+            usefulQuestions.push(<li key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
         }
-        usefulQuestions.push(<li><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
+        usefulQuestions.push(<li key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
         var queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
-        usefulQuestions.push(<li><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
-        usefulQuestions.push(<li><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
+        usefulQuestions.push(<li key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
+        usefulQuestions.push(<li key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
 
         return (
             <div>

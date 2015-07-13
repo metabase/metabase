@@ -243,7 +243,6 @@ export default React.createClass({
             )
         }
 
-        console.log(this.props);
         var dataReferenceButtonClasses = cx({
             'mx1': true,
             'transition-color': true,

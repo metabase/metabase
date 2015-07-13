@@ -44,14 +44,14 @@ export default React.createClass({
                             'border-bottom': index !== dbTables.length - 1
                         })
                         return (
-                            <li className={classes}>
+                            <li key={table.id} className={classes}>
                                 <a className="text-brand no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{tableName}</a>
                             </li>
                         );
                     });
                 }
                 return (
-                    <li>
+                    <li key={database.id}>
                         <div className="my2">
                             <h2 className="inline-block">{database.name}</h2>
                             <span className="ml1">{tableCount}</span>

@@ -601,6 +601,7 @@ CardControllers.controller('CardDetail', [
 
         function toggleDataReference() {
             $scope.isShowingDataReference = !$scope.isShowingDataReference;
+            $scope.$digest();
             renderAll();
             // render again after 500ms to wait for animation to complete
             window.setTimeout(renderAll, 500);

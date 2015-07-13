@@ -280,7 +280,7 @@ export default React.createClass({
             }
 
             filterValueInputs[i] = (
-                <div className="FilterSection">
+                <div key={i} className="FilterSection">
                     {valueHtml}
                 </div>
             );
