@@ -35,7 +35,7 @@ export default React.createClass({
                 }
                 var tables;
                 var tableCount;
-                if (dbTables && dbTables.length !== undefined) {
+                if (dbTables && dbTables.length > 0) {
                     tableCount = dbTables.length + " " + inflection.inflect("table", dbTables.length);
                     tables = dbTables.map((table, index) => {
                         var tableName = inflection.humanize(table.name);
@@ -49,16 +49,16 @@ export default React.createClass({
                             </li>
                         );
                     });
+                    return (
+                        <li key={database.id}>
+                            <div className="my2">
+                                <h2 className="inline-block">{database.name}</h2>
+                                <span className="ml1">{tableCount}</span>
+                            </div>
+                            <ul>{tables}</ul>
+                        </li>
+                    );
                 }
-                return (
-                    <li key={database.id}>
-                        <div className="my2">
-                            <h2 className="inline-block">{database.name}</h2>
-                            <span className="ml1">{tableCount}</span>
-                        </div>
-                        <ul>{tables}</ul>
-                    </li>
-                );
             });
         }
 

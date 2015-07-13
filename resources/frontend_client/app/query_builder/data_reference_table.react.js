@@ -63,20 +63,27 @@ export default React.createClass({
                 var text = "Show all " + table.rows.toLocaleString() + " rows in " + name
                 queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
-            var connectionsCount = this.state.tableForeignKeys.length + " " + inflection.inflect("connection", this.state.tableForeignKeys.length);
-            var fieldCount = table.fields.length + " " + inflection.inflect("field", table.fields.length);
             var panes = {
-                "fields": fieldCount,
-                // "metrics": "0 Metrics",
-                "connections": connectionsCount
+                "fields": table.fields.length,
+                "metrics": 0,
+                "connections": this.state.tableForeignKeys.length
             };
             var tabs = Object.keys(panes).map((name) => {
+                var count = panes[name];
                 var classes = cx({
                     'Button': true,
                     'Button--small': true,
                     'Button--active': name === this.state.pane
                 });
-                return <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>{panes[name]}</a>
+                if (count > 0) {
+                    return (
+                        <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
+                            <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
+                        </a>
+                    );
+                } else {
+                    return null;
+                }
             });
 
             var pane;

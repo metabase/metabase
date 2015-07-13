@@ -31,12 +31,12 @@
 
 .text-brand-darken,
 .text-brand-darken-hover:hover {
-    color: color(var(--brand-color) shade(20%));
+    color: color(var(--brand-color) shade(20%)) !important;
 }
 
 .text-brand-light,
 .text-brand-light-hover:hover {
-    color: var(--brand-light-color);
+    color: var(--brand-light-color) !important;
 }
 
 .bg-brand,
