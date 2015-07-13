@@ -4,24 +4,20 @@
             [clojure.core.logic.fd :as fd]))
 
 (defn- solve-board [hints & {:keys [max-solutions], :or {max-solutions 1}}]
-  (let [vars       (repeatedly 81 lvar)
+  (let [vars       (vec (repeatedly 81 lvar))
         rows       (mapv vec (partition 9 vars))
         cols       (apply map vector rows)
         squares    (for [corner-x (range 0 9 3)
                          corner-y (range 0 9 3)]
                      (for [x (range corner-x (+ corner-x 3))
                            y (range corner-y (+ corner-y 3))]
-                       (get-in rows [x y])))
-        init-hints (fn init-hints [[var & more-vars] [hint & more-hints]]
-                     (cond
-                       (not var)    succeed
-                       (zero? hint) (init-hints more-vars more-hints)
-                       :else        (all (== var hint)
-                                         (init-hints more-vars more-hints))))]
+                       (get-in rows [x y])))]
     (run max-solutions [q]
       (== q vars)
       (everyg #(fd/in % (fd/domain 1 2 3 4 5 6 7 8 9)) vars)
-      (init-hints vars hints)
+      (everyg #(if (zero? (hints %)) succeed
+                   (== (vars %) (hints %)))
+              (range 0 81))
       (everyg fd/distinct rows)
       (everyg fd/distinct cols)
       (everyg fd/distinct squares))))
@@ -46,7 +42,7 @@
                                     (recur more (dec remaining-holes) new-board)   ; if board is still solvable, recurse with new board state
                                     (recur more remaining-holes board)))))))       ; otherwise throw out the bad hole position and recurse
 
-(defn- print-board [board]
+(defn print-board [board]
   (when (seq board)
     (let [board (vec board)]
       (doseq [row (range 0 9)]
