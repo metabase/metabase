@@ -28,7 +28,7 @@
                                     (recur more (assoc board position (inc (rand-int 9))))))))
       (recur)))                                                                                                 ; if unsolvable try again
 
-(defn rando-board [difficulty]
+(defn- rando-board [difficulty]
   (let [num-holes        (- 81 ({:easy 48, :medium 36, :hard 24} difficulty))
         solved-board     (vec (rando-solved-board))
         holes-seq        (shuffle (range 0 81))
@@ -41,23 +41,6 @@
                                   (if (unique-solution? new-board)                 ; try digging a hole
                                     (recur more (dec remaining-holes) new-board)   ; if board is still solvable, recurse with new board state
                                     (recur more remaining-holes board)))))))       ; otherwise throw out the bad hole position and recurse
-
-(defn print-board [board]
-  (when (seq board)
-    (let [board (vec board)]
-      (doseq [row (range 0 9)]
-        (when (= (mod row 3) 0)
-          (println (str "+-----------------+-----------------+-----------------+\n"
-                        "|                 |                 |                 |")))
-        (doseq [col (range 0 9)]
-          (let [val (board (+ (* row 9) col))]
-            (when (= (mod col 3) 0)
-              (print "|  "))
-            (print " ")            (print (if (zero? val) " " val))
-            (print "   ")))
-        (print "|\n")
-        (println "|                 |                 |                 |"))
-      (println "+-----------------+-----------------+-----------------+"))))
 
 (defn- nicely-format-board [board]
   (->> board
