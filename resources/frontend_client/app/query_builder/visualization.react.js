@@ -234,8 +234,8 @@ export default React.createClass({
             var relationships = this.props.tableForeignKeys.map(function(fk) {
                 var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
                 return (
-                    <li className="block mb1 lg-mb2">
-                        <a className="QueryOption inline-block no-decoration p2 lg-p2" key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
+                    <li className="block mb1 lg-mb2" key={fk.id}>
+                        <a className="QueryOption inline-block no-decoration p2 lg-p2" href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
                             {relationName}
                         </a>
                     </li>

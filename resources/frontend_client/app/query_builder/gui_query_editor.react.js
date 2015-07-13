@@ -216,7 +216,7 @@ export default React.createClass({
                     }
 
                     return (
-                        <div className="DimensionList">
+                        <div className="DimensionList" key={index}>
                             <SelectionModule
                                 placeholder='What part of your data?'
                                 display="1"
