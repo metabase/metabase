@@ -51,6 +51,16 @@
     :values                (field-distinct-values field)
     :human_readable_values human-readable-values))
 
+(defn update-field-values!
+  "Update the `FieldValues` for FIELD, creating them if needed"
+  [{field-id :id, :as field}]
+  {:pre [(integer? field-id)
+         (field-should-have-field-values? field)]}
+  (if-let [field-values (sel :one FieldValues :field_id field-id)]
+    (upd FieldValues (:id field-values)
+      :values (field-distinct-values field))
+    (create-field-values field)))
+
 (defn create-field-values-if-needed
   "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
    Returns the existing or newly created `FieldValues` for `Field`."
