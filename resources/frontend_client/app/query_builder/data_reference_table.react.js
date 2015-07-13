@@ -63,11 +63,12 @@ export default React.createClass({
                 var text = "Show all " + table.rows.toLocaleString() + " rows in " + name
                 queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
+            var connectionsCount = this.state.tableForeignKeys.length + " " + inflection.inflect("connection", this.state.tableForeignKeys.length);
             var fieldCount = table.fields.length + " " + inflection.inflect("field", table.fields.length);
             var panes = {
                 "fields": fieldCount,
                 // "metrics": "0 Metrics",
-                "connections": "O Connections"
+                "connections": connectionsCount
             };
             var tabs = Object.keys(panes).map((name) => {
                 var classes = cx({
@@ -89,6 +90,16 @@ export default React.createClass({
                     );
                 });
                 pane = <ul>{fields}</ul>;
+            } else if (this.state.pane === "connections") {
+                var connections = this.state.tableForeignKeys.map((fk, index) => {
+                    var name = inflection.humanize(fk.origin.table.entity_name || fk.origin.table.name);
+                    return (
+                        <li key={fk.id} className="p1 border-row-divider">
+                            <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
+                        </li>
+                    );
+                });
+                pane = <ul>{connections}</ul>;
             }
 
             return (

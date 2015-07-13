@@ -379,7 +379,6 @@ CardControllers.controller('CardDetail', [
 
         function renderDataReference() {
             dataReferenceModel.databases = databases;
-            dataReferenceModel.tableMetadata = tableMetadata;
             dataReferenceModel.query = card.dataset_query;
             React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
         }
