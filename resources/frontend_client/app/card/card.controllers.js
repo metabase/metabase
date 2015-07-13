@@ -452,34 +452,36 @@ CardControllers.controller('CardDetail', [
             return angular.copy(newQueryTemplates[card.dataset_query.type]);
         }
 
+        function loadTable(tableId) {
+            return $q.all([
+                Metabase.table_query_metadata({
+                    'tableId': tableId
+                }).$promise.then(function (table) {
+                    // Decorate with valid operators
+                    // TODO: would be better if this was in our component
+                    return markupTableMetadata(table);
+                }),
+                Metabase.table_fks({
+                    'tableId': tableId
+                }).$promise
+            ]).then(function(results) {
+                return {
+                    metadata: results[0],
+                    foreignKeys: results[1]
+                }
+            });
+        }
+
         function loadTableInfo(tableId) {
             tableMetadata = null;
             tableForeignKeys = null;
 
-            // get table details
-            Metabase.table_query_metadata({
-                'tableId': tableId
-            }).$promise.then(function (table) {
-                // Decorate with valid operators
-                // TODO: would be better if this was in our component
-                var updatedTable = markupTableMetadata(table);
-
-                tableMetadata = updatedTable;
-
+            loadTable(tableId).then(function (results) {
+                tableMetadata = results.metadata;
+                tableForeignKeys = results.foreignKeys;
                 renderAll();
             }, function (error) {
                 console.log('error getting table metadata', error);
-            });
-
-            // get table fks
-            Metabase.table_fks({
-                'tableId': tableId
-            }).$promise.then(function (fks) {
-                tableForeignKeys = fks;
-
-                renderAll();
-            }, function (error) {
-                console.log('error getting fks for table '+tableId, error);
             });
         }
 
