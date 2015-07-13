@@ -10,7 +10,7 @@ var cx = React.addons.classSet;
 export default React.createClass({
     displayName: 'DataReferenceField',
     propTypes: {
-        Metabase: React.PropTypes.func.isRequired,
+        loadTableFn: React.PropTypes.func.isRequired,
         runQueryFn: React.PropTypes.func.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
@@ -20,16 +20,17 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            table: undefined
+            table: undefined,
+            tableForeignKeys: undefined
         };
     },
 
     componentWillMount: function() {
-        this.props.Metabase.table_query_metadata({
-            'tableId': this.props.field.table_id
-        }).$promise.then((table) => {
-            table = this.props.markupTableMetadata(table);
-            this.setState({ table: table });
+        this.props.loadTableFn(this.props.field.table_id).then((result) => {
+            this.setState({
+                table: result.metadata,
+                tableForeignKeys: result.foreignKeys
+            });
         });
     },
 

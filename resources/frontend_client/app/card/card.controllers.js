@@ -331,7 +331,7 @@ CardControllers.controller('CardDetail', [
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
             setDisplayFn: setDisplay,
-            markupTableMetadata: markupTableMetadata
+            loadTableFn: loadTable
         };
 
         // =====  REACT render functions

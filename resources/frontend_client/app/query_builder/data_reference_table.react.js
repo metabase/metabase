@@ -11,8 +11,8 @@ var cx = React.addons.classSet;
 export default React.createClass({
     displayName: 'DataReferenceTable',
     propTypes: {
-        Metabase: React.PropTypes.func.isRequired,
         query: React.PropTypes.object.isRequired,
+        loadTableFn: React.PropTypes.func.isRequired,
         closeFn: React.PropTypes.func.isRequired,
         runQueryFn: React.PropTypes.func.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
@@ -23,8 +23,18 @@ export default React.createClass({
     getInitialState: function() {
         return {
             table: undefined,
+            tableForeignKeys: undefined,
             pane: "fields"
         };
+    },
+
+    componentWillMount: function() {
+        this.props.loadTableFn(this.props.table.id).then((result) => {
+            this.setState({
+                table: result.metadata,
+                tableForeignKeys: result.foreignKeys
+            });
+        });
     },
 
     showPane: function(name) {
@@ -44,14 +54,6 @@ export default React.createClass({
 
     render: function(page) {
         var table = this.state.table;
-        if (table === undefined) {
-            this.state.table = null; // null indicates loading
-            this.props.Metabase.table_query_metadata({
-                'tableId': this.props.table.id
-            }).$promise.then((table) => {
-                this.setState({ table: table });
-            });
-        }
         if (table) {
             var name = inflection.humanize(table.name);
             var queryButton;
