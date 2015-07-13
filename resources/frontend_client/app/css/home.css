@@ -18,10 +18,6 @@
     }
 }
 
-.Greeting-subtitle {
-    opacity: 0.575;
-}
-
 /* on the homepage, the wrapper should only be as wide as our largest size */
 .Home .wrapper {
     max-width: var(--xl-width);
@@ -45,8 +41,93 @@
     transition: background .3s linear;
 }
 
-.DashboardDropdown .Dropdown-content {
-    min-width: 20em;
+.bullet {
+    position: relative;
+    margin-left: 1.2em;
+}
+.bullet:before {
+    content: "\2022";
+    color: #6FB0EB;
+    position: absolute;
+    top: 0;
+    margin-top: 16px;
+    left: -0.85em;
+}
+
+.NavDropdown {
+    position: relative;
+}
+.NavDropdown.open {
+    z-index: 100;
+}
+.NavDropdown .NavDropdown-content {
+    display: none;
+}
+.NavDropdown.open .NavDropdown-content {
+    display: inherit;
+}
+.NavDropdown .NavDropdown-button {
+    position: relative;
+    border-radius: 8px;
+}
+.NavDropdown .NavDropdown-content {
+    position: absolute;
+    border-radius: 4px;
+    top: 38px;
+    min-width: 200px;
+}
+.NavDropdown .NavDropdown-button:before,
+.NavDropdown .NavDropdown-content:before {
+    content:"";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, .12);
+    background-clip: padding-box;
+}
+
+.NavDropdown .NavDropdown-content:before {
+    z-index: -2;
+    border-radius: 4px;
+}
+.NavDropdown .NavDropdown-button:before {
+    z-index: -1;
+    border-radius: 8px;
+}
+.NavDropdown .NavDropdown-content-layer {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+.NavDropdown .NavDropdown-button-layer {
+    position: relative;
+    z-index: 2;
+}
+
+.NavDropdown.open .NavDropdown-button,
+.NavDropdown .NavDropdown-content-layer {
+    background-color: #6FB0EB;
+}
+
+.NavDropdown .NavDropdown-content-layer {
+    padding-top: 10px;
+    border-radius: 4px;
+}
+
+.NavDropdown .DashboardList {
+    min-width: 332px;
+}
+
+.QuestionCircle {
+    display: inline-block;
+    font-size: 3.25rem;
+    width: 73px;
+    height: 73px;
+    border-radius: 99px;
+    border: 3px solid white;
+    text-align: center;
 }
 
 .Entity-title {

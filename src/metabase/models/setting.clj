@@ -3,7 +3,7 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             [environ.core :as env]
-            [korma.core :refer :all :exclude [defentity delete]]
+            [korma.core :as k]
             [metabase.db :refer [sel del]]
             [metabase.models.interface :refer :all]))
 
@@ -67,12 +67,12 @@
   [k v]
   {:pre [(keyword? k)
          (string? v)]}
-  (if (get k) (update Setting
-                      (set-fields {:value v})
-                      (where {:key (name k)}))
-      (insert Setting
-              (values {:key (name k)
-                       :value v})))
+  (if (get k) (k/update Setting
+                        (k/set-fields {:value v})
+                        (k/where {:key (name k)}))
+      (k/insert Setting
+                (k/values {:key (name k)
+                           :value v})))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
   v)
@@ -158,7 +158,7 @@
   (atom nil))
 
 (defentity Setting
-  [(table :setting)])
+  [(k/table :setting)])
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`)."
@@ -169,10 +169,10 @@
        (map meta)
        (filter ::is-setting?)
        (map (fn [{k :name desc :doc default ::default-value}]
-              {:key (keyword k)
+              {:key         (keyword k)
                :description desc
-               :default (or (when (get-from-env-var k)
-                              (format "Using $MB_%s" (-> (name k)
-                                                         (s/replace "-" "_")
-                                                         s/upper-case)))
-                            default)}))))
+               :default     (or (when (get-from-env-var k)
+                                  (format "Using $MB_%s" (-> (name k)
+                                                             (s/replace "-" "_")
+                                                             s/upper-case)))
+                                default)}))))

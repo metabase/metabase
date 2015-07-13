@@ -1,5 +1,5 @@
 (ns metabase.models.session
-  (:require [korma.core :refer :all, :exclude [defentity]]
+  (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [interface :refer :all]

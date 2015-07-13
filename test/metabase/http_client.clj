@@ -4,8 +4,7 @@
             [cheshire.core :as cheshire]
             [clj-http.lite.client :as client]
             [metabase.config :as config]
-            [metabase.util :as u])
-  (:import com.metabase.corvus.api.ApiException))
+            [metabase.util :as u]))
 
 (declare authenticate
          auto-deserialize-dates
@@ -93,7 +92,7 @@
                                                          clojure.walk/keywordize-keys)
                                                      (catch Exception _ body))]
           (log/warn (with-out-str (clojure.pprint/pprint body)))
-          (throw (ApiException. status message)))))
+          (throw (ex-info message {:status-code status})))))
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body

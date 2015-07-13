@@ -1,7 +1,7 @@
 (ns metabase.api.meta.table
   "/api/meta/table endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
@@ -19,7 +19,7 @@
 (defendpoint GET "/"
   "Get all `Tables`."
   []
-  (-> (sel :many Table :active true (order :name :ASC))
+  (-> (sel :many Table :active true (k/order :name :ASC))
       (hydrate :db :human_readable_name)
       ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
       (#(map (fn [table]
@@ -49,7 +49,7 @@
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (-> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC))
+  (-> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC))
       (hydrate :human_readable_name)))
 
 (defendpoint GET "/:id/query_metadata"

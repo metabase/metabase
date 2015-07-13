@@ -25,6 +25,10 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
         refreshListing();
     });
 
+    $scope.$on("dashboard:update", function(event, dashboardId) {
+        refreshListing();
+    });
+
     // always initialize with a fresh listing
     refreshListing();
 

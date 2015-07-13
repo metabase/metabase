@@ -1,5 +1,5 @@
 (ns metabase.models.database
-  (:require [korma.core :refer :all, :exclude [defentity]]
+  (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer :all]
             [metabase.models.interface :refer :all]))

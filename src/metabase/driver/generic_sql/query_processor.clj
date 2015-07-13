@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.string :as s]
             [clojure.walk :as walk]
-            [korma.core :refer :all]
+            [korma.core :refer :all, :exclude [update]]
             [metabase.config :as config]
             [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
@@ -19,18 +19,19 @@
 
 ;; # INTERFACE
 
+
+(def ^:dynamic ^:private *query* nil)
+
 (defn- uncastify
   "Remove CAST statements from a column name if needed.
 
     (uncastify \"DATE\")               -> \"DATE\"
     (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
-  [column-name]
+  [driver column-name]
   (let [column-name (name column-name)]
     (keyword (or (second (re-find #"CAST\([^.\s]+\.([^.\s]+) AS [\w]+\)" column-name))
-                 (second (re-find (:uncastify-timestamp-regex qp/*driver*) column-name))
+                 (second (re-find (:uncastify-timestamp-regex driver) column-name))
                  column-name))))
-
-(def ^:dynamic ^:private *query* nil)
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
@@ -43,7 +44,7 @@
                                                       (filter identity)
                                                       (mapcat #(if (vector? %) % [%]))))
             set-timezone-sql  (when-let [timezone (:timezone (:details database))]
-                                (when-let [set-timezone-sql (:timezone->set-timezone-sql qp/*driver*)]
+                                (when-let [set-timezone-sql (:timezone->set-timezone-sql (:driver *query*))]
                                   `(exec-raw ~(set-timezone-sql timezone))))
             korma-form        `(let [~entity (korma-entity ~database ~source-table)]
                                  ~(if set-timezone-sql `(korma.db/with-db (:db ~entity)
@@ -58,7 +59,7 @@
 
         (let [results (eval korma-form)]
           {:results      results
-           :uncastify-fn uncastify}))
+           :uncastify-fn (partial uncastify (:driver query))}))
 
       (catch java.sql.SQLException e
         (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes
@@ -95,33 +96,50 @@
 
 
 (defprotocol IGenericSQLFormattable
-  (formatted [this]))
+  (formatted [this] [this include-as?]))
 
 (extend-protocol IGenericSQLFormattable
   Field
-  (formatted [{:keys [table-name field-name base-type special-type]}]
-    ;; TODO - add Table names
-    (cond
-      (contains? #{:DateField :DateTimeField} base-type) `(raw ~(format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name))
-      (= special-type :timestamp_seconds)                `(raw ~((:cast-timestamp-seconds-field-to-date-fn qp/*driver*) table-name field-name))
-      (= special-type :timestamp_milliseconds)           `(raw ~((:cast-timestamp-milliseconds-field-to-date-fn qp/*driver*) table-name field-name))
-      :else                                              (keyword (format "%s.%s" table-name field-name))))
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [table-name field-name base-type special-type]} include-as?]
+     ;; TODO - add Table names
+     (cond
+       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name)
+                                                                      (when include-as?
+                                                                        (format " AS \"%s\"" field-name))))
+       (= special-type :timestamp_seconds)                `(raw ~(str ((:cast-timestamp-seconds-field-to-date-fn (:driver *query*)) table-name field-name)
+                                                                      (when include-as?
+                                                                        (format " AS \"%s\"" field-name))))
+       (= special-type :timestamp_milliseconds)           `(raw ~(str ((:cast-timestamp-milliseconds-field-to-date-fn (:driver *query*)) table-name field-name)
+                                                                      (when include-as?
+                                                                        (format " AS \"%s\"" field-name))))
+       :else                                              (keyword (format "%s.%s" table-name field-name)))))
+
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
-  (formatted [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
-      `(raw ~(case aggregation-type
-               :avg      "\"avg\""
-               :count    "\"count\""
-               :distinct "\"count\""
-               :stddev   "\"stddev\""
-               :sum      "\"sum\""))))
+  (formatted
+    ([this]
+     (formatted this false))
+    ([_ _]
+     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
+       `(raw ~(case aggregation-type
+                :avg      "\"avg\""
+                :count    "\"count\""
+                :distinct "\"count\""
+                :stddev   "\"stddev\""
+                :sum      "\"sum\"")))))
+
 
   Value
-  (formatted [{:keys [value]}]
-    (if-not (instance? java.util.Date value) value
-            `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value))))))
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [value]} _]
+     (if-not (instance? java.util.Date value) value
+             `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
@@ -147,11 +165,11 @@
     ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
     (fields ~@(->> fields
                    (filter (partial (complement contains?) (set (:fields (:query *query*)))))
-                   (map formatted)))])
+                   (map (u/rpartial formatted :include-as))))])
 
 
 (defmethod apply-form :fields [[_ fields]]
-  `(fields ~@(map formatted fields)))
+  `(fields ~@(map (u/rpartial formatted :include-as) fields)))
 
 
 (defn- filter-subclause->predicate

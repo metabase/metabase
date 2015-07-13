@@ -34,6 +34,10 @@
   border-left: var(--border-size) var(--border-style) var(--border-color);
 }
 
+.border-light {
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */

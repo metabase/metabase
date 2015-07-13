@@ -34,7 +34,7 @@
        "?connectTimeoutMS="
        connection-timeout-ms))
 
-(def ^:dynamic *mongo-connection*
+(def ^:dynamic ^com.mongodb.DBApiLayer *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
@@ -48,7 +48,7 @@
                             (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style -- entire Database obj
                             (:dbname database)              (details-map->connection-string database)            ; new-style -- connection details map only
                             :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        {conn :conn mongo-connection :db} (mg/connect-via-uri connection-string)]
+        {conn :conn, mongo-connection :db} (mg/connect-via-uri connection-string)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]
@@ -76,22 +76,25 @@
      (if *mongo-connection* (f# *mongo-connection*)
          (-with-mongo-connection f# ~database))))
 
-;; TODO - this is actually more sophisticated than the one used for annotation in the GenericSQL driver, which just takes the
-;; types of the values in the first row.
-;; We should move this somewhere where it can be shared amongst the drivers and rewrite GenericSQL to use it instead.
+;; TODO - this isn't neccesarily Mongo-specific; consider moving
 (defn values->base-type
-  "Given a sequence of values, return `Field` `base_type` in the most ghetto way possible.
+  "Given a sequence of values, return `Field.base_type` in the most ghetto way possible.
    This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
   [values-seq]
   {:pre [(sequential? values-seq)]}
   (or (->> values-seq
-           (filter identity)             ; TODO - why not do a query to return non-nil values of this column instead
-           (take 1000)                   ; it's probably fine just to consider the first 1,000 non-nil values when trying to type a column instead of iterating over the whole collection
+           ;; TODO - why not do a query to return non-nil values of this column instead
+           (filter identity)
+           ;; it's probably fine just to consider the first 1,000 *non-nil* values when trying to type a column instead
+           ;; of iterating over the whole collection. (VALUES-SEQ should be up to 10,000 values, but we don't know how many are
+           ;; nil)
+           (take 1000)
            (group-by type)
-           (map (fn [[type valus]]
-                  [type (count valus)]))
+           ;; create tuples like [Integer count].
+           (map (fn [[klass valus]]
+                  [klass (count valus)]))
            (sort-by second)
-           first
-           first
-           driver/class->base-type)
+           last                     ; last result will be tuple with highest count
+           first                    ; keep just the type
+           driver/class->base-type) ; convert to Field base_type
       :UnknownField))

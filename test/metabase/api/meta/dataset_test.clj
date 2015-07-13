@@ -1,7 +1,7 @@
 (ns metabase.api.meta.dataset-test
   "Unit tests for /api/meta/dataset endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.test.data :refer :all]
@@ -11,7 +11,7 @@
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect-eval-actual-first
-    (match-$ (sel :one :fields [QueryExecution :id :uuid] (order :id :desc))
+    (match-$ (sel :one :fields [QueryExecution :id :uuid] (k/order :id :desc))
       {:data      {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :id nil, :table_id nil,
@@ -30,7 +30,7 @@
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect-eval-actual-first
-  (match-$ (sel :one QueryExecution (order :id :desc))
+  (match-$ (sel :one QueryExecution (k/order :id :desc))
     {:data {:rows []
             :cols []
             :columns []}

@@ -19,11 +19,6 @@
 }
 
 .AdminNav .NavItem {
-    /* cancel out padding as .AdminNav + flex will allow for proper centering */
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
     color: var(--admin-nav-item-text-color);
 }
 
@@ -36,6 +31,16 @@
 .AdminNav .NavItem:hover:after,
 .AdminNav .NavItem.is--selected:after {
     display: none;
+}
+
+
+.AdminNav .NavDropdown.open .NavDropdown-button,
+.AdminNav .NavDropdown .NavDropdown-content-layer {
+    background-color: #8993A1;
+}
+
+.AdminNav .Dropdown-item:hover {
+    background-color: #6F7A8B;
 }
 
 /* utility to get a simple common hover state for admin items */

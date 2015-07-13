@@ -1,7 +1,6 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
                              [common :as common])

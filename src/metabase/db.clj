@@ -176,28 +176,7 @@
 
 ;; ## SEL
 
-(comment
-  :id->field `(let [[entity# field#] ~entity]
-                (->> (sel :many :fields [entity# field# :id] ~@forms)
-                     (map (fn [{id# :id field-val# field#}]
-                            {id# field-val#}))
-                     (into {})))
-  :field->id `(let [[entity# field#] ~entity]
-                (->> (sel :many :fields [entity# field# :id] ~@forms)
-                     (map (fn [{id# :id field-val# field#}]
-                            {field-val# id#}))
-                     (into {})))
-  :field->field `(let [[entity# field1# field2#] ~entity]
-                   (->> (sel :many entity# ~@forms)
-                        (map (fn [obj#]
-                               {(field1# obj#) (field2# obj#)}))
-                        (into {})))
-  :field->obj `(let [[entity# field#] ~entity]
-                 (->> (sel :many entity# ~@forms)
-                      (map (fn [obj#]
-                             {(field# obj#) obj#}))
-                      (into {})))
-  )
+(def ^:dynamic *sel-disable-logging* false)
 
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
@@ -207,7 +186,8 @@
     (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
     (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
 
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, or `:id->fields`.
+  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, `:id->fields`,
+  `:field->field`, or `:field->fields`.
 
     ;; Only return IDs of objects.
     (sel :one :id User :email \"cam@metabase.com\") -> 120
@@ -235,6 +215,11 @@
     (sel :many :field->obj [Table :name] :db_id 1)
       -> {\"venues\" {:id 1, :name \"venues\", ...}
           \"users\"  {:id 2, :name \"users\", ...}}
+
+    ;; Return a map of field value -> other fields.
+    (sel :many :field->fields [Table :name :id :db_id])
+      -> {\"venues\" {:id 1, :db_id 1}
+          \"users\"  {:id 2, :db_id 1}}
 
     ;; Return a map of ID -> specified fields
     (sel :many :id->fields [User :first_name :last_name])
