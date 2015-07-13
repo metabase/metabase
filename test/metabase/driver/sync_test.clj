@@ -1,6 +1,5 @@
 (ns metabase.driver.sync-test
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]

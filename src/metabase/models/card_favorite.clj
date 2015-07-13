@@ -1,5 +1,5 @@
 (ns metabase.models.card-favorite
-  (:require [korma.core :refer :all, :exclude [defentity]]
+  (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
                              [interface :refer :all]

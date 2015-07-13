@@ -1,6 +1,5 @@
 (ns metabase.driver.generic-sql.native
   "The `native` query processor."
-  (:import com.metabase.corvus.api.ApiException)
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (korma [core :as korma]
@@ -13,11 +12,7 @@
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
-  (if-not v :UnknownField
-          (or (driver/class->base-type (type v))
-              (do (log/warn (format "Missing base type mapping for %s in driver/class->base-type. Please add an entry."
-                                    (str (type v))))
-                  :UnknownField))))
+  (driver/class->base-type (type v)))
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."

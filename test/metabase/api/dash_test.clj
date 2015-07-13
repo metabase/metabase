@@ -1,7 +1,6 @@
 (ns metabase.api.dash-test
   "Tests for /api/dash endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.api.card-test :refer [post-card]]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]

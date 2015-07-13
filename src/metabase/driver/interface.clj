@@ -5,6 +5,7 @@
 (def ^:const driver-optional-features
   "A set on optional features (as keywords) that may or may not be supported by individual drivers."
   #{:foreign-keys
+    :nested-fields                         ; are nested Fields (i.e., Mongo-style nested keys) supported?
     :set-timezone
     :standard-deviation-aggregations
     :unix-timestamp-special-type-fields})
@@ -52,7 +53,13 @@
   (process-query [this query]
     "Process a native or structured query.
      (Don't use this directly; instead, use `metabase.driver/process-query`,
-     which does things like preprocessing before calling the appropriate implementation.)"))
+     which does things like preprocessing before calling the appropriate implementation.)")
+  (wrap-process-query-middleware [this qp-fn]
+    "Custom QP middleware for this driver.
+     Like `sync-in-context`, but for running queries rather than syncing. This is basically around-advice for the QP pre and post-processing stages.
+     This should be used to do things like open DB connections that need to remain open for the duration of post-processing.
+     This middleware is injected into the QP middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
+     See the Mongo driver for and example of how this is intended to be used."))
 
 
 ;; ## ISyncDriverTableFKs Protocol (Optional)
@@ -69,12 +76,19 @@
      *  dest-column-name"))
 
 
+(defprotocol ISyncDriverFieldNestedFields
+  "Optional protocol that should provide information about the subfields of a FIELD when applicable.
+   Drivers that declare support for `:nested-fields` should implement this protocol."
+  (active-nested-field-name->type [this field]
+    "Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`."))
+
+
 ;; ## ISyncDriverField Protocols
 
 ;; Sync drivers need to implement either ISyncDriverFieldValues or ISyncDriverFieldAvgLength *and* ISyncDriverFieldPercentUrls.
 ;;
 ;; ISyncDriverFieldValues is used to provide a generic fallback implementation of the other two that calculate these values by
-;; iterating over *every* value of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
+;; iterating over a few thousand values of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
 ;; of ISyncDriverFieldAvgLength/ISyncDriverFieldPercentUrls when possible. (You can also implement ISyncDriverFieldValues and
 ;; *one* of the other two; the optimized implementation will be used for that and the fallback implementation for the other)
 

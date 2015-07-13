@@ -13,7 +13,8 @@
             (metabase.test.data [data :as data]
                                 [datasets :as datasets :refer [*dataset*]]
                                 [h2 :as h2]
-                                [interface :refer :all]))
+                                [interface :refer :all])
+            [metabase.util :as u])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
@@ -87,15 +88,15 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
+           (log/info (u/format-color 'blue "Creating %s database %s..." (name engine) database-name))
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
-           (log/info (color/blue "Loading data..."))
+           (log/debug (color/blue "Loading data..."))
            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
+             (log/info (u/format-color 'blue "Loading data for table '%s'..." (:table-name table-definition)))
              (load-table-data! dataset-loader database-definition table-definition)
-             (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
+             (log/info (u/format-color 'blue "Inserted %d rows." (count (:rows table-definition)))))
 
            ;; Add DB object to Metabase DB
            (log/info (color/blue "Adding DB to Metabase..."))
@@ -151,17 +152,21 @@
 (defn- table-id->field-name->field
   "Return a map of lowercased `Field` names -> fields for `Table` with TABLE-ID."
   [table-id]
-  (->> (sel :many :field->obj [Field :name] :table_id table-id)
-       (m/map-keys s/lower-case)))
+  {:pre [(integer? table-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil))
+       (m/map-keys s/lower-case)
+       (m/map-keys (u/rpartial s/replace #"^_id$" "id")))) ; rename Mongo _id fields to ID so we can use the same name for any driver
 
 (defn- db-id->table-name->table
   "Return a map of lowercased `Table` names -> Tables for `Database` with DATABASE-ID.
    Add a delay `:field-name->field` to each Table that calls `table-id->field-name->field` for that Table."
   [database-id]
-  (->> (sel :many :field->obj [Table :name] :db_id database-id)
+  {:pre [(integer? database-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Table :name] :db_id database-id))
        (m/map-keys s/lower-case)
-       (m/map-vals (fn [table]
-                     (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))))))
+       (m/map-vals #(assoc % :field-name->field (delay (table-id->field-name->field (:id %)))))))
 
 (defn -temp-db-add-getter-delay
   "Add a delay `:table-name->table` to DB that calls `db-id->table-name->table`."
@@ -174,11 +179,27 @@
    With three args, fetch `Field` with FIELD-NAME by recursively fetching `Table` and using its `:field-name->field` delay."
   ([temp-db table-name]
    {:pre [(map? temp-db)
-          (string? table-name)]}
+          (string? table-name)]
+    :post [(or (map? %) (assert nil (format "Couldn't find table '%s'.\nValid choices are: %s" table-name
+                                            (vec (keys @(:table-name->table temp-db))))))]}
    (@(:table-name->table temp-db) table-name))
+
   ([temp-db table-name field-name]
-   {:pre [(string? field-name)]}
-   (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
+   {:pre [(string? field-name)]
+    :post [(or (map? %) (assert nil (format "Couldn't find field '%s.%s'.\nValid choices are: %s" table-name field-name
+                                            (vec (keys @(:field-name->field (-temp-get temp-db table-name)))))))]}
+   (@(:field-name->field (-temp-get temp-db table-name)) field-name))
+
+  ([temp-db table-name parent-field-name & nested-field-names]
+   {:pre [(every? string? nested-field-names)]
+    :post [(or (map? %) (assert nil (format "Couldn't find nested field '%s.%s.%s'.\nValid choices are: %s" table-name parent-field-name
+                                            (apply str (interpose "." nested-field-names))
+                                            (vec (map :name @(:children (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))))))))]}
+   (binding [*sel-disable-logging* true]
+     (let [parent            (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))
+           children          @(:children parent)
+           child-name->child (zipmap (map :name children) children)]
+       (child-name->child (last nested-field-names))))))
 
 (defn- walk-expand-&
   "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.
@@ -198,17 +219,20 @@
          form))
    body))
 
-(defn with-temp-db* [loader ^DatabaseDefinition dbdef f]
+(defn -with-temp-db [loader ^DatabaseDefinition dbdef f]
   (let [dbdef (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
-      (remove-database! loader dbdef)
-      (let [db (-> (get-or-create-database! loader dbdef)
-                   -temp-db-add-getter-delay)]
-        (assert db)
-        (assert (exists? Database :id (:id db)))
-        (f db))
+      (binding [*sel-disable-logging* true]
+        (remove-database! loader dbdef)
+        (let [db (-> (get-or-create-database! loader dbdef)
+                     -temp-db-add-getter-delay)]
+          (assert db)
+          (assert (exists? Database :id (:id db)))
+          (binding [*sel-disable-logging* false]
+            (f db))))
       (finally
-        (remove-database! loader dbdef)))))
+        (binding [*sel-disable-logging* true]
+          (remove-database! loader dbdef))))))
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
@@ -229,6 +253,6 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
-  `(with-temp-db* ~dataset-loader ~database-definition
+  `(-with-temp-db ~dataset-loader ~database-definition
      (fn [~db-binding]
        ~@(walk-expand-& db-binding body))))

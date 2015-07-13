@@ -59,8 +59,10 @@
   [table-name field-name]
   {:pre [(keyword? table-name)
          (keyword? field-name)]}
-  {:name (name field-name)
-   :table (delay (table-name->fake-table table-name))})
+  (let [table-delay (delay (table-name->fake-table table-name))]
+    {:name                      (name field-name)
+     :table                     table-delay
+     :qualified-name-components (delay [(name (:name @table-delay)) (name field-name)])}))
 
 ;; ## Tests for connection functions
 
