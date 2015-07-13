@@ -193,11 +193,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys: null,
             isRunning: false,
             isObjectDetail: false,
-            setDisplayFn: function(type) {
-                card.display = type;
-
-                renderAll();
-            },
+            setDisplayFn: setDisplay,
             setChartColorFn: function(color) {
                 var vizSettings = card.visualization_settings;
 
@@ -329,7 +325,13 @@ CardControllers.controller('CardDetail', [
 
         var dataReferenceModel = {
             Metabase: Metabase,
-            closeFn: toggleDataReference
+            closeFn: toggleDataReference,
+            runQueryFn: runQuery,
+            setQueryFn: setQuery,
+            setDatabaseFn: setDatabase,
+            setSourceTableFn: setSourceTable,
+            setDisplayFn: setDisplay,
+            markupTableMetadata: markupTableMetadata
         };
 
         // =====  REACT render functions
@@ -510,37 +512,43 @@ CardControllers.controller('CardDetail', [
                     query.native.query = card.dataset_query.native.query;
                 }
 
-                // notify parent that we've started over
                 // TODO: should this clear the visualization as well?
-                notifyQueryModified(query);
+                setQuery(query);
 
                 // load rest of the data we need
                 loadDatabaseInfo(databaseId);
             }
+            return card.dataset_query;
         }
 
         function setSourceTable(sourceTable) {
             // this will either be the id or an object with an id
             var tableId = sourceTable.id || sourceTable;
-            loadTableInfo(tableId);
+            if (tableId !== card.dataset_query.query.source_table) {
 
-            // when the table changes we reset everything else in the query, except the database of course
-            // TODO: should this clear the visualization as well?
-            var query = getDefaultQuery();
-            query.database = card.dataset_query.database;
-            query.query.source_table = tableId;
+                // when the table changes we reset everything else in the query, except the database of course
+                // TODO: should this clear the visualization as well?
+                var query = getDefaultQuery();
+                query.database = card.dataset_query.database;
+                query.query.source_table = tableId;
 
-            setQuery(query);
-        }
+                setQuery(query);
 
-        function notifyQueryModified(dataset_query) {
-            // we are being told that the query has been modified
-            card.dataset_query = dataset_query;
-            renderAll();
+                loadTableInfo(tableId);
+            }
+            return card.dataset_query;
         }
 
         function setQuery(dataset_query) {
-            notifyQueryModified(dataset_query);
+            // we are being told that the query has been modified
+            card.dataset_query = dataset_query;
+            renderAll();
+            return card.dataset_query;
+        }
+
+        function setDisplay(type) {
+            card.display = type;
+            renderAll();
         }
 
         function isObjectDetailQuery(card, data) {
@@ -593,8 +601,9 @@ CardControllers.controller('CardDetail', [
 
         function toggleDataReference() {
             $scope.isShowingDataReference = !$scope.isShowingDataReference;
-            $scope.$digest();
             renderAll();
+            // render again after 500ms to wait for animation to complete
+            window.setTimeout(renderAll, 500);
         }
 
         function resetCardQuery(mode) {

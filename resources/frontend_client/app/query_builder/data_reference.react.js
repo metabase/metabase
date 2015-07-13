@@ -10,6 +10,16 @@ var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'DataReference',
+    propTypes: {
+        Metabase: React.PropTypes.func.isRequired,
+        query: React.PropTypes.object.isRequired,
+        closeFn: React.PropTypes.func.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired,
+        setQueryFn: React.PropTypes.func.isRequired,
+        setDatabaseFn: React.PropTypes.func.isRequired,
+        setSourceTableFn: React.PropTypes.func.isRequired,
+        setDisplayFn: React.PropTypes.func.isRequired
+    },
 
     getInitialState: function() {
         return {

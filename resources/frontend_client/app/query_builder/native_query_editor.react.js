@@ -108,7 +108,6 @@ export default React.createClass({
     },
 
     render: function() {
-        //console.log(this.props.query);
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
         if(this.props.databases && this.props.databases.length > 1) {

@@ -4,10 +4,21 @@ import Icon from './icon.react';
 import DataReferenceQueryButton from './data_reference_query_button.react';
 import inflection from 'inflection';
 
+import Query from './query';
+
 var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'DataReferenceTable',
+    propTypes: {
+        Metabase: React.PropTypes.func.isRequired,
+        query: React.PropTypes.object.isRequired,
+        closeFn: React.PropTypes.func.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired,
+        setQueryFn: React.PropTypes.func.isRequired,
+        setDatabaseFn: React.PropTypes.func.isRequired,
+        setSourceTableFn: React.PropTypes.func.isRequired
+    },
 
     getInitialState: function() {
         return {
@@ -21,19 +32,14 @@ export default React.createClass({
     },
 
     setQueryAllRows: function() {
-        var query = {
-            database:  this.state.table.db_id,
-            query: {
-                "aggregation": ["rows"],
-                "breakout": [],
-                "filter": [],
-                "source_table": this.state.table.id
-            },
-            type: "query"
-        };
-        console.log(query);
-        this.props.notifyQueryModifiedFn(query);
-        // this.props.runFn(query);
+        var query;
+        query = this.props.setDatabaseFn(this.state.table.db_id);
+        query = this.props.setSourceTableFn(this.state.table.id);
+        query.query.aggregation = ["rows"];
+        query.query.breakout = [];
+        query.query.filter = [];
+        query = this.props.setQueryFn(query);
+        this.props.runQueryFn(query);
     },
 
     render: function(page) {
@@ -53,7 +59,7 @@ export default React.createClass({
                 var words = inflection.humanize(table.name, true).split(" ");
                 words.push(inflection.inflect(words.pop(), table.rows)); // inflect the last word
                 var text = "Show all " + table.rows.toLocaleString() + " rows in " + name
-                queryButton = (<DataReferenceQueryButton icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
+                queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var fieldCount = table.fields.length + " " + inflection.inflect("field", table.fields.length);
             var panes = {

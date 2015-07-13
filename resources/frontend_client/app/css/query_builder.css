@@ -408,5 +408,9 @@
 }
 
 .DataRefererenceQueryButton-text {
-    max-width: 120px;
+    max-width: 160px;
+}
+
+.DataReference-usefulQuestions li:not(:last-child) {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
 }

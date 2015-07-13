@@ -7,6 +7,10 @@ var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'DataReferenceMain',
+    propTypes: {
+        Metabase: React.PropTypes.func.isRequired,
+        closeFn: React.PropTypes.func.isRequired
+    },
 
     getInitialState: function() {
         return {
