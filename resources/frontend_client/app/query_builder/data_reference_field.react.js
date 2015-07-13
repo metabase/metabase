@@ -137,10 +137,13 @@ export default React.createClass({
         usefulQuestions.push(<li className="border-row-divider" key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
         usefulQuestions.push(<li className="border-row-divider" key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
 
+        var descriptionClasses = cx({ "text-grey-3": !this.props.field.description });
+        var description = (<p className={descriptionClasses}>{this.props.field.description || "No description set."}</p>);
+
         return (
             <div>
                 <h1>{fieldName}</h1>
-                <p>{this.props.field.description}</p>
+                {description}
                 {useForCurrentQuestion}
                 <p className="text-bold">Potentially useful questions</p>
                 <ul>{usefulQuestions}</ul>

@@ -109,10 +109,13 @@ export default React.createClass({
                 pane = <ul>{connections}</ul>;
             }
 
+            var descriptionClasses = cx({ "text-grey-3": !table.description });
+            var description = (<p className={descriptionClasses}>{table.description || "No description set."}</p>);
+
             return (
                 <div>
                     <h1>{name}</h1>
-                    <p>{table.description}</p>
+                    {description}
                     {queryButton}
                     <div className="Button-group Button-group--brand text-uppercase">
                         {tabs}
