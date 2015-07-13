@@ -53,9 +53,32 @@
           (let [val (board (+ (* row 9) col))]
             (when (= (mod col 3) 0)
               (print "|  "))
-            (print " ")
-            (print (if (zero? val) " " val))
+            (print " ")            (print (if (zero? val) " " val))
             (print "   ")))
         (print "|\n")
         (println "|                 |                 |                 |"))
       (println "+-----------------+-----------------+-----------------+"))))
+
+(defn- nicely-format-board [board]
+  (->> board
+       (partition 27)
+       (interpose (repeat 9 "****************************************"))
+       flatten
+       (partition 9)
+       (apply map vector)
+       (partition 3)
+       (interpose (repeat 11 "****************************************"))
+       flatten
+       (map #(if (= % 0) "" %))
+       (partition 11)))
+
+(defn generate-sudoku-middleware [qp]
+  (fn [{{[ag-type] :aggregation} :query, :as query}]
+    (if (not= ag-type "sudoku") (qp query)
+        {:data      {:rows    (->> (time (rando-board :medium))
+                                   nicely-format-board)
+                     :columns (repeat 11 "")
+                     :cols    (repeat 11 {:name      ""
+                                          :base_type :IntegerField})}
+         :row_count 11
+         :status    "completed"})))

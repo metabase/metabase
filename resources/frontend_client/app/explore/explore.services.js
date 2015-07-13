@@ -307,6 +307,12 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
         "advanced": true,
         "validFieldsFilters": [summableFields]
+    }, {
+        name: "Sudoku",
+        short: "sudoku",
+        description: "Generate a new sudoku board.",
+        advanced: true,
+        validFieldsFilters: []
     }];
 
     var BreakoutAggregator = {

@@ -8,7 +8,8 @@
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
-            [metabase.driver.query-processor.expand :as expand]
+            (metabase.driver.query-processor [expand :as expand]
+                                             [sudoku :as sudoku])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -451,6 +452,7 @@
   (let [driver-process-query      (partial i/process-query driver)
         driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
     ((<<- wrap-catch-exceptions
+          sudoku/generate-sudoku-middleware
           pre-expand
           driver-wrap-process-query
           post-add-row-count-and-status
