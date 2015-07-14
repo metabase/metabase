@@ -23,10 +23,7 @@
                       timezone->set-timezone-sql
                       ;; These functions take a string name of a Table and a string name of a Field and return the raw SQL to select it as a DATE
                       cast-timestamp-seconds-field-to-date-fn
-                      cast-timestamp-milliseconds-field-to-date-fn
-                      ;; This should be a regex that will match the column returned by the driver when unix timestamp -> date casting occured
-                      ;; e.g. #"CAST\(TIMESTAMPADD\('(?:MILLI)?SECOND', ([^\s]+), DATE '1970-01-01'\) AS DATE\)" for H2
-                      uncastify-timestamp-regex]
+                      cast-timestamp-milliseconds-field-to-date-fn]
   IDriver
   ;; Features
   (supports? [_ feature]

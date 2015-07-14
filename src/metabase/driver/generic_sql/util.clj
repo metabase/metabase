@@ -24,10 +24,9 @@
   db->korma-db
   "Return a Korma database definition for DATABASE.
    This does a little bit of smart caching (for 60 seconds) to avoid creating new connections when unneeded."
-  (let [-db->korma-db (memo/ttl (fn [database]
-                                  (log/debug (color/red "Creating a new DB connection..."))
-                                  (kdb/create-db (db->connection-spec database)))
-                                :ttl/threshold (* 60 1000))]
+  (let [-db->korma-db (memoize (fn [database]
+                                 (log/debug (color/red "Creating a new DB connection..."))
+                                 (kdb/create-db (db->connection-spec database))))]
     ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
     (fn [database]
       (-db->korma-db (select-keys database [:engine :details])))))

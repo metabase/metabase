@@ -210,7 +210,7 @@
 
 (defn post-annotate [qp]
   (fn [query]
-    (let [{:keys [results uncastify-fn]} (qp query)
+    (let [results (qp query)
           cols    (time (->> (query-add-info (:query query) results)
                              resolve+order-cols
                              (map format-col)
