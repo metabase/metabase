@@ -25,7 +25,16 @@
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
                             (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
-                                    (conj! fields f)))
+                                    (let [[_ first-name] (expand/qualified-name-components f)]
+                                      (conj! fields f)
+                                      ;; HACK !!!
+                                      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
+                                      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
+                                      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
+                                      ;; matching works correctly.
+                                      ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
+                                      (when (:parent f)
+                                        (conj! fields (:parent f))))))
                           query)
     (assoc query
            :result-keys  (vec (sort (keys (first results))))
@@ -61,8 +70,8 @@
 
 (defn- fieldo [{:keys [query-fields], :as query} field]
   (all (conde
-        ((aggregate-fieldo query field))
-        ((membero field query-fields)))
+        ((membero field query-fields))
+        ((aggregate-fieldo query field)))
        (valid-nameo query field)))
 
 
@@ -153,13 +162,13 @@
           (every? map? %)]}
   (let [num-cols (count (:result-keys query))
         cols     (vec (lvars num-cols))]
-    (first (run 1 [q]
-             (== q cols)
-             (distincto q)
-             (everyg (partial fieldo query) q)
-             (everyg (fn [i]
-                       (fields< query (cols i) (cols (inc i))))
-                     (range 0 (dec num-cols)))))))
+    (time (first (run 1 [q]
+                   (== q cols)
+                   (distincto q)
+                   (everyg (partial fieldo query) q)
+                   (everyg (fn [i]
+                             (fields< query (cols i) (cols (inc i))))
+                           (range 0 (dec num-cols))))))))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
@@ -210,10 +219,10 @@
 (defn post-annotate [qp]
   (fn [query]
     (let [results (qp query)
-          cols    (time (->> (query-add-info (:query query) results)
-                             resolve+order-cols
-                             (map format-col)
-                             add-fields-extra-info))
+          cols    (->> (query-add-info (:query query) results)
+                       resolve+order-cols
+                       (map format-col)
+                       add-fields-extra-info)
           columns (map :name cols)]
       {:cols    (vec (for [col cols]
                        (update col :name name)))
