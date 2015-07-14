@@ -67,14 +67,17 @@
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
   (fn [{{:keys [fields breakout source-table], {source-table-id :id} :source-table, {ag-type :aggregation-type} :aggregation} :query, :as query}]
-    (qp (if (or (not (= ag-type :rows)) breakout fields) query
-            (-> query
-                (assoc-in [:query :fields-is-implicit] true)
-                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
-                                                     :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                                                (map expand/rename-mb-field-keys)
-                                                (map expand/map->Field)
-                                                (map #(expand/resolve-table % {source-table-id source-table})))))))))
+    (qp (if (or (and ag-type
+                     (not (= ag-type :rows)))
+                breakout
+                fields)  query
+                (-> query
+                    (assoc-in [:query :fields-is-implicit] true)
+                    (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
+                                                         :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
+                                                    (map expand/rename-mb-field-keys)
+                                                    (map expand/map->Field)
+                                                    (map #(expand/resolve-table % {source-table-id source-table})))))))))
 
 
 (defn- pre-add-implicit-breakout-order-by
