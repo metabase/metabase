@@ -686,9 +686,6 @@ CardControllers.controller('CardDetail', [
             } else {
                 // starting a new card
 
-                // show data reference
-                $scope.isShowingDataReference = true;
-
                 // this is just an easy way to ensure defaults are all setup
                 resetCardQuery("query");
 
