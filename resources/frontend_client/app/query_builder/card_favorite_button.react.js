@@ -78,13 +78,13 @@ export default React.createClass({
             'mx1': true,
             'transition-color': true,
             'text-grey-4': !this.state.favorite,
-            'text-gold': this.state.favorite,
-            'text-brand-hover': !this.state.favorite
+            'text-brand-hover': !this.state.favorite,
+            'text-gold': this.state.favorite
         });
 
         return (
             <a className={iconClasses} href="#" onClick={this.toggleFavorite}>
-                <Icon name="star" width="16px" height="16px"></Icon>
+                <Icon name="star" viewBox="0 0 58 58"></Icon>
             </a>
         );
     }

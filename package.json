@@ -30,7 +30,7 @@
     "d3-tip": "^0.6.7",
     "dc": "2.0.0-beta.1",
     "fixed-data-table": "0.2.0",
-    "inflection": "^1.7.1",
+    "humanize-plus": "1.5.0",
     "jquery": "2.1.4",
     "moment": "2.9.0",
     "ng-sortable": "1.2.0",

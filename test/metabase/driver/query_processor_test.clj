@@ -397,6 +397,16 @@
   :breakout     [nil]
   :limit        nil})
 
+;; ### FILTER WITH A FALSE VALUE
+;; Check that we're checking for non-nil values, not just logically true ones.
+;; There's only one place (out of 3) that I don't like
+(datasets/expect-with-all-datasets
+ 1
+ (Q run against places-cam-likes
+    return :data :rows first first
+    aggregate count of places
+    filter = liked false))
+
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (qp-expect-with-all-datasets
  {:rows    [[21 "PizzaHacker" 58 37.7441 -122.421 2]

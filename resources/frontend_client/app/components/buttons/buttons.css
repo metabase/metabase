@@ -149,7 +149,7 @@
 
 /* toggle button */
 .Button-toggle {
-    color: #797979;
+    color: var(--grey-text-color);
     display: flex;
     line-height: 1;
     border: 1px solid #ddd;

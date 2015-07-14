@@ -378,6 +378,7 @@
     opacity: 0.5;
 }
 
+/* data reference */
 .DataReference {
     z-index: -1;
     position: absolute;
@@ -413,4 +414,37 @@
 
 .DataReference-paneCount {
     padding-right: 0.6em;
+}
+
+/* object detail */
+.ObjectDetail {
+    border: 1px solid #DEDEDE;
+    min-width: 906px;
+    margin: 0 auto;
+    margin-bottom: 2rem;
+}
+
+@media screen and (--breakpoint-min-lg) {
+   .ObjectDetail {
+       min-width: 1140px;
+   }
+}
+
+.ObjectDetail-headingGroup {
+    border-bottom: 1px solid #DEDEDE;
+}
+
+.ObjectDetail-infoMain {
+    border-right: 1px solid #DEDEDE;
+    margin-left: 2.4rem;
+    font-size: 1rem;
+}
+
+.ObjectJSON {
+    max-height: 200px;
+    overflow: scroll;
+    padding: 1em;
+    background-color: #F8F8F8;
+    border: 1px solid #dedede;
+    border-radius: 2px;
 }
