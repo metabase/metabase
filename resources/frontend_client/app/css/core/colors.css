@@ -3,6 +3,7 @@
   --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+  --grey-text-color: #797979;
   --alt-bg-color: #F4F6F8;
 
   --success-color: #9CC177;
@@ -89,4 +90,4 @@
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
 
 
-.text-dark { color: #797979; }
+.text-dark { color: var(--grey-text-color); }
