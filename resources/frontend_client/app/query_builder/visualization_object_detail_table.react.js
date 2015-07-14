@@ -187,7 +187,7 @@ export default React.createClass({
         return (
             <div className="ObjectDetail rounded">
                 <div className="Grid ObjectDetail-headingGroup">
-                    <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 ">
+                    <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 arrow-right">
                         <div className="text-brand text-bold">
                             <span>{tableName}</span>
                             <h1>{idValue}</h1>
