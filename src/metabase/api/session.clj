@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as k]
@@ -42,20 +41,16 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body}]
+  [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email [Required Email]}
-  (let [site-url (@(ns-resolve 'metabase.core 'site-url))] ; avoid circular dep
-    (check site-url
-      400 "You must set the Site URL in the admin page in order to send a password reset email.")
-    (let [{user-id :id}      (sel :one User :email email)
-          reset-token        (java.util.UUID/randomUUID)
-          site-url           (s/replace site-url #"/$" "") ; if the site-url ends in a trailing slash strip it off
-          password-reset-url (str site-url "/auth/reset_password/" reset-token)]
-      ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-      (when user-id
-        (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
-        (email/send-password-reset-email email server-name password-reset-url)
-        (log/info password-reset-url)))))
+  (let [{user-id :id}      (sel :one User :email email)
+        reset-token        (java.util.UUID/randomUUID)
+        password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)] ; avoid circular deps
+    ;; Don't leak whether the account doesn't exist, just pretend everything is ok
+    (when user-id
+      (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+      (email/send-password-reset-email email server-name password-reset-url)
+      (log/info password-reset-url))))
 
 
 (defendpoint POST "/reset_password"

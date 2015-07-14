@@ -1,8 +1,9 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
-            [clojure.java.browse :refer [browse-url]]
+  (:require [clojure.java.browse :refer [browse-url]]
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
@@ -28,7 +29,22 @@
 
 (defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
-(defsetting site-url "The base URL used to access this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+(defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+
+(defn site-url
+  "Fetch the site base URL that should be used for password reset emails, etc.
+   This strips off any trailing slashes that may have been added.
+
+   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
+   the ORIGIN header of some API request. Subsequently, the site URL can only be changed via the admin page."
+  {:arglists '([request])}
+  [{{:strs [origin]} :headers}]
+  {:pre  [(string? origin)]
+   :post [(string? %)]}
+  (or (some-> (-site-url)
+              (s/replace #"/$" "")) ; strip off trailing slash if one was included
+      (-site-url origin)))
+
 
 (def app
   "The primary entry point to the HTTP server"
