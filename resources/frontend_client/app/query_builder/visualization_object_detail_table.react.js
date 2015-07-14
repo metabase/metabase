@@ -195,8 +195,8 @@ export default React.createClass({
                     </div>
                     <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
                         <div className="p4 flex align-center text-bold text-grey-3">
-                            <Icon name="connections" width="32px" height="32px" />
-                            <div>
+                            <Icon name="connections" width="17px" height="20px" />
+                            <div className="ml2">
                                 This <span className="text-dark">{tableName}</span> is connected to.
                             </div>
                         </div>
