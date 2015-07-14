@@ -11,7 +11,7 @@
 (defn- partition-tokens [keywords tokens]
   (->> (loop [all [], current-split nil, [token & more] tokens]
          (cond
-           (and (not token)
+           (and (nil? token)
                 (not (seq more)))     (conj all current-split)
            (contains? keywords token) (recur (or (when (seq current-split)
                                                    (conj all current-split))
@@ -22,7 +22,7 @@
                                              (conj current-split token)
                                              more)))
        (map seq)
-       (filter identity)))
+       (filter (complement nil?))))
 
 (def ^:private ^:const outer-q-tokens '#{against with run return using})
 (def ^:private ^:const inner-q-tokens '#{ag aggregate breakout fields filter lim limit order page of tbl})
