@@ -15,8 +15,8 @@ angular.module('corvus.components')
 
         return {
             restrict: 'E',
-            // NOTE: can't use ng-attr-viewBox because Angular doesn't preserve the case pre-v1.3.7
-            template: '<svg viewBox={{viewBox}} ng-attr-class="{{className}}" ng-attr-width="{{width}}" ng-attr-height="{{height}}" ng-attr-fill="{{fill}}"><path ng-attr-d="{{path}}" /></svg>',
+            // NOTE: can't use ng-attr-viewBox because Angular doesn't preserve the case pre-v1.3.7 :(
+            template: '<svg viewBox="0 0 32 32" ng-attr-class="{{className}}" ng-attr-width="{{width}}" ng-attr-height="{{height}}" ng-attr-fill="{{fill}}"><path ng-attr-d="{{path}}" /></svg>',
             scope: {
                 width: '@?',  // a value in PX to define the width of the icon
                 height: '@?', // a value in PX to define the height of the icon
