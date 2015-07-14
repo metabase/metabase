@@ -10,7 +10,7 @@
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
-;;; # ------------------------------------------------------------ QUERY DICT ADDITIONAL INFO  ------------------------------------------------------------
+;;; # ---------------------------------------- QUERY DICT ADDITIONAL INFO  ----------------------------------------
 
 (defn- collapse-field [field]
   (into {} (-> field
@@ -34,7 +34,7 @@
            :breakout     (mapv collapse-field (:breakout query)))))
 
 
-;;; # ------------------------------------------------------------ COLUMN RESOLUTION & ORDERING  ------------------------------------------------------------
+;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING  ----------------------------------------
 
 (defn- breakout-fieldo [{breakout-fields :breakout} field]
   (membero field breakout-fields))
@@ -163,7 +163,7 @@
                      (range 0 (dec num-cols)))))))
 
 
-;;; # ------------------------------------------------------------ COLUMN DETAILS  ------------------------------------------------------------
+;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
 
 
 (defn- format-col [col]
