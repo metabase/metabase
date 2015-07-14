@@ -157,7 +157,12 @@
 ;;; ## Top-Level Resolution / Ordering
 
 (def ^:private total-slowness (atom 0))
+(def ^:private slowest (atom 0))
 (def ^:private run-count (atom 0))
+
+(defn- fieldo [query field]
+  (all (member1o field (:query-fields query))
+       (valid-nameo query field)))
 
 (defn- resolve+order-cols [query]
   {:post [(or (and (sequential? %)
@@ -170,15 +175,17 @@
         results    (first (run 1 [q]
                             (== q cols)
                             (distincto cols)
-                            (everyg #(member1o % (:query-fields query)) cols)
-                            (everyg (partial valid-nameo query) cols)
+                            (fieldo query (cols 0))
                             (everyg (fn [i]
-                                      (fields< query (cols i) (cols (inc i))))
+                                      (all (fieldo query (cols (inc i)))
+                                           (fields< query (cols i) (cols (inc i)))))
                                     (range 0 (dec num-cols)))))
         run-time   (- (System/currentTimeMillis) start-time)]
     (swap! total-slowness #(+ % run-time))
     (swap! run-count inc)
-    (println (u/format-color 'cyan "Total slowness thus far: %.1f (avg: %.2f)" (/ @total-slowness 1000.0) (/ (/ @total-slowness 1000.0) @run-count)))
+    (when (> run-time @slowest)
+      (reset! slowest run-time))
+    (println (u/format-color 'cyan "Total slowness thus far: %.0f ms (avg: %.0f ms, max: %.0f ms)" (float @total-slowness) (/ @total-slowness (float @run-count)) (float @slowest)))
     (when (> run-time 2000)
       (println (u/format-color 'red "This query took a STUPID LONG amount of time to order (%.1f seconds):\n%s\n%s" (/ run-time 1000.0)
                                (u/pprint-to-str query) (u/pprint-to-str results))))
@@ -244,7 +251,7 @@
        :rows    (for [row results]
                   (mapv row columns))})))
 
-;; #_(require 'metabase.driver)
+;; (require 'metabase.driver)
 ;; (require 'metabase.test.data)
 ;; (require 'metabase.test.data.datasets)
 ;; (defn x []
