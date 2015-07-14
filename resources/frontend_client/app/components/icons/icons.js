@@ -15,7 +15,7 @@ angular.module('corvus.components')
 
         return {
             restrict: 'E',
-            template: '<svg class="Icon" id="{{name}}" viewBox="0 0 32 32" ng-attr-width="{{width}}" ng-attr-height="{{height}}" fill="currentcolor"><path ng-attr-d="{{path}}" /></svg>',
+            template: '<svg class="Icon" id="{{name}}" viewBox="{{viewBox}}" ng-attr-width="{{width}}" ng-attr-height="{{height}}" fill="{{fill}}"><path ng-attr-d="{{path}}" /></svg>',
             scope: {
                 width: '@?',  // a value in PX to define the width of the icon
                 height: '@?', // a value in PX to define the height of the icon
