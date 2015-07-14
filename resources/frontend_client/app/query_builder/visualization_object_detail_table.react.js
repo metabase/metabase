@@ -55,7 +55,7 @@ export default React.createClass({
 
             } else if(row[0].special_type === "json") {
                 var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
-                cellValue = (<pre>{formattedJson}</pre>);
+                cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
 
             } else {
                 // TODO: should we be casting all values toString()?

@@ -393,3 +393,12 @@
     margin-left: 2.4rem;
     font-size: 1rem;
 }
+
+.ObjectJSON {
+    max-height: 200px;
+    overflow: scroll;
+    padding: 1em;
+    background-color: #F8F8F8;
+    border: 1px solid #dedede;
+    border-radius: 2px;
+}
