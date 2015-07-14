@@ -88,7 +88,7 @@ export default React.createClass({
                     var name =  inflection.humanize(field.name);
                     return (
                         <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
                         </li>
                     );
                 });
@@ -98,7 +98,7 @@ export default React.createClass({
                     var name = inflection.humanize(fk.origin.table.entity_name || fk.origin.table.name);
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
                         </li>
                     );
                 });

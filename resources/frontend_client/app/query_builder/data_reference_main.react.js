@@ -45,7 +45,7 @@ export default React.createClass({
                         })
                         return (
                             <li key={table.id} className={classes}>
-                                <a className="text-brand no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{tableName}</a>
+                                <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{tableName}</a>
                             </li>
                         );
                     });
