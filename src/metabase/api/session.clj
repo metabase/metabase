@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as k]
@@ -41,21 +42,18 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, {:strs [origin]} :headers}]
-  ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
-  ;; (Currently, there's no other way to get this info)
-  ;;
-  ;; This is a bit sketchy. Someone malicious could send a bad origin header and hit this endpoint to send
-  ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
-  ;; what you could phish from them since they already forgot their password.
+  [:as {:keys [server-name] {:keys [email]} :body}]
   {email [Required Email]}
-  (let [{user-id :id} (sel :one User :email email)
-        reset-token (java.util.UUID/randomUUID)
-        password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    ; Don't leak whether the account doesn't exist, just pretend everything is ok
-    (if (not (nil? user-id))
-      (do
-        (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
+  (let [site-url @(ns-resolve 'metabase.core 'site-url)] ; avoid circular dep
+    (check site-url
+      400 "You must set the Site URL in the admin page in order to send a password reset email.")
+    (let [{user-id :id}      (sel :one User :email email)
+          reset-token        (java.util.UUID/randomUUID)
+          site-url           (s/replace site-url #"/$" "") ; if the site-url ends in a trailing slash strip it off
+          password-reset-url (str site-url "/auth/reset_password/" reset-token)]
+      ;; Don't leak whether the account doesn't exist, just pretend everything is ok
+      (when user-id
+        (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
         (email/send-password-reset-email email server-name password-reset-url)
         (log/info password-reset-url)))))
 
