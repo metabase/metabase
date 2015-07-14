@@ -244,19 +244,20 @@
 {:base_type :IntegerField, :special_type :category, :id nil, :table_id nil, :description nil, :extra_info {}, :target nil, :name "sum"}
 
 (defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation} field]
-  (all (membero ag-type [:count :avg :sum :stddev])
-       (if-not ag-field
-         (do (assert (= ag-type :count))
-             (== field {:base-type    :IntegerField
-                        :field-name   :count
-                        :special-type :number}))
-         (fresh [field-name]
-           (== field (assoc (select-keys ag-field [:base-type :special-type])
-                            :field-name field-name))
-           (membero field-name [:count :avg :sum :stddev])
-           (conde
-            ((== ag-type field-name))
-            ((== ag-type :distinct) (== field-name :count)))))))
+  (or (when (contains? #{:count :avg :sum :stddev} ag-type)
+        (if-not ag-field
+          (do (assert (= ag-type :count))
+              (== field {:base-type    :IntegerField
+                         :field-name   :count
+                         :special-type :number}))
+          (fresh [field-name]
+            (== field (assoc (select-keys ag-field [:base-type :special-type])
+                             :field-name field-name))
+            (membero field-name [:count :avg :sum :stddev])
+            (conde
+             ((== ag-type field-name))
+             ((== ag-type :distinct) (== field-name :count))))))
+      fail))
 
 (defn- valid-nameo [{:keys [result-keys]} field]
   (fresh [field-name]
@@ -314,6 +315,8 @@
    ((fields-sorted-by-nameo query f1 f2))))
 
 (defn- resolve+order-cols [query]
+  {:post [(or (sequential? %)
+              (println "FAILED!\n" (u/pprint-to-str query)))]}
   (let [num-cols (count (:result-keys query))
         cols     (vec (lvars num-cols))]
     (first (run 1 [q]
@@ -346,9 +349,10 @@
                        (map format-col)
                        add-fields-extra-info)
           columns (mapv :name cols)]
-      {:rows    results
-       :cols    cols
-       :columns columns})))
+      {:cols    cols
+       :columns columns
+       :rows    (for [row results]
+                  (mapv row columns))})))
 
 (require 'metabase.driver)
 
@@ -361,5 +365,6 @@
     (metabase.driver/process-query {:database 67
                                     :type     :query
                                     :query    {:source_table (id :venues)
-                                               :aggregation  ["sum" (id :venues :price)]
+                                               :aggregation  ["rows"]
+                                               :fields       [(id :venues :price)]
                                                :limit        10}})))
