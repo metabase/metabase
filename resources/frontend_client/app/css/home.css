@@ -22,7 +22,6 @@
     background-color: rgba(255, 255, 255, 0.2);
     border-radius: 4px 4px 0 0;
     text-decoration: none;
-    color: #fff;
     padding: 0.55rem 1rem 0.65rem;
     transition: background .15s linear;
 }
@@ -35,7 +34,6 @@
 .HomeTab.HomeTab--active {
     background-color: #fff;
     color: var(--grey-text-color);
-    transition: background .15s linear;
 }
 
 @media screen and (--breakpoint-min-sm) {
