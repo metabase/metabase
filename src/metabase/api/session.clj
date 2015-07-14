@@ -44,7 +44,7 @@
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body}]
   {email [Required Email]}
-  (let [site-url @(ns-resolve 'metabase.core 'site-url)] ; avoid circular dep
+  (let [site-url (@(ns-resolve 'metabase.core 'site-url))] ; avoid circular dep
     (check site-url
       400 "You must set the Site URL in the admin page in order to send a password reset email.")
     (let [{user-id :id}      (sel :one User :email email)
