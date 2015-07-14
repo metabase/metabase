@@ -8,6 +8,7 @@ import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from '../query_builder/query';
+import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -68,8 +69,14 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$routeParams', '$location', '$q', '$window', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($rootScope, $scope, $routeParams, $location, $q, $window, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+        // promise helper
+        $q.resolve = function(object) {
+            var deferred = $q.defer();
+            deferred.resolve(object);
+            return deferred.promise;
+        }
 
         // =====  Controller local objects
 
@@ -136,13 +143,10 @@ CardControllers.controller('CardDetail', [
                 return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
-                cardJson = JSON.stringify(card);
-
-                // for new cards we redirect the user
-                $location.path('/card/' + newCard.id);
+                setCard(newCard);
             },
             notifyCardUpdatedFn: function(updatedCard) {
-                cardJson = JSON.stringify(card);
+                setCard(updatedCard);
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -155,8 +159,12 @@ CardControllers.controller('CardDetail', [
             notifyCardDeletedFn: function () {
                 $location.path('/');
             },
-            cloneCardFn: function(cardId) {
-                $scope.$apply(() => $location.url('/card/create?clone='+cardId));
+            cloneCardFn: function() {
+                $scope.$apply(() => {
+                    delete card.id;
+                    updateUrl();
+                    renderAll();
+                });
             },
             toggleDataReference: toggleDataReference
         };
@@ -383,12 +391,12 @@ CardControllers.controller('CardDetail', [
             React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
         }
 
-        function renderAll() {
+        var renderAll = _.debounce(function() {
             renderHeader();
             renderEditor();
             renderVisualization();
             renderDataReference();
-        }
+        }, 10);
 
 
         // =====  Local helper functions
@@ -396,6 +404,8 @@ CardControllers.controller('CardDetail', [
         function runQuery(dataset_query) {
             Query.cleanQuery(dataset_query.query);
             isRunning = true;
+
+            updateUrl();
 
             renderAll();
 
@@ -472,6 +482,10 @@ CardControllers.controller('CardDetail', [
         }
 
         function loadTableInfo(tableId) {
+            if (tableMetadata && tableMetadata.id === tableId) {
+                return;
+            }
+
             tableMetadata = null;
             tableForeignKeys = null;
 
@@ -485,6 +499,10 @@ CardControllers.controller('CardDetail', [
         }
 
         function loadDatabaseInfo(databaseId) {
+            if (tables && tables[0] && tables[0].db_id === databaseId) {
+                return;
+            }
+
             tables = null;
             tableMetadata = null;
 
@@ -633,40 +651,84 @@ CardControllers.controller('CardDetail', [
             }
         }
 
-        function loadCardAndRender(cardId, cloning) {
-            Card.get({
-                'cardId': cardId
-            }, function (result) {
-                if (cloning) {
-                    result.id = undefined; // since it's a new card
-                    result.carddirty = true; // so it cand be saved right away
-                } else {
-                    // when loading an existing card for viewing, mark when the card creator is our current user
-                    // TODO: there may be a better way to maintain this, but it seemed worse to inject currentUser
-                    //       into a bunch of our react models and then bury this conditional in react component code
-                    if (result.creator_id === $scope.user.id) {
-                        result.is_creator = true;
+        function loadSavedCard(cardId) {
+            return Card.get({ 'cardId': cardId }).$promise;
+        }
+
+        function loadSerializedCard(serialized) {
+            return $q.resolve(deserializeCardFromUrl(serialized));
+        }
+
+        function loadNewCard() {
+            // show data reference
+            $scope.isShowingDataReference = true;
+
+            // this is just an easy way to ensure defaults are all setup
+            resetCardQuery("query");
+
+            // initialize the table & db from our query params, if we have them
+            if ($routeParams.db != undefined) {
+                card.dataset_query.database = parseInt($routeParams.db);
+            }
+            if ($routeParams.table != undefined && card.dataset_query.query) {
+                card.dataset_query.query.source_table = parseInt($routeParams.table);
+            }
+
+            cardJson = JSON.stringify(card);
+
+            return $q.resolve(card);
+        }
+
+        function loadCard() {
+            if ($routeParams.cardId != undefined) {
+                return loadSavedCard($routeParams.cardId).then(function(result) {
+                    if ($routeParams.serializedCard) {
+                        return loadSerializedCard($routeParams.serializedCard);
+                    } else {
+                        return result;
                     }
-                }
+                });
+            } else if ($routeParams.serializedCard != undefined) {
+                return loadSerializedCard($routeParams.serializedCard);
+            } else {
+                return loadNewCard();
+            }
+        }
 
-                // update our react models as needed
-                card = result;
-                cardJson = JSON.stringify(card);
+        function setCard(result) {
+            // when loading an existing card for viewing, mark when the card creator is our current user
+            // TODO: there may be a better way to maintain this, but it seemed worse to inject currentUser
+            //       into a bunch of our react models and then bury this conditional in react component code
+            if (result.creator_id === $scope.user.id) {
+                result.is_creator = true;
+            }
 
-                // load metadata
-                loadDatabaseInfo(card.dataset_query.database);
+            // update our react models as needed
+            card = result;
+            cardJson = JSON.stringify(card);
 
-                if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
-                    loadTableInfo(card.dataset_query.query.source_table);
-                }
+            updateUrl(true);
 
-                // run the query
-                // TODO: is there a case where we wouldn't want this?
+            // load metadata
+            loadDatabaseInfo(card.dataset_query.database);
+
+            if (card.dataset_query.type === "query" && card.dataset_query.query.source_table) {
+                loadTableInfo(card.dataset_query.query.source_table);
+            }
+
+            // run the query
+            if (Query.canRun(card.dataset_query.query)) {
                 runQuery(card.dataset_query);
+            }
 
-                // trigger full rendering
-                renderAll();
+            // trigger full rendering
+            renderAll();
+        }
 
+        // meant to be called once on controller startup
+        function loadAndSetCard() {
+            loadCard().then(function (result) {
+                return setCard(result);
             }, function (error) {
                 if (error.status == 404) {
                     // TODO() - we should redirect to the card builder with no query instead of /
@@ -675,72 +737,49 @@ CardControllers.controller('CardDetail', [
             });
         }
 
-        // meant to be called once on controller startup
-        function initAndRender() {
-            if ($routeParams.cardId) {
-                loadCardAndRender($routeParams.cardId, false);
+        function cardIsDirty() {
+            return JSON.stringify(card) !== cardJson;
+        }
 
-            } else if ($routeParams.clone) {
-                loadCardAndRender($routeParams.clone, true);
+        // needs to be performed asynchronously otherwise we get weird infinite recursion
+        var updateUrl = _.debounce(function(replace) {
+            var copy = cleanCopyCard(card);
+            var newState = {
+                card: copy,
+                cardId: copy.id,
+                serializedCard: serializeCardForUrl(copy)
+            };
 
+            if (angular.equals(window.history.state, newState)) {
+                return;
+            }
+
+            var url = urlForCardState(newState, cardIsDirty());
+
+            // if the serialized card is identical replace the previous state instead of adding a new one
+            var replaceState = replace || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
+            if (replaceState) {
+                console.log(">>> replaceState", history.length, newState, url);
+                window.history.replaceState(newState, null, url);
             } else {
-                // starting a new card
+                console.log(">>> pushState", history.length, newState, url);
+                window.history.pushState(newState, null, url);
+            }
+        }, 0);
 
-                // show data reference
-                $scope.isShowingDataReference = true;
-
-                // this is just an easy way to ensure defaults are all setup
-                resetCardQuery("query");
-
-                // initialize the table & db from our query params, if we have them
-                if ($routeParams.db !== undefined) {
-                    // do a quick validation that this user actually has access to the db from the url
-                    for (var i=0; i < databases.length; i++) {
-                        var databaseId = parseInt($routeParams.db);
-                        if (databases[i].id === databaseId) {
-                            card.dataset_query.database = databaseId;
-
-                        }
-                    }
-                }
-
-                if (card.dataset_query.database != null) {
-                    // load metadata
-                    loadDatabaseInfo(card.dataset_query.database);
-
-                    // if we initialized our database safely and we have a table, lets handle that now
-                    if ($routeParams.table != null) {
-                        // TODO: do we need a security check here?  seems that if they have access to the db just use the table
-                        card.dataset_query.query.source_table = parseInt($routeParams.table);
-
-                        // load table metadata
-                        loadTableInfo(card.dataset_query.query.source_table);
-                    }
-                }
-
-                cardJson = JSON.stringify(card);
-
-                renderAll();
+        function popStateListener(e) {
+            if (e.state && e.state.card) {
+                console.log(">>> popState");
+                e.preventDefault();
+                setCard(e.state.card);
             }
         }
 
-        // When the window is resized we need to re-render, mainly so that our visualization pane updates
-        // Debounce the function to improve resizing performance.
-        angular.element($window).bind('resize', _.debounce(function() {
-            renderAll();
-        }, 400));
+        // add popstate listener to support undo/redo via browser history
+        window.addEventListener("popstate", popStateListener, false);
 
-        $scope.$on('$locationChangeStart', function (event) {
-            // only ask for a confirmation on unsaved changes if the question is
-            // saved already, indicated by a cardId
-            if($routeParams.cardId) {
-                if (cardJson !== JSON.stringify(card) && queryResult !== null) {
-                    if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
-                        event.preventDefault();
-                        return;
-                    }
-                }
-            }
+        $scope.$on("$destroy", function() {
+            window.removeEventListener("popstate", popStateListener, false);
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
@@ -748,6 +787,38 @@ CardControllers.controller('CardDetail', [
             React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
             React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
         });
+
+        // When the window is resized we need to re-render, mainly so that our visualization pane updates
+        // Debounce the function to improve resizing performance.
+        angular.element($window).bind('resize', _.debounce(function() {
+            renderAll();
+        }, 400));
+
+        // mildly hacky way to prevent reloading controllers as the URL changes
+        var lastRoute = $route.current;
+        $scope.$on('$locationChangeSuccess', function (event) {
+            if ($route.current.$$route.controller === 'CardDetail') {
+                var params = $route.current.params;
+                $route.current = lastRoute;
+                angular.forEach(params, function(value, key) {
+                    $route.current.params[key] = value;
+                    $routeParams[key] = value;
+                });
+            }
+        });
+
+        // $scope.$on('$locationChangeStart', function (event) {
+        //     // only ask for a confirmation on unsaved changes if the question is
+        //     // saved already, indicated by a cardId
+        //     if($routeParams.cardId) {
+        //         if (cardJson !== JSON.stringify(card) && queryResult !== null) {
+        //             if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
+        //                 event.preventDefault();
+        //                 return;
+        //             }
+        //         }
+        //     }
+        // });
 
         // TODO: while we wait for the databases list we should put something on screen
         // grab our database list, then handle the rest
@@ -760,7 +831,7 @@ CardControllers.controller('CardDetail', [
             }
 
             // finish initializing our page and render
-            initAndRender();
+            loadAndSetCard();
 
         }, function (error) {
             console.log('error getting database list', error);

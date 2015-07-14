@@ -14,11 +14,19 @@ var Card = angular.module('corvus.card', [
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/card/create/', {
+    $routeProvider.when('/q', {
+        templateUrl: '/app/card/partials/card_detail.html',
+        controller: 'CardDetail'
+    });
+    $routeProvider.when('/q/:serializedCard', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
     $routeProvider.when('/card/:cardId', {
+        templateUrl: '/app/card/partials/card_detail.html',
+        controller: 'CardDetail'
+    });
+    $routeProvider.when('/card/:cardId/:serializedCard', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
