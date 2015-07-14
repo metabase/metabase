@@ -82,7 +82,7 @@
 (defn- field-positiono [field v]
   (featurec field {:position v}))
 
-(defn- fields-sorted-by-nameo [{:keys [result-keys]} f1 f2]
+(defn- field-name< [{:keys [result-keys]} f1 f2]
   (fresh [n1 n2]
     (featurec f1 {:field-name n1})
     (featurec f2 {:field-name n2})
@@ -142,7 +142,7 @@
                                                   (special-type-groupo f1 t1)
                                                   (special-type-groupo f2 t2)
                                                   (conda ((ar/< t1 t2))
-                                                         ((== t1 t2) (fields-sorted-by-nameo query f1 f2)))))))))))))
+                                                         ((== t1 t2) (field-name< query f1 f2)))))))))))))
 
 
 ;;; ## Top-Level Resolution / Ordering
