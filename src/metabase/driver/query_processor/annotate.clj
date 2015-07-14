@@ -28,7 +28,7 @@
                                     (conj! fields f)))
                           query)
     (assoc query
-           :result-keys  (vec (keys (first results)))
+           :result-keys  (vec (sort (keys (first results))))
            :query-fields (mapv collapse-field (persistent! fields))
            :fields       (mapv collapse-field (:fields query))
            :breakout     (mapv collapse-field (:breakout query)))))
@@ -44,15 +44,15 @@
        (membero field fields-fields)))
 
 (defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation} field]
-  (all (membero ag-type [:count :avg :sum :stddev :distinct])
-       (== field (if (contains? #{:count :distinct} ag-type)
+  (all (== field (if (contains? #{:count :distinct} ag-type)
                    {:base-type    :IntegerField
                     :field-name   :count
                     :special-type :number}
                    (-> ag-field
                        (select-keys [:base-type :special-type])
                        (assoc :field-name (if (= ag-type :distinct) :count
-                                              ag-type)))))))
+                                              ag-type)))))
+       (membero ag-type [:count :avg :sum :stddev :distinct])))
 
 (defn- valid-nameo [{:keys [result-keys]} field]
   (fresh [field-name]
@@ -71,23 +71,22 @@
 (defn- matches-sort-sequenceo [l [k & more-keys]]
   (conda
    ((emptyo l))
-   (s#        (if-not k
-                fail
-                (fresh [v1 v2 more-vals]
-                  (conso v1 more-vals l)
-                  (conde
-                   ((== k v1)             (matches-sort-sequenceo more-vals more-keys))
-                   ((firsto more-vals v2) (== k v2) fail)
-                   (s#                    (matches-sort-sequenceo l more-keys))))))))
+   ((if-not k
+      fail
+      (fresh [v1 more-vals]
+        (conso v1 more-vals l)
+        (conda
+         ((== k v1)             (matches-sort-sequenceo more-vals more-keys))
+         (s#                    (matches-sort-sequenceo l more-keys))))))))
 
 (defn- field-positiono [field v]
   (featurec field {:position v}))
 
 (defn- fields-sorted-by-nameo [{:keys [result-keys]} f1 f2]
-  (fresh [n1 n2 n1+n2]
+  (fresh [n1 n2]
     (featurec f1 {:field-name n1})
     (featurec f2 {:field-name n2})
-    (matches-sort-sequenceo [n1 n2] (sort result-keys))))
+    (matches-sort-sequenceo [n1 n2] result-keys)))
 
 (defn- field-groupo [query field v]
   (conda
@@ -125,7 +124,7 @@
 ;;     C.  Field Name
 ;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
 ;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
-(defn- fields-sortedo [query f1 f2]
+(defn- fields< [query f1 f2]
   (fresh [g1 g2]
     (field-groupo query f1 g1)
     (field-groupo query f2 g2)
@@ -159,7 +158,7 @@
              (distincto q)
              (everyg (partial fieldo query) q)
              (everyg (fn [i]
-                       (fields-sortedo query (cols i) (cols (inc i))))
+                       (fields< query (cols i) (cols (inc i))))
                      (range 0 (dec num-cols)))))))
 
 
