@@ -36,6 +36,7 @@
                               (macrolet 1)
                               (org-perms-case 1)
                               (pdoseq 1)
+                              (project 1)
                               (qp-expect-with-datasets 1)
                               (query-with-temp-db 1)
                               (resolve-private-fns 1)
