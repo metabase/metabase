@@ -28,7 +28,7 @@
 
 (defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
-(defsetting site-url "The base URL used to access this metabase instance, e.g. \"http://metabase.my-company.com\"")
+(defsetting site-url "The base URL used to access this Metabase instance, e.g. \"http://metabase.my-company.com\"")
 
 (def app
   "The primary entry point to the HTTP server"
