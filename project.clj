@@ -58,7 +58,8 @@
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
-                               :suspicious-expression]}               ; core.match macros generate some forms like (and expr) which is "suspicious"
+                               :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
+                               :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]  ; REPL <3
                                   [expectations "2.1.2"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation

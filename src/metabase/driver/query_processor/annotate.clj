@@ -46,11 +46,11 @@
 ;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING  ----------------------------------------
 
 (defn- breakout-fieldo [{breakout-fields :breakout} field]
-  (membero field breakout-fields))
+  (member1o field breakout-fields))
 
 (defn- explicit-fields-fieldo [{:keys [fields-is-implicit], fields-fields :fields} field]
   (all (nilo fields-is-implicit)
-       (membero field fields-fields)))
+       (member1o field fields-fields)))
 
 (defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation} field]
   (all (== field (if (contains? #{:count :distinct} ag-type)
@@ -61,16 +61,16 @@
                        (select-keys [:base-type :special-type])
                        (assoc :field-name (if (= ag-type :distinct) :count
                                               ag-type)))))
-       (membero ag-type [:count :avg :sum :stddev :distinct])))
+       (member1o ag-type [:count :avg :sum :stddev :distinct])))
 
 (defn- valid-nameo [{:keys [result-keys]} field]
   (fresh [field-name]
     (featurec field {:field-name field-name})
-    (membero field-name result-keys)))
+    (member1o field-name result-keys)))
 
 (defn- fieldo [{:keys [query-fields], :as query} field]
   (all (conde
-        ((membero field query-fields))
+        ((member1o field query-fields))
         ((aggregate-fieldo query field)))
        (valid-nameo query field)))
 
@@ -160,15 +160,22 @@
   {:post [(or (sequential? %)
               (println "FAILED!\n" (u/pprint-to-str query) "\nRESULTS:" %))
           (every? map? %)]}
-  (let [num-cols (count (:result-keys query))
-        cols     (vec (lvars num-cols))]
-    (time (first (run 1 [q]
-                   (== q cols)
-                   (distincto q)
-                   (everyg (partial fieldo query) q)
-                   (everyg (fn [i]
-                             (fields< query (cols i) (cols (inc i))))
-                           (range 0 (dec num-cols))))))))
+  (let [num-cols   (count (:result-keys query))
+        cols       (vec (lvars num-cols))
+        ;; A few queries take a ridiculous amount of time to order. Let's do some ghetto profiling
+        start-time (System/currentTimeMillis)
+        results    (first (run 1 [q]
+                            (== q cols)
+                            (distincto q)
+                            (everyg (partial fieldo query) q)
+                            (everyg (fn [i]
+                                      (fields< query (cols i) (cols (inc i))))
+                                    (range 0 (dec num-cols)))))
+        run-time   (- (System/currentTimeMillis) start-time)]
+    (when (> run-time 2000)
+      (println (u/format-color 'red "This query took a STUPID LONG amount of time to order (%.1f seconds):\n%s\n%s" (/ run-time 1000.0)
+                               (u/pprint-to-str query) (u/pprint-to-str results))))
+    results))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
