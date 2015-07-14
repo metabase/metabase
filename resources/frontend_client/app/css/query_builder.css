@@ -375,6 +375,7 @@
     border: 1px solid #DEDEDE;
     min-width: 906px;
     margin: 0 auto;
+    margin-bottom: 2rem;
 }
 
 @media screen and (--breakpoint-min-lg) {
