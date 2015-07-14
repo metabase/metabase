@@ -1,7 +1,6 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
@@ -41,7 +40,7 @@
   (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
     (assert session_id)
     ((user->client :rasta) :delete 204 "session" :session_id session_id)
-    (sel :one Session :id session_id)))
+    (Session session_id)))
 
 
 ;; ## POST /api/session/forgot_password

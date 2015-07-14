@@ -29,6 +29,8 @@ DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$
                                         scope.callback(result);
                                     }
 
+                                    $rootScope.$broadcast("dashboard:update", scope.dashboard.id);
+
                                     // just close out the modal now that we're done
                                     $modalInstance.close();
 

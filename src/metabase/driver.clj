@@ -1,7 +1,7 @@
 (ns metabase.driver
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
-            [medley.core :refer :all]
+            [medley.core :as m]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
@@ -32,21 +32,26 @@
               :name    "MongoDB"
               :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
 
-(def ^:const class->base-type
-  "Map of classes returned from DB call to metabase.models.field/base-types"
-  {java.lang.Boolean            :BooleanField
-   java.lang.Double             :FloatField
-   java.lang.Float              :FloatField
-   java.lang.Integer            :IntegerField
-   java.lang.Long               :IntegerField
-   java.lang.String             :TextField
-   java.math.BigDecimal         :DecimalField
-   java.math.BigInteger         :BigIntegerField
-   java.sql.Date                :DateField
-   java.sql.Timestamp           :DateTimeField
-   java.util.Date               :DateField
-   java.util.UUID               :TextField
-   org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
+(defn class->base-type
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  [klass]
+  (or ({Boolean                         :BooleanField
+        Double                          :FloatField
+        Float                           :FloatField
+        Integer                         :IntegerField
+        Long                            :IntegerField
+        String                          :TextField
+        java.math.BigDecimal            :DecimalField
+        java.math.BigInteger            :BigIntegerField
+        java.sql.Date                   :DateField
+        java.sql.Timestamp              :DateTimeField
+        java.util.Date                  :DateField
+        java.util.UUID                  :TextField
+        org.postgresql.util.PGobject    :UnknownField} klass)
+      (cond
+        (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
+      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
+          :UnknownField)))
 
 ;; ## Driver Lookup
 
@@ -222,7 +227,7 @@
   (if id
     ;; execution has already been saved, so update it
     (do
-      (mapply upd QueryExecution id query-execution)
+      (m/mapply upd QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (mapply ins QueryExecution query-execution)))
+    (m/mapply ins QueryExecution query-execution)))

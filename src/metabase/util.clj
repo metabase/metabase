@@ -268,4 +268,11 @@
   ([color-symb x]
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
+(defmacro cond-let
+  "Like `if-let` or `when-let`, but for `cond`."
+  [binding-form then-form & more]
+  `(if-let ~binding-form ~then-form
+           ~(when (seq more)
+              `(cond-let ~@more))))
+
 (require-dox-in-this-namespace)

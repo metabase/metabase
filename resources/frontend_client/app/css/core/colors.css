@@ -1,8 +1,12 @@
 :root {
   --brand-color: #509EE3;
+  --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+
+  --grey-text-color: #797979;
   --alt-color: #F5F7F9;
+  --alt-bg-color: #F4F6F8;
 
   --success-color: #9CC177;
   --headsup-color: #F5A623;
@@ -27,6 +31,11 @@
 .text-brand-darken,
 .text-brand-darken-hover:hover {
     color: color(var(--brand-color) shade(20%));
+}
+
+.text-brand-light,
+.text-brand-light-hover:hover {
+    color: var(--brand-light-color);
 }
 
 .bg-brand,
@@ -82,6 +91,5 @@
 .bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }
 .bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
-
 
 .text-dark { color: var(--dark-color); }
