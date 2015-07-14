@@ -65,7 +65,7 @@ export default React.createClass({
             }
             var panes = {
                 "fields": table.fields.length,
-                "metrics": 0,
+                // "metrics": 0,
                 "connections": this.state.tableForeignKeys.length
             };
             var tabs = Object.keys(panes).map((name) => {
@@ -75,15 +75,11 @@ export default React.createClass({
                     'Button--small': true,
                     'Button--active': name === this.state.pane
                 });
-                if (count > 0) {
-                    return (
-                        <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
-                            <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
-                        </a>
-                    );
-                } else {
-                    return null;
-                }
+                return (
+                    <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
+                        <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
+                    </a>
+                );
             });
 
             var pane;
