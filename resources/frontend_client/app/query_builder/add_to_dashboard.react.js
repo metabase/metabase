@@ -52,7 +52,7 @@ export default React.createClass({
         return (
             <span>
                 <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
-                    <Icon name='addtodash' />
+                    <Icon name='addtodash' width="16px" height="16px"/>
                 </a>
                 {this.addToDash()}
             </span>

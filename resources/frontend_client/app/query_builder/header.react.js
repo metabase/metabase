@@ -199,7 +199,7 @@ export default React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download'>
+                    <Icon name='download' width="16px" height="16px">
                         <Popover>
                             <span>Download data</span>
                         </Popover>
@@ -212,7 +212,7 @@ export default React.createClass({
         if (this.props.card.id) {
             cloneButton = (
                 <a href="#" className="mx1 text-grey-4 text-brand-hover">
-                    <Icon name='clone' onClick={this.cloneCard}></Icon>
+                    <Icon name='clone' width="16px" height="16px" onClick={this.cloneCard}></Icon>
                 </a>
             );
         }
@@ -252,7 +252,7 @@ export default React.createClass({
         });
         var dataReferenceButton = (
             <a href="#" className={dataReferenceButtonClasses}>
-                <Icon name='reference' onClick={this.toggleDataReference}></Icon>
+                <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
         );
 
@@ -272,12 +272,12 @@ export default React.createClass({
 
         var dividerLeft;
         if (hasLeft && (hasMiddle || hasRight)) {
-            dividerLeft = <div className="border-right border-dark">&nbsp;</div>
+            dividerLeft = <div className="border-right border-dark mx1">&nbsp;</div>
         }
 
         var dividerRight;
         if (hasRight && hasMiddle) {
-            dividerRight = <div className="border-right border-dark">&nbsp;</div>
+            dividerRight = <div className="border-right border-dark mx1">&nbsp;</div>
         }
 
         return (
