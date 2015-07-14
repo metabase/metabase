@@ -241,13 +241,22 @@
   (if fields-is-implicit fail
       (membero field fields-fields)))
 
-(defn- aggregate-fieldo [{{ag-type :aggregation-type} :aggregation} field]
+{:base_type :IntegerField, :special_type :category, :id nil, :table_id nil, :description nil, :extra_info {}, :target nil, :name "sum"}
+
+(defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation} field]
   (all (membero ag-type [:count :avg :sum :stddev])
-    (fresh [field-name]
-      (== field {:field-name field-name})
-      (membero field-name [:count :avg :sum :stddev])
-      (conde [(== ag-type field-name)]
-             [(== ag-type :distinct) (== field-name :count)]))))
+       (if-not ag-field
+         (do (assert (= ag-type :count))
+             (== field {:base-type    :IntegerField
+                        :field-name   :count
+                        :special-type :number}))
+         (fresh [field-name]
+           (== field (assoc (select-keys ag-field [:base-type :special-type])
+                            :field-name field-name))
+           (membero field-name [:count :avg :sum :stddev])
+           (conde
+            ((== ag-type field-name))
+            ((== ag-type :distinct) (== field-name :count)))))))
 
 (defn- valid-nameo [{:keys [result-keys]} field]
   (fresh [field-name]
@@ -317,15 +326,17 @@
 
 (defn- format-col [col]
   (println (u/pprint-to-str 'cyan col))
-  (-> col
-      (set/rename-keys  {:base-type    :base_type
-                         :field-id     :id
-                         :field-name   :name
-                         :special-type :special_type
-                         :table-id     :table_id})
-      (dissoc :parent :parent-id :position)
-      ;; TODO - actually fetch this (!)
-      (assoc :description nil)))
+  (let [defaults {:description nil   ; TODO - actually fetch this
+                  :id          nil
+                  :table_id    nil}]
+    (merge defaults
+           (-> col
+               (set/rename-keys  {:base-type    :base_type
+                                  :field-id     :id
+                                  :field-name   :name
+                                  :special-type :special_type
+                                  :table-id     :table_id})
+               (dissoc :parent :parent-id :position)))))
 
 (defn post-annotate [qp]
   (fn [query]
@@ -350,5 +361,5 @@
     (metabase.driver/process-query {:database 67
                                     :type     :query
                                     :query    {:source_table (id :venues)
-                                               :aggregation  ["rows"]
+                                               :aggregation  ["sum" (id :venues :price)]
                                                :limit        10}})))
