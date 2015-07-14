@@ -20,7 +20,7 @@
                                        keyword))
                (dissoc :parent :parent-id :table-name))))
 
-(defn- query-add-info [query results]
+(defn- query-add-info [{{ag-type :aggregation-type, ag-field :field} :aggregation, :as query} results]
   {:pre [(integer? (get-in query [:source-table :id]))]}
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
@@ -36,6 +36,18 @@
                                       (when (:parent f)
                                         (conj! fields (:parent f))))))
                           query)
+    ;; Add an aggregate field to :query-fields if appropriate
+    (when (contains? #{:avg :count :distinct :stddev :sum} ag-type)
+      (conj! fields (-> (if (contains? #{:count :distinct} ag-type)
+                          {:base-type    :IntegerField
+                           :field-name   "count"
+                           :special-type :number}
+                          (-> ag-field
+                              (select-keys [:base-type :special-type])
+                              (assoc :field-name (if (= ag-type :distinct) "count"
+                                                     (name ag-type)))))
+                        (assoc :ag-field? true)
+                        expand/map->Field)))
     (assoc query
            :result-keys  (vec (sort (keys (first results))))
            :query-fields (mapv collapse-field (persistent! fields))
@@ -48,31 +60,19 @@
 (defn- breakout-fieldo [{breakout-fields :breakout} field]
   (member1o field breakout-fields))
 
+(defn- aggregate-fieldo [field]
+  (fresh [ag-field?]
+    (featurec field {:ag-field? ag-field?})
+    (== ag-field? true)))
+
 (defn- explicit-fields-fieldo [{:keys [fields-is-implicit], fields-fields :fields} field]
   (all (nilo fields-is-implicit)
        (member1o field fields-fields)))
-
-(defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation} field]
-  (all (== field (if (contains? #{:count :distinct} ag-type)
-                   {:base-type    :IntegerField
-                    :field-name   :count
-                    :special-type :number}
-                   (-> ag-field
-                       (select-keys [:base-type :special-type])
-                       (assoc :field-name (if (= ag-type :distinct) :count
-                                              ag-type)))))
-       (member1o ag-type [:count :avg :sum :stddev :distinct])))
 
 (defn- valid-nameo [{:keys [result-keys]} field]
   (fresh [field-name]
     (featurec field {:field-name field-name})
     (member1o field-name result-keys)))
-
-(defn- fieldo [{:keys [query-fields], :as query} field]
-  (all (conde
-        ((member1o field query-fields))
-        ((aggregate-fieldo query field)))
-       (valid-nameo query field)))
 
 
 ;;; ## Ordering
@@ -100,7 +100,7 @@
 (defn- field-groupo [query field v]
   (conda
    ((breakout-fieldo query field)        (== v 0))
-   ((aggregate-fieldo query field)       (== v 1))
+   ((aggregate-fieldo field)             (== v 1))
    ((explicit-fields-fieldo query field) (== v 2))
    (s#                                   (== v 3))))
 
@@ -156,22 +156,29 @@
 
 ;;; ## Top-Level Resolution / Ordering
 
+(def ^:private total-slowness (atom 0))
+(def ^:private run-count (atom 0))
+
 (defn- resolve+order-cols [query]
-  {:post [(or (sequential? %)
-              (println "FAILED!\n" (u/pprint-to-str query) "\nRESULTS:" %))
-          (every? map? %)]}
+  {:post [(or (and (sequential? %)
+                   (every? map? %))
+              (println "FAILED!\n" (u/pprint-to-str query) "\nRESULTS:" %))]}
   (let [num-cols   (count (:result-keys query))
         cols       (vec (lvars num-cols))
         ;; A few queries take a ridiculous amount of time to order. Let's do some ghetto profiling
         start-time (System/currentTimeMillis)
         results    (first (run 1 [q]
                             (== q cols)
-                            (distincto q)
-                            (everyg (partial fieldo query) q)
+                            (distincto cols)
+                            (everyg #(member1o % (:query-fields query)) cols)
+                            (everyg (partial valid-nameo query) cols)
                             (everyg (fn [i]
                                       (fields< query (cols i) (cols (inc i))))
                                     (range 0 (dec num-cols)))))
         run-time   (- (System/currentTimeMillis) start-time)]
+    (swap! total-slowness #(+ % run-time))
+    (swap! run-count inc)
+    (println (u/format-color 'cyan "Total slowness thus far: %.1f (avg: %.2f)" (/ @total-slowness 1000.0) (/ (/ @total-slowness 1000.0) @run-count)))
     (when (> run-time 2000)
       (println (u/format-color 'red "This query took a STUPID LONG amount of time to order (%.1f seconds):\n%s\n%s" (/ run-time 1000.0)
                                (u/pprint-to-str query) (u/pprint-to-str results))))
@@ -192,7 +199,7 @@
                                   :field-name   :name
                                   :special-type :special_type
                                   :table-id     :table_id})
-               (dissoc :parent :parent-id :position)))))
+               (dissoc :parent :parent-id :position :ag-field?)))))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
@@ -236,3 +243,26 @@
        :columns (mapv name columns)
        :rows    (for [row results]
                   (mapv row columns))})))
+
+;; #_(require 'metabase.driver)
+;; (require 'metabase.test.data)
+;; (require 'metabase.test.data.datasets)
+;; (defn x []
+;;   (metabase.test.data.datasets/with-dataset
+;;     :postgres
+;;     (metabase.driver/process-query
+;;      {:type :query,
+;;       :database (metabase.test.data/db-id),
+;;       :query
+;;       {:source_table (metabase.test.data/id :venues),
+;;        :filter
+;;        ["INSIDE"
+;;         (metabase.test.data/id :venues :latitude)
+;;         (metabase.test.data/id :venues :longitude)
+;;         10.0649
+;;         -165.379
+;;         10.0641
+;;         -165.371],
+;;        :aggregation ["rows"],
+;;        :breakout [nil],
+;;        :limit nil}})))
