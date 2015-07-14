@@ -1,3 +1,4 @@
+"use strict";
 
 import Query from '../query_builder/query';
 
