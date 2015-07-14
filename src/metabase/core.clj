@@ -36,14 +36,15 @@
    This strips off any trailing slashes that may have been added.
 
    The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header of some API request. Subsequently, the site URL can only be changed via the admin page."
+   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
+   Subsequently, the site URL can only be changed via the admin page."
   {:arglists '([request])}
-  [{{:strs [origin]} :headers}]
-  {:pre  [(string? origin)]
+  [{{:strs [origin host]} :headers}]
+  {:pre  [(or origin host)]
    :post [(string? %)]}
   (or (some-> (-site-url)
               (s/replace #"/$" "")) ; strip off trailing slash if one was included
-      (-site-url origin)))
+      (-site-url (or origin host))))
 
 
 (def app
