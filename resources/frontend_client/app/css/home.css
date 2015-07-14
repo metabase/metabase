@@ -39,7 +39,6 @@
 
 .HomeTab.HomeTab--active {
     background-color: #fff;
-    color: var(--grey-text-color);
 }
 
 .bullet {
