@@ -400,7 +400,7 @@
 ;; ### FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
-(qp-expect-with-all-datasets
+(datasets/expect-with-all-datasets
  1
  (Q run against places-cam-likes
     return :data :rows first first
