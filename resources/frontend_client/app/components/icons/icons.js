@@ -1,6 +1,6 @@
 'use strict';
 
-import ICON_PATHS from 'metabase/icon_paths';
+import { loadIcon } from 'metabase/icon_paths';
 
 /*
     GENERIC ICONS
@@ -20,15 +20,25 @@ angular.module('corvus.components')
                 width: '@?',  // a value in PX to define the width of the icon
                 height: '@?', // a value in PX to define the height of the icon
                 name: '@',    // the name of the icon to be referended from the ICON_PATHS object
-                path: '@'
+                path: '@',
+                'class': '@',
+                viewBox: '@',
+                fill: '@'
             },
             compile: function (element, attrs) {
-                var icon = ICON_PATHS[attrs.name];
+                var icon = loadIcon(attrs.name);
 
-                // set defaults for width/height in case no width or height are specified
-                attrs.width = attrs.width || '32px';
-                attrs.height = attrs.height || '32px';
-                attrs.path = icon;
+                if (icon.svg) {
+                    console.warn("mbIcon does not yet support raw SVG");
+                } else if (icon.path) {
+                    attrs.path = attrs.path || icon.path;
+                }
+
+                for (var attr in icon.attrs) {
+                    if (attrs[attr] == undefined) {
+                        attrs[attr] = icon.attrs[attr];
+                    }
+                }
             }
         };
     });

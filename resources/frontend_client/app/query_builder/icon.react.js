@@ -1,32 +1,20 @@
 'use strict';
 
-import ICON_PATHS from 'metabase/icon_paths';
+import { loadIcon } from 'metabase/icon_paths';
 
 export default React.createClass({
     displayName: 'Icon',
-    getDefaultProps: function () {
-       return {
-          width: '32px',
-          height: '32px',
-          fill: 'currentcolor',
-       };
-    },
     render: function () {
-        var path;
-        var iconPath = ICON_PATHS[this.props.name];
+        var icon = loadIcon(this.props.name);
 
-        if(typeof(iconPath) != 'string') {
-            // create a path for each path present
-            path = iconPath.map(function (path) {
-               return (<path d={path} /> );
-            });
+        // react uses "className" instead of "class"
+        icon.attrs.className = icon.attrs['class'];
+        delete icon.attrs['class'];
+
+        if (icon.svg) {
+            return (<svg {... icon.attrs} {... this.props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);
         } else {
-            path = (<path d={iconPath} />);
+            return (<svg {... icon.attrs} {... this.props}><path d={icon.path} /></svg>);
         }
-        return (
-            <svg viewBox="0 0 32 32" {... this.props} className={'Icon Icon-' + this.props.name}>
-                {path}
-            </svg>
-        );
     }
 });
