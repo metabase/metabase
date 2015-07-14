@@ -97,7 +97,7 @@ export default React.createClass({
         if (!this.props.tableForeignKeys) return false;
 
         if (this.props.tableForeignKeys.length < 1) {
-            return (<p>No relationships found.</p>);
+            return (<p className="my4 text-centered">No relationships found.</p>);
         }
 
         var component = this;
