@@ -141,7 +141,7 @@
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id :position], :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id :position :description], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]
@@ -236,6 +236,7 @@
                   ^Integer table-id
                   ^String  table-name
                   ^Integer position
+                  ^String  description
                   ^Integer parent-id
                   parent] ; Field once its resolved; FieldPlaceholder before that
   IResolve
