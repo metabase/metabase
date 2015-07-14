@@ -9,6 +9,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
+                 [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.2"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.2"]
