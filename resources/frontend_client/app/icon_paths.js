@@ -63,11 +63,11 @@ export function loadIcon(name) {
 
     var icon = {
         attrs: {
-            'class': 'Icon Icon-' + name,
-            'width': '32px',
-            'height': '32px',
-            'viewBox': '0 0 32 32',
-            'fill': 'currentcolor'
+            className: 'Icon Icon-' + name,
+            width: '32px',
+            height: '32px',
+            viewBox: '0 0 32 32',
+            fill: 'currentcolor'
         },
         svg: undefined,
         path: undefined
