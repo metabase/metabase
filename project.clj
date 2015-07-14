@@ -7,12 +7,13 @@
   :min-lein-version "2.5.0"
   :aliases {"test" ["with-profile" "+expectations" "expectations"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
-                 [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.2"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.2"]
                  [org.clojure/java.jdbc "0.3.7"]                      ; basic jdbc access from clojure
+                 [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
