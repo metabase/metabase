@@ -401,9 +401,9 @@
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
 (qp-expect-with-all-datasets
- [[1]]
+ 1
  (Q run against places-cam-likes
-    return :data :rows
+    return :data :rows first first
     aggregate count of places
     filter = liked false))
 
