@@ -70,7 +70,7 @@
     (qp (if (or (not (= ag-type :rows)) breakout fields) query
             (-> query
                 (assoc-in [:query :fields-is-implicit] true)
-                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id], :table_id source-table-id, :active true,
+                (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position], :table_id source-table-id, :active true,
                                                      :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
                                                 (map expand/rename-mb-field-keys)
                                                 (map expand/map->Field)

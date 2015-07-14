@@ -1,5 +1,8 @@
 (ns metabase.driver.query-processor.annotate
-  (:require [clojure.string :as s]
+  (:refer-clojure :exclude [==])
+  (:require [clojure.core.logic :refer :all]
+            [clojure.core.logic.arithmetic :as ar]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :refer [sel]]
@@ -202,9 +205,11 @@
   [qp]
   (fn [{{:keys [join-tables] {source-table-id :id} :source-table} :query, :as query}]
     (let [{:keys [results uncastify-fn]} (qp query)
+          _                              (def -query query)
           results                        (if-not uncastify-fn results
                                                  (for [row results]
                                                    (m/map-keys uncastify-fn row)))
+          _                              (def -results results)
           _                              (when-not @(ns-resolve 'metabase.driver.query-processor '*disable-qp-logging*)
                                            (log/debug (u/format-color 'magenta "Driver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
@@ -215,3 +220,59 @@
                   (mapv row ordered-col-kws))                                          ; might as well return each row and col info as vecs because we're not worried about making
        :columns (mapv name ordered-col-kws)                                            ; making them lazy, and results are easier to play with in the REPL / paste into unit tests
        :cols    (vec (get-cols-info query fields ordered-col-kws join-table-ids))})))  ; as vecs. Make sure :rows stays lazy!
+
+(require 'metabase.driver)
+(defn- x []
+  (metabase.driver/process-query {:database 484
+                                  :type     :query
+                                  :query    {:source_table 1102
+                                             :aggregation  ["rows"]
+                                             :limit        10}}))
+
+(defn- annotate-2 [{:keys [query]} [first-row :as results]]
+  (let [result-keys  (vec (keys first-row))
+        num-results  (count result-keys)
+        cols         (vec (lvars num-results))
+        columns      (vec (lvars num-results))
+        query-fields (let [fields (transient [])]
+                       (clojure.walk/prewalk (fn [f]
+                                               (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
+                                                       (conj! fields f)))
+                                             query)
+                       (->> (persistent! fields)
+                            (mapv (partial into {}))
+                            (mapv #(update % :field-name keyword))))
+        _ (def -fields query-fields)]
+    (println result-keys)
+    (first (run 1 [q]
+             (== q {:cols    cols
+                    :columns columns})
+             (distincto cols)
+             (distincto columns)
+             (everyg #(membero % query-fields) cols)
+             (everyg #(membero % result-keys) columns)
+             (everyg (fn [i]
+                       (fresh [field-name]
+                         (== (columns i) field-name)
+                         (featurec (cols i) {:field-name field-name})))
+                     (range num-results))
+             (everyg (fn [i]
+                       (let [f1 (cols i)
+                             f2 (cols (inc i))
+                             special-types-orderedo (fn [st1 st2]
+                                                      )
+                             fields-orderedo (fn [f1 f2]
+                                               (fresh [st1 st2 id1 id2]
+                                                 (featurec f1 {:special-type st1, :field-id id1})
+                                                 (featurec f2 {:special-type st2, :field-id id2})
+                                                 (conde
+                                                  [(== st1 :id) (!= st2 :id)]
+                                                  [(== st1 :fk) (!= st2 :fk)]
+                                                  [(== st1 st2)
+                                                   (ar/< id1 id2)]
+                                                  [(!= st1 :id) (!= st1 :fk) (ar/< id1 id2)])))]
+                         (fields-orderedo f1 f2)))
+                     (range (dec num-results)))))))
+
+(defn- y []
+  (annotate-2 -query -results))
