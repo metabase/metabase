@@ -95,6 +95,7 @@ CardControllers.controller('CardDetail', [
             tables = null,
             tableMetadata = null,
             tableForeignKeys = null,
+            tableForeignKeyReferences = null,
             isRunning = false,
             isObjectDetail = false,
             card = {
@@ -223,6 +224,36 @@ CardControllers.controller('CardDetail', [
                     // do a quick test to see if we are meant to render and object detail view or normal results
                     if(isObjectDetailQuery(card, queryResult.data)) {
                         isObjectDetail = true;
+
+                        // TODO: there are possible cases where running a query would not require refreshing this data, but
+                        // skipping that for now because it's easier to just run this each time
+
+                        // run a query on FK origin table where FK origin field = objectDetailIdValue
+                        var fkReferences = {};
+                        tableForeignKeys.map(function(fk) {
+                            var fkQuery = angular.copy(newQueryTemplates["query"]);
+                            fkQuery.database = card.dataset_query.database;
+                            fkQuery.query.source_table = fk.origin.table_id;
+                            fkQuery.query.aggregation = ["count"];
+                            fkQuery.query.filter = ["AND", ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data)]];
+
+                            var info = {"status": 0, "value": null},
+                                promise = Metabase.dataset(fkQuery).$promise;
+                            promise.then(function(result) {
+                                if (result && result.status === "completed" && result.data.rows.length > 0) {
+                                    info["value"] = result.data.rows[0][0];
+                                } else {
+                                    info["value"] = "Unknown";
+                                }
+                            }).finally(function(result) {
+                                info["status"] = 1;
+                                renderAll();
+                            });
+                            fkReferences[fk.origin.id] = info;
+                        });
+
+                        tableForeignKeyReferences = fkReferences;
+
                     } else {
                         isObjectDetail = false;
                     }
@@ -284,6 +315,7 @@ CardControllers.controller('CardDetail', [
             card: null,
             result: null,
             tableForeignKeys: null,
+            tableForeignKeyReferences: null,
             isRunning: false,
             isObjectDetail: false,
             setDisplayFn: function(type) {
@@ -457,7 +489,9 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
+            visualizationModel.tableMetadata = tableMetadata;
             visualizationModel.tableForeignKeys = tableForeignKeys;
+            visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 
@@ -515,6 +549,15 @@ CardControllers.controller('CardDetail', [
 
             return response;
         };
+
+        function getObjectDetailIdValue(data) {
+            for (var i=0; i < data.cols.length; i++) {
+                var coldef = data.cols[i];
+                if (coldef.special_type === "id") {
+                    return data.rows[0][i];
+                }
+            }
+        }
 
         var markupTableMetadata = function(table) {
             var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);

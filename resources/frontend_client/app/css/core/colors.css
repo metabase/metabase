@@ -3,14 +3,16 @@
   --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+
   --grey-text-color: #797979;
+  --alt-color: #F5F7F9;
   --alt-bg-color: #F4F6F8;
 
   --success-color: #9CC177;
   --headsup-color: #F5A623;
 
   --gold-color: #F9D45C;
-
+  --dark-color: #4C545B;
   --error-color: #EF8C8C;
 }
 
@@ -66,9 +68,10 @@
     color: var(--gold-color);
 }
 
-.bg-gold {
-    background-color: var(--gold-color);
-}
+.bg-gold { background-color: var(--gold-color); }
+
+/* alt */
+.bg-alt { background-color: var(--alt-color); }
 
 /* grey */
 
@@ -89,5 +92,4 @@
 .bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
 
-
-.text-dark { color: var(--grey-text-color); }
+.text-dark { color: var(--dark-color); }
