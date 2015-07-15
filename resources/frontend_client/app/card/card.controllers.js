@@ -838,12 +838,23 @@ CardControllers.controller('CardDetail', [
         }, 400));
 
         // mildly hacky way to prevent reloading controllers as the URL changes
-        var lastRoute = $route.current;
+        var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
-            if ($route.current.$$route.controller === 'CardDetail') {
+            var newParams = $route.current.params;
+            var oldParams = route.params;
+
+            // reload the controller if:
+            // 1. not CardDetail
+            // 2. both serializedCard and cardId are not set (new card)
+            if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
                 var params = $route.current.params;
-                $route.current = lastRoute;
-                angular.forEach(params, function(value, key) {
+                $route.current = route;
+
+                angular.forEach(oldParams, function(value, key) {
+                    delete $route.current.params[key];
+                    delete $routeParams[key];
+                });
+                angular.forEach(newParams, function(value, key) {
                     $route.current.params[key] = value;
                     $routeParams[key] = value;
                 });
