@@ -65,7 +65,7 @@ export default React.createClass({
             }
             var panes = {
                 "fields": table.fields.length,
-                "metrics": 0,
+                // "metrics": 0,
                 "connections": this.state.tableForeignKeys.length
             };
             var tabs = Object.keys(panes).map((name) => {
@@ -75,15 +75,11 @@ export default React.createClass({
                     'Button--small': true,
                     'Button--active': name === this.state.pane
                 });
-                if (count > 0) {
-                    return (
-                        <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
-                            <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
-                        </a>
-                    );
-                } else {
-                    return null;
-                }
+                return (
+                    <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
+                        <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
+                    </a>
+                );
             });
 
             var pane;
@@ -92,7 +88,7 @@ export default React.createClass({
                     var name =  inflection.humanize(field.name);
                     return (
                         <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
                         </li>
                     );
                 });
@@ -102,7 +98,7 @@ export default React.createClass({
                     var name = inflection.humanize(fk.origin.table.entity_name || fk.origin.table.name);
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
                         </li>
                     );
                 });

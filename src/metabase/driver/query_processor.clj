@@ -313,10 +313,11 @@
         ;; Look up the Foreign keys info if applicable.
         ;; Build a map of FK Field IDs -> Destination Field IDs
         field-id->dest-field-id (when (seq fk-field-ids)
-                                  (sel :many :field->field [ForeignKey :origin_id :destination_id], :origin_id [in fk-field-ids]))
+                                  (sel :many :field->field [ForeignKey :origin_id :destination_id], :origin_id [in fk-field-ids], :destination_id [not= nil]))
 
         ;; Build a map of Destination Field IDs -> Destination Fields
-        dest-field-id->field    (when (seq fk-field-ids)
+        dest-field-id->field    (when (and (seq fk-field-ids)
+                                           (seq (vals field-id->dest-field-id)))
                                   (sel :many :id->fields [Field :id :name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
 
     ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.

@@ -23,7 +23,7 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            stack: [],//{ type: "table", table: {id: 7} }],
+            stack: [],
             tables: {},
             fields: {}
         };
@@ -81,7 +81,7 @@ export default React.createClass({
         );
 
         return (
-            <div className="DataReference-container p3">
+            <div className="DataReference-container p3 scroll-y full-height">
                 <div className="DataReference-header flex mb1">
                     {backButton}
                     {closeButton}

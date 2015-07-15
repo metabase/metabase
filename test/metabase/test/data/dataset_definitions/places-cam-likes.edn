@@ -1,0 +1,7 @@
+[["places" [{:field-name "name"
+             :base-type :CharField}
+            {:field-name "liked"
+             :base-type :BooleanField}]
+  [["Tempest" true]
+   ["Bullit" true]
+   ["The Dentist" false]]]]

@@ -30,10 +30,11 @@
 
     (name->human-readable-name \"admin_users\") -> \"Admin Users\""
   [^String n]
-  (when-let [n (some-> n
-                       (s/replace #"(?:-|_id)$" "")                                 ; strip off any trailing _id or -id suffix
-                       (s/split #"_|-"))]                                           ; explode string on underscores and hyphens
-    (->> (for [[first-letter & rest-letters] n]                                     ; for each part of the string,
-           (apply str (s/upper-case first-letter) (map s/lower-case rest-letters))) ; upcase the first char and downcase the rest
-         (interpose " ")                                                            ; add a space between each part
-         (apply str))))                                                             ; convert back to a single string
+  (when (seq n)
+    (when-let [n (some-> n
+                   (s/replace #"(?:-|_id)$" "")                                       ; strip off any trailing _id or -id suffix
+                   (s/split #"_|-"))]                                                 ; explode string on underscores and hyphens
+      (->> (for [[first-letter & rest-letters] n]                                     ; for each part of the string,
+             (apply str (s/upper-case first-letter) (map s/lower-case rest-letters))) ; upcase the first char and downcase the rest
+        (interpose " ")                                                               ; add a space between each part
+        (apply str)))))                                                               ; convert back to a single string

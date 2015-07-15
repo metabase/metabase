@@ -222,35 +222,10 @@ export default React.createClass({
         }
     },
 
-    clickedForeignKey: function(fk) {
-        this.props.followForeignKeyFn(fk);
-    },
-
     renderFooter: function(tableFootnote) {
         if (this.props.isObjectDetail) {
-            if (!this.props.tableForeignKeys) return false;
-
-            var component = this;
-            var relationships = this.props.tableForeignKeys.map(function(fk) {
-                var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
-                return (
-                    <li className="block mb1 lg-mb2" key={fk.id}>
-                        <a className="QueryOption inline-block no-decoration p2 lg-p2" href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
-                            {relationName}
-                        </a>
-                    </li>
-                )
-            });
-
-            return (
-                <div className="VisualizationSettings wrapper QueryBuilder-section clearfix">
-                    <h3 className="mb1 lg-mb2">Relationships:</h3>
-                    <ul>
-                        {relationships}
-                    </ul>
-                </div>
-            );
-
+            // no footer on object detail
+            return false;
         } else {
             var vizControls;
             if (this.props.result && this.props.result.error === undefined) {
@@ -330,8 +305,12 @@ export default React.createClass({
                     viz = (
                         <QueryVisualizationObjectDetailTable
                             data={this.props.result.data}
+                            tableMetadata={this.props.tableMetadata}
+                            tableForeignKeys={this.props.tableForeignKeys}
+                            tableForeignKeyReferences={this.props.tableForeignKeyReferences}
                             cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn} />
+                            cellClickedFn={this.props.cellClickedFn}
+                            followForeignKeyFn={this.props.followForeignKeyFn} />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {

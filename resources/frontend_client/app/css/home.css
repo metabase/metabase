@@ -27,27 +27,27 @@
     }
 }
 
-/* on the homepage, the wrapper should only be as wide as our largest size */
-.Home .wrapper {
-    max-width: var(--xl-width);
-    margin: 0 auto;
+.HomeTab {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px 4px 0 0;
+    text-decoration: none;
+    padding: 0.55rem 1rem 0.65rem;
+    transition: background .15s linear;
 }
 
-.HomeTab {
-    text-decoration: none;
-    border: 1px solid #fff;
-    color: #fff;
+@media screen and (--breakpoint-min-sm) {
+    .HomeTab {
+        padding: 0.65rem 1.35rem 0.75rem;
+    }
 }
 
 .HomeTab:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
 }
 
 .HomeTab.HomeTab--active {
     background-color: #fff;
-    color: var(--brand-color);
-    transition: background .3s linear;
 }
 
 .bullet {
@@ -141,7 +141,7 @@
 
 .Entity-title {
     font-size: 1.24em;
-    color: #797979;
+    color: var(--grey-text-color);
 }
 
 .Entity-attribution {
@@ -176,11 +176,6 @@
 
 .cursor-pointer {
     cursor: pointer;
-}
-
-.HomeTabs {
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius:6px;
 }
 
 .tooltip {
