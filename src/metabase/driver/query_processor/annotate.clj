@@ -71,37 +71,30 @@
 
 (defn- maybe-create-ag-field [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
   (when (contains? #{:avg :count :distinct :stddev :sum} ag-type)
-    (-> (if (contains? #{:count :distinct} ag-type)
-          {:base-type    :IntegerField
-           :field-name   "count"
-           :special-type :number}
-          (-> ag-field
-              (select-keys [:base-type :special-type])
-              (assoc :field-name (if (= ag-type :distinct) "count"
-                                     (name ag-type)))))
-        (assoc :group (field-groups :aggregation)))))
+    [(if (contains? #{:count :distinct} ag-type)
+        {:base-type    :IntegerField
+         :field-name   "count"
+         :special-type :number}
+        (-> ag-field
+            (select-keys [:base-type :special-type])
+            (assoc :field-name (if (= ag-type :distinct) "count"
+                                   (name ag-type)))))]))
 
 (defn- query-add-info [query results]
   (let [result-keys (vec (keys (first results)))
-        fields      (for [field (concat (for [[i f] (map-indexed vector (flatten-collect-fields (:breakout query)))]
-                                          (assoc f :group          (field-groups :breakout)
-                                                   :group-position i))
-                                        (for [[i f] (map-indexed vector [(maybe-create-ag-field query)])]
-                                          (assoc f :group          (field-groups :aggregation)
-                                                   :group-position i))
-                                        (for [[i f] (map-indexed vector (when-not (:fields-is-implicit query)
-                                                                          (flatten-collect-fields (:fields query))))]
-                                          (assoc f :group          (field-groups :explicit-fields)
-                                                   :group-position i))
-                                        (for [[i {:keys [position special-type], :as f}] (map-indexed vector (sort-by :field-name (flatten-collect-fields query)))]
-                                          (assoc f :group          (field-groups :other)
-                                                   :group-position (+ (* 1000 position)
-                                                                      (* 100  (or (special-type-groups special-type)
-                                                                                  (special-type-groups :other)))
-                                                                      i))))]
-                      (-> field
-                          (assoc :field-name (keyword (:field-name field)))
-                          (dissoc :parent :parent-id :table-name)))]
+        fields      (apply concat (for [[group-name fields] [[:breakout        (flatten-collect-fields (:breakout query))]
+                                                             [:aggregation     (maybe-create-ag-field query)]
+                                                             [:explicit-fields (when-not (:fields-is-implicit query)
+                                                                                 (flatten-collect-fields (:fields query)))]
+                                                             [:other           (for [field (sort-by :field-name (flatten-collect-fields query))]
+                                                                                 (assoc field :special-type-group (or (special-type-groups (:special-type field))
+                                                                                                                      (special-type-groups :other))))]]]
+                                    (for [[i field] (map-indexed vector fields)]
+                                      (-> field
+                                          (assoc :group          (field-groups group-name)
+                                                 :group-position i
+                                                 :field-name     (keyword (:field-name field)))
+                                          (dissoc :parent :parent-id :table-name)))))]
     (assoc query
            :result-keys  result-keys
            :query-fields (sort-by :group (for [k result-keys]
@@ -116,12 +109,21 @@
   (member1o field (:query-fields query)))
 
 (defn- fields< [query f1 f2]
-  (fresh [group-1 group-2, group-position-1 group-position-2]
-    (featurec f1 {:group group-1, :group-position group-position-1})
-    (featurec f2 {:group group-2, :group-position group-position-2})
+  (fresh [g1 g2, gp1 gp2]
+    (featurec f1 {:group g1, :group-position gp1})
+    (featurec f2 {:group g2, :group-position gp2})
     (conda
-     ((ar/< group-1 group-2))
-     ((== group-1 group-2) (ar/< group-position-1 group-position-2)))))
+     ((ar/< g1 g2))
+     ((== g1 g2) (conda
+                  ((!= g1 (field-groups :other)) (ar/< gp1 gp2))
+                  ((== g1 (field-groups :other)) (fresh [p1 p2, t1 t2]
+                                                   (featurec f1 {:position p1, :special-type-group t1})
+                                                   (featurec f2 {:position p2, :special-type-group t2})
+                                                   (conda
+                                                    ((ar/< p1 p2))
+                                                    ((== p1 p2) (conda
+                                                                 ((ar/< t1 t2))
+                                                                 ((== t1 t2) (ar/< gp1 gp2))))))))))))
 
 (defn- resolve+order-cols [query]
   {:post [(sequential? %) (every? map? %)]}
@@ -151,7 +153,7 @@
                                 :field-name   :name
                                 :special-type :special_type
                                 :table-id     :table_id})
-             (dissoc :position :group :group-position))))
+             (dissoc :position :group :group-position :special-type-group))))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
@@ -195,26 +197,3 @@
        :columns (mapv name columns)
        :rows    (for [row results]
                   (mapv row columns))})))
-
-;; (require 'metabase.driver)
-;; (require 'metabase.test.data)
-;; (require 'metabase.test.data.datasets)
-;; (defn x []
-;;   (metabase.test.data.datasets/with-dataset
-;;     :postgres
-;;     (metabase.driver/process-query
-;;      {:type :query,
-;;       :database (metabase.test.data/db-id),
-;;       :query
-;;       {:source_table (metabase.test.data/id :venues),
-;;        :filter
-;;        ["INSIDE"
-;;         (metabase.test.data/id :venues :latitude)
-;;         (metabase.test.data/id :venues :longitude)
-;;         10.0649
-;;         -165.379
-;;         10.0641
-;;         -165.371],
-;;        :aggregation ["rows"],
-;;        :breakout [nil],
-;;        :limit nil}})))
