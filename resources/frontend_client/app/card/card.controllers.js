@@ -726,7 +726,9 @@ CardControllers.controller('CardDetail', [
             if ($routeParams.cardId != undefined) {
                 return loadSavedCard($routeParams.cardId).then(function(result) {
                     if ($routeParams.serializedCard) {
-                        return loadSerializedCard($routeParams.serializedCard);
+                        return loadSerializedCard($routeParams.serializedCard).then(function(result2) {
+                            return _.extend(result, result2);
+                        });
                     } else {
                         return result;
                     }
