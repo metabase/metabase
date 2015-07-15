@@ -144,10 +144,10 @@ CardControllers.controller('CardDetail', [
                 return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
-                setCard(newCard);
+                setCard(newCard, { resetDirty: true, replaceState: true });
             },
             notifyCardUpdatedFn: function(updatedCard) {
-                setCard(updatedCard);
+                setCard(updatedCard, { resetDirty: true, replaceState: true });
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -163,8 +163,7 @@ CardControllers.controller('CardDetail', [
             cloneCardFn: function() {
                 $scope.$apply(() => {
                     delete card.id;
-                    updateUrl();
-                    renderAll();
+                    setCard(card, { setDirty: true, replaceState: false })
                 });
             },
             toggleDataReference: toggleDataReference
@@ -699,7 +698,10 @@ CardControllers.controller('CardDetail', [
         }
 
         function loadSerializedCard(serialized) {
-            return $q.resolve(deserializeCardFromUrl(serialized));
+            var card = deserializeCardFromUrl(serialized);
+            // consider this since it's not saved:
+            card.dirty = true;
+            return $q.resolve(card);
         }
 
         function loadNewCard() {
@@ -740,7 +742,7 @@ CardControllers.controller('CardDetail', [
             }
         }
 
-        function setCard(result) {
+        function setCard(result, options = {}) {
             // when loading an existing card for viewing, mark when the card creator is our current user
             // TODO: there may be a better way to maintain this, but it seemed worse to inject currentUser
             //       into a bunch of our react models and then bury this conditional in react component code
@@ -750,9 +752,15 @@ CardControllers.controller('CardDetail', [
 
             // update our react models as needed
             card = result;
-            cardJson = JSON.stringify(card);
 
-            updateUrl(true);
+            if (options.resetDirty) {
+                cardJson = JSON.stringify(card);
+            }
+            if (options.setDirty) {
+                cardJson = null;
+            }
+
+            updateUrl(options.replaceState);
 
             // load metadata
             loadDatabaseInfo(card.dataset_query.database);
@@ -773,7 +781,10 @@ CardControllers.controller('CardDetail', [
         // meant to be called once on controller startup
         function loadAndSetCard() {
             loadCard().then(function (result) {
-                return setCard(result);
+                // HACK: dirty status passed in the object itself, delete it
+                var isDirty = result.dirty;
+                delete result.dirty;
+                return setCard(result, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
             }, function (error) {
                 if (error.status == 404) {
                     // TODO() - we should redirect to the card builder with no query instead of /
@@ -787,7 +798,7 @@ CardControllers.controller('CardDetail', [
         }
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
-        var updateUrl = _.debounce(function(replace) {
+        var updateUrl = _.debounce(function(replaceState) {
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,
@@ -802,8 +813,8 @@ CardControllers.controller('CardDetail', [
             var url = urlForCardState(newState, cardIsDirty());
 
             // if the serialized card is identical replace the previous state instead of adding a new one
-            var replaceState = replace || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
-            if (replaceState) {
+            // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+            if (replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard)) {
                 console.log(">>> replaceState", history.length, newState, url);
                 window.history.replaceState(newState, null, url);
             } else {
@@ -816,7 +827,7 @@ CardControllers.controller('CardDetail', [
             if (e.state && e.state.card) {
                 console.log(">>> popState");
                 e.preventDefault();
-                setCard(e.state.card);
+                setCard(e.state.card, {});
             }
         }
 
