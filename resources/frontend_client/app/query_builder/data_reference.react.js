@@ -23,7 +23,7 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            stack: [],//{ type: "table", table: {id: 7} }],
+            stack: [],
             tables: {},
             fields: {}
         };
