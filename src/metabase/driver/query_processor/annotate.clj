@@ -128,8 +128,10 @@
 (defn- special-typeo [field out]
   (fresh [special-type]
     (featurec field {:special-type special-type})
-    (== out (or (special-type-groups special-type)
-                (special-type-groups :other)))))
+    (conda
+     ((== special-type :id)   (== out (special-type-groups :id)))
+     ((== special-type :name) (== out (special-type-groups :name)))
+     (s#                      (== out (special-type-groups :other))))))
 
 (defn- field-name< [query]
   (fn [f1 f2]
@@ -142,34 +144,36 @@
           ((!= k name-2) (when (seq more)
                            (name< more))))) (:result-keys query)))))
 
-(defn- fpred< [f field1 field2]
-  (fresh [v1 v2]
-    (f field1 v1)
-    (f field2 v2)
-    (trace-lvars "*" v1 v2)
-    (ar/< v1 v2)))
+(defn- fpredo [pred f v1 v2]
+  "Succeds if `(pred & fresh-values)` succeeds, where fresh values
+   are obtained with calls to F like `(f value fresh-value)`."
+  (fresh [fresh-v1 fresh-v2]
+    (f v1 fresh-v1)
+    (f v2 fresh-v2)
+    #_(trace-lvars (str f) fresh-v1 fresh-v2)
+    (pred fresh-v1 fresh-v2)))
 
-(defn- fpred== [f field1 field2]
-  (fresh [v1 v2]
-    (f field1 v1)
-    (f field2 v2)
-    (== v1 v2)))
+(defn- ar-< [x y]
+  (ar/< x y))
 
-(defmacro ^:private fpred-conda [pred <-clause ==-clause]
+(defmacro ^:private fpred-conda [[f & values] & clauses]
   `(conda
-    ((fpred< ~pred ~'f1 ~'f2) ~<-clause)
-    ((fpred== ~pred ~'f1 ~'f2) ~==-clause)))
+    ~@(for [[pred & body] clauses]
+        `((fpredo ~pred ~f ~@values) ~@body))))
 
 (defn- fields< [query]
-  (let [groupo (field-group< query)
+  (let [groupo (field-groupo query)
         name<  (field-name< query)]
     (fn [f1 f2]
-      (fpred-conda groupo s#
-        ;; TODO - sort by sequential position for fields + breakout
-        s#
-        #_(fpred-conda positiono s#
-            (fpred-conda special-typeo s#
-              (name< f1 f2)))))))
+      (fpred-conda [groupo f1 f2]
+        (ar-< s#)
+        (==  (fpred-conda [positiono f1 f2]
+               (ar-< s#)
+               (== (fpred-conda [groupo f1 f2]
+                     (ar-< s#) ; TODO - sort by sequential position for fields + breakout
+                     (== (fpred-conda [special-typeo f1 f2]
+                           (ar-< s#)
+                           (== (name< f1 f2))))))))))))
 
 (defn- sorted-intoo [pred l v out]
   (matche [l]
@@ -197,6 +201,18 @@
                            (range 0 (count result-keys)))
                    (everyg (fieldo query) fields)
                    (sorted-permutationo (fields< query) fields q))))))
+
+(defn x []
+  (require 'metabase.driver 'metabase.test.data)
+  (@(ns-resolve 'metabase.driver 'process-query)
+   {:type     :query,
+    :database (@(ns-resolve 'metabase.test.data 'db-id)),
+    :query    {:source_table (@(ns-resolve 'metabase.test.data 'id) :venues),
+               :filter       nil,
+               :aggregation  ["rows"],
+               :breakout     [nil],
+               :limit        10,
+               :order_by     [[(@(ns-resolve 'metabase.test.data 'id) :venues :id) "ascending"]]}}))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
