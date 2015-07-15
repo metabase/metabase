@@ -1,3 +1,12 @@
+.Nav {
+    z-index: 2;
+}
+
+.Main {
+    z-index: 1;
+    position: relative;
+}
+
 .NavItem {
     border-radius: 8px;
 }

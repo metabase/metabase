@@ -226,7 +226,6 @@ export default React.createClass({
         if (this.props.isObjectDetail) {
             // no footer on object detail
             return false;
-
         } else {
             var vizControls;
             if (this.props.result && this.props.result.error === undefined) {
