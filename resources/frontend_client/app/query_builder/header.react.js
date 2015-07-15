@@ -292,6 +292,12 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
+
+                    <span className="pr3">
+                        {saveButton}
+                        {queryModeToggle}
+                    </span>
+
                     {downloadButton}
 
                     {dividerLeft}
@@ -303,9 +309,6 @@ export default React.createClass({
                     {dividerRight}
 
                     {dataReferenceButton}
-
-                    {saveButton}
-                    {queryModeToggle}
                 </div>
             </div>
         );
