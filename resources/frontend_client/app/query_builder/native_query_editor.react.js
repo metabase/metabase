@@ -8,11 +8,11 @@ export default React.createClass({
     displayName: 'NativeQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,
-        defaultQuery: React.PropTypes.object.isRequired,
         query: React.PropTypes.object.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
-        runFn: React.PropTypes.func.isRequired,
-        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired,
+        setQueryFn: React.PropTypes.func.isRequired,
+        setDatabaseFn: React.PropTypes.func.isRequired,
         autocompleteResultsFn: React.PropTypes.func.isRequired
     },
 
@@ -83,21 +83,12 @@ export default React.createClass({
         });
     },
 
+    setQuery: function(dataset_query) {
+        this.props.setQueryFn(dataset_query);
+    },
+
     setDatabase: function(databaseId) {
-        // check if this is the same db or not
-        if (databaseId !== this.props.query.database) {
-            // reset to a brand new query
-            var query = this.props.defaultQuery;
-
-            // set our new database on the query
-            query.database = databaseId;
-
-            // carry over our previous query
-            query.native.query = this.props.query.native.query;
-
-            // notify parent that we've started over
-            this.props.notifyQueryModifiedFn(query);
-        }
+        this.props.setDatabaseFn(databaseId);
     },
 
     canRunQuery: function() {
@@ -105,19 +96,18 @@ export default React.createClass({
     },
 
     runQuery: function() {
-        this.props.runFn(this.props.query);
+        this.props.runQueryFn(this.props.query);
     },
 
     onChange: function(event) {
         if (this.state.editor) {
             var query = this.props.query;
             query.native.query = this.state.editor.getValue();
-            this.props.notifyQueryModifiedFn(query);
+            this.setQuery(query);
         }
     },
 
     render: function() {
-        //console.log(this.props.query);
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
         if(this.props.databases && this.props.databases.length > 1) {

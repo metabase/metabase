@@ -14,7 +14,7 @@
     </head>
 
     <body ng-controller="Corvus">
-        <div ng-controller="Nav" ng-if="user" ng-cloak>
+        <div class="Nav" ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
             <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
                 <ul class="wrapper flex align-center">
@@ -98,7 +98,7 @@
             </nav>
         </div>
 
-        <main class="full-height flex flex-column" ng-view></main>
+        <main class="Main full-height flex flex-column" ng-view></main>
     </body>
 
 
