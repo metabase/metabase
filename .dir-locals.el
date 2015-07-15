@@ -33,6 +33,7 @@
                               (let-500 1)
                               (match 1)
                               (match-$ 1)
+                              (matche 1)
                               (macrolet 1)
                               (org-perms-case 1)
                               (pdoseq 1)

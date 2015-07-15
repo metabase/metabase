@@ -108,7 +108,7 @@
 (defn- fieldo [query field]
   (member1o field (:query-fields query)))
 
-(defn- fields< [query f1 f2]
+(defn- fields< [f1 f2]
   (fresh [g1 g2, gp1 gp2]
     (featurec f1 {:group g1, :group-position gp1})
     (featurec f2 {:group g2, :group-position gp2})
@@ -125,18 +125,29 @@
                                                                  ((ar/< t1 t2))
                                                                  ((== t1 t2) (ar/< gp1 gp2))))))))))))
 
+(defn- sorted-intoo [pred l v out]
+  (matche [l]
+    ([[]]           (== out [v]))
+    ([[?x . ?more]] (conda
+                     ((pred v ?x) (== out (lcons v (lcons ?x ?more)))) ; TODO - binary search would be faster :sunglasses:
+                     (s#          (fresh [more]
+                                    (sorted-intoo pred ?more v more)
+                                    (== out (lcons ?x more))))))))
+
+(defn- sorted-permutationo [pred l out]
+  (matche [l]
+    ([[]]           (== out []))
+    ([[?x . ?more]] (fresh [more]
+                      (sorted-permutationo pred ?more more)
+                      (sorted-intoo pred more ?x out)))))
+
 (defn- resolve+order-cols [query]
   {:post [(sequential? %) (every? map? %)]}
-  (let [num-cols   (count (:result-keys query))
-        cols       (vec (lvars num-cols))]
-    (first (run 1 [q]
-             (== q cols)
-             (distincto cols)
-             (fieldo query (cols 0))
-             (everyg (fn [i]
-                       (all (fieldo query (cols (inc i)))
-                            (fields< query (cols i) (cols (inc i)))))
-                     (range 0 (dec num-cols)))))))
+  (time (first (run 1 [q]
+                 ;; TODO - this is effectively just a complicated way of doing a sort at this point
+                 ;; Move the "additional info" stuff back to core.logic
+                 ;; there's not much of a point using core.logic here
+                 (sorted-permutationo fields< (query :query-fields) q)))))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
