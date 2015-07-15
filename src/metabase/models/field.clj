@@ -115,7 +115,7 @@
         :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
         :db                        (delay @(:db @(:table <>)))
         :target                    (delay (field->fk-field field))
-        :human_readable_name       (when (name :field)
+        :human_readable_name       (when (not (nil? (name :field)))
                                      (delay (common/name->human-readable-name (:name field))))
         :parent                    (when parent_id
                                      (delay (this parent_id)))
