@@ -105,9 +105,6 @@
 
 ;; Use core.logic to determine the appropriate
 
-(defn- fieldo [query field]
-  (member1o field (:query-fields query)))
-
 (defn- fields< [f1 f2]
   (fresh [g1 g2, gp1 gp2]
     (featurec f1 {:group g1, :group-position gp1})
