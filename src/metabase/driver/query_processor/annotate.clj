@@ -10,108 +10,6 @@
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
 
-;;; # ---------------------------------------- QUERY DICT ADDITIONAL INFO  ----------------------------------------
-
-(defn- collapse-field [field]
-  (into {} (-> field
-               (assoc :field-name (->> (rest (expand/qualified-name-components field))
-                                       (interpose ".")
-                                       (apply str)
-                                       keyword))
-               (dissoc :parent :parent-id :table-name))))
-
-(defn- query-add-info [{{ag-type :aggregation-type, ag-field :field} :aggregation, :as query} results]
-  {:pre [(integer? (get-in query [:source-table :id]))]}
-  (let [fields (transient [])]
-    (clojure.walk/prewalk (fn [f]
-                            (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
-                                    (let [[_ first-name] (expand/qualified-name-components f)]
-                                      (conj! fields f)
-                                      ;; HACK !!!
-                                      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
-                                      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
-                                      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
-                                      ;; matching works correctly.
-                                      ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
-                                      (when (:parent f)
-                                        (conj! fields (:parent f))))))
-                          query)
-    ;; Add an aggregate field to :query-fields if appropriate
-    (when (contains? #{:avg :count :distinct :stddev :sum} ag-type)
-      (conj! fields (-> (if (contains? #{:count :distinct} ag-type)
-                          {:base-type    :IntegerField
-                           :field-name   "count"
-                           :special-type :number}
-                          (-> ag-field
-                              (select-keys [:base-type :special-type])
-                              (assoc :field-name (if (= ag-type :distinct) "count"
-                                                     (name ag-type)))))
-                        (assoc :ag-field? true)
-                        expand/map->Field)))
-    (assoc query
-           :result-keys  (vec (sort (keys (first results))))
-           :query-fields (mapv collapse-field (persistent! fields))
-           :fields       (mapv collapse-field (:fields query))
-           :breakout     (mapv collapse-field (:breakout query)))))
-
-
-;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING  ----------------------------------------
-
-(defn- breakout-fieldo [{breakout-fields :breakout} field]
-  (member1o field breakout-fields))
-
-(defn- aggregate-fieldo [field]
-  (fresh [ag-field?]
-    (featurec field {:ag-field? ag-field?})
-    (== ag-field? true)))
-
-(defn- explicit-fields-fieldo [{:keys [fields-is-implicit], fields-fields :fields} field]
-  (all (nilo fields-is-implicit)
-       (member1o field fields-fields)))
-
-(defn- valid-nameo [{:keys [result-keys]} field]
-  (fresh [field-name]
-    (featurec field {:field-name field-name})
-    (member1o field-name result-keys)))
-
-
-;;; ## Ordering
-
-(defn- matches-sort-sequenceo [l [k & more-keys]]
-  (conda
-   ((emptyo l))
-   ((if-not k
-      fail
-      (fresh [v1 more-vals]
-        (conso v1 more-vals l)
-        (conda
-         ((== k v1)             (matches-sort-sequenceo more-vals more-keys))
-         (s#                    (matches-sort-sequenceo l more-keys))))))))
-
-(defn- field-positiono [field v]
-  (featurec field {:position v}))
-
-(defn- field-name< [{:keys [result-keys]} f1 f2]
-  (fresh [n1 n2]
-    (featurec f1 {:field-name n1})
-    (featurec f2 {:field-name n2})
-    (matches-sort-sequenceo [n1 n2] result-keys)))
-
-(defn- field-groupo [query field v]
-  (conda
-   ((breakout-fieldo query field)        (== v 0))
-   ((aggregate-fieldo field)             (== v 1))
-   ((explicit-fields-fieldo query field) (== v 2))
-   (s#                                   (== v 3))))
-
-(defn special-type-groupo [field v]
-  (fresh [t]
-    (featurec field {:special-type t})
-    (conda
-     ((== t :id)   (== v 0))
-     ((== t :name) (== v 1))
-     (s#           (== v 2)))))
-
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
 ;;
@@ -133,80 +31,127 @@
 ;;     C.  Field Name
 ;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
 ;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
-(defn- fields< [query f1 f2]
-  (fresh [g1 g2]
-    (field-groupo query f1 g1)
-    (field-groupo query f2 g2)
-    (conda
-     ((ar/< g1 g2))
-     ((== g1 g2) (conda
-                  ((== g1 0) (matches-sort-sequenceo [f1 f2] (:breakout query)))
-                  ((== g1 2) (matches-sort-sequenceo [f1 f2] (:fields query)))
-                  ((== g2 3) (fresh [pos1 pos2]
-                               (field-positiono f1 pos1)
-                               (field-positiono f2 pos2)
-                               (conda
-                                ((ar/< pos1 pos2))
-                                ((== pos1 pos2) (fresh [t1 t2]
-                                                  (special-type-groupo f1 t1)
-                                                  (special-type-groupo f2 t2)
-                                                  (conda ((ar/< t1 t2))
-                                                         ((== t1 t2) (field-name< query f1 f2)))))))))))))
+
+;;; # ---------------------------------------- FIELD COLLECTION  ----------------------------------------
+
+;; Walk the expanded query and collect the fields found therein. Associate some additional info to each that we'll pass to core.logic so it knows
+;; how to order the results
+
+(defn- field-qualify-name [field]
+  (assoc field :field-name (apply str (->> (rest (expand/qualified-name-components field))
+                                           (interpose ".")))))
+
+(defn- flatten-collect-fields [form]
+  (let [fields (transient [])]
+    (clojure.walk/prewalk (fn [f]
+                            (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
+                                    (do
+                                      (conj! fields (field-qualify-name f))
+                                      ;; HACK !!!
+                                      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
+                                      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
+                                      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
+                                      ;; matching works correctly.
+                                      ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
+                                      (when (:parent f)
+                                        (conj! fields (field-qualify-name (:parent f)))))))
+                          form)
+    (distinct (persistent! fields))))
+
+(def ^:const ^:private field-groups
+  {:breakout        0
+   :aggregation     1
+   :explicit-fields 2
+   :other           3})
+
+(def ^:const ^:private special-type-groups
+  {:id    0
+   :name  1
+   :other 2})
+
+(defn- maybe-create-ag-field [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
+  (when (contains? #{:avg :count :distinct :stddev :sum} ag-type)
+    (-> (if (contains? #{:count :distinct} ag-type)
+          {:base-type    :IntegerField
+           :field-name   "count"
+           :special-type :number}
+          (-> ag-field
+              (select-keys [:base-type :special-type])
+              (assoc :field-name (if (= ag-type :distinct) "count"
+                                     (name ag-type)))))
+        (assoc :group (field-groups :aggregation)))))
+
+(defn- query-add-info [query results]
+  (let [result-keys (vec (keys (first results)))
+        fields      (for [field (concat (for [[i f] (map-indexed vector (flatten-collect-fields (:breakout query)))]
+                                          (assoc f :group          (field-groups :breakout)
+                                                   :group-position i))
+                                        (for [[i f] (map-indexed vector [(maybe-create-ag-field query)])]
+                                          (assoc f :group          (field-groups :aggregation)
+                                                   :group-position i))
+                                        (for [[i f] (map-indexed vector (when-not (:fields-is-implicit query)
+                                                                          (flatten-collect-fields (:fields query))))]
+                                          (assoc f :group          (field-groups :explicit-fields)
+                                                   :group-position i))
+                                        (for [[i {:keys [position special-type], :as f}] (map-indexed vector (sort-by :field-name (flatten-collect-fields query)))]
+                                          (assoc f :group          (field-groups :other)
+                                                   :group-position (+ (* 1000 position)
+                                                                      (* 100  (or (special-type-groups special-type)
+                                                                                  (special-type-groups :other)))
+                                                                      i))))]
+                      (-> field
+                          (assoc :field-name (keyword (:field-name field)))
+                          (dissoc :parent :parent-id :table-name)))]
+    (assoc query
+           :result-keys  result-keys
+           :query-fields (sort-by :group (for [k result-keys]
+                                           (medley.core/find-first #(= k (:field-name %)) fields))))))
 
 
-;;; ## Top-Level Resolution / Ordering
+;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING (CORE.LOGIC)  ----------------------------------------
 
-(def ^:private total-slowness (atom 0))
-(def ^:private slowest (atom 0))
-(def ^:private run-count (atom 0))
+;; Use core.logic to determine the appropriate
 
 (defn- fieldo [query field]
-  (all (member1o field (:query-fields query))
-       (valid-nameo query field)))
+  (member1o field (:query-fields query)))
+
+(defn- fields< [query f1 f2]
+  (fresh [group-1 group-2, group-position-1 group-position-2]
+    (featurec f1 {:group group-1, :group-position group-position-1})
+    (featurec f2 {:group group-2, :group-position group-position-2})
+    (conda
+     ((ar/< group-1 group-2))
+     ((== group-1 group-2) (ar/< group-position-1 group-position-2)))))
 
 (defn- resolve+order-cols [query]
-  {:post [(or (and (sequential? %)
-                   (every? map? %))
-              (println "FAILED!\n" (u/pprint-to-str query) "\nRESULTS:" %))]}
+  {:post [(sequential? %) (every? map? %)]}
   (let [num-cols   (count (:result-keys query))
-        cols       (vec (lvars num-cols))
-        ;; A few queries take a ridiculous amount of time to order. Let's do some ghetto profiling
-        start-time (System/currentTimeMillis)
-        results    (first (run 1 [q]
-                            (== q cols)
-                            (distincto cols)
-                            (fieldo query (cols 0))
-                            (everyg (fn [i]
-                                      (all (fieldo query (cols (inc i)))
-                                           (fields< query (cols i) (cols (inc i)))))
-                                    (range 0 (dec num-cols)))))
-        run-time   (- (System/currentTimeMillis) start-time)]
-    (swap! total-slowness #(+ % run-time))
-    (swap! run-count inc)
-    (when (> run-time @slowest)
-      (reset! slowest run-time))
-    (println (u/format-color 'cyan "Total slowness thus far: %.0f ms (avg: %.0f ms, max: %.0f ms)" (float @total-slowness) (/ @total-slowness (float @run-count)) (float @slowest)))
-    (when (> run-time 2000)
-      (println (u/format-color 'red "This query took a STUPID LONG amount of time to order (%.1f seconds):\n%s\n%s" (/ run-time 1000.0)
-                               (u/pprint-to-str query) (u/pprint-to-str results))))
-    results))
+        cols       (vec (lvars num-cols))]
+    (first (run 1 [q]
+             (== q cols)
+             (distincto cols)
+             (fieldo query (cols 0))
+             (everyg (fn [i]
+                       (all (fieldo query (cols (inc i)))
+                            (fields< query (cols i) (cols (inc i)))))
+                     (range 0 (dec num-cols)))))))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
 
+;; Format the results in the way the front-end expects.
 
 (defn- format-col [col]
-  (let [defaults {:description nil
-                  :id          nil
-                  :table_id    nil}]
-    (merge defaults
-           (-> col
-               (set/rename-keys  {:base-type    :base_type
-                                  :field-id     :id
-                                  :field-name   :name
-                                  :special-type :special_type
-                                  :table-id     :table_id})
-               (dissoc :parent :parent-id :position :ag-field?)))))
+  (merge {:description nil
+          :id          nil
+          :table_id    nil}
+         (-> col
+             (set/rename-keys  {:base-type    :base_type
+                                :field-id     :id
+                                :field-name   :name
+                                :special-type :special_type
+                                :table-id     :table_id})
+             (dissoc :position :group :group-position))))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."

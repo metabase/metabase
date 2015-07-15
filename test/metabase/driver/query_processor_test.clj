@@ -1053,16 +1053,16 @@
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
 (datasets/expect-when-testing-dataset :mongo
-    [[1  {:name "Lucky's Gluten-Free Café"}]
-     [2  {:name "Joe's Homestyle Eatery"}]
-     [3  {:name "Lower Pac Heights Cage-Free Coffee House"}]
-     [4  {:name "Oakland European Liquor Store"}]
-     [5  {:name "Tenderloin Gormet Restaurant"}]
-     [6  {:name "Marina Modern Sushi"}]
-     [7  {:name "Sunset Homestyle Grill"}]
-     [8  {:name "Kyle's Low-Carb Grill"}]
-     [9  {:name "Mission Homestyle Churros"}]
-     [10 {:name "Sameer's Pizza Liquor Store"}]]
+    [[{:name "Lucky's Gluten-Free Café"} 1]
+     [{:name "Joe's Homestyle Eatery"} 2]
+     [{:name "Lower Pac Heights Cage-Free Coffee House"} 3]
+     [{:name "Oakland European Liquor Store"} 4]
+     [{:name "Tenderloin Gormet Restaurant"} 5]
+     [{:name "Marina Modern Sushi"} 6]
+     [{:name "Sunset Homestyle Grill"} 7]
+     [{:name "Kyle's Low-Carb Grill"} 8]
+     [{:name "Mission Homestyle Churros"} 9]
+     [{:name "Sameer's Pizza Liquor Store"} 10]]
   (Q run against geographical-tips using mongo
      return :data :rows
      aggregate rows of tips
