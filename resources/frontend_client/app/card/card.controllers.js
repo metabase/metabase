@@ -119,7 +119,7 @@ CardControllers.controller('CardDetail', [
             },
             savedCardSerialized = null;
 
-        savedCardSerialized = serializeCardForUrl(card);
+        resetDirty();
 
 
         // =====  REACT component models
@@ -155,6 +155,8 @@ CardControllers.controller('CardDetail', [
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
 
                     resetCardQuery(mode);
+                    resetDirty();
+                    updateUrl();
 
                     renderAll();
                 }
@@ -409,7 +411,10 @@ CardControllers.controller('CardDetail', [
         // =====  Local helper functions
 
         function runQuery(dataset_query) {
-            Query.cleanQuery(dataset_query.query);
+            if (dataset_query.query) {
+                Query.cleanQuery(dataset_query.query);
+            }
+
             isRunning = true;
 
             updateUrl();
@@ -723,7 +728,7 @@ CardControllers.controller('CardDetail', [
                 card.dataset_query.query.source_table = parseInt($routeParams.table);
             }
 
-            savedCardSerialized = serializeCardForUrl(card);
+            resetDirty();
 
             return $q.resolve(card);
         }
@@ -758,10 +763,10 @@ CardControllers.controller('CardDetail', [
             card = result;
 
             if (options.resetDirty) {
-                savedCardSerialized = serializeCardForUrl(card);
+                resetDirty();
             }
             if (options.setDirty) {
-                savedCardSerialized = null;
+                setDirty();
             }
 
             updateUrl(options.replaceState);
@@ -805,6 +810,14 @@ CardControllers.controller('CardDetail', [
             var newCardSerialized = serializeCardForUrl(card);
 
             return newCardSerialized !== savedCardSerialized;
+        }
+
+        function resetDirty() {
+            savedCardSerialized = serializeCardForUrl(card);
+        }
+
+        function setDirty() {
+            savedCardSerialized = null;
         }
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
