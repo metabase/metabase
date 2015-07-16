@@ -838,17 +838,14 @@ CardControllers.controller('CardDetail', [
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
             if (replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard)) {
-                console.log(">>> replaceState", history.length, newState, url);
                 window.history.replaceState(newState, null, url);
             } else {
-                console.log(">>> pushState", history.length, newState, url);
                 window.history.pushState(newState, null, url);
             }
         }, 0);
 
         function popStateListener(e) {
             if (e.state && e.state.card) {
-                console.log(">>> popState");
                 e.preventDefault();
                 setCard(e.state.card, {});
             }
