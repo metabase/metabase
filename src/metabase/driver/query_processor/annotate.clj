@@ -67,6 +67,9 @@
 
 ;; Use core.logic to determine the appropriate ordering / result Fields
 
+(defn- field-nameo [field field-name]
+  (featurec field {:field-name field-name}))
+
 (defn- breakout-fieldo [{:keys [breakout]}]
   (let [breakout-fields (flatten-collect-fields breakout)]
     (fn [out]
@@ -92,11 +95,18 @@
         (fn [out]
           (membero out fields-fields)))))
 
+(defn- unknown-fieldo [field-name out]
+  (all
+   (== out {:base-type    :UnknownField
+            :special-type nil
+            :field-name   field-name})
+   (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
+
 (defn- fieldo [query]
   (let [fields    (flatten-collect-fields query)
         ag-fieldo (aggregate-fieldo query)]
     (fn [out]
-      (conde
+      (conda
        ((membero out fields))
        ((ag-fieldo out))))))
 
@@ -126,26 +136,24 @@
    :other 2})
 
 (defn- special-typeo [field out]
-  (fresh [special-type]
-    (trace-lvars "!" field out)
-    (featurec field {:special-type special-type})
-    (trace-lvars "SPECIAL-TYPEO" special-type)
-    (conda
-     ((== special-type :id)   (== out (special-type-groups :id)))
-     ((== special-type :name) (== out (special-type-groups :name)))
-     (s#                      (== out (special-type-groups :other))))))
+  (conda
+   ((featurec field {:special-type :id})   (== out (special-type-groups :id)))
+   ((featurec field {:special-type :name}) (== out (special-type-groups :name)))
+   (s#                                     (== out (special-type-groups :other)))))
 
 (defn- field-name< [query]
-  (fn [f1 f2]
-    (fresh [name-1 name-2]
-      (trace-lvars "!" name-1 name-2)
-      (featurec f1 {:field-name name-1})
-      (featurec f2 {:field-name name-2})
-      ((fn name< [[k & more]]
-         (conda
-          ((== k name-1) s#)
-          ((!= k name-2) (when (seq more)
-                           (name< more))))) (:result-keys query)))))
+  (let [name< (partial (fn name< [[k & more] name-1 name-2]
+                         (conda
+                          ((== k name-1))
+                          ((== k name-2) fail)
+                          (s#            (if-not (seq more) fail
+                                                 (name< more name-1 name-2)))))
+                       (:result-keys query))]
+    (fn [f1 f2]
+      (fresh [name-1 name-2]
+        (field-nameo f1 name-1)
+        (field-nameo f2 name-2)
+        (name< name-1 name-2)))))
 
 (defn- clause-position< [query]
   (let [groupo          (field-groupo query)
@@ -156,37 +164,53 @@
        ((groupo f1 (field-groups :breakout))        (matches-seq-ordero f1 f2 breakout-fields))
        ((groupo f1 (field-groups :explicit-fields)) (matches-seq-ordero f1 f2 fields-fields))))))
 
-(defn- ar-< [x y]
-  (ar/< x y))
+;; TODO - inline these ?
+(defn- f< [f]
+  (fn [f1 f2]
+    (fresh [v1 v2]
+      (f f1 v1)
+      (f f2 v2)
+      (ar/< v1 v2))))
 
-(defn- fields< [query]
+(defn- f== [f]
+  (fn [f1 f2]
+    (fresh [v]
+      (f f1 v)
+      (f f2 v))))
+
+(defn- fields-sortedo [query]
   (let [groupo      (field-groupo query)
         name<       (field-name< query)
         clause-pos< (clause-position< query)]
     (fn [f1 f2]
-      (fpred-conda [groupo f1 f2]
-        (ar-< (trace-lvars "GROUP <" f1 f2))
-        (==   (fpred-conda [field-positiono f1 f2]
-                (ar-< (trace-lvars "POSITION <" f1 f2))
-                (==   (fresh [g]
-                        (groupo f1 g)
-                        (trace-lvars "!!!" f1 g))
-                      (conda
-                       ((groupo f1 (field-groups :other)) (trace-lvars "FG -> OTHER" f1) (fpred-conda [special-typeo f1 f2]
-                                                                                           (ar-< (trace-lvars "SPECIAL TYPE <" f1 f2))
-                                                                                           (==   (trace-lvars "NAME <" f1 f2) (name< f1 f2))))
-                       ((clause-pos< f1 f2)               (trace-lvars "CLAUSE POS <" f1 f2))))))))))
+      (conda
+        (((f< groupo) f1 f2) s#)
+        (((f== groupo) f1 f2)
+         (conda
+           (((f< field-positiono) f1 f2) s#)
+           (((f== field-positiono) f1 f2)
+            (conda
+              ((groupo f1 (field-groups :other)) (conda
+                                                   (((f< special-typeo) f1 f2) s#)
+                                                   (((f== special-typeo) f1 f2) (name< f1 f2))))
+              ((clause-pos< f1 f2))))))))))
 
 (defn- resolve+order-cols [{:keys [result-keys], :as query}]
-  {:post [(sequential? %) (every? map? %)]}
-  (time (first (let [fields (vec (lvars (count result-keys)))]
+  {:pre  [(seq result-keys)]
+   ;; :post [(sequential? %) (every? map? %)]
+   }
+  (println result-keys)
+  (time (first (let [fields       (vec (lvars (count result-keys)))
+                     known-fieldo (fieldo query)]
                  (run 1 [q]
                    ;; Make a new constraint for every lvar FIELDS[i] to give it the name of RESULT-KEYS[i]
                    (everyg (fn [i]
-                             (featurec (fields i) {:field-name (result-keys i)}))
+                             (let [field (fields i), field-name (result-keys i)]
+                               (conda
+                                ((all (field-nameo field field-name) (known-fieldo field)))
+                                ((unknown-fieldo field-name field)))))
                            (range 0 (count result-keys)))
-                   (everyg (fieldo query) fields)
-                   (sorted-permutationo (fields< query) fields q))))))
+                   (sorted-permutationo (fields-sortedo query) fields q))))))
 
 (defn x []
   (require 'metabase.driver 'metabase.test.data)

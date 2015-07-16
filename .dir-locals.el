@@ -17,6 +17,7 @@
                               (auto-parse 1)
                               (catch-api-exceptions 0)
                               (check 1)
+                              (conda 0)
                               (context 2)
                               (create-database-definition 1)
                               (execute-query 1)

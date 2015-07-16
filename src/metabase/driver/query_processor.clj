@@ -41,8 +41,9 @@
     (try (qp query)
          (catch Throwable e
            (.printStackTrace e)
-           {:status :failed
-            :error  (.getMessage e)}))))
+           {:status     :failed
+            :error      (.getMessage e)
+            :stacktrace (u/filtered-stacktrace e)}))))
 
 
 (defn- pre-expand [qp]
@@ -62,22 +63,30 @@
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))))
 
+(defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
+  (println "AG-TYPE:" ag-type)
+  (and (or (not ag-type)
+           (= ag-type :rows))
+       (not breakout)
+       (not fields)))
 
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
-  (fn [{{:keys [fields breakout source-table], {source-table-id :id} :source-table, {ag-type :aggregation-type} :aggregation} :query, :as query}]
-    (qp (if (or (and ag-type
-                     (not (= ag-type :rows)))
-                breakout
-                fields)  query
-                (-> query
-                    (assoc-in [:query :fields-is-implicit] true)
-                    (assoc-in [:query :fields] (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
-                                                         :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                                                    (map expand/rename-mb-field-keys)
-                                                    (map expand/map->Field)
-                                                    (map #(expand/resolve-table % {source-table-id source-table})))))))))
+  (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
+    (qp (if-not (should-add-implicit-fields? query)
+          query
+          (let [fields (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
+                                 :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
+                            (map expand/rename-mb-field-keys)
+                            (map expand/map->Field)
+                            (map #(expand/resolve-table % {source-table-id source-table})))]
+            (if-not (seq fields)
+              (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
+                  query)
+              (-> query
+                  (assoc-in [:query :fields-is-implicit] true)
+                  (assoc-in [:query :fields] fields))))))))
 
 
 (defn- pre-add-implicit-breakout-order-by

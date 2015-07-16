@@ -42,20 +42,6 @@
                         (sorted-permutationo pred ?more more)
                         (sorted-intoo pred more ?x out))))
 
-(defn fpredo
-  "Succeds if PRED holds true for the fresh values obtained by `(f value fresh-value)`."
-  [pred f v1 v2]
-  (fresh [fresh-v1 fresh-v2]
-    (f v1 fresh-v1)
-    (f v2 fresh-v2)
-    (trace-lvars (str f) fresh-v1 fresh-v2)
-    (pred fresh-v1 fresh-v2)))
-
-(defmacro fpred-conda [[f & values] & clauses]
-  `(conda
-    ~@(for [[pred & body] clauses]
-        `((fpredo ~pred ~f ~@values) ~@body))))
-
 (defna matches-seq-ordero
   "A relation such that V1 is present and comes before V2 in list L."
   [v1 v2 l]
