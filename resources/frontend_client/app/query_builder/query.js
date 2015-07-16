@@ -10,6 +10,10 @@ var Query = {
     },
 
     cleanQuery: function(query) {
+        if (!query) {
+            return query;
+        }
+
         // it's possible the user left some half-done parts of the query on screen when they hit the run button, so find those
         // things now and clear them out so that we have a nice clean set of valid clauses in our query
 
@@ -55,7 +59,7 @@ var Query = {
     },
 
     hasValidBreakout: function(query) {
-        return (query.breakout &&
+        return (query && query.breakout &&
                     query.breakout.length > 0 &&
                     query.breakout[0] !== null);
     },
@@ -90,8 +94,8 @@ var Query = {
     },
 
     hasValidAggregation: function(query) {
-        var aggregation = query.aggregation;
-        if (aggregation !== undefined &&
+        var aggregation = query && query.aggregation;
+        if (aggregation &&
                 ((aggregation.length === 1 && aggregation[0] !== null) ||
                  (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
             return true;
