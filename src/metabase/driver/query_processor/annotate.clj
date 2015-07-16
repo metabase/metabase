@@ -8,7 +8,8 @@
             [metabase.driver.query-processor.expand :as expand]
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.logic :refer :all]))
 
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
@@ -144,52 +145,38 @@
           ((!= k name-2) (when (seq more)
                            (name< more))))) (:result-keys query)))))
 
-(defn- fpredo [pred f v1 v2]
-  "Succeds if `(pred & fresh-values)` succeeds, where fresh values
-   are obtained with calls to F like `(f value fresh-value)`."
-  (fresh [fresh-v1 fresh-v2]
-    (f v1 fresh-v1)
-    (f v2 fresh-v2)
-    #_(trace-lvars (str f) fresh-v1 fresh-v2)
-    (pred fresh-v1 fresh-v2)))
+(defn- clause-position< [query]
+  (let [groupo          (field-groupo query)
+        breakout-fields (flatten-collect-fields (:breakout query))
+        fields-fields   (flatten-collect-fields (:fields query))]
+  (fn [f1 f2]
+    (fresh [field-group]
+      (groupo f1 field-group)
+      (conda
+       ((== field-group (field-groups :breakout)) (matches-seq-ordero f1 f2 breakout-fields))
+       (s#                                        (matches-seq-ordero f1 f2 fields-fields)))))))
 
 (defn- ar-< [x y]
   (ar/< x y))
 
-(defmacro ^:private fpred-conda [[f & values] & clauses]
-  `(conda
-    ~@(for [[pred & body] clauses]
-        `((fpredo ~pred ~f ~@values) ~@body))))
-
 (defn- fields< [query]
-  (let [groupo (field-groupo query)
-        name<  (field-name< query)]
+  (let [groupo      (field-groupo query)
+        name<       (field-name< query)
+        clause-pos< (clause-position< query)]
     (fn [f1 f2]
-      (fpred-conda [groupo f1 f2]
-        (ar-< s#)
-        (==  (fpred-conda [positiono f1 f2]
-               (ar-< s#)
-               (== (fpred-conda [groupo f1 f2]
-                     (ar-< s#) ; TODO - sort by sequential position for fields + breakout
-                     (== (fpred-conda [special-typeo f1 f2]
-                           (ar-< s#)
-                           (== (name< f1 f2))))))))))))
-
-(defn- sorted-intoo [pred l v out]
-  (matche [l]
-    ([[]]           (== out [v]))
-    ([[?x . ?more]] (conda
-                     ((pred v ?x) (== out (lcons v (lcons ?x ?more)))) ; TODO - binary search would be faster :sunglasses:
-                     (s#          (fresh [more]
-                                    (sorted-intoo pred ?more v more)
-                                    (== out (lcons ?x more))))))))
-
-(defn- sorted-permutationo [pred l out]
-  (matche [l]
-    ([[]]           (== out []))
-    ([[?x . ?more]] (fresh [more]
-                      (sorted-permutationo pred ?more more)
-                      (sorted-intoo pred more ?x out)))))
+      (all
+       (trace-lvars "*" f1 f2)
+       (fpred-conda [groupo f1 f2]
+         (ar-< (do (println "SORTED BECAUSE GROUP <") s#))
+         (==  (fpred-conda [positiono f1 f2]
+                (ar-< (do (println "SORTED BECAUSE POSITION <") s#))
+                (== (fresh [group]
+                      (groupo f1 group)
+                      (conda
+                       ((== group (field-groups :other)) (fpred-conda [special-typeo f1 f2]
+                                                           (ar-< (do (println "SORTED BECAUSE SPECIAL TYPE GROUP <") s#))
+                                                           (== (name< f1 f2) (do (println "SORTED BECAUSE NAME <") s#))))
+                       (s#                               (clause-pos< f1 f2) (do (println "SORTED BECAUSE CLAUSE POS <") s#))))))))))))
 
 (defn- resolve+order-cols [{:keys [result-keys], :as query}]
   {:post [(sequential? %) (every? map? %)]}

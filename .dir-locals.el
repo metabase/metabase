@@ -4,6 +4,8 @@
                             (put 'defannotation 'clojure-doc-string-elt 2)
                             (put 'defendpoint 'clojure-doc-string-elt 3)
                             (put 'defhook 'clojure-doc-string-elt 2)
+                            (put 'defna 'clojure-doc-string-elt 2)
+                            (put 'defne 'clojure-doc-string-elt 2)
                             (put 'defsetting 'clojure-doc-string-elt 2)
 
                             ;; Define custom indentation for functions inside metabase.
@@ -34,7 +36,9 @@
                               (let-500 1)
                               (match 1)
                               (match-$ 1)
+                              (matcha 1)
                               (matche 1)
+                              (matchu 1)
                               (macrolet 1)
                               (org-perms-case 1)
                               (pdoseq 1)
