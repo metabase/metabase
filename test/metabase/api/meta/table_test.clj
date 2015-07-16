@@ -129,6 +129,7 @@
                         :organization_id nil
                         :description     nil})
        :name         "CATEGORIES"
+       :display_name "Categories"
        :fields       [(match-$ (Field (id :categories :id))
                         {:description     nil
                          :table_id        (id :categories)
@@ -207,6 +208,7 @@
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
+       :display_name "Users"
        :fields       [(match-$ (sel :one Field :id (id :users :id))
                         {:description     nil
                          :table_id        (id :users)
@@ -318,6 +320,7 @@
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
+       :display_name "Users"
        :fields       [(match-$ (Field (id :users :id))
                         {:description     nil
                          :table_id        (id :users)
@@ -418,13 +421,14 @@
        :name        "USERS"
        :rows        15
        :updated_at  $
+       :entity_name nil
        :display_name "Userz"
        :active      true
        :pk_field    (deref $pk_field)
        :id          $
        :db_id       (db-id)
        :created_at  $})
-  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:entity_name "Userz"
+  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:display_name "Userz"
                                                                                 :entity_type "person"
                                                                                 :description "What a nice table!"})
       ((user->client :crowberto) :get 200 (format "meta/table/%d" (id :users)))))
