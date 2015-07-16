@@ -38,14 +38,13 @@ export default React.createClass({
                 if (dbTables && dbTables.length > 0) {
                     tableCount = dbTables.length + " " + inflection.inflect("table", dbTables.length);
                     tables = dbTables.map((table, index) => {
-                        var tableName = inflection.humanize(table.name);
                         var classes = cx({
                             'p1' : true,
                             'border-bottom': index !== dbTables.length - 1
                         })
                         return (
                             <li key={table.id} className={classes}>
-                                <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{tableName}</a>
+                                <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{table.display_name}</a>
                             </li>
                         );
                     });
