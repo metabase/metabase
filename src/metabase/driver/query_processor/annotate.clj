@@ -84,14 +84,13 @@
                                  (assoc :field-name (if (= ag-type :distinct) "count"
                                                         (name ag-type)))))]
       (fn [out]
-        (== out aggregate-fieldo)))))
+        (== out ag-field)))))
 
 (defn- explicit-fields-fieldo [{:keys [fields-is-implicit fields]}]
-  (if-not fields-is-implicit
-    (constantly fail)
-    (let [fields-fields (flatten-collect-fields fields)]
-      (fn [out]
-        (membero out fields-fields)))))
+  (if fields-is-implicit (constantly fail)
+      (let [fields-fields (flatten-collect-fields fields)]
+        (fn [out]
+          (membero out fields-fields)))))
 
 (defn- fieldo [query]
   (let [fields    (flatten-collect-fields query)
@@ -118,7 +117,7 @@
        ((xfieldso field)  (== out (field-groups :explicit-fields)))
        (s#                (== out (field-groups :other)))))))
 
-(defn- positiono [field out]
+(defn- field-positiono [field out]
   (featurec field {:position out}))
 
 (def ^:const ^:private special-type-groups
@@ -128,7 +127,9 @@
 
 (defn- special-typeo [field out]
   (fresh [special-type]
+    (trace-lvars "!" field out)
     (featurec field {:special-type special-type})
+    (trace-lvars "SPECIAL-TYPEO" special-type)
     (conda
      ((== special-type :id)   (== out (special-type-groups :id)))
      ((== special-type :name) (== out (special-type-groups :name)))
@@ -137,6 +138,7 @@
 (defn- field-name< [query]
   (fn [f1 f2]
     (fresh [name-1 name-2]
+      (trace-lvars "!" name-1 name-2)
       (featurec f1 {:field-name name-1})
       (featurec f2 {:field-name name-2})
       ((fn name< [[k & more]]
@@ -149,12 +151,10 @@
   (let [groupo          (field-groupo query)
         breakout-fields (flatten-collect-fields (:breakout query))
         fields-fields   (flatten-collect-fields (:fields query))]
-  (fn [f1 f2]
-    (fresh [field-group]
-      (groupo f1 field-group)
+    (fn [f1 f2]
       (conda
-       ((== field-group (field-groups :breakout)) (matches-seq-ordero f1 f2 breakout-fields))
-       (s#                                        (matches-seq-ordero f1 f2 fields-fields)))))))
+       ((groupo f1 (field-groups :breakout))        (matches-seq-ordero f1 f2 breakout-fields))
+       ((groupo f1 (field-groups :explicit-fields)) (matches-seq-ordero f1 f2 fields-fields))))))
 
 (defn- ar-< [x y]
   (ar/< x y))
@@ -164,19 +164,18 @@
         name<       (field-name< query)
         clause-pos< (clause-position< query)]
     (fn [f1 f2]
-      (all
-       (trace-lvars "*" f1 f2)
-       (fpred-conda [groupo f1 f2]
-         (ar-< (do (println "SORTED BECAUSE GROUP <") s#))
-         (==  (fpred-conda [positiono f1 f2]
-                (ar-< (do (println "SORTED BECAUSE POSITION <") s#))
-                (== (fresh [group]
-                      (groupo f1 group)
+      (fpred-conda [groupo f1 f2]
+        (ar-< (trace-lvars "GROUP <" f1 f2))
+        (==   (fpred-conda [field-positiono f1 f2]
+                (ar-< (trace-lvars "POSITION <" f1 f2))
+                (==   (fresh [g]
+                        (groupo f1 g)
+                        (trace-lvars "!!!" f1 g))
                       (conda
-                       ((== group (field-groups :other)) (fpred-conda [special-typeo f1 f2]
-                                                           (ar-< (do (println "SORTED BECAUSE SPECIAL TYPE GROUP <") s#))
-                                                           (== (name< f1 f2) (do (println "SORTED BECAUSE NAME <") s#))))
-                       (s#                               (clause-pos< f1 f2) (do (println "SORTED BECAUSE CLAUSE POS <") s#))))))))))))
+                       ((groupo f1 (field-groups :other)) (trace-lvars "FG -> OTHER" f1) (fpred-conda [special-typeo f1 f2]
+                                                                                           (ar-< (trace-lvars "SPECIAL TYPE <" f1 f2))
+                                                                                           (==   (trace-lvars "NAME <" f1 f2) (name< f1 f2))))
+                       ((clause-pos< f1 f2)               (trace-lvars "CLAUSE POS <" f1 f2))))))))))
 
 (defn- resolve+order-cols [{:keys [result-keys], :as query}]
   {:post [(sequential? %) (every? map? %)]}
