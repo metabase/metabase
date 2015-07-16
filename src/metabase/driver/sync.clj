@@ -96,7 +96,7 @@
   [driver active-tables]
 
   ;; make sure table has :display_name
-  (log/debug (color/green "Checking table display names..."))
+  (log/debug (u/format-color 'green "Checking table display names..."))
   (doseq [table active-tables]
     (u/try-apply update-table-display-name! table))
 
@@ -140,7 +140,7 @@
     (when (nil? (:display_name table))
       (upd Table (:id table) :display_name (common/name->human-readable-name (:name table))))
     (catch Throwable e
-      (log/error (color/red (format "Unable to update display_name for %s: %s" (:name table) (.getMessage e)))))))
+      (log/error (u/format-color 'red "Unable to update display_name for %s: %s" (:name table) (.getMessage e))))))
 
 
 ;; ### 1) update-table-row-count!
