@@ -51,7 +51,7 @@ module.exports = {
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
-            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!cssnext-loader') }
+            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?-restructuring&compatibility!cssnext-loader') }
             // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
         ],
         noParse: [
@@ -98,7 +98,8 @@ module.exports = {
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.js',
-            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js'
+            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
+            'humanize':             __dirname + '/node_modules/humanize-plus/public/src/humanize.js'
         }
     },
 
@@ -125,7 +126,8 @@ module.exports = {
         },
         import: {
             path: ['resources/frontend_client/app/css']
-        }
+        },
+        compress: false
     },
 
     // SourceMaps

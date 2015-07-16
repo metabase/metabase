@@ -1,26 +1,17 @@
 (ns metabase.models.common-test
   (:require [expectations :refer :all]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.models.common :refer :all]))
-
-;;; tests for PUBLIC-PERMISSIONS
-
-(expect #{}
-  (public-permissions {:public_perms 0}))
-
-(expect #{:read}
-  (public-permissions {:public_perms 1}))
-
-(expect #{:read :write}
-  (public-permissions {:public_perms 2}))
+            [metabase.db :refer :all]
+            [metabase.models.common :refer [name->human-readable-name]]
+            [metabase.test.data :refer :all]))
 
 
-;;; tests for USER-PERMISSIONS
-
-;; creator can read + write
-(expect #{:read :write}
-  (binding [*current-user-id* 100]
-    (user-permissions {:creator_id 100
-                       :public_perms 0})))
-
-;; TODO - write tests for the rest of the `user-permissions`
+;; testing on `(name->human-readable-name)`
+(expect nil (name->human-readable-name nil))
+(expect nil (name->human-readable-name ""))
+(expect "" (name->human-readable-name "_"))
+(expect "" (name->human-readable-name "-"))
+(expect "Agent Invite Migration" (name->human-readable-name "_agent_invite_migration"))
+(expect "Agent Invite Migration" (name->human-readable-name "-agent-invite-migration"))
+(expect "Foobar" (name->human-readable-name "fooBar"))
+(expect "Foo Bar" (name->human-readable-name "foo-bar"))
+(expect "Foo Bar" (name->human-readable-name "foo_bar"))

@@ -1,7 +1,7 @@
 (ns metabase.api.dash
   "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -18,8 +18,8 @@
   [f]
   {f FilterOptionAllOrMine}
   (-> (case (or f :all)
-        :all  (sel :many Dashboard (where (or {:creator_id *current-user-id*}
-                                              {:public_perms [> common/perms-none]})))
+        :all  (sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
+                                                {:public_perms [> common/perms-none]})))
         :mine (sel :many Dashboard :creator_id *current-user-id*))
       (hydrate :creator)))
 
@@ -36,7 +36,7 @@
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (let-404 [db (-> (sel :one Dashboard :id id)
+  (let-404 [db (-> (Dashboard id)
                    read-check
                    (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
@@ -50,7 +50,7 @@
                                :description description
                                :name name
                                :public_perms public_perms))
-  (sel :one Dashboard :id id))
+  (Dashboard id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."

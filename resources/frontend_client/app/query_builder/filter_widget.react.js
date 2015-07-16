@@ -144,7 +144,9 @@ export default React.createClass({
 
         if (value && value.length > 0) {
             // value casting.  we need the value in the filter to be of the proper type
-            if (this.state.fieldDef.base_type === "IntegerField" ||
+            if (this.state.fieldDef.special_type === "timestamp_milliseconds" ||
+                this.state.fieldDef.special_type === "timestamp_seconds") {
+            } else if (this.state.fieldDef.base_type === "IntegerField" ||
                     this.state.fieldDef.base_type === "SmallIntegerField" ||
                     this.state.fieldDef.base_type === "BigIntegerField") {
                 value = parseInt(value);
@@ -278,7 +280,7 @@ export default React.createClass({
             }
 
             filterValueInputs[i] = (
-                <div className="FilterSection">
+                <div key={i} className="FilterSection">
                     {valueHtml}
                 </div>
             );

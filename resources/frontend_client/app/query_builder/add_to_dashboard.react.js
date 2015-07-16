@@ -47,18 +47,12 @@ export default React.createClass({
         }
     },
     render: function () {
-        // if we don't have a saved card then don't render anything
-        // TODO: we should probably do this in the header
-        if (this.props.card.id === undefined) {
-            return false;
-        }
-
         // TODO: if our card is dirty should we disable this button?
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
                 <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
-                    <Icon name='addtodash' />
+                    <Icon name='addtodash' width="16px" height="16px"/>
                 </a>
                 {this.addToDash()}
             </span>

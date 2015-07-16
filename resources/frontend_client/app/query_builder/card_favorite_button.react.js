@@ -77,13 +77,14 @@ export default React.createClass({
         var iconClasses = cx({
             'mx1': true,
             'transition-color': true,
-            'text-grey-3': !this.state.favorite,
+            'text-grey-4': !this.state.favorite,
+            'text-brand-hover': !this.state.favorite,
             'text-gold': this.state.favorite
         });
 
         return (
             <a className={iconClasses} href="#" onClick={this.toggleFavorite}>
-                <Icon name="star" width="18px" height="18px"></Icon>
+                <Icon name="star" width="16px" height="16px"></Icon>
             </a>
         );
     }

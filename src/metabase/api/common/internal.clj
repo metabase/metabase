@@ -3,9 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [swiss.arrows :refer :all]
-            [metabase.util :as u])
-  (:import com.metabase.corvus.api.ApiException
-           com.metabase.corvus.api.ApiFieldValidationException))
+            [metabase.util :as u]))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
 
@@ -112,7 +110,7 @@
 (defn parse-int [value]
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
-         (throw (ApiException. (int 400) (format "Not a valid integer: '%s'" value))))))
+         (throw (ex-info (format "Not a valid integer: '%s'" value) {:status-code 400})))))
 
 (def ^:dynamic *auto-parse-types*
   "Map of `param-type` -> map with the following keys:
@@ -212,24 +210,35 @@
 
 ;;; ## ROUTE BODY WRAPPERS
 
+(defn wrap-catch-api-exceptions
+  "Run F in a try-catch block, and format any caught exceptions as an API response."
+  [f]
+  (try (f)
+       (catch Throwable e
+         (let [{:keys [status-code], :as info} (ex-data e)
+               other-info                      (dissoc info :status-code)
+               message                         (.getMessage e)]
+           {:status (or status-code 500)
+            :body   (cond
+                      ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
+                      ;; Return those as is
+                      (and status-code
+                           (seq other-info)) other-info
+                      ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the body.
+                      status-code            message
+                      ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging purposes
+                      :else                  (let [stacktrace (->> (map str (.getStackTrace e))
+                                                                   (filter (partial re-find #"metabase")))]
+                                               (log/debug message "\n" (u/pprint-to-str stacktrace))
+                                               (assoc other-info
+                                                      :message message
+                                                      :stacktrace stacktrace)))}))))
+
 (defmacro catch-api-exceptions
   "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."
   [& body]
-  `(try ~@body
-        (catch ApiFieldValidationException e#
-          {:status (.getStatusCode e#)
-           :body {:errors {(keyword (.getFieldName e#)) (.getMessage e#)}}})
-        (catch ApiException e#
-          {:status (.getStatusCode e#)
-           :body (.getMessage e#)})
-        (catch Throwable e#
-          (let [message# (.getMessage e#)
-                stacktrace# (->> (map str (.getStackTrace e#))
-                                 (filter (partial re-find #"metabase")))]
-            (log/debug message# "\n" (with-out-str (clojure.pprint/pprint stacktrace#)))
-            {:status 500
-             :body {:message message#
-                    :stacktrace stacktrace#}}))))
+  `(wrap-catch-api-exceptions
+     (fn [] ~@body)))
 
 (defn wrap-response-if-needed
   "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."

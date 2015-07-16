@@ -9,6 +9,7 @@ import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
@@ -20,6 +21,8 @@ export default React.createClass({
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string,
+        isShowingDataReference: React.PropTypes.bool.isRequired,
+        toggleDataReference: React.PropTypes.func.isRequired,
     },
 
     getInitialState: function() {
@@ -130,6 +133,10 @@ export default React.createClass({
         });
     },
 
+    toggleDataReference: function() {
+        this.props.toggleDataReference();
+    },
+
     permissions: function() {
         var permission;
         if(this.props.card.public_perms) {
@@ -192,7 +199,7 @@ export default React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download'>
+                    <Icon name='download' width="16px" height="16px">
                         <Popover>
                             <span>Download data</span>
                         </Popover>
@@ -204,9 +211,9 @@ export default React.createClass({
         var cloneButton;
         if (this.props.card.id) {
             cloneButton = (
-                <span className="mx1 text-grey-4 text-brand-hover">
-                    <Icon name='clone' width="18px" height="18px" onClick={this.cloneCard}></Icon>
-                </span>
+                <a href="#" className="mx1 text-grey-4 text-brand-hover">
+                    <Icon name='clone' width="16px" height="16px" onClick={this.cloneCard}></Icon>
+                </a>
             );
         }
 
@@ -225,7 +232,29 @@ export default React.createClass({
             cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
         }
 
+        var addToDashButton;
+        if (this.props.card.id != undefined) {
+            addToDashButton = (
+                <AddToDashboard
+                    card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
+                    broadcastEventFn={this.props.broadcastEventFn}
+                />
+            )
+        }
 
+        var dataReferenceButtonClasses = cx({
+            'mx1': true,
+            'transition-color': true,
+            'text-grey-4': !this.props.isShowingDataReference,
+            'text-brand': this.props.isShowingDataReference,
+            'text-brand-hover': !this.state.favorite
+        });
+        var dataReferenceButton = (
+            <a href="#" className={dataReferenceButtonClasses}>
+                <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
+            </a>
+        );
 
         var attribution;
 
@@ -234,7 +263,21 @@ export default React.createClass({
                 <div className="Entity-attribution">
                     Asked by {this.props.card.creator.common_name}
                 </div>
-            )
+            );
+        }
+
+        var hasLeft = !!downloadButton;
+        var hasMiddle = !!(cardFavorite || cloneButton || addToDashButton);
+        var hasRight = !!dataReferenceButton;
+
+        var dividerLeft;
+        if (hasLeft && (hasMiddle || hasRight)) {
+            dividerLeft = <div className="border-right border-dark mx1">&nbsp;</div>
+        }
+
+        var dividerRight;
+        if (hasRight && hasMiddle) {
+            dividerRight = <div className="border-right border-dark mx1">&nbsp;</div>
         }
 
         return (
@@ -249,16 +292,23 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
-                    {cloneButton}
+
+                    <span className="pr3">
+                        {saveButton}
+                        {queryModeToggle}
+                    </span>
+
                     {downloadButton}
+
+                    {dividerLeft}
+
                     {cardFavorite}
-                    <AddToDashboard
-                        card={this.props.card}
-                        dashboardApi={this.props.dashboardApi}
-                        broadcastEventFn={this.props.broadcastEventFn}
-                    />
-                    {saveButton}
-                    {queryModeToggle}
+                    {cloneButton}
+                    {addToDashButton}
+
+                    {dividerRight}
+
+                    {dataReferenceButton}
                 </div>
             </div>
         );

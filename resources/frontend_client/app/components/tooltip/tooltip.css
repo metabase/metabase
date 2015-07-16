@@ -8,6 +8,7 @@
   color: #fff;
   pointer-events: none;
   border-radius: 4px;
+  z-index: 100000;
 }
 
 /* Creates a small triangle extender for the tooltip */

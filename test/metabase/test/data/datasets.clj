@@ -109,7 +109,7 @@
     (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
 
   (table-name->table [this table-name]
-    (sel :one Table :id (table-name->id this (s/upper-case (name table-name)))))
+    (Table (table-name->id this (s/upper-case (name table-name)))))
 
   (field-name->id [this table-name field-name]
     (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
@@ -141,7 +141,7 @@
     (memoized-table-name->id (:id (db this)) (name table-name)))
 
   (table-name->table [this table-name]
-    (sel :one Table :id (table-name->id this (name table-name))))
+    (Table (table-name->id this (name table-name))))
 
   (field-name->id [this table-name field-name]
     (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))

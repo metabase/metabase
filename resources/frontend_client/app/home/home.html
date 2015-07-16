@@ -1,22 +1,24 @@
 <div class="Home full-height" ng-controller="Home">
-    <div class="bg-brand text-white pb4 sm-pb2 lg-pb4">
+    <div class="bg-brand text-white">
         <div class="wrapper">
             <div class="Grid Grid--full large-Grid--1of2 align-center">
                 <div class="Grid-cell" ng-controller="HomeGreeting">
                     <div class="Greeting">
                         <h1 class="text-light">{{greeting}}</h1>
-                        <h2 class="Greeting-subtitle text-light">{{subheading}}</h2>
+                        <h2 class="text-light text-brand-light">{{subheading}}</h2>
                     </div>
                 </div>
-                <div class="Grid-cell flex">
-                    <div class="HomeTabs p1 md-p2 inline-block md-flex-align-right">
-                        <a class="HomeTab rounded p1 md-p2 inline-block mr1 lg-mr2" ng-class="{'HomeTab--active' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
-                        <a class="HomeTab rounded p1 md-p2 inline-block" ng-class="{'HomeTab--active' : currentView === 'questions'}" ng-click="currentView = 'questions'">An existing question</a>
-                    </div>
-                </div>
+
+
             </div>
         </div>
+        <div class="wrapper">
+            <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
+            <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'questions'}" ng-click="currentView = 'questions'">Start from a saved question</a>
+        </div>
+
     </div>
+
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">
 
@@ -96,7 +98,7 @@
                     <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
                         <div class="flex flex-column pr3 lg-pr0">
                             <h2 class="text-dark text-brand-hover break-word">{{table.display_name}}</h2>
-                            {{table.description}}
+                            <h4 class="TableDescription text-grey-4 text-normal mt1">{{table.description}}</h4>
                         </div>
                         <div class="flex flex-align-right align-center">
                             <div class="text-right text-brand text-brand-darken-hover mr2">

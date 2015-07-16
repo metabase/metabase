@@ -397,6 +397,16 @@
   :breakout     [nil]
   :limit        nil})
 
+;; ### FILTER WITH A FALSE VALUE
+;; Check that we're checking for non-nil values, not just logically true ones.
+;; There's only one place (out of 3) that I don't like
+(datasets/expect-with-all-datasets
+ 1
+ (Q run against places-cam-likes
+    return :data :rows first first
+    aggregate count of places
+    filter = liked false))
+
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (qp-expect-with-all-datasets
  {:rows    [[21 "PizzaHacker" 58 37.7441 -122.421 2]
@@ -876,20 +886,18 @@
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; The top 10 cities by number of Tupac sightings
-;; Test that we can breakout on an FK field
-;; (Note how the FK Field is returned in the results)
-;; TODO - this is broken for Postgres! Returns columns in the wrong order
-(datasets/expect-with-dataset :h2
-  [[16 "Arlington"]
-   [15 "Albany"]
-   [14 "Portland"]
-   [13 "Louisville"]
-   [13 "Philadelphia"]
-   [12 "Anchorage"]
-   [12 "Lincoln"]
-   [11 "Houston"]
-   [11 "Irvine"]
-   [11 "Lakeland"]]
+;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
+(datasets/expect-with-datasets #{:h2 :postgres}
+  [["Arlington" 16]
+   ["Albany" 15]
+   ["Portland" 14]
+   ["Louisville" 13]
+   ["Philadelphia" 13]
+   ["Anchorage" 12]
+   ["Lincoln" 12]
+   ["Houston" 11]
+   ["Irvine" 11]
+   ["Lakeland" 11]]
   (Q run with db tupac-sightings
      return :data :rows
      tbl sightings
@@ -904,33 +912,32 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-datasets #{:h2 :postgres}
   60
-  (-> (query-with-temp-db defs/tupac-sightings
-        :source_table &sightings:id
-        :aggregation  ["count"]
-        :filter       ["=" ["fk->" &sightings.category_id:id &categories.id:id] 8])
-      :data :rows first first))
+  (Q run against tupac-sightings
+     return :data :rows first first
+     aggregate count of sightings
+     filter = category_id->categories.id 8))
 
 
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
 (datasets/expect-with-datasets #{:h2 :postgres}
-  [["In the Park" 772]
-   ["Working at a Pet Store" 894]
-   ["At the Airport" 684]
-   ["At a Restaurant" 199]
-   ["Working as a Limo Driver" 33]
-   ["At Starbucks" 902]
-   ["On TV" 927]
-   ["At a Restaurant" 996]
-   ["Wearing a Biggie Shirt" 897]
-   ["In the Expa Office" 499]]
-  (->> (query-with-temp-db defs/tupac-sightings
-         :source_table &sightings:id
-         :fields       [&sightings.id:id ["fk->" &sightings.category_id:id &categories.name:id]]
-         :order_by     [[&sightings.timestamp:id "descending"]]
-         :limit        10)
-       :data :rows))
+  [[772 "In the Park"]
+   [894 "Working at a Pet Store"]
+   [684 "At the Airport"]
+   [199 "At a Restaurant"]
+   [33 "Working as a Limo Driver"]
+   [902 "At Starbucks"]
+   [927 "On TV"]
+   [996 "At a Restaurant"]
+   [897 "Wearing a Biggie Shirt"]
+   [499 "In the Expa Office"]]
+  (Q run against tupac-sightings
+     return :data :rows
+     of sightings
+     fields id category_id->categories.name
+     order timestamp-
+     lim 10))
 
 
 ;; 1. Check that we can order by Foreign Keys
@@ -950,13 +957,11 @@
    [2 11 524]
    [2 13 77]
    [2 13 202]]
-  (->> (query-with-temp-db defs/tupac-sightings
-         :source_table &sightings:id
-         :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
-                        [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
-                        [&sightings.id:id "ascending"]]
-         :limit        10)
-       :data :rows (map butlast) (map reverse))) ; drop timestamps. reverse ordering to make the results columns order match order_by
+  (Q run against tupac-sightings
+     return :data :rows (map butlast) (map reverse) ; drop timestamps. reverse ordering to make the results columns order match order_by
+     of sightings
+     order city_id->cities.name+ category_id->categories.name- id+
+     lim 10))
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
@@ -969,3 +974,131 @@
                    [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
                    [&sightings.id:id "ascending"]]
     :limit        10))
+
+
+;; +------------------------------------------------------------------------------------------------------------------------+
+;; |                                                MONGO NESTED-FIELD ACCESS                                               |
+;; +------------------------------------------------------------------------------------------------------------------------+
+
+;;; Nested Field in FILTER
+;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
+(datasets/expect-when-testing-dataset :mongo
+    [[8   "Kyle's Low-Carb Grill"]
+     [67  "Kyle's Low-Carb Grill"]
+     [80  "Kyle's Low-Carb Grill"]
+     [83  "Kyle's Low-Carb Grill"]
+     [295 "Kyle's Low-Carb Grill"]
+     [342 "Kyle's Low-Carb Grill"]
+     [417 "Kyle's Low-Carb Grill"]
+     [426 "Kyle's Low-Carb Grill"]
+     [470 "Kyle's Low-Carb Grill"]]
+  (Q run against geographical-tips using mongo
+     return :data :rows (map (fn [[id _ _  {venue-name :name}]] [id venue-name]))
+     aggregate rows of tips
+     filter = venue...name "Kyle's Low-Carb Grill"
+     order id
+     lim 10))
+
+;;; Nested Field in ORDER
+;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
+(datasets/expect-when-testing-dataset :mongo
+    [[446
+      {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
+      {:large  "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/large.jpg",
+       :medium "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/med.jpg",
+       :small  "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/small.jpg"}
+      {:phone "415-320-9123", :name "Cam's Mexican Gastro Pub", :categories ["Mexican" "Gastro Pub"], :id "bb958ac5-758e-4f42-b984-6b0e13f25194"}]
+     [230
+      {:mentions ["@haight_european_grill"], :tags ["#european" "#grill"], :service "twitter", :username "kyle"}
+      {:large  "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/large.jpg",
+       :medium "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/med.jpg",
+       :small  "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/small.jpg"}
+      {:phone "415-191-2778", :name "Haight European Grill", :categories ["European" "Grill"], :id "7e6281f7-5b17-4056-ada0-85453247bc8f"}]
+     [319
+      {:mentions ["@haight_soul_food_pop_up_food_stand"], :tags ["#soul" "#food" "#pop-up" "#food" "#stand"], :service "twitter", :username "kyle"}
+      {:large  "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/large.jpg",
+       :medium "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/med.jpg",
+       :small  "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/small.jpg"}
+      {:phone "415-741-8726", :name "Haight Soul Food Pop-Up Food Stand", :categories ["Soul Food" "Pop-Up Food Stand"], :id "9735184b-1299-410f-a98e-10d9c548af42"}]
+     [224
+      {:mentions ["@pacific_heights_free_range_eatery"], :tags ["#free-range" "#eatery"], :service "twitter", :username "kyle"}
+      {:large  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/large.jpg",
+       :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
+       :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
+      {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
+  (Q run against geographical-tips using mongo
+     return :data :rows
+     aggregate rows of tips
+     filter and = source...service "twitter"
+                = source...username "kyle"
+     order venue...name))
+
+;; Nested Field in AGGREGATION
+;; Let's see how many *distinct* venue names are mentioned
+(datasets/expect-when-testing-dataset :mongo 99
+  (Q run against geographical-tips using mongo
+     return :data :rows first first
+     aggregate distinct venue...name of tips))
+
+;; Now let's just get the regular count
+(datasets/expect-when-testing-dataset :mongo 500
+  (Q run against geographical-tips using mongo
+     return :data :rows first first
+     aggregate count venue...name of tips))
+
+;;; Nested Field in BREAKOUT
+;; Let's see how many tips we have by source.service
+(datasets/expect-when-testing-dataset :mongo
+    {:rows    [["facebook" 107]
+               ["flare" 105]
+               ["foursquare" 100]
+               ["twitter" 98]
+               ["yelp" 90]]
+     :columns ["source.service" "count"]}
+  (Q run against geographical-tips using mongo
+     return :data (#(dissoc % :cols))
+     aggregate count of tips
+     breakout source...service))
+
+;;; Nested Field in FIELDS
+;; Return the first 10 tips with just tip.venue.name
+(datasets/expect-when-testing-dataset :mongo
+    [[1  {:name "Lucky's Gluten-Free Café"}]
+     [2  {:name "Joe's Homestyle Eatery"}]
+     [3  {:name "Lower Pac Heights Cage-Free Coffee House"}]
+     [4  {:name "Oakland European Liquor Store"}]
+     [5  {:name "Tenderloin Gormet Restaurant"}]
+     [6  {:name "Marina Modern Sushi"}]
+     [7  {:name "Sunset Homestyle Grill"}]
+     [8  {:name "Kyle's Low-Carb Grill"}]
+     [9  {:name "Mission Homestyle Churros"}]
+     [10 {:name "Sameer's Pizza Liquor Store"}]]
+  (Q run against geographical-tips using mongo
+     return :data :rows
+     aggregate rows of tips
+     order id
+     fields venue...name
+     lim 10))
+
+
+;;; Nested Field w/ ordering by aggregation
+(datasets/expect-when-testing-dataset :mongo
+    [["jane" 4]
+     ["kyle" 5]
+     ["tupac" 5]
+     ["jessica" 6]
+     ["bob" 7]
+     ["lucky_pigeon" 7]
+     ["joe" 8]
+     ["mandy" 8]
+     ["amy" 9]
+     ["biggie" 9]
+     ["sameer" 9]
+     ["cam_saul" 10]
+     ["rasta_toucan" 13]
+     [nil 400]]
+  (Q run against geographical-tips using mongo
+     return :data :rows
+     aggregate count of tips
+     breakout source...mayor
+     order ag.0))

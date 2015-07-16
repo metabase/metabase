@@ -37,3 +37,8 @@
 
 ;; Places, times, and circumstances where Tupac was sighted
 (def-database-definition-edn tupac-sightings)
+
+(def-database-definition-edn geographical-tips)
+
+;; A very tiny dataset with a list of places and a booleans
+(def-database-definition-edn places-cam-likes)

@@ -1,7 +1,6 @@
 (ns metabase.driver.generic-sql.util
   "Shared functions for our generic-sql query processor."
-  (:require [clojure.core.memoize :as memo]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as korma]
@@ -9,24 +8,30 @@
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]))
 
-;; Cache the Korma DB connections for a given Database for 60 seconds instead of creating new ones every single time
-(defn- db->connection-spec [database]
+(defn- db->connection-spec [{{:keys [short-lived?]} :details, :as database}]
   (let [driver                              (driver/engine->driver (:engine database))
         database->connection-details        (:database->connection-details driver)
         connection-details->connection-spec (:connection-details->connection-spec driver)]
-    (-> database database->connection-details connection-details->connection-spec)))
+    (merge (-> database database->connection-details connection-details->connection-spec)
+           ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
+           ;; TODO - what will we do once we have CLOBS in temp DBs?
+           (when-not short-lived?
+             {:make-pool? true}))))
 
-(def ^{:arglists '([database])} db->korma-db
+(def ^{:arglists '([database])}
+  db->korma-db
   "Return a Korma database definition for DATABASE.
-   This does a little bit of smart caching (for 60 seconds) to avoid creating new connections when unneeded."
-  (let [-db->korma-db (memo/ttl (fn [database]
-                                  (log/debug (color/red "Creating a new DB connection..."))
-                                  (assoc (kdb/create-db (db->connection-spec database))
-                                         :make-pool? true))
-                                :ttl/threshold (* 60 1000))]
-    ;; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
-    (fn [database]
-      (-db->korma-db (select-keys database [:engine :details])))))
+   Since Korma/C3PO seems to be bad about cleaning up its connection pools, this function is
+   memoized and will return an existing connection pool on subsequent calls."
+  (let [db->korma-db          (fn [database]
+                                (log/debug (color/red "Creating a new DB connection..."))
+                                (kdb/create-db (db->connection-spec database)))
+        memoized-db->korma-db (memoize db->korma-db)]
+    (fn [{{:keys [short-lived?]} :details, :as database}]
+      ;; Use un-memoized version of function for so-called "short-lived" databases (i.e. temporary ones that we won't create a connection pool for)
+      ((if short-lived?
+         db->korma-db
+         memoized-db->korma-db) (select-keys database [:engine :details]))))) ; only :engine and :details are needed for driver/connection so just pass those so memoization works as expected
 
 (def ^:dynamic ^java.sql.DatabaseMetaData *jdbc-metadata*
   "JDBC metadata object for a database. This is set by `with-jdbc-metadata`."
@@ -67,6 +72,7 @@
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
+  {:arglists '([table] [db table])}
   ([{db-delay :db, :as table}]
    {:pre [(delay? db-delay)]}
    (korma-entity @db-delay table))

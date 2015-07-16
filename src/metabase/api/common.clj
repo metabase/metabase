@@ -3,15 +3,14 @@
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
-            [korma.core :refer :all :exclude [update]]
-            [medley.core :refer :all]
+            [korma.core :as k]
+            [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
             [metabase.db.internal :refer [entity->korma]]
+            [metabase.models.interface :as models]
             [metabase.util :as u]
-            [metabase.util.password :as password])
-  (:import com.metabase.corvus.api.ApiException
-           com.metabase.corvus.api.ApiFieldValidationException))
+            [metabase.util.password :as password]))
 
 (declare check-403
          check-404)
@@ -29,22 +28,11 @@
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
 
-;;; ## GENERAL HELPER FNS / MACROS
-
-;; TODO - move this to something like `metabase.util.debug`
-(defmacro with-current-user
-  "Primarily for debugging purposes. Evaulates BODY as if `*current-user*` was the User with USER-ID."
-  [user-id & body]
-  `(binding [*current-user-id* ~user-id
-             *current-user* (delay (sel :one 'metabase.models.user/User :id ~user-id))]
-     ~@body))
-
-
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
 
 (defn check
   "Assertion mechanism for use inside API functions.
-   Checks that TEST is true, or throws an `ApiException` with STATUS-CODE and MESSAGE.
+   Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
 
@@ -65,7 +53,7 @@
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not tst
-       (throw (ApiException. (int code) message)))
+       (throw (ex-info message {:status-code code})))
      (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
@@ -80,11 +68,18 @@
   (check-403 (:is_superuser @*current-user*)))
 
 
-;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw ApiExceptions w/ relevant error messages.
+;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.
+
+(defn- invalid-param-exception
+  "Create an `ExceptionInfo` that contains information about an invalid API params in the expected format."
+  [field-name message]
+  (ex-info (format "Invalid field: %s" field-name)
+           {:status-code 400
+            :errors      {(keyword field-name) message}}))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
-   Checks that TEST is true, or throws an `ApiFieldValidationException` with FIELD-NAME and MESSAGE.
+   Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
 
@@ -93,7 +88,7 @@
       (checkp test field-name message)"
   ([tst field-name message]
    (when-not tst
-     (throw (ApiFieldValidationException. (format "%s" field-name) message)))))
+     (throw (invalid-param-exception (str field-name) message)))))
 
 (defmacro checkp-with
   "Check (TEST-FN VALUE), or throw an exception with STATUS-CODE (default is 400).
@@ -104,9 +99,9 @@
     (checkp-with (partial? contains? {:all :mine}) f :all)
       -> :all
     (checkp-with (partial? contains {:all :mine}) f :bad)
-      -> ApiException: Invalid value ':bad' for 'f': test failed: (partial? contains? {:all :mine}
+      -> ExceptionInfo: Invalid value ':bad' for 'f': test failed: (partial? contains? {:all :mine}
 
-   You may optionally pass a MESSAGE to append to the ApiException upon failure;
+   You may optionally pass a MESSAGE to append to the exception upon failure;
    this will be used in place of the \"test failed: ...\" message.
 
    MESSAGE may be either a string or a pair like `[status-code message]`."
@@ -239,7 +234,7 @@
       \"Param must be non-nil.\"
       [symb value]
       (when-not value
-        (throw (ApiException. 400 (format \"'%s' is a required param.\" symb))))
+        (throw (ex-info (format \"'%s' is a required param.\" symb) {:status-code 400})))
       value)
 
    SYMBOL-BINDING is bound to the *symbol* of the annotated API arg (e.g., `'org`).
@@ -257,7 +252,7 @@
    This can be used to test the annotation:
 
     (annotation:Required org 100) -> 100
-    (annotation:Required org nil) -> ApiException: 'org' is a required param.
+    (annotation:Required org nil) -> exception: 'org' is a required param.
 
    You can also use it inside the body of another annotation:
 
@@ -294,17 +289,16 @@
 (defannotation Required
   "Param may not be `nil`."
   [symb value]
-  (when-not value
-    (throw (ApiFieldValidationException. (name symb) "field is a required param.")))
-  value)
+  (or value
+      (throw (invalid-param-exception (name symb) "field is a required param."))))
 
 (defannotation Date
   "Parse param string as an [ISO 8601 date](http://en.wikipedia.org/wiki/ISO_8601), e.g.
    `2015-03-24T06:57:23+00:00`"
   [symb value :nillable]
   (try (u/parse-iso8601 value)
-          (catch Throwable _
-            (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid date." value))))))
+       (catch Throwable _
+         (throw (invalid-param-exception (name symb) (format "'%s' is not a valid date." value))))))
 
 (defannotation String->Integer
   "Param is converted from a string to an integer."
@@ -327,7 +321,7 @@
     (= value "true")  true
     (= value "false") false
     (nil? value)      nil
-    :else             (throw (ApiFieldValidationException. (name symb) (format "'%s' is not a valid boolean." value)))))
+    :else             (throw (invalid-param-exception (name symb) (format "'%s' is not a valid boolean." value)))))
 
 (defannotation Integer
   "Param must be an integer (this does *not* cast the param)."
@@ -337,7 +331,7 @@
 (defannotation Boolean
   "Param must be a boolean (this does *not* cast the param)."
   [symb value :nillable]
-  (checkp-with boolean? symb value "value must be a boolean."))
+  (checkp-with m/boolean? symb value "value must be a boolean."))
 
 (defannotation Dict
   "Param must be a dictionary (this does *not* cast the param)."
@@ -386,7 +380,8 @@
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
    -  sequentially applies specified annotation functions on args to validate or cast them.
-   -  executes BODY inside a `try-catch` block that handles `ApiExceptions`
+   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo` and includes a `:status-code`,
+      that code will be returned
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form.
@@ -416,49 +411,31 @@
    `defendpoint` in the current namespace."
   [& additional-routes]
   (let [api-routes (->> (ns-publics *ns*)
-                        (filter-vals #(:is-endpoint? (meta %)))
+                        (m/filter-vals #(:is-endpoint? (meta %)))
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 
 
-;; ## NEW PERMISSIONS CHECKING MACROS
-;; Since checking `@can_read`/`@can_write` is such a common pattern, these
-;; macros eliminate a bit of the redundancy around doing so.
-;; They support two forms:
-;;
-;;     (read-check my-table) ; checks @(:can_read my-table)
-;;     (read-check Table 1)  ; checks @(:can_read (sel :one Table :id 1))
-;;
-;; *  The first form is useful when you've already fetched an object (especially in threading forms such as `->404`).
-;; *  The second form takes care of fetching the object for you and is useful in cases where you won't need the object afterward
-;;    or want to combine the `sel` and permissions check statements into a single form.
-;;
-;; Both forms will throw a 404 if the object doesn't exist (saving you one more check!) and return the selected object.
-
-(defmacro read-check
-  "Checks that `@can_read` is true for this object."
+(defn read-check
+  "Check whether we can read an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_read] :as obj#} ~obj]
-      (check-403 @~'can_read)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-read? obj))
+   obj)
   ([entity id]
-   (cond
-     ;; simple optimization : since @can-read is always true for a Database
-     ;; the read-check macro will just resolve to true in this simple case
-     ;; use `name` so we can match 'Database or 'metabase.models.database/Database
-     ;;
-     ;; TODO - it would be nice to generalize the read-checking pattern, and make it
-     ;; a separate multimethod or protocol so other models besides DB can write optimized
-     ;; implementations. Currently, we always fetch an *entire* object to do read checking,
-     ;; which is wasteful.
-     (= (name entity) "Database") `(comment "@(:can-read database) is always true.") ; put some non-constant value here so Eastwood doesn't complain about unused return values
-     :else                        `(read-check (sel :one ~entity :id ~id)))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity)
+       (read-check (entity id)))))
 
-(defmacro write-check
-  "Checks that `@can_write` is true for this object."
+(defn write-check
+  "Check whether we can write an existing OBJ, or ENTITY with ID."
   ([obj]
-   `(let-404 [{:keys [~'can_write] :as obj#} ~obj]
-      (check-403 @~'can_write)
-      obj#))
+   (check-404 obj)
+   (check-403 (models/can-write? obj))
+   obj)
   ([entity id]
-   `(write-check (sel :one ~entity :id ~id))))
+   {:pre [(models/metabase-entity? entity)
+          (integer? id)]}
+   (if (satisfies? models/ICanReadWrite entity) (models/can-write? entity id)
+       (write-check (entity id)))))

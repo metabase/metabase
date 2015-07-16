@@ -4,8 +4,7 @@
             (metabase [db :refer :all]
                       [http-client :as http])
             (metabase.models [user :refer [User]])
-            [metabase.test.util :refer [random-name]])
-  (:import com.metabase.corvus.api.ApiException))
+            [metabase.test.util :refer [random-name]]))
 
 (declare fetch-or-create-user)
 
@@ -52,9 +51,9 @@
   [& {:as kwargs}]
   (let [first-name (random-name)
         defaults {:first_name first-name
-                  :last_name (random-name)
-                  :email (.toLowerCase ^String (str first-name "@metabase.com"))
-                  :password first-name}]
+                  :last_name  (random-name)
+                  :email      (.toLowerCase ^String (str first-name "@metabase.com"))
+                  :password   first-name}]
     (->> (merge defaults kwargs)
          (m/mapply ins User))))
 
@@ -112,11 +111,12 @@
       (fn call-client [& args]
         (try
           (apply http/client (user->token username) args)
-          (catch ApiException e
-            (if-not (= (.getStatusCode e) 401) (throw e)
-                    ;; If we got a 401 unauthenticated clear the tokens cache + recur
-                    (do (reset! tokens {})
-                        (apply call-client args)))))))))
+          (catch Throwable e
+            (let [{:keys [status-code]} (ex-data e)]
+              (if-not (= status-code 401) (throw e)
+                      ;; If we got a 401 unauthenticated clear the tokens cache + recur
+                      (do (reset! tokens {})
+                          (apply call-client args))))))))))
 
 
 ;; ## Implementation

@@ -29,7 +29,7 @@
 (defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (->404 (sel :one Field :id id)
+  (->404 (Field id)
          read-check
          (hydrate [:table :db])))
 
@@ -40,17 +40,17 @@
    special_type FieldSpecialType
    display_name NonEmptyString}
   (write-check Field id)
-  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description, special_type
-                                            :special_type special_type                                               ; and display_name but field_type and preview_display
-                                            :display_name display_name}                                              ; must be replaced with new non-nil values
-                                           (when field_type                   {:field_type field_type})
-                                           (when (not (nil? preview_display)) {:preview_display preview_display}))))
-  (sel :one Field :id id))
+  (check-500 (m/mapply upd Field id (merge {:description  description                                              ; you're allowed to unset description and special_type
+                                            :special_type special_type
+                                            :display_name display_name}                                            ; but field_type and preview_display must be replaced
+                                           (when field_type                 {:field_type field_type})              ; with new non-nil values
+                                           (when-not (nil? preview_display) {:preview_display preview_display}))))
+  (Field id))
 
 (defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (read-check field)
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
@@ -81,7 +81,7 @@
   "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `BooleanField`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (read-check field)
     (if-not (field-should-have-field-values? field)
       {:values {} :human_readable_values {}}
@@ -93,7 +93,7 @@
    or whose base type is `BooleanField`."
   [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (write-check field)
     (check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])

@@ -1,7 +1,7 @@
 (ns metabase.api.meta.table
   "/api/meta/table endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
@@ -19,7 +19,7 @@
 (defendpoint GET "/"
   "Get all `Tables`."
   []
-  (-> (sel :many Table :active true (order :name :ASC))
+  (-> (sel :many Table :active true (k/order :name :ASC))
       (hydrate :db)
       ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
       (#(map (fn [table]
@@ -30,7 +30,7 @@
 (defendpoint GET "/:id"
   "Get `Table` with ID."
   [id]
-  (->404 (sel :one Table :id id)
+  (->404 (Table id)
          read-check
          (hydrate :db :pk_field)))
 
@@ -44,13 +44,13 @@
                                :display_name display_name
                                :entity_type  entity_type
                                :description  description))
-  (sel :one Table :id id))
+  (Table id))
 
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (order :name :ASC)))
+  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -60,7 +60,7 @@
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields String->Boolean}
-  (->404 (sel :one Table :id id)
+  (->404 (Table id)
          read-check
          (hydrate :db [:fields :target] :field_values)
          (update-in [:fields] (if include_sensitive_fields
@@ -82,7 +82,7 @@
 (defendpoint POST "/:id/sync"
   "Re-sync the metadata for this `Table`."
   [id]
-  (let-404 [table (sel :one Table :id id)]
+  (let-404 [table (Table id)]
     (write-check table)
     ;; run the task asynchronously
     (future (driver/sync-table! table)))
@@ -106,8 +106,5 @@
             (upd Field id :position index)))
         new_order))
     {:result "success"}))
-
-;; TODO - GET /:id/segments
-;; TODO - POST /:id/segments
 
 (define-routes)

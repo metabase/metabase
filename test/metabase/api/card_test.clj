@@ -1,7 +1,6 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
                              [common :as common])
@@ -122,7 +121,7 @@
 (expect-eval-actual-first nil
   (let [{:keys [id]} (post-card (random-name))]
     ((user->client :rasta) :delete 204 (format "card/%d" id))
-    (sel :one Card :id id)))
+    (Card id)))
 
 
 ;; # CARD FAVORITE STUFF

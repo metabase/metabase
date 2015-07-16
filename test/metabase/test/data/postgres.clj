@@ -23,9 +23,10 @@
    :TextField       "TEXT"
    :TimeField       "TIME"})
 
-(defn- pg-connection-details [^DatabaseDefinition database-definition]
-  (merge {:host "localhost"
-          :port 5432}
+(defn- pg-connection-details [^DatabaseDefinition {:keys [short-lived?]}]
+  (merge {:host         "localhost"
+          :port         5432
+          :short-lived? short-lived?}
          ;; HACK
          (when (env :circleci)
            {:user "ubuntu"})))
@@ -47,7 +48,7 @@
 (defrecord PostgresDatasetLoader []
   generic/IGenericSQLDatasetLoader
   (generic/execute-sql! [_ database-definition raw-sql]
-    (log/info raw-sql)
+    (log/debug raw-sql)
     (execute! :db database-definition raw-sql))
 
   (generic/korma-entity [_ database-definition table-definition]

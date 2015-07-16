@@ -3,6 +3,7 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str]])
             [medley.core :refer [filter-vals map-vals]]
+            [metabase.models.interface :refer [api-serialize]]
             [metabase.util :as util]))
 
 (declare -format-response)
@@ -45,11 +46,14 @@
   [m]
   (filter-vals #(not (or (delay? %)
                          (fn? %)))
-               m))
+               ;; Convert typed maps such as metabase.models.database/DatabaseInstance to plain maps because empty, which is used internally by filter-vals,
+               ;; will fail otherwise
+               (into {} m)))
 
 (defn- -format-response [obj]
   (cond
-    (map? obj)  (->> (remove-fns-and-delays obj)   ; recurse over all vals in the map
-                     (map-vals -format-response))
-    (coll? obj) (map -format-response obj)        ; recurse over all items in the collection
+    (map? obj)  (->> (api-serialize obj)
+                     remove-fns-and-delays
+                     (map-vals -format-response)) ; recurse over all vals in the map
+    (coll? obj) (map -format-response obj) ; recurse over all items in the collection
     :else       obj))
