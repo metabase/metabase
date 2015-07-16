@@ -41,7 +41,7 @@
        :description         (u/jdbc-clob->str description)
        :pk_field            (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"})))))))
 
-  (defmethod pre-insert Table [_ table]
+  (pre-insert [_ table]
     (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
       (merge defaults table)))
 
