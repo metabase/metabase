@@ -117,7 +117,9 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
-            cardJson = JSON.stringify(card);
+            savedCardSerialized = null;
+
+        savedCardSerialized = serializeCardForUrl(card);
 
 
         // =====  REACT component models
@@ -166,7 +168,9 @@ CardControllers.controller('CardDetail', [
                     setCard(card, { setDirty: true, replaceState: false })
                 });
             },
-            toggleDataReference: toggleDataReference
+            toggleDataReferenceFn: toggleDataReference,
+            cardIsNewFn: cardIsNew,
+            cardIsDirtyFn: cardIsDirty
         };
 
         var editorModel = {
@@ -719,7 +723,7 @@ CardControllers.controller('CardDetail', [
                 card.dataset_query.query.source_table = parseInt($routeParams.table);
             }
 
-            cardJson = JSON.stringify(card);
+            savedCardSerialized = serializeCardForUrl(card);
 
             return $q.resolve(card);
         }
@@ -754,10 +758,10 @@ CardControllers.controller('CardDetail', [
             card = result;
 
             if (options.resetDirty) {
-                cardJson = JSON.stringify(card);
+                savedCardSerialized = serializeCardForUrl(card);
             }
             if (options.setDirty) {
-                cardJson = null;
+                savedCardSerialized = null;
             }
 
             updateUrl(options.replaceState);
@@ -793,8 +797,14 @@ CardControllers.controller('CardDetail', [
             });
         }
 
+        function cardIsNew() {
+            return !card.id;
+        }
+
         function cardIsDirty() {
-            return JSON.stringify(card) !== cardJson;
+            var newCardSerialized = serializeCardForUrl(card);
+
+            return newCardSerialized !== savedCardSerialized;
         }
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
@@ -873,19 +883,6 @@ CardControllers.controller('CardDetail', [
                 });
             }
         });
-
-        // $scope.$on('$locationChangeStart', function (event) {
-        //     // only ask for a confirmation on unsaved changes if the question is
-        //     // saved already, indicated by a cardId
-        //     if($routeParams.cardId) {
-        //         if (cardJson !== JSON.stringify(card) && queryResult !== null) {
-        //             if (!confirm('You have unsaved changes!  Click OK to discard changes and leave the page.')) {
-        //                 event.preventDefault();
-        //                 return;
-        //             }
-        //         }
-        //     }
-        // });
 
         // TODO: while we wait for the databases list we should put something on screen
         // grab our database list, then handle the rest

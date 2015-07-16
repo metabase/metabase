@@ -73,15 +73,18 @@ export default React.createClass({
         card.description = this.refs.description.getDOMNode().value.trim();
         card.public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
 
-        var component = this;
-        this.props.saveFn(card).then(function(success) {
-            component.setState({
-                modalOpen: false
-            });
-        }, function(error) {
-            component.setState({
-                errors: error
-            });
+        this.props.saveFn(card).then((success) => {
+            if (this.isMounted()) {
+                this.setState({
+                    modalOpen: false
+                });
+            }
+        }, (error) => {
+            if (this.isMounted()) {
+                this.setState({
+                    errors: error
+                });
+            }
         });
     },
 
