@@ -318,7 +318,7 @@
         ;; Build a map of Destination Field IDs -> Destination Fields
         dest-field-id->field    (when (and (seq fk-field-ids)
                                            (seq (vals field-id->dest-field-id)))
-                                  (sel :many :id->fields [Field :id :name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
 
     ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
     (for [{field-id :id, :as field} fields]
@@ -345,7 +345,7 @@
 
             ;; Otherwise if this Query included any joins then attempt to lookup a matching Field from one of the join tables
             (and (seq join-table-ids)
-                 (sel :one :fields [Field :id :table_id :name :description :base_type :special_type], :name (name col-kw), :table_id [in join-table-ids]))
+                 (sel :one :fields [Field :id :table_id :name :display_name :description :base_type :special_type], :name (name col-kw), :table_id [in join-table-ids]))
 
             ;; Otherwise if this is a nested Field recursively find the appropriate info
             (let [name-components (s/split (name col-kw) #"\.")]
@@ -364,6 +364,7 @@
             ;; Otherwise it is an aggregation column like :sum, build a map of information to return
             (merge (assert ag-type)
                    {:name        (name col-kw)
+                    :display_name (name col-kw)
                     :id          nil
                     :table_id    nil
                     :description nil}
@@ -399,7 +400,7 @@
           _                              (when-not *disable-qp-logging*
                                            (log/debug (u/format-color 'magenta "Driver QP returned results with keys: %s." (vec (keys (first results))))))
           join-table-ids                 (set (map :table-id join-tables))
-          fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
+          fields                         (field/unflatten-nested-fields (sel :many :fields [Field :id :table_id :name :display_name :description :base_type :special_type :parent_id], :table_id source-table-id, :active true))
           ordered-col-kws                (order-cols query results fields)]
 
       {:rows    (for [row results]

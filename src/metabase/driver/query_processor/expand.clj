@@ -127,6 +127,7 @@
   [field]
   (set/rename-keys field {:id           :field-id
                           :name         :field-name
+                          :display_name :field-display-name
                           :special_type :special-type
                           :base_type    :base-type
                           :table_id     :table-id
@@ -141,7 +142,7 @@
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id], :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]
@@ -231,6 +232,7 @@
 ;; Field is the expansion of a Field ID in the standard QL
 (defrecord Field [^Integer field-id
                   ^String  field-name
+                  ^String  field-display-name
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer table-id
