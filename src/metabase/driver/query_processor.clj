@@ -64,7 +64,6 @@
         (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))))
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
-  (println "AG-TYPE:" ag-type)
   (and (or (not ag-type)
            (= ag-type :rows))
        (not breakout)

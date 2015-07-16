@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [==])
   (:require [clojure.core.logic :refer :all]
             [clojure.core.logic.arithmetic :as ar]
+            [clojure.tools.macro :refer [macrolet]]
             (clojure [set :as set]
                      [string :as s])
             [metabase.db :refer [sel]]
@@ -164,65 +165,39 @@
        ((groupo f1 (field-groups :breakout))        (matches-seq-ordero f1 f2 breakout-fields))
        ((groupo f1 (field-groups :explicit-fields)) (matches-seq-ordero f1 f2 fields-fields))))))
 
-;; TODO - inline these ?
-(defn- f< [f]
-  (fn [f1 f2]
-    (fresh [v1 v2]
-      (f f1 v1)
-      (f f2 v2)
-      (ar/< v1 v2))))
-
-(defn- f== [f]
-  (fn [f1 f2]
-    (fresh [v]
-      (f f1 v)
-      (f f2 v))))
-
 (defn- fields-sortedo [query]
-  (let [groupo      (field-groupo query)
-        name<       (field-name< query)
-        clause-pos< (clause-position< query)]
-    (fn [f1 f2]
-      (conda
-        (((f< groupo) f1 f2) s#)
-        (((f== groupo) f1 f2)
-         (conda
-           (((f< field-positiono) f1 f2) s#)
-           (((f== field-positiono) f1 f2)
+  (macrolet [(<-or-== [f & ==-clauses] `(fresh [v1# v2#]
+                                          (~f ~'f1 v1#)
+                                          (~f ~'f2 v2#)
+                                          (conda
+                                            ((== v1# v2#) ~@==-clauses)
+                                            ((ar/< v1# v2#) ~'s#))))]
+    (let [groupo      (field-groupo query)
+          name<       (field-name< query)
+          clause-pos< (clause-position< query)]
+      (fn [f1 f2]
+        (<-or-== groupo
+          (<-or-== field-positiono
             (conda
-              ((groupo f1 (field-groups :other)) (conda
-                                                   (((f< special-typeo) f1 f2) s#)
-                                                   (((f== special-typeo) f1 f2) (name< f1 f2))))
-              ((clause-pos< f1 f2))))))))))
+              ((groupo f1 (field-groups :other)) (<-or-== special-typeo
+                                                   (name< f1 f2)))
+              ((clause-pos< f1 f2)))))))))
 
 (defn- resolve+order-cols [{:keys [result-keys], :as query}]
   {:pre  [(seq result-keys)]
-   ;; :post [(sequential? %) (every? map? %)]
-   }
-  (println result-keys)
+   :post [(sequential? %) (every? map? %)]}
   (time (first (let [fields       (vec (lvars (count result-keys)))
                      known-fieldo (fieldo query)]
                  (run 1 [q]
                    ;; Make a new constraint for every lvar FIELDS[i] to give it the name of RESULT-KEYS[i]
-                   (everyg (fn [i]
-                             (let [field (fields i), field-name (result-keys i)]
+                   (everyg (fn [[result-key field]]
+                             (all
+                               (field-nameo field result-key)
                                (conda
-                                ((all (field-nameo field field-name) (known-fieldo field)))
-                                ((unknown-fieldo field-name field)))))
-                           (range 0 (count result-keys)))
+                                 ((known-fieldo field))
+                                 ((unknown-fieldo result-key field)))))
+                           (zipmap result-keys fields))
                    (sorted-permutationo (fields-sortedo query) fields q))))))
-
-(defn x []
-  (require 'metabase.driver 'metabase.test.data)
-  (@(ns-resolve 'metabase.driver 'process-query)
-   {:type     :query,
-    :database (@(ns-resolve 'metabase.test.data 'db-id)),
-    :query    {:source_table (@(ns-resolve 'metabase.test.data 'id) :venues),
-               :filter       nil,
-               :aggregation  ["rows"],
-               :breakout     [nil],
-               :limit        10,
-               :order_by     [[(@(ns-resolve 'metabase.test.data 'id) :venues :id) "ascending"]]}}))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
