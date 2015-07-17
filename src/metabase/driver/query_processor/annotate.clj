@@ -97,13 +97,14 @@
     (let [ag-field (if (contains? #{:count :distinct} ag-type)
                      {:base-type    :IntegerField
                       :field-name   :count
+                      :field-display-name "count"
                       :special-type :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
                          (assoc :field-name (if (= ag-type :distinct) :count
                                                 ag-type))
-                         (assoc :field-display-name (if (= ag-type :distinct) :count
-                                                        ag-type))))]
+                         (assoc :field-display-name (if (= ag-type :distinct) "count"
+                                                        (name ag-type)))))]
       (fn [out]
         (trace-lvars "*" out)
         (== out ag-field)))))
@@ -112,7 +113,8 @@
   (all
    (== out {:base-type    :UnknownField
             :special-type nil
-            :field-name   field-name})
+            :field-name   field-name
+            :field-display-name field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 
 (defn- field° [query]
