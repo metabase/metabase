@@ -38,8 +38,8 @@
     (when email
       (assert (u/is-email? email)))
     (cond-> user
-      reset_token (assoc :reset_token (creds/hash-bcrypt reset_token)))
-    )
+      reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
+
   (post-select [_ {:keys [first_name last_name], :as user}]
     (cond-> user
       (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
