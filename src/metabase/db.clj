@@ -16,23 +16,21 @@
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
-(def db-file
+(def ^:private ^:const db-file
   "Path to our H2 DB file from env var or app config."
-  (memoize
-   (fn []
-     ;; see http://h2database.com/html/features.html for explanation of options
-     (if (config/config-bool :mb-db-in-memory)
-       ;; In-memory (i.e. test) DB
-       "mem:metabase;DB_CLOSE_DELAY=-1"
-       ;; File-based DB
-       (let [db-file-name (config/config-str :mb-db-file)
-             db-file      (clojure.java.io/file db-file-name)
-             options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
-         (apply str "file:" (if (.isAbsolute db-file)
-                              ;; when an absolute path is given for the db file then don't mess with it
-                              [db-file-name options]
-                              ;; if we don't have an absolute path then make sure we start from "user.dir"
-                              [(System/getProperty "user.dir") "/" db-file-name options])))))))
+  ;; see http://h2database.com/html/features.html for explanation of options
+  (if (config/config-bool :mb-db-in-memory)
+    ;; In-memory (i.e. test) DB
+    "mem:metabase;DB_CLOSE_DELAY=-1;MULTI_THREADED=TRUE"
+    ;; File-based DB
+    (let [db-file-name (config/config-str :mb-db-file)
+          db-file      (clojure.java.io/file db-file-name)
+          options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
+      (apply str "file:" (if (.isAbsolute db-file)
+                           ;; when an absolute path is given for the db file then don't mess with it
+                           [db-file-name options]
+                           ;; if we don't have an absolute path then make sure we start from "user.dir"
+                           [(System/getProperty "user.dir") "/" db-file-name options])))))
 
 
 (defn setup-jdbc-db
@@ -41,7 +39,7 @@
   (case (config/config-kw :mb-db-type)
     :h2       {:subprotocol "h2"
                :classname   "org.h2.Driver"
-               :subname     (db-file)}
+               :subname     db-file}
     :postgres {:subprotocol "postgresql"
                :classname   "org.postgresql.Driver"
                :subname     (str "//" (config/config-str :mb-db-host)
@@ -55,7 +53,7 @@
   "Configure connection details for Korma."
   []
   (case (config/config-kw :mb-db-type)
-    :h2       (kdb/h2 {:db     (db-file)
+    :h2       (kdb/h2 {:db     db-file
                        :naming {:keys   str/lower-case
                                 :fields str/upper-case}})
     :postgres (kdb/postgres {:db       (config/config-str :mb-db-dbname)
@@ -72,7 +70,7 @@
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   []
   (case (config/config-kw :mb-db-type)
-    :h2       {:db (db-file)}
+    :h2       {:db db-file}
     :postgres {:host     (config/config-str :mb-db-host)
                :port     (config/config-int :mb-db-port)
                :dbname   (config/config-str :mb-db-dbname)
