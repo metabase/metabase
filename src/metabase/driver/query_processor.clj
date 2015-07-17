@@ -3,16 +3,17 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
-            [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [swiss.arrows :refer [<<-]]))
 
 ;; # CONSTANTS
 
@@ -202,11 +203,17 @@
 (defn- pre-log-query [qp]
   (fn [query]
     (when-not *disable-qp-logging*
-      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED:\n%s"
-                                 ;; obscure DB details when logging
-                                 (u/pprint-to-str (-> query
-                                                      (assoc-in [:database :details] "**********")
-                                                      (update :driver class))))))
+      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED: 😻\n%s"
+                                 (u/pprint-to-str
+                                  ;; Remove empty kv pairs because otherwise expanded query is HUGE
+                                  (walk/prewalk
+                                   (fn [f]
+                                     (if-not (map? f) f
+                                             (m/filter-vals identity (into {} f))))
+                                   ;; obscure DB details when logging. Just log the class of driver because we don't care about its properties
+                                   (-> query
+                                       (assoc-in [:database :details] "😋 ") ; :yum:
+                                       (update :driver class)))))))
     (qp query)))
 
 
@@ -282,7 +289,7 @@
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY:\n%s" (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
   ((case (keyword (:type query))
      :native process-native
      :query  process-structured)
