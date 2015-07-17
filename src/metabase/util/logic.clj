@@ -24,23 +24,23 @@
      (butlast° ?more-half1-butlast ?more-half1-last more-half1))))
 
 (defn sorted-into°
-  "A relation such that OUT is the list L with V sorted into it doing comparisons with PRED."
-  [pred l v out]
+  "A relation such that OUT is the list L with V sorted into it doing comparisons with PRED-F."
+  [pred-f l v out]
   (matche [l]
     ([[]]           (== out [v]))
     ([[?x . ?more]] (conda
-                     ((pred v ?x) (conso v (lcons ?x ?more) out))
-                     (s#          (fresh [more]
-                                    (sorted-into° pred ?more v more)
-                                    (conso ?x more out)))))))
+                     ((pred-f v ?x) (conso v (lcons ?x ?more) out))
+                     (s#            (fresh [more]
+                                      (sorted-into° pred-f ?more v more)
+                                      (conso ?x more out)))))))
 
 (defna sorted-permutation°
-  "A relation such that OUT is a permutation of L where all items are sorted by PRED."
-  [pred l out]
+  "A relation such that OUT is a permutation of L where all items are sorted by PRED-F."
+  [pred-f l out]
   ([_ [] []])
   ([_ [?x . ?more] _] (fresh [more]
-                        (sorted-permutation° pred ?more more)
-                        (sorted-into° pred more ?x out))))
+                        (sorted-permutation° pred-f ?more more)
+                        (sorted-into° pred-f more ?x out))))
 
 (defn matches-seq-order°
   "A relation such that V1 is present and comes before V2 in list L."
