@@ -106,29 +106,6 @@
         (trace-lvars "*" out)
         (== out ag-field)))))
 
-(defn y []
-  (require 'metabase.driver)
-  (@(ns-resolve 'metabase.driver 'process-query)
-   {:database 320,
-    :type "query",
-    :query
-    {:source_table 371, :aggregation ["rows"], :breakout [], :filter []}}))
-
-;; (require '[metabase.test.data :refer [db-id id]])
-(defn x []
-  (@(ns-resolve 'metabase.driver 'process-query)
-   {:database 339,
-    :type "query",
-    :query
-    {:source_table 820,
-     :aggregation ["count"],
-     :breakout [["fk->" 8896 8855]]}}))
-
-
-
-(defn y* [n]
-  (dorun (repeatedly n y)))
-
 (defn- unknown-field° [field-name out]
   (all
    (== out {:base-type    :UnknownField
@@ -216,8 +193,34 @@
                                                    (name< f1 f2)))
               ((clause-pos< f1 f2)))))))))
 
-(defn- fk-info-added° [field]
-  )
+(defn- resolve+order-cols [{:keys [result-keys], :as query}]
+  (when (seq result-keys)
+    (first (let [fields       (vec (lvars (count result-keys)))
+                 known-field° (field° query)]
+             (run 1 [q]
+               (everyg (fn [[result-key field]]
+                         (conda
+                           ((known-field°   result-key field))
+                           ((unknown-field° result-key field))))
+                       (zipmap result-keys fields))
+               (sorted-permutation° (fields-sorted° query) fields q))))))
+
+
+;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
+
+;; Format the results in the way the front-end expects.
+
+(defn- format-col [col]
+  (merge {:description nil
+          :id          nil
+          :table_id    nil}
+         (-> col
+             (set/rename-keys  {:base-type    :base_type
+                                :field-id     :id
+                                :field-name   :name
+                                :special-type :special_type
+                                :table-id     :table_id})
+             (dissoc :position))))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
@@ -247,35 +250,6 @@
                     :target     dest-field
                     :extra_info (if-not dest-field {}
                                         {:target_table_id (:table_id dest-field)})))))))
-
-(defn- resolve+order-cols [{:keys [result-keys], :as query}]
-  (when (seq result-keys)
-    (first (let [fields       (vec (lvars (count result-keys)))
-                 known-field° (field° query)]
-             (run 1 [q]
-               (everyg (fn [[result-key field]]
-                         (conda
-                           ((known-field°   result-key field))
-                           ((unknown-field° result-key field))))
-                       (zipmap result-keys fields))
-               (sorted-permutation° (fields-sorted° query) fields q))))))
-
-
-;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
-
-;; Format the results in the way the front-end expects.
-
-(defn- format-col [col]
-  (merge {:description nil
-          :id          nil
-          :table_id    nil}
-         (-> col
-             (set/rename-keys  {:base-type    :base_type
-                                :field-id     :id
-                                :field-name   :name
-                                :special-type :special_type
-                                :table-id     :table_id})
-             (dissoc :position))))
 
 (defn post-annotate [qp]
   (fn [query]
