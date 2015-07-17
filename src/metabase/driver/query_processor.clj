@@ -6,14 +6,14 @@
             [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
+            [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]
-            [swiss.arrows :refer [<<-]]))
+            [metabase.util :as u]))
 
 ;; # CONSTANTS
 
