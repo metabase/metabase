@@ -22,14 +22,16 @@
    email      [Required Email]
    password   [Required ComplexPassword]
    token      [Required SetupToken]}
-  ;; extra check.  don't continue if there is already a user in the db.
+  ;; Call (metabase.core/site-url request) to set the Site URL setting if it's not already set
+  (@(ns-resolve 'metabase.core 'site-url) request)
+  ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
-        new-user (ins User
-                   :email email
-                   :first_name first_name
-                   :last_name last_name
-                   :password (str (java.util.UUID/randomUUID))
-                   :is_superuser true)]
+        new-user   (ins User
+                     :email        email
+                     :first_name   first_name
+                     :last_name    last_name
+                     :password     (str (java.util.UUID/randomUUID))
+                     :is_superuser true)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (set-user-password (:id new-user) password)
     ;; clear the setup token now, it's no longer needed
