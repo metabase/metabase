@@ -34,6 +34,9 @@
 (expect {:status :failed
          :error "Column \"ZID\" not found"}
   (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))      ; this will print a stacktrace
-      (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
-                             :type     :native
-                             :database (db-id)})))
+      (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
+                                     :type     :native
+                                     :database (db-id)})
+              :stacktrace
+              :query
+              :expanded-query)))
