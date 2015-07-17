@@ -21,7 +21,7 @@
   ;; see http://h2database.com/html/features.html for explanation of options
   (if (config/config-bool :mb-db-in-memory)
     ;; In-memory (i.e. test) DB
-    "mem:metabase;DB_CLOSE_DELAY=-1;MULTI_THREADED=TRUE"
+    "mem:metabase;DB_CLOSE_DELAY=-1"
     ;; File-based DB
     (let [db-file-name (config/config-str :mb-db-file)
           db-file      (clojure.java.io/file db-file-name)
