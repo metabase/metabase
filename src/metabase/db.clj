@@ -16,17 +16,23 @@
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
-(defn db-file
+(def db-file
   "Path to our H2 DB file from env var or app config."
-  []
-  (let [db-file-name (config/config-str :mb-db-file)
-        db-file (clojure.java.io/file db-file-name)
-        options ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"] ; see http://h2database.com/html/features.html for explanation of options
-    (if (.isAbsolute db-file)
-      ;; when an absolute path is given for the db file then don't mess with it
-      (str "file:" db-file-name options)
-      ;; if we don't have an absolute path then make sure we start from "user.dir"
-      (str "file:" (str (System/getProperty "user.dir") "/" db-file-name options)))))
+  (memoize
+   (fn []
+     ;; see http://h2database.com/html/features.html for explanation of options
+     (if (config/config-bool :mb-db-in-memory)
+       ;; In-memory (i.e. test) DB
+       "mem:metabase;DB_CLOSE_DELAY=-1"
+       ;; File-based DB
+       (let [db-file-name (config/config-str :mb-db-file)
+             db-file      (clojure.java.io/file db-file-name)
+             options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
+         (apply str "file:" (if (.isAbsolute db-file)
+                              ;; when an absolute path is given for the db file then don't mess with it
+                              [db-file-name options]
+                              ;; if we don't have an absolute path then make sure we start from "user.dir"
+                              [(System/getProperty "user.dir") "/" db-file-name options])))))))
 
 
 (defn setup-jdbc-db
