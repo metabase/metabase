@@ -45,10 +45,10 @@
                                             (->> generated-query
                                                  (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                                                  u/pprint-to-str) "\n"))) ; so it's easier to read
-                {:results (eval generated-query)})
+                (eval generated-query))
       :native (let [results (eval-raw-command (:query (:native query)))]
-                {:results (if (sequential? results) results
-                              [results])}))))
+                (if (sequential? results) results
+                              [results])))))
 
 
 ;; # NATIVE QUERY PROCESSOR

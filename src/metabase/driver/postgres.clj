@@ -118,10 +118,6 @@
          (string? field-name)]}
   (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 millisecond'))::date" table-name field-name))
 
-(def ^:private ^:const uncastify-timestamp-regex
-  ;; TODO - this doesn't work
-  #"TO_TIMESTAMP\([^.\s]+\.([^.\s]+)(?: / 1000)?\)::date")
-
 ;; ## DRIVER
 
 (def ^:const driver
@@ -133,5 +129,4 @@
     :sql-string-length-fn                         :CHAR_LENGTH
     :timezone->set-timezone-sql                   timezone->set-timezone-sql
     :cast-timestamp-seconds-field-to-date-fn      cast-timestamp-seconds-field-to-date-fn
-    :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn
-    :uncastify-timestamp-regex                    uncastify-timestamp-regex}))
+    :cast-timestamp-milliseconds-field-to-date-fn cast-timestamp-milliseconds-field-to-date-fn}))
