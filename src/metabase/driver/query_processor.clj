@@ -43,7 +43,8 @@
            (.printStackTrace e)
            {:status     :failed
             :error      (.getMessage e)
-            :stacktrace (u/filtered-stacktrace e)}))))
+            :stacktrace (u/filtered-stacktrace e)
+            :query      (dissoc query :database)}))))
 
 
 (defn- pre-expand [qp]

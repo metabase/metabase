@@ -1,7 +1,8 @@
 (ns metabase.driver.query-processor.annotate
   (:refer-clojure :exclude [==])
   (:require [clojure.core.logic :refer :all]
-            [clojure.core.logic.arithmetic :as ar]
+            (clojure.core.logic [arithmetic :as ar]
+                                [fd :as fd])
             [clojure.tools.macro :refer [macrolet]]
             (clojure [set :as set]
                      [string :as s])
@@ -61,55 +62,89 @@
     (->> (persistent! fields)
          distinct
          (map field-qualify-name)
-         (mapv (partial into {})))))
+         (mapv (u/rpartial dissoc :parent :parent-id :table-name)))))
+
+(defn- flatten-collect-ids-domain [form]
+  (apply fd/domain (sort (map :field-id (flatten-collect-fields form)))))
 
 
 ;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING (CORE.LOGIC)  ----------------------------------------
 
 ;; Use core.logic to determine the appropriate ordering / result Fields
 
-(defn- field-nameo [field field-name]
+(defn- field-name° [field field-name]
   (featurec field {:field-name field-name}))
 
-(defn- breakout-fieldo [{:keys [breakout]}]
-  (let [breakout-fields (flatten-collect-fields breakout)]
-    (fn [out]
-      (membero out breakout-fields))))
+(defn- make-field-in° [items]
+  (if-not (seq items)
+    (constantly fail)
+    (let [ids-domain (flatten-collect-ids-domain items)]
+      (fn [field]
+        (fresh [id]
+          (featurec field {:field-id id})
+          (fd/in id ids-domain))))))
 
-(defn- aggregate-fieldo [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
+(defn- breakout-field° [{:keys [breakout]}]
+  (make-field-in° breakout))
+
+(defn- explicit-fields-field° [{:keys [fields-is-implicit fields], :as query}]
+  (if fields-is-implicit (constantly fail)
+      (make-field-in° fields)))
+
+(defn- aggregate-field° [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
   (if-not (contains? #{:avg :count :distinct :stddev :sum} ag-type)
     (constantly fail)
-    (let [^:const ag-field (if (contains? #{:count :distinct} ag-type)
-                             {:base-type    :IntegerField
-                              :field-name   "count"
-                              :special-type :number}
-                             (-> ag-field
-                                 (select-keys [:base-type :special-type])
-                                 (assoc :field-name (if (= ag-type :distinct) "count"
-                                                        (name ag-type)))))]
+    (let [ag-field (if (contains? #{:count :distinct} ag-type)
+                     {:base-type    :IntegerField
+                      :field-name   :count
+                      :special-type :number}
+                     (-> ag-field
+                         (select-keys [:base-type :special-type])
+                         (assoc :field-name (if (= ag-type :distinct) :count
+                                                ag-type))))]
       (fn [out]
+        (trace-lvars "*" out)
         (== out ag-field)))))
 
-(defn- explicit-fields-fieldo [{:keys [fields-is-implicit fields]}]
-  (if fields-is-implicit (constantly fail)
-      (let [fields-fields (flatten-collect-fields fields)]
-        (fn [out]
-          (membero out fields-fields)))))
+(defn y []
+  (require 'metabase.driver)
+  (@(ns-resolve 'metabase.driver 'process-query)
+   {:database 320,
+    :type "query",
+    :query
+    {:source_table 371, :aggregation ["rows"], :breakout [], :filter []}}))
 
-(defn- unknown-fieldo [field-name out]
+;; (require '[metabase.test.data :refer [db-id id]])
+;; (defn x []
+;;   (@(ns-resolve 'metabase.driver 'process-query)
+;;    {:type :query,
+;;     :database (db-id),
+;;     :query
+;;     {:source_table (id :users),
+;;      :aggregation ["cum_sum" (id :users :id)]}}))
+
+(defn y* [n]
+  (dorun (repeatedly n y)))
+
+(defn- unknown-field° [field-name out]
   (all
    (== out {:base-type    :UnknownField
             :special-type nil
             :field-name   field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 
-(defn- fieldo [query]
-  (let [fields    (flatten-collect-fields query)
-        ag-fieldo (aggregate-fieldo query)]
-    (fn [out]
+(defn- field° [query]
+  (let [ag-field°     (aggregate-field° query)
+        normal-field° (let [field-name->field (let [fields (flatten-collect-fields query)]
+                                                (zipmap (map :field-name fields) fields))]
+                        (fn [field-name out]
+                          (if-let [field (field-name->field field-name)]
+                            (== out field)
+                            fail)))]
+    (fn [field-name field]
       (conda
-       ((membero out fields))
-       ((ag-fieldo out))))))
+        ((normal-field° field-name field))
+        ((ag-field° field))))))
 
 (def ^:const ^:private field-groups
   {:breakout        0
@@ -117,18 +152,18 @@
    :explicit-fields 2
    :other           3})
 
-(defn- field-groupo [query]
-  (let [breakouto (breakout-fieldo query)
-        aggo      (aggregate-fieldo query)
-        xfieldso  (explicit-fields-fieldo query)]
+(defn- field-group° [query]
+  (let [breakout° (breakout-field° query)
+        agg°      (aggregate-field° query)
+        xfields°  (explicit-fields-field° query)]
     (fn [field out]
       (conda
-       ((breakouto field) (== out (field-groups :breakout)))
-       ((aggo field)      (== out (field-groups :aggregation)))
-       ((xfieldso field)  (== out (field-groups :explicit-fields)))
-       (s#                (== out (field-groups :other)))))))
+        ((breakout° field) (== out (field-groups :breakout)))
+        ((agg° field)      (== out (field-groups :aggregation)))
+        ((xfields° field)  (== out (field-groups :explicit-fields)))
+        (s#                (== out (field-groups :other)))))))
 
-(defn- field-positiono [field out]
+(defn- field-position° [field out]
   (featurec field {:position out}))
 
 (def ^:const ^:private special-type-groups
@@ -136,68 +171,62 @@
    :name  1
    :other 2})
 
-(defn- special-typeo [field out]
+(defn- special-type-group° [field out]
   (conda
    ((featurec field {:special-type :id})   (== out (special-type-groups :id)))
    ((featurec field {:special-type :name}) (== out (special-type-groups :name)))
    (s#                                     (== out (special-type-groups :other)))))
 
 (defn- field-name< [query]
-  (let [name< (partial (fn name< [[k & more] name-1 name-2]
-                         (conda
-                          ((== k name-1))
-                          ((== k name-2) fail)
-                          (s#            (if-not (seq more) fail
-                                                 (name< more name-1 name-2)))))
-                       (:result-keys query))]
-    (fn [f1 f2]
-      (fresh [name-1 name-2]
-        (field-nameo f1 name-1)
-        (field-nameo f2 name-2)
-        (name< name-1 name-2)))))
+  (fn [f1 f2]
+    (fresh [name-1 name-2]
+      (field-name° f1 name-1)
+      (field-name° f2 name-2)
+      (matches-seq-order° name-1 name-2 (:result-keys query)))))
 
 (defn- clause-position< [query]
-  (let [groupo          (field-groupo query)
+  (let [group°          (field-group° query)
         breakout-fields (flatten-collect-fields (:breakout query))
         fields-fields   (flatten-collect-fields (:fields query))]
     (fn [f1 f2]
       (conda
-       ((groupo f1 (field-groups :breakout))        (matches-seq-ordero f1 f2 breakout-fields))
-       ((groupo f1 (field-groups :explicit-fields)) (matches-seq-ordero f1 f2 fields-fields))))))
+       ((group° f1 (field-groups :breakout))        (matches-seq-order° f1 f2 breakout-fields))
+       ((group° f1 (field-groups :explicit-fields)) (matches-seq-order° f1 f2 fields-fields))))))
 
-(defn- fields-sortedo [query]
-  (macrolet [(<-or-== [f & ==-clauses] `(fresh [v1# v2#]
-                                          (~f ~'f1 v1#)
-                                          (~f ~'f2 v2#)
-                                          (conda
-                                            ((== v1# v2#) ~@==-clauses)
-                                            ((ar/< v1# v2#) ~'s#))))]
-    (let [groupo      (field-groupo query)
-          name<       (field-name< query)
-          clause-pos< (clause-position< query)]
-      (fn [f1 f2]
-        (<-or-== groupo
-          (<-or-== field-positiono
+(defn- fields-sorted° [query]
+  (let [group°      (field-group° query)
+        name<       (field-name< query)
+        clause-pos< (clause-position< query)]
+    (fn [f1 f2]
+      (macrolet [(<-or-== [f & ==-clauses] `(conda
+                                              ((fresh [v#]
+                                                 (~f ~'f1 v#)
+                                                 (~f ~'f2 v#)) ~@==-clauses)
+                                              ((fresh [v1# v2#]
+                                                 (~f ~'f1 v1#)
+                                                 (~f ~'f2 v2#)
+                                                 (ar/< v1# v2#)) ~'s#)))]
+        (<-or-== group°
+          (<-or-== field-position°
             (conda
-              ((groupo f1 (field-groups :other)) (<-or-== special-typeo
+              ((group° f1 (field-groups :other)) (<-or-== special-type-group°
                                                    (name< f1 f2)))
               ((clause-pos< f1 f2)))))))))
 
+
+
 (defn- resolve+order-cols [{:keys [result-keys], :as query}]
   {:pre  [(seq result-keys)]
-   :post [(sequential? %) (every? map? %)]}
-  (time (first (let [fields       (vec (lvars (count result-keys)))
-                     known-fieldo (fieldo query)]
-                 (run 1 [q]
-                   ;; Make a new constraint for every lvar FIELDS[i] to give it the name of RESULT-KEYS[i]
-                   (everyg (fn [[result-key field]]
-                             (all
-                               (field-nameo field result-key)
-                               (conda
-                                 ((known-fieldo field))
-                                 ((unknown-fieldo result-key field)))))
-                           (zipmap result-keys fields))
-                   (sorted-permutationo (fields-sortedo query) fields q))))))
+   :post [(sequential? %)]}
+  (first (let [fields       (vec (lvars (count result-keys)))
+               known-field° (field° query)]
+           (run 1 [q]
+             (everyg (fn [[result-key field]]
+                       (conda
+                         ((known-field°   result-key field))
+                         ((unknown-field° result-key field))))
+                     (zipmap result-keys fields))
+             (sorted-permutation° (fields-sorted° query) fields q)))))
 
 
 ;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
@@ -214,7 +243,7 @@
                                 :field-name   :name
                                 :special-type :special_type
                                 :table-id     :table_id})
-             (dissoc :position :group :group-position :special-type-group))))
+             (dissoc :position))))
 
 (defn- add-fields-extra-info
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
