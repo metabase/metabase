@@ -22,17 +22,6 @@
 
 (def ^:dynamic ^:private *query* nil)
 
-(defn- uncastify
-  "Remove CAST statements from a column name if needed.
-
-    (uncastify \"DATE\")               -> \"DATE\"
-    (uncastify \"CAST(DATE AS DATE)\") -> \"DATE\""
-  [driver column-name]
-  (let [column-name (name column-name)]
-    (keyword (or (second (re-find #"CAST\([^.\s]+\.([^.\s]+) AS [\w]+\)" column-name))
-                 (second (re-find (:uncastify-timestamp-regex driver) column-name))
-                 column-name))))
-
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [{{:keys [source-table]} :query, database :database, :as query}]
@@ -57,9 +46,7 @@
         (when (config/config-bool :mb-db-logging)
           (log-korma-form korma-form))
 
-        (let [results (eval korma-form)]
-          {:results      results
-           :uncastify-fn (partial uncastify (:driver query))}))
+        (eval korma-form))
 
       (catch java.sql.SQLException e
         (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes

@@ -34,6 +34,7 @@
                                                     (log/debug "Setting timezone to:" timezone)
                                                     (jdbc/db-do-prepared conn (timezone->set-timezone-sql timezone))))
                                                 (jdbc/query conn sql :as-arrays? true))]
+         ;; TODO - Why don't we just use annotate?
          {:rows    rows
           :columns columns
           :cols    (map (fn [column first-value]

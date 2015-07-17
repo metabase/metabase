@@ -41,23 +41,16 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, {:strs [origin]} :headers}]
-  ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
-  ;; (Currently, there's no other way to get this info)
-  ;;
-  ;; This is a bit sketchy. Someone malicious could send a bad origin header and hit this endpoint to send
-  ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
-  ;; what you could phish from them since they already forgot their password.
+  [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email [Required Email]}
-  (let [{user-id :id} (sel :one User :email email)
-        reset-token (java.util.UUID/randomUUID)
-        password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    ; Don't leak whether the account doesn't exist, just pretend everything is ok
-    (if (not (nil? user-id))
-      (do
-        (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-        (email/send-password-reset-email email server-name password-reset-url)
-        (log/info password-reset-url)))))
+  (let [{user-id :id}      (sel :one User :email email)
+        reset-token        (java.util.UUID/randomUUID)
+        password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)] ; avoid circular deps
+    ;; Don't leak whether the account doesn't exist, just pretend everything is ok
+    (when user-id
+      (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+      (email/send-password-reset-email email server-name password-reset-url)
+      (log/info password-reset-url))))
 
 
 (defendpoint POST "/reset_password"

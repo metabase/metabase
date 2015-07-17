@@ -135,14 +135,14 @@
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
-  [expanded-query-dict field-ids & [count]]
+  [expanded-query-dict field-ids]
   (if-not (seq field-ids)
     ;; Base case: if there's no field-ids to expand we're done
     expanded-query-dict
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id], :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]
@@ -150,9 +150,7 @@
 
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
         ;; We can't use recur here because binding wraps body in try/catch
-        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
-                        @*field-ids*
-                        (inc (or count 0)))))))
+        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict) @*field-ids*)))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
@@ -237,6 +235,8 @@
                   ^Keyword special-type
                   ^Integer table-id
                   ^String  table-name
+                  ^Integer position
+                  ^String  description
                   ^Integer parent-id
                   parent] ; Field once its resolved; FieldPlaceholder before that
   IResolve
