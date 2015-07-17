@@ -1,0 +1,60 @@
+
+.ColumnarSelector {
+    display: flex;
+    background-color: #FCFCFC;
+    font-weight: 700;
+
+    max-height: 600px;
+}
+
+.ColumnarSelector-column {
+    min-width: 180px;
+    overflow-y: scroll;
+}
+
+.ColumnarSelector-title {
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 700;
+    padding: var(--padding-2);
+    padding-left: var(--padding-3);
+}
+
+.ColumnarSelector-row {
+    padding-top: var(--padding-2);
+    padding-bottom: var(--padding-2);
+    padding-left: var(--padding-3);
+    padding-right: var(--padding-3);
+    display: flex;
+    align-items: center;
+}
+
+.ColumnarSelector-row:hover {
+    background-color: var(--brand-color) !important;
+    color: white !important;
+}
+
+.ColumnarSelector-column:not(:last-child) .ColumnarSelector-row--selected {
+    background: white;
+    border-top: var(--border-size) var(--border-style) var(--border-color);
+    border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.ColumnarSelector-row .Icon-check {
+    margin-right: var(--margin-2);
+    visibility: hidden;
+}
+
+.ColumnarSelector-row.ColumnarSelector-row--selected .Icon-check {
+    visibility: visible;
+}
+
+.ColumnarSelector-column:last-child .ColumnarSelector-row--selected {
+    color: var(--brand-color);
+}
+
+.ColumnarSelector-column:last-child:not(:first-child) {
+    background-color: white;
+    border-left:  var(--border-size) var(--border-style) var(--border-color);
+    position: relative;
+}

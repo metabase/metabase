@@ -10,6 +10,8 @@ import LimitWidget from './limit_widget.react';
 import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
+import PopoverWithTrigger from './popover_with_trigger.react';
+import ColumnarSelector from './columnar_selector.react';
 
 import Query from './query';
 
@@ -277,13 +279,15 @@ export default React.createClass({
     renderFilters: function() {
         var queryFilters = Query.getFilters(this.props.query.query);
 
+        var filterList;
+        var addFilterButton;
+
         if (this.props.options) {
             var filterFieldList = [];
             for(var key in this.props.options.fields_lookup) {
                 filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
-            var filterList;
             if (queryFilters && queryFilters.length > 0) {
                 filterList = queryFilters.map((filter, index) => {
                     if(index > 0) {
@@ -303,7 +307,6 @@ export default React.createClass({
             }
 
             // TODO: proper check for isFilterComplete(filter)
-            var addFilterButton;
             if (Query.canAddFilter(this.props.query.query)) {
                 if (filterList) {
                     addFilterButton = this.renderAdd(null, this.addFilter);
@@ -311,17 +314,16 @@ export default React.createClass({
                     addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
                 }
             }
-
-            return (
-                <div className="Query-section">
-                    <div className="Query-filters">
-                        {filterList}
-                        {addFilterButton}
-                    </div>
-                </div>
-            );
         }
 
+        return (
+            <div className="Query-section">
+                <div className="Query-filters">
+                    {filterList}
+                    {addFilterButton}
+                </div>
+            </div>
+        );
     },
 
     renderLimitAndSort: function() {
@@ -417,22 +419,54 @@ export default React.createClass({
     },
 
     renderDataSection: function() {
+        var database = this.props.databases && this.props.databases.filter((t) => t.id === this.props.query.database)[0]
         var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
 
         var content;
         if (table) {
-            content = <span className="text-grey">{table.display_name}</span>;
+            content = <span className="text-grey no-decoration">{table.display_name}</span>;
         } else {
-            content = <span className="text-grey-4">Select a table</span>;
+            content = <span className="text-grey-4 no-decoration">Select a table</span>;
         }
+
+        var triggerElement = (
+            <span className="text-bold cursor-pointer flex align-center text-default">
+                {content}
+                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+            </span>
+        )
+
+        var columns = [
+            {
+                title: "Databases",
+                selectedItem: database,
+                items: this.props.databases,
+                itemTitleFn: (db) => db.name,
+                itemSelectFn: (db) => this.setDatabase(db.id)
+            },
+            database && this.props.tables && {
+                title: database.name + " Tables",
+                selectedItem: table,
+                items: this.props.tables,
+                itemTitleFn: (table) => table.display_name,
+                itemSelectFn: (table) => this.setSourceTable(table.id)
+            }
+        ];
+
+        var tetherOptions = {
+            attachment: 'top left',
+            targetAttachment: 'bottom left',
+            targetOffset: '5px 0'
+        };
 
         return (
             <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
                 <span className="GuiBuilder-section-label">Data</span>
-                <a className="text-bold cursor-pointer flex align-center">
-                    {content}
-                    <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
-                </a>
+                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={triggerElement}>
+                    <ColumnarSelector columns={columns}/>
+                </PopoverWithTrigger>
             </div>
         );
     },
