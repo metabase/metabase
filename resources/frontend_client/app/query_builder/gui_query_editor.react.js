@@ -5,6 +5,7 @@ import AggregationWidget from './aggregation_widget.react';
 import DatabaseSelector from './database_selector.react';
 import FilterWidget from './filter_widget.react';
 import Icon from './icon.react';
+import IconBorder from './icon_border.react';
 import LimitWidget from './limit_widget.react';
 import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
@@ -27,12 +28,6 @@ export default React.createClass({
         setDatabaseFn: React.PropTypes.func.isRequired,
         setSourceTableFn: React.PropTypes.func.isRequired,
         toggleExpandCollapseFn: React.PropTypes.func.isRequired
-    },
-
-    getDefaultProps: function() {
-        return {
-            querySectionClasses: 'Query-section mt1 md-mt2 flex align-center'
-        };
     },
 
     setQuery: function(dataset_query) {
@@ -126,17 +121,17 @@ export default React.createClass({
 
     renderAddIcon: function () {
         return (
-            <span className="mr1">
-                <Icon name="add" width="12px" height="12px" />
-            </span>
+            <IconBorder className="text-grey-2" borderRadius="3px">
+                <Icon name="add" width="14px" height="14px" />
+            </IconBorder>
         )
     },
 
     renderDbSelector: function() {
         if(this.props.databases && this.props.databases.length > 1) {
             return (
-                <div className={this.props.querySectionClasses + ' mt1 lg-mt2'}>
-                    <span className="Query-label">Data source:</span>
+                <div className="Query-section">
+                    <span className="Query-label">Data</span>
                     <DatabaseSelector
                         databases={this.props.databases}
                         setDatabase={this.setDatabase}
@@ -158,8 +153,8 @@ export default React.createClass({
 
 
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Table:</span>
+                <div className="Query-section">
+                    <span className="Query-label">Table</span>
                     <SelectionModule
                         placeholder="What part of your data?"
                         items={this.props.tables}
@@ -169,9 +164,6 @@ export default React.createClass({
                         isInitiallyOpen={sourceTableListOpen}
                         action={this.setSourceTable}
                     />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderFilterButton()}
-                    </ReactCSSTransitionGroup>
                 </div>
             );
         }
@@ -201,9 +193,9 @@ export default React.createClass({
             var breakoutLabel;
             if(this.props.query.query.breakout.length > 0) {
                 breakoutLabel = (
-                    <div className="Query-label">
-                        Grouped by:
-                    </div>
+                    <span className="text-bold">
+                        by
+                    </span>
                 );
             }
 
@@ -216,9 +208,9 @@ export default React.createClass({
                     }
 
                     return (
-                        <div className="DimensionList" key={index}>
+                        <div className="DimensionList inline-block" key={index}>
                             <SelectionModule
-                                placeholder='What part of your data?'
+                                placeholder='...'
                                 display="1"
                                 items={this.props.options.breakout_options.fields}
                                 selectedValue={breakout}
@@ -236,29 +228,36 @@ export default React.createClass({
             // include a button to add a breakout, up to 2 total
             var addBreakoutButton;
             if (this.props.query.query.breakout.length === 0) {
-                addBreakoutButton = (
-                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addDimension}>
-                        {this.renderAddIcon()}
-                        Add a grouping
-                    </a>
-                );
+                addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
             } else if (this.props.query.query.breakout.length === 1 &&
                             this.props.query.query.breakout[0] !== null) {
-                addBreakoutButton = (
-                    <a className="QueryOption p1 lg-p2 ml1 lg-ml2" onClick={this.addDimension}>
-                        {this.renderAddIcon()}
-                        Add another grouping
-                    </a>
-                );
+                addBreakoutButton = this.renderAdd(null, this.addDimension);
             }
 
             return (
-                <div className={this.props.querySectionClasses}>
+                <div className="Query-section">
                     {breakoutLabel}
                     {breakoutList}
                     {addBreakoutButton}
                 </div>
             );
+        }
+    },
+
+    renderAdd: function(text, onClick) {
+        if (text) {
+            return (
+                <a className="text-grey-2 text-bold no-decoration flex align-center" href="#" onClick={onClick}>
+                    <span className="p1">{this.renderAddIcon()}</span>
+                    <span>{text}</span>
+                </a>
+            );
+        } else {
+            return (
+                <a className="text-grey-2 text-bold no-decoration" href="#" onClick={onClick}>
+                    <span className="p1">{this.renderAddIcon()}</span>
+                </a>
+            )
         }
     },
 
@@ -275,47 +274,46 @@ export default React.createClass({
         }
     },
 
-    renderFilterSelector: function() {
+    renderFilters: function() {
         var queryFilters = Query.getFilters(this.props.query.query);
 
-        if (this.props.options && queryFilters && queryFilters.length > 0) {
-            var component = this;
-
+        if (this.props.options) {
             var filterFieldList = [];
             for(var key in this.props.options.fields_lookup) {
                 filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
-            var filterList = queryFilters.map(function (filter, index) {
-                if(index > 0) {
-                    return (
-                        <FilterWidget
-                            key={filter[1]}
-                            placeholder="Item"
-                            filter={filter}
-                            filterFieldList={filterFieldList}
-                            index={index}
-                            removeFilter={component.removeFilter}
-                            updateFilter={component.updateFilter}
-                        />
-                    );
-                }
-            }.bind(this));
+            var filterList;
+            if (queryFilters && queryFilters.length > 0) {
+                filterList = queryFilters.map((filter, index) => {
+                    if(index > 0) {
+                        return (
+                            <FilterWidget
+                                key={filter[1]}
+                                placeholder="Item"
+                                filter={filter}
+                                filterFieldList={filterFieldList}
+                                index={index}
+                                removeFilter={this.removeFilter}
+                                updateFilter={this.updateFilter}
+                            />
+                        );
+                    }
+                });
+            }
 
             // TODO: proper check for isFilterComplete(filter)
             var addFilterButton;
             if (Query.canAddFilter(this.props.query.query)) {
-                addFilterButton = (
-                    <a className="QueryOption p1 lg-p2" onClick={this.addFilter}>
-                        {this.renderAddIcon()}
-                        Add another filter
-                    </a>
-                );
+                if (filterList) {
+                    addFilterButton = this.renderAdd(null, this.addFilter);
+                } else {
+                    addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
+                }
             }
 
             return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Filtered by:</span>
+                <div className="Query-section">
                     <div className="Query-filters">
                         {filterList}
                         {addFilterButton}
@@ -397,7 +395,7 @@ export default React.createClass({
             }
 
             return (
-                <div className={this.props.querySectionClasses}>
+                <div className="Query-section">
                     <span className="Query-label">Limit and sort:</span>
                     <div className="Query-filters">
                         {limitSection}
@@ -408,10 +406,9 @@ export default React.createClass({
 
         } else if (Query.canAddLimitAndSort(this.props.query.query)) {
             return (
-                <div className={this.props.querySectionClasses}>
-                    <a className="QueryOption QueryOption--offset p1 lg-p2" onClick={this.addLimit}>
-                        {this.renderAddIcon()}
-                        Set row limits and sorting
+                <div className="Query-section">
+                    <a className="QueryOption p1 lg-p2" onClick={this.addLimit}>
+                        ...
                     </a>
                 </div>
             );
@@ -419,69 +416,63 @@ export default React.createClass({
 
     },
 
-    toggleOpen: function() {
-        this.props.toggleExpandCollapseFn();
-    },
+    renderDataSection: function() {
+        var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
 
-    toggleText: function() {
-        return (this.props.isExpanded) ? 'Hide query' : 'Show query';
-    },
-
-    toggleIcon: function () {
-        var iconSize = '12px'
-        if(this.props.isExpanded) {
-            return (
-                <Icon name='chevronup' width={iconSize} height={iconSize} />
-            );
+        var content;
+        if (table) {
+            content = <span className="text-grey">{table.display_name}</span>;
         } else {
-            return (
-                <Icon name='chevrondown' width={iconSize} height={iconSize} />
-            );
+            content = <span className="text-grey-4">Select a table</span>;
         }
+
+        return (
+            <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
+                <span className="GuiBuilder-section-label">Data</span>
+                <a className="text-bold cursor-pointer flex align-center">
+                    {content}
+                    <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                </a>
+            </div>
+        );
     },
 
-    openStatus: function() {
+    renderFilterSection: function() {
         return (
-            <a href="#" className="QueryToggle px2 py1 no-decoration bg-white flex align-center" onClick={this.toggleOpen}>
-                <span className="mr1">
-                    {this.toggleIcon()}
-                </span>
-                {this.toggleText()}
-            </a>
+            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center">
+                <span className="GuiBuilder-section-label">Filtered by</span>
+                {this.renderFilters()}
+            </div>
+        );
+    },
+
+    renderViewSection: function() {
+        return (
+            <div className="GuiBuilder-section GuiBuilder-view flex-full flex align-center">
+                <span className="GuiBuilder-section-label">View</span>
+                {this.renderAggregation()}
+                {this.renderBreakouts()}
+            </div>
+        );
+    },
+
+    renderSortLimitSection: function() {
+        return (
+            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+                <a className="no-decoration text-grey-1 px1" href="#">…</a>
+            </div>
         );
     },
 
     render: function() {
-        var guiBuilderClasses = cx({
-            'GuiBuilder': true,
-            'wrapper': true,
-            'GuiBuilder--collapsed': !this.props.isExpanded,
-        });
         return (
-            <div className={guiBuilderClasses}>
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderDbSelector()}
-                </ReactCSSTransitionGroup>
-
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderTableSelector()}
-                </ReactCSSTransitionGroup>
-
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderFilterSelector()}
-                </ReactCSSTransitionGroup>
-
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderAggregation()}
-                </ReactCSSTransitionGroup>
-
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderBreakouts()}
-                </ReactCSSTransitionGroup>
-
-                <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                    {this.renderLimitAndSort()}
-                </ReactCSSTransitionGroup>
+            <div className="wrapper">
+                <div className="GuiBuilder bordered rounded">
+                        {this.renderDataSection()}
+                        {this.renderFilterSection()}
+                        {this.renderViewSection()}
+                        {this.renderSortLimitSection()}
+                </div>
 
                 <div className="Query-section Query-section--right mb2">
                     <RunButton
@@ -489,9 +480,6 @@ export default React.createClass({
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
-                </div>
-                <div className="QueryToggleWrapper absolute left right flex layout-centered">
-                    {this.openStatus()}
                 </div>
             </div>
         );

@@ -11,12 +11,6 @@ export default React.createClass({
         updateAggregation: React.PropTypes.func.isRequired
     },
 
-    getDefaultProps: function() {
-        return {
-            querySectionClasses: 'Query-section mt1 md-mt2 flex align-center'
-        };
-    },
-
     componentWillMount: function() {
         this.componentWillReceiveProps(this.props);
     },
@@ -93,7 +87,7 @@ export default React.createClass({
 
             aggregationTarget = (
                 <div className="flex align-center">
-                    <span className="mx2">of</span>
+                    <span className="text-bold">of</span>
                     <SelectionModule
                         placeholder="What attribute?"
                         items={this.state.aggregationFields}
@@ -108,10 +102,9 @@ export default React.createClass({
         }
 
         return (
-            <div className={this.props.querySectionClasses}>
-                <span className="Query-label">I want to see:</span>
+            <div className='Query-section Query-section-aggregations'>
                 <SelectionModule
-                    placeholder="What data?"
+                    placeholder="..."
                     items={this.state.availableAggregations}
                     display="name"
                     descriptionKey="description"

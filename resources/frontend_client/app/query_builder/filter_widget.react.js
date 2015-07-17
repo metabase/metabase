@@ -14,12 +14,6 @@ export default React.createClass({
         removeFilter: React.PropTypes.func.isRequired
     },
 
-    getDefaultProps: function() {
-        return {
-            sectionClassName: 'Filter-section'
-        };
-    },
-
     componentWillMount: function() {
         this.componentWillReceiveProps(this.props);
     },
@@ -184,13 +178,13 @@ export default React.createClass({
 
     renderFieldList: function() {
         return (
-            <div className={this.props.sectionClassName}>
+            <div className="Filter-section Filter-section-field">
                 <SelectionModule
                     action={this.setField}
                     display='name'
                     index={1}
                     items={this.props.filterFieldList}
-                    placeholder="Filter by..."
+                    placeholder="..."
                     selectedValue={this.state.field}
                     selectedKey='id'
                     isInitiallyOpen={this.state.field === null}
@@ -207,7 +201,7 @@ export default React.createClass({
         }
 
         return (
-            <div className={this.props.sectionClassName}>
+            <div className="Filter-section Filter-section-operator">
                 <SelectionModule
                     placeholder="..."
                     items={this.state.operatorList}
@@ -267,7 +261,7 @@ export default React.createClass({
                         default:
                             valueHtml = (
                                 <input
-                                    className="input p1 lg-p2"
+                                    className="QueryOption input p1 lg-p2"
                                     type="text"
                                     value={filterValue}
                                     onChange={this.setTextValue.bind(null, filterIndex)}
@@ -280,7 +274,7 @@ export default React.createClass({
             }
 
             filterValueInputs[i] = (
-                <div key={i} className="FilterSection">
+                <div key={i} className="Filter-section Filter-section-value">
                     {valueHtml}
                 </div>
             );
@@ -295,8 +289,8 @@ export default React.createClass({
                 {this.renderFieldList()}
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
-                <a onClick={this.removeFilterFn}>
-                    <Icon name='close' width="12px" height="12px" />
+                <a className="text-default no-decoration pr1 flex align-center" href="#" onClick={this.removeFilterFn}>
+                    <Icon name='close' width="14px" height="14px" />
                 </a>
             </div>
         );

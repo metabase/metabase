@@ -142,22 +142,20 @@ var Query = {
     },
 
     canAddFilter: function(query) {
-        var canAdd = true;
         var queryFilters = Query.getFilters(query);
-        if (queryFilters && queryFilters.length > 0) {
+        if (!queryFilters) {
+            return false;
+        }
+        if (queryFilters.length > 0) {
             var lastFilter = queryFilters[queryFilters.length - 1];
-
             // simply make sure that there are no null values in the last filter
             for (var i=0; i < lastFilter.length; i++) {
                 if (lastFilter[i] === null) {
-                    canAdd = false;
+                    return false
                 }
             }
-        } else {
-            canAdd = false;
         }
-
-        return canAdd;
+        return true;
     },
 
     addFilter: function(query) {

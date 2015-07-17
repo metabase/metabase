@@ -208,21 +208,19 @@ export default React.createClass({
 
         if(this.props.remove) {
             remove = (
-                <div onClick={this.props.remove.bind(null, this.props.index)}>
-                    <span className="ml1 md-ml12">
-                        <Icon name='close' width="12px" height="12px" />
-                    </span>
-                </div>
+                <a className="text-default no-decoration pr1 flex align-center" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
+                    <Icon name='close' width="14px" height="14px" />
+                </a>
             );
         }
 
         return (
             <div className={moduleClasses}>
-                <div className="SelectionModule-trigger">
-                    <a className="QueryOption p1 lg-p2 flex align-center" onClick={this._toggleOpen}>
+                <div className="SelectionModule-trigger flex align-center">
+                    <a className="QueryOption p1 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}
-                        {remove}
                     </a>
+                    {remove}
                 </div>
                 <div className={itemListClasses}>
                     {searchBar}

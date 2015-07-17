@@ -232,7 +232,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="border-bottom py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+            <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
                 <div className="Entity">
                     <div className="flex align-center">
                         <h1 className="Entity-title">{title}</h1>

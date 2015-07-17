@@ -37,6 +37,7 @@
 .Query-section {
     display: flex;
     align-items: center;
+    position: relative;
 }
 
 .Query-section.Query-section--right {
@@ -56,8 +57,17 @@
 }
 
 .Query-label {
-    min-width: 7rem;
     display: inline-block;
+    position: absolute;
+    top: -0.5rem;
+    left: 0;
+    font-size: 0.65rem;
+    font-weight: bolder;
+    text-transform: uppercase;
+    margin-left: 1rem;
+    padding: 0 0.3rem 0 0.3rem;
+    background-color: white;
+    color: color(var(--base-grey) shade(40%));
 }
 
 .Query-filters {
@@ -79,12 +89,10 @@
 
 .Query-filter .input {
     border-radius: 0;
-    border-color: var(--selection-color);
-}
-
-.Query-filter .Icon-close {
-    margin-left: 1rem;
-    margin-right: 1rem;
+    border: none;
+    font-size: inherit;
+    background-color: transparent;
+    width: 150px;
 }
 
 .QueryTable-wrapper {
@@ -274,34 +282,37 @@
 
 .GuiBuilder {
     position: relative;
-    border-bottom: 1px solid #F0F0F0;
-    max-height: 100%;
+    display: flex;
+    flex-direction: row;
+    box-shadow:
 }
 
-.GuiBuilder.GuiBuilder--collapsed {
-    max-height: 2rem;
-    min-height: 2rem;
+.GuiBuilder-section {
+    height: 48px;
+    min-width: 120px;
+    border-right: 1px solid var(--border-color);
+    position: relative;
+    padding: 1rem;
 }
 
-.GuiBuilder.GuiBuilder--collapsed .Query-section {
-    display: none;
-}
-.QueryToggleWrapper {
-    bottom: -1rem;
-    z-index: 1;
-}
-
-.QueryToggle {
-    color: #999;
-    border-radius: 99px;
-    z-index: 1000;
-    border: 1px solid #ddd;
+.GuiBuilder-sort-limit {
+    min-width: 0px;
+    padding: 0.5rem;
+    font-size: 3em;
+    padding-bottom: 2rem;
 }
 
-.QueryToggle:hover {
-    color: var(--brand-color);
-    border-color: var(--brand-color);
-    transition: color .3s linear, border .3s linear;
+.GuiBuilder-section-label {
+    text-transform: uppercase;
+    background-color: white;
+    position: absolute;
+    font-size: 10px;
+    font-weight: bold;
+    top: -7px;
+    left: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    color: color(var(--base-grey) shade(30%));
 }
 
 /* @transitions */
@@ -331,30 +342,48 @@
     text-align: center;
 }
 
+.Filter-section-field .QueryOption {
+    color: var(--purple-light-color);
+}
+.Filter-section-operator .QueryOption {
+    color: var(--purple-light-color);
+    text-transform: lowercase;
+}
+.Filter-section-value .QueryOption {
+    color: var(--purple-color);
+}
+
+.Filter-section-value .QueryOption:before,
+.Filter-section-value .QueryOption:after {
+    content: '"';
+}
+
+.GuiBuilder-view .QueryOption {
+    color: var(--green-color);
+}
+
 .QueryOption {
-    border: 1px solid var(--selection-color);
-    border-radius: 2px;
     color: var(--brand-color);
     line-height: 1;
+    font-weight: 700;
 }
 
-.QueryOption--offset {
-    margin-left: 7rem;
-}
+/*.QueryOption.QueryOption-add {
+    color: color(var(--base-grey) shade(20%));
+}*/
 
 .QueryOption:hover {
-    border-color: color(var(--selection-color) shade(5%));
     cursor: pointer;
 }
 
 .SelectionModule.selected .QueryOption {
-    background-color: var(--selection-color);
+    /*background-color: var(--selection-color);*/
 }
 
 .SelectionModule.selected .QueryOption:hover {
-    background-color: var(--brand-color);
-    border-color: var(--brand-color);
-    color: #fff;
+    /*background-color: var(--brand-color);*/
+    /*border-color: var(--brand-color);*/
+    /*color: #fff;*/
 }
 
 .ChartType-button {

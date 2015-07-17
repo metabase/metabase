@@ -13,7 +13,6 @@ export default React.createClass({
         updateSort: React.PropTypes.func.isRequired,
         removeSort: React.PropTypes.func.isRequired
     },
-    sectionClassName: 'Filter-section',
 
     componentWillMount: function() {
         this.componentWillReceiveProps(this.props);
@@ -49,7 +48,7 @@ export default React.createClass({
 
         return (
             <div className="Query-filter">
-                <div className={this.sectionClassName}>
+                <div className="Filter-section Filter-section-sort-field">
                     <SelectionModule
                         action={this.setField}
                         display='name'
@@ -63,7 +62,7 @@ export default React.createClass({
                     />
                 </div>
 
-                <div className={this.sectionClassName}>
+                <div className="Filter-section Filter-section-sort-direction">
                     <SelectionModule
                         placeholder="..."
                         items={directionOptions}
