@@ -4,12 +4,12 @@
   (:require [clojure.core.logic :refer :all]))
 
 (defne butlast°
-  "A relation such that BUSTLAST is all items but the LAST of list L."
-  [butlast last l]
+  "A relation such that BUSTLASTV is all items but the last item LASTV of list L."
+  [butlastv lastv l]
   ([[]   ?x [?x]])
   ([_    _  [?x . ?more]] (fresh [more-butlast]
-                            (butlast° more-butlast last ?more)
-                            (conso ?x more-butlast butlast))))
+                            (butlast° more-butlast lastv ?more)
+                            (conso ?x more-butlast butlastv))))
 
 (defna split°
   "A relation such that HALF1 and HALF2 are even divisions of list L.

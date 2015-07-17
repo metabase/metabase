@@ -634,8 +634,9 @@
 (datasets/expect-with-dataset :mongo
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (Q run tbl venues
-     ag stddev latitude))
+  (select-keys (Q run tbl venues
+                  ag stddev latitude)
+               [:status :error]))
 
 
 ;;; ## order_by aggregate fields (SQL-only for the time being)
@@ -958,12 +959,13 @@
 (datasets/expect-with-dataset :mongo
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
-  (query-with-temp-db defs/tupac-sightings
-    :source_table &sightings:id
-    :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
-                   [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
-                   [&sightings.id:id "ascending"]]
-    :limit        10))
+  (select-keys (query-with-temp-db defs/tupac-sightings
+                 :source_table &sightings:id
+                 :order_by     [[["fk->" &sightings.city_id:id &cities.name:id] "ascending"]
+                                [["fk->" &sightings.category_id:id &categories.name:id] "descending"]
+                                [&sightings.id:id "ascending"]]
+                 :limit        10)
+               [:status :error]))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
