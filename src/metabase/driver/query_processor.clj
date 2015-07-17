@@ -44,7 +44,9 @@
            {:status     :failed
             :error      (.getMessage e)
             :stacktrace (u/filtered-stacktrace e)
-            :query      (dissoc query :database)}))))
+            :query      (dissoc query :database :driver)
+            :expanded-query (try (dissoc (expand/expand query) :database :driver)
+                                 (catch Throwable _))}))))
 
 
 (defn- pre-expand [qp]

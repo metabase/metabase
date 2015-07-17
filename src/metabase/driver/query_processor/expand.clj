@@ -134,7 +134,7 @@
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
-  [expanded-query-dict field-ids & [count]]
+  [expanded-query-dict field-ids]
   (if-not (seq field-ids)
     ;; Base case: if there's no field-ids to expand we're done
     expanded-query-dict
@@ -149,9 +149,7 @@
 
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
         ;; We can't use recur here because binding wraps body in try/catch
-        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
-                        @*field-ids*
-                        (inc (or count 0)))))))
+        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict) @*field-ids*)))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
