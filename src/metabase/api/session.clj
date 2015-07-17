@@ -69,7 +69,8 @@
                                         user-id                               (Integer/parseInt user-id)
                                         {:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
     ;; Make sure the plaintext token matches up with the hashed one for this user
-    (check (creds/bcrypt-verify token reset_token)
+    (check (try (creds/bcrypt-verify token reset_token)
+                (catch Throwable _))
       [400 "Invalid reset token"]
 
       ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
