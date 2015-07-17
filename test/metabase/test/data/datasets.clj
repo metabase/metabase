@@ -192,13 +192,14 @@
                     dataset-name))
              set)))
 
-(def test-dataset-names
-  "Delay that returns set of names of drivers we should run tests against.
-   By default, this returns only `:h2` but can be overriden by setting env var `MB_TEST_DATASETS`."
-  (delay (let [datasets (or (get-test-datasets-from-env)
-                            #{:h2})]
-           (log/info (color/green "Running QP tests against these datasets: " datasets))
-           datasets)))
+(defonce ^:const
+  ^{:doc (str "Set of names of drivers we should run tests against. "
+              "By default, this only contains `:h2` but can be overriden by setting env var `MB_TEST_DATASETS`.")}
+  test-dataset-names
+  (let [datasets (or (get-test-datasets-from-env)
+                     #{:h2})]
+    (log/info (color/green "Running QP tests against these datasets: " datasets))
+    datasets))
 
 
 ;; # Helper Macros
@@ -206,7 +207,8 @@
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
    Defaults to `:h2`."
-  (dataset-name->dataset :h2))
+  (dataset-name->dataset (if (contains? test-dataset-names :h2) :h2
+                             (first test-dataset-names))))
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
@@ -217,7 +219,7 @@
 (defmacro when-testing-dataset
   "Execute BODY only if we're currently testing against DATASET-NAME."
   [dataset-name & body]
-  `(when (contains? @test-dataset-names ~dataset-name)
+  `(when (contains? test-dataset-names ~dataset-name)
      ~@body))
 
 (defmacro with-dataset-when-testing
