@@ -127,7 +127,7 @@
                   :base_type    :IntegerField
                   :description  nil
                   :name         (format-name "category_id")
-                  :display_name "Category Id"
+                  :display_name "Category"
                   :table_id     (id :venues)
                   :id           (id :venues :category_id)}
     :price       {:extra_info   {}
@@ -196,7 +196,7 @@
                :base_type    :IntegerField
                :description  nil
                :name         (format-name "venue_id")
-               :display_name "Venue Id"
+               :display_name "Venue"
                :table_id     (id :checkins)
                :id           (id :checkins :venue_id)}
     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
@@ -209,7 +209,7 @@
                :base_type    :IntegerField
                :description  nil
                :name         (format-name "user_id")
-               :display_name "User Id"
+               :display_name "User"
                :table_id     (id :checkins)
                :id           (id :checkins :user_id)}))
 
