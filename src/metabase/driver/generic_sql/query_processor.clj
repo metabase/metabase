@@ -6,8 +6,10 @@
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
             [metabase.config :as config]
-            [metabase.driver.query-processor :as qp]
-            (metabase.driver.generic-sql [native :as native]
+            (metabase.driver [interface :refer [supports?]]
+                             [query-processor :as qp])
+            (metabase.driver.generic-sql [interface :as i]
+                                         [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
   (:import (metabase.driver.query_processor.expand Field
@@ -28,15 +30,15 @@
   (binding [*query* query]
     (try
       ;; Process the expanded query and generate a korma form
-      (let [entity            (gensym "ENTITY_")
-            korma-select-form `(select ~entity ~@(->> (map apply-form (:query query))
-                                                      (filter identity)
-                                                      (mapcat #(if (vector? %) % [%]))))
+      (let [korma-select-form `(select ~'entity ~@(->> (map apply-form (:query query))
+                                                       (filter identity)
+                                                       (mapcat #(if (vector? %) % [%]))))
             set-timezone-sql  (when-let [timezone (:timezone (:details database))]
-                                (when-let [set-timezone-sql (:timezone->set-timezone-sql (:driver *query*))]
-                                  `(exec-raw ~(set-timezone-sql timezone))))
-            korma-form        `(let [~entity (korma-entity ~database ~source-table)]
-                                 ~(if set-timezone-sql `(korma.db/with-db (:db ~entity)
+                                (let [driver (:driver *query*)]
+                                  (when (supports? driver :set-timezone)
+                                    `(exec-raw ~(i/timezone->set-timezone-sql driver timezone)))))
+            korma-form        `(let [~'entity (korma-entity ~database ~source-table)]
+                                 ~(if set-timezone-sql `(korma.db/with-db (:db ~'entity)
                                                           (korma.db/transaction
                                                            ~set-timezone-sql
                                                            ~korma-select-form))
@@ -96,10 +98,10 @@
        (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name)
                                                                       (when include-as?
                                                                         (format " AS \"%s\"" field-name))))
-       (= special-type :timestamp_seconds)                `(raw ~(str ((:cast-timestamp-seconds-field-to-date-fn (:driver *query*)) table-name field-name)
+       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
                                                                       (when include-as?
                                                                         (format " AS \"%s\"" field-name))))
-       (= special-type :timestamp_milliseconds)           `(raw ~(str ((:cast-timestamp-milliseconds-field-to-date-fn (:driver *query*)) table-name field-name)
+       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
                                                                       (when include-as?
                                                                         (format " AS \"%s\"" field-name))))
        :else                                              (keyword (format "%s.%s" table-name field-name)))))
@@ -227,12 +229,12 @@
   [korma-form]
   (when-not qp/*disable-qp-logging*
     (log/debug
-     (u/format-color 'green "\n\nKORMA FORM:\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
+     (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
                                                        (walk/prewalk (fn [form]                              ; strip korma.core/ qualifications from symbols in the form
                                                                        (if-not (symbol? form) form           ; to remove some of the clutter
                                                                                (symbol (name form)))))
                                                        (u/pprint-to-str)))
-     (u/format-color 'blue  "\nSQL:\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
+     (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
                                                                `(~let-form ~binding-form                     ; has to go there to work correctly
                                                                            (sql-only ~@body))))
                                                       (s/replace #"\sFROM" "\nFROM")                         ; add newlines to the SQL to make it more readable

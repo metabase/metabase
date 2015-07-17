@@ -69,7 +69,7 @@
 (defn load-test-datasets
   "Call `load-data!` on all the datasets we're testing against."
   []
-  (doseq [dataset-name @datasets/test-dataset-names]
+  (doseq [dataset-name datasets/test-dataset-names]
     (log/info (format "Loading test data: %s..." (name dataset-name)))
     (let [dataset (datasets/dataset-name->dataset dataset-name)]
       (datasets/load-data! dataset)
