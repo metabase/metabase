@@ -31,7 +31,7 @@
   [^String n]
   (when (seq n)
     (when-let [n (some-> n
-                         (s/replace #"^(.+)(?:[-_]id)$" "$1")                         ; strip off any trailing _id or -id suffix
+                         (s/replace #"^(.+)(?:[-_](?:id)|(?:ID))$" "$1")              ; strip off any trailing _id/_ID/-id/-ID suffix
                          (s/split #"_|-"))]                                           ; explode string on underscores and hyphens
       (->> (for [[first-letter & rest-letters] (filter (complement s/blank?) n)]      ; for each part of the string,
              (apply str (s/upper-case first-letter) (map s/lower-case rest-letters))) ; upcase the first char and downcase the rest
