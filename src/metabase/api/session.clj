@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
+            [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as k]
@@ -38,17 +39,24 @@
   (check-exists? Session session_id)
   (del Session :id session_id))
 
+;; Reset tokens:
+;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
+;; So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g. "100_8a266560-e3a8-4dc1-9cd1-b4471dcd56d7", before hashing it.
+;; "Leaking" the ID this way is ok because the plaintext token is only sent in the password reset email to the user in question.
+;;
+;; There's also no need to salt the token because it's already random <3
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email [Required Email]}
-  (let [{user-id :id}      (sel :one User :email email)
-        reset-token        (java.util.UUID/randomUUID)
+  (let [user-id            (sel :one :id User :email email)
+        reset-token        (str user-id "_" (java.util.UUID/randomUUID))
+        hashed-reset-token (creds/hash-bcrypt reset-token)
         password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)] ; avoid circular deps
     ;; Don't leak whether the account doesn't exist, just pretend everything is ok
     (when user-id
-      (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+      (upd User user-id, :reset_token hashed-reset-token, :reset_triggered (System/currentTimeMillis))
       (email/send-password-reset-email email server-name password-reset-url)
       (log/info password-reset-url))))
 
@@ -58,12 +66,15 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (let [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
-    (checkp (not (nil? user))
-      (symbol "token") "Invalid reset token")
-    ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-    (checkp (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0)))
-      (symbol "token") "Reset token has expired")
+  (api-let [400 "Invalid reset token"] [[_ user-id] (re-matches #"(^\d+)_.+$" token)
+                                        user        (sel :one :fields [User :id :reset_triggered :reset_token] :id (Integer/parseInt user-id))]
+    ;; Make sure the token corresponds to the correct user and that the plaintext one matches up with the hashed one
+    (check (and (= user-id (:id user))
+                (creds/bcrypt-verify token (:reset_token user)))
+      [400 "Invalid reset token"]
+      ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
+      (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0)))
+      [400 "Reset token has expired"])
     (set-user-password (:id user) password)
     {:success true}))
 
