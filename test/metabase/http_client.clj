@@ -87,10 +87,10 @@
     (when expected-status
       (when-not (= status expected-status)
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              {stacktrace :stacktrace :as body} (try (-> (cheshire/parse-string body)
-                                                         clojure.walk/keywordize-keys)
-                                                     (catch Exception _ body))]
-          (log/warn (with-out-str (clojure.pprint/pprint body)))
+              body    (try (-> (cheshire/parse-string body)
+                               clojure.walk/keywordize-keys)
+                           (catch Exception _ body))]
+          (log/error (u/pprint-to-str 'red body))
           (throw (ex-info message {:status-code status})))))
 
     ;; Deserialize the JSON response or return as-is if that fails

@@ -143,13 +143,15 @@
       (:id user))"
   {:arglists '([[status-code message] [binding test] & body])}
   [response-pair [binding test & more] & body]
-  (when (seq more)
-    (throw (IllegalArgumentException. (format "%s requires exactly 2 forms in binding vector" (name (first &form))))))
-  `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
-     (check test# ~response-pair)
-     (let [~binding test#
-           ~@more]
-       ~@body)))
+  (if (seq more)
+    `(api-let ~response-pair ~[binding test]
+       (api-let ~response-pair ~more
+         ~@body))
+    `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
+       (check test# ~response-pair)
+       (let [~binding test#
+             ~@more]
+         ~@body))))
 
 (defmacro api->
   "If TEST is true, thread the result using `->` through BODY.
