@@ -16,8 +16,7 @@
     (merge (-> database database->connection-details connection-details->connection-spec)
            ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
            ;; TODO - what will we do once we have CLOBS in temp DBs?
-           (when-not short-lived?
-             {:make-pool? true}))))
+           {:make-pool? (not short-lived?)})))
 
 (def ^{:arglists '([database])}
   db->korma-db
