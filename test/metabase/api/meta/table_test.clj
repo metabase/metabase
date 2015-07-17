@@ -451,7 +451,7 @@
                          :parent_id       nil
                          :parent          nil
                          :name            "USER_ID"
-                         :display_name    "User Id"
+                         :display_name    "User"
                          :description     nil
                          :base_type       "IntegerField"
                          :preview_display $
