@@ -16,7 +16,7 @@
 (defendpoint POST "/user"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token first_name last_name email password] :as body} :body}]
+  [:as {{:keys [token first_name last_name email password] :as body} :body, :as request}]
   {first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]
