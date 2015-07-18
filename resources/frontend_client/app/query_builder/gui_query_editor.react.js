@@ -93,12 +93,11 @@ export default React.createClass({
     },
 
     updateLimit: function(limit) {
-        Query.updateLimit(this.props.query.query, limit);
-        this.setQuery(this.props.query);
-    },
-
-    removeLimit: function() {
-        Query.removeLimit(this.props.query.query);
+        if (limit) {
+            Query.updateLimit(this.props.query.query, limit);
+        } else {
+            Query.removeLimit(this.props.query.query);
+        }
         this.setQuery(this.props.query);
     },
 
@@ -129,70 +128,17 @@ export default React.createClass({
         )
     },
 
-    renderDbSelector: function() {
-        if(this.props.databases && this.props.databases.length > 1) {
-            return (
-                <div className="Query-section">
-                    <span className="Query-label">Data</span>
-                    <DatabaseSelector
-                        databases={this.props.databases}
-                        setDatabase={this.setDatabase}
-                        currentDatabaseId={this.props.query.database}
-                    />
-                </div>
-            );
-        }
-    },
-
-    renderTableSelector: function() {
-        if (this.props.tables) {
-            var sourceTableListOpen = true;
-            if(this.props.query.query.source_table) {
-                sourceTableListOpen = false;
-            }
-
-            // if we don't have any filters applied yet then provide an option to do that
-
-
-            return (
-                <div className="Query-section">
-                    <span className="Query-label">Table</span>
-                    <SelectionModule
-                        placeholder="What part of your data?"
-                        items={this.props.tables}
-                        display="name"
-                        selectedValue={this.props.query.query.source_table}
-                        selectedKey="id"
-                        isInitiallyOpen={sourceTableListOpen}
-                        action={this.setSourceTable}
-                    />
-                </div>
-            );
-        }
-    },
-
-    renderFilterButton: function() {
-        if (this.props.query.query.source_table &&
-                Query.getFilters(this.props.query.query).length === 0 &&
-                this.props.options &&
-                this.props.options.fields.length > 0) {
-            return (
-                <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
-                    <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
-                    <span className="mr1">Filter</span> <span>{(this.props.options) ? this.props.options.name : ''}</span>
-                </a>
-            );
-        }
-    },
-
     renderBreakouts: function() {
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.props.options &&
                 this.props.options.breakout_options.fields.length > 0 &&
                 !Query.hasEmptyAggregation(this.props.query.query)) {
 
-            // only render a label for our breakout if we have a valid breakout clause already
             var breakoutLabel;
+            var breakoutList;
+            var addBreakoutButton;
+
+            // only render a label for our breakout if we have a valid breakout clause already
             if(this.props.query.query.breakout.length > 0) {
                 breakoutLabel = (
                     <span className="text-bold">
@@ -201,39 +147,46 @@ export default React.createClass({
                 );
             }
 
-            var breakoutList;
-            if(this.props.options.breakout_options) {
-                breakoutList = this.props.query.query.breakout.map(function (breakout, index) {
-                    var breakoutListOpen = false;
-                    if(breakout === null) {
-                        breakoutListOpen = true;
-                    }
-
-                    return (
-                        <div className="DimensionList inline-block" key={index}>
-                            <SelectionModule
-                                placeholder='...'
-                                display="1"
-                                items={this.props.options.breakout_options.fields}
-                                selectedValue={breakout}
-                                selectedKey="0"
-                                index={index}
-                                isInitiallyOpen={breakoutListOpen}
-                                action={this.updateDimension}
-                                remove={this.removeDimension}
-                            />
-                        </div>
-                    );
-                }.bind(this));
-            }
-
             // include a button to add a breakout, up to 2 total
-            var addBreakoutButton;
-            if (this.props.query.query.breakout.length === 0) {
-                addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
-            } else if (this.props.query.query.breakout.length === 1 &&
-                            this.props.query.query.breakout[0] !== null) {
-                addBreakoutButton = this.renderAdd(null, this.addDimension);
+            // don't include already used fields
+            var usedFields = {};
+            breakoutList = this.props.query.query.breakout.map((breakout, index) => {
+                var breakoutListOpen = breakout === null;
+                var unusedFields = this.props.options.breakout_options.fields.filter((f) => !usedFields[f[0]])
+
+                if (breakout) {
+                    usedFields[breakout] = true;
+                }
+
+                if (unusedFields.length === 0) {
+                    return null;
+                }
+
+                return (
+                    <div className="DimensionList inline-block" key={index}>
+                        <SelectionModule
+                            placeholder='...'
+                            display="1"
+                            items={unusedFields}
+                            selectedValue={breakout}
+                            selectedKey="0"
+                            index={index}
+                            isInitiallyOpen={breakoutListOpen}
+                            action={this.updateDimension}
+                            remove={this.removeDimension}
+                        />
+                    </div>
+                );
+            });
+
+            var unusedFieldsCount = this.props.options.breakout_options.fields.length - Object.keys(usedFields).length;
+            if (unusedFieldsCount > 0) {
+                if (this.props.query.query.breakout.length === 0) {
+                    addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
+                } else if (this.props.query.query.breakout.length === 1 &&
+                                this.props.query.query.breakout[0] !== null) {
+                    addBreakoutButton = this.renderAdd(null, this.addDimension);
+                }
             }
 
             return (
@@ -326,96 +279,58 @@ export default React.createClass({
         );
     },
 
-    renderLimitAndSort: function() {
-        if (this.props.options && !Query.hasEmptyAggregation(this.props.query.query) &&
-                (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
+    renderSort: function() {
+        var sortList = [];
+        if (this.props.query.query.order_by) {
+            var sortableFields = this.getSortableFields();
 
-            var limitSection;
-            if (this.props.query.query.limit !== undefined) {
-                limitSection = (
-                    <LimitWidget
-                        limit={this.props.query.query.limit}
-                        updateLimit={this.updateLimit}
-                        removeLimit={this.removeLimit}
+            var component = this;
+            sortList = this.props.query.query.order_by.map(function (order_by, index) {
+                return (
+                    <SortWidget
+                        placeholder="Attribute"
+                        sort={order_by}
+                        fieldList={sortableFields}
+                        index={index}
+                        removeSort={component.removeSort}
+                        updateSort={component.updateSort}
                     />
                 );
-            } else {
-                limitSection = (
-                    <div className="QueryOption p1 lg-p2 flex align-center">
-                        <a onClick={this.addLimit}>
-                            {this.renderAddIcon()}
-                            Add row limit
-                        </a>
-                    </div>
-                );
-            }
+            }.bind(this));
+        }
 
-            var sortList = [];
-            if (this.props.query.query.order_by) {
-                var sortableFields = this.getSortableFields();
-
-                var component = this;
-                sortList = this.props.query.query.order_by.map(function (order_by, index) {
-                    return (
-                        <SortWidget
-                            placeholder="Attribute"
-                            sort={order_by}
-                            fieldList={sortableFields}
-                            index={index}
-                            removeSort={component.removeSort}
-                            updateSort={component.updateSort}
-                        />
-                    );
-                }.bind(this));
-            }
-
-            var sortSection;
-            if (sortList.length === 0) {
-                sortSection = (
-                    <div className="QueryOption p1 lg-p2 flex align-center">
-                        <a onClick={this.addSort}>
-                            {this.renderAddIcon()}
-                            Add sort
-                        </a>
-                    </div>
-                );
-            } else {
-                var addSortButton;
-                if (Query.canAddSort(this.props.query.query)) {
-                    addSortButton = (
-                        <a onClick={this.addSort}>Add another sort</a>
-                    );
-                }
-
-                sortSection = (
-                    <div className="flex align-center">
-                        <span className="m2">sorted by</span>
-                        {sortList}
-                        {addSortButton}
-                    </div>
-                );
-            }
-
-            return (
-                <div className="Query-section">
-                    <span className="Query-label">Limit and sort:</span>
-                    <div className="Query-filters">
-                        {limitSection}
-                        {sortSection}
-                    </div>
+        var sortSection;
+        if (sortList.length === 0) {
+            sortSection = (
+                <div className="QueryOption p1 lg-p2 flex align-center">
+                    <a onClick={this.addSort}>
+                        {this.renderAddIcon()}
+                        Add sort
+                    </a>
                 </div>
             );
+        } else {
+            var addSortButton;
+            if (Query.canAddSort(this.props.query.query)) {
+                addSortButton = (
+                    <a onClick={this.addSort}>Add another sort</a>
+                );
+            }
 
-        } else if (Query.canAddLimitAndSort(this.props.query.query)) {
-            return (
-                <div className="Query-section">
-                    <a className="QueryOption p1 lg-p2" onClick={this.addLimit}>
-                        ...
-                    </a>
+            sortSection = (
+                <div className="flex align-center">
+                    <span className="m2">sorted by</span>
+                    {sortList}
+                    {addSortButton}
                 </div>
             );
         }
 
+        if (sortList.length > 0) {
+            return sortList;
+        } else {
+            return this.renderAdd("Pick a field to sort by", this.addSort);
+        }
     },
 
     renderDataSection: function() {
@@ -430,7 +345,7 @@ export default React.createClass({
         }
 
         var triggerElement = (
-            <span className="text-bold cursor-pointer flex align-center text-default">
+            <span className="px2 py1 text-bold cursor-pointer flex align-center text-default">
                 {content}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
             </span>
@@ -455,13 +370,13 @@ export default React.createClass({
 
         var tetherOptions = {
             attachment: 'top left',
-            targetAttachment: 'bottom left',
+            targetAttachment: 'bottom center',
             targetOffset: '5px 0'
         };
 
         return (
             <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
-                <span className="GuiBuilder-section-label">Data</span>
+                <span className="GuiBuilder-section-label Query-label">Data</span>
                 <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}>
@@ -473,8 +388,8 @@ export default React.createClass({
 
     renderFilterSection: function() {
         return (
-            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center">
-                <span className="GuiBuilder-section-label">Filtered by</span>
+            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center px2">
+                <span className="GuiBuilder-section-label Query-label">Filtered by</span>
                 {this.renderFilters()}
             </div>
         );
@@ -482,18 +397,66 @@ export default React.createClass({
 
     renderViewSection: function() {
         return (
-            <div className="GuiBuilder-section GuiBuilder-view flex-full flex align-center">
-                <span className="GuiBuilder-section-label">View</span>
+            <div className="GuiBuilder-section GuiBuilder-view flex-full flex align-center px1">
+                <span className="GuiBuilder-section-label Query-label">View</span>
                 {this.renderAggregation()}
                 {this.renderBreakouts()}
             </div>
         );
     },
 
+    renderLimit: function() {
+        var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
+            var name = count || "None";
+            var classes = cx({
+                "Button": true,
+                "Button--active":  count == this.props.query.query.limit
+            });
+            return (
+                <li className={classes} key={count} onClick={this.updateLimit.bind(null, count)}>{name}</li>
+            );
+        });
+        return (
+            <ul className="Button-group Button-group--blue">
+                {limitOptions}
+            </ul>
+        )
+    },
+
     renderSortLimitSection: function() {
+        var tetherOptions = {
+            attachment: 'top right',
+            targetAttachment: 'bottom center',
+            targetOffset: '5px 0'
+        };
+
+        var triggerElement = (<span className="no-decoration text-grey-1 px1">…</span>);
+
+        // TODO: use this logic
+        if (this.props.options && !Query.hasEmptyAggregation(this.props.query.query) &&
+                (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
+
+        } else if (Query.canAddLimitAndSort(this.props.query.query)) {
+
+        }
+
         return (
             <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
-                <a className="no-decoration text-grey-1 px1" href="#">…</a>
+
+                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={triggerElement}>
+                    <div className="px3 py1">
+                        <div className="py1 border-bottom">
+                            <div className="Query-label mb1">Sort by:</div>
+                            {this.renderSort()}
+                        </div>
+                        <div className="py1">
+                            <div className="Query-label mb1">Limit:</div>
+                            {this.renderLimit()}
+                        </div>
+                    </div>
+                </PopoverWithTrigger>
             </div>
         );
     },

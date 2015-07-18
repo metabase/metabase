@@ -67,3 +67,13 @@
 	margin-left: 50%;
 	left: -10px;
 }
+
+.tether-element-attached-right .PopoverBody--withArrow:before,
+.tether-element-attached-right .PopoverBody--withArrow:after {
+	right: 12px;
+}
+
+.tether-element-attached-left .PopoverBody--withArrow:before,
+.tether-element-attached-left .PopoverBody--withArrow:after {
+	left: 12px;
+}

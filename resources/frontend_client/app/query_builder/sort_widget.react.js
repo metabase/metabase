@@ -54,7 +54,7 @@ export default React.createClass({
                         display='name'
                         index={0}
                         items={this.props.fieldList}
-                        placeholder="Sort by ..."
+                        placeholder="..."
                         selectedValue={this.state.field}
                         selectedKey='id'
                         isInitiallyOpen={this.state.field === null}

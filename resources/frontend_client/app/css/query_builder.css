@@ -57,17 +57,10 @@
 }
 
 .Query-label {
-    display: inline-block;
-    position: absolute;
-    top: -0.5rem;
-    left: 0;
-    font-size: 0.65rem;
-    font-weight: bolder;
     text-transform: uppercase;
-    margin-left: 1rem;
-    padding: 0 0.3rem 0 0.3rem;
-    background-color: white;
-    color: color(var(--base-grey) shade(40%));
+    font-size: 10px;
+    font-weight: 700;
+    color: color(var(--base-grey) shade(30%));
 }
 
 .Query-filters {
@@ -292,27 +285,20 @@
     min-width: 120px;
     border-right: 1px solid var(--border-color);
     position: relative;
-    padding: 1rem;
 }
 
 .GuiBuilder-sort-limit {
     min-width: 0px;
-    padding: 0.5rem;
     font-size: 3em;
-    padding-bottom: 2rem;
 }
 
 .GuiBuilder-section-label {
-    text-transform: uppercase;
     background-color: white;
     position: absolute;
-    font-size: 10px;
-    font-weight: 700;
     top: -7px;
     left: 10px;
     padding-left: 10px;
     padding-right: 10px;
-    color: color(var(--base-grey) shade(30%));
 }
 
 /* @transitions */
