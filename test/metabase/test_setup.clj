@@ -112,11 +112,12 @@
 (defn- clear-test-db
   "Delete the test db file if it's still lying around."
   []
-  (let [filename (-> (re-find #"file:(\w+\.db).*" (db/db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
-    (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
-           (let [file (str filename file-extension)]
-             (when (.exists (io/file file))
-               (io/delete-file file))))
-         [".h2.db"
-          ".trace.db"
-          ".lock.db"])))
+  ;; db-file is prefixed with "file:", so we strip that off
+  ;; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
+  (let [filename (-> (re-find #"file:(\w+\.db).*" (db/db-file)) second)]
+    (doseq [file-extension [".h2.db"
+                            ".trace.db"
+                            ".lock.db"]]
+      (let [file (str filename file-extension)]
+        (when (.exists (io/file file))
+          (io/delete-file file))))))
