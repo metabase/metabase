@@ -32,43 +32,9 @@
                            ;; if we don't have an absolute path then make sure we start from "user.dir"
                            [(System/getProperty "user.dir") "/" db-file-name options])))))
 
-
-(defn setup-jdbc-db
-  "Configure connection details for JDBC."
-  []
-  (case (config/config-kw :mb-db-type)
-    :h2       {:subprotocol "h2"
-               :classname   "org.h2.Driver"
-               :subname     db-file}
-    :postgres {:subprotocol "postgresql"
-               :classname   "org.postgresql.Driver"
-               :subname     (str "//" (config/config-str :mb-db-host)
-                                 ":" (config/config-str :mb-db-port)
-                                 "/" (config/config-str :mb-db-dbname))
-               :user        (config/config-str :mb-db-user)
-               :password    (config/config-str :mb-db-pass)}))
-
-
-(defn setup-korma-db
-  "Configure connection details for Korma."
-  []
-  (case (config/config-kw :mb-db-type)
-    :h2       (kdb/h2 {:db     db-file
-                       :naming {:keys   str/lower-case
-                                :fields str/upper-case}})
-    :postgres (kdb/postgres {:db       (config/config-str :mb-db-dbname)
-                             :port     (config/config-int :mb-db-port)
-                             :user     (config/config-str :mb-db-user)
-                             :password (config/config-str :mb-db-pass)
-                             :host     (config/config-str :mb-db-host)})))
-
-
-;; ## CONNECTION
-
-(defn- metabase-db-connection-details
+(def ^:private ^:const db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  []
   (case (config/config-kw :mb-db-type)
     :h2       {:db db-file}
     :postgres {:host     (config/config-str :mb-db-host)
@@ -77,13 +43,20 @@
                :user     (config/config-str :mb-db-user)
                :password (config/config-str :mb-db-pass)}))
 
+(def ^:private ^:const jdbc-connection-details
+  "Connection details for Korma / JDBC."
+  (case (config/config-kw :mb-db-type)
+    :h2       (kdb/h2 (assoc db-connection-details :naming {:keys   str/lower-case
+                                                            :fields str/upper-case}))
+    :postgres (kdb/postgres db-connection-details)))
+
 
 ;; ## MIGRATE
 
 (defn migrate
   "Migrate the database `:up`, `:down`, or `:print`."
-  [jdbc-db direction]
-  (let [conn (jdbc/get-connection jdbc-db)]
+  [jdbc-connection-details direction]
+  (let [conn (jdbc/get-connection jdbc-connection-details)]
     (case direction
       :up    (LiquibaseMigrations/setupDatabase conn)
       :down  (LiquibaseMigrations/teardownDatabase conn)
@@ -95,7 +68,25 @@
 (def ^:private setup-db-has-been-called?
   (atom false))
 
-(def ^:private db-can-connect? (u/runtime-resolved-fn 'metabase.driver 'can-connect?))
+(def ^:dynamic *allow-potentailly-unsafe-connections*
+  "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
+   At the same time, we'd like to be able to use driver functionality like `can-connect?` to check whether we can connect
+   to the Metabase database, in which case we'd like to allow connections to databases that don't exist.
+
+   So we need some way to distinguish the Metabase database from other databases. We could add a key to the details map
+   specifying that it's the Metabase DB, but what if some shady user added that key to another database?
+
+   We could check if a database details map matched `db-connection-details` above, but what if a shady user went Meta-Metabase
+   and added the Metabase DB to Metabase itself? Then when they used it they'd have potentially unsafe access.
+
+   So this is where dynamic variables come to the rescue. We'll make this one `true` when we use `can-connect?` for the
+   Metabase DB, in which case we'll allow connection to non-existent H2 (etc.) files, and leave it `false` happily and
+   forever after, making all other connnections \"safe\"."
+  false)
+
+(defn- db-can-connect? [details]
+  (binding [*allow-potentailly-unsafe-connections* true]
+    ((u/runtime-resolved-fn 'metabase.driver 'can-connect?) details)))
 
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
@@ -104,33 +95,31 @@
       :or {auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
   (log/info "Setting up DB specs...")
-  (let [jdbc-db (setup-jdbc-db)
-        korma-db (setup-korma-db)]
 
-    ;; Test DB connection and throw exception if we have any troubles connecting
-    (log/info "Verifying Database Connection ...")
-    (assert (db-can-connect? {:engine (config/config-kw :mb-db-type)
-                              :details (metabase-db-connection-details)})
-            "Unable to connect to Metabase DB.")
-    (log/info "Verify Database Connection ... CHECK")
+  ;; Test DB connection and throw exception if we have any troubles connecting
+  (log/info "Verifying Database Connection ...")
+  (assert (db-can-connect? {:engine  (config/config-kw :mb-db-type)
+                            :details db-connection-details})
+    "Unable to connect to Metabase DB.")
+  (log/info "Verify Database Connection ... CHECK")
 
-    ;; Run through our DB migration process and make sure DB is fully prepared
-    (if auto-migrate
-      (migrate jdbc-db :up)
-      ;; if we are not doing auto migrations then print out migration sql for user to run manually
-      ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-      (let [sql (migrate jdbc-db :print)]
-        (log/info (str "Database Upgrade Required\n\n"
-                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                    "Please execute the following sql commands on your database before proceeding.\n\n"
-                    sql
-                    "\n\n"
-                    "Once your database is updated try running the application again.\n"))
-        (throw (java.lang.Exception. "Database requires manual upgrade."))))
-    (log/info "Database Migrations Current ... CHECK")
+  ;; Run through our DB migration process and make sure DB is fully prepared
+  (if auto-migrate
+    (migrate jdbc-connection-details :up)
+    ;; if we are not doing auto migrations then print out migration sql for user to run manually
+    ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
+    (let [sql (migrate jdbc-connection-details :print)]
+      (log/info (str "Database Upgrade Required\n\n"
+                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                     "Please execute the following sql commands on your database before proceeding.\n\n"
+                     sql
+                     "\n\n"
+                     "Once your database is updated try running the application again.\n"))
+      (throw (java.lang.Exception. "Database requires manual upgrade."))))
+  (log/info "Database Migrations Current ... CHECK")
 
-    ;; Establish our 'default' Korma DB Connection
-    (kdb/default-connection (kdb/create-db korma-db))))
+  ;; Establish our 'default' Korma DB Connection
+  (kdb/default-connection (kdb/create-db jdbc-connection-details)))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?

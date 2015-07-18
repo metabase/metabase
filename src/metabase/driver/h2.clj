@@ -1,5 +1,7 @@
 (ns metabase.driver.h2
-  (:require [korma.db :as kdb]
+  (:require [clojure.string :as s]
+            [korma.db :as kdb]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as generic-sql]
             [metabase.driver.generic-sql.interface :refer :all]))
@@ -69,10 +71,39 @@
    :YEAR                        :IntegerField
    (keyword "DOUBLE PRECISION") :FloatField})
 
-(defrecord ^:private H2Driver []
+;; These functions for exploding / imploding the options in the connection strings are here so we can override shady options
+;; users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can replace that
+;; and make the connection read-only.
+
+(defn- connection-string->file+options
+  "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
+
+    (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
+      -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
+  [connection-string]
+  (let [[file & options] (s/split connection-string #";+")
+        options          (into {} (for [option options]
+                                    (s/split option #"=")))]
+    [file options]))
+
+(defn- file+options->connection-string
+  "Implode the results of `connection-string->file+options` back into a connection string."
+  [file options]
+  (apply str file (for [[k v] options]
+                    (str ";" k "=" v))))
+
+(defn- connection-string-set-safe-options
+  "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
+  [connection-string]
+  (let [[file options] (connection-string->file+options connection-string)]
+    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
+                                                          "ACCESS_MODE_DATA" "r"}))))
+
+(defrecord H2Driver []
   ISqlDriverDatabaseSpecific
   (connection-details->connection-spec [_ details]
-    (kdb/h2 details))
+    (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
+                (update details :db connection-string-set-safe-options))))
 
   (database->connection-details [_ {:keys [details]}]
     details)
