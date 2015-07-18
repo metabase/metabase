@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [==])
   (:require [clojure.core.logic :refer :all]))
 
-(defne butlast°
+(defna butlast°
   "A relation such that BUSTLASTV is all items but the last item LASTV of list L."
   [butlastv lastv l]
   ([[]   ?x [?x]])
