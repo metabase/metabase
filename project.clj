@@ -44,6 +44,7 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.3.1"]                             ; Ring middleware for reading/writing JSON automatically
+                 [stencil "0.4.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
             [lein-ring "0.9.3"]]                                      ; start the HTTP server with 'lein ring server'
