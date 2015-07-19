@@ -3,10 +3,31 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [hiccup.core :refer [html]]
             [metabase.email :as email]
-            [metabase.util :as u]))
+            [metabase.models.setting :as setting]
+            [metabase.util :as u]
+            [metabase.util.quotation :as q]
+            [stencil.core :as stencil]))
 
 
 ;;; ### Public Interface
+
+(defn new-user-email
+  ""
+  [invited invitor password-reset-url]
+  (let [tmpl (slurp (clojure.java.io/resource "metabase/email/new_user_invite.html"))
+        data-quote (rand-nth q/quotations)
+        company (or (setting/get :site-name)
+                    "Unknown")
+        message-body (->> {:invitedName (:first_name invited)
+                           :invitorName (:first_name invitor)
+                           :invitorEmail (:email invitor)
+                           :company company
+                           :joinUrl password-reset-url
+                           :quotation (:quote data-quote)
+                           :quotationAuthor (:author data-quote)}
+                          (stencil/render-string tmpl))]
+    message-body
+    ))
 
 (defn send-new-user-email
   "Format and Send an welcome email for newly created users."
