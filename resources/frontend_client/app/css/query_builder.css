@@ -212,14 +212,10 @@
     justify-content: center;
 }
 
-.VisualizationSettings {
+.VisualizationFooter {
     padding-bottom: 1em;
     padding-top: 1em;
     background-color: #fff;
-}
-
-.VisualizationSettings .Select select {
-    padding: 0.5rem;
 }
 
 .Loading {
@@ -283,13 +279,21 @@
 .GuiBuilder-section {
     height: 48px;
     min-width: 120px;
-    border-right: 1px solid var(--border-color);
     position: relative;
+}
+
+.GuiBuilder.bordered .GuiBuilder-section {
+    border-right: 1px solid var(--border-color);
 }
 
 .GuiBuilder-sort-limit {
     min-width: 0px;
+}
+
+.EllipsisButton {
     font-size: 3em;
+    position: relative;
+    top: -0.8rem;
 }
 
 .GuiBuilder-section-label {

@@ -95,9 +95,13 @@ export default React.createClass({
     },
 
     render: function() {
+        var classes = "no-decoration ignore-react-onclickoutside";
+        if (this.props.triggerClasses) {
+            classes += " " + this.props.triggerClasses;
+        }
         return (
             <span>
-                <a className="no-decoration ignore-react-onclickoutside" href="#" onClick={this.toggleModal}>
+                <a className={classes} href="#" onClick={this.toggleModal}>
                     {this.props.triggerElement}
                 </a>
             </span>

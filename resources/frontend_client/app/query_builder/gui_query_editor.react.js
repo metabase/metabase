@@ -12,6 +12,7 @@ import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 import ColumnarSelector from './columnar_selector.react';
+import VisualizationSettings from './visualization_settings.react';
 
 import Query from './query';
 
@@ -345,7 +346,7 @@ export default React.createClass({
         }
 
         var triggerElement = (
-            <span className="px2 py1 text-bold cursor-pointer flex align-center text-default">
+            <span className="px2 py2 text-bold cursor-pointer text-default">
                 {content}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
             </span>
@@ -379,7 +380,8 @@ export default React.createClass({
                 <span className="GuiBuilder-section-label Query-label">Data</span>
                 <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
                                     tetherOptions={tetherOptions}
-                                    triggerElement={triggerElement}>
+                                    triggerElement={triggerElement}
+                                    triggerClasses="flex align-center">
                     <ColumnarSelector columns={columns}/>
                 </PopoverWithTrigger>
             </div>
@@ -427,10 +429,10 @@ export default React.createClass({
         var tetherOptions = {
             attachment: 'top right',
             targetAttachment: 'bottom center',
-            targetOffset: '5px 0'
+            targetOffset: '5px 20px'
         };
 
-        var triggerElement = (<span className="no-decoration text-grey-1 px1">…</span>);
+        var triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
 
         // TODO: use this logic
         if (this.props.options && !Query.hasEmptyAggregation(this.props.query.query) &&
@@ -445,7 +447,8 @@ export default React.createClass({
 
                 <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
                                     tetherOptions={tetherOptions}
-                                    triggerElement={triggerElement}>
+                                    triggerElement={triggerElement}
+                                    triggerClasses="flex align-center">
                     <div className="px3 py1">
                         <div className="py1 border-bottom">
                             <div className="Query-label mb1">Sort by:</div>
@@ -471,12 +474,18 @@ export default React.createClass({
                         {this.renderSortLimitSection()}
                 </div>
 
-                <div className="Query-section Query-section--right mb2">
-                    <RunButton
-                        canRun={this.canRun()}
-                        isRunning={this.props.isRunning}
-                        runFn={this.runQuery}
-                    />
+                <div className="flex mt3">
+                    <div className="flex-full">
+                        <VisualizationSettings {...this.props}/>
+                    </div>
+                    <div className="flex align-center">
+                        <RunButton
+                            canRun={this.canRun()}
+                            isRunning={this.props.isRunning}
+                            runFn={this.runQuery}
+                        />
+                    </div>
+                    <div className="flex-full"></div>
                 </div>
             </div>
         );

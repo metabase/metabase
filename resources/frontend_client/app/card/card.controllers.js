@@ -197,17 +197,12 @@ CardControllers.controller('CardDetail', [
             toggleExpandCollapseFn: function() {
                 editorModel.isExpanded = !editorModel.isExpanded;
                 renderAll();
-            }
-        };
+            },
 
-        var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
+            // for visualization settings
             card: null,
             result: null,
-            tableForeignKeys: null,
-            tableForeignKeyReferences: null,
-            isRunning: false,
-            isObjectDetail: false,
+            visualizationSettingsApi: VisualizationSettings,
             setDisplayFn: setDisplay,
             setChartColorFn: function(color) {
                 var vizSettings = card.visualization_settings;
@@ -235,7 +230,17 @@ CardControllers.controller('CardDetail', [
                 }
 
                 renderAll();
-            },
+            }
+        };
+
+        var visualizationModel = {
+            visualizationSettingsApi: VisualizationSettings,
+            card: null,
+            result: null,
+            tableForeignKeys: null,
+            tableForeignKeyReferences: null,
+            isRunning: false,
+            isObjectDetail: false,
             setSortFn: function(fieldId) {
                 // for now, just put this into the query and re-run
                 var sortField = fieldId;
@@ -373,6 +378,10 @@ CardControllers.controller('CardDetail', [
             editorModel.options = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
+
+            // for visualization settings
+            editorModel.card = angular.copy(card);
+            editorModel.result = queryResult;
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
