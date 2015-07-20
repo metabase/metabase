@@ -124,7 +124,7 @@ export default React.createClass({
         if (this.state.showEditor) {
             editorClasses = "";
             toggleEditorText = "Hide Editor";
-            toggleEditorIcon = "expand";
+            toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
             toggleEditorText = "Open Editor";
