@@ -272,29 +272,43 @@
 .GuiBuilder {
     position: relative;
     display: flex;
-    flex-direction: row;
-}
-
-.GuiBuilder--narrow {
     flex-direction: column;
 }
 
-.GuiBuilder.GuiBuilder--narrow .GuiBuilder-row:not(:last-child) {
+.GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+}
+
+.GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
     border-bottom: 1px solid var(--border-color);
 }
 
-.GuiBuilder:not(.GuiBuilder--narrow) .GuiBuilder-row:not(:last-child) {
-    border-right: 1px solid var(--border-color);
+/* for medium breakpoint only expand if data reference is not shown */
+@media screen and (--breakpoint-min-md) {
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
+        flex-direction: row;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
+        border-right: 1px solid var(--border-color);
+        border-bottom: none;
+    }
+}
+
+/* for large breakpoint always expand */
+@media screen and (--breakpoint-min-lg) {
+    .GuiBuilder {
+        flex-direction: row;
+    }
+    .GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
+        border-right: 1px solid var(--border-color);
+        border-bottom: none;
+    }
 }
 
 .GuiBuilder-section {
     height: 48px;
     min-width: 120px;
     position: relative;
-}
-
-.GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
-    border-right: 1px solid var(--border-color);
 }
 
 .GuiBuilder-sort-limit {
