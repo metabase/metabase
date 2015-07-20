@@ -273,7 +273,18 @@
     position: relative;
     display: flex;
     flex-direction: row;
-    box-shadow:
+}
+
+.GuiBuilder--narrow {
+    flex-direction: column;
+}
+
+.GuiBuilder.GuiBuilder--narrow .GuiBuilder-row:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.GuiBuilder:not(.GuiBuilder--narrow) .GuiBuilder-row:not(:last-child) {
+    border-right: 1px solid var(--border-color);
 }
 
 .GuiBuilder-section {
@@ -282,7 +293,7 @@
     position: relative;
 }
 
-.GuiBuilder.bordered .GuiBuilder-section {
+.GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
     border-right: 1px solid var(--border-color);
 }
 

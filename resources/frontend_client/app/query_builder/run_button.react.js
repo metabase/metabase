@@ -11,7 +11,7 @@ export default React.createClass({
         // default state is to not render anything if we can't actually run
         var runButton = false;
         if (this.props.canRun) {
-            var runButtonText = (this.props.isRunning) ? "Loading..." : "Run updated query";
+            var runButtonText = (this.props.isRunning) ? "Loading..." : "Run query";
             runButton = (
                 <button className="Button Button--primary circular" onClick={this.props.runFn}>{runButtonText}</button>
             );

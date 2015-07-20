@@ -7,11 +7,9 @@ import FilterWidget from './filter_widget.react';
 import Icon from './icon.react';
 import IconBorder from './icon_border.react';
 import LimitWidget from './limit_widget.react';
-import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
-import VisualizationSettings from './visualization_settings.react';
 
 import Query from './query';
 
@@ -23,9 +21,7 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
-        isRunning: React.PropTypes.bool.isRequired,
-        isExpanded: React.PropTypes.bool.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired,
+        isShowingDataReference: React.PropTypes.bool.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
         setSourceTableFn: React.PropTypes.func.isRequired,
@@ -34,14 +30,6 @@ export default React.createClass({
 
     setQuery: function(dataset_query) {
         this.props.setQueryFn(dataset_query);
-    },
-
-    canRun: function() {
-        return Query.canRun(this.props.query.query);
-    },
-
-    runQuery: function() {
-        this.props.runQueryFn(this.props.query);
     },
 
     addDimension: function() {
@@ -326,7 +314,7 @@ export default React.createClass({
     },
 
     renderDataSection: function() {
-        return <DataSelector {...this.props}/>;
+        return <DataSelector className="arrow-right" {...this.props}/>;
     },
 
     renderFilterSection: function() {
@@ -406,27 +394,23 @@ export default React.createClass({
     },
 
     render: function() {
+        var classes = cx({
+            'GuiBuilder': true,
+            'GuiBuilder--narrow': this.props.isShowingDataReference,
+            'bordered': true,
+            'rounded': true
+        })
         return (
             <div className="wrapper">
-                <div className="GuiBuilder bordered rounded">
+                <div className={classes}>
+                    <div className="GuiBuilder-row flex">
                         {this.renderDataSection()}
                         {this.renderFilterSection()}
+                    </div>
+                    <div className="GuiBuilder-row flex flex-full">
                         {this.renderViewSection()}
                         {this.renderSortLimitSection()}
-                </div>
-
-                <div className="flex mt3">
-                    <div className="flex-full">
-                        <VisualizationSettings {...this.props}/>
                     </div>
-                    <div className="flex align-center">
-                        <RunButton
-                            canRun={this.canRun()}
-                            isRunning={this.props.isRunning}
-                            runFn={this.runQuery}
-                        />
-                    </div>
-                    <div className="flex-full"></div>
                 </div>
             </div>
         );

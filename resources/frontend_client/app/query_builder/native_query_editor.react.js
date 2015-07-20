@@ -1,7 +1,6 @@
 'use strict';
 /*global ace*/
 
-import RunButton from './run_button.react';
 import DataSelector from './data_selector.react';
 import Icon from './icon.react';
 
@@ -10,8 +9,6 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
-        isRunning: React.PropTypes.bool.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
         autocompleteResultsFn: React.PropTypes.func.isRequired
@@ -92,18 +89,6 @@ export default React.createClass({
 
     setQuery: function(dataset_query) {
         this.props.setQueryFn(dataset_query);
-    },
-
-    setDatabase: function(databaseId) {
-        this.props.setDatabaseFn(databaseId);
-    },
-
-    canRunQuery: function() {
-        return (this.props.query.database !== undefined && this.props.query.native.query !== "");
-    },
-
-    runQuery: function() {
-        this.props.runQueryFn(this.props.query);
     },
 
     onChange: function(event) {

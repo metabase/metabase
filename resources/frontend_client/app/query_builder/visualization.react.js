@@ -4,6 +4,10 @@ import { CardRenderer } from '../card/card.charting';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
 import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
+import RunButton from './run_button.react';
+import VisualizationSettings from './visualization_settings.react';
+
+import Query from './query';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -14,9 +18,13 @@ export default React.createClass({
         visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
+        setDisplayFn: React.PropTypes.func.isRequired,
+        setChartColorFn: React.PropTypes.func.isRequired,
         setSortFn: React.PropTypes.func.isRequired,
         cellIsClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
+        cellClickedFn: React.PropTypes.func,
+        isRunning: React.PropTypes.bool.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
@@ -50,6 +58,37 @@ export default React.createClass({
         return (display !== "table" && display !== "scalar");
     },
 
+    runQuery: function() {
+        this.props.runQueryFn(this.props.card.dataset_query);
+    },
+
+    canRun: function() {
+        var query = this.props.card.dataset_query;
+        console.log(this.props.card);
+        if (query.query) {
+            return Query.canRun(query.query);
+        } else {
+            return (query.database != undefined && query.native.query !== "");
+        }
+    },
+
+    renderHeader: function() {
+        return (
+            <div className="wrapper flex mt3">
+                <div className="flex-full">
+                    <VisualizationSettings {...this.props}/>
+                </div>
+                <div className="flex align-center">
+                    <RunButton
+                        canRun={this.canRun()}
+                        isRunning={this.props.isRunning}
+                        runFn={this.runQuery}
+                    />
+                </div>
+                <div className="flex-full"></div>
+            </div>
+        );
+    },
 
     renderFooter: function(tableFootnote) {
         if (this.props.isObjectDetail) {
@@ -234,6 +273,7 @@ export default React.createClass({
 
         return (
             <div className={wrapperClasses}>
+                {this.renderHeader()}
                 {queryModified}
                 {loading}
                 <div className={visualizationClasses}>

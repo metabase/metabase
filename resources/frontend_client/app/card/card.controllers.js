@@ -177,13 +177,12 @@ CardControllers.controller('CardDetail', [
 
         var editorModel = {
             isRunning: false,
-            isExpanded: true,
+            isShowingDataReference: null,
             databases: null,
             tables: null,
             options: null,
             tableForeignKeys: null,
             query: null,
-            runQueryFn: runQuery,
             setQueryFn: setQuery,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
@@ -197,12 +196,18 @@ CardControllers.controller('CardDetail', [
             toggleExpandCollapseFn: function() {
                 editorModel.isExpanded = !editorModel.isExpanded;
                 renderAll();
-            },
+            }
+        };
 
-            // for visualization settings
+        var visualizationModel = {
+            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
-            visualizationSettingsApi: VisualizationSettings,
+            tableForeignKeys: null,
+            tableForeignKeyReferences: null,
+            isRunning: false,
+            runQueryFn: runQuery,
+            isObjectDetail: false,
             setDisplayFn: setDisplay,
             setChartColorFn: function(color) {
                 var vizSettings = card.visualization_settings;
@@ -230,17 +235,7 @@ CardControllers.controller('CardDetail', [
                 }
 
                 renderAll();
-            }
-        };
-
-        var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
-            card: null,
-            result: null,
-            tableForeignKeys: null,
-            tableForeignKeyReferences: null,
-            isRunning: false,
-            isObjectDetail: false,
+            },
             setSortFn: function(fieldId) {
                 // for now, just put this into the query and re-run
                 var sortField = fieldId;
@@ -373,15 +368,12 @@ CardControllers.controller('CardDetail', [
         function renderEditor() {
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
+            editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
             editorModel.tables = tables;
             editorModel.options = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
-
-            // for visualization settings
-            editorModel.card = angular.copy(card);
-            editorModel.result = queryResult;
 
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));

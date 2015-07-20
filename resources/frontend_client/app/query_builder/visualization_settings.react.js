@@ -99,9 +99,9 @@ export default React.createClass({
 
     renderChartTypePicker: function() {
         var tetherOptions = {
-            attachment: 'top center',
-            targetAttachment: 'bottom center',
-            targetOffset: '0 0'
+            attachment: 'top left',
+            targetAttachment: 'bottom left',
+            targetOffset: '5px 25px'
         };
         var triggerElement = (
             <span className="px2 py2 text-bold cursor-pointer text-default">
