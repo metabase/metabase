@@ -48,6 +48,7 @@
     padding-bottom: 1rem;
     padding-left: 2rem;
     padding-right: 2rem;
+    line-height: 1;
 }
 
 .Dropdown .Dropdown-item .link:hover {
