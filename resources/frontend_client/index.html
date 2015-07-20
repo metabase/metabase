@@ -20,7 +20,7 @@
                 <ul class="wrapper flex align-center">
                     <li>
                         <a class="NavItem cursor-pointer text-white flex align-center" href="/">
-                            <mb-logo-icon class="text-white"></mb-logo-icon>
+                            <mb-logo-icon class="text-white my2"></mb-logo-icon>
                         </a>
                     </li>
                     <li>
@@ -95,6 +95,18 @@
                     <!-- user profile dropdown -->
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
+            </nav>
+
+            <!-- NO NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative" ng-show="nav === 'none'">
+                <ul class="wrapper flex align-center">
+                    <li>
+                        <a class="NavItem cursor-pointer flex align-center" href="/">
+                            <mb-logo-icon class="text-brand my2">
+</mb-logo-icon>
+                        </a>
+                    </li>
+                </ul>
             </nav>
         </div>
 

@@ -29,7 +29,8 @@
 }
 
 .brand-boat {
-    animation: boat_rock 1s ease-in-out infinite;
+    transform-origin: 50% bottom;
+    animation: boat_rock 2s ease-in-out infinite;
     animation-direction: alternate;
 }
 
@@ -48,23 +49,23 @@
 
 @keyframes boat_lost {
     0% {
-        margin-left: 30%;
+        margin-left: 40%;
         transform: rotateY(0deg);
     }
     45% {
-        margin-left: 70%;
+        margin-left: 60%;
         transform: rotateY(0deg);
     }
     50% {
-        margin-left: 70%;
+        margin-left: 60%;
         transform: rotateY(180deg);
     }
     95% {
-        margin-left: 30%;
+        margin-left: 40%;
         transform: rotateY(180deg);
     }
     100% {
-        margin-left: 30%;
+        margin-left: 40%;
         transform: rotateY(0deg);
     }
 }
@@ -104,7 +105,7 @@
 }
 
 .NotFoundScene .brand-boat-container {
-    animation: boat_lost 15s ease-in-out infinite;
+    animation: boat_lost 30s linear infinite;
 }
 
 /* flip the second mountain around */
