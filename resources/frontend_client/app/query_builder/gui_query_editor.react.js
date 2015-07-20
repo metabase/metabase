@@ -398,7 +398,8 @@ export default React.createClass({
             'GuiBuilder': true,
             'GuiBuilder--narrow': this.props.isShowingDataReference,
             'bordered': true,
-            'rounded': true
+            'rounded': true,
+            'shadowed': true
         })
         return (
             <div className="wrapper">
