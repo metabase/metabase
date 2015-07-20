@@ -81,6 +81,7 @@ export default React.createClass({
                 <div className="flex align-center">
                     <RunButton
                         canRun={this.canRun()}
+                        isDirty={this.queryIsDirty()}
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
@@ -118,7 +119,6 @@ export default React.createClass({
     render: function() {
         var loading,
             viz,
-            queryModified,
             tableFootnote;
 
         if(this.props.isRunning) {
@@ -137,14 +137,6 @@ export default React.createClass({
                 </div>
             );
         } else {
-            if (this.queryIsDirty()) {
-                queryModified = (
-                    <div className="flex mt2 layout-centered text-headsup">
-                        <span className="Badge Badge--headsUp mr2">Heads up</span> The data below is out of date because your query has changed
-                    </div>
-                );
-            }
-
             if (this.props.result.error) {
                 viz = (
                     <div className="QueryError flex full align-center text-error">
@@ -274,7 +266,6 @@ export default React.createClass({
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
-                {queryModified}
                 {loading}
                 <div className={visualizationClasses}>
                     {viz}

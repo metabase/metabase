@@ -422,6 +422,16 @@
     opacity: 0.5;
 }
 
+.RunButton {
+    transition: margin-top 0.5s;
+    margin-top: -200px;
+}
+
+.RunButton.RunButton--isDirty.RunButton--canRun,
+.RunButton.RunButton--isRunning {
+    margin-top: 0;
+}
+
 /* data reference */
 .DataReference {
     z-index: -1;
