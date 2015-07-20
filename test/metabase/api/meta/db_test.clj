@@ -133,15 +133,14 @@
                                 :name            "Test Database"
                                 :organization_id nil
                                 :description     nil})))
-                         (datasets/when-testing-dataset :h2
-                           (match-$ (sel :one Database :name db-name)
-                             {:created_at      $
-                              :engine          "postgres"
-                              :id              $
-                              :updated_at      $
-                              :name            $
-                              :organization_id nil
-                              :description     nil})))))
+                         (match-$ (sel :one Database :name db-name)
+                           {:created_at      $
+                            :engine          "postgres"
+                            :id              $
+                            :updated_at      $
+                            :name            $
+                            :organization_id nil
+                            :description     nil}))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity

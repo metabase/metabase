@@ -37,9 +37,9 @@ export default React.createClass({
         var truncated = Humanize.truncate(this.props.str || "", 140);
 
         if (this.state.expanded) {
-            return (<span>{this.props.str} <span onClick={this.toggleExpansion}>view less</span></span>);
+            return (<span>{this.props.str} <span className="block mt1 link" onClick={this.toggleExpansion}>View less</span></span>);
         } else if (truncated !== this.props.str) {
-            return (<span>{truncated} <span onClick={this.toggleExpansion}>view more</span></span>);
+            return (<span>{truncated} <span className="block mt1 link" onClick={this.toggleExpansion}>View more</span></span>);
         } else {
             return (<span>{this.props.str}</span>);
         }

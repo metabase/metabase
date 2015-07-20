@@ -41,13 +41,13 @@
                                     </div>
                                 </div>
                                 <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
-                                    <li class="Dropdown-item" ng-repeat="dash in dashboards">
-                                        <a class="text-white no-decoration" href="/dash/{{dash.id}}">
+                                    <li class="block" ng-repeat="dash in dashboards">
+                                        <a class="Dropdown-item block text-white no-decoration" href="/dash/{{dash.id}}">
                                             <div class="flex text-bold">
                                                 {{dash.name}}
                                                 <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
                                             </div>
-                                            <div class="mt1 text-light text-brand-light">
+                                            <div class="mt1 text-light text-brand-light" ng-if="dash.description">
                                                 {{dash.description}}
                                             </div>
                                         </a>
