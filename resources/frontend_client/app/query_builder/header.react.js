@@ -107,7 +107,7 @@ export default React.createClass({
     },
 
     render: function() {
-        var title = this.props.card.name || "What would you like to know?";
+        var title = this.props.card.name || "New question";
 
         var editButton;
         if (!this.props.cardIsNewFn() && this.props.card.is_creator) {

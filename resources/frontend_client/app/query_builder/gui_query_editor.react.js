@@ -2,7 +2,7 @@
 /*global _*/
 
 import AggregationWidget from './aggregation_widget.react';
-import DatabaseSelector from './database_selector.react';
+import DataSelector from './data_selector.react';
 import FilterWidget from './filter_widget.react';
 import Icon from './icon.react';
 import IconBorder from './icon_border.react';
@@ -11,7 +11,6 @@ import RunButton from './run_button.react';
 import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
-import ColumnarSelector from './columnar_selector.react';
 import VisualizationSettings from './visualization_settings.react';
 
 import Query from './query';
@@ -35,14 +34,6 @@ export default React.createClass({
 
     setQuery: function(dataset_query) {
         this.props.setQueryFn(dataset_query);
-    },
-
-    setDatabase: function(databaseId) {
-        this.props.setDatabaseFn(databaseId);
-    },
-
-    setSourceTable: function(sourceTable) {
-        this.props.setSourceTableFn(sourceTable);
     },
 
     canRun: function() {
@@ -335,57 +326,7 @@ export default React.createClass({
     },
 
     renderDataSection: function() {
-        var database = this.props.databases && this.props.databases.filter((t) => t.id === this.props.query.database)[0]
-        var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
-
-        var content;
-        if (table) {
-            content = <span className="text-grey no-decoration">{table.display_name}</span>;
-        } else {
-            content = <span className="text-grey-4 no-decoration">Select a table</span>;
-        }
-
-        var triggerElement = (
-            <span className="px2 py2 text-bold cursor-pointer text-default">
-                {content}
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
-            </span>
-        )
-
-        var columns = [
-            {
-                title: "Databases",
-                selectedItem: database,
-                items: this.props.databases,
-                itemTitleFn: (db) => db.name,
-                itemSelectFn: (db) => this.setDatabase(db.id)
-            },
-            database && this.props.tables && {
-                title: database.name + " Tables",
-                selectedItem: table,
-                items: this.props.tables,
-                itemTitleFn: (table) => table.display_name,
-                itemSelectFn: (table) => this.setSourceTable(table.id)
-            }
-        ];
-
-        var tetherOptions = {
-            attachment: 'top left',
-            targetAttachment: 'bottom center',
-            targetOffset: '5px 0'
-        };
-
-        return (
-            <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
-                <span className="GuiBuilder-section-label Query-label">Data</span>
-                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
-                                    tetherOptions={tetherOptions}
-                                    triggerElement={triggerElement}
-                                    triggerClasses="flex align-center">
-                    <ColumnarSelector columns={columns}/>
-                </PopoverWithTrigger>
-            </div>
-        );
+        return <DataSelector {...this.props}/>;
     },
 
     renderFilterSection: function() {

@@ -2,7 +2,8 @@
 /*global ace*/
 
 import RunButton from './run_button.react';
-import DatabaseSelector from './database_selector.react';
+import DataSelector from './data_selector.react';
+import Icon from './icon.react';
 
 export default React.createClass({
     displayName: 'NativeQueryEditor',
@@ -17,7 +18,9 @@ export default React.createClass({
     },
 
     getInitialState: function() {
-        return {};
+        return {
+            showEditor: true
+        };
     },
 
     componentDidMount: function() {
@@ -53,7 +56,11 @@ export default React.createClass({
         editor.setOptions({
             enableBasicAutocompletion: true,
             enableSnippets: true,
-            enableLiveAutocompletion: true
+            enableLiveAutocompletion: true,
+            showPrintMargin: false,
+            highlightActiveLine: false,
+            highlightGutterLine: false,
+            showLineNumbers: true
         });
 
         var autocompleteFn = this.props.autocompleteResultsFn;
@@ -107,34 +114,50 @@ export default React.createClass({
         }
     },
 
+    toggleEditor: function() {
+        console.log("toggle")
+        this.setState({ showEditor: !this.state.showEditor })
+    },
+
     render: function() {
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
-        if(this.props.databases && this.props.databases.length > 1) {
+        if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
-                <DatabaseSelector
+                <DataSelector
+                    name="Database"
                     databases={this.props.databases}
-                    setDatabase={this.setDatabase}
-                    currentDatabaseId={this.props.query.database}
+                    query={this.props.query}
+                    setDatabaseFn={this.props.setDatabaseFn}
                 />
             );
+        } else {
+            dbSelector = <span className="p2 text-grey-4">This question is written in SQL.</span>;
+        }
+
+        var editorClasses, toggleEditorText, toggleEditorIcon;
+        if (this.state.showEditor) {
+            editorClasses = "";
+            toggleEditorText = "Hide Editor";
+            toggleEditorIcon = "expand";
+        } else {
+            editorClasses = "hide";
+            toggleEditorText = "Open Editor";
+            toggleEditorIcon = "expand";
         }
 
         return (
-            <div className="QueryBuilder-section border-bottom">
-                <div className="wrapper">
-                    <div id="id_sql" className="Query-section bordered mt2"></div>
-                    <div className="py2 clearfix">
-                        <div className="float-right">
-                            <RunButton
-                                canRun={this.canRunQuery()}
-                                isRunning={this.props.isRunning}
-                                runFn={this.runQuery}
-                            />
-                        </div>
-                        <div className="float-left">
-                            {dbSelector}
-                        </div>
+            <div className="wrapper">
+                <div className="bordered rounded">
+                    <div className="flex">
+                        {dbSelector}
+                        <a href="#" className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
+                            <span className="mx2">{toggleEditorText}</span>
+                            <Icon name={toggleEditorIcon} width="20" height="20"/>
+                        </a>
+                    </div>
+                    <div className={"border-top " + editorClasses}>
+                        <div id="id_sql"></div>
                     </div>
                 </div>
             </div>
