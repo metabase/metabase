@@ -357,14 +357,14 @@
     text-align: center;
 }
 
-.Filter-section-field .QueryOption {
+.Filter-section-field .SelectionModule.selected .QueryOption {
     color: var(--purple-light-color);
 }
-.Filter-section-operator .QueryOption {
+.Filter-section-operator .SelectionModule.selected .QueryOption {
     color: var(--purple-light-color);
     text-transform: lowercase;
 }
-.Filter-section-value .QueryOption {
+.Filter-section-value .SelectionModule.selected .QueryOption {
     color: var(--purple-color);
 }
 
@@ -373,32 +373,18 @@
     content: '"';
 }
 
-.GuiBuilder-view .QueryOption {
+.GuiBuilder-view .SelectionModule.selected .QueryOption {
     color: var(--green-color);
 }
 
 .QueryOption {
-    color: var(--brand-color);
+    color: color(var(--base-grey) shade(40%));
     line-height: 1;
     font-weight: 700;
 }
 
-/*.QueryOption.QueryOption-add {
-    color: color(var(--base-grey) shade(20%));
-}*/
-
 .QueryOption:hover {
     cursor: pointer;
-}
-
-.SelectionModule.selected .QueryOption {
-    /*background-color: var(--selection-color);*/
-}
-
-.SelectionModule.selected .QueryOption:hover {
-    /*background-color: var(--brand-color);*/
-    /*border-color: var(--brand-color);*/
-    /*color: #fff;*/
 }
 
 .ChartType-button {

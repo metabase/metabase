@@ -184,7 +184,7 @@ export default React.createClass({
                     display='name'
                     index={1}
                     items={this.props.filterFieldList}
-                    placeholder="..."
+                    placeholder="field"
                     selectedValue={this.state.field}
                     selectedKey='id'
                     isInitiallyOpen={this.state.field === null}
@@ -203,7 +203,7 @@ export default React.createClass({
         return (
             <div className="Filter-section Filter-section-operator">
                 <SelectionModule
-                    placeholder="..."
+                    placeholder="operator"
                     items={this.state.operatorList}
                     display='verbose_name'
                     selectedValue={this.state.operator}
@@ -241,7 +241,7 @@ export default React.createClass({
                             index={filterIndex}
                             items={this.state.fieldValues.values}
                             isInitiallyOpen={filterValue === null && i === 0}
-                            placeholder="..."
+                            placeholder="value"
                             selectedValue={filterValue}
                             selectedKey='key'
                             parentIndex={filterValue}

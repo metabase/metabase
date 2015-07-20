@@ -147,7 +147,7 @@ export default React.createClass({
                 return (
                     <div className="DimensionList inline-block" key={index}>
                         <SelectionModule
-                            placeholder='...'
+                            placeholder='field'
                             display="1"
                             items={unusedFields}
                             selectedValue={breakout}
