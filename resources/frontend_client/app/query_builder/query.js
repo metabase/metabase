@@ -3,10 +3,7 @@
 var Query = {
 
     canRun: function(query) {
-        if (Query.hasValidAggregation(query)) {
-            return true;
-        }
-        return false;
+        return query && query.source_table != undefined && Query.hasValidAggregation(query);
     },
 
     cleanQuery: function(query) {

@@ -6,10 +6,20 @@ import ColumnarSelector from './columnar_selector.react';
 
 export default React.createClass({
     displayName: "DataSelector",
+    propTypes: {
+        query: React.PropTypes.object.isRequired,
+        databases: React.PropTypes.array.isRequired,
+        tables: React.PropTypes.array,
+        setDatabaseFn: React.PropTypes.func.isRequired,
+        setSourceTableFn: React.PropTypes.func,
+        isInitiallyOpen: React.PropTypes.bool,
+        name: React.PropTypes.string
+    },
 
     getDefaultProps: function() {
         return {
-            name: "Data"
+            name: "Data",
+            isInitiallyOpen: false
         };
     },
 
@@ -71,6 +81,7 @@ export default React.createClass({
             <div className={classes}>
                 <span className="GuiBuilder-section-label Query-label">{name}</span>
                 <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
+                                    isInitiallyOpen={this.props.isInitiallyOpen}
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">

@@ -7,8 +7,10 @@ export default React.createClass({
     displayName: 'PopoverWithTrigger',
 
     getInitialState: function() {
+        // a selection module can be told to be open on initialization but otherwise is closed
+        var isInitiallyOpen = this.props.isInitiallyOpen || false;
         return {
-            modalOpen: false
+            modalOpen: isInitiallyOpen
         };
     },
 

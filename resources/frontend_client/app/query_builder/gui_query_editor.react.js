@@ -109,14 +109,16 @@ export default React.createClass({
     },
 
     renderBreakouts: function() {
+        var enabled;
+        var breakoutLabel;
+        var breakoutList;
+        var addBreakoutButton;
+
         // breakout clause.  must have table details available & a valid aggregation defined
         if (this.props.options &&
                 this.props.options.breakout_options.fields.length > 0 &&
                 !Query.hasEmptyAggregation(this.props.query.query)) {
-
-            var breakoutLabel;
-            var breakoutList;
-            var addBreakoutButton;
+            enabled = true;
 
             // only render a label for our breakout if we have a valid breakout clause already
             if(this.props.query.query.breakout.length > 0) {
@@ -168,15 +170,22 @@ export default React.createClass({
                     addBreakoutButton = this.renderAdd(null, this.addDimension);
                 }
             }
-
-            return (
-                <div className="Query-section">
-                    {breakoutLabel}
-                    {breakoutList}
-                    {addBreakoutButton}
-                </div>
-            );
+        } else {
+            enabled = false;
+            addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
         }
+
+        var querySectionClasses = cx({
+            "Query-section": true,
+            disabled: !enabled
+        });
+        return (
+            <div className={querySectionClasses}>
+                {breakoutLabel}
+                {breakoutList}
+                {addBreakoutButton}
+            </div>
+        );
     },
 
     renderAdd: function(text, onClick) {
@@ -198,7 +207,7 @@ export default React.createClass({
 
     renderAggregation: function() {
         // aggregation clause.  must have table details available
-        if(this.props.options) {
+        if (this.props.options) {
             return (
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
@@ -206,21 +215,29 @@ export default React.createClass({
                     updateAggregation={this.updateAggregation}>
                 </AggregationWidget>
             );
+        } else {
+            // TODO: move this into AggregationWidget?
+            return (
+                <div className="Query-section Query-section-aggregations disabled">
+                    <a className="QueryOption p1 flex align-center">Raw data</a>
+                </div>
+            );
         }
     },
 
     renderFilters: function() {
-        var queryFilters = Query.getFilters(this.props.query.query);
-
+        var enabled;
         var filterList;
         var addFilterButton;
 
         if (this.props.options) {
+            enabled = true;
             var filterFieldList = [];
             for(var key in this.props.options.fields_lookup) {
                 filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
+            var queryFilters = Query.getFilters(this.props.query.query);
             if (queryFilters && queryFilters.length > 0) {
                 filterList = queryFilters.map((filter, index) => {
                     if(index > 0) {
@@ -247,10 +264,17 @@ export default React.createClass({
                     addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
                 }
             }
+        } else {
+            enabled = false;
+            addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
         }
 
+        var querySectionClasses = cx({
+            "Query-section": true,
+            disabled: !enabled
+        });
         return (
-            <div className="Query-section">
+            <div className={querySectionClasses}>
                 <div className="Query-filters">
                     {filterList}
                     {addFilterButton}
@@ -314,7 +338,18 @@ export default React.createClass({
     },
 
     renderDataSection: function() {
-        return <DataSelector className="arrow-right" {...this.props}/>;
+        var isInitiallyOpen = !this.props.query.database || !this.props.query.query.source_table;
+        return (
+            <DataSelector
+                className="arrow-right"
+                query={this.props.query}
+                databases={this.props.databases}
+                tables={this.props.tables}
+                setDatabaseFn={this.props.setDatabaseFn}
+                setSourceTableFn={this.props.setSourceTableFn}
+                isInitiallyOpen={isInitiallyOpen}
+            />
+        );
     },
 
     renderFilterSection: function() {

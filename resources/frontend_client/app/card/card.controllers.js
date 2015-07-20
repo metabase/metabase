@@ -86,7 +86,7 @@ CardControllers.controller('CardDetail', [
                 type: "query",
                 query: {
                     source_table: null,
-                    aggregation: [null],
+                    aggregation: ["rows"],
                     breakout: [],
                     filter: []
                 }
