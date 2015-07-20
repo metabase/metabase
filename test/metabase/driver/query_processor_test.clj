@@ -60,10 +60,10 @@
   "Return column information for the `categories` column named by keyword COL."
   [col]
   (case col
-    :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil, :name (format-name "id")
-           :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil, :name (format-name "name")
-           :table_id (id :categories), :id (id :categories :name)}))
+    :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil,
+           :name (format-name "id") :display_name "Id" :table_id (id :categories), :id (id :categories :id)}
+    :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil,
+           :name (format-name "name") :display_name "Name" :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### users
 (defn users-col
@@ -76,6 +76,7 @@
                  :base_type    (id-field-type)
                  :description  nil
                  :name         (format-name "id")
+                 :display_name "Id"
                  :table_id     (id :users)
                  :id           (id :users :id)}
     :name       {:extra_info   {}
@@ -84,6 +85,7 @@
                  :base_type    :TextField
                  :description  nil
                  :name         (format-name "name")
+                 :display_name "Name"
                  :table_id     (id :users)
                  :id           (id :users :name)}
     :last_login {:extra_info   {}
@@ -92,6 +94,7 @@
                  :base_type    (timestamp-field-type)
                  :description  nil
                  :name         (format-name "last_login")
+                 :display_name "Last Login"
                  :table_id     (id :users)
                  :id           (id :users :last_login)}))
 
@@ -111,6 +114,7 @@
                   :base_type    (id-field-type)
                   :description  nil
                   :name         (format-name "id")
+                  :display_name "Id"
                   :table_id     (id :venues)
                   :id           (id :venues :id)}
     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
@@ -123,6 +127,7 @@
                   :base_type    :IntegerField
                   :description  nil
                   :name         (format-name "category_id")
+                  :display_name "Category Id"
                   :table_id     (id :venues)
                   :id           (id :venues :category_id)}
     :price       {:extra_info   {}
@@ -131,6 +136,7 @@
                   :base_type    :IntegerField
                   :description  nil
                   :name         (format-name "price")
+                  :display_name "Price"
                   :table_id     (id :venues)
                   :id           (id :venues :price)}
     :longitude   {:extra_info   {}
@@ -139,6 +145,7 @@
                   :base_type    :FloatField,
                   :description  nil
                   :name         (format-name "longitude")
+                  :display_name "Longitude"
                   :table_id     (id :venues)
                   :id           (id :venues :longitude)}
     :latitude    {:extra_info   {}
@@ -147,6 +154,7 @@
                   :base_type    :FloatField
                   :description  nil
                   :name         (format-name "latitude")
+                  :display_name "Latitude"
                   :table_id     (id :venues)
                   :id           (id :venues :latitude)}
     :name        {:extra_info   {}
@@ -155,6 +163,7 @@
                   :base_type    :TextField
                   :description  nil
                   :name         (format-name "name")
+                  :display_name "Name"
                   :table_id     (id :venues)
                   :id           (id :venues :name)}))
 
@@ -174,6 +183,7 @@
                :base_type    (id-field-type)
                :description  nil
                :name         (format-name "id")
+               :display_name "Id"
                :table_id     (id :checkins)
                :id           (id :checkins :id)}
     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
@@ -186,6 +196,7 @@
                :base_type    :IntegerField
                :description  nil
                :name         (format-name "venue_id")
+               :display_name "Venue Id"
                :table_id     (id :checkins)
                :id           (id :checkins :venue_id)}
     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
@@ -198,6 +209,7 @@
                :base_type    :IntegerField
                :description  nil
                :name         (format-name "user_id")
+               :display_name "User Id"
                :table_id     (id :checkins)
                :id           (id :checkins :user_id)}))
 
@@ -215,6 +227,7 @@
      :count  {:base_type    :IntegerField
               :special_type :number
               :name         "count"
+              :display_name "count"
               :id           nil
               :table_id     nil
               :description  nil
@@ -231,6 +244,10 @@
     :extra_info   {}
     :target       nil
     :name         (case ag-col-kw
+                    :avg    "avg"
+                    :stddev "stddev"
+                    :sum    "sum")
+    :display_name (case ag-col-kw
                     :avg    "avg"
                     :stddev "stddev"
                     :sum    "sum")}))

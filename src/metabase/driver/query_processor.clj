@@ -79,7 +79,7 @@
   (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
     (qp (if-not (should-add-implicit-fields? query)
           query
-          (let [fields (->> (sel :many :fields [Field :name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
+          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
                                  :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
                             (map expand/rename-mb-field-keys)
                             (map expand/map->Field)

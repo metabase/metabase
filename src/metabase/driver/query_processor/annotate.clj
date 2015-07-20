@@ -97,11 +97,14 @@
     (let [ag-field (if (contains? #{:count :distinct} ag-type)
                      {:base-type    :IntegerField
                       :field-name   :count
+                      :field-display-name "count"
                       :special-type :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
                          (assoc :field-name (if (= ag-type :distinct) :count
-                                                ag-type))))]
+                                                ag-type))
+                         (assoc :field-display-name (if (= ag-type :distinct) "count"
+                                                        (name ag-type)))))]
       (fn [out]
         (trace-lvars "*" out)
         (== out ag-field)))))
@@ -110,7 +113,8 @@
   (all
    (== out {:base-type    :UnknownField
             :special-type nil
-            :field-name   field-name})
+            :field-name   field-name
+            :field-display-name field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 
 (defn- field° [query]
@@ -215,11 +219,12 @@
           :id          nil
           :table_id    nil}
          (-> col
-             (set/rename-keys  {:base-type    :base_type
-                                :field-id     :id
-                                :field-name   :name
-                                :special-type :special_type
-                                :table-id     :table_id})
+             (set/rename-keys  {:base-type          :base_type
+                                :field-id           :id
+                                :field-name         :name
+                                :field-display-name :display_name
+                                :special-type       :special_type
+                                :table-id           :table_id})
              (dissoc :position))))
 
 (defn- add-fields-extra-info
@@ -238,7 +243,7 @@
         ;; Build a map of Destination Field IDs -> Destination Fields
         dest-field-id->field    (when (and (seq fk-field-ids)
                                            (seq (vals field-id->dest-field-id)))
-                                  (sel :many :id->fields [Field :id :name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
 
     ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
     (vec (for [{field-id :id, :as field} fields]
