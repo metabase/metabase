@@ -24,10 +24,14 @@
                            :company company
                            :joinUrl password-reset-url
                            :quotation (:quote data-quote)
-                           :quotationAuthor (:author data-quote)}
+                           :quotationAuthor (:author data-quote)
+                           :today (u/now-with-format "MMM dd, yyyy")}
                           (stencil/render-string tmpl))]
-    message-body
-    ))
+    (email/send-message
+      :subject     (str "You're invited to join " company "'s Metabase")
+      :recipients   [(:email invited)]
+      :message-type :html
+      :message      message-body)))
 
 (defn send-new-user-email
   "Format and Send an welcome email for newly created users."
