@@ -82,7 +82,7 @@
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"}
-                            :jvm-opts ["-Dmb.db.file=target/metabase-test"
+                            :jvm-opts ["-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"

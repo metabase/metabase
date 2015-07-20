@@ -92,10 +92,8 @@
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
-           (log/debug (color/blue "Loading data..."))
            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (load-table-data! dataset-loader database-definition table-definition)
-             (log/info (u/format-color 'blue "Loaded table '%s' (%d rows)." (:table-name table-definition) (count (:rows table-definition)))))
+             (load-table-data! dataset-loader database-definition table-definition))
 
            ;; Add DB object to Metabase DB
            (let [db (ins Database
