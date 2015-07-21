@@ -398,7 +398,7 @@
   (field-avg-length [this field]
     (let [field-values (->> (field-values-lazy-seq this field)
                             (filter identity)
-                            (take max-sync-lazy-seq-results))                      ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
+                            (take max-sync-lazy-seq-results)) ; as with field-percent-urls it's probably fine to consider the first 10,000 values rather than potentially millions
           field-values-count (count field-values)]
       (if (= field-values-count 0) 0
           (int (math/round (/ (->> field-values
