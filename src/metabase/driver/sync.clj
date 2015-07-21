@@ -423,20 +423,20 @@
   (when (and (not (:special_type field))
              (contains? #{:CharField :TextField} (:base_type field)))
     (try
-      (let [valid-json-values-balance (atom 0)]
-        (doseq [val (->> (field-values-lazy-seq driver field)
-                         (take max-sync-lazy-seq-results))]
-          (if (s/blank? val)
-            (swap! valid-json-values-balance dec)
-            ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other types of valid JSON values as :json
-            ;; (e.g. a string representation of a number or boolean)
-            (let [val (json/parse-string val)]
-              (when (not (or (map? val)
-                             (sequential? val)))
-                (throw (Exception.)))
-              (swap! valid-json-values-balance inc))))
-
-        (when (> @valid-json-values-balance 0)
+      (let [values                    (->> (field-values-lazy-seq driver field)
+                                           (take max-sync-lazy-seq-results))
+            valid-json-values-balance (loop [[val & more] values, balance 0]
+                                        (cond
+                                          (and (not val) (not (seq more))) balance
+                                          (s/blank? val)                   (recur more (dec balance))
+                                          ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+                                          ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
+                                          :else                            (let [val (json/parse-string val)]
+                                                                             (when (not (or (map? val)
+                                                                                            (sequential? val)))
+                                                                               (throw (Exception.)))
+                                                                             (recur more (inc balance)))))]
+        (when (> valid-json-values-balance 0)
           (log/info (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
           (upd Field (:id field) :special_type :json, :preview_display false)
           (assoc field :special_type :json, :preview_display false)))
