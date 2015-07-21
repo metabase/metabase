@@ -1,7 +1,7 @@
 'use strict';
 /*global _ */
 
-import OnClickOutside from 'react-onclickoutside';
+import Popover from './popover.react';
 
 import Icon from './icon.react';
 import SearchBar from './search_bar.react';
@@ -24,7 +24,6 @@ export default React.createClass({
         parentIndex: React.PropTypes.number,
         placeholder: React.PropTypes.string
     },
-    mixins: [OnClickOutside],
 
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed
@@ -172,6 +171,42 @@ export default React.createClass({
         return item && _.isEqual(item[this.props.selectedKey], this.props.selectedValue);
     },
 
+    renderPopover: function(selection) {
+        if(this.state.open) {
+            var tetherOptions = {
+                attachment: 'top center',
+                targetAttachment: 'bottom center',
+                targetOffset: '14px 0'
+            };
+
+            var itemListClasses = cx({
+                'SelectionItems': true,
+                'SelectionItems--open': this.state.open,
+                'SelectionItems--expanded': this.state.expanded
+            });
+
+            var searchBar;
+            if(this._enableSearch()) {
+                searchBar = <SearchBar onFilter={this._filterSelections} />;
+            }
+
+            return (
+                <Popover
+                    tetherOptions={tetherOptions}
+                    className="SelectionModule PopoverBody PopoverBody--withArrow"
+                    handleClickOutside={this.handleClickOutside}
+                >
+                    <div className={itemListClasses}>
+                        {searchBar}
+                        <ul className="SelectionList">
+                            {this._listItems(selection)}
+                        </ul>
+                    </div>
+                </Popover>
+            );
+        }
+    },
+
     render: function() {
         var selection;
         this.props.items.forEach(function (item) {
@@ -181,30 +216,14 @@ export default React.createClass({
         }, this);
 
         var placeholder = selection || this.props.placeholder,
-            searchBar,
             remove,
-            removeable = false;
-
-        if(this.props.remove) {
-            removeable = true;
-        }
+            removeable = !!this.props.remove;
 
         var moduleClasses = cx({
             'SelectionModule': true,
-            'relative': true,
             'selected': selection,
             'removeable': removeable
         });
-
-        var itemListClasses = cx({
-            'SelectionItems': true,
-            'SelectionItems--open': this.state.open,
-            'SelectionItems--expanded': this.state.expanded
-        });
-
-        if(this._enableSearch()) {
-            searchBar = <SearchBar onFilter={this._filterSelections} />;
-        }
 
         if(this.props.remove) {
             remove = (
@@ -222,12 +241,7 @@ export default React.createClass({
                     </a>
                     {remove}
                 </div>
-                <div className={itemListClasses}>
-                    {searchBar}
-                    <ul className="SelectionList">
-                        {this._listItems(selection)}
-                    </ul>
-                </div>
+                {this.renderPopover(selection)}
             </div>
         );
     }
