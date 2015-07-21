@@ -11,9 +11,9 @@
 
 ;;; ### Public Interface
 
-(defn new-user-email
-  ""
-  [invited invitor password-reset-url]
+(defn send-new-user-email
+  "Format and Send an welcome email for newly created users."
+  [invited invitor join-url]
   (let [tmpl (slurp (clojure.java.io/resource "metabase/email/new_user_invite.html"))
         data-quote (rand-nth q/quotations)
         company (or (setting/get :site-name)
@@ -22,7 +22,7 @@
                            :invitorName (:first_name invitor)
                            :invitorEmail (:email invitor)
                            :company company
-                           :joinUrl password-reset-url
+                           :joinUrl join-url
                            :quotation (:quote data-quote)
                            :quotationAuthor (:author data-quote)
                            :today (u/now-with-format "MMM dd, yyyy")}
@@ -32,24 +32,6 @@
       :recipients   [(:email invited)]
       :message-type :html
       :message      message-body)))
-
-(defn send-new-user-email
-  "Format and Send an welcome email for newly created users."
-  [first_name email password-reset-url]
-  {:pre [(string? first_name)
-         (string? email)
-         (u/is-email? email)
-         (string? password-reset-url)]}
-  (let [message-body (html [:html
-                            [:body
-                             [:p (format "Welcome to Metabase %s!" first_name)]
-                             [:p "Your account is setup and ready to go, you just need to set a password so you can login.  Follow the link below to reset your account password."]
-                             [:p [:a {:href password-reset-url} password-reset-url]]]])]
-    (email/send-message
-     :subject     "Your new Metabase account is all set up"
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
 
 (defn send-password-reset-email
   "Format and Send an email informing the user how to reset their password."

@@ -5,6 +5,7 @@
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.models.interface :refer :all]
+            [metabase.models.setting :as setting]
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
@@ -58,7 +59,7 @@
 
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome reset-url]
+  [first-name last-name email-address & {:keys [send-welcome invitor]
                                          :or {send-welcome false}}]
   {:pre [(string? first-name)
          (string? last-name)
@@ -68,8 +69,10 @@
                         :first_name first-name
                         :last_name last-name
                         :password (str (java.util.UUID/randomUUID)))]
-    (if send-welcome
-      (email/send-new-user-email first-name email-address reset-url))
+    (when send-welcome
+      ;; TODO - set a password reset token and build an invite url for the user
+      (let [join-url (str (setting/get :-site-url) "/auth/forgot_password")]
+        (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
 
