@@ -11,8 +11,6 @@
             (metabase.models [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]))
 
-(declare clear-test-db)
-
 ;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
 
 ;; ## GENERAL SETTINGS
@@ -69,7 +67,7 @@
 (defn load-test-datasets
   "Call `load-data!` on all the datasets we're testing against."
   []
-  (doseq [dataset-name @datasets/test-dataset-names]
+  (doseq [dataset-name datasets/test-dataset-names]
     (log/info (format "Loading test data: %s..." (name dataset-name)))
     (let [dataset (datasets/dataset-name->dataset dataset-name)]
       (datasets/load-data! dataset)
@@ -83,9 +81,6 @@
   []
   (log/info "Starting up Metabase unit test runner")
 
-  ;; clear out any previous test data that's lying around
-  (log/info "Clearing out test DB...")
-  (clear-test-db)
   (log/info "Setting up test DB and running migrations...")
   (db/setup-db :auto-migrate true)
 
@@ -105,18 +100,3 @@
   (log/info "Shutting down Metabase unit test runner")
   (task/stop-task-runner!)
   (core/stop-jetty))
-
-
-;; ## DB Setup
-
-(defn- clear-test-db
-  "Delete the test db file if it's still lying around."
-  []
-  (let [filename (-> (re-find #"file:(\w+\.db).*" (db/db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
-    (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
-           (let [file (str filename file-extension)]
-             (when (.exists (io/file file))
-               (io/delete-file file))))
-         [".h2.db"
-          ".trace.db"
-          ".lock.db"])))

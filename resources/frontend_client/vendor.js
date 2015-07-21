@@ -2,6 +2,8 @@
 
 "use strict";
 
+import 'babel/polyfill';
+
 // angular:
 import 'angular';
 import 'angular-animate';

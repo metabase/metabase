@@ -6,7 +6,9 @@
                    db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.util :refer :all]
+            [metabase.driver.interface :refer [supports?]]
+            (metabase.driver.generic-sql [interface :as i]
+                                         [util :refer :all])
             [metabase.models.database :refer [Database]]))
 
 (defn- value->base-type
@@ -27,13 +29,16 @@
                     db->korma-db
                     korma.db/get-connection)
              [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
-                                                ;; If timezone is specified in the Query and the driver supports setting the timezone then execute SQL to set it
+                                                ;; If timezone is specified in the Query and the driver supports setting the timezone
+                                                ;; then execute SQL to set it
                                                 (when-let [timezone (or (-> query :native :timezone)
                                                                         (driver/report-timezone))]
-                                                  (when-let [timezone->set-timezone-sql (:timezone->set-timezone-sql (driver/engine->driver (:engine database)))]
-                                                    (log/debug "Setting timezone to:" timezone)
-                                                    (jdbc/db-do-prepared conn (timezone->set-timezone-sql timezone))))
+                                                  (let [driver (driver/engine->driver (:engine database))]
+                                                    (when (supports? driver :set-timezone)
+                                                      (log/debug "Setting timezone to:" timezone)
+                                                      (jdbc/db-do-prepared conn (i/timezone->set-timezone-sql driver timezone)))))
                                                 (jdbc/query conn sql :as-arrays? true))]
+         ;; TODO - Why don't we just use annotate?
          {:rows    rows
           :columns columns
           :cols    (map (fn [column first-value]

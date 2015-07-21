@@ -94,7 +94,8 @@
     (let [defaults {:active          true
                     :preview_display true
                     :field_type      :info
-                    :position        0}]
+                    :position        0
+                    :display_name    (common/name->human-readable-name (:name field))}]
       (merge defaults field)))
 
   (post-insert [_ field]
@@ -115,8 +116,6 @@
         :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
         :db                        (delay @(:db @(:table <>)))
         :target                    (delay (field->fk-field field))
-        :human_readable_name       (when (name :field)
-                                     (delay (common/name->human-readable-name (:name field))))
         :parent                    (when parent_id
                                      (delay (this parent_id)))
         :children                  (delay (sel :many this :parent_id (:id field)))

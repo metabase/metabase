@@ -187,7 +187,7 @@ export default React.createClass({
             <div className={this.props.sectionClassName}>
                 <SelectionModule
                     action={this.setField}
-                    display='name'
+                    display='display_name'
                     index={1}
                     items={this.props.filterFieldList}
                     placeholder="Filter by..."
@@ -280,7 +280,7 @@ export default React.createClass({
             }
 
             filterValueInputs[i] = (
-                <div className="FilterSection">
+                <div key={i} className="FilterSection">
                     {valueHtml}
                 </div>
             );

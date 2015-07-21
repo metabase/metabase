@@ -20,7 +20,7 @@
   "Get all `Tables`."
   []
   (-> (sel :many Table :active true (k/order :name :ASC))
-      (hydrate :db :human_readable_name)
+      (hydrate :db)
       ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
       (#(map (fn [table]
                (cond-> table
@@ -36,21 +36,21 @@
 
 (defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [entity_name entity_type description]} :body}]
-  {entity_name NonEmptyString, entity_type TableEntityType}
+  [id :as {{:keys [display_name entity_type description]} :body}]
+  {display_name NonEmptyString,
+   entity_type  TableEntityType}
   (write-check Table id)
   (check-500 (upd-non-nil-keys Table id
-                               :entity_name entity_name
-                               :entity_type entity_type
-                               :description description))
+                               :display_name display_name
+                               :entity_type  entity_type
+                               :description  description))
   (Table id))
 
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
   (read-check Table id)
-  (-> (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC))
-      (hydrate :human_readable_name)))
+  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC)))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

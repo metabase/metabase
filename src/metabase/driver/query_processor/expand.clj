@@ -127,6 +127,7 @@
   [field]
   (set/rename-keys field {:id           :field-id
                           :name         :field-name
+                          :display_name :field-display-name
                           :special_type :special-type
                           :base_type    :base-type
                           :table_id     :table-id
@@ -134,14 +135,14 @@
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
-  [expanded-query-dict field-ids & [count]]
+  [expanded-query-dict field-ids]
   (if-not (seq field-ids)
     ;; Base case: if there's no field-ids to expand we're done
     expanded-query-dict
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :base_type :special_type :table_id :parent_id], :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]
@@ -149,9 +150,7 @@
 
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
         ;; We can't use recur here because binding wraps body in try/catch
-        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict)
-                        @*field-ids*
-                        (inc (or count 0)))))))
+        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict) @*field-ids*)))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
@@ -231,10 +230,13 @@
 ;; Field is the expansion of a Field ID in the standard QL
 (defrecord Field [^Integer field-id
                   ^String  field-name
+                  ^String  field-display-name
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer table-id
                   ^String  table-name
+                  ^Integer position
+                  ^String  description
                   ^Integer parent-id
                   parent] ; Field once its resolved; FieldPlaceholder before that
   IResolve
@@ -415,13 +417,13 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard identity) (max :guard identity)]
+  ["BETWEEN" (field-id :guard Field?) (min :guard (complement nil?)) (max :guard (complement nil?))]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard identity)]
+  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})

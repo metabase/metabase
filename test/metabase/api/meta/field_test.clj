@@ -27,6 +27,7 @@
                         :organization_id nil
                         :description nil})
                  :name "USERS"
+                 :display_name "Users"
                  :rows 15
                  :updated_at $
                  :entity_name nil
@@ -36,6 +37,7 @@
                  :created_at $})
        :special_type "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
        :name "NAME"
+       :display_name "Name"
        :updated_at $
        :active true
        :id (id :users :name)
@@ -64,20 +66,21 @@
                (upd Field (id :venues :latitude) :special_type "latitude")
                ;; match against the modified Field
                field)
-      {:description     nil
-       :table_id        (id :venues)
-       :special_type    "fk"
-       :name            "LATITUDE"
-       :updated_at      $
-       :active          true
-       :id              $
-       :field_type      "info"
-       :position        0
-       :preview_display true
-       :created_at      $
-       :base_type       "FloatField"
-       :parent_id       nil
-       :parent          nil})
+             {:description     nil
+              :table_id        (id :venues)
+              :special_type    "fk"
+              :name            "LATITUDE"
+              :display_name    nil
+              :updated_at      $
+              :active          true
+              :id              $
+              :field_type      "info"
+              :position        0
+              :preview_display true
+              :created_at      $
+              :base_type       "FloatField"
+              :parent_id       nil
+              :parent          nil})
   ((user->client :crowberto) :put 200 (format "meta/field/%d" (id :venues :latitude)) {:special_type :fk}))
 
 (defn- field->field-values

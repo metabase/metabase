@@ -9,6 +9,7 @@ import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
+var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
@@ -20,114 +21,71 @@ export default React.createClass({
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         downloadLink: React.PropTypes.string,
+        isShowingDataReference: React.PropTypes.bool.isRequired,
+        toggleDataReferenceFn: React.PropTypes.func.isRequired,
+        cardIsNewFn: React.PropTypes.func.isRequired,
+        cardIsDirtyFn: React.PropTypes.func.isRequired
     },
 
     getInitialState: function() {
         return {
-            origCard: JSON.stringify(this.props.card),
-            recentlySaved: false,
-            resetOrigCard: false
+            recentlySaved: null
         };
-    },
-
-    componentWillReceiveProps: function(nextProps) {
-        // pre-empt a card update via props
-        // we need this here for a specific case where we know the card will be changing
-        // and thus we need to reset our :origCard state BEFORE our next render cycle
-        if (this.state.resetOrigCard) {
-            this.setState({
-                origCard: JSON.stringify(nextProps.card),
-                recentlySaved: false,
-                resetOrigCard: false
-            });
-        }
-    },
-
-    cardIsNew: function() {
-        // a card is considered new if it has not ID associated with it
-        return (this.props.card.id === undefined);
-    },
-
-    cardIsDirty: function() {
-        // a card is considered dirty if ANY part of it has been changed
-        return (JSON.stringify(this.props.card) !== this.state.origCard);
     },
 
     resetStateOnTimeout: function() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
-
-        var component = this;
-        this.timeout = setTimeout(function() {
-            if (component.isMounted()) {
-                component.setState({
-                    recentlySaved: false
+        this.timeout = setTimeout(() => {
+            if (this.isMounted()) {
+                this.setState({
+                    recentlySaved: null
                 });
             }
-        }.bind(component), 5000);
+        }, 5000);
     },
 
     save: function() {
         return this.saveCard(this.props.card);
     },
 
-    cloneCard: function() {
-        this.props.cloneCardFn(this.props.card.id);
-    },
-
     saveCard: function(card) {
-        var component = this,
-            apiCall;
         if (card.id === undefined) {
             // creating a new card
-            apiCall = this.props.cardApi.create(card, function (newCard) {
-                if (component.isMounted()) {
-                    component.props.notifyCardCreatedFn(newCard);
+            return this.props.cardApi.create(card).$promise.then((newCard) => {
+                if (this.isMounted()) {
+                    this.props.notifyCardCreatedFn(newCard);
 
                     // update local state to reflect new card state
-                    component.setState({
-                        origCard: JSON.stringify(card),
-                        recentlySaved: true
-                    }, component.resetStateOnTimeout);
+                    this.setState({ recentlySaved: "created" }, this.resetStateOnTimeout);
                 }
             });
-
         } else {
             // updating an existing card
-            apiCall = this.props.cardApi.update(card, function (updatedCard) {
-                if (component.isMounted()) {
-                    component.props.notifyCardUpdatedFn(updatedCard);
+            return this.props.cardApi.update(card).$promise.then((updatedCard) => {
+                if (this.isMounted()) {
+                    this.props.notifyCardUpdatedFn(updatedCard);
 
                     // update local state to reflect new card state
-                    component.setState({
-                        origCard: JSON.stringify(card),
-                        recentlySaved: true
-                    }, component.resetStateOnTimeout);
+                    this.setState({ recentlySaved: "updated" }, this.resetStateOnTimeout);
                 }
             });
         }
-
-        return apiCall.$promise;
     },
 
     deleteCard: function () {
-        var card = this.props.card,
-            component = this;
-
-        var apiCall = this.props.cardApi.delete({'cardId': card.id}, function () {
-            component.props.notifyCardDeletedFn();
+        var card = this.props.card;
+        return this.props.cardApi.delete({ 'cardId': card.id }).$promise.then(() => {
+            this.props.notifyCardDeletedFn();
         });
-
     },
 
     setQueryMode: function(mode) {
-        // we need to update our dirty state here
-        var component = this;
-        this.setState({
-            resetOrigCard: true
-        }, function() {
-            component.props.setQueryModeFn(mode);
-        });
+        this.props.setQueryModeFn(mode);
+    },
+
+    toggleDataReference: function() {
+        this.props.toggleDataReferenceFn();
     },
 
     permissions: function() {
@@ -152,7 +110,7 @@ export default React.createClass({
         var title = this.props.card.name || "What would you like to know?";
 
         var editButton;
-        if (!this.cardIsNew() && this.props.card.is_creator) {
+        if (!this.props.cardIsNewFn() && this.props.card.is_creator) {
             editButton = (
                 <Saver
                     card={this.props.card}
@@ -166,7 +124,7 @@ export default React.createClass({
         }
 
         var saveButton;
-        if (this.cardIsNew() && this.cardIsDirty()) {
+        if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
             // new cards get a custom treatment, like saving a new Excel document
             saveButton = (
                 <Saver
@@ -177,7 +135,7 @@ export default React.createClass({
                     canDelete={false}
                 />
             );
-        } else if ((this.cardIsDirty() || this.state.recentlySaved) && this.props.card.is_creator) {
+        } else if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
             // for existing cards we render a very simply ActionButton
             saveButton = (
                 <ActionButton
@@ -192,7 +150,7 @@ export default React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download'>
+                    <Icon name='download' width="16px" height="16px">
                         <Popover>
                             <span>Download data</span>
                         </Popover>
@@ -204,14 +162,14 @@ export default React.createClass({
         var cloneButton;
         if (this.props.card.id) {
             cloneButton = (
-                <span className="mx1 text-grey-4 text-brand-hover">
-                    <Icon name='clone' onClick={this.cloneCard}></Icon>
-                </span>
+                <a href="#" className="mx1 text-grey-4 text-brand-hover">
+                    <Icon name='clone' width="16px" height="16px" onClick={this.props.cloneCardFn}></Icon>
+                </a>
             );
         }
 
         var queryModeToggle;
-        if (this.cardIsNew() && !this.cardIsDirty()) {
+        if (this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()) {
             queryModeToggle = (
                 <QueryModeToggle
                     currentQueryMode={this.props.card.dataset_query.type}
@@ -221,11 +179,33 @@ export default React.createClass({
         }
 
         var cardFavorite;
-        if (!this.cardIsNew()) {
+        if (this.props.card.id != undefined) {
             cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
         }
 
+        var addToDashButton;
+        if (this.props.card.id != undefined) {
+            addToDashButton = (
+                <AddToDashboard
+                    card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
+                    broadcastEventFn={this.props.broadcastEventFn}
+                />
+            )
+        }
 
+        var dataReferenceButtonClasses = cx({
+            'mx1': true,
+            'transition-color': true,
+            'text-grey-4': !this.props.isShowingDataReference,
+            'text-brand': this.props.isShowingDataReference,
+            'text-brand-hover': !this.state.isShowingDataReference
+        });
+        var dataReferenceButton = (
+            <a href="#" className={dataReferenceButtonClasses}>
+                <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
+            </a>
+        );
 
         var attribution;
 
@@ -234,7 +214,21 @@ export default React.createClass({
                 <div className="Entity-attribution">
                     Asked by {this.props.card.creator.common_name}
                 </div>
-            )
+            );
+        }
+
+        var hasLeft = !!downloadButton;
+        var hasMiddle = !!(cardFavorite || cloneButton || addToDashButton);
+        var hasRight = !!dataReferenceButton;
+
+        var dividerLeft;
+        if (hasLeft && (hasMiddle || hasRight)) {
+            dividerLeft = <div className="border-right border-dark mx1">&nbsp;</div>
+        }
+
+        var dividerRight;
+        if (hasRight && hasMiddle) {
+            dividerRight = <div className="border-right border-dark mx1">&nbsp;</div>
         }
 
         return (
@@ -249,16 +243,23 @@ export default React.createClass({
                 </div>
 
                 <div className="QueryHeader-actions flex-align-right">
-                    {cloneButton}
+
+                    <span className="pr3">
+                        {saveButton}
+                        {queryModeToggle}
+                    </span>
+
                     {downloadButton}
+
+                    {dividerLeft}
+
                     {cardFavorite}
-                    <AddToDashboard
-                        card={this.props.card}
-                        dashboardApi={this.props.dashboardApi}
-                        broadcastEventFn={this.props.broadcastEventFn}
-                    />
-                    {saveButton}
-                    {queryModeToggle}
+                    {cloneButton}
+                    {addToDashButton}
+
+                    {dividerRight}
+
+                    {dataReferenceButton}
                 </div>
             </div>
         );

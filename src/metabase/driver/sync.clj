@@ -10,21 +10,25 @@
             (metabase.driver [interface :refer :all]
                              [query-processor :as qp])
             [metabase.driver.sync.queries :as queries]
-            (metabase.models [field :refer [Field] :as field]
+            (metabase.models [common :as common]
+                             [field :refer [Field] :as field]
+                             [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
 (declare auto-assign-field-special-type-by-name!
-         mark-category-field!
+         mark-category-field-or-update-field-values!
          mark-json-field!
          mark-no-preview-display-field!
          mark-url-field!
+         set-field-display-name-if-needed!
          sync-database-active-tables!
          sync-field!
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
+         update-table-display-name!
          sync-field-nested-fields!
          update-table-row-count!)
 
@@ -94,7 +98,13 @@
   [driver active-tables]
   ;; Sort the Tables by name so it's easier / nicer to look at the logging
   (let [active-tables (sort-by :name active-tables)]
-    ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so going to block while they run for the time being.
+    ;; make sure table has :display_name
+    (log/debug (u/format-color 'green "Checking table display names..."))
+    (doseq [table active-tables]
+      (u/try-apply update-table-display-name! table))
+
+    ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
+    ;; going to block while they run for the time being. (TODO - fix this)
     (log/debug "Updating table row counts...")
     (doseq [table active-tables]
       (u/try-apply update-table-row-count! table))
@@ -112,7 +122,11 @@
 
     ;; After that, we can sync the metadata for all active Fields
     ;; Now sync all active fields
-    (let [tables-count (count active-tables)
+
+
+    ;; After that, we can sync the metadata for all active Fields
+    ;; Now sync all active fields
+    (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
       (doseq [table active-tables]
         (log/debug (format "Syncing metadata for table '%s'..." (:name table)))
@@ -122,6 +136,19 @@
 
 
 ;; ## sync-table steps.
+
+;; ### 0) update-table-row-count!
+
+(defn update-table-display-name!
+  "Update the display_name of TABLE if it doesn't exist."
+  [table]
+  {:pre [(integer? (:id table))]}
+  (try
+    (when (nil? (:display_name table))
+      (upd Table (:id table) :display_name (common/name->human-readable-name (:name table))))
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to update display_name for %s: %s" (:name table) (.getMessage e))))))
+
 
 ;; ### 1) update-table-row-count!
 
@@ -260,9 +287,10 @@
          field]}
   (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
+                 set-field-display-name-if-needed!
                  (mark-url-field! driver)
                  (mark-no-preview-display-field! driver)
-                 mark-category-field!
+                 mark-category-field-or-update-field-values!
                  (mark-json-field! driver)
                  auto-assign-field-special-type-by-name!
                  (sync-field-nested-fields! driver)))
@@ -270,6 +298,18 @@
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
 ;; That way the next fn in the 'pipeline' won't trample over changes made by the last.
+
+;; ### set-field-display-name-if-needed!
+
+(defn set-field-display-name-if-needed!
+  "If FIELD doesn't yet have a `display_name`, calculate one now and set it."
+  [field]
+  (when (nil? (:display_name field))
+    (let [display-name (common/name->human-readable-name (:name field))]
+      (log/info (format "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
+      (upd Field (:id field) :display_name display-name)
+      (assoc field :display_name display-name))))
+
 
 ;; ### mark-url-field!
 
@@ -313,23 +353,32 @@
         (assoc field :special_type :url)))))
 
 
-;; ### mark-category-field!
+;; ### mark-category-field-or-update-field-values!
 
 (def ^:const ^:private low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
 (defn- mark-category-field!
-  "If FIELD doesn't yet have a `special_type`, has values of a reasonable length (i.e., it wasn't marked `preview_display` = `false`), and  has low cardinality, mark it as a category."
+  "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
   [field]
-  (when (and (not (:special_type field))
-             (:preview_display field))
-    (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
-      (when (and (> cardinality 0)
-                 (< cardinality low-cardinality-threshold))
-        (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
-        (upd Field (:id field) :special_type :category)
-        (assoc field :special_type :category)))))
+  (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
+    (when (and (> cardinality 0)
+               (< cardinality low-cardinality-threshold))
+      (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
+      (upd Field (:id field) :special_type :category)
+      (assoc field :special_type :category))))
+
+(defn- mark-category-field-or-update-field-values!
+  "If FIELD doesn't yet have a `special_type` and isn't very long (i.e., `preview_display` is `true`), call `mark-category-field!`
+   to (possibly) mark it as a `:category`. Otherwise if FIELD is already a `:category` update its `FieldValues`."
+  [field]
+  (cond
+    (and (not (:special_type field))
+         (:preview_display field)                        (mark-category-field! field)
+    (field-values/field-should-have-field-values? field) (do (log/debug (format "Updating values for field '%s'..." @(:qualified-name field)))
+                                                             (field-values/update-field-values! field)
+                                                             field))))
 
 
 ;; ### mark-no-preview-display-field!

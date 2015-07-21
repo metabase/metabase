@@ -7,12 +7,13 @@
   :min-lein-version "2.5.0"
   :aliases {"test" ["with-profile" "+expectations" "expectations"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
-                 [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.2"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.2"]
                  [org.clojure/java.jdbc "0.3.7"]                      ; basic jdbc access from clojure
+                 [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
@@ -57,7 +58,8 @@
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
-                               :suspicious-expression]}               ; core.match macros generate some forms like (and expr) which is "suspicious"
+                               :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
+                               :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]  ; REPL <3
                                   [expectations "2.1.2"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
@@ -80,9 +82,9 @@
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"}
-                            :jvm-opts ["-Dmb.db.file=target/metabase-test"
+                            :jvm-opts ["-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
-                                       "-Dmb.jetty.port=3001"
+                                       "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all

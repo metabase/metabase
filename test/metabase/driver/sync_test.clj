@@ -7,6 +7,7 @@
                              [sync :as sync])
             [metabase.driver.generic-sql.util :refer [korma-entity]]
             (metabase.models [field :refer [Field]]
+                             [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
@@ -90,4 +91,37 @@
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (determine-fk-type (Field (id :venues :id))))
+  (sync/determine-fk-type (Field (id :venues :id))))
+
+
+;;; ## FieldValues Syncing
+
+(let [get-field-values    (fn [] (sel :one :field [FieldValues :values] :field_id (id :venues :price)))
+      get-field-values-id (fn [] (sel :one :id FieldValues :field_id (id :venues :price)))]
+  ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
+  (expect
+      [[1 2 3 4]  ; 1
+       nil        ; 2
+       [1 2 3 4]] ; 3
+    [ ;; 1. Check that we have expected field values to start with
+     (get-field-values)
+     ;; 2. Delete the Field values, make sure they're gone
+     (do (cascade-delete FieldValues :id (get-field-values-id))
+         (get-field-values))
+     ;; 3. Now re-sync the table and make sure they're back
+     (do (driver/sync-table! @venues-table)
+         (get-field-values))])
+
+  ;; Test that syncing will cause FieldValues to be updated
+  (expect
+      [[1 2 3 4]  ; 1
+       [1 2 3]    ; 2
+       [1 2 3 4]] ; 3
+    [ ;; 1. Check that we have expected field values to start with
+     (get-field-values)
+     ;; 2. Update the FieldValues, remove one of the values that should be there
+     (do (upd FieldValues (get-field-values-id) :values [1 2 3])
+         (get-field-values))
+     ;; 3. Now re-sync the table and make sure the value is back
+     (do (driver/sync-table! @venues-table)
+         (get-field-values))]))

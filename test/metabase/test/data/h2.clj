@@ -25,18 +25,13 @@
 
 ;; ## DatabaseDefinition helper functions
 
-(defn- filename
-  "Return filename that should be used for connecting to H2 database defined by DATABASE-DEFINITION.
-   This does not include the `.mv.db` extension."
-  [^DatabaseDefinition database-definition]
-  (format "%s/target/%s" (System/getProperty "user.dir") (escaped-name database-definition)))
-
 (defn- connection-details
   "Return a Metabase `Database.details` for H2 database defined by DATABASE-DEFINITION."
   [^DatabaseDefinition {:keys [short-lived?], :as database-definition}]
-  {:db (format (if short-lived? "file:%s" ; for short-lived connections don't create a server thread and don't use a keep-alive connection
-                   "file:%s;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1")
-               (filename database-definition))
+  {:db (str (format "mem:%s" (escaped-name database-definition))
+            ;; For non "short-lived" (temp) databases keep the connection open for the duration of unit tests
+            (when-not short-lived?
+              ";DB_CLOSE_DELAY=-1"))
    :short-lived? short-lived?})
 
 (defn- korma-connection-pool
@@ -86,9 +81,8 @@
     (connection-details database-definition))
 
   (drop-physical-db! [_ database-definition]
-    (let [file (io/file (format "%s.mv.db" (filename database-definition)))]
-      (when (.exists file)
-        (.delete file))))
+    ;; Nothing to do here - there are no physical dbs <3
+    )
 
   (create-physical-table! [this database-definition table-definition]
     (generic/create-physical-table! this database-definition (format-for-h2 table-definition)))

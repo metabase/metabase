@@ -19,12 +19,11 @@
 ;; ## IDriver Protocol
 
 (defprotocol IDriver
-  "Methods all drivers must implement."
-  ;; Features
-  (supports? [this ^Keyword feature]
-    "Does this driver support optional FEATURE?
+  "Methods all drivers must implement.
+   They should also include the following properties:
 
-       (supports? metabase.driver.h2/driver :timestamps) -> false")
+   *  `features` (optional)
+      A set containing one or more `driver-optional-features`"
 
   ;; Connection
   (can-connect? [this database]
@@ -110,6 +109,16 @@
 
 
 ;; ## Helper Functions
+
+(def ^:private valid-feature? (partial contains? driver-optional-features))
+
+(defn supports?
+  "Does DRIVER support FEATURE?"
+  [{:keys [features]} ^Keyword feature]
+  {:pre [(set? features)
+         (every? valid-feature? features)
+         (valid-feature? feature)]}
+  (contains? features feature))
 
 (defn assert-driver-supports
   "Helper fn. Assert that DRIVER supports FEATURE."

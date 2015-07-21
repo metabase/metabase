@@ -85,7 +85,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             if (!table.field_values) {
                 table.field_values = {};
                 for (var fld in table.fields) {
-                    table.field_values[fld.id] = fld.name; // ???
+                    table.field_values[fld.id] = fld.display_name; // ???
                 }
             }
 
@@ -115,7 +115,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         var validValues = _.map(longitudeFields, function(field) {
             return {
                 'key': field.id,
-                'name': field.name
+                'name': field.display_name
             };
         });
 
@@ -248,7 +248,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     // Breakouts and Aggregation options
     function shortenFields(fields) {
         return _.map(fields, function(field) {
-            return [field.id, field.name];
+            return [field.id, field.display_name];
         });
 
     }
