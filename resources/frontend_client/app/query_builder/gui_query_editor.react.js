@@ -401,6 +401,7 @@ export default React.createClass({
         return (
             <DataSelector
                 className="arrow-right"
+                includeTables={true}
                 query={this.props.query}
                 databases={this.props.databases}
                 tables={this.props.tables}

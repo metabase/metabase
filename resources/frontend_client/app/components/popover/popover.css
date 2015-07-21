@@ -10,7 +10,7 @@
 
 .PopoverBody {
 	position: relative;
-	min-width: 25em; /* ewwwwwwww */
+	min-width: 1em; /* ewwwwwwww */
 	border: 1px solid #ddd;
 	box-shadow: 0 1px 7px rgba(0, 0, 0, .18);
 	background-color: #fff;

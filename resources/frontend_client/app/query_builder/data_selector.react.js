@@ -19,7 +19,8 @@ export default React.createClass({
     getDefaultProps: function() {
         return {
             name: "Data",
-            isInitiallyOpen: false
+            isInitiallyOpen: false,
+            includeTables: false
         };
     },
 
@@ -32,7 +33,7 @@ export default React.createClass({
         var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
 
         var content;
-        if (this.props.tables) {
+        if (this.props.includeTables) {
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name}</span>;
             } else {
@@ -59,18 +60,27 @@ export default React.createClass({
                 selectedItem: database,
                 items: this.props.databases,
                 itemTitleFn: (db) => db.name,
-                itemSelectFn: (db) => this.props.setDatabaseFn(db.id)
+                itemSelectFn: (db) => {
+                    this.props.setDatabaseFn(db.id)
+                    if (!this.props.includeTables) {
+                        this.toggleModal();
+                    }
+                }
             }
         ];
 
-        if (database && this.props.tables) {
-            columns.push({
-                title: database.name + " Tables",
-                selectedItem: table,
-                items: this.props.tables,
-                itemTitleFn: (table) => table.display_name,
-                itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggleModal() }
-            })
+        if (this.props.includeTables) {
+            if (database && this.props.tables) {
+                columns.push({
+                    title: database.name + " Tables",
+                    selectedItem: table,
+                    items: this.props.tables,
+                    itemTitleFn: (table) => table.display_name,
+                    itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggleModal() }
+                });
+            } else {
+                columns.push(null);
+            }
         }
 
         var tetherOptions = {
