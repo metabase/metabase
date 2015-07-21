@@ -43,5 +43,5 @@
 ;; Do some tests with the default (:normal) password requirements
 (expect false (is-complex? "ABC"))
 (expect false (is-complex? "ABCDEF"))
-(expect true (is-complex? "ABCDE1"))
-(expect true (is-complex? "123456"))
+(expect true  (is-complex? "ABCDE1"))
+(expect true  (is-complex? "123456"))
