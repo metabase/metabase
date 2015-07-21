@@ -94,6 +94,11 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 $location.path('/unauthorized/');
             },
 
+            setAppContext: function(appContext) {
+                service.model.appContext = appContext;
+                $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
+            },
+
             routeChanged: function(event) {
                 // establish our application context based on the route (URI)
                 // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
@@ -110,8 +115,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 
                 // if the context of the app has changed due to this route change then send out an event
                 if (service.model.appContext !== routeContext) {
-                    service.model.appContext = routeContext;
-                    $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
+                    service.setAppContext(routeContext);
                 }
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
