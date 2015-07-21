@@ -20,12 +20,12 @@ export default React.createClass({
                     });
                     var checkIcon = lastColumn ? <Icon name="check" width="14" height="14"/> : null;
                     return (
-                        <li className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>{checkIcon}{column.itemTitleFn(item)}</li>
+                        <li key={rowIndex} className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>{checkIcon}{column.itemTitleFn(item)}</li>
                     );
                 });
             }
             return (
-                <div className="ColumnarSelector-column">
+                <div key={columnIndex} className="ColumnarSelector-column">
                     <div className="ColumnarSelector-title">{title}</div>
                     <ul className="ColumnarSelector-rows">{items}</ul>
                 </div>

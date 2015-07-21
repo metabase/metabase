@@ -302,7 +302,7 @@ export default React.createClass({
                     if(index > 0) {
                         return (
                             <FilterWidget
-                                key={filter[1]}
+                                key={index}
                                 placeholder="Item"
                                 filter={filter}
                                 filterFieldList={filterFieldList}
@@ -438,7 +438,7 @@ export default React.createClass({
                 "Button--active":  count == this.props.query.query.limit
             });
             return (
-                <li className={classes} key={count} onClick={this.updateLimit.bind(null, count)}>{name}</li>
+                <li key={name} className={classes} onClick={this.updateLimit.bind(null, count)}>{name}</li>
             );
         });
         return (
