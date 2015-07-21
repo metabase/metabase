@@ -14,6 +14,16 @@
             [metabase.util.password :as pass]))
 
 
+(defn- create-session
+  "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
+  [user-id]
+  (let [session-id (str (java.util.UUID/randomUUID))]
+    (ins Session
+         :id session-id
+         :user_id user-id)
+    session-id))
+
+
 (defendpoint POST "/"
   "Login."
   [:as {{:keys [email password] :as body} :body}]
@@ -25,10 +35,7 @@
       'password "did not match stored password")
     (checkp (pass/verify-password password (:password_salt user) (:password user))
       'password "did not match stored password")
-    (let [session-id (str (java.util.UUID/randomUUID))]
-      (ins Session
-        :id session-id
-        :user_id (:id user))
+    (let [session-id (create-session (:id user))]
       {:id session-id})))
 
 
@@ -77,7 +84,9 @@
       (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
       [400 "Reset token has expired"])
     (set-user-password user-id password)
-    {:success true}))
+    ;; after a successful password update go ahead and offer the client a new session that they can use
+    {:success true
+     :session_id (create-session user-id)}))
 
 
 (defendpoint GET "/properties"
