@@ -12,9 +12,9 @@
    forever, especially when called with bad details. This translates to our tests
    taking longer and the DB setup API endpoints seeming sluggish.
 
-   Don't set the timeout too low -- I've have Circle fail when the timeout was 250ms
-   on one occasion."
-  1000)
+   Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms
+   on *one* occasion."
+  1500)
 
 (defn- details-map->connection-string
   [{:keys [user pass host port dbname]}]
