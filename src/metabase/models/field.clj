@@ -99,8 +99,8 @@
       (merge defaults field)))
 
   (post-insert [_ field]
-      (when (field-should-have-field-values? field)
-        (create-field-values-if-needed field))
+    (when (field-should-have-field-values? field)
+      (create-field-values-if-needed field))
     field)
 
   (post-update [this {:keys [id] :as field}]

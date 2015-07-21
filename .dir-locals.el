@@ -43,7 +43,7 @@
                               (macrolet 1)
                               (org-perms-case 1)
                               (pdoseq 1)
-                              (post-insert 2)
+                              (post-insert 1)
                               (post-select 1)
                               (post-update 1)
                               (pre-cascade-delete 1)
