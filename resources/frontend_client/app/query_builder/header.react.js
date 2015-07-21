@@ -5,7 +5,6 @@ import ActionButton from './action_button.react';
 import AddToDashboard from './add_to_dashboard.react';
 import CardFavoriteButton from './card_favorite_button.react';
 import Icon from './icon.react';
-import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
@@ -150,11 +149,7 @@ export default React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download' width="16px" height="16px">
-                        <Popover>
-                            <span>Download data</span>
-                        </Popover>
-                    </Icon>
+                    <Icon name='download' width="16px" height="16px" />
                 </a>
             );
         }
