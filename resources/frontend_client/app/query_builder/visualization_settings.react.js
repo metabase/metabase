@@ -46,11 +46,13 @@ export default React.createClass({
     setDisplay: function(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
+        this.refs.displayPopover.toggleModal();
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
+        this.refs.colorPopover.toggleModal();
     },
 
     hasLatitudeAndLongitudeColumns: function(columnDefs) {
@@ -133,7 +135,8 @@ export default React.createClass({
         return (
             <div className="GuiBuilder-section">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
-                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow ChartType-popover"
+                <PopoverWithTrigger ref="displayPopover"
+                                    className="PopoverBody PopoverBody--withArrow ChartType-popover"
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
@@ -176,7 +179,8 @@ export default React.createClass({
             return (
                 <div className="GuiBuilder-section">
                     <span className="GuiBuilder-section-label Query-label">Color</span>
-                    <PopoverWithTrigger className="PopoverBody"
+                    <PopoverWithTrigger ref="colorPopover"
+                                        className="PopoverBody"
                                         tetherOptions={tetherOptions}
                                         triggerElement={triggerElement}
                                         triggerClasses="flex align-center">

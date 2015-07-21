@@ -23,6 +23,10 @@ export default React.createClass({
         };
     },
 
+    toggleModal: function() {
+        this.refs.popover.toggleModal();
+    },
+
     render: function() {
         var database = this.props.databases && this.props.databases.filter((t) => t.id === this.props.query.database)[0]
         var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
@@ -65,7 +69,7 @@ export default React.createClass({
                 selectedItem: table,
                 items: this.props.tables,
                 itemTitleFn: (table) => table.display_name,
-                itemSelectFn: (table) => this.props.setSourceTableFn(table.id)
+                itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggleModal() }
             })
         }
 
@@ -80,7 +84,8 @@ export default React.createClass({
         return (
             <div className={classes}>
                 <span className="GuiBuilder-section-label Query-label">{name}</span>
-                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
+                <PopoverWithTrigger ref="popover"
+                                    className="PopoverBody PopoverBody--withArrow"
                                     isInitiallyOpen={this.props.isInitiallyOpen}
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
