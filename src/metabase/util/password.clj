@@ -3,7 +3,12 @@
             [metabase.config :as config]))
 
 
-(defn- count-occurrences [password]
+(defn- count-occurrences
+  "Return a map of the counts of each class of character for PASSWORD.
+
+    (count-occurrences \"GoodPw!!\")
+      -> {:total  8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
+  [password]
   (loop [[^Character c & more] password, {:keys [total, lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c counts
             (recur more (merge (update counts :total inc)
@@ -14,7 +19,7 @@
                                  :else                     {:special (inc special)}))))))
 
 (def ^:private ^:const complexity->char-type->min
-  "Minimum number of characters of each type a password must have to satisfy a given password complexity."
+  "Minimum counts of each class of character a password should have for a given password complexity level."
   {:weak   {:total   6} ; total here effectively means the same thing as a minimum password length
    :normal {:total   6
             :digit   1}
@@ -24,11 +29,18 @@
             :digit   1
             :special 1}})
 
-(defn- password-has-char-counts? [char-type->min password]
+(defn- password-has-char-counts?
+  "Check that PASSWORD satisfies the minimum count requirements for each character class.
+
+    (password-has-char-counts? {:total 6, :lower 1, :upper 1, :digit 1, :special 1} \"abc\")
+      -> false
+    (password-has-char-counts? {:total 6, :lower 1, :upper 1, :digit 1, :special 1} \"passworD1!\")
+      -> true"
+  [char-type->min password]
   {:pre [(map? char-type->min)
          (string? password)]}
-  (boolean (let [occurances (count-occurrences password)]
-             (loop [[[char-type min-count] & more] (seq char-type->min)]
+  (let [occurances (count-occurrences password)]
+    (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type
                  true
                  (when (>= (occurances char-type) min-count)
