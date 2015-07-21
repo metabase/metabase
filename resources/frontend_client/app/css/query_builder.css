@@ -258,6 +258,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    font-size: 0.9em;
 }
 
 .GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
@@ -270,6 +271,9 @@
 
 /* for medium breakpoint only expand if data reference is not shown */
 @media screen and (--breakpoint-min-md) {
+    .GuiBuilder {
+        font-size: 1.0em;
+    }
     .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
         flex-direction: row;
     }
@@ -282,6 +286,7 @@
 /* for large breakpoint always expand */
 @media screen and (--breakpoint-min-lg) {
     .GuiBuilder {
+        font-size: 1.1em;
         flex-direction: row;
     }
     .GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
