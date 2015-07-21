@@ -41,8 +41,8 @@
    display_name NonEmptyString}
   (write-check Field id)
   (check-500 (m/mapply upd Field id (merge {:description  description                                              ; you're allowed to unset description and special_type
-                                            :special_type special_type
-                                            :display_name display_name}                                            ; but field_type and preview_display must be replaced
+                                            :special_type special_type}                                            ; but field_type and preview_display must be replaced
+                                           (when display_name               {:display_name display_name})
                                            (when field_type                 {:field_type field_type})              ; with new non-nil values
                                            (when-not (nil? preview_display) {:preview_display preview_display}))))
   (Field id))

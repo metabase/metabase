@@ -70,7 +70,7 @@
               :table_id        (id :venues)
               :special_type    "fk"
               :name            "LATITUDE"
-              :display_name    nil
+              :display_name    "Latitude"
               :updated_at      $
               :active          true
               :id              $
