@@ -16,39 +16,40 @@
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
-(def ^:private ^:const db-file
+(def ^:private db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
-  (if (config/config-bool :mb-db-in-memory)
-    ;; In-memory (i.e. test) DB
-    "mem:metabase;DB_CLOSE_DELAY=-1"
-    ;; File-based DB
-    (let [db-file-name (config/config-str :mb-db-file)
-          db-file      (clojure.java.io/file db-file-name)
-          options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
-      (apply str "file:" (if (.isAbsolute db-file)
-                           ;; when an absolute path is given for the db file then don't mess with it
-                           [db-file-name options]
-                           ;; if we don't have an absolute path then make sure we start from "user.dir"
-                           [(System/getProperty "user.dir") "/" db-file-name options])))))
+  (delay (if (config/config-bool :mb-db-in-memory)
+           ;; In-memory (i.e. test) DB
+           "mem:metabase;DB_CLOSE_DELAY=-1"
+           ;; File-based DB
+           (let [db-file-name (config/config-str :mb-db-file)
+                 db-file      (clojure.java.io/file db-file-name)
+                 options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
+             (apply str "file:" (if (.isAbsolute db-file)
+                                  ;; when an absolute path is given for the db file then don't mess with it
+                                  [db-file-name options]
+                                  ;; if we don't have an absolute path then make sure we start from "user.dir"
+                                  [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
-(def ^:private ^:const db-connection-details
+(def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (case (config/config-kw :mb-db-type)
-    :h2       {:db db-file}
-    :postgres {:host     (config/config-str :mb-db-host)
-               :port     (config/config-int :mb-db-port)
-               :dbname   (config/config-str :mb-db-dbname)
-               :user     (config/config-str :mb-db-user)
-               :password (config/config-str :mb-db-pass)}))
+  (delay (case (config/config-kw :mb-db-type)
+           :h2       {:db @db-file}
+           :postgres {:host     (config/config-str :mb-db-host)
+                      :port     (config/config-int :mb-db-port)
+                      :dbname   (config/config-str :mb-db-dbname)
+                      :user     (config/config-str :mb-db-user)
+                      :password (config/config-str :mb-db-pass)})))
 
-(def ^:private ^:const jdbc-connection-details
+(def ^:private jdbc-connection-details
   "Connection details for Korma / JDBC."
-  (case (config/config-kw :mb-db-type)
-    :h2       (kdb/h2 (assoc db-connection-details :naming {:keys   str/lower-case
-                                                            :fields str/upper-case}))
-    :postgres (kdb/postgres db-connection-details)))
+  (delay (let [details @db-connection-details]
+           (case (config/config-kw :mb-db-type)
+             :h2       (kdb/h2 (assoc details :naming {:keys   str/lower-case
+                                                       :fields str/upper-case}))
+             :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
 
 
 ;; ## MIGRATE
@@ -99,16 +100,16 @@
   ;; Test DB connection and throw exception if we have any troubles connecting
   (log/info "Verifying Database Connection ...")
   (assert (db-can-connect? {:engine  (config/config-kw :mb-db-type)
-                            :details db-connection-details})
+                            :details @db-connection-details})
     "Unable to connect to Metabase DB.")
   (log/info "Verify Database Connection ... CHECK")
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate jdbc-connection-details :up)
+    (migrate @jdbc-connection-details :up)
     ;; if we are not doing auto migrations then print out migration sql for user to run manually
     ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate jdbc-connection-details :print)]
+    (let [sql (migrate @jdbc-connection-details :print)]
       (log/info (str "Database Upgrade Required\n\n"
                      "NOTICE: Your database requires updates to work with this version of Metabase.  "
                      "Please execute the following sql commands on your database before proceeding.\n\n"
@@ -119,7 +120,7 @@
   (log/info "Database Migrations Current ... CHECK")
 
   ;; Establish our 'default' Korma DB Connection
-  (kdb/default-connection (kdb/create-db jdbc-connection-details)))
+  (kdb/default-connection (kdb/create-db @jdbc-connection-details)))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
