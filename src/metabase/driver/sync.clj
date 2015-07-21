@@ -1,7 +1,8 @@
 (ns metabase.driver.sync
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
+            (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [korma.core :as k]
@@ -45,7 +46,7 @@
         (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
 
         (let [active-table-names (active-table-names driver database)
-              table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
+              table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
           (assert (set? active-table-names) "active-table-names should return a set.")
           (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
 
@@ -64,11 +65,12 @@
 
           ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
           (log/debug "Creating new tables...")
-          (let [existing-table-names (set (keys table-name->id))]
-            (doseq [active-table-name active-table-names]
-              (when-not (contains? existing-table-names active-table-name)
-                (ins Table :db_id (:id database), :active true, :name active-table-name)
-                (log/info (u/format-color 'blue "Found new table: '%s'" active-table-name))))))
+          (let [existing-table-names (set (keys table-name->id))
+                new-table-names      (set/difference active-table-names existing-table-names)]
+            (when (seq new-table-names)
+              (log/info (u/format-color 'blue "Found new tables: %s" (u/pprint-to-str new-table-names)))
+              (doseq [new-table-name new-table-names]
+                (ins Table :db_id (:id database), :active true, :name new-table-name)))))
 
         ;; Now sync the active tables
         (log/debug "Syncing active tables...")
@@ -193,15 +195,17 @@
             (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
       ;; Create new Fields, update existing types if needed
-      (let [existing-field-names (set (keys existing-field-name->field))]
+      (let [existing-field-names (set (keys existing-field-name->field))
+            new-field-names      (set/difference (set (keys active-column-names->type)) existing-field-names)]
+        (when (seq new-field-names)
+          (log/info (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) (u/pprint-to-str new-field-names))))
         (doseq [[active-field-name active-field-type] active-column-names->type]
           ;; If Field doesn't exist create it
           (if-not (contains? existing-field-names active-field-name)
-            (do (log/info (u/format-color 'blue "Found new field: '%s.%s'" (:name table) active-field-name))
-                (ins Field
-                  :table_id  (:id table)
-                  :name      active-field-name
-                  :base_type active-field-type))
+            (ins Field
+              :table_id  (:id table)
+              :name      active-field-name
+              :base_type active-field-type)
             ;; Otherwise update the Field type if needed
             (let [{existing-base-type :base_type, existing-field-id :id} (existing-field-name->field active-field-name)]
               (when-not (= active-field-type existing-base-type)

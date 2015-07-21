@@ -102,11 +102,9 @@
                       :details (database->connection-details dataset-loader database-definition))]
 
              ;; Sync the database
-             (log/info (color/blue "Syncing DB..."))
              (driver/sync-database! db)
 
              ;; Add extra metadata like Field field-type, base-type, etc.
-             (log/info (color/blue "Adding schema metadata..."))
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
                      table      (delay (let [table (metabase-instance table-definition db)]
