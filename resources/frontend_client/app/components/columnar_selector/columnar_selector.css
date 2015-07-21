@@ -9,6 +9,8 @@
 
 .ColumnarSelector-column {
     min-width: 180px;
+    min-height: 300px;
+    max-height: 450px;
     overflow-y: scroll;
 }
 
@@ -21,8 +23,8 @@
 }
 
 .ColumnarSelector-row {
-    padding-top: var(--padding-2);
-    padding-bottom: var(--padding-2);
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
     padding-left: var(--padding-3);
     padding-right: var(--padding-3);
     display: flex;
@@ -53,8 +55,13 @@
     color: var(--brand-color);
 }
 
+.ColumnarSelector-column:first-child {
+    z-index: 1;
+}
+
 .ColumnarSelector-column:last-child:not(:first-child) {
     background-color: white;
     border-left:  var(--border-size) var(--border-style) var(--border-color);
     position: relative;
+    left: -1px;
 }
