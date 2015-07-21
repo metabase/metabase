@@ -375,10 +375,10 @@
   [field]
   (cond
     (and (not (:special_type field))
-         (:preview_display field)                        (mark-category-field! field)
+         (:preview_display field))                       (mark-category-field! field)
     (field-values/field-should-have-field-values? field) (do (log/debug (format "Updating values for field '%s'..." @(:qualified-name field)))
                                                              (field-values/update-field-values! field)
-                                                             field))))
+                                                             field)))
 
 
 ;; ### mark-no-preview-display-field!
