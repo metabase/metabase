@@ -45,7 +45,7 @@
   [{field-id :id, field-name :name, :as field} & [human-readable-values]]
   {:pre [(integer? field-id)
          (:table field)]} ; need to pass a full `Field` object with delays beause the `metadata/` functions need those
-  (log/info (u/format-color 'red "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
+  (log/debug (format "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
   (ins FieldValues
     :field_id              field-id
     :values                (field-distinct-values field)

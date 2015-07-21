@@ -416,31 +416,36 @@
 
 ;; ### mark-json-field!
 
+(defn- values-are-valid-json?
+  "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
+  [values]
+  (try
+    (loop [at-least-one-non-nil-value? false, [val & more] values]
+      (cond
+        (and (not val)
+             (not (seq more))) at-least-one-non-nil-value?
+        (s/blank? val)         (recur at-least-one-non-nil-value? more)
+        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
+        :else                  (let [val (json/parse-string val)]
+                                 (when (not (or (map? val)
+                                                (sequential? val)))
+                                   (throw (Exception.)))
+                                 (recur true more))))
+    (catch Throwable _
+      false)))
+
 (defn- mark-json-field!
   "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
-   are valid serialized JSON dictionarie"
+   are valid serialized JSON dictionaries or arrays."
   [driver field]
   (when (and (not (:special_type field))
-             (contains? #{:CharField :TextField} (:base_type field)))
-    (try
-      (let [values                    (->> (field-values-lazy-seq driver field)
-                                           (take max-sync-lazy-seq-results))
-            valid-json-values-balance (loop [[val & more] values, balance 0]
-                                        (cond
-                                          (and (not val) (not (seq more))) balance
-                                          (s/blank? val)                   (recur more (dec balance))
-                                          ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
-                                          ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
-                                          :else                            (let [val (json/parse-string val)]
-                                                                             (when (not (or (map? val)
-                                                                                            (sequential? val)))
-                                                                               (throw (Exception.)))
-                                                                             (recur more (inc balance)))))]
-        (when (> valid-json-values-balance 0)
-          (log/info (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
-          (upd Field (:id field) :special_type :json, :preview_display false)
-          (assoc field :special_type :json, :preview_display false)))
-      (catch Throwable _))))
+             (contains? #{:CharField :TextField} (:base_type field))
+             (values-are-valid-json? (->> (field-values-lazy-seq driver field)
+                                          (take max-sync-lazy-seq-results))))
+    (log/info (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+    (upd Field (:id field) :special_type :json, :preview_display false)
+    (assoc field :special_type :json, :preview_display false)))
 
 
 ;; ### auto-assign-field-special-type-by-name!
