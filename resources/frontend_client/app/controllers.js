@@ -63,10 +63,11 @@ CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($s
 
 }]);
 
+CorvusControllers.controller('NotFound', ['AppState', function(AppState) {
+    AppState.setAppContext('none');
+}]);
 
 CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'AppState', function($scope, $routeParams, $location, AppState) {
-
-    $scope.activeClass = 'is--selected';
 
     $scope.isActive = function(location) {
         return $location.path().indexOf(location) >= 0;
@@ -79,6 +80,9 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'App
                 break;
             case "setup":
                 $scope.nav = 'setup';
+                break;
+            case "none":
+                $scope.nav = 'none';
                 break;
             default:
                 $scope.nav = 'main';

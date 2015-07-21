@@ -182,3 +182,7 @@
     border-color: var(--brand-color);
     transition: background .2s linear .2s, border .2s linear .2s;
 }
+
+.Button--withIcon {
+    line-height: 1;
+}
