@@ -336,8 +336,8 @@ export default React.createClass({
             <div className={querySectionClasses}>
                 <div className="Query-filters">
                     {filterList}
-                    {addFilterButton}
                 </div>
+                {addFilterButton}
             </div>
         );
     },

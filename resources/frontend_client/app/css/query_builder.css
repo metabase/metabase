@@ -65,9 +65,10 @@
 
 .Query-filters {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    width: 100%;
+    overflow-x: scroll;
+    max-width: 400px;
+    white-space: nowrap;
 }
 
 .Query-filter {
