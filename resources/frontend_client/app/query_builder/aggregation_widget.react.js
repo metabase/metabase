@@ -89,6 +89,7 @@ export default React.createClass({
                 <div className="flex align-center">
                     <span className="text-bold">of</span>
                     <SelectionModule
+                        className="View-section-aggregation-target"
                         placeholder="What attribute?"
                         items={this.state.aggregationFields}
                         display="1"

@@ -368,11 +368,13 @@
 /* VIEW SECTION */
 
 .View-section-aggregation,
+.View-section-aggregation-target,
 .View-section-breakout {
     color: var(--green-color);
 }
 
 .View-section-aggregation.selected .QueryOption,
+.View-section-aggregation-target.selected .QueryOption,
 .View-section-breakout.selected .QueryOption {
     color: var(--green-color);
 }
