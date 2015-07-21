@@ -108,6 +108,17 @@
     "Return the percentage of non-nil values of textual FIELD that are valid URLs."))
 
 
+;;; ## ISyncDriverSpecificSyncField (Optional)
+
+(defprotocol ISyncDriverSpecificSyncField
+  "Optional. Do driver-specific syncing for a FIELD."
+  (driver-specific-sync-field! [this field]
+    "This is a chance for drivers to do custom Field syncing specific to their database.
+     For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
+     As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified
+     FIELD, if any, or `nil`."))
+
+
 ;; ## Helper Functions
 
 (def ^:private valid-feature? (partial contains? driver-optional-features))

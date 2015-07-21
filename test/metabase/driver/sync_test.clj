@@ -1,5 +1,6 @@
 (ns metabase.driver.sync-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
@@ -12,6 +13,8 @@
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
                            [util :refer [resolve-private-fns]])
+            (metabase.test.data [datasets :as datasets]
+                                [interface :refer [create-database-definition]])
             [metabase.util :as u]))
 
 (def users-table
@@ -167,3 +170,15 @@
 (expect false (values-are-valid-json? ["100"]))
 (expect false (values-are-valid-json? ["true"]))
 (expect false (values-are-valid-json? ["false"]))
+
+
+(datasets/expect-with-dataset :postgres
+  :json
+  (with-temp-db
+    [_
+     (dataset-loader)
+     (create-database-definition "Postgres with a JSON Field"
+       ["venues"
+        [{:field-name "address", :base-type {:native "json"}}]
+        [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+    (sel :one :field [Field :special_type] :id &venues.address:id)))

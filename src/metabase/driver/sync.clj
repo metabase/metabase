@@ -22,6 +22,7 @@
          mark-json-field!
          mark-no-preview-display-field!
          mark-url-field!
+         maybe-driver-specific-sync-field!
          set-field-display-name-if-needed!
          sync-database-active-tables!
          sync-field!
@@ -137,9 +138,9 @@
 
 ;; ## sync-table steps.
 
-;; ### 0) update-table-row-count!
+;; ### 0) update-table-display-name!
 
-(defn update-table-display-name!
+(defn- update-table-display-name!
   "Update the display_name of TABLE if it doesn't exist."
   [table]
   {:pre [(integer? (:id table))]}
@@ -287,6 +288,7 @@
          field]}
   (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
+                 (maybe-driver-specific-sync-field! driver)
                  set-field-display-name-if-needed!
                  (mark-url-field! driver)
                  (mark-no-preview-display-field! driver)
@@ -299,9 +301,17 @@
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
 ;; That way the next fn in the 'pipeline' won't trample over changes made by the last.
 
+;;; ### maybe-driver-specific-sync-field!
+
+(defn- maybe-driver-specific-sync-field!
+  "If driver implements `ISyncDriverSpecificSyncField`, call `driver-specific-sync-field!`."
+  [driver field]
+  (when (satisfies? ISyncDriverSpecificSyncField driver)
+    (driver-specific-sync-field! driver field)))
+
 ;; ### set-field-display-name-if-needed!
 
-(defn set-field-display-name-if-needed!
+(defn- set-field-display-name-if-needed!
   "If FIELD doesn't yet have a `display_name`, calculate one now and set it."
   [field]
   (when (nil? (:display_name field))

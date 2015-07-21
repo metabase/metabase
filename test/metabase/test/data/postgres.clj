@@ -62,7 +62,8 @@
   (generic/pk-field-name [_] "id")
 
   (generic/field-base-type->sql-type [_ field-type]
-    (field-base-type->sql-type field-type)))
+    (if (map? field-type) (:native field-type)
+        (field-base-type->sql-type field-type))))
 
 (extend-protocol IDatasetLoader
   PostgresDatasetLoader
