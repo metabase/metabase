@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [metabase.driver :as driver]
-            (metabase.driver [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]]
+            (metabase.driver [interface :refer [max-sync-lazy-seq-results IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]]
                              [sync :as driver-sync])
             (metabase.driver.generic-sql [interface :as i]
                                          [query-processor :as qp]

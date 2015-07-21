@@ -91,7 +91,7 @@
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (Field (id :venues :id))))
+  (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing
