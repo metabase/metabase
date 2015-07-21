@@ -64,7 +64,6 @@ export default React.createClass({
 
     canRun: function() {
         var query = this.props.card.dataset_query;
-        console.log(this.props.card);
         if (query.query) {
             return Query.canRun(query.query);
         } else {

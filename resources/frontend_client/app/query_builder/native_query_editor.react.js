@@ -100,7 +100,6 @@ export default React.createClass({
     },
 
     toggleEditor: function() {
-        console.log("toggle")
         this.setState({ showEditor: !this.state.showEditor })
     },
 
