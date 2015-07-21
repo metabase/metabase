@@ -11,12 +11,12 @@
   [password]
   (loop [[^Character c & more] password, {:keys [total, lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c counts
-            (recur more (merge (update counts :total inc)
-                               (cond
-                                 (Character/isLowerCase c) {:lower   (inc lower), :letter (inc letter)}
-                                 (Character/isUpperCase c) {:upper   (inc upper), :letter (inc letter)}
-                                 (Character/isDigit     c) {:digit   (inc digit)}
-                                 :else                     {:special (inc special)}))))))
+      (recur more (merge (update counts :total inc)
+                         (cond
+                           (Character/isLowerCase c) {:lower   (inc lower), :letter (inc letter)}
+                           (Character/isUpperCase c) {:upper   (inc upper), :letter (inc letter)}
+                           (Character/isDigit     c) {:digit   (inc digit)}
+                           :else                     {:special (inc special)}))))))
 
 (def ^:private ^:const complexity->char-type->min
   "Minimum counts of each class of character a password should have for a given password complexity level."
@@ -41,8 +41,7 @@
          (string? password)]}
   (let [occurances (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
-               (if-not char-type
-                 true
+               (if-not char-type true
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
