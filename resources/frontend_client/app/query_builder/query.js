@@ -223,7 +223,8 @@ var Query = {
             if (Query.canSortByAggregateField(query)) {
                 breakoutFieldList.push({
                     id: ["aggregation",  0],
-                    name: query.aggregation[0] // e.g. "sum"
+                    name: query.aggregation[0], // e.g. "sum"
+                    display_name: query.aggregation[0]
                 });
             }
 

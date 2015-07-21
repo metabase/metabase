@@ -108,6 +108,65 @@ export default React.createClass({
         )
     },
 
+    renderDbSelector: function() {
+        if(this.props.databases && this.props.databases.length > 1) {
+            return (
+                <div className={this.props.querySectionClasses + ' mt1 lg-mt2'}>
+                    <span className="Query-label">Data source:</span>
+                    <DatabaseSelector
+                        databases={this.props.databases}
+                        setDatabase={this.setDatabase}
+                        currentDatabaseId={this.props.query.database}
+                    />
+                </div>
+            );
+        }
+    },
+
+    renderTableSelector: function() {
+        if (this.props.tables) {
+            var sourceTableListOpen = true;
+            if(this.props.query.query.source_table) {
+                sourceTableListOpen = false;
+            }
+
+            // if we don't have any filters applied yet then provide an option to do that
+
+
+            return (
+                <div className={this.props.querySectionClasses}>
+                    <span className="Query-label">Table:</span>
+                    <SelectionModule
+                        placeholder="What part of your data?"
+                        items={this.props.tables}
+                        display="display_name"
+                        selectedValue={this.props.query.query.source_table}
+                        selectedKey="id"
+                        isInitiallyOpen={sourceTableListOpen}
+                        action={this.setSourceTable}
+                    />
+                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
+                        {this.renderFilterButton()}
+                    </ReactCSSTransitionGroup>
+                </div>
+            );
+        }
+    },
+
+    renderFilterButton: function() {
+        if (this.props.query.query.source_table &&
+                Query.getFilters(this.props.query.query).length === 0 &&
+                this.props.options &&
+                this.props.options.fields.length > 0) {
+            return (
+                <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
+                    <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
+                    <span className="mr1">Filter</span> <span>{(this.props.options) ? this.props.options.display_name : ''}</span>
+                </a>
+            );
+        }
+    },
+
     renderBreakouts: function() {
         var enabled;
         var breakoutLabel;

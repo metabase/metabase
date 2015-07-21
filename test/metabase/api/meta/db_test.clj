@@ -133,15 +133,14 @@
                                 :name            "Test Database"
                                 :organization_id nil
                                 :description     nil})))
-                         (datasets/when-testing-dataset :h2
-                           (match-$ (sel :one Database :name db-name)
-                             {:created_at      $
-                              :engine          "postgres"
-                              :id              $
-                              :updated_at      $
-                              :name            $
-                              :organization_id nil
-                              :description     nil})))))
+                         (match-$ (sel :one Database :name db-name)
+                           {:created_at      $
+                            :engine          "postgres"
+                            :id              $
+                            :updated_at      $
+                            :name            $
+                            :organization_id nil
+                            :description     nil}))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
@@ -161,11 +160,11 @@
 (expect
     (let [db-id (db-id)]
       [(match-$ (Table (id :categories))
-         {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Categories"})
+         {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
        (match-$ (Table (id :checkins))
-         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Checkins"})
+         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
        (match-$ (Table (id :users))
-         {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Users"})
+         {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
        (match-$ (Table (id :venues))
-         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :human_readable_name "Venues"})])
+         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
   ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))

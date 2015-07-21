@@ -144,7 +144,7 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? column.name.toString() : null;
+            colVal = (column !== null) ? (column.display_name.toString() || column.name.toString()) : null;
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,

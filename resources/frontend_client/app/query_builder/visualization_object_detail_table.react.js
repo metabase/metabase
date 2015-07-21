@@ -45,7 +45,7 @@ export default React.createClass({
             key = 'cl'+rowIndex+'_'+cellDataKey;
 
         if (cellDataKey === 'field') {
-            var colValue = (row[0] !== null) ? row[0].name.toString() : null;
+            var colValue = (row[0] !== null) ? (row[0].display_name.toString() || row[0].name.toString()) : null;
             return (<div key={key}>{colValue}</div>);
         } else {
 
@@ -125,7 +125,7 @@ export default React.createClass({
                 </IconBorder>
             );
 
-            var relationName = Humanize.pluralize(fkCountValue, (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name);
+            var relationName = Humanize.pluralize(fkCountValue, fk.origin.table.display_name);
 
             var info = (
                 <div>
@@ -180,7 +180,7 @@ export default React.createClass({
             return false;
         }
 
-        var tableName = (this.props.tableMetadata) ? this.props.tableMetadata.name : "Unknown",
+        var tableName = (this.props.tableMetadata) ? this.props.tableMetadata.display_name : "Unknown",
             // TODO: once we nail down the "title" column of each table this should be something other than the id
             idValue = this.getIdValue();
 

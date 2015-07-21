@@ -9,7 +9,8 @@
             (metabase.driver [interface :refer :all]
                              [query-processor :as qp])
             [metabase.driver.sync.queries :as queries]
-            (metabase.models [field :refer [Field] :as field]
+            (metabase.models [common :as common]
+                             [field :refer [Field] :as field]
                              [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
@@ -19,11 +20,13 @@
          mark-category-field-or-update-field-values!
          mark-no-preview-display-field!
          mark-url-field!
+         set-field-display-name-if-needed!
          sync-database-active-tables!
          sync-field!
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
+         update-table-display-name!
          sync-field-nested-fields!
          update-table-row-count!)
 
@@ -91,6 +94,12 @@
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
   [driver active-tables]
+
+  ;; make sure table has :display_name
+  (log/debug (u/format-color 'green "Checking table display names..."))
+  (doseq [table active-tables]
+    (u/try-apply update-table-display-name! table))
+
   ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
   ;; going to block while they run for the time being. (TODO - fix this)
   (log/debug "Updating table row counts...")
@@ -120,6 +129,19 @@
 
 
 ;; ## sync-table steps.
+
+;; ### 0) update-table-row-count!
+
+(defn update-table-display-name!
+  "Update the display_name of TABLE if it doesn't exist."
+  [table]
+  {:pre [(integer? (:id table))]}
+  (try
+    (when (nil? (:display_name table))
+      (upd Table (:id table) :display_name (common/name->human-readable-name (:name table))))
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to update display_name for %s: %s" (:name table) (.getMessage e))))))
+
 
 ;; ### 1) update-table-row-count!
 
@@ -258,6 +280,7 @@
          field]}
   (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
+                 set-field-display-name-if-needed!
                  (mark-url-field! driver)
                  mark-category-field-or-update-field-values!
                  (mark-no-preview-display-field! driver)
@@ -267,6 +290,18 @@
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
 ;; That way the next fn in the 'pipeline' won't trample over changes made by the last.
+
+;; ### set-field-display-name-if-needed!
+
+(defn set-field-display-name-if-needed!
+  "If FIELD doesn't yet have a `display_name`, calculate one now and set it."
+  [field]
+  (when (nil? (:display_name field))
+    (let [display-name (common/name->human-readable-name (:name field))]
+      (log/info (format "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
+      (upd Field (:id field) :display_name display-name)
+      (assoc field :display_name display-name))))
+
 
 ;; ### mark-url-field!
 

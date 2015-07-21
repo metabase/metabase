@@ -95,8 +95,8 @@ export default React.createClass({
     },
 
     render: function() {
-        var fieldName = inflection.humanize(this.props.field.name);
-        var tableName = inflection.humanize(this.state.table ? this.state.table.name : "");
+        var fieldName = this.props.field.display_name;
+        var tableName = this.state.table ? this.state.table.display_name : "";
 
         var validForCurrentQuestion = !this.props.query.query || this.props.query.query.source_table == undefined || this.props.query.query.source_table === this.props.field.table_id;
 

@@ -51,7 +51,6 @@
 (defn create-physical-db! [dataset-loader {:keys [table-definitions], :as database-definition}]
   ;; Create all the Tables
   (doseq [^TableDefinition table-definition table-definitions]
-    (log/info (format "Creating table '%s'..." (:table-name table-definition)))
     (i/create-physical-table! dataset-loader database-definition table-definition))
 
   ;; Now add the foreign key constraints

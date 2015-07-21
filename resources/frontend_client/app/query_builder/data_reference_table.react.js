@@ -55,12 +55,9 @@ export default React.createClass({
     render: function(page) {
         var table = this.state.table;
         if (table) {
-            var name = inflection.humanize(table.name);
             var queryButton;
             if (table.rows != null) {
-                var words = inflection.humanize(table.name, true).split(" ");
-                words.push(inflection.inflect(words.pop(), table.rows)); // inflect the last word
-                var text = "Show all " + table.rows.toLocaleString() + " rows in " + name
+                var text = "Show all " + table.rows.toLocaleString() + " rows in " + table.display_name
                 queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
@@ -85,20 +82,18 @@ export default React.createClass({
             var pane;
             if (this.state.pane === "fields") {
                 var fields = table.fields.map((field, index) => {
-                    var name =  inflection.humanize(field.name);
                     return (
                         <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
                         </li>
                     );
                 });
                 pane = <ul>{fields}</ul>;
             } else if (this.state.pane === "connections") {
                 var connections = this.state.tableForeignKeys.map((fk, index) => {
-                    var name = inflection.humanize(fk.origin.table.entity_name || fk.origin.table.name);
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}</a>
                         </li>
                     );
                 });
@@ -110,7 +105,7 @@ export default React.createClass({
 
             return (
                 <div>
-                    <h1>{name}</h1>
+                    <h1>{table.display_name}</h1>
                     {description}
                     {queryButton}
                     <div className="Button-group Button-group--brand text-uppercase">

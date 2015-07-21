@@ -227,8 +227,7 @@
                       ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the body.
                       status-code            message
                       ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging purposes
-                      :else                  (let [stacktrace (->> (map str (.getStackTrace e))
-                                                                   (filter (partial re-find #"metabase")))]
+                      :else                  (let [stacktrace (u/filtered-stacktrace e)]
                                                (log/debug message "\n" (u/pprint-to-str stacktrace))
                                                (assoc other-info
                                                       :message message

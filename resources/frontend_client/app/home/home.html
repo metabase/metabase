@@ -97,7 +97,7 @@
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
                     <a class="no-decoration py2 border-bottom flex align-center" href="/q?db={{currentDB.id}}&table={{table.id}}">
                         <div class="flex flex-column pr3 lg-pr0">
-                            <h2 class="text-dark text-brand-hover break-word">{{table.name}}</h2>
+                            <h2 class="text-dark text-brand-hover break-word">{{table.display_name}}</h2>
                             <h4 class="TableDescription text-grey-4 text-normal mt1">{{table.description}}</h4>
                         </div>
                         <div class="flex flex-align-right align-center">

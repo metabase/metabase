@@ -49,16 +49,8 @@
 
 ;;; ## MongoDriver
 
-(def ^:const ^:private mongo-driver-features
-  "Optional features supported by the Mongo driver."
-  #{:nested-fields})
-
-(deftype MongoDriver []
+(defrecord MongoDriver []
   IDriver
-;;; ### Features
-  (supports? [_ feature]
-    (contains? mongo-driver-features feature))
-
 ;;; ### Connection
   (can-connect? [_ database]
     (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
@@ -136,4 +128,4 @@
 
 (def driver
   "Concrete instance of the MongoDB driver."
-  (MongoDriver.))
+  (map->MongoDriver {:features #{:nested-fields}}))

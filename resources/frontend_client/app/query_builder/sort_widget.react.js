@@ -51,7 +51,7 @@ export default React.createClass({
                 <div className="Filter-section Filter-section-sort-field">
                     <SelectionModule
                         action={this.setField}
-                        display='name'
+                        display='display_name'
                         index={0}
                         items={this.props.fieldList}
                         placeholder="..."

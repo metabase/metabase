@@ -39,9 +39,11 @@
                                                   (order :name :asc))]
                                (sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
        :description         (u/jdbc-clob->str description)
-       :pk_field            (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"}))))
-       :human_readable_name (when (not (nil? (:name table)))
-                              (delay (common/name->human-readable-name (:name table)))))))
+       :pk_field            (delay (:id (sel :one :fields [Field :id] :table_id id (where {:special_type "id"})))))))
+
+  (pre-insert [_ table]
+    (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
+      (merge defaults table)))
 
   (pre-cascade-delete [_ {:keys [id] :as table}]
     (cascade-delete Field :table_id id)))
