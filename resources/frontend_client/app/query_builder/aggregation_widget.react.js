@@ -102,8 +102,9 @@ export default React.createClass({
         }
 
         return (
-            <div className='Query-section Query-section-aggregations'>
+            <div className='Query-section'>
                 <SelectionModule
+                    className="View-section-aggregation"
                     placeholder="..."
                     items={this.state.availableAggregations}
                     display="name"

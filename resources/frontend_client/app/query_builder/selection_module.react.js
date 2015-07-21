@@ -25,6 +25,12 @@ export default React.createClass({
         placeholder: React.PropTypes.string
     },
 
+    getDefaultProps: function() {
+        return {
+            className: ""
+        };
+    },
+
     getInitialState: function () {
         // a selection module can be told to be open on initialization but otherwise is closed
         var isInitiallyOpen = this.props.isInitiallyOpen || false;
@@ -193,7 +199,7 @@ export default React.createClass({
             return (
                 <Popover
                     tetherOptions={tetherOptions}
-                    className="SelectionModule PopoverBody PopoverBody--withArrow"
+                    className={"SelectionModule PopoverBody PopoverBody--withArrow " + this.props.className}
                     handleClickOutside={this.handleClickOutside}
                 >
                     <div className={itemListClasses}>
@@ -227,14 +233,14 @@ export default React.createClass({
 
         if(this.props.remove) {
             remove = (
-                <a className="text-default no-decoration pr1 flex align-center" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
+                <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.props.remove.bind(null, this.props.index)}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>
             );
         }
 
         return (
-            <div className={moduleClasses}>
+            <div className={moduleClasses + " " + this.props.className}>
                 <div className="SelectionModule-trigger flex align-center">
                     <a className="QueryOption p1 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}

@@ -204,19 +204,19 @@ export default React.createClass({
                 }
 
                 return (
-                    <div className="DimensionList inline-block" key={index}>
-                        <SelectionModule
-                            placeholder='field'
-                            display="1"
-                            items={unusedFields}
-                            selectedValue={breakout}
-                            selectedKey="0"
-                            index={index}
-                            isInitiallyOpen={breakoutListOpen}
-                            action={this.updateDimension}
-                            remove={this.removeDimension}
-                        />
-                    </div>
+                    <SelectionModule
+                        key={index}
+                        className="View-section-breakout"
+                        placeholder='field'
+                        display="1"
+                        items={unusedFields}
+                        selectedValue={breakout}
+                        selectedKey="0"
+                        index={index}
+                        isInitiallyOpen={breakoutListOpen}
+                        action={this.updateDimension}
+                        remove={this.removeDimension}
+                    />
                 );
             });
 
@@ -277,7 +277,7 @@ export default React.createClass({
         } else {
             // TODO: move this into AggregationWidget?
             return (
-                <div className="Query-section Query-section-aggregations disabled">
+                <div className="Query-section Query-section-aggregation disabled">
                     <a className="QueryOption p1 flex align-center">Raw data</a>
                 </div>
             );

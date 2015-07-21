@@ -178,19 +178,18 @@ export default React.createClass({
 
     renderFieldList: function() {
         return (
-            <div className="Filter-section Filter-section-field">
-                <SelectionModule
-                    action={this.setField}
-                    display='display_name'
-                    index={1}
-                    items={this.props.filterFieldList}
-                    placeholder="field"
-                    selectedValue={this.state.field}
-                    selectedKey='id'
-                    isInitiallyOpen={this.state.field === null}
-                    parentIndex={this.props.index}
-                />
-            </div>
+            <SelectionModule
+                className="Filter-section Filter-section-field"
+                action={this.setField}
+                display='display_name'
+                index={1}
+                items={this.props.filterFieldList}
+                placeholder="field"
+                selectedValue={this.state.field}
+                selectedKey='id'
+                isInitiallyOpen={this.state.field === null}
+                parentIndex={this.props.index}
+            />
         );
     },
 
@@ -201,19 +200,18 @@ export default React.createClass({
         }
 
         return (
-            <div className="Filter-section Filter-section-operator">
-                <SelectionModule
-                    placeholder="operator"
-                    items={this.state.operatorList}
-                    display='verbose_name'
-                    selectedValue={this.state.operator}
-                    selectedKey='name'
-                    index={0}
-                    isInitiallyOpen={this.state.operator === null}
-                    parentIndex={this.props.index}
-                    action={this.setOperator}
-                />
-            </div>
+            <SelectionModule
+                className="Filter-section Filter-section-operator"
+                placeholder="operator"
+                items={this.state.operatorList}
+                display='verbose_name'
+                selectedValue={this.state.operator}
+                selectedKey='name'
+                index={0}
+                isInitiallyOpen={this.state.operator === null}
+                parentIndex={this.props.index}
+                action={this.setOperator}
+            />
         );
     },
 
@@ -236,6 +234,8 @@ export default React.createClass({
                 if(this.state.fieldValues.values) {
                     valueHtml = (
                         <SelectionModule
+                            key={i}
+                            className="Filter-section Filter-section-value"
                             action={this.setValue}
                             display='name'
                             index={filterIndex}
@@ -251,33 +251,33 @@ export default React.createClass({
                     switch(this.state.fieldValues.type) {
                         case 'date':
                             valueHtml = (
-                                <DateFilter
-                                    date={filterValue}
-                                    index={filterIndex}
-                                    onChange={this.setDateValue}
-                                />
+                                <div key={i} className="Filter-section Filter-section-value">
+                                    <DateFilter
+                                        date={filterValue}
+                                        index={filterIndex}
+                                        onChange={this.setDateValue}
+                                    />
+                                </div>
                             );
                             break;
                         default:
                             valueHtml = (
-                                <input
-                                    className="QueryOption input p1 lg-p2"
-                                    type="text"
-                                    value={filterValue}
-                                    onChange={this.setTextValue.bind(null, filterIndex)}
-                                    ref="textFilterValue"
-                                    placeholder="What value?"
-                                />
+                                <div key={i} className="Filter-section Filter-section-value">
+                                    <input
+                                        className="QueryOption input p1 lg-p2"
+                                        type="text"
+                                        value={filterValue}
+                                        onChange={this.setTextValue.bind(null, filterIndex)}
+                                        ref="textFilterValue"
+                                        placeholder="What value?"
+                                    />
+                                </div>
                             );
                     }
                 }
             }
 
-            filterValueInputs[i] = (
-                <div key={i} className="Filter-section Filter-section-value">
-                    {valueHtml}
-                </div>
-            );
+            filterValueInputs[i] = valueHtml;
         }
 
         return filterValueInputs;
@@ -289,7 +289,7 @@ export default React.createClass({
                 {this.renderFieldList()}
                 {this.renderOperatorList()}
                 {this.renderFilterValue()}
-                <a className="text-default no-decoration pr1 flex align-center" href="#" onClick={this.removeFilterFn}>
+                <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.removeFilterFn}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>
             </div>

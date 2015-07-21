@@ -133,7 +133,7 @@
 .SelectionItem .Icon {
     margin-left: 0.5rem;
     margin-right: 0.75rem;
-    color: var(--brand-color);
+    color: currentcolor;
 }
 
 .SelectionItem .Icon-check {
@@ -341,28 +341,43 @@
     text-align: center;
 }
 
-.Filter-section-field .SelectionModule.selected .QueryOption {
-    color: var(--purple-light-color);
-}
-.Filter-section-operator .SelectionModule.selected .QueryOption {
-    color: var(--purple-light-color);
-    text-transform: lowercase;
-}
-.Filter-section-value .SelectionModule.selected .QueryOption {
+/* FILTER BY SECTION */
+
+.Filter-section-field,
+.Filter-section-operator,
+.Filter-section-value {
     color: var(--purple-color);
 }
 
+.Filter-section-field.selected .QueryOption {
+    color: var(--purple-light-color);
+}
+.Filter-section-operator.selected .QueryOption {
+    color: var(--purple-light-color);
+    text-transform: lowercase;
+}
+.Filter-section-value.selected .QueryOption {
+    color: var(--purple-color);
+}
 .Filter-section-value .QueryOption:before,
 .Filter-section-value .QueryOption:after {
     content: '"';
 }
 
-.GuiBuilder-view .SelectionModule.selected .QueryOption {
+/* VIEW SECTION */
+
+.View-section-aggregation,
+.View-section-breakout {
+    color: var(--green-color);
+}
+
+.View-section-aggregation.selected .QueryOption,
+.View-section-breakout.selected .QueryOption {
     color: var(--green-color);
 }
 
 .QueryOption {
-    color: color(var(--base-grey) shade(40%));
+    color: color(var(--base-grey) shade(20%));
     line-height: 1;
     font-weight: 700;
 }
