@@ -244,7 +244,7 @@ export default React.createClass({
                             placeholder="value"
                             selectedValue={filterValue}
                             selectedKey='key'
-                            parentIndex={filterValue}
+                            parentIndex={this.props.index}
                         />
                     );
                 } else {
