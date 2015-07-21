@@ -21,7 +21,7 @@
    :mb-jetty-port "3000"
    ;; Other Application Settings
    :mb-password-complexity "normal"
-   :mb-password-length "8"
+   ;:mb-password-length "8"
    :max-session-age "20160"})                    ; session length in minutes (14 days)
 
 
