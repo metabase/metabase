@@ -415,6 +415,13 @@
     opacity: 0.5;
 }
 
+.ColorWell {
+    width: 18px;
+    height: 18px;
+    margin: 3px;
+    margin-right: 0.3rem;
+}
+
 .RunButton {
     transition: margin-top 0.5s;
     margin-top: -200px;

@@ -105,8 +105,11 @@ export default React.createClass({
             targetAttachment: 'bottom left',
             targetOffset: '5px 25px'
         };
+
+        var iconName = this.visualizationTypeNames[this.props.card.display].iconName;
         var triggerElement = (
-            <span className="px2 py2 text-bold cursor-pointer text-default">
+            <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
+                <Icon name={iconName} width="24px" height="24px"/>
                 {this.visualizationTypeNames[this.props.card.display].displayName}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
             </span>
@@ -163,8 +166,10 @@ export default React.createClass({
                 ));
             }
 
+            var color = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || null;
             var triggerElement = (
-                <span className="px2 py2 text-bold cursor-pointer text-default">
+                <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
+                     <div className="ColorWell rounded bordered" style={{backgroundColor:color}}></div>
                     Color
                     <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
                 </span>
