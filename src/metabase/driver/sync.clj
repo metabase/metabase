@@ -123,10 +123,6 @@
 
     ;; After that, we can sync the metadata for all active Fields
     ;; Now sync all active fields
-
-
-    ;; After that, we can sync the metadata for all active Fields
-    ;; Now sync all active fields
     (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
       (doseq [table active-tables]
