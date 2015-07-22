@@ -8,13 +8,8 @@ if [ -z $1 ]; then
 fi
 
 APP_BUNDLE=$1
-
 ENVIRONMENT=metabase-proto
 
-
-# upload app version to EB
-# TODO: check if version already exists
-${BASEDIR}/upload_version.sh ${APP_BUNDLE}
 
 # deploy EB version to environment
 ${BASEDIR}/deploy_version.sh ${APP_BUNDLE} ${ENVIRONMENT}
