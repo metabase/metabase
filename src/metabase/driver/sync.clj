@@ -90,7 +90,7 @@
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
 
-(def sync-progress-meter-string
+(def ^:private sync-progress-meter-string
   "Create a string that shows sync progress for a database.
 
      (sync-progress-meter-string 10 40)
@@ -110,7 +110,7 @@
                                 "😍"  ; smiling face with heart shaped eyes
                                 "😎"] ; smiling face with sunglasses
         percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (count progress-emoji))))))]
+                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
     (fn [tables-finished total-tables]
       (let [percent-done (float (/ tables-finished total-tables))
             filleds      (int (* percent-done meter-width))
