@@ -95,7 +95,17 @@
 
      (sync-progress-meter-string 10 40)
        -> \"[************······································] 25%\""
-  (let [^:const meter-width 50]
+  (let [^:const meter-width 50
+        percent-done->emoji (fn [percent-done]
+                              (cond
+                                (> percent-done 0.90) "😎" ; smiling face with sunglasses
+                                (> percent-done 0.75) "😍" ; smiling face with heart shaped eyes
+                                (> percent-done 0.60) "😋" ; face savouring delicious food
+                                (> percent-done 0.45) "😏" ; smirking face
+                                (> percent-done 0.30) "😐" ; neutral face
+                                (> percent-done 0.15) "😒" ; unamused face
+                                :else                 "😢" ; crying face
+                                ))]
     (fn [tables-finished total-tables]
       (let [percent-done (float (/ tables-finished total-tables))
             filleds      (int (* percent-done meter-width))
@@ -103,7 +113,7 @@
         (str "["
              (apply str (repeat filleds "*"))
              (apply str (repeat blanks "·"))
-             (format "] 😋  %3.0f%%" (* percent-done 100.0)))))))
+             (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
 (defn- sync-database-active-tables!
   "Sync active tables by running each of the sync table steps.
