@@ -103,7 +103,7 @@
         (str "["
              (apply str (repeat filleds "*"))
              (apply str (repeat blanks "·"))
-             (format "] 😋  %3d%%" (int (* percent-done 100.0))))))))
+             (format "] 😋  %3.0f%%" (* percent-done 100.0)))))))
 
 (defn- sync-database-active-tables!
   "Sync active tables by running each of the sync table steps.
