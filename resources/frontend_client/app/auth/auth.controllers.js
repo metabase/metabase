@@ -4,6 +4,7 @@
 /*global _*/
 
 var AuthControllers = angular.module('corvus.auth.controllers', [
+    'corvus.auth.services',
     'ipCookie',
     'corvus.services',
     'metabase.forms'
