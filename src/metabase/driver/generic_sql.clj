@@ -117,16 +117,16 @@
       0))
 
 (defn- field-percent-urls [_ field]
-  (let [korma-table          (korma-entity @(:table field))
-        total-non-null-count (-> (k/select korma-table
-                                           (k/aggregate (count :*) :count)
-                                           (k/where {(keyword (:name field)) [not= nil]})) first :count)]
-    (if (= total-non-null-count 0) 0.0
-        (let [url-count (or (-> (k/select korma-table
-                                          (k/aggregate (count :*) :count)
-                                          (k/where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
-                            0)]
-          (float (/ url-count total-non-null-count))))))
+  (or (let [korma-table (korma-entity @(:table field))]
+        (when-let [total-non-null-count (:count (first (k/select korma-table
+                                                                 (k/aggregate (count :*) :count)
+                                                                 (k/where {(keyword (:name field)) [not= nil]}))))]
+          (when (> total-non-null-count 0)
+            (when-let [url-count (:count (first (k/select korma-table
+                                                          (k/aggregate (count :*) :count)
+                                                          (k/where {(keyword (:name field)) [like "http%://_%.__%"]}))))]
+              (float (/ url-count total-non-null-count))))))
+      0.0))
 
 (defn extend-add-generic-sql-mixins [driver-type]
   (extend driver-type
