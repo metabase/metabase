@@ -1,5 +1,6 @@
 (ns metabase.driver.sync-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
@@ -11,7 +12,10 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns]])))
+                           [util :refer [resolve-private-fns]])
+            (metabase.test.data [datasets :as datasets]
+                                [interface :refer [create-database-definition]])
+            [metabase.util :as u]))
 
 (def users-table
   (delay (sel :one Table :name "USERS")))
@@ -83,14 +87,14 @@
 
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
+(def determine-fk-type (u/runtime-resolved-fn 'metabase.driver.sync 'determine-fk-type))
 (expect :Mt1
-  (sync/determine-fk-type (Field (id :venues :category_id))))
+  (determine-fk-type (Field (id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
 (expect :1t1
-  (sync/determine-fk-type (Field (id :venues :id))))
-
+  (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing
@@ -124,3 +128,57 @@
      ;; 3. Now re-sync the table and make sure the value is back
      (do (driver/sync-table! @venues-table)
          (get-field-values))]))
+
+
+;;; ## mark-json-field!
+
+(resolve-private-fns metabase.driver.sync values-are-valid-json?)
+
+(def ^:const ^:private fake-values-seq-json
+  "A sequence of values that should be marked is valid JSON.")
+
+;; When all the values are valid JSON dicts they're valid JSON
+(expect true
+  (values-are-valid-json? ["{\"this\":\"is\",\"valid\":\"json\"}"
+                           "{\"this\":\"is\",\"valid\":\"json\"}"
+                           "{\"this\":\"is\",\"valid\":\"json\"}"]))
+
+;; When all the values are valid JSON arrays they're valid JSON
+(expect true
+  (values-are-valid-json? ["[1, 2, 3, 4]"
+                           "[1, 2, 3, 4]"
+                           "[1, 2, 3, 4]"]))
+
+;; Some combo of both can still be marked as JSON
+(expect true
+  (values-are-valid-json? ["{\"this\":\"is\",\"valid\":\"json\"}"
+                           "[1, 2, 3, 4]"
+                           "[1, 2, 3, 4]"]))
+
+;; If the values have some valid JSON dicts but is mostly null, it's still valid JSON
+(expect true
+  (values-are-valid-json? ["{\"this\":\"is\",\"valid\":\"json\"}"
+                           nil
+                           nil]))
+
+;; If every value is nil then the values should not be considered valid JSON
+(expect false
+  (values-are-valid-json? [nil, nil, nil]))
+
+;; Check that things that aren't dictionaries or arrays aren't marked as JSON
+(expect false (values-are-valid-json? ["\"A JSON string should not cause a Field to be marked as JSON\""]))
+(expect false (values-are-valid-json? ["100"]))
+(expect false (values-are-valid-json? ["true"]))
+(expect false (values-are-valid-json? ["false"]))
+
+
+(datasets/expect-with-dataset :postgres
+  :json
+  (with-temp-db
+    [_
+     (dataset-loader)
+     (create-database-definition "Postgres with a JSON Field"
+       ["venues"
+        [{:field-name "address", :base-type {:native "json"}}]
+        [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+    (sel :one :field [Field :special_type] :id &venues.address:id)))

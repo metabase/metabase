@@ -53,7 +53,8 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
 
     // TODO: we need an appropriate homepage or something to show in this situation
     $routeProvider.otherwise({
-        redirectTo: '/user/edit_current'
+        templateUrl: '/app/not_found.html',
+        controller: 'NotFound'
     });
 }]);
 
