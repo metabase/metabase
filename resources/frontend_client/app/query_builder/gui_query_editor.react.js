@@ -147,10 +147,6 @@ export default React.createClass({
 
         if (this.props.options) {
             enabled = true;
-            var filterFieldList = [];
-            for(var key in this.props.options.fields_lookup) {
-                filterFieldList.push(this.props.options.fields_lookup[key]);
-            }
 
             var queryFilters = Query.getFilters(this.props.query.query);
             if (queryFilters && queryFilters.length > 0) {
@@ -161,7 +157,7 @@ export default React.createClass({
                                 key={index}
                                 placeholder="Item"
                                 filter={filter}
-                                filterFieldList={filterFieldList}
+                                tableMetadata={this.props.options}
                                 index={index}
                                 removeFilter={this.removeFilter}
                                 updateFilter={this.updateFilter}

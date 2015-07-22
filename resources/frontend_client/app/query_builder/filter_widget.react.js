@@ -1,14 +1,21 @@
 'use strict';
+/*global _*/
 
 import DateFilter from './date_filter.react';
 import Icon from './icon.react';
+import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';
+import PopoverWithTrigger from './popover_with_trigger.react';
+
+import Query from './query';
+
+var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'FilterWidget',
     propTypes: {
         filter: React.PropTypes.array.isRequired,
-        filterFieldList: React.PropTypes.array.isRequired,
+        tableMetadata: React.PropTypes.object.isRequired,
         index: React.PropTypes.number.isRequired,
         updateFilter: React.PropTypes.func.isRequired,
         removeFilter: React.PropTypes.func.isRequired
@@ -38,11 +45,14 @@ export default React.createClass({
         }
 
         // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
-        var fieldDef;
-        for(var j in newProps.filterFieldList) {
-            if(newProps.filterFieldList[j].id === field) {
-                fieldDef = newProps.filterFieldList[j];
+        var fieldDef
+        if (Array.isArray(field)) {
+            var fkDef = newProps.tableMetadata.fields_lookup[field[1]];
+            if (fkDef) {
+                fieldDef = fkDef.target.table.fields_lookup[field[2]];
             }
+        } else {
+            fieldDef = newProps.tableMetadata.fields_lookup[field];
         }
 
         // once we know our field we can pull out the list of possible operators to filter on
@@ -95,12 +105,19 @@ export default React.createClass({
         });
     },
 
+    hasField: function() {
+        return (typeof this.state.field === "number") || this.state.field && (typeof this.state.field[2] === "number");
+    },
+
     setField: function(value, index, filterListIndex) {
         // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
         // make sense once you've changed the field, so starting fresh is the most sensible thing to do
-        if (this.state.field !== value) {
+        if (!_.isEqual(this.state.field, value)) {
             var filter = [null, value, null];
             this.props.updateFilter(this.props.index, filter);
+        }
+        if (Query.isValidField(value)) {
+            this.refs.popover.toggleModal();
         }
     },
 
@@ -177,25 +194,65 @@ export default React.createClass({
     },
 
     renderFieldList: function() {
+        var tetherOptions = {
+            attachment: 'top center',
+            targetAttachment: 'bottom left',
+            targetOffset: '10px 25px'
+        };
+
+        var targetTitle, fkTitle, fkIcon;
+        var field = this.state.field;
+        if (Array.isArray(field)) {
+            var fkDef = this.props.tableMetadata.fields_lookup[field[1]];
+            var targetDef = fkDef && fkDef.target.table.fields_lookup[field[2]];
+            targetTitle = targetDef && (<span>{targetDef.display_name}</span>);
+            fkTitle = fkDef && (<span>{fkDef.display_name}</span>);
+            fkIcon = fkDef && targetDef && (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
+        } else {
+            var targetDef = this.props.tableMetadata.fields_lookup[field];
+            targetTitle = targetDef && (<span>{targetDef.display_name}</span>);
+        }
+
+        var classes = cx({
+            'Filter-section': true,
+            'Filter-section-field': true,
+            'selected': this.hasField(),
+            'px1': true,
+            'pt1': true
+        });
+        var triggerElement;
+        if (fkTitle || targetTitle) {
+            triggerElement = (
+                <div className={classes}>
+                    <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}</span>
+                </div>
+            );
+        } else {
+            triggerElement = (
+                <div className={classes}>
+                    <span className="QueryOption">Field</span>
+                </div>
+            );
+        }
         return (
-            <SelectionModule
-                className="Filter-section Filter-section-field"
-                action={this.setField}
-                display='display_name'
-                index={1}
-                items={this.props.filterFieldList}
-                placeholder="field"
-                selectedValue={this.state.field}
-                selectedKey='id'
-                isInitiallyOpen={this.state.field === null}
-                parentIndex={this.props.index}
-            />
+            <PopoverWithTrigger ref="popover"
+                                className="PopoverBody PopoverBody--withArrow"
+                                isInitiallyOpen={this.state.field === null}
+                                tetherOptions={tetherOptions}
+                                triggerElement={triggerElement}
+                                triggerClasses="flex align-center">
+                <FieldSelector
+                    field={this.state.field}
+                    tableMetadata={this.props.tableMetadata}
+                    setField={this.setField}
+                />
+            </PopoverWithTrigger>
         );
     },
 
     renderOperatorList: function() {
         // if we don't know our field yet then don't render anything
-        if (this.state.field === null) {
+        if (!this.hasField()) {
             return false;
         }
 
@@ -217,7 +274,7 @@ export default React.createClass({
 
     renderFilterValue: function() {
         // if we don't know our field AND operator yet then don't render anything
-        if (this.state.field === null || this.state.operator === null) {
+        if (!this.hasField() || this.state.operator === null) {
             return false;
         }
 
@@ -264,7 +321,7 @@ export default React.createClass({
                             valueHtml = (
                                 <div key={i} className="Filter-section Filter-section-value">
                                     <input
-                                        className="QueryOption input p1 lg-p2"
+                                        className="QueryOption input px1"
                                         type="text"
                                         value={filterValue}
                                         onChange={this.setTextValue.bind(null, filterIndex)}
@@ -286,9 +343,15 @@ export default React.createClass({
     render: function() {
         return (
             <div className="Query-filter">
-                {this.renderFieldList()}
-                {this.renderOperatorList()}
-                {this.renderFilterValue()}
+                <div>
+                    <div>
+                        {this.renderFieldList()}
+                    </div>
+                    <div className="flex align-center">
+                        {this.renderOperatorList()}
+                        {this.renderFilterValue()}
+                    </div>
+                </div>
                 <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.removeFilterFn}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>

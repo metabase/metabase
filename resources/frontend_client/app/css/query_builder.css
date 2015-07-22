@@ -37,7 +37,6 @@
 .Query-section {
     display: flex;
     align-items: center;
-    position: relative;
 }
 
 .Query-section.Query-section--right {
@@ -74,6 +73,11 @@
 .Query-filter {
     display: flex;
     align-items: center;
+    font-size: 0.75em;
+}
+
+.Query-filter.selected {
+    border: 2px solid var(--purple-color);
 }
 
 .Filter-section {
@@ -87,6 +91,7 @@
     font-size: inherit;
     background-color: transparent;
     width: 150px;
+    padding: 0;
 }
 
 .QueryTable-wrapper {
@@ -296,7 +301,7 @@
 }
 
 .GuiBuilder-section {
-    height: 48px;
+    min-height: 48px;
     min-width: 120px;
     position: relative;
 }
@@ -356,10 +361,10 @@
 }
 
 .Filter-section-field.selected .QueryOption {
-    color: var(--purple-light-color);
+    color: var(--purple-color);
 }
 .Filter-section-operator.selected .QueryOption {
-    color: var(--purple-light-color);
+    color: var(--purple-color);
     text-transform: lowercase;
 }
 .Filter-section-value.selected .QueryOption {

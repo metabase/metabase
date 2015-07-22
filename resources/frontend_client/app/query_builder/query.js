@@ -274,6 +274,13 @@ var Query = {
         } else {
             queryOrderBy.splice(index, 1);
         }
+    },
+
+    isValidField: function(field) {
+        return (
+            typeof field === "number" ||
+            (Array.isArray(field) && field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number")
+        );
     }
 }
 
