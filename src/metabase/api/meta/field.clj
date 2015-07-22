@@ -6,7 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values create-field-values-if-needed field-should-have-field-values?]]
+                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
@@ -41,8 +41,8 @@
    display_name NonEmptyString}
   (write-check Field id)
   (check-500 (m/mapply upd Field id (merge {:description  description                                              ; you're allowed to unset description and special_type
-                                            :special_type special_type
-                                            :display_name display_name}                                            ; but field_type and preview_display must be replaced
+                                            :special_type special_type}                                            ; but field_type and preview_display must be replaced
+                                           (when display_name               {:display_name display_name})
                                            (when field_type                 {:field_type field_type})              ; with new non-nil values
                                            (when-not (nil? preview_display) {:preview_display preview_display}))))
   (Field id))
@@ -100,7 +100,7 @@
     (if-let [field-values-id (sel :one :id FieldValues :field_id id)]
       (check-500 (upd FieldValues field-values-id
                    :human_readable_values values_map))
-      (create-field-values field values_map)))
+      (create-field-values-if-needed field values_map)))
   {:status :success})
 
 

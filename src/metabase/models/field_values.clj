@@ -39,7 +39,7 @@
 (def ^:private field-distinct-values
   (u/runtime-resolved-fn 'metabase.db.metadata-queries 'field-distinct-values))
 
-(defn create-field-values
+(defn- create-field-values
   "Create `FieldValues` for a `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id, field-name :name, :as field} & [human-readable-values]]

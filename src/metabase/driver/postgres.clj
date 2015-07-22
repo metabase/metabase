@@ -1,12 +1,17 @@
 (ns metabase.driver.postgres
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             (clojure [set :refer [rename-keys]]
                      [string :as s])
             [korma.db :as kdb]
             [swiss.arrows :refer :all]
+            [metabase.db :refer [upd]]
+            [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
+            [metabase.driver.interface :refer [ISyncDriverSpecificSyncField driver-specific-sync-field!]]
             [metabase.driver.generic-sql :as generic-sql]
-            [metabase.driver.generic-sql.interface :refer :all]))
+            (metabase.driver.generic-sql [interface :refer :all]
+                                         [util :refer [with-jdbc-metadata]])))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -75,7 +80,7 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(defrecord ^:private PostgresDriver []
+(defrecord PostgresDriver []
   ISqlDriverDatabaseSpecific
   (connection-details->connection-spec [_ {:keys [ssl] :as details-map}]
     (-> details-map
@@ -101,7 +106,16 @@
               :milliseconds "millisecond")))
 
   (timezone->set-timezone-sql [_ timezone]
-    (format "SET LOCAL timezone TO '%s';" timezone)))
+    (format "SET LOCAL timezone TO '%s';" timezone))
+
+  ISyncDriverSpecificSyncField
+  (driver-specific-sync-field! [_ {:keys [table], :as field}]
+    (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
+      (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
+                                       jdbc/result-set-seq)]
+        (when (= type_name "json")
+          (upd Field (:id field) :special_type :json)
+          (assoc field :special_type :json))))))
 
 (generic-sql/extend-add-generic-sql-mixins PostgresDriver)
 

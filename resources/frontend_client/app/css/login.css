@@ -20,7 +20,7 @@
     height: 180px;
 }
 
-.brand-boat {
+.brand-boat-container {
     position: absolute;
     bottom: 0;
     z-index: 6;
@@ -28,7 +28,13 @@
     margin-bottom: 0.5em;
 }
 
-@-webkit-keyframes boat_trip {
+.brand-boat {
+    transform-origin: 50% bottom;
+    animation: boat_rock 2s ease-in-out infinite;
+    animation-direction: alternate;
+}
+
+@keyframes boat_trip {
     0% {
         margin-left: -2%;
     }
@@ -38,6 +44,38 @@
     }
     100% {
         margin-left: 120%;
+    }
+}
+
+@keyframes boat_lost {
+    0% {
+        margin-left: 40%;
+        transform: rotateY(0deg);
+    }
+    45% {
+        margin-left: 60%;
+        transform: rotateY(0deg);
+    }
+    50% {
+        margin-left: 60%;
+        transform: rotateY(180deg);
+    }
+    95% {
+        margin-left: 40%;
+        transform: rotateY(180deg);
+    }
+    100% {
+        margin-left: 40%;
+        transform: rotateY(0deg);
+    }
+}
+
+@keyframes boat_rock {
+    from {
+        transform: rotate(-10deg);
+    }
+    to {
+        transform: rotate(10deg);
     }
 }
 
@@ -57,6 +95,17 @@
 .brand-mountain-1 {
     position: relative;
     z-index: 50;
+}
+
+.NotFoundScene .brand-bridge,
+.NotFoundScene .brand-mountain-1,
+.NotFoundScene .brand-mountain-1,
+.NotFoundScene .brand-illustration {
+    display: none;
+}
+
+.NotFoundScene .brand-boat-container {
+    animation: boat_lost 30s linear infinite;
 }
 
 /* flip the second mountain around */
