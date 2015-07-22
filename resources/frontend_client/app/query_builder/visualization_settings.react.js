@@ -166,10 +166,10 @@ export default React.createClass({
                 ));
             }
 
-            var color = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || null;
+            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || null;
             var triggerElement = (
                 <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
-                     <div className="ColorWell rounded bordered" style={{backgroundColor:color}}></div>
+                    <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>
                     Color
                     <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
                 </span>
