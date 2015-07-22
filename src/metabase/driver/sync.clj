@@ -66,7 +66,7 @@
           (let [existing-table-names (set (keys table-name->id))
                 new-table-names      (set/difference active-table-names existing-table-names)]
             (when (seq new-table-names)
-              (log/info (u/format-color 'blue "Found new tables: %s" (u/pprint-to-str new-table-names)))
+              (log/info (u/format-color 'blue "Found new tables: %s" new-table-names))
               (doseq [new-table-name new-table-names]
                 (ins Table :db_id (:id database), :active true, :name new-table-name)))))
 
@@ -197,7 +197,7 @@
       (let [existing-field-names (set (keys existing-field-name->field))
             new-field-names      (set/difference (set (keys active-column-names->type)) existing-field-names)]
         (when (seq new-field-names)
-          (log/info (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) (u/pprint-to-str new-field-names))))
+          (log/info (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
         (doseq [[active-field-name active-field-type] active-column-names->type]
           ;; If Field doesn't exist create it
           (if-not (contains? existing-field-names active-field-name)
