@@ -102,9 +102,11 @@
                                 "😒"  ; unamused face
                                 "😕"  ; confused face
                                 "😐"  ; neutral face
-                                "😶"  ; face without mouth
+                                "😬"  ; grimacing face
+                                "😌"  ; relieved face
                                 "😏"  ; smirking face
                                 "😋"  ; face savouring delicious food
+                                "😊"  ; smiling face with smiling eyes
                                 "😍"  ; smiling face with heart shaped eyes
                                 "😎"] ; smiling face with sunglasses
         percent-done->emoji    (fn [percent-done]
