@@ -9,8 +9,8 @@ var AuthControllers = angular.module('corvus.auth.controllers', [
     'metabase.forms'
 ]);
 
-AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', 'AppState',
-    function($scope, $location, $timeout, ipCookie, Session, AppState) {
+AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState',
+    function($scope, $location, $timeout, AuthUtil, Session, AppState) {
 
         var formFields = {
             email: 'email',
@@ -35,15 +35,7 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'ipCooki
                 'password': password
             }, function (new_session) {
                 // set a session cookie
-                var isSecure = ($location.protocol() === "https") ? true : false;
-                ipCookie('metabase.SESSION_ID', new_session.id, {
-                    path: '/',
-                    expires: 14,
-                    secure: isSecure
-                });
-
-                // send a login notification event
-                $scope.$emit('appstate:login', new_session.id);
+                AuthUtil.setSession(new_session.id);
 
                 // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
                 $timeout(function() {
@@ -104,7 +96,7 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
 }]);
 
 
-AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$location', 'Session', function($scope, $routeParams, $location, Session) {
+AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', 'AuthUtil', 'Session', function($scope, $routeParams, AuthUtil, Session) {
 
     $scope.resetSuccess = false;
 
@@ -121,6 +113,12 @@ AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$locatio
             'password': password
         }, function (result) {
             $scope.resetSuccess = true;
+
+            // we should have a valid session that we can use immediately now!
+            if (result.session_id) {
+                AuthUtil.setSession(result.session_id);
+            }
+
         }, function (error) {
             $scope.$broadcast("form:api-error", error);
         });
