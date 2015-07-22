@@ -89,6 +89,9 @@
   (log/info "Setting up test DB and running migrations...")
   (db/setup-db :auto-migrate true)
 
+  ;; add any global settings defaults
+  (metabase.models.setting/set :site-name "Metabase Test")
+
   ;; Load the test datasets
   (load-test-datasets)
 
