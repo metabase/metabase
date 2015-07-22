@@ -94,15 +94,15 @@
   "Create a string that shows sync progress for a database.
 
      (sync-progress-meter-string 10 40)
-       -> \"[**********                              ] 25%\""
-  (let [^:const meter-width 40]
+       -> \"[************······································] 25%\""
+  (let [^:const meter-width 50]
     (fn [tables-finished total-tables]
       (let [percent-done (float (/ tables-finished total-tables))
             filleds      (int (* percent-done meter-width))
             blanks       (- meter-width filleds)]
         (str "["
              (apply str (repeat filleds "*"))
-             (apply str (repeat blanks " "))
+             (apply str (repeat blanks "·"))
              (format "] 😋  %3d%%" (int (* percent-done 100.0))))))))
 
 (defn- sync-database-active-tables!
