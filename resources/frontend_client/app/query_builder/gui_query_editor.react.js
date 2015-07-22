@@ -100,6 +100,23 @@ export default React.createClass({
         return Query.getSortableFields(this.props.query.query, this.props.options.fields_lookup);
     },
 
+    renderAdd: function(text, onClick) {
+        if (text) {
+            return (
+                <a className="text-grey-2 text-bold no-decoration flex align-center" href="#" onClick={onClick}>
+                    <span className="p1">{this.renderAddIcon()}</span>
+                    <span>{text}</span>
+                </a>
+            );
+        } else {
+            return (
+                <a className="text-grey-2 text-bold no-decoration" href="#" onClick={onClick}>
+                    <span className="p1">{this.renderAddIcon()}</span>
+                </a>
+            )
+        }
+    },
+
     renderAddIcon: function () {
         return (
             <IconBorder className="text-grey-2" borderRadius="3px">
@@ -123,46 +140,80 @@ export default React.createClass({
         }
     },
 
-    renderTableSelector: function() {
-        if (this.props.tables) {
-            var sourceTableListOpen = true;
-            if(this.props.query.query.source_table) {
-                sourceTableListOpen = false;
+    renderFilters: function() {
+        var enabled;
+        var filterList;
+        var addFilterButton;
+
+        if (this.props.options) {
+            enabled = true;
+            var filterFieldList = [];
+            for(var key in this.props.options.fields_lookup) {
+                filterFieldList.push(this.props.options.fields_lookup[key]);
             }
 
-            // if we don't have any filters applied yet then provide an option to do that
+            var queryFilters = Query.getFilters(this.props.query.query);
+            if (queryFilters && queryFilters.length > 0) {
+                filterList = queryFilters.map((filter, index) => {
+                    if(index > 0) {
+                        return (
+                            <FilterWidget
+                                key={index}
+                                placeholder="Item"
+                                filter={filter}
+                                filterFieldList={filterFieldList}
+                                index={index}
+                                removeFilter={this.removeFilter}
+                                updateFilter={this.updateFilter}
+                            />
+                        );
+                    }
+                });
+            }
 
-
-            return (
-                <div className={this.props.querySectionClasses}>
-                    <span className="Query-label">Table:</span>
-                    <SelectionModule
-                        placeholder="What part of your data?"
-                        items={this.props.tables}
-                        display="display_name"
-                        selectedValue={this.props.query.query.source_table}
-                        selectedKey="id"
-                        isInitiallyOpen={sourceTableListOpen}
-                        action={this.setSourceTable}
-                    />
-                    <ReactCSSTransitionGroup transitionName="Transition-qb-section">
-                        {this.renderFilterButton()}
-                    </ReactCSSTransitionGroup>
-                </div>
-            );
+            // TODO: proper check for isFilterComplete(filter)
+            if (Query.canAddFilter(this.props.query.query)) {
+                if (filterList) {
+                    addFilterButton = this.renderAdd(null, this.addFilter);
+                } else {
+                    addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
+                }
+            }
+        } else {
+            enabled = false;
+            addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
         }
+
+        var querySectionClasses = cx({
+            "Query-section": true,
+            disabled: !enabled
+        });
+        return (
+            <div className={querySectionClasses}>
+                <div className="Query-filters">
+                    {filterList}
+                </div>
+                {addFilterButton}
+            </div>
+        );
     },
 
-    renderFilterButton: function() {
-        if (this.props.query.query.source_table &&
-                Query.getFilters(this.props.query.query).length === 0 &&
-                this.props.options &&
-                this.props.options.fields.length > 0) {
+    renderAggregation: function() {
+        // aggregation clause.  must have table details available
+        if (this.props.options) {
             return (
-                <a className="QueryOption flex align-center p1 lg-p2 ml2" onClick={this.addFilter}>
-                    <Icon name='filter' width={16} height={ 16} viewBox='0 0 16 16' />
-                    <span className="mr1">Filter</span> <span>{(this.props.options) ? this.props.options.display_name : ''}</span>
-                </a>
+                <AggregationWidget
+                    aggregation={this.props.query.query.aggregation}
+                    aggregationOptions={this.props.options.aggregation_options}
+                    updateAggregation={this.updateAggregation}>
+                </AggregationWidget>
+            );
+        } else {
+            // TODO: move this into AggregationWidget?
+            return (
+                <div className="Query-section Query-section-aggregation disabled">
+                    <a className="QueryOption p1 flex align-center">Raw data</a>
+                </div>
             );
         }
     },
@@ -247,101 +298,6 @@ export default React.createClass({
         );
     },
 
-    renderAdd: function(text, onClick) {
-        if (text) {
-            return (
-                <a className="text-grey-2 text-bold no-decoration flex align-center" href="#" onClick={onClick}>
-                    <span className="p1">{this.renderAddIcon()}</span>
-                    <span>{text}</span>
-                </a>
-            );
-        } else {
-            return (
-                <a className="text-grey-2 text-bold no-decoration" href="#" onClick={onClick}>
-                    <span className="p1">{this.renderAddIcon()}</span>
-                </a>
-            )
-        }
-    },
-
-    renderAggregation: function() {
-        // aggregation clause.  must have table details available
-        if (this.props.options) {
-            return (
-                <AggregationWidget
-                    aggregation={this.props.query.query.aggregation}
-                    aggregationOptions={this.props.options.aggregation_options}
-                    updateAggregation={this.updateAggregation}>
-                </AggregationWidget>
-            );
-        } else {
-            // TODO: move this into AggregationWidget?
-            return (
-                <div className="Query-section Query-section-aggregation disabled">
-                    <a className="QueryOption p1 flex align-center">Raw data</a>
-                </div>
-            );
-        }
-    },
-
-    renderFilters: function() {
-        var enabled;
-        var filterList;
-        var addFilterButton;
-
-        if (this.props.options) {
-            enabled = true;
-            var filterFieldList = [];
-            for(var key in this.props.options.fields_lookup) {
-                filterFieldList.push(this.props.options.fields_lookup[key]);
-            }
-
-            var queryFilters = Query.getFilters(this.props.query.query);
-            if (queryFilters && queryFilters.length > 0) {
-                filterList = queryFilters.map((filter, index) => {
-                    if(index > 0) {
-                        return (
-                            <FilterWidget
-                                key={index}
-                                placeholder="Item"
-                                filter={filter}
-                                filterFieldList={filterFieldList}
-                                index={index}
-                                removeFilter={this.removeFilter}
-                                updateFilter={this.updateFilter}
-                            />
-                        );
-                    }
-                });
-            }
-
-            // TODO: proper check for isFilterComplete(filter)
-            if (Query.canAddFilter(this.props.query.query)) {
-                if (filterList) {
-                    addFilterButton = this.renderAdd(null, this.addFilter);
-                } else {
-                    addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
-                }
-            }
-        } else {
-            enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
-        }
-
-        var querySectionClasses = cx({
-            "Query-section": true,
-            disabled: !enabled
-        });
-        return (
-            <div className={querySectionClasses}>
-                <div className="Query-filters">
-                    {filterList}
-                </div>
-                {addFilterButton}
-            </div>
-        );
-    },
-
     renderSort: function() {
         var sortList = [];
         if (this.props.query.query.order_by) {
@@ -396,6 +352,24 @@ export default React.createClass({
         }
     },
 
+    renderLimit: function() {
+        var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
+            var name = count || "None";
+            var classes = cx({
+                "Button": true,
+                "Button--active":  count == this.props.query.query.limit
+            });
+            return (
+                <li key={name} className={classes} onClick={this.updateLimit.bind(null, count)}>{name}</li>
+            );
+        });
+        return (
+            <ul className="Button-group Button-group--blue">
+                {limitOptions}
+            </ul>
+        )
+    },
+
     renderDataSection: function() {
         var isInitiallyOpen = !this.props.query.database || !this.props.query.query.source_table;
         return (
@@ -429,24 +403,6 @@ export default React.createClass({
                 {this.renderBreakouts()}
             </div>
         );
-    },
-
-    renderLimit: function() {
-        var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
-            var name = count || "None";
-            var classes = cx({
-                "Button": true,
-                "Button--active":  count == this.props.query.query.limit
-            });
-            return (
-                <li key={name} className={classes} onClick={this.updateLimit.bind(null, count)}>{name}</li>
-            );
-        });
-        return (
-            <ul className="Button-group Button-group--blue">
-                {limitOptions}
-            </ul>
-        )
     },
 
     renderSortLimitSection: function() {
