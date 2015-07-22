@@ -342,7 +342,7 @@ export default React.createClass({
 
     render: function() {
         return (
-            <div className="Query-filter">
+            <div className="Query-filter px1">
                 <div>
                     <div>
                         {this.renderFieldList()}
@@ -352,7 +352,7 @@ export default React.createClass({
                         {this.renderFilterValue()}
                     </div>
                 </div>
-                <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.removeFilterFn}>
+                <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilterFn}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>
             </div>

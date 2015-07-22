@@ -36,7 +36,6 @@
 /* a section of the graphical query itself */
 .Query-section {
     display: flex;
-    align-items: center;
 }
 
 .Query-section.Query-section--right {
@@ -64,7 +63,6 @@
 
 .Query-filters {
     display: flex;
-    align-items: center;
     overflow-x: scroll;
     max-width: 400px;
     white-space: nowrap;
@@ -74,10 +72,13 @@
     display: flex;
     align-items: center;
     font-size: 0.75em;
+    height: 56px;
+    border: 2px solid transparent;
+    border-radius: var(--default-border-radius);
 }
 
 .Query-filter.selected {
-    border: 2px solid var(--purple-color);
+    border-color: var(--purple-light-color);
 }
 
 .Filter-section {
@@ -304,6 +305,9 @@
     min-height: 48px;
     min-width: 120px;
     position: relative;
+}
+.GuiBuilder-data {
+    z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 .GuiBuilder-sort-limit {

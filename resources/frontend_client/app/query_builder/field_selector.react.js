@@ -45,7 +45,7 @@ export default React.createClass({
             itemTitleFn: (table) => {
                 return (
                     <div>
-                        <div>{table.subtitle}</div>
+                        <div className="text-grey-3 mb1">{table.subtitle}</div>
                         <div>{table.title}</div>
                     </div>
                 );

@@ -103,15 +103,15 @@ export default React.createClass({
     renderAdd: function(text, onClick) {
         if (text) {
             return (
-                <a className="text-grey-2 text-bold no-decoration flex align-center" href="#" onClick={onClick}>
-                    <span className="p1">{this.renderAddIcon()}</span>
-                    <span>{text}</span>
+                <a className="text-grey-2 text-bold no-decoration flex align-center mx2" href="#" onClick={onClick}>
+                    {this.renderAddIcon()}
+                    <span className="ml1">{text}</span>
                 </a>
             );
         } else {
             return (
-                <a className="text-grey-2 text-bold no-decoration" href="#" onClick={onClick}>
-                    <span className="p1">{this.renderAddIcon()}</span>
+                <a className="text-grey-2 text-bold no-decoration flex align-center mx2" href="#" onClick={onClick}>
+                    {this.renderAddIcon()}
                 </a>
             )
         }
@@ -384,7 +384,7 @@ export default React.createClass({
 
     renderFilterSection: function() {
         return (
-            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center px2">
+            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center">
                 <span className="GuiBuilder-section-label Query-label">Filtered by</span>
                 {this.renderFilters()}
             </div>
