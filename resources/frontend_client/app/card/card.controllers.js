@@ -511,7 +511,15 @@ CardControllers.controller('CardDetail', [
                 }).$promise.then(function (table) {
                     // Decorate with valid operators
                     // TODO: would be better if this was in our component
-                    return markupTableMetadata(table);
+                    table = markupTableMetadata(table);
+                    // Load joinable tables
+                    return $q.all(table.fields.filter((f) => f.target != null).map((field) => {
+                        return Metabase.table_query_metadata({
+                            'tableId': field.target.table_id
+                        }).$promise.then((targetTable) => {
+                            field.target.table = markupTableMetadata(targetTable);
+                        });
+                    })).then(() => table);
                 }),
                 Metabase.table_fks({
                     'tableId': tableId
