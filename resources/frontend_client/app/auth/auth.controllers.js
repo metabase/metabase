@@ -88,6 +88,7 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
         Session.forgot_password({
             'email': email
         }, function (result) {
+            console.log(result);
             $scope.sentNotification = true;
         }, function (error) {
             $scope.$broadcast("form:api-error", error);
