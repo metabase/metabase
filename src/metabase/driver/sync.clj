@@ -95,17 +95,20 @@
 
      (sync-progress-meter-string 10 40)
        -> \"[************······································] 25%\""
-  (let [^:const meter-width 50
-        percent-done->emoji (fn [percent-done]
-                              (cond
-                                (> percent-done 0.90) "😎" ; smiling face with sunglasses
-                                (> percent-done 0.75) "😍" ; smiling face with heart shaped eyes
-                                (> percent-done 0.60) "😋" ; face savouring delicious food
-                                (> percent-done 0.45) "😏" ; smirking face
-                                (> percent-done 0.30) "😐" ; neutral face
-                                (> percent-done 0.15) "😒" ; unamused face
-                                :else                 "😢" ; crying face
-                                ))]
+  (let [^:const meter-width    50
+        ^:const progress-emoji ["😱"  ; face screaming in fear
+                                "😢"  ; crying face
+                                "😞"  ; disappointed face
+                                "😒"  ; unamused face
+                                "😕"  ; confused face
+                                "😐"  ; neutral face
+                                "😶"  ; face without mouth
+                                "😏"  ; smirking face
+                                "😋"  ; face savouring delicious food
+                                "😍"  ; smiling face with heart shaped eyes
+                                "😎"] ; smiling face with sunglasses
+        percent-done->emoji    (fn [percent-done]
+                                 (progress-emoji (int (math/round (* percent-done (count progress-emoji))))))]
     (fn [tables-finished total-tables]
       (let [percent-done (float (/ tables-finished total-tables))
             filleds      (int (* percent-done meter-width))
