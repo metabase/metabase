@@ -40,10 +40,11 @@
    special_type FieldSpecialType
    display_name NonEmptyString}
   (write-check Field id)
-  (check-500 (m/mapply upd Field id (merge {:description  description                                              ; you're allowed to unset description and special_type
-                                            :special_type special_type}                                            ; but field_type and preview_display must be replaced
+  ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
+  (check-500 (m/mapply upd Field id (merge {:description  description
+                                            :special_type special_type}
                                            (when display_name               {:display_name display_name})
-                                           (when field_type                 {:field_type field_type})              ; with new non-nil values
+                                           (when field_type                 {:field_type field_type})
                                            (when-not (nil? preview_display) {:preview_display preview_display}))))
   (Field id))
 

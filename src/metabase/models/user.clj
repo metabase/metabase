@@ -5,6 +5,7 @@
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.models.interface :refer :all]
+            [metabase.models.setting :as setting]
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
@@ -64,7 +65,7 @@
 
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome reset-url]
+  [first-name last-name email-address & {:keys [send-welcome invitor]
                                          :or {send-welcome false}}]
   {:pre [(string? first-name)
          (string? last-name)

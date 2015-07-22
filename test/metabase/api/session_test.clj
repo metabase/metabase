@@ -139,7 +139,7 @@
 ;; GET /session/properties
 ;; Check that a non-superuser can't read settings
 (expect
-  [{:value nil
+  [{:value "Metabase Test"
     :key "site-name"
     :description "The name used for this instance of Metabase."
     :default "Metabase"}]

@@ -1,7 +1,8 @@
 (ns metabase.driver.sync
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
+            (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [korma.core :as k]
@@ -45,13 +46,12 @@
         (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
 
         (let [active-table-names (active-table-names driver database)
-              table-name->id (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
+              table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
           (assert (set? active-table-names) "active-table-names should return a set.")
           (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
 
           ;; First, let's mark any Tables that are no longer active as such.
           ;; These are ones that exist in table-name->id but not in active-table-names.
-          (log/debug "Marking inactive tables...")
           (doseq [[table-name table-id] table-name->id]
             (when-not (contains? active-table-names table-name)
               (upd Table table-id :active false)
@@ -63,15 +63,14 @@
                         (k/set-fields {:active false}))))
 
           ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
-          (log/debug "Creating new tables...")
-          (let [existing-table-names (set (keys table-name->id))]
-            (doseq [active-table-name active-table-names]
-              (when-not (contains? existing-table-names active-table-name)
-                (ins Table :db_id (:id database), :active true, :name active-table-name)
-                (log/info (u/format-color 'blue "Found new table: '%s'" active-table-name))))))
+          (let [existing-table-names (set (keys table-name->id))
+                new-table-names      (set/difference active-table-names existing-table-names)]
+            (when (seq new-table-names)
+              (log/info (u/format-color 'blue "Found new tables: %s" new-table-names))
+              (doseq [new-table-name new-table-names]
+                (ins Table :db_id (:id database), :active true, :name new-table-name)))))
 
         ;; Now sync the active tables
-        (log/debug "Syncing active tables...")
         (->> (sel :many Table :db_id (:id database) :active true)
              (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
              (sync-database-active-tables! driver))
@@ -91,45 +90,63 @@
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
 
+(def ^:private sync-progress-meter-string
+  "Create a string that shows sync progress for a database.
+
+     (sync-progress-meter-string 10 40)
+       -> \"[************······································] 25%\""
+  (let [^:const meter-width    50
+        ^:const progress-emoji ["😱"  ; face screaming in fear
+                                "😢"  ; crying face
+                                "😞"  ; disappointed face
+                                "😒"  ; unamused face
+                                "😕"  ; confused face
+                                "😐"  ; neutral face
+                                "😬"  ; grimacing face
+                                "😌"  ; relieved face
+                                "😏"  ; smirking face
+                                "😋"  ; face savouring delicious food
+                                "😊"  ; smiling face with smiling eyes
+                                "😍"  ; smiling face with heart shaped eyes
+                                "😎"] ; smiling face with sunglasses
+        percent-done->emoji    (fn [percent-done]
+                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
+    (fn [tables-finished total-tables]
+      (let [percent-done (float (/ tables-finished total-tables))
+            filleds      (int (* percent-done meter-width))
+            blanks       (- meter-width filleds)]
+        (str "["
+             (apply str (repeat filleds "*"))
+             (apply str (repeat blanks "·"))
+             (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
+
 (defn- sync-database-active-tables!
   "Sync active tables by running each of the sync table steps.
    Note that we want to completely finish each step for *all* tables before starting the next, since they depend on the results of the previous step.
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
   [driver active-tables]
-  ;; Sort the Tables by name so it's easier / nicer to look at the logging
   (let [active-tables (sort-by :name active-tables)]
-    ;; make sure table has :display_name
-    (log/debug (u/format-color 'green "Checking table display names..."))
-    (doseq [table active-tables]
-      (u/try-apply update-table-display-name! table))
-
-    ;; update the row counts for every Table. These *can* happen asynchronously, but since they make a lot of DB calls each so
-    ;; going to block while they run for the time being. (TODO - fix this)
-    (log/debug "Updating table row counts...")
-    (doseq [table active-tables]
-      (u/try-apply update-table-row-count! table))
-
-    ;; Next, create new Fields / mark inactive Fields / mark PKs for each table
-    ;; (TODO - this was originally done in parallel but it was only marginally faster, and harder to debug. Should we switch back at some point?)
-    (log/debug "Syncing active fields + PKs...")
-    (doseq [table active-tables]
+    ;; First, create all the Fields / PKs for all of the Tables
+    (u/pdoseq [table active-tables]
       (u/try-apply sync-table-active-fields-and-pks! driver table))
 
-    ;; Once that's finished, we can sync FKs
-    (log/debug "Syncing FKs...")
-    (doseq [table active-tables]
-      (u/try-apply sync-table-fks! driver table))
-
-    ;; After that, we can sync the metadata for all active Fields
-    ;; Now sync all active fields
+    ;; After that, we can do all the other syncing for the Tables
     (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
-      (doseq [table active-tables]
-        (log/debug (format "Syncing metadata for table '%s'..." (:name table)))
+      (u/pdoseq [table active-tables]
+        ;; make sure table has :display_name
+        (u/try-apply update-table-display-name! table)
+
+        ;; update the row counts for every Table
+        (u/try-apply update-table-row-count! table)
+
+        ;; Sync FKs for this Table
+        (u/try-apply sync-table-fks! driver table)
+
         (sync-table-fields-metadata! driver table)
         (swap! finished-tables-count inc)
-        (log/info (u/format-color 'magenta "Synced table '%s'. (%d/%d)" (:name table) @finished-tables-count tables-count))))))
+        (log/info (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
 
 
 ;; ## sync-table steps.
@@ -177,7 +194,6 @@
   [driver table]
   (let [database @(:db table)]
     ;; Now do the syncing for Table's Fields
-    (log/debug (format "Determining active Fields for Table '%s'..." (:name table)))
     (let [active-column-names->type  (active-column-names->type driver table)
           existing-field-name->field (sel :many :field->fields [Field :name :base_type :id], :table_id (:id table), :active true, :parent_id nil)]
 
@@ -193,15 +209,17 @@
             (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
       ;; Create new Fields, update existing types if needed
-      (let [existing-field-names (set (keys existing-field-name->field))]
+      (let [existing-field-names (set (keys existing-field-name->field))
+            new-field-names      (set/difference (set (keys active-column-names->type)) existing-field-names)]
+        (when (seq new-field-names)
+          (log/info (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
         (doseq [[active-field-name active-field-type] active-column-names->type]
           ;; If Field doesn't exist create it
           (if-not (contains? existing-field-names active-field-name)
-            (do (log/info (u/format-color 'blue "Found new field: '%s.%s'" (:name table) active-field-name))
-                (ins Field
-                  :table_id  (:id table)
-                  :name      active-field-name
-                  :base_type active-field-type))
+            (ins Field
+              :table_id  (:id table)
+              :name      active-field-name
+              :base_type active-field-type)
             ;; Otherwise update the Field type if needed
             (let [{existing-base-type :base_type, existing-field-id :id} (existing-field-name->field active-field-name)]
               (when-not (= active-field-type existing-base-type)
@@ -282,7 +300,6 @@
   [driver field]
   {:pre [driver
          field]}
-  (log/debug (format "Syncing field '%s'..." @(:qualified-name field)))
   (sync-field->> field
                  (maybe-driver-specific-sync-field! driver)
                  set-field-display-name-if-needed!
@@ -312,7 +329,7 @@
   [field]
   (when (nil? (:display_name field))
     (let [display-name (common/name->human-readable-name (:name field))]
-      (log/info (format "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
+      (log/info (u/format-color 'green "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
       (upd Field (:id field) :display_name display-name)
       (assoc field :display_name display-name))))
 
@@ -349,7 +366,7 @@
   [driver field]
   (when (and (not (:special_type field))
              (contains? #{:CharField :TextField} (:base_type field)))
-    (let [percent-urls (field-percent-urls driver field)]
+    (when-let [percent-urls (field-percent-urls driver field)]
       (assert (float? percent-urls))
       (assert (>= percent-urls 0.0))
       (assert (<= percent-urls 100.0))
@@ -382,8 +399,7 @@
   (cond
     (and (not (:special_type field))
          (:preview_display field))                       (mark-category-field! field)
-    (field-values/field-should-have-field-values? field) (do (log/debug (format "Updating values for field '%s'..." @(:qualified-name field)))
-                                                             (field-values/update-field-values! field)
+    (field-values/field-should-have-field-values? field) (do (field-values/update-field-values! field)
                                                              field)))
 
 
@@ -535,8 +551,6 @@
   (when (and (= (:base_type field) :DictionaryField)
              (supports? driver :nested-fields)                 ; if one of these is true
              (satisfies? ISyncDriverFieldNestedFields driver)) ; the other should be :wink:
-    (log/debug (format "Syncing nested fields for '%s'..."  @(:qualified-name field)))
-
     (let [nested-field-name->type (active-nested-field-name->type driver field)]
       ;; fetch existing nested fields
       (let [existing-nested-field-name->id (sel :many :field->id [Field :name], :table_id (:table_id field), :active true, :parent_id (:id field))]
