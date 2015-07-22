@@ -10,7 +10,8 @@ export default React.createClass({
         // a selection module can be told to be open on initialization but otherwise is closed
         var isInitiallyOpen = this.props.isInitiallyOpen || false;
         return {
-            modalOpen: isInitiallyOpen
+            modalOpen: isInitiallyOpen,
+            recentlyToggled: false
         };
     },
 
@@ -44,16 +45,22 @@ export default React.createClass({
         }
     },
 
-    toggleModal: function() {
-        var modalOpen = !this.state.modalOpen;
-        this.setState({
-            modalOpen: modalOpen
-        });
+    toggleModal: function(modalOpen) {
+        if (!this.state.recentlyToggled || modalOpen !== undefined) {
+            if (modalOpen === undefined) {
+                modalOpen = !this.state.modalOpen;
+            }
+            this.setState({
+                modalOpen: modalOpen,
+                recentlyToggled: true
+            });
+            setTimeout(() => this.setState({ recentlyToggled: false }), 500);
+        }
     },
 
     _popoverComponent: function() {
         return (
-            <PopoverContent handleClickOutside={this.toggleModal}>
+            <PopoverContent handleClickOutside={this.toggleModal.bind(null, false)}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
@@ -97,7 +104,7 @@ export default React.createClass({
     },
 
     render: function() {
-        var classes = "no-decoration ignore-react-onclickoutside";
+        var classes = "no-decoration";
         if (this.props.triggerClasses) {
             classes += " " + this.props.triggerClasses;
         }
