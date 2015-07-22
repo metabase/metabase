@@ -3,28 +3,35 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [hiccup.core :refer [html]]
             [metabase.email :as email]
-            [metabase.util :as u]))
+            [metabase.models.setting :as setting]
+            [metabase.util :as u]
+            [metabase.util.quotation :as q]
+            [stencil.core :as stencil]))
 
 
 ;;; ### Public Interface
 
 (defn send-new-user-email
   "Format and Send an welcome email for newly created users."
-  [first_name email password-reset-url]
-  {:pre [(string? first_name)
-         (string? email)
-         (u/is-email? email)
-         (string? password-reset-url)]}
-  (let [message-body (html [:html
-                            [:body
-                             [:p (format "Welcome to Metabase %s!" first_name)]
-                             [:p "Your account is setup and ready to go, you just need to set a password so you can login.  Follow the link below to reset your account password."]
-                             [:p [:a {:href password-reset-url} password-reset-url]]]])]
+  [invited invitor join-url]
+  (let [tmpl (slurp (clojure.java.io/resource "metabase/email/new_user_invite.html"))
+        data-quote (rand-nth q/quotations)
+        company (or (setting/get :site-name)
+                    "Unknown")
+        message-body (->> {:invitedName (:first_name invited)
+                           :invitorName (:first_name invitor)
+                           :invitorEmail (:email invitor)
+                           :company company
+                           :joinUrl join-url
+                           :quotation (:quote data-quote)
+                           :quotationAuthor (:author data-quote)
+                           :today (u/now-with-format "MMM'&nbsp;'dd,'&nbsp;'yyyy")}
+                          (stencil/render-string tmpl))]
     (email/send-message
-     :subject     "Your new Metabase account is all set up"
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+      :subject     (str "You're invited to join " company "'s Metabase")
+      :recipients   [(:email invited)]
+      :message-type :html
+      :message      message-body)))
 
 (defn send-password-reset-email
   "Format and Send an email informing the user how to reset their password."
