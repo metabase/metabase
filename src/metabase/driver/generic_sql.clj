@@ -128,21 +128,30 @@
               (float (/ url-count total-non-null-count))))))
       0.0))
 
-(defn extend-add-generic-sql-mixins [driver-type]
-  (extend driver-type
-    IDriver
-    {:can-connect?                  can-connect?
-     :can-connect-with-details?     can-connect-with-details?
-     :wrap-process-query-middleware wrap-process-query-middleware
-     :process-query                 process-query
-     :sync-in-context               sync-in-context
-     :active-table-names            active-table-names
-     :active-column-names->type     active-column-names->type
-     :table-pks                     table-pks
-     :field-values-lazy-seq         field-values-lazy-seq}
-    ISyncDriverTableFKs
-    {:table-fks table-fks}
-    ISyncDriverFieldAvgLength
-    {:field-avg-length field-avg-length}
-    ISyncDriverFieldPercentUrls
-    {:field-percent-urls field-percent-urls}))
+(def ^:const GenericSQLIDriverMixin
+  "Generic SQL implementation of the `IDriver` protocol.
+
+     (extend H2Driver
+       IDriver
+       GenericSQLIDriverMixin)"
+  {:can-connect?                  can-connect?
+   :can-connect-with-details?     can-connect-with-details?
+   :wrap-process-query-middleware wrap-process-query-middleware
+   :process-query                 process-query
+   :sync-in-context               sync-in-context
+   :active-table-names            active-table-names
+   :active-column-names->type     active-column-names->type
+   :table-pks                     table-pks
+   :field-values-lazy-seq         field-values-lazy-seq})
+
+(def ^:const GenericSQLISyncDriverTableFKsMixin
+  "Generic SQL implementation of the `ISyncDriverTableFKs` protocol."
+  {:table-fks table-fks})
+
+(def ^:const GenericSQLISyncDriverFieldAvgLengthMixin
+  "Generic SQL implementation of the `ISyncDriverFieldAvgLengthMixin` protocol."
+  {:field-avg-length field-avg-length})
+
+(def ^:const GenericSQLISyncDriverFieldPercentUrlsMixin
+  "Generic SQL implementation of the `ISyncDriverFieldPercentUrls` protocol."
+  {:field-percent-urls field-percent-urls})

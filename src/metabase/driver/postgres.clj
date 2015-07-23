@@ -8,7 +8,10 @@
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
-            [metabase.driver.interface :refer [ISyncDriverSpecificSyncField driver-specific-sync-field!]]
+            (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
+                                                                   GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
+                             [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
+                                                ISyncDriverSpecificSyncField driver-specific-sync-field!]])
             [metabase.driver.generic-sql :as generic-sql]
             (metabase.driver.generic-sql [interface :refer :all]
                                          [util :refer [with-jdbc-metadata]])))
@@ -117,7 +120,11 @@
           (upd Field (:id field) :special_type :json)
           (assoc field :special_type :json))))))
 
-(generic-sql/extend-add-generic-sql-mixins PostgresDriver)
+(extend PostgresDriver
+  IDriver                     GenericSQLIDriverMixin
+  ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
+  ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
+  ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
 
 (def ^:const driver
   (map->PostgresDriver {:column->base-type    column->base-type
