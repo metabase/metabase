@@ -220,7 +220,7 @@ export default React.createClass({
                 rowGetter={this.rowGetter}
                 rowsCount={this.props.data.rows.length}
                 width={this.state.width}
-                height={this.state.height}
+                maxHeight={this.state.height}
                 headerHeight={50}
                 isColumnResizing={this.isColumnResizing}
                 onColumnResizeEndCallback={component.columnResized}>

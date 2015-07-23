@@ -5,10 +5,9 @@
 .QueryBuilder {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
     transition: margin-right 0.35s;
     background-color: white;
-    box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
  }
 
 .QueryBuilder--showDataReference {
@@ -156,7 +155,7 @@
     opacity: 1;
  }
 
- .SelectionItem:hover .Icon {
+.SelectionItem:hover .Icon {
     color: #fff !important;
 }
 
@@ -270,6 +269,8 @@
     display: flex;
     flex-direction: column;
     font-size: 0.9em;
+    z-index: 2;
+    background-color: #fff;
 }
 
 .GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
@@ -471,8 +472,10 @@
 }
 
 .RunButton {
+    position: relative;
+    z-index: 1;
     transition: margin-top 0.5s;
-    margin-top: -200px;
+    margin-top: -150px;
 }
 
 .RunButton.RunButton--isDirty.RunButton--canRun,

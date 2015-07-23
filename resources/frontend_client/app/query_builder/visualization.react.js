@@ -73,7 +73,7 @@ export default React.createClass({
 
     renderHeader: function() {
         return (
-            <div className="wrapper flex mt3">
+            <div className="flex mt3">
                 <div className="flex-full">
                     <VisualizationSettings {...this.props}/>
                 </div>
@@ -244,32 +244,30 @@ export default React.createClass({
         }
 
         var wrapperClasses = cx({
-            'relative': true,
+            'wrapper': true,
             'full': true,
+            'relative': true,
+            'mb2': true,
             'flex': !this.props.isObjectDetail,
             'flex-column': !this.props.isObjectDetail
         });
 
         var visualizationClasses = cx({
+            'flex': true,
+            'flex-full': true,
             'Visualization': true,
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning,
-            'wrapper': true,
-            'full': true,
-            'flex': true,
-            'flex-full': true,
-            'QueryBuilder-section': true,
-            'pt2 lg-pt4': true
         });
 
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
+                {this.renderFooter(tableFootnote)}
                 {loading}
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
-                {this.renderFooter(tableFootnote)}
             </div>
         );
     }
