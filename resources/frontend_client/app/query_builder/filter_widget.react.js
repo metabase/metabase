@@ -3,6 +3,7 @@
 
 import Calendar from './calendar.react';
 import Icon from './icon.react';
+import FieldName from './field_name.react';
 import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';
 import Popover from './popover.react';
@@ -122,7 +123,7 @@ export default React.createClass({
     },
 
     hasField: function() {
-        return (typeof this.state.field === "number") || this.state.field && (typeof this.state.field[2] === "number");
+        return Query.isValidField(this.state.field);
     },
 
     hasOperator: function() {
@@ -223,36 +224,20 @@ export default React.createClass({
     },
 
     renderField: function() {
-        var targetTitle, fkTitle, fkIcon;
-        var field = this.state.field;
-        if (Array.isArray(field)) {
-            var fkDef = this.props.tableMetadata.fields_lookup[field[1]];
-            var targetDef = fkDef && fkDef.target.table.fields_lookup[field[2]];
-            targetTitle = targetDef && (<span>{targetDef.display_name}</span>);
-            fkTitle = fkDef && (<span>{fkDef.display_name}</span>);
-            fkIcon = fkDef && targetDef && (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
-        } else {
-            var fieldDef = this.props.tableMetadata.fields_lookup[field];
-            targetTitle = fieldDef && (<span>{fieldDef.display_name}</span>);
-        }
-
         var classes = cx({
             'Filter-section': true,
             'Filter-section-field': true,
-            'selected': this.hasField(),
             'px1': true,
             'pt1': true
         });
-        var titleElement;
-        if (fkTitle || targetTitle) {
-            titleElement = <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}</span>;
-        } else {
-            titleElement = <span className="QueryOption">field</span>;
-        }
+
         return (
-            <div className={classes} onClick={this.selectPane.bind(null, 0)}>
-                {titleElement}
-            </div>
+            <FieldName
+                className={classes}
+                field={this.state.field}
+                fields={this.props.tableMetadata.fields}
+                onClick={this.selectPane.bind(null, 0)}
+            />
         );
     },
 
@@ -272,9 +257,7 @@ export default React.createClass({
         })
         return (
             <div className={classes} onClick={this.selectPane.bind(null, 1)}>
-                <div className="SelectionModule-trigger flex align-center">
-                    <a className="QueryOption p1 flex align-center">{operatorName}</a>
-                </div>
+                <a className="QueryOption p1 flex align-center">{operatorName}</a>
             </div>
         );
     },
@@ -318,7 +301,8 @@ export default React.createClass({
         return (
             <FieldSelector
                 field={this.state.field}
-                tableMetadata={this.props.tableMetadata}
+                fields={this.props.tableMetadata.fields}
+                tableName={this.props.tableMetadata.display_name}
                 setField={this.setField}
             />
         );

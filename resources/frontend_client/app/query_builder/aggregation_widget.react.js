@@ -2,6 +2,7 @@
 /*global _ */
 
 import SelectionModule from './selection_module.react';
+import FieldWidget from './field_widget.react';
 
 export default React.createClass({
     displayName: 'AggregationWidget',
@@ -88,15 +89,12 @@ export default React.createClass({
             aggregationTarget = (
                 <div className="flex align-center">
                     <span className="text-bold">of</span>
-                    <SelectionModule
-                        className="View-section-aggregation-target"
-                        placeholder="What attribute?"
-                        items={this.state.aggregationFields}
-                        display="1"
-                        selectedValue={this.props.aggregation[1]}
-                        selectedKey="0"
-                        isInitiallyOpen={aggregationTargetListOpen}
-                        action={this.setAggregationTarget}
+                    <FieldWidget
+                        className="View-section-aggregation-target SelectionModule p1"
+                        field={this.props.aggregation[1]}
+                        fields={this.state.aggregationFields.map((f) => f[2])}
+                        tableName="Foo"
+                        setField={this.setAggregationTarget}
                     />
                 </div>
             );

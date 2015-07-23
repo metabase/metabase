@@ -248,9 +248,8 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     // Breakouts and Aggregation options
     function shortenFields(fields) {
         return _.map(fields, function(field) {
-            return [field.id, field.display_name];
+            return [field.id, field.display_name, field];
         });
-
     }
 
     function allFields(fields) {
