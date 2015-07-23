@@ -861,23 +861,25 @@ CardControllers.controller('CardDetail', [
         }
 
         // add popstate listener to support undo/redo via browser history
-        window.addEventListener("popstate", popStateListener, false);
+        angular.element($window).on('popstate', popStateListener);
+
+        // When the window is resized we need to re-render, mainly so that our visualization pane updates
+        // Debounce the function to improve resizing performance.
+        var debouncedRenderAll = _.debounce(renderAll, 400);
+        angular.element($window).on('resize', debouncedRenderAll);
 
         $scope.$on("$destroy", function() {
-            window.removeEventListener("popstate", popStateListener, false);
+            angular.element($window).off('popstate', popStateListener);
+            angular.element($window).off('resize', debouncedRenderAll);
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
             React.unmountComponentAtNode(document.getElementById('react_qb_header'));
             React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
             React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
-        // When the window is resized we need to re-render, mainly so that our visualization pane updates
-        // Debounce the function to improve resizing performance.
-        angular.element($window).bind('resize', _.debounce(function() {
-            renderAll();
-        }, 400));
 
         // mildly hacky way to prevent reloading controllers as the URL changes
         var route = $route.current;
