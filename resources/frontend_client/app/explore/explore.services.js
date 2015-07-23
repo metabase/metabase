@@ -246,22 +246,16 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     // Breakouts and Aggregation options
-    function shortenFields(fields) {
-        return _.map(fields, function(field) {
-            return [field.id, field.display_name, field];
-        });
-    }
-
     function allFields(fields) {
-        return shortenFields(fields);
+        return fields;
     }
 
     function summableFields(fields) {
-        return shortenFields(_.filter(fields, isSummable));
+        return _.filter(fields, isSummable);
     }
 
     function dimensionFields(fields) {
-        return shortenFields(_.filter(fields, isDimension));
+        return _.filter(fields, isDimension);
     }
 
     var Aggregators = [{

@@ -9,7 +9,8 @@ export default React.createClass({
     propTypes: {
         aggregation: React.PropTypes.array.isRequired,
         aggregationOptions: React.PropTypes.array.isRequired,
-        updateAggregation: React.PropTypes.func.isRequired
+        updateAggregation: React.PropTypes.func.isRequired,
+        tableName: React.PropTypes.string
     },
 
     componentWillMount: function() {
@@ -26,7 +27,7 @@ export default React.createClass({
 
             if (option.fields &&
                     (option.fields.length === 0 ||
-                        (option.fields.length > 0 && option.fields[0].length && option.fields[0].length > 0))) {
+                        (option.fields.length > 0 && option.fields[0]))) {
                 availableAggregations.push(option);
             }
 
@@ -92,9 +93,10 @@ export default React.createClass({
                     <FieldWidget
                         className="View-section-aggregation-target SelectionModule p1"
                         field={this.props.aggregation[1]}
-                        fields={this.state.aggregationFields.map((f) => f[2])}
-                        tableName="Foo"
+                        fields={this.state.aggregationFields}
                         setField={this.setAggregationTarget}
+                        tableName={this.props.tableName}
+                        isInitiallyOpen={aggregationTargetListOpen}
                     />
                 </div>
             );

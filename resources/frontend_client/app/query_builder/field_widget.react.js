@@ -11,7 +11,8 @@ export default React.createClass({
     propTypes: {
         // field:
         fields: React.PropTypes.array.isRequired,
-        onClick: React.PropTypes.func.isRequired,
+        onClick: React.PropTypes.func,
+        isInitiallyOpen: React.PropTypes.bool
     },
 
     setField:function(value) {
@@ -42,6 +43,7 @@ export default React.createClass({
                 className="PopoverBody PopoverBody--withArrow FieldPopover"
                 tetherOptions={tetherOptions}
                 triggerElement={triggerElement}
+                isInitiallyOpen={this.props.isInitiallyOpen}
             >
                 <FieldSelector
                     field={this.props.field}
