@@ -6,21 +6,22 @@ import ColumnarSelector from "./columnar_selector.react";
 export default React.createClass({
     displayName: "FieldSelector",
     propTypes: {
-        tableMetadata: React.PropTypes.object.isRequired,
+        fields: React.PropTypes.array.isRequired,
+        tableName: React.PropTypes.string,
         setField: React.PropTypes.func.isRequired
     },
 
     render: function() {
         var sourceTable = {
-            title: this.props.tableMetadata.display_name,
+            title: this.props.tableName || null,
             field: null
         };
-        var connectionTables = this.props.tableMetadata.fields
+        var connectionTables = this.props.fields
             .filter((field) => field.special_type === "fk")
             .map((field) => {
                 return {
                     title: field.display_name,
-                    subtitle: this.props.tableMetadata.display_name,
+                    subtitle: this.props.tableName || null,
                     field: ["fk->", field.id, null],
                     fieldId: field.id
                 };
@@ -65,14 +66,14 @@ export default React.createClass({
 
         if (this.props.field == undefined || typeof this.props.field === "number") {
             tableColumn.selectedItem = sourceTable;
-            fieldColumn.items = this.props.tableMetadata.fields.filter((f) => f.special_type !== 'fk');
+            fieldColumn.items = this.props.fields.filter((f) => f.special_type !== 'fk');
             fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => f.id === this.props.field);
             fieldColumn.itemSelectFn = (f) => {
                 this.props.setField(f.id);
             }
         } else {
             tableColumn.selectedItem = _.find(connectionTables, (t) => t.fieldId === this.props.field[1]);
-            fieldColumn.items = _.find(this.props.tableMetadata.fields, (f) => f.id === tableColumn.selectedItem.fieldId).target.table.fields;
+            fieldColumn.items = _.find(this.props.fields, (f) => f.id === tableColumn.selectedItem.fieldId).target.table.fields;
             fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => f.id === this.props.field[2]);
             fieldColumn.itemSelectFn = (f) => {
                 this.props.setField(["fk->", this.props.field[1], f.id]);
