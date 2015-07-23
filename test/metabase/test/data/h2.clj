@@ -28,10 +28,7 @@
 (defn- connection-details
   "Return a Metabase `Database.details` for H2 database defined by DATABASE-DEFINITION."
   [^DatabaseDefinition {:keys [short-lived?], :as database-definition}]
-  {:db (str (format "mem:%s" (escaped-name database-definition))
-            ;; For non "short-lived" (temp) databases keep the connection open for the duration of unit tests
-            (when-not short-lived?
-              ";DB_CLOSE_DELAY=-1"))
+  {:db           (format "mem:%s" (escaped-name database-definition))
    :short-lived? short-lived?})
 
 (defn- korma-connection-pool
@@ -93,11 +90,17 @@
   (create-physical-db! [this database-definition]
     ;; Create the "physical" database which in this case actually just means creating the schema
     (generic/create-physical-db! this (format-for-h2 database-definition))
+
     ;; Now create a non-admin account 'GUEST' which will be used from here on out
     (generic/execute-sql! this database-definition "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';")
     ;; Grant the GUEST account SELECT permissions for all the Tables in this DB
     (doseq [{:keys [table-name]} (:table-definitions database-definition)]
-      (generic/execute-sql! this database-definition (format "GRANT SELECT ON %s TO GUEST" table-name))))
+      (generic/execute-sql! this database-definition (format "GRANT SELECT ON %s TO GUEST;" table-name)))
+
+    ;; If this isn't a "short-lived" database we need to set DB_CLOSE_DELAY to -1 here because only admins are allowed to do it
+    ;; so we can't set it via the connection string :/
+    (when-not (:short-lived? database-definition)
+      (generic/execute-sql! this database-definition "SET DB_CLOSE_DELAY -1;")))
 
   (load-table-data! [this database-definition table-definition]
     (generic/load-table-data! this database-definition table-definition))
