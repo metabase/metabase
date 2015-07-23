@@ -201,21 +201,15 @@ var Query = {
     getSortableFields: function(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
 
-        // start with all fields
-        var fieldList = [];
-        for(var key in fields) {
-            fieldList.push(fields[key]);
-        }
-
         if (Query.isBareRowsAggregation(query)) {
-            return fieldList;
+            return fields;
         } else if (Query.hasValidBreakout(query)) {
             // further filter field list down to only fields in our breakout clause
             var breakoutFieldList = [];
             query.breakout.map(function (breakoutFieldId) {
-                for (var idx in fieldList) {
-                    if (fieldList[idx].id === breakoutFieldId) {
-                        breakoutFieldList.push(fieldList[idx]);
+                for (var idx in fields) {
+                    if (fields[idx].id === breakoutFieldId) {
+                        breakoutFieldList.push(fields[idx]);
                     }
                 }
             });

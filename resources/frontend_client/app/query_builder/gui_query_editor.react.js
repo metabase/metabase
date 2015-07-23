@@ -3,11 +3,11 @@
 
 import AggregationWidget from './aggregation_widget.react';
 import DataSelector from './data_selector.react';
+import FieldWidget from './field_widget.react';
 import FilterWidget from './filter_widget.react';
 import Icon from './icon.react';
 import IconBorder from './icon_border.react';
 import LimitWidget from './limit_widget.react';
-import SelectionModule from './selection_module.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 
@@ -37,7 +37,7 @@ export default React.createClass({
         this.setQuery(this.props.query);
     },
 
-    updateDimension: function(dimension, index) {
+    updateDimension: function(index, dimension) {
         Query.updateDimension(this.props.query.query, dimension, index);
         this.setQuery(this.props.query);
     },
@@ -94,10 +94,6 @@ export default React.createClass({
     removeSort: function(index) {
         Query.removeSort(this.props.query.query, index);
         this.setQuery(this.props.query);
-    },
-
-    getSortableFields: function() {
-        return Query.getSortableFields(this.props.query.query, this.props.options.fields_lookup);
     },
 
     renderAdd: function(text, onClick) {
@@ -201,8 +197,9 @@ export default React.createClass({
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
                     aggregationOptions={this.props.options.aggregation_options}
-                    updateAggregation={this.updateAggregation}>
-                </AggregationWidget>
+                    updateAggregation={this.updateAggregation}
+                    tableName={this.props.options.display_name}
+                />
             );
         } else {
             // TODO: move this into AggregationWidget?
@@ -251,18 +248,15 @@ export default React.createClass({
                 }
 
                 return (
-                    <SelectionModule
-                        key={index}
-                        className="View-section-breakout"
+                    <FieldWidget
+                        className="View-section-breakout SelectionModule p1"
                         placeholder='field'
-                        display="display_name"
-                        items={unusedFields}
-                        selectedValue={breakout}
-                        selectedKey="id"
-                        index={index}
+                        field={breakout}
+                        fields={unusedFields}
+                        tableName={this.props.options.display_name}
                         isInitiallyOpen={breakoutListOpen}
-                        action={this.updateDimension}
-                        remove={this.removeDimension}
+                        setField={this.updateDimension.bind(null, index)}
+                        removeField={this.removeDimension.bind(null, index)}
                     />
                 );
             });
@@ -297,7 +291,7 @@ export default React.createClass({
     renderSort: function() {
         var sortList = [];
         if (this.props.query.query.order_by) {
-            var sortableFields = this.getSortableFields();
+            var sortableFields = Query.getSortableFields(this.props.query.query, this.props.options.fields);
 
             var component = this;
             sortList = this.props.query.query.order_by.map(function (order_by, index) {
