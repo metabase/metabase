@@ -247,6 +247,7 @@ export default React.createClass({
             'wrapper': true,
             'full': true,
             'relative': true,
+            'mb2': true,
             'flex': !this.props.isObjectDetail,
             'flex-column': !this.props.isObjectDetail
         });
