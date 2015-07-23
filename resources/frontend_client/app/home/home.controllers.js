@@ -1,9 +1,14 @@
 'use strict';
 
-var HomeControllers = angular.module('corvus.home.controllers', []);
+var HomeControllers = angular.module('corvus.home.controllers', ['corvus.home.directives']);
 
 HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {
     $scope.currentView = 'data';
+    $scope.showOnboarding = false;
+
+    if('new' in $location.search()) {
+        $scope.showOnboarding = true;
+    }
 }]);
 
 HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($scope, $location) {
@@ -33,5 +38,5 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
     }
 
     $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = "What do you want to know?"
+    $scope.subheading = "What do you want to know?";
 }]);
