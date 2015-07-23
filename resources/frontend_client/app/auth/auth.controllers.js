@@ -98,9 +98,10 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
 }]);
 
 
-AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', 'AuthUtil', 'Session', function($scope, $routeParams, AuthUtil, Session) {
+AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$location', 'AuthUtil', 'Session', function($scope, $routeParams, $location, AuthUtil, Session) {
 
     $scope.resetSuccess = false;
+    $scope.newUserJoining = ($location.hash() === 'new');
 
     $scope.resetPassword = function(password) {
         $scope.$broadcast("form:reset");

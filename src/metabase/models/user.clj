@@ -77,7 +77,8 @@
                         :password (str (java.util.UUID/randomUUID)))]
     (when send-welcome
       (let [reset-token (set-user-password-reset-token (:id new-user))
-            join-url    (form-password-reset-url reset-token)]
+            ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+            join-url    (str (form-password-reset-url reset-token) "#new")]
         (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
