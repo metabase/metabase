@@ -72,13 +72,16 @@
   (generic/field-base-type->sql-type [_ field-type]
     (field-base-type->sql-type field-type)))
 
+
 (extend-protocol IDatasetLoader
   H2DatasetLoader
   (engine [_]
     :h2)
 
   (database->connection-details [_ database-definition]
-    (connection-details database-definition))
+    ;; Return details with the GUEST user added so SQL queries are allowed
+    (let [details (connection-details database-definition)]
+      (update details :db str ";USER=GUEST;PASSWORD=guest")))
 
   (drop-physical-db! [_ database-definition]
     ;; Nothing to do here - there are no physical dbs <3
@@ -88,7 +91,13 @@
     (generic/create-physical-table! this database-definition (format-for-h2 table-definition)))
 
   (create-physical-db! [this database-definition]
-    (generic/create-physical-db! this (format-for-h2 database-definition)))
+    ;; Create the "physical" database which in this case actually just means creating the schema
+    (generic/create-physical-db! this (format-for-h2 database-definition))
+    ;; Now create a non-admin account 'GUEST' which will be used from here on out
+    (generic/execute-sql! this database-definition "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';")
+    ;; Grant the GUEST account SELECT permissions for all the Tables in this DB
+    (doseq [{:keys [table-name]} (:table-definitions database-definition)]
+      (generic/execute-sql! this database-definition (format "GRANT SELECT ON %s TO GUEST" table-name))))
 
   (load-table-data! [this database-definition table-definition]
     (generic/load-table-data! this database-definition table-definition))
