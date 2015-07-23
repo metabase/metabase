@@ -121,16 +121,14 @@
 (defn- wrap-process-query-middleware [_ qp]
   (fn [{query-type :type, :as query}]
     {:pre [query-type]}
-    ;; For :native queries check to make sure the DB in question has a NAME property specified in the connection string.
-    ;; We don't want to allow SQL queries on DBs connected with the default H2 admin account because they have access
-    ;; to potentially unsafe functions like FILEREAD and FILEWRITE.
-    ;; Assume any specified non-default USER for this H2 database doesn't have admin privs
+    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
+    ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
     (when (= (keyword query-type) :native)
       (let [{:keys [db]}   (db/sel :one :field [Database :details] :id (:database query))
             _              (assert db)
             [_ options]    (connection-string->file+options db)
             {:strs [USER]} options]
-        (when (or (not USER)
+        (when (or (s/blank? USER)
                   (= USER "sa")) ; "sa" is the default USER
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
     (qp query)))
