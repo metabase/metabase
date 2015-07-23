@@ -26,7 +26,7 @@ export default React.createClass({
 
             if (option.fields &&
                     (option.fields.length === 0 ||
-                        (option.fields.length > 0 && option.fields[0].length && option.fields[0].length > 0))) {
+                        (option.fields.length > 0 && option.fields[0]))) {
                 availableAggregations.push(option);
             }
 
@@ -92,7 +92,7 @@ export default React.createClass({
                     <FieldWidget
                         className="View-section-aggregation-target SelectionModule p1"
                         field={this.props.aggregation[1]}
-                        fields={this.state.aggregationFields.map((f) => f[2])}
+                        fields={this.state.aggregationFields}
                         tableName="Foo"
                         setField={this.setAggregationTarget}
                     />

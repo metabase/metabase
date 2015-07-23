@@ -240,7 +240,7 @@ export default React.createClass({
             var usedFields = {};
             breakoutList = this.props.query.query.breakout.map((breakout, index) => {
                 var breakoutListOpen = breakout === null;
-                var unusedFields = this.props.options.breakout_options.fields.filter((f) => !usedFields[f[0]])
+                var unusedFields = this.props.options.breakout_options.fields.filter((f) => !usedFields[f.id])
 
                 if (breakout) {
                     usedFields[breakout] = true;
@@ -255,10 +255,10 @@ export default React.createClass({
                         key={index}
                         className="View-section-breakout"
                         placeholder='field'
-                        display="1"
+                        display="display_name"
                         items={unusedFields}
                         selectedValue={breakout}
-                        selectedKey="0"
+                        selectedKey="id"
                         index={index}
                         isInitiallyOpen={breakoutListOpen}
                         action={this.updateDimension}
