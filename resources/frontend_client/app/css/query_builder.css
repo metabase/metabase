@@ -5,10 +5,9 @@
 .QueryBuilder {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
     transition: margin-right 0.35s;
     background-color: white;
-    box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
  }
 
 .QueryBuilder--showDataReference {
@@ -156,7 +155,7 @@
     opacity: 1;
  }
 
- .SelectionItem:hover .Icon {
+.SelectionItem:hover .Icon {
     color: #fff !important;
 }
 
