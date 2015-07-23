@@ -1,7 +1,9 @@
 'use strict';
-/*global document, Tether*/
+/*global document*/
 
 import PopoverContent from './popover_content.react'
+
+import Tether from 'tether';
 
 export default React.createClass({
     displayName: 'PopoverWithTrigger',

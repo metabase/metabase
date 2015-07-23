@@ -89,7 +89,6 @@ module.exports = {
             // react
             'react':                __dirname + '/node_modules/react/dist/react-with-addons.js',
             'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
-            'react-datepicker':     __dirname + '/node_modules/react-datepicker/react-datepicker.js',
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.js',
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/tether.min.js',

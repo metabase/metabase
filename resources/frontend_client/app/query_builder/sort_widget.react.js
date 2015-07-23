@@ -1,6 +1,5 @@
 'use strict';
 
-import DateFilter from './date_filter.react';
 import Icon from './icon.react';
 import SelectionModule from './selection_module.react';
 
