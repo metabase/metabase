@@ -269,6 +269,8 @@
     display: flex;
     flex-direction: column;
     font-size: 0.9em;
+    z-index: 2;
+    background-color: #fff;
 }
 
 .GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
@@ -470,8 +472,10 @@
 }
 
 .RunButton {
+    position: relative;
+    z-index: 1;
     transition: margin-top 0.5s;
-    margin-top: -200px;
+    margin-top: -150px;
 }
 
 .RunButton.RunButton--isDirty.RunButton--canRun,
