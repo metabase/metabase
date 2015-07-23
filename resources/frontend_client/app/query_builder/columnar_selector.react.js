@@ -17,6 +17,7 @@ export default React.createClass({
                     var title = section.title;
                     var items = section.items.map((item, rowIndex) => {
                         var itemClasses = cx({
+                            'cursor-pointer': true,
                             'ColumnarSelector-row': true,
                             'ColumnarSelector-row--selected': item === column.selectedItem
                         });
