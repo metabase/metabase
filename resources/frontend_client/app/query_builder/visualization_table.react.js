@@ -1,4 +1,5 @@
 'use strict';
+/*global _*/
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
@@ -60,8 +61,15 @@ export default React.createClass({
         this.calculateSizing(this.getInitialState());
     },
 
-    componentDidUpdate: function(prevProps, prevState) {
-        this.calculateSizing(prevState);
+    shouldComponentUpdate: function(nextProps, nextState) {
+        // this is required because we don't pass in the containing element size as a property :-/
+        // if size changes don't update yet because state will change in a moment
+        this.calculateSizing(nextState)
+
+        // compare props and state to determine if we should re-render
+        // NOTE: this is essentially the same as React.addons.PureRenderMixin but
+        // we currently need to recalculate the container size here.
+        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
     },
 
     // availableWidth, minColumnWidth, # of columns
