@@ -1,13 +1,15 @@
 'use strict';
 /*global _*/
 
-import DateFilter from './date_filter.react';
+import Calendar from './calendar.react';
 import Icon from './icon.react';
 import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';
-import PopoverWithTrigger from './popover_with_trigger.react';
+import Popover from './popover.react';
+import ColumnarSelector from './columnar_selector.react';
 
 import Query from './query';
+import moment from 'moment';
 
 var cx = React.addons.classSet;
 
@@ -19,6 +21,12 @@ export default React.createClass({
         index: React.PropTypes.number.isRequired,
         updateFilter: React.PropTypes.func.isRequired,
         removeFilter: React.PropTypes.func.isRequired
+    },
+
+    getInitialState: function() {
+        return {
+            currentPane: this.props.filter[0] == undefined ? 0 : -1
+        };
     },
 
     componentWillMount: function() {
@@ -105,11 +113,23 @@ export default React.createClass({
         });
     },
 
+    isVisible: function() {
+        return this.state.currentPane >= 0 && this.state.currentPane < this.props.filter.length
+    },
+
+    selectPane: function(index) {
+        this.setState({ currentPane: index });
+    },
+
     hasField: function() {
         return (typeof this.state.field === "number") || this.state.field && (typeof this.state.field[2] === "number");
     },
 
-    setField: function(value, index, filterListIndex) {
+    hasOperator: function() {
+        return (typeof this.state.operator === "string");
+    },
+
+    setField: function(value) {
         // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
         // make sense once you've changed the field, so starting fresh is the most sensible thing to do
         if (!_.isEqual(this.state.field, value)) {
@@ -117,11 +137,11 @@ export default React.createClass({
             this.props.updateFilter(this.props.index, filter);
         }
         if (Query.isValidField(value)) {
-            this.refs.popover.toggleModal();
+            this.selectPane(1);
         }
     },
 
-    setOperator: function(value, index, filterListIndex) {
+    setOperator: function(value) {
         // different operators will lead to different filter scenarios, so handle that here
         var operatorInfo = this.state.fieldDef.operators_lookup[value];
         var filter = this.props.filter;
@@ -148,9 +168,11 @@ export default React.createClass({
         }
 
         this.props.updateFilter(this.props.index, filter);
+
+        this.selectPane(2);
     },
 
-    setValue: function(value, index, filterListIndex) {
+    setValue: function(index, value) {
         var filter = this.props.filter;
 
         if (value && value.length > 0) {
@@ -174,32 +196,33 @@ export default React.createClass({
         }
 
         if (value !== undefined) {
-            filter[index] = value;
+            filter[index + 2] = value;
             this.props.updateFilter(this.props.index, filter);
+        }
+
+        var nextPane = index + 2 + 1;
+        if (nextPane < filter.length) {
+            this.selectPane(nextPane);
+        } else {
+            this.selectPane(-1);
         }
     },
 
     setDateValue: function (index, date) {
-        this.setValue(date.format('YYYY-MM-DD'), index, this.props.index);
+        this.setValue(index, date.format('YYYY-MM-DD'));
     },
 
     setTextValue: function(index) {
         var value = this.refs.textFilterValue.getDOMNode().value;
         // we always know the index will be 2 for the value of a filter
-        this.setValue(value, index, this.props.index);
+        this.setValue(index, value);
     },
 
     removeFilterFn: function() {
         this.props.removeFilter(this.props.index);
     },
 
-    renderFieldList: function() {
-        var tetherOptions = {
-            attachment: 'top center',
-            targetAttachment: 'bottom left',
-            targetOffset: '10px 25px'
-        };
-
+    renderField: function() {
         var targetTitle, fkTitle, fkIcon;
         var field = this.state.field;
         if (Array.isArray(field)) {
@@ -209,8 +232,8 @@ export default React.createClass({
             fkTitle = fkDef && (<span>{fkDef.display_name}</span>);
             fkIcon = fkDef && targetDef && (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
         } else {
-            var targetDef = this.props.tableMetadata.fields_lookup[field];
-            targetTitle = targetDef && (<span>{targetDef.display_name}</span>);
+            var fieldDef = this.props.tableMetadata.fields_lookup[field];
+            targetTitle = fieldDef && (<span>{fieldDef.display_name}</span>);
         }
 
         var classes = cx({
@@ -220,137 +243,211 @@ export default React.createClass({
             'px1': true,
             'pt1': true
         });
-        var triggerElement;
+        var titleElement;
         if (fkTitle || targetTitle) {
-            triggerElement = (
-                <div className={classes}>
-                    <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}</span>
-                </div>
-            );
+            titleElement = <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}</span>;
         } else {
-            triggerElement = (
-                <div className={classes}>
-                    <span className="QueryOption">Field</span>
-                </div>
-            );
+            titleElement = <span className="QueryOption">field</span>;
         }
         return (
-            <PopoverWithTrigger ref="popover"
-                                className="PopoverBody PopoverBody--withArrow"
-                                isInitiallyOpen={this.state.field === null}
-                                tetherOptions={tetherOptions}
-                                triggerElement={triggerElement}
-                                triggerClasses="flex align-center">
-                <FieldSelector
-                    field={this.state.field}
-                    tableMetadata={this.props.tableMetadata}
-                    setField={this.setField}
-                />
-            </PopoverWithTrigger>
+            <div className={classes} onClick={this.selectPane.bind(null, 0)}>
+                {titleElement}
+            </div>
         );
     },
 
-    renderOperatorList: function() {
+    renderOperator: function() {
+        var operator;
         // if we don't know our field yet then don't render anything
-        if (!this.hasField()) {
-            return false;
+        if (this.hasField()) {
+            operator = _.find(this.state.operatorList, (o) => o.name === this.state.operator);
         }
+        var operatorName = operator ? operator.verbose_name : "operator";
 
+        var classes = cx({
+            "SelectionModule": true,
+            "Filter-section": true,
+            "Filter-section-operator": true,
+            "selected": !!operator
+        })
         return (
-            <SelectionModule
-                className="Filter-section Filter-section-operator"
-                placeholder="operator"
-                items={this.state.operatorList}
-                display='verbose_name'
-                selectedValue={this.state.operator}
-                selectedKey='name'
-                index={0}
-                isInitiallyOpen={this.state.operator === null}
-                parentIndex={this.props.index}
-                action={this.setOperator}
-            />
+            <div className={classes} onClick={this.selectPane.bind(null, 1)}>
+                <div className="SelectionModule-trigger flex align-center">
+                    <a className="QueryOption p1 flex align-center">{operatorName}</a>
+                </div>
+            </div>
         );
     },
 
-    renderFilterValue: function() {
+    renderValues: function() {
         // if we don't know our field AND operator yet then don't render anything
         if (!this.hasField() || this.state.operator === null) {
             return false;
         }
 
         // the first 2 positions of the filter are always for fieldId + fieldOperator
-        var numValues = this.props.filter.length - 2;
-
-        var filterValueInputs = [];
-        for (var i=0; i < numValues; i++) {
-            var filterIndex = i + 2;
-            var filterValue = this.state.values[i];
-
-            var valueHtml;
-            if(this.state.fieldValues) {
-                if(this.state.fieldValues.values) {
-                    valueHtml = (
-                        <SelectionModule
-                            key={i}
-                            className="Filter-section Filter-section-value"
-                            action={this.setValue}
-                            display='name'
-                            index={filterIndex}
-                            items={this.state.fieldValues.values}
-                            isInitiallyOpen={filterValue === null && i === 0}
-                            placeholder="value"
-                            selectedValue={filterValue}
-                            selectedKey='key'
-                            parentIndex={this.props.index}
-                        />
-                    );
+        return this.props.filter.slice(2).map((filterValue, valueIndex) => {
+            var filterIndex = valueIndex + 2;
+            var value = this.state.values[valueIndex];
+            if (this.state.fieldValues) {
+                var filterSectionClasses = cx({
+                    "Filter-section": true,
+                    "Filter-section-value": true,
+                    "selected": filterValue != null
+                });
+                var queryOptionClasses = cx({
+                    "QueryOption": true,
+                    "QueryOption--date": this.state.fieldValues.type === "date"
+                });
+                var valueString;
+                if (this.state.fieldValues.type === "date") {
+                    valueString = value ? moment(value).format("MMMM D, YYYY") : "date";
                 } else {
-                    switch(this.state.fieldValues.type) {
-                        case 'date':
-                            valueHtml = (
-                                <div key={i} className="Filter-section Filter-section-value">
-                                    <DateFilter
-                                        date={filterValue}
-                                        index={filterIndex}
-                                        onChange={this.setDateValue}
-                                    />
-                                </div>
-                            );
-                            break;
-                        default:
-                            valueHtml = (
-                                <div key={i} className="Filter-section Filter-section-value">
-                                    <input
-                                        className="QueryOption input px1"
-                                        type="text"
-                                        value={filterValue}
-                                        onChange={this.setTextValue.bind(null, filterIndex)}
-                                        ref="textFilterValue"
-                                        placeholder="What value?"
-                                    />
-                                </div>
-                            );
-                    }
+                    valueString = value != null ? value.toString() : "value";
                 }
+                return (
+                    <div key={valueIndex} className={filterSectionClasses} onClick={this.selectPane.bind(null, filterIndex)}>
+                        <span className={queryOptionClasses}>{valueString}</span>
+                    </div>
+                );
+            }
+        });
+    },
+
+    renderFieldPane: function() {
+        return (
+            <FieldSelector
+                field={this.state.field}
+                tableMetadata={this.props.tableMetadata}
+                setField={this.setField}
+            />
+        );
+    },
+
+    renderOperatorPane: function() {
+        var column = {
+            selectedItem: _.find(this.state.operatorList, (o) => o.name === this.state.operator),
+            items: this.state.operatorList,
+            itemTitleFn: (o) => o.verbose_name,
+            itemSelectFn: (o, index) => this.setOperator(o.name, index)
+        };
+        return (
+            <ColumnarSelector columns={[column]} />
+        );
+    },
+
+    renderValuePane: function(valueIndex) {
+        if (this.state.fieldValues && this.state.values && valueIndex <= this.state.values.length) {
+            var value = this.state.values[valueIndex];
+            if (this.state.fieldValues.values) {
+                var column = {
+                    selectedItem: _.find(this.state.fieldValues.values, (v) => v.key === value),
+                    items: this.state.fieldValues.values,
+                    itemTitleFn: (v) => v.name,
+                    itemSelectFn: (v, index) => this.setValue(valueIndex, v.key)
+                };
+                return (
+                    <ColumnarSelector columns={[column]} />
+                );
+            } else if (this.state.fieldValues.type === "date") {
+                var date = value ? moment(value) : moment();
+                return (
+                    <div className="flex full-height layout-centered m2">
+                        <Calendar
+                            selected={date}
+                            onChange={this.setDateValue.bind(null, valueIndex)}
+                        />
+                    </div>
+                );
+            } else {
+                return (
+                    <div className="Filter-section Filter-section-value flex p2">
+                        <input
+                            className="QueryOption input mx1 flex-full"
+                            type="text"
+                            defaultValue={value}
+                            ref="textFilterValue"
+                            placeholder="What value?"
+                            autoFocus={true}
+                        />
+                        <button className="Button mx1 text-default text-normal" onClick={() => this.setTextValue(valueIndex, this.refs.textFilterValue.value)}>
+                            Add
+                        </button>
+                    </div>
+                );
+            }
+        }
+        return <div><div>{value}</div><pre>{JSON.stringify(this.state.fieldValues)}</pre></div>;
+    },
+
+    renderPopover: function() {
+        if (this.isVisible()) {
+            var pane;
+            if (this.state.currentPane === 0) {
+                pane = this.renderFieldPane();
+            } else if (this.state.currentPane === 1) {
+                pane = this.renderOperatorPane();
+            } else {
+                pane = this.renderValuePane(this.state.currentPane - 2);
             }
 
-            filterValueInputs[i] = valueHtml;
-        }
+            var tabs = [
+                { name: "Field", enabled: true },
+                { name: "Operator", enabled: this.hasField() }
+            ];
 
-        return filterValueInputs;
+            var numValues = this.props.filter.length - 2;
+            for (var i = 0; i < numValues; i++) {
+                tabs.push({ name: "Value", enabled: this.hasField() && this.state.operator != null });
+            }
+
+            var tetherOptions = {
+                attachment: 'top left',
+                targetAttachment: 'bottom left',
+                targetOffset: '10px 25px'
+            };
+
+            return (
+                <Popover
+                    ref="popover"
+                    className="PopoverBody PopoverBody--withArrow FilterPopover"
+                    isInitiallyOpen={this.state.field === null}
+                    tetherOptions={tetherOptions}
+                    handleClickOutside={this.selectPane.bind(null, -1)}
+                >
+                    <ul className="PopoverHeader">
+                        {tabs.map((t, index) => {
+                            var classes = cx({
+                                "PopoverHeader-item": true,
+                                "selected": this.state.currentPane === index,
+                                "disabled": !t.enabled
+                            });
+                            return <li className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
+                        })}
+                    </ul>
+                    <div>{pane}</div>
+                </Popover>
+            );
+        }
     },
 
     render: function() {
+        var classes = cx({
+            "Query-filter": true,
+            "px1": true,
+            "selected": this.isVisible()
+        });
         return (
-            <div className="Query-filter px1">
+            <div className={classes}>
                 <div>
                     <div>
-                        {this.renderFieldList()}
+                        {this.renderField()}
                     </div>
                     <div className="flex align-center">
-                        {this.renderOperatorList()}
-                        {this.renderFilterValue()}
+                        {this.renderOperator()}
+                        {this.renderValues()}
                     </div>
+                    {this.renderPopover()}
                 </div>
                 <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilterFn}>
                     <Icon name='close' width="14px" height="14px" />

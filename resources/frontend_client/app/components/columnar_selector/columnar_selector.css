@@ -12,6 +12,7 @@
     min-height: 300px;
     max-height: 450px;
     overflow-y: scroll;
+    flex: 1;
 }
 
 .ColumnarSelector-title {

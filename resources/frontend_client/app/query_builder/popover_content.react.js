@@ -32,7 +32,7 @@ export default React.createClass({
     handleClickOutside: function(e) {
         // only propagate event for the popover on top of the stack
         if (this === popoverStack[popoverStack.length - 1]) {
-            this.props.handleClickOutside();
+            this.props.handleClickOutside.apply(this, arguments);
         }
     },
 

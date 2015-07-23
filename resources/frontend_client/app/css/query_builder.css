@@ -36,6 +36,7 @@
 /* a section of the graphical query itself */
 .Query-section {
     display: flex;
+    align-items: center;
 }
 
 .Query-section.Query-section--right {
@@ -107,6 +108,10 @@
 */
 .SelectionModule {
     color: var(--brand-color);
+}
+
+.SelectionList {
+    padding-top: 5px;
 }
 
 .SelectionItems {
@@ -374,9 +379,44 @@
 .Filter-section-value.selected .QueryOption {
     color: var(--purple-color);
 }
-.Filter-section-value .QueryOption:before,
-.Filter-section-value .QueryOption:after {
+.Filter-section-value .QueryOption:not(.QueryOption--date):before,
+.Filter-section-value .QueryOption:not(.QueryOption--date):after {
     content: '"';
+}
+
+.Filter-section-value {
+    padding-right: 0.5em;
+}
+
+.Filter-section-value:not(:nth-child(1),:nth-child(2)):before {
+    content: " and ";
+    font-weight: 700;
+    margin-right: 0.5em;
+}
+
+.FilterPopover .ColumnarSelector-row--selected,
+.FilterPopover .PopoverHeader-item.selected {
+    color: var(--purple-color) !important;
+}
+.FilterPopover .ColumnarSelector-row:hover {
+    background-color: var(--purple-color) !important;
+}
+
+.Filter-section-value .Button,
+.Filter-section-value .input {
+    padding: 0.5rem;
+}
+
+.Filter-section-value .input {
+    font-size: inherit;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.Filter-section-value .input:focus {
+    outline: none;
+    border-color: var(--purple-color);
+    box-shadow: 0 0 2px var(--purple-color);
 }
 
 /* VIEW SECTION */
@@ -395,7 +435,6 @@
 
 .QueryOption {
     color: color(var(--base-grey) shade(20%));
-    line-height: 1;
     font-weight: 700;
 }
 

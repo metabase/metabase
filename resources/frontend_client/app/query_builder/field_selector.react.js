@@ -43,9 +43,10 @@ export default React.createClass({
             sections: tableSections,
             selectedItem: null,
             itemTitleFn: (table) => {
+                var subtitleElement = table.subtitle ? <div className="text-grey-3 mb1">{table.subtitle}</div> : null;
                 return (
                     <div>
-                        <div className="text-grey-3 mb1">{table.subtitle}</div>
+                        {subtitleElement}
                         <div>{table.title}</div>
                     </div>
                 );
