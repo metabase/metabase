@@ -8,10 +8,20 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
-            (metabase.models [user :refer [User set-user-password]]
+            (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
             [metabase.util.password :as pass]))
+
+
+(defn- create-session
+  "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
+  [user-id]
+  (let [session-id (str (java.util.UUID/randomUUID))]
+    (ins Session
+         :id session-id
+         :user_id user-id)
+    session-id))
 
 
 (defendpoint POST "/"
@@ -25,10 +35,7 @@
       'password "did not match stored password")
     (checkp (pass/verify-password password (:password_salt user) (:password user))
       'password "did not match stored password")
-    (let [session-id (str (java.util.UUID/randomUUID))]
-      (ins Session
-        :id session-id
-        :user_id (:id user))
+    (let [session-id (create-session (:id user))]
       {:id session-id})))
 
 
@@ -50,12 +57,10 @@
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email [Required Email]}
-  (let [user-id            (sel :one :id User :email email)
-        reset-token        (str user-id "_" (java.util.UUID/randomUUID))
-        password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)] ; avoid circular deps
-    ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-    (when user-id
-      (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+  ;; Don't leak whether the account doesn't exist, just pretend everything is ok
+  (when-let [user-id (sel :one :id User :email email)]
+    (let [reset-token        (set-user-password-reset-token user-id)
+          password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email email server-name password-reset-url)
       (log/info password-reset-url))))
 
@@ -77,7 +82,9 @@
       (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
       [400 "Reset token has expired"])
     (set-user-password user-id password)
-    {:success true}))
+    ;; after a successful password update go ahead and offer the client a new session that they can use
+    {:success true
+     :session_id (create-session user-id)}))
 
 
 (defendpoint GET "/properties"
