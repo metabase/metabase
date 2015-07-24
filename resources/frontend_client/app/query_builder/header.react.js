@@ -237,7 +237,7 @@ export default React.createClass({
                     {attribution}
                 </div>
 
-                <div className="QueryHeader-actions flex-align-right">
+                <div className="flex align-center flex-align-right">
 
                     <span className="pr3">
                         {saveButton}

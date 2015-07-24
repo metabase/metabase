@@ -391,7 +391,7 @@ export default React.createClass({
             var tetherOptions = {
                 attachment: 'top left',
                 targetAttachment: 'bottom left',
-                targetOffset: '10px 25px'
+                targetOffset: '10px 0'
             };
 
             return (
@@ -406,6 +406,7 @@ export default React.createClass({
                         {tabs.map((t, index) => {
                             var classes = cx({
                                 "PopoverHeader-item": true,
+                                "cursor-pointer": t.enabled,
                                 "selected": this.state.currentPane === index,
                                 "disabled": !t.enabled
                             });
