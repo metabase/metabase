@@ -17,9 +17,7 @@ export default React.createClass({
             "Button--primary": true,
             "circular": true,
             "RunButton": true,
-            "RunButton--canRun": this.props.canRun,
-            "RunButton--isDirty": this.props.isDirty,
-            "RunButton--isRunning": this.props.isRunning
+            "RunButton--hidden": (!this.props.canRun || !this.props.isDirty)
         });
         return (
             <button className={classes} onClick={this.props.runFn}>{runButtonText}</button>
