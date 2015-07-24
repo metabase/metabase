@@ -327,26 +327,6 @@
 
 /* @transitions */
 
-.Transition-qb-section-enter {
-    opacity: 0.01;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-enter-active {
-    opacity: 1;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-leave {
-    opacity: 1;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-leave-active {
-    opacity: 0.01;
-    transition: opacity .3s linear !important;
-}
-
 .AddToDashSuccess {
     max-width: 260px;
     text-align: center;
