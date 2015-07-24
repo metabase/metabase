@@ -3,19 +3,14 @@
 }
 /* @layout */
 .QueryBuilder {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
     transition: margin-right 0.35s;
-    background-color: white;
  }
 
 .QueryBuilder--showDataReference {
     margin-right: 300px;
 }
 
-.QueryHeader-details,
-.QueryHeader-actions {
+.QueryHeader-details {
     display: flex;
     align-items: center;
 }
@@ -182,7 +177,6 @@
 }
 
 .Visualization {
-    overflow-y: scroll;
     transition: background .3s linear;
 }
 
@@ -205,12 +199,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.VisualizationFooter {
-    padding-bottom: 1em;
-    padding-top: 1em;
-    background-color: #fff;
 }
 
 .Loading {
@@ -271,14 +259,15 @@
     font-size: 0.9em;
     z-index: 2;
     background-color: #fff;
+    border: 1px solid #e0e0e0;
 }
 
-.GuiBuilder.bordered .GuiBuilder-section:not(:last-child) {
-    border-right: 1px solid var(--border-color);
+.GuiBuilder-section:not(:last-child) {
+    border-right: 1px solid #e0e0e0;
 }
 
-.GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
-    border-bottom: 1px solid var(--border-color);
+.GuiBuilder-row:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -289,8 +278,8 @@
     .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
         flex-direction: row;
     }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
-        border-right: 1px solid var(--border-color);
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:not(:last-child) {
+        border-right: 1px solid #e0e0e0;
         border-bottom: none;
     }
 }
@@ -301,17 +290,18 @@
         font-size: 1.1em;
         flex-direction: row;
     }
-    .GuiBuilder.bordered .GuiBuilder-row:not(:last-child) {
-        border-right: 1px solid var(--border-color);
+    .GuiBuilder-row:not(:last-child) {
+        border-right: 1px solid #e0e0e0;
         border-bottom: none;
     }
 }
 
 .GuiBuilder-section {
+    position: relative;
     min-height: 48px;
     min-width: 120px;
-    position: relative;
 }
+
 .GuiBuilder-data {
     z-index: 1; /* moved the arrow thingy above the filter outline */
 }

@@ -204,7 +204,7 @@ export default React.createClass({
     render: function() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
-                <div className="GuiBuilder">
+                <div>
                     {this.renderChartTypePicker()}
                     {this.renderChartColorPicker()}
                 </div>

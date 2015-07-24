@@ -97,25 +97,18 @@ export default React.createClass({
     },
 
     renderAdd: function(text, onClick) {
-        if (text) {
-            return (
-                <a className="text-grey-2 text-bold no-decoration flex align-center mx2" href="#" onClick={onClick}>
-                    {this.renderAddIcon()}
-                    <span className="ml1">{text}</span>
-                </a>
-            );
-        } else {
-            return (
-                <a className="text-grey-2 text-bold no-decoration flex align-center mx2" href="#" onClick={onClick}>
-                    {this.renderAddIcon()}
-                </a>
-            )
-        }
+        let classes = "text-grey-2 text-grey-4-hover cursor-pointer text-bold no-decoration flex align-center mx2 transition-color";
+        return (
+            <a className={classes} onClick={onClick}>
+                {this.renderAddIcon()}
+                { text ? (<span className="ml1">{text}</span>) : (null) }
+            </a>
+        )
     },
 
     renderAddIcon: function () {
         return (
-            <IconBorder className="text-grey-2" borderRadius="3px">
+            <IconBorder borderRadius="3px">
                 <Icon name="add" width="14px" height="14px" />
             </IconBorder>
         )
@@ -438,7 +431,6 @@ export default React.createClass({
         var classes = cx({
             'GuiBuilder': true,
             'GuiBuilder--narrow': this.props.isShowingDataReference,
-            'bordered': true,
             'rounded': true,
             'shadowed': true
         })
