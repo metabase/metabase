@@ -4,13 +4,14 @@
 import SelectionModule from './selection_module.react';
 import FieldWidget from './field_widget.react';
 
+import Query from './query';
+
 export default React.createClass({
     displayName: 'AggregationWidget',
     propTypes: {
         aggregation: React.PropTypes.array.isRequired,
-        aggregationOptions: React.PropTypes.array.isRequired,
-        updateAggregation: React.PropTypes.func.isRequired,
-        tableName: React.PropTypes.string
+        tableMetadata: React.PropTypes.object.isRequired,
+        updateAggregation: React.PropTypes.func.isRequired
     },
 
     componentWillMount: function() {
@@ -18,13 +19,10 @@ export default React.createClass({
     },
 
     componentWillReceiveProps: function(newProps) {
-
         // build a list of aggregations that are valid, taking into account specifically if we have valid fields available
+        var aggregationFieldOptions = [];
         var availableAggregations = [];
-        var aggregationFields;
-        for (var i=0; i < newProps.aggregationOptions.length; i++) {
-            var option = newProps.aggregationOptions[i];
-
+        newProps.tableMetadata.aggregation_options.forEach((option) => {
             if (option.fields &&
                     (option.fields.length === 0 ||
                         (option.fields.length > 0 && option.fields[0]))) {
@@ -34,13 +32,14 @@ export default React.createClass({
             if (newProps.aggregation.length > 0 &&
                     newProps.aggregation[0] !== null &&
                     option.short === newProps.aggregation[0]) {
-                aggregationFields = option.fields[0];
+                // TODO: support multiple targets?
+                aggregationFieldOptions = Query.getFieldOptions(newProps.tableMetadata.fields, true, option.validFieldsFilters[0]);
             }
-        }
+        });
 
         this.setState({
             availableAggregations: availableAggregations,
-            aggregationFields: aggregationFields
+            aggregationFieldOptions: aggregationFieldOptions
         });
     },
 
@@ -48,7 +47,7 @@ export default React.createClass({
         var queryAggregation = [aggregation];
 
         // check to see if this aggregation type requires another choice
-        _.map(this.props.aggregationOptions, function (option) {
+        _.map(this.props.tableMetadata.aggregation_options, function (option) {
             if (option.short === aggregation &&
                 option.fields.length > 0) {
 
@@ -74,28 +73,22 @@ export default React.createClass({
         }
 
         // aggregation clause.  must have table details available
-        var aggregationListOpen = true;
-        if(this.props.aggregation[0]) {
-            aggregationListOpen = false;
-        }
+        var aggregationListOpen = this.props.aggregation[0] == null;
 
         // if there's a value in the second aggregation slot render another selector
         var aggregationTarget;
         if(this.props.aggregation.length > 1) {
-            var aggregationTargetListOpen = true;
-            if(this.props.aggregation[1] !== null) {
-                aggregationTargetListOpen = false;
-            }
+            var aggregationTargetListOpen = this.props.aggregation[1] == null;
 
             aggregationTarget = (
                 <div className="flex align-center">
                     <span className="text-bold">of</span>
                     <FieldWidget
                         className="View-section-aggregation-target SelectionModule p1"
+                        tableName={this.props.tableMetadata.display_name}
                         field={this.props.aggregation[1]}
-                        fields={this.state.aggregationFields}
+                        fieldOptions={this.state.aggregationFieldOptions}
                         setField={this.setAggregationTarget}
-                        tableName={this.props.tableName}
                         isInitiallyOpen={aggregationTargetListOpen}
                     />
                 </div>

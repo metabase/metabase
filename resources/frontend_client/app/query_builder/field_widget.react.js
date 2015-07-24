@@ -2,56 +2,75 @@
 
 import FieldSelector from "./field_selector.react";
 import FieldName from "./field_name.react";
-import PopoverWithTrigger from "./popover_with_trigger.react";
+import Icon from "./icon.react";
+import Popover from "./popover.react";
 
 import Query from "./query";
 
 export default React.createClass({
     displayName: "FieldWidget",
     propTypes: {
-        // field:
-        fields: React.PropTypes.array.isRequired,
-        onClick: React.PropTypes.func,
+        field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
+        fieldOptions: React.PropTypes.object.isRequired,
+        setField: React.PropTypes.func.isRequired,
+        removeField: React.PropTypes.func,
         isInitiallyOpen: React.PropTypes.bool
+    },
+
+    getInitialState: function() {
+        return {
+            modalOpen: this.props.isInitiallyOpen || false
+        };
     },
 
     setField:function(value) {
         this.props.setField(value);
         if (Query.isValidField(value)) {
-            this.refs.popover.toggleModal();
+            this.toggleModal();
+        }
+    },
+
+    toggleModal: function() {
+        this.setState({ modalOpen: !this.state.modalOpen });
+    },
+
+    renderPopover: function() {
+        if (this.state.modalOpen) {
+            var tetherOptions = {
+                attachment: 'top left',
+                targetAttachment: 'bottom left',
+                targetOffset: '10px 25px'
+            };
+            return (
+                <Popover
+                    ref="popover"
+                    className="PopoverBody PopoverBody--withArrow FieldPopover"
+                    tetherOptions={tetherOptions}
+                    handleClickOutside={this.toggleModal}
+                >
+                    <FieldSelector
+                        tableName={this.props.tableName}
+                        field={this.props.field}
+                        fieldOptions={this.props.fieldOptions}
+                        setField={this.setField}
+                    />
+                </Popover>
+            );
         }
     },
 
     render: function() {
-        var triggerElement = (
-            <FieldName
-                className={this.props.className}
-                field={this.props.field}
-                fields={this.props.fields}
-            />
-        );
-
-        var tetherOptions = {
-            attachment: 'top left',
-            targetAttachment: 'bottom left',
-            targetOffset: '10px 25px'
-        };
-
         return (
-            <PopoverWithTrigger
-                ref="popover"
-                className="PopoverBody PopoverBody--withArrow FieldPopover"
-                tetherOptions={tetherOptions}
-                triggerElement={triggerElement}
-                isInitiallyOpen={this.props.isInitiallyOpen}
-            >
-                <FieldSelector
+            <div className="flex align-center">
+                <FieldName
+                    className={this.props.className}
                     field={this.props.field}
-                    fields={this.props.fields}
-                    tableName={this.props.tableName}
-                    setField={this.setField}
+                    fieldOptions={this.props.fieldOptions}
+                    removeField={this.props.removeField}
+                    onClick={this.toggleModal}
                 />
-            </PopoverWithTrigger>
+                {this.renderPopover()}
+            </div>
         );
     }
 });

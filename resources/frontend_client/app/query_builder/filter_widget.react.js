@@ -104,13 +104,16 @@ export default React.createClass({
             fieldValues.values = safeValues;
         }
 
+        var fieldOptions = Query.getFieldOptions(newProps.tableMetadata.fields, true);
+
         this.setState({
             field: field,
             operator: operator,
             operatorList: operatorList,
             values: values,
             fieldValues: fieldValues,
-            fieldDef: fieldDef
+            fieldDef: fieldDef,
+            fieldOptions: fieldOptions
         });
     },
 
@@ -235,7 +238,7 @@ export default React.createClass({
             <FieldName
                 className={classes}
                 field={this.state.field}
-                fields={this.props.tableMetadata.fields}
+                fieldOptions={this.state.fieldOptions}
                 onClick={this.selectPane.bind(null, 0)}
             />
         );
@@ -301,7 +304,7 @@ export default React.createClass({
         return (
             <FieldSelector
                 field={this.state.field}
-                fields={this.props.tableMetadata.fields}
+                fieldOptions={this.state.fieldOptions}
                 tableName={this.props.tableMetadata.display_name}
                 setField={this.setField}
             />

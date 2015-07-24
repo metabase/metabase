@@ -275,6 +275,28 @@ var Query = {
             typeof field === "number" ||
             (Array.isArray(field) && field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number")
         );
+    },
+
+    getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+        var results = {
+            count: 0,
+            fields: null,
+            fks: []
+        };
+        // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (f.special_type !== "fk" || !includeJoins));
+        results.count += results.fields.length;
+        if (includeJoins) {
+            results.fks = fields.filter((f) => f.special_type === "fk").map((joinField) => {
+                var targetFields = filterFn(joinField.target.table.fields).filter((f) => !usedFields[f.id]);
+                results.count += targetFields.length;
+                return {
+                    field: joinField,
+                    fields: targetFields
+                }
+            }).filter((r) => r.fields.length > 0);
+        }
+        return results;
     }
 }
 

@@ -196,9 +196,8 @@ export default React.createClass({
             return (
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
-                    aggregationOptions={this.props.options.aggregation_options}
+                    tableMetadata={this.props.options}
                     updateAggregation={this.updateAggregation}
-                    tableName={this.props.options.display_name}
                 />
             );
         } else {
@@ -237,13 +236,13 @@ export default React.createClass({
             var usedFields = {};
             breakoutList = this.props.query.query.breakout.map((breakout, index) => {
                 var breakoutListOpen = breakout === null;
-                var unusedFields = this.props.options.breakout_options.fields.filter((f) => !usedFields[f.id])
+                var fieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
 
                 if (breakout) {
                     usedFields[breakout] = true;
                 }
 
-                if (unusedFields.length === 0) {
+                if (fieldOptions.count === 0) {
                     return null;
                 }
 
@@ -252,7 +251,7 @@ export default React.createClass({
                         className="View-section-breakout SelectionModule p1"
                         placeholder='field'
                         field={breakout}
-                        fields={unusedFields}
+                        fieldOptions={fieldOptions}
                         tableName={this.props.options.display_name}
                         isInitiallyOpen={breakoutListOpen}
                         setField={this.updateDimension.bind(null, index)}

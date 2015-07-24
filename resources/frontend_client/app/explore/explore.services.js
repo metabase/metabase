@@ -316,7 +316,8 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             'advanced': aggregator.advanced || false,
             'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
                 return validFieldsFilterFn(fields);
-            })
+            }),
+            'validFieldsFilters': aggregator.validFieldsFilters
         };
     }
 
@@ -329,6 +330,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     function getBreakouts(fields) {
         var result = populateFields(BreakoutAggregator, fields);
         result.fields = result.fields[0];
+        result.validFieldsFilter = result.validFieldsFilters[0];
         return result;
     }
 

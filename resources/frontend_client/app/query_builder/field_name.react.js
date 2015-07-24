@@ -10,8 +10,10 @@ var cx = React.addons.classSet;
 export default React.createClass({
     displayName: "FieldName",
     propTypes: {
-        fields: React.PropTypes.array.isRequired,
-        onClick: React.PropTypes.func
+        field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
+        fieldOptions: React.PropTypes.object.isRequired,
+        onClick: React.PropTypes.func,
+        removeField: React.PropTypes.func
     },
 
     getDefaultProps: function() {
@@ -25,14 +27,20 @@ export default React.createClass({
         var field = this.props.field;
 
         if (Array.isArray(field)) {
-            var fkDef = _.find(this.props.fields, (f) => f.id === field[1]);
-            var targetDef = fkDef && _.find(fkDef.target.table.fields, (f) => f.id === field[2]);
-            targetTitle = targetDef && (<span>{targetDef.display_name}</span>);
-            fkTitle = fkDef && (<span>{fkDef.display_name}</span>);
-            fkIcon = fkDef && targetDef && (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
+            var fkDef = _.find(this.props.fieldOptions.fks, (fk) => fk.field.id === field[1]);
+            if (fkDef) {
+                fkTitle = (<span>{fkDef.field.display_name}</span>);
+                var targetDef = _.find(fkDef.fields, (f) => f.id === field[2]);
+                if (targetDef) {
+                    targetTitle = (<span>{targetDef.display_name}</span>);
+                    fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
+                }
+            }
         } else {
-            var fieldDef = _.find(this.props.fields, (f) => f.id === field);
-            targetTitle = fieldDef && (<span>{fieldDef.display_name}</span>);
+            var fieldDef = _.find(this.props.fieldOptions.fields, (f) => f.id === field);
+            if (fieldDef) {
+                targetTitle = (<span>{fieldDef.display_name}</span>);
+            }
         }
 
         var titleElement;
@@ -46,9 +54,21 @@ export default React.createClass({
             'selected': Query.isValidField(field)
         });
 
+        var removeButton;
+        if (this.props.removeField) {
+            removeButton = (
+                <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.props.removeField}>
+                    <Icon name='close' width="14px" height="14px" />
+                </a>
+            )
+        }
+
         return (
-            <div className={this.props.className + " " + classes} onClick={this.props.onClick}>
-                {titleElement}
+            <div className="flex align-center">
+                <div className={this.props.className + " " + classes} onClick={this.props.onClick}>
+                    {titleElement}
+                </div>
+                {removeButton}
             </div>
         );
     },

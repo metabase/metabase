@@ -6,7 +6,8 @@ import ColumnarSelector from "./columnar_selector.react";
 export default React.createClass({
     displayName: "FieldSelector",
     propTypes: {
-        fields: React.PropTypes.array.isRequired,
+        field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
+        fieldOptions: React.PropTypes.object.isRequired,
         tableName: React.PropTypes.string,
         setField: React.PropTypes.func.isRequired
     },
@@ -16,14 +17,18 @@ export default React.createClass({
             title: this.props.tableName || null,
             field: null
         };
-        var connectionTables = this.props.fields
-            .filter((field) => field.special_type === "fk")
-            .map((field) => {
+
+        if (!this.props.fieldOptions) {
+            return <div>blah</div>;
+        }
+
+        var connectionTables = this.props.fieldOptions.fks
+            .map((fk) => {
                 return {
-                    title: field.display_name,
+                    title: fk.field.display_name,
                     subtitle: this.props.tableName || null,
-                    field: ["fk->", field.id, null],
-                    fieldId: field.id
+                    field: ["fk->", fk.field.id, null],
+                    fieldId: fk.field.id
                 };
             });
 
@@ -66,14 +71,14 @@ export default React.createClass({
 
         if (this.props.field == undefined || typeof this.props.field === "number") {
             tableColumn.selectedItem = sourceTable;
-            fieldColumn.items = this.props.fields.filter((f) => f.special_type !== 'fk');
-            fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => f.id === this.props.field);
+            fieldColumn.items = this.props.fieldOptions.fields;
+            fieldColumn.selectedItem = _.find(this.props.fieldOptions.fields, (f) => f.id === this.props.field);
             fieldColumn.itemSelectFn = (f) => {
                 this.props.setField(f.id);
             }
         } else {
             tableColumn.selectedItem = _.find(connectionTables, (t) => t.fieldId === this.props.field[1]);
-            fieldColumn.items = _.find(this.props.fields, (f) => f.id === tableColumn.selectedItem.fieldId).target.table.fields;
+            fieldColumn.items = _.find(this.props.fieldOptions.fks, (fk) => fk.field.id === tableColumn.selectedItem.fieldId).fields;
             fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => f.id === this.props.field[2]);
             fieldColumn.itemSelectFn = (f) => {
                 this.props.setField(["fk->", this.props.field[1], f.id]);
