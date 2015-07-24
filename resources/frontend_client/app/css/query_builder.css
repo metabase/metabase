@@ -355,6 +355,11 @@
     content: '"';
 }
 
+.Filter-section-sort-field.selected .QueryOption,
+.Filter-section-sort-direction.selected .QueryOption {
+    color: inherit;
+}
+
 .Filter-section-value {
     padding-right: 0.5em;
 }
