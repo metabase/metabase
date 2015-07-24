@@ -1,14 +1,17 @@
 'use strict';
 
 import Icon from './icon.react';
+import FieldWidget from './field_widget.react';
 import SelectionModule from './selection_module.react';
+
+import Query from './query';
 
 export default React.createClass({
     displayName: 'SortWidget',
     propTypes: {
         sort: React.PropTypes.array.isRequired,
-        fieldList: React.PropTypes.array.isRequired,
-        index: React.PropTypes.number.isRequired,
+        query: React.PropTypes.object.isRequired,
+        tableMetadata: React.PropTypes.object.isRequired,
         updateSort: React.PropTypes.func.isRequired,
         removeSort: React.PropTypes.func.isRequired
     },
@@ -18,24 +21,26 @@ export default React.createClass({
     },
 
     componentWillReceiveProps: function(newProps) {
-        var field = newProps.sort[0],           // id of the field
-            direction = newProps.sort[1];       // sort direction
-
         this.setState({
-            field: field,
-            direction: direction
+            field: newProps.sort[0],           // id of the field
+            direction: newProps.sort[1],       // sort direction
+            sortFieldOptions: Query.getFieldOptions(
+                newProps.tableMetadata.fields,
+                true,
+                Query.getSortableFields.bind(null, newProps.query)
+            )
         });
     },
 
-    setField: function(value, index, sortListIndex) {
+    setField: function(value) {
         if (this.state.field !== value) {
-            this.props.updateSort(this.props.index, [value, this.state.direction]);
+            this.props.updateSort([value, this.state.direction]);
         }
     },
 
-    setDirection: function(value, index, sortListIndex) {
+    setDirection: function(value) {
         if (this.state.direction !== value) {
-            this.props.updateSort(this.props.index, [this.state.field, value]);
+            this.props.updateSort([this.state.field, value]);
         }
     },
 
@@ -46,36 +51,28 @@ export default React.createClass({
         ];
 
         return (
-            <div className="Query-filter">
-                <div className="Filter-section Filter-section-sort-field">
-                    <SelectionModule
-                        action={this.setField}
-                        display='display_name'
-                        index={0}
-                        items={this.props.fieldList}
-                        placeholder="..."
-                        selectedValue={this.state.field}
-                        selectedKey='id'
-                        isInitiallyOpen={this.state.field === null}
-                        parentIndex={this.props.index}
-                    />
-                </div>
+            <div className="flex align-center">
+                <FieldWidget
+                    className="Filter-section Filter-section-sort-field SelectionModule"
+                    tableName={this.props.tableMetadata.display_name}
+                    field={this.state.field}
+                    fieldOptions={this.state.sortFieldOptions}
+                    setField={this.setField}
+                    isInitiallyOpen={this.state.field === null}
+                />
 
-                <div className="Filter-section Filter-section-sort-direction">
-                    <SelectionModule
-                        placeholder="..."
-                        items={directionOptions}
-                        display="key"
-                        selectedValue={this.state.direction}
-                        selectedKey="val"
-                        index={1}
-                        isInitiallyOpen={false}
-                        parentIndex={this.props.index}
-                        action={this.setDirection}
-                    />
-                </div>
+                <SelectionModule
+                    className="Filter-section Filter-section-sort-direction"
+                    placeholder="..."
+                    items={directionOptions}
+                    display="key"
+                    selectedValue={this.state.direction}
+                    selectedKey="val"
+                    isInitiallyOpen={false}
+                    action={this.setDirection}
+                />
 
-                <a onClick={this.props.removeSort.bind(null, this.props.index)}>
+                <a onClick={this.props.removeSort}>
                     <Icon name='close' width="12px" height="12px" />
                 </a>
             </div>

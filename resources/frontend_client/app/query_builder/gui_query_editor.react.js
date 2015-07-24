@@ -21,6 +21,7 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
+        options: React.PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: React.PropTypes.bool.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
@@ -283,18 +284,15 @@ export default React.createClass({
     renderSort: function() {
         var sortList = [];
         if (this.props.query.query.order_by) {
-            var sortableFields = Query.getSortableFields(this.props.query.query, this.props.options.fields);
-
-            var component = this;
-            sortList = this.props.query.query.order_by.map(function (order_by, index) {
+            sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
                         placeholder="Attribute"
                         sort={order_by}
-                        fieldList={sortableFields}
-                        index={index}
-                        removeSort={component.removeSort}
-                        updateSort={component.updateSort}
+                        query={this.props.query.query}
+                        tableMetadata={this.props.options}
+                        removeSort={this.removeSort.bind(null, index)}
+                        updateSort={this.updateSort.bind(null, index)}
                     />
                 );
             }.bind(this));
