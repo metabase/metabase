@@ -108,7 +108,7 @@ export default React.createClass({
 
         var iconName = this.visualizationTypeNames[this.props.card.display].iconName;
         var triggerElement = (
-            <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
+            <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                 <Icon name={iconName} width="24px" height="24px"/>
                 {this.visualizationTypeNames[this.props.card.display].displayName}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
@@ -136,7 +136,7 @@ export default React.createClass({
             );
         });
         return (
-            <div className="GuiBuilder-section">
+            <div className="relative">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
                 <PopoverWithTrigger ref="displayPopover"
                                     className="PopoverBody PopoverBody--withArrow ChartType-popover"
@@ -169,7 +169,7 @@ export default React.createClass({
             // TODO: currently we set all chart type colors to the same value so bar color always works
             var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || this.props.visualizationSettingsApi.getDefaultColor();
             var triggerElement = (
-                <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
+                <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                     <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>
                     Color
                     <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
@@ -183,7 +183,7 @@ export default React.createClass({
             };
 
             return (
-                <div className="GuiBuilder-section">
+                <div className="relative">
                     <span className="GuiBuilder-section-label Query-label">Color</span>
                     <PopoverWithTrigger ref="colorPopover"
                                         className="PopoverBody"
