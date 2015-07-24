@@ -218,7 +218,7 @@ export default React.createClass({
             // include a button to add a breakout, up to 2 total
             // don't include already used fields
             var usedFields = {};
-            var breakoutList = []
+            breakoutList = []
             this.props.query.query.breakout.forEach((breakout, index) => {
                 var breakoutListOpen = breakout === null;
                 var fieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);

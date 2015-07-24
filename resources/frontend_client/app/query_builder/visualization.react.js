@@ -105,7 +105,7 @@ export default React.createClass({
     },
 
     renderCount: function() {
-        if (!this.props.isObjectDetail && this.props.card.display === "table") {
+        if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
                 <div className="flex-align-right mt1">
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
