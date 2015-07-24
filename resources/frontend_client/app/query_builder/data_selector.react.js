@@ -86,7 +86,7 @@ export default React.createClass({
         var tetherOptions = {
             attachment: 'top left',
             targetAttachment: 'bottom left',
-            targetOffset: '5px 15px'
+            targetOffset: '5px 0'
         };
 
         var name = this.props.name;
