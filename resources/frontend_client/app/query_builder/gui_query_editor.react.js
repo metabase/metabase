@@ -206,7 +206,6 @@ export default React.createClass({
 
     renderBreakouts: function() {
         var enabled;
-        var breakoutLabel;
         var breakoutList;
         var addBreakoutButton;
 
@@ -216,19 +215,11 @@ export default React.createClass({
                 !Query.hasEmptyAggregation(this.props.query.query)) {
             enabled = true;
 
-            // only render a label for our breakout if we have a valid breakout clause already
-            if(this.props.query.query.breakout.length > 0) {
-                breakoutLabel = (
-                    <span className="text-bold">
-                        by
-                    </span>
-                );
-            }
-
             // include a button to add a breakout, up to 2 total
             // don't include already used fields
             var usedFields = {};
-            breakoutList = this.props.query.query.breakout.map((breakout, index) => {
+            var breakoutList = []
+            this.props.query.query.breakout.forEach((breakout, index) => {
                 var breakoutListOpen = breakout === null;
                 var fieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
 
@@ -240,7 +231,13 @@ export default React.createClass({
                     return null;
                 }
 
-                return (
+                breakoutList.push(
+                    <span className="text-bold">
+                        {breakoutList.length > 0 ? "and" : "by"}
+                    </span>
+                );
+
+                breakoutList.push(
                     <FieldWidget
                         className="View-section-breakout SelectionModule p1"
                         placeholder='field'
@@ -274,7 +271,6 @@ export default React.createClass({
         });
         return (
             <div className={querySectionClasses}>
-                {breakoutLabel}
                 {breakoutList}
                 {addBreakoutButton}
             </div>
