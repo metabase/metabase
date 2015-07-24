@@ -1,5 +1,5 @@
 'use strict';
-/*global _*/
+/*global _, ga*/
 
 //  Dashboard Controllers
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
@@ -101,6 +101,13 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
         $scope.gridsterOptions.draggable.enabled = !$scope.gridsterOptions.draggable.enabled;
         $scope.gridsterOptions.resizable.enabled = !$scope.gridsterOptions.resizable.enabled;
+
+        // GA Tracking
+        if ($scope.gridsterOptions.resizable.enabled) {
+            ga('send', 'event', 'Dashboard', 'Rearrange Finished');
+        } else {
+            ga('send', 'event', 'Dashboard', 'Rearrange Started');
+        }
     };
 
     $scope.notifyDashboardSaved = function(dashboard) {
