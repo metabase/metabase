@@ -43,9 +43,14 @@ var Query = {
             }
         }
 
-        // TODO: limit
+        if (query.order_by) {
+            query.order_by = query.order_by.filter((s) => Query.isValidField(s[0]) && s[1] != null)
+            if (query.order_by.length === 0) {
+                delete query.order_by;
+            }
+        }
 
-        // TODO: sort
+        // TODO: limit
 
         return query;
     },

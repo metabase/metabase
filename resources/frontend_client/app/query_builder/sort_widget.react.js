@@ -10,8 +10,8 @@ export default React.createClass({
     displayName: 'SortWidget',
     propTypes: {
         sort: React.PropTypes.array.isRequired,
-        query: React.PropTypes.object.isRequired,
-        tableMetadata: React.PropTypes.object.isRequired,
+        fieldOptions: React.PropTypes.object.isRequired,
+        tableName: React.PropTypes.string,
         updateSort: React.PropTypes.func.isRequired,
         removeSort: React.PropTypes.func.isRequired
     },
@@ -23,12 +23,7 @@ export default React.createClass({
     componentWillReceiveProps: function(newProps) {
         this.setState({
             field: newProps.sort[0],           // id of the field
-            direction: newProps.sort[1],       // sort direction
-            sortFieldOptions: Query.getFieldOptions(
-                newProps.tableMetadata.fields,
-                true,
-                Query.getSortableFields.bind(null, newProps.query)
-            )
+            direction: newProps.sort[1]        // sort direction
         });
     },
 
@@ -54,9 +49,9 @@ export default React.createClass({
             <div className="flex align-center">
                 <FieldWidget
                     className="Filter-section Filter-section-sort-field SelectionModule"
-                    tableName={this.props.tableMetadata.display_name}
+                    tableName={this.props.tableName}
                     field={this.state.field}
-                    fieldOptions={this.state.sortFieldOptions}
+                    fieldOptions={this.props.fieldOptions}
                     setField={this.setField}
                     isInitiallyOpen={this.state.field === null}
                 />

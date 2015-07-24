@@ -37,9 +37,9 @@ export default React.createClass({
     renderPopover: function() {
         if (this.state.modalOpen) {
             var tetherOptions = {
-                attachment: 'top left',
-                targetAttachment: 'bottom left',
-                targetOffset: '10px 25px'
+                attachment: 'top center',
+                targetAttachment: 'bottom center',
+                targetOffset: '15px 25px'
             };
             return (
                 <Popover

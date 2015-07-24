@@ -278,53 +278,45 @@ export default React.createClass({
     },
 
     renderSort: function() {
+        var sortFieldOptions;
+
+        if (this.props.options) {
+            sortFieldOptions = Query.getFieldOptions(
+                this.props.options.fields,
+                true,
+                Query.getSortableFields.bind(null, this.props.query.query)
+            );
+        }
+
         var sortList = [];
         if (this.props.query.query.order_by) {
             sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
-                        placeholder="Attribute"
+                        tableName={this.props.options.display_name}
                         sort={order_by}
-                        query={this.props.query.query}
-                        tableMetadata={this.props.options}
+                        fieldOptions={sortFieldOptions}
                         removeSort={this.removeSort.bind(null, index)}
                         updateSort={this.updateSort.bind(null, index)}
                     />
                 );
-            }.bind(this));
+            });
         }
 
-        var sortSection;
-        if (sortList.length === 0) {
-            sortSection = (
-                <div className="QueryOption p1 lg-p2 flex align-center">
-                    <a onClick={this.addSort}>
-                        {this.renderAddIcon()}
-                        Add sort
-                    </a>
-                </div>
-            );
-        } else {
-            var addSortButton;
-            if (Query.canAddSort(this.props.query.query)) {
-                addSortButton = (
-                    <a onClick={this.addSort}>Add another sort</a>
-                );
-            }
-
-            sortSection = (
-                <div className="flex align-center">
-                    <span className="m2">sorted by</span>
-                    {sortList}
-                    {addSortButton}
-                </div>
-            );
-        }
-
+        var content;
         if (sortList.length > 0) {
-            return sortList;
-        } else {
-            return this.renderAdd("Pick a field to sort by", this.addSort);
+            content = sortList;
+        } else if (sortFieldOptions && sortFieldOptions.count > 0) {
+            content = this.renderAdd("Pick a field to sort by", this.addSort);
+        }
+
+        if (content) {
+            return (
+                <div className="py1 border-bottom">
+                    <div className="Query-label mb1">Sort by:</div>
+                    {content}
+                </div>
+            );
         }
     },
 
@@ -406,10 +398,7 @@ export default React.createClass({
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
-                        <div className="py1 border-bottom">
-                            <div className="Query-label mb1">Sort by:</div>
-                            {this.renderSort()}
-                        </div>
+                        {this.renderSort()}
                         <div className="py1">
                             <div className="Query-label mb1">Limit:</div>
                             {this.renderLimit()}
