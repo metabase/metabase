@@ -166,7 +166,8 @@ export default React.createClass({
                 ));
             }
 
-            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || null;
+            // TODO: currently we set all chart type colors to the same value so bar color always works
+            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || this.props.visualizationSettingsApi.getDefaultColor();
             var triggerElement = (
                 <span className="px2 py2 text-bold cursor-pointer text-default flex align-center">
                     <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>
@@ -204,7 +205,7 @@ export default React.createClass({
     render: function() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
-                <div>
+                <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
                     {this.renderChartColorPicker()}
                 </div>

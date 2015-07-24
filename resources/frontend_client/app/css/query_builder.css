@@ -252,6 +252,8 @@
     width: 100%;
 }
 
+/* GUI BUILDER */
+
 .GuiBuilder {
     position: relative;
     display: flex;
@@ -262,12 +264,27 @@
     border: 1px solid #e0e0e0;
 }
 
+.GuiBuilder-row:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.GuiBuilder-section {
+    position: relative;
+    min-height: 48px;
+    min-width: 120px;
+}
+
 .GuiBuilder-section:not(:last-child) {
     border-right: 1px solid #e0e0e0;
 }
 
-.GuiBuilder-row:not(:last-child) {
-    border-bottom: 1px solid #e0e0e0;
+.GuiBuilder-section-label {
+    background-color: white;
+    position: absolute;
+    top: -7px;
+    left: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -296,33 +313,13 @@
     }
 }
 
-.GuiBuilder-section {
-    position: relative;
-    min-height: 48px;
-    min-width: 120px;
+.QueryOption {
+    color: color(var(--base-grey) shade(20%));
+    font-weight: 700;
 }
 
-.GuiBuilder-data {
-    z-index: 1; /* moved the arrow thingy above the filter outline */
-}
-
-.GuiBuilder-sort-limit {
-    min-width: 0px;
-}
-
-.EllipsisButton {
-    font-size: 3em;
-    position: relative;
-    top: -0.8rem;
-}
-
-.GuiBuilder-section-label {
-    background-color: white;
-    position: absolute;
-    top: -7px;
-    left: 10px;
-    padding-left: 10px;
-    padding-right: 10px;
+.QueryOption:hover {
+    cursor: pointer;
 }
 
 /* @transitions */
@@ -330,6 +327,12 @@
 .AddToDashSuccess {
     max-width: 260px;
     text-align: center;
+}
+
+/* DATA SECTION */
+
+.GuiBuilder-data {
+    z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 /* FILTER BY SECTION */
@@ -409,13 +412,22 @@
     color: var(--green-color);
 }
 
-.QueryOption {
-    color: color(var(--base-grey) shade(20%));
-    font-weight: 700;
+/* SORT/LIMIT SECTION */
+
+.GuiBuilder-sort-limit {
+    min-width: 0px;
 }
 
-.QueryOption:hover {
-    cursor: pointer;
+.EllipsisButton {
+    font-size: 3em;
+    position: relative;
+    top: -0.8rem;
+}
+
+/* VISUALIZATION SETTINGS */
+
+.VisualizationSettings .GuiBuilder-section {
+    border-right: none !important;
 }
 
 .ChartType-button {
@@ -458,7 +470,8 @@
     margin-top: 0;
 }
 
-/* data reference */
+/* DATA REFERENCE */
+
 .DataReference {
     z-index: -1;
     position: absolute;
