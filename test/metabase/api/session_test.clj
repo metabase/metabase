@@ -106,7 +106,6 @@
     (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
           token              (str id "_" (java.util.UUID/randomUUID))
           _                  (upd User id :reset_token token)]
-      (println token)
       ;; run the password reset
       (metabase.http-client/client :post 200 "session/reset_password" {:token    token
                                                                        :password "whateverUP12!!"}))))
