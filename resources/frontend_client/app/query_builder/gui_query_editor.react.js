@@ -232,13 +232,14 @@ export default React.createClass({
                 }
 
                 breakoutList.push(
-                    <span className="text-bold">
+                    <span key={"_"+index} className="text-bold">
                         {breakoutList.length > 0 ? "and" : "by"}
                     </span>
                 );
 
                 breakoutList.push(
                     <FieldWidget
+                        key={index}
                         className="View-section-breakout SelectionModule p1"
                         placeholder='field'
                         field={breakout}
@@ -293,6 +294,7 @@ export default React.createClass({
             sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
+                        key={index}
                         tableName={this.props.options.display_name}
                         sort={order_by}
                         fieldOptions={sortFieldOptions}

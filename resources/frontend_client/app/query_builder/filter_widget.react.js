@@ -410,7 +410,7 @@ export default React.createClass({
                                 "selected": this.state.currentPane === index,
                                 "disabled": !t.enabled
                             });
-                            return <li className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
+                            return <li key={index} className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
                         })}
                     </ul>
                     <div>{pane}</div>
