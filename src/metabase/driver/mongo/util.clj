@@ -24,11 +24,10 @@
 
 (def ^:private mongo-connection-options
   ;; Have to use the Java builder directly since monger's wrapper method doesn't support .serverSelectionTimeout :unamused:
-  (let [opts (com.mongodb.MongoClientOptions$Builder.)]
-    (-> opts
-        (.connectTimeout connection-timeout-ms)
-        (.serverSelectionTimeout connection-timeout-ms)
-        (.build))))
+  (-> (com.mongodb.MongoClientOptions$Builder.)
+      (.connectTimeout connection-timeout-ms)
+      (.serverSelectionTimeout connection-timeout-ms)
+      (.build)))
 
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
