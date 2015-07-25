@@ -29,6 +29,13 @@
       (.serverSelectionTimeout connection-timeout-ms)
       (.build)))
 
+;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity where you can pass
+;; options and credentials, as we'd like to do. We need to go in and alter the metadata of this function ourselves because otherwise
+;; the Eastwood linter will complain that we're calling the function with the wrong airity :sad: :/
+(alter-meta! #'mg/connect assoc :arglists '([{:keys [host port uri]}]
+                                            [server-address options]
+                                            [server-address options credentials]))
+
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
