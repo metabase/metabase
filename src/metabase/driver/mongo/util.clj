@@ -3,7 +3,8 @@
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [monger.core :as mg]
+            (monger [core :as mg]
+                    [credentials :as mcred])
             [metabase.driver :as driver]))
 
 (def ^:const ^:private connection-timeout-ms
@@ -16,39 +17,34 @@
    on *one* occasion."
   1500)
 
-(defn- details-map->connection-string
-  [{:keys [user pass host port dbname]}]
-  {:pre [host
-         dbname]}
-  (str "mongodb://"
-       user
-       (when-not (s/blank? pass)
-         (assert (not (s/blank? user)) "Can't have a password without a user!")
-         (str ":" pass))
-       (when-not (s/blank? user) "@")
-       host
-       (when-not (s/blank? (str port))
-         (str ":" port))
-       "/"
-       dbname
-       "?connectTimeoutMS="
-       connection-timeout-ms))
-
-(def ^:dynamic ^com.mongodb.DBApiLayer *mongo-connection*
+(def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database.
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
+
+(def ^:private mongo-connection-options
+  ;; Have to use the Java builder directly since monger's wrapper method doesn't support .serverSelectionTimeout :unamused:
+  (let [opts (com.mongodb.MongoClientOptions$Builder.)]
+    (-> opts
+        (.connectTimeout connection-timeout-ms)
+        (.serverSelectionTimeout connection-timeout-ms)
+        (.build))))
 
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [connection-string (cond
-                            (string? database)              database
-                            (:dbname (:details database))   (details-map->connection-string (:details database)) ; new-style -- entire Database obj
-                            (:dbname database)              (details-map->connection-string database)            ; new-style -- connection details map only
-                            :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        {conn :conn, mongo-connection :db} (mg/connect-via-uri connection-string)]
+  (let [{:keys [dbname host port user pass]
+         :or   {port 27017, pass ""}} (cond
+                                        (string? database)            {:dbname database}
+                                        (:dbname (:details database)) (:details database) ; entire Database obj
+                                        (:dbname database)            database            ; connection details map only
+                                        :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+         server-address   (mg/server-address host port)
+         credentials      (when user
+                            (mcred/create user dbname pass))
+         conn             (mg/connect server-address mongo-connection-options credentials)
+         mongo-connection (mg/get-db conn dbname)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]
@@ -62,11 +58,11 @@
    (We're smart about it: DATABASE isn't even evaluated if `*mongo-connection*` is already bound.)
 
      ;; delay isn't derefed if *mongo-connection* is already bound
-     (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db (sel :one Table ...))]
+     (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
        ...)
 
      ;; You can use a string instead of a Database
-     (with-mongo-connection [^com.mongodb.DBApiLayer conn \"mongodb://127.0.0.1:27017/test\"]
+     (with-mongo-connection [^com.mongodb.DB conn \"mongodb://127.0.0.1:27017/test\"]
         ...)
 
    DATABASE-OR-CONNECTION-STRING can also optionally be the connection details map on its own."

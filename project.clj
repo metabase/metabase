@@ -27,8 +27,8 @@
                  [com.draines/postal "1.11.3"]                        ; SMTP library
                  [com.h2database/h2 "1.4.187"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]          ; Java Migrations lib
-                 [com.novemberain/monger "2.1.0"]                     ; MongoDB Driver
-                 [compojure "1.3.4"]                                  ; HTTP Routing library built on Ring
+                 [com.novemberain/monger "3.0.0"]                     ; MongoDB Driver
+                 [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [korma "0.4.2"]                                      ; SQL lib
@@ -37,7 +37,7 @@
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.6.0"]                                     ; lightweight lib of useful functions
+                 [medley "0.7.0"]                                     ; lightweight lib of useful functions
                  [org.liquibase/liquibase-core "3.4.0"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)
