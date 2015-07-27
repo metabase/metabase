@@ -40,8 +40,8 @@
 ;; they're allowed to try to login again (e.g., 15 seconds). This number will increase exponentially as the number of
 ;; recent failures increases (e.g., 40 seconds for 5 failed attempts, 90 for 6 failed attempts, etc).
 ;;
-;; If applicable, calucate the time since the last failed attempt, and throw an exception telling the user the number of seconds they
-;; must wait before trying again.
+;; If applicable, calucate the time since the last failed attempt, and throw an exception telling the user the number of
+;; seconds they must wait before trying again.
 
 (def ^:private ^:const failed-login-attempts-initial-delay-seconds
   "If a user makes the number of failed login attempts specified by `failed-login-attempts-throttling-threshold` in the
