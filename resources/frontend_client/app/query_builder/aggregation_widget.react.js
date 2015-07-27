@@ -3,6 +3,7 @@
 
 import SelectionModule from './selection_module.react';
 import FieldWidget from './field_widget.react';
+import Icon from './icon.react';
 
 import Query from './query';
 
