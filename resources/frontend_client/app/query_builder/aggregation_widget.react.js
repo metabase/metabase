@@ -91,6 +91,7 @@ export default React.createClass({
                         setField={this.setAggregationTarget}
                         isInitiallyOpen={aggregationTargetListOpen}
                     />
+                    <Icon name="chevrondown" width="8px" height="8px" />
                 </div>
             );
         }

@@ -111,7 +111,7 @@
 .SelectionItems {
     overflow-y: scroll;
     max-height: 340px;
-    min-width: 320px;
+    max-width: 320px;
 }
 
 .SelectionItems.SelectionItems--open {
