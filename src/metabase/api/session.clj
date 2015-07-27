@@ -92,8 +92,8 @@
       (when (> num-attempts-over-threshold 0)
         (let [delay-seconds           (* (math/expt num-attempts-over-threshold failed-login-delay-exponent)
                                          failed-login-attempts-initial-delay-seconds)
-              next-login-allowed-ms   (+ (.getTime most-recent-attempt) (* delay-seconds 1000))
-              seconds-till-next-login (int (math/round (/ (- next-login-allowed-ms (System/currentTimeMillis)) 1000)))]
+              last-login+delay-ms     (+ (.getTime most-recent-attempt) (* delay-seconds 1000))
+              seconds-till-next-login (int (math/round (/ (- last-login+delay-ms (System/currentTimeMillis)) 1000)))]
           (when (> seconds-till-next-login 0)
             seconds-till-next-login))))))
 
