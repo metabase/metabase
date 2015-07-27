@@ -205,7 +205,7 @@ export default React.createClass({
     render: function() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
-                <div className="VisualizationSettings flex align-center">
+                <div className="VisualizationSettings flex align-center mb2">
                     {this.renderChartTypePicker()}
                     {this.renderChartColorPicker()}
                 </div>
