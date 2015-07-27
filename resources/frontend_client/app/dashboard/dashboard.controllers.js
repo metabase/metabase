@@ -60,6 +60,7 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
          * window is set to < 600px, even without mobileBreakPoint set.
          */
         //mobileBreakPoint: 640,
+        saveGridItemCalculatedHeightInMobile: true,
         floating: false,
         pushing: false,
         swapping: true,

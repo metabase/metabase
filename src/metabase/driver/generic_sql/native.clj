@@ -23,7 +23,7 @@
   {:pre [(string? sql)
          (integer? database-id)]}
   (log/debug "QUERY: \n"
-             (with-out-str (clojure.pprint/pprint query)))
+             (with-out-str (clojure.pprint/pprint (update query :driver class))))
   (try (let [database (sel :one [Database :engine :details] :id database-id)
              db (-> database
                     db->korma-db

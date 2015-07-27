@@ -3,9 +3,9 @@
     <div class="Form-field" mb-form-field="engine">
         <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
         <ul class="Form-offset full mt2" ng-show="!database.engine">
-            <li class="DatabaseEngine" ng-repeat="(type, properties) in ENGINES">
+            <li class="DatabaseEngine" ng-repeat="(type, properties) in ENGINES" ng-click="database.engine = type">
                 <mb-icon name="check" class="DatabaseEngine-check" width="16px" height="16px"></mb-icon>
-                <div ng-click="database.engine = type">
+                <div>
                     {{properties.name}}
                 </div>
             </li>
