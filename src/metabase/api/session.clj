@@ -32,7 +32,7 @@
 ;;  ["cam@metabase.com" #inst "2015-07-27T23:34:32.783-00:00"]
 ;;  ["cam@metabase.com" #inst "2015-07-27T23:34:31.666-00:00"])
 ;;
-;; Every time they're a failed login, push a new pair of [email timestamp] to the front of the list. The list is thus
+;; Every time there's a failed login, push a new pair of [email timestamp] to the front of the list. The list is thus
 ;; automatically ordered by date, and we can drop the portion of the list with failed logins that are over an hour
 ;; old as needed.
 ;;
