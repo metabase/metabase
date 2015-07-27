@@ -15,6 +15,11 @@
     flex: 1;
 }
 
+.ColumnarSelector-rows {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
 .ColumnarSelector-title {
     text-transform: uppercase;
     font-size: 10px;

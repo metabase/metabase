@@ -143,7 +143,7 @@ export default React.createClass({
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
-                    <ul className="">
+                    <ul className="pt1 pb1">
                         {displayOptions}
                     </ul>
                 </PopoverWithTrigger>
