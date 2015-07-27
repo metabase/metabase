@@ -38,10 +38,10 @@
 ;;
 ;; Once a User has some number of failed login attempts over the past hour (e.g. 4), calculate some delay before
 ;; they're allowed to try to login again (e.g., 15 seconds). This number will increase exponentially as the number of
-;; recent failures increases (e.g., 40 seconds for 5 failed attempts, 80 for 6 failed attempts, etc).
+;; recent failures increases (e.g., 40 seconds for 5 failed attempts, 90 for 6 failed attempts, etc).
 ;;
-;; Calucate the time since the last failed attempt, and throw an exception telling the user the number of seconds they
-;; must wait before trying again if applicable.
+;; If applicable, Calucate the time since the last failed attempt, and throw an exception telling the user the number of seconds they
+;; must wait before trying again.
 
 (def ^:private ^:const failed-login-attempts-initial-delay-seconds
   "If a user makes the number of failed login attempts specified by `failed-login-attempts-throttling-threshold` in the
