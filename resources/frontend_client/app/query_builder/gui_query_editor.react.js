@@ -252,8 +252,8 @@ export default React.createClass({
                 );
             });
 
-            var unusedFieldsCount = this.props.options.breakout_options.fields.length - Object.keys(usedFields).length;
-            if (unusedFieldsCount > 0) {
+            var remainingFieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
+            if (remainingFieldOptions.count > 0) {
                 if (this.props.query.query.breakout.length === 0) {
                     addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
                 } else if (this.props.query.query.breakout.length === 1 &&
@@ -268,6 +268,7 @@ export default React.createClass({
 
         var querySectionClasses = cx({
             "Query-section": true,
+            ml1: true,
             disabled: !enabled
         });
         return (
