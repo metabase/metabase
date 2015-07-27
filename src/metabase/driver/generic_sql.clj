@@ -117,32 +117,41 @@
       0))
 
 (defn- field-percent-urls [_ field]
-  (let [korma-table          (korma-entity @(:table field))
-        total-non-null-count (-> (k/select korma-table
-                                           (k/aggregate (count :*) :count)
-                                           (k/where {(keyword (:name field)) [not= nil]})) first :count)]
-    (if (= total-non-null-count 0) 0.0
-        (let [url-count (or (-> (k/select korma-table
-                                          (k/aggregate (count :*) :count)
-                                          (k/where {(keyword (:name field)) [like "http%://_%.__%"]})) first :count)
-                            0)]
-          (float (/ url-count total-non-null-count))))))
+  (or (let [korma-table (korma-entity @(:table field))]
+        (when-let [total-non-null-count (:count (first (k/select korma-table
+                                                                 (k/aggregate (count :*) :count)
+                                                                 (k/where {(keyword (:name field)) [not= nil]}))))]
+          (when (> total-non-null-count 0)
+            (when-let [url-count (:count (first (k/select korma-table
+                                                          (k/aggregate (count :*) :count)
+                                                          (k/where {(keyword (:name field)) [like "http%://_%.__%"]}))))]
+              (float (/ url-count total-non-null-count))))))
+      0.0))
 
-(defn extend-add-generic-sql-mixins [driver-type]
-  (extend driver-type
-    IDriver
-    {:can-connect?                  can-connect?
-     :can-connect-with-details?     can-connect-with-details?
-     :wrap-process-query-middleware wrap-process-query-middleware
-     :process-query                 process-query
-     :sync-in-context               sync-in-context
-     :active-table-names            active-table-names
-     :active-column-names->type     active-column-names->type
-     :table-pks                     table-pks
-     :field-values-lazy-seq         field-values-lazy-seq}
-    ISyncDriverTableFKs
-    {:table-fks table-fks}
-    ISyncDriverFieldAvgLength
-    {:field-avg-length field-avg-length}
-    ISyncDriverFieldPercentUrls
-    {:field-percent-urls field-percent-urls}))
+(def ^:const GenericSQLIDriverMixin
+  "Generic SQL implementation of the `IDriver` protocol.
+
+     (extend H2Driver
+       IDriver
+       GenericSQLIDriverMixin)"
+  {:can-connect?                  can-connect?
+   :can-connect-with-details?     can-connect-with-details?
+   :wrap-process-query-middleware wrap-process-query-middleware
+   :process-query                 process-query
+   :sync-in-context               sync-in-context
+   :active-table-names            active-table-names
+   :active-column-names->type     active-column-names->type
+   :table-pks                     table-pks
+   :field-values-lazy-seq         field-values-lazy-seq})
+
+(def ^:const GenericSQLISyncDriverTableFKsMixin
+  "Generic SQL implementation of the `ISyncDriverTableFKs` protocol."
+  {:table-fks table-fks})
+
+(def ^:const GenericSQLISyncDriverFieldAvgLengthMixin
+  "Generic SQL implementation of the `ISyncDriverFieldAvgLengthMixin` protocol."
+  {:field-avg-length field-avg-length})
+
+(def ^:const GenericSQLISyncDriverFieldPercentUrlsMixin
+  "Generic SQL implementation of the `ISyncDriverFieldPercentUrls` protocol."
+  {:field-percent-urls field-percent-urls})

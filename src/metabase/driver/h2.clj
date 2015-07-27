@@ -3,8 +3,11 @@
             [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as generic-sql]
-            [metabase.driver.generic-sql.interface :refer :all]))
+            (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
+                                                                   GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
+                             [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]])
+            [metabase.driver.generic-sql.interface :refer :all]
+            [metabase.models.database :refer [Database]]))
 
 (def ^:private ^:const column->base-type
   "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
@@ -115,7 +118,27 @@
               :milliseconds "MILLISECOND")
             table-name field-name)))
 
-(generic-sql/extend-add-generic-sql-mixins H2Driver)
+(defn- wrap-process-query-middleware [_ qp]
+  (fn [{query-type :type, :as query}]
+    {:pre [query-type]}
+    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
+    ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
+    (when (= (keyword query-type) :native)
+      (let [{:keys [db]}   (db/sel :one :field [Database :details] :id (:database query))
+            _              (assert db)
+            [_ options]    (connection-string->file+options db)
+            {:strs [USER]} options]
+        (when (or (s/blank? USER)
+                  (= USER "sa")) ; "sa" is the default USER
+          (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
+    (qp query)))
+
+(extend H2Driver
+  ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
+  IDriver                     (assoc GenericSQLIDriverMixin :wrap-process-query-middleware wrap-process-query-middleware)
+  ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
+  ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
+  ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
 
 (def ^:const driver
   (map->H2Driver {:column->base-type    column->base-type

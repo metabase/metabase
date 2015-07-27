@@ -1,6 +1,15 @@
 :root {
     --selection-color: #ccdff6;
 }
+
+#react_qb_editor {
+    z-index: 2;
+}
+
+#react_qb_viz {
+    z-index: 1;
+}
+
 /* @layout */
 .QueryBuilder {
     transition: margin-right 0.35s;
@@ -261,21 +270,27 @@
     font-size: 0.9em;
     z-index: 2;
     background-color: #fff;
+
     border: 1px solid #e0e0e0;
 }
 
-.GuiBuilder-row:not(:last-child) {
+.GuiBuilder-row {
     border-bottom: 1px solid #e0e0e0;
+}
+
+.GuiBuilder-row:last-child {
+    border-bottom: none;
 }
 
 .GuiBuilder-section {
     position: relative;
     min-height: 48px;
     min-width: 120px;
+    border-right: 1px solid #e0e0e0;
 }
 
-.GuiBuilder-section:not(:last-child) {
-    border-right: 1px solid #e0e0e0;
+.GuiBuilder-section:last-child {
+    border-right: none;
 }
 
 .GuiBuilder-section-label {
@@ -295,9 +310,12 @@
     .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
         flex-direction: row;
     }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:not(:last-child) {
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-section:last-child {
         border-right: 1px solid #e0e0e0;
-        border-bottom: none;
     }
 }
 
@@ -307,9 +325,12 @@
         font-size: 1.1em;
         flex-direction: row;
     }
-    .GuiBuilder-row:not(:last-child) {
+    .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .GuiBuilder-section:last-child {
         border-right: 1px solid #e0e0e0;
-        border-bottom: none;
     }
 }
 
@@ -353,8 +374,14 @@
 .Filter-section-value.selected .QueryOption {
     color: var(--purple-color);
 }
-.Filter-section-value .QueryOption:not(.QueryOption--date):before,
-.Filter-section-value .QueryOption:not(.QueryOption--date):after {
+
+/* put quotes around numeric or text values */
+.Filter-section-value .QueryOption.QueryOption--text:before,
+.Filter-section-value .QueryOption.QueryOption--text:after,
+.Filter-section-value .QueryOption.QueryOption--number:before,
+.Filter-section-value .QueryOption.QueryOption--number:after,
+.Filter-section-value .QueryOption.QueryOption--select:before,
+.Filter-section-value .QueryOption.QueryOption--select:after {
     content: '"';
 }
 
@@ -365,12 +392,6 @@
 
 .Filter-section-value {
     padding-right: 0.5em;
-}
-
-.Filter-section-value:not(:nth-child(1),:nth-child(2)):before {
-    content: " and ";
-    font-weight: 700;
-    margin-right: 0.5em;
 }
 
 .FilterPopover .ColumnarSelector-row--selected,
@@ -422,6 +443,12 @@
     font-size: 3em;
     position: relative;
     top: -0.8rem;
+}
+
+/* NATIVE */
+
+.NativeQueryEditor .GuiBuilder-data {
+    border-right: none;
 }
 
 /* VISUALIZATION SETTINGS */

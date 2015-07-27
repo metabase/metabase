@@ -20,7 +20,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 setupToken: null,
                 currentUser: null,
                 siteSettings: null,
-                appContext: 'unknown'
+                appContext: 'none'
             },
 
             init: function() {

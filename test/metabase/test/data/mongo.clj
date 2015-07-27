@@ -29,22 +29,28 @@
   (create-physical-table! [_ _ _])
 
   (drop-physical-table! [this database-definition {:keys [table-name]}]
-    (with-mongo-connection [^com.mongodb.DBApiLayer mongo-db (database->connection-details this database-definition)]
+    (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details this database-definition)]
       (mc/drop mongo-db (name table-name))))
 
   (load-table-data! [this database-definition {:keys [field-definitions table-name rows]}]
-    (with-mongo-connection [^com.mongodb.DBApiLayer mongo-db (database->connection-details this database-definition)]
+    (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details this database-definition)]
       (let [field-names (->> field-definitions
                              (map :field-name)
                              (map keyword))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
-          (try
-            ;; Insert each row
-            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                         :_id (inc i)))
-            ;; If row already exists then nothing to do
-            (catch com.mongodb.MongoException$DuplicateKey _)))))))
+          (let [row (for [v row]
+                      ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on being obnoxious and going from
+                      ;; using Timestamps in 2.x to Dates in 3.x
+                      (if (= (type v) java.sql.Timestamp)
+                        (java.util.Date. (.getTime ^java.sql.Timestamp v))
+                        v))]
+            (try
+              ;; Insert each row
+              (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
+                                                           :_id (inc i)))
+              ;; If row already exists then nothing to do
+              (catch com.mongodb.MongoException _))))))))
 
 (defn ^MongoDatasetLoader dataset-loader []
   (->MongoDatasetLoader))
