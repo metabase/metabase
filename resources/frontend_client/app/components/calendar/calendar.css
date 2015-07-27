@@ -13,6 +13,11 @@
     text-align: center;
     color: color(var(--base-grey) shade(30%));
     border-radius: 99px;
+        cursor: pointer;
+}
+
+.Calendar-day-name {
+    cursor: inherit;
 }
 
 .Calendar-day--this-month {
@@ -23,16 +28,15 @@
     font-weight: 700;
 }
 
-
-.Calendar-day:not(.Calendar-day-name) {
-    cursor: pointer;
-}
-
-.Calendar-day:not(.Calendar-day--selected,.Calendar-day-name):hover {
+.Calendar-day:hover {
     color: var(--purple-color);
 }
 
+.Calendar-day-name {
+    color: inherit !important;
+}
+
 .Calendar-day--selected {
-    color: white;
+    color: white !important;
     background-color: var(--purple-light-color);
 }

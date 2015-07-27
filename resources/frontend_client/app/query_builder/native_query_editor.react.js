@@ -132,7 +132,7 @@ export default React.createClass({
 
         return (
             <div className="wrapper">
-                <div className="bordered rounded shadowed">
+                <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
                         {dbSelector}
                         <a href="#" className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>

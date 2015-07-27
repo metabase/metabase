@@ -56,12 +56,12 @@
 	border-color: currentcolor;
 }
 
-.PopoverHeader-item:not(:last-child) {
+.PopoverHeader-item--withArrow {
 	margin-right: 8px;
 }
 
-.PopoverHeader-item:not(:last-child):before,
-.PopoverHeader-item:not(:last-child):after {
+.PopoverHeader-item--withArrow:before,
+.PopoverHeader-item--withArrow:after {
 	position: absolute;
 	content: '';
 	display: block;
@@ -74,13 +74,13 @@
 }
 
 /* create a slightly larger arrow on the right for border purposes */
-.PopoverHeader-item:not(:last-child):before {
+.PopoverHeader-item--withArrow:before {
 	right: -16px;
 	border-left-color: #ddd;
 }
 
 /* create a smaller inset arrow on the right */
-.PopoverHeader-item:not(:last-child):after {
+.PopoverHeader-item--withArrow:after {
 	right: -15px;
 	border-left-color: #fff;
 }
