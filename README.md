@@ -12,7 +12,7 @@ The Report Server does not deal with getting data into a database or data wareho
 
 The report server does not collect web page views or mobile events, though it can help you understand conversion funnels, cohort retention and use behavior in general once you have collected these events into a database. 
 
-See the [Data Warehouse Guide](docs/DATAWAREHOUSING.md) for more information and advice.
+See the [Data Warehouse Guide](docs/data-warehousing.md) for more information and advice.
 
 # Security Disclosure
 
@@ -46,15 +46,15 @@ On logging in, you will be asked a set of questions that will set up a user acco
 
 Once you have added this connection, you will be taken into the app and you'll be ready to ask your first question. 
 
-For more information or troubleshooting, check out the [Installation Guide](docs/INSTALLATION.md)
+For more information or troubleshooting, check out the [Installation Guide](docs/installation-guide.md)
 
 # Getting Started
 
-Follow our [Getting Started](docs/GETTINGSTARTED.md) guide to learn how to use the Report Server.
+Follow our [Getting Started](docs/getting-started.md) guide to learn how to use the Report Server.
 
 # Contributing
 
-To get started with a development installation of the Query Server and learn more about contributing, please follow the instructions at our [Developers Guide](docs/DEVELOPERS.md). 
+To get started with a development installation of the Query Server and learn more about contributing, please follow the instructions at our [Developers Guide](docs/developers-guide.md). 
 
 # Extending and Deep Integrations
 
