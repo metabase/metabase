@@ -83,8 +83,8 @@
   (swap! failed-login-attempts conj [email (java.util.Date.)]))
 
 (defn- calculate-login-delay
-  "Calculate the appropriate delay (in seconds) before a user should be allowed to login again based on MOST-RECENT-ATTEMPT
-   and NUM-RECENT-ATTEMPTS. This function returns `nil` if there is no delay that should be required."
+  "Calculate the appropriate delay (in seconds) before a user should be allowed to login again based on
+   MOST-RECENT-ATTEMPT and NUM-RECENT-ATTEMPTS. This function returns `nil` if there is no delay that should be required."
   [^java.util.Date most-recent-attempt num-recent-attempts]
   (when most-recent-attempt
     (assert (= (type most-recent-attempt) java.util.Date))
