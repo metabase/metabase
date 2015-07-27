@@ -88,17 +88,17 @@ export default React.createClass({
             itemSelectFn: null
         };
 
-        if (field == undefined || typeof field === "number") {
+        if (field == undefined || typeof field === "number" || field[0] === "aggregation") {
             tableColumn.selectedItem = sourceTable;
             fieldColumn.items = this.props.fieldOptions.fields;
-            fieldColumn.selectedItem = _.find(this.props.fieldOptions.fields, (f) => f.id === field);
+            fieldColumn.selectedItem = _.find(this.props.fieldOptions.fields, (f) => _.isEqual(f.id, field));
             fieldColumn.itemSelectFn = (f) => {
                 this.setField(f.id);
             }
         } else {
-            tableColumn.selectedItem = _.find(connectionTables, (t) => t.fieldId === field[1]);
-            fieldColumn.items = _.find(this.props.fieldOptions.fks, (fk) => fk.field.id === tableColumn.selectedItem.fieldId).fields;
-            fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => f.id === field[2]);
+            tableColumn.selectedItem = _.find(connectionTables, (t) => _.isEqual(t.fieldId, field[1]));
+            fieldColumn.items = _.find(this.props.fieldOptions.fks, (fk) => _.isEqual(fk.field.id, tableColumn.selectedItem.fieldId)).fields;
+            fieldColumn.selectedItem = _.find(fieldColumn.items, (f) => _.isEqual(f.id, field[2]));
             fieldColumn.itemSelectFn = (f) => {
                 this.setField(["fk->", field[1], f.id]);
             }

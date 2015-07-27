@@ -26,18 +26,18 @@ export default React.createClass({
         var targetTitle, fkTitle, fkIcon;
         var field = this.props.field;
 
-        if (Array.isArray(field)) {
-            var fkDef = _.find(this.props.fieldOptions.fks, (fk) => fk.field.id === field[1]);
+        if (Array.isArray(field) && field[0] === 'fk->') {
+            var fkDef = _.find(this.props.fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
             if (fkDef) {
                 fkTitle = (<span>{fkDef.field.display_name}</span>);
-                var targetDef = _.find(fkDef.fields, (f) => f.id === field[2]);
+                var targetDef = _.find(fkDef.fields, (f) => _.isEqual(f.id, field[2]));
                 if (targetDef) {
                     targetTitle = (<span>{targetDef.display_name}</span>);
                     fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
                 }
             }
         } else {
-            var fieldDef = _.find(this.props.fieldOptions.fields, (f) => f.id === field);
+            var fieldDef = _.find(this.props.fieldOptions.fields, (f) => _.isEqual(f.id, field));
             if (fieldDef) {
                 targetTitle = (<span>{fieldDef.display_name}</span>);
             }

@@ -291,7 +291,7 @@ export default React.createClass({
         }
 
         var sortList = [];
-        if (this.props.query.query.order_by) {
+        if (this.props.query.query.order_by && this.props.options) {
             sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
