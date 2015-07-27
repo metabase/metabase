@@ -46,11 +46,11 @@
               (s/replace #"/$" "")) ; strip off trailing slash if one was included
       (-site-url (or origin host))))
 
-
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
       (log-api-call :request :response)
+      add-security-headers         ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
       format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
       (wrap-json-body              ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
