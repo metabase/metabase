@@ -32,19 +32,20 @@
 ;;  ["cam@metabase.com" #inst "2015-07-27T23:34:32.783-00:00"]
 ;;  ["cam@metabase.com" #inst "2015-07-27T23:34:31.666-00:00"])
 ;;
-;; Every time they're a failed login, push a new pair of [email timestamp] to the front of the list. The list is thus automatically ordered
-;; by date, and we can drop the portion of the list with failed logins that are over an hour old as needed.
+;; Every time they're a failed login, push a new pair of [email timestamp] to the front of the list. The list is thus
+;; automatically ordered by date, and we can drop the portion of the list with failed logins that are over an hour
+;; old as needed.
 ;;
-;; Once a User has some number of failed login attempts over the past hour (e.g. 4), calculate some delay before they're allowed to try to login again
-;; (e.g., 15 seconds). This number will increase exponentially as the number of recent failures increases (e.g., 40 seconds for 5 failed attempts, 80 for
-;; 6 failed attempts, etc).
+;; Once a User has some number of failed login attempts over the past hour (e.g. 4), calculate some delay before
+;; they're allowed to try to login again (e.g., 15 seconds). This number will increase exponentially as the number of
+;; recent failures increases (e.g., 40 seconds for 5 failed attempts, 80 for 6 failed attempts, etc).
 ;;
-;; Calucate the time since the last failed attempt, and throw an exception telling the user the number of seconds they must wait before trying again if
-;; applicable.
+;; Calucate the time since the last failed attempt, and throw an exception telling the user the number of seconds they
+;; must wait before trying again if applicable.
 
 (def ^:private ^:const failed-login-attempts-initial-delay-seconds
-  "If a user makes the number of failed login attempts specified by `failed-login-attempts-throttling-threshold` in the last hour,
-   require them to wait this many seconds after the last failed attempt before trying again."
+  "If a user makes the number of failed login attempts specified by `failed-login-attempts-throttling-threshold` in the
+   last hour, require them to wait this many seconds after the last failed attempt before trying again."
   15)
 
 (def ^:private ^:const failed-login-attempts-throttling-threshold
@@ -56,8 +57,8 @@
   "Multiply `failed-login-attempts-initial-delay-seconds` by the number of failed login attempts in the last hour
    over `failed-login-attempts-throttling-threshold` times this exponent.
 
-   e.g. if this number is `2`, and a User has to wait `15` seconds initially, they'll have to wait 60 for the next failure (15 * 2^2),
-   then 135 seconds the next time (15 * 3^3), and so on."
+   e.g. if this number is `2`, and a User has to wait `15` seconds initially, they'll have to wait 60 for the next
+   failure (15 * 2^2), then 135 seconds the next time (15 * 3^3), and so on."
   1.5)
 
 (def ^:private failed-login-attempts
