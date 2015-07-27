@@ -92,8 +92,8 @@
       (when (> num-attempts-over-threshold 0)
         (let [delay-seconds           (* (math/expt num-attempts-over-threshold failed-login-delay-exponent)
                                          failed-login-attempts-initial-delay-seconds)
-              next-login-allowed-ms   (+ (.getTime most-recent-attempt) (* delay-seconds 1000))
-              seconds-till-next-login (int (math/round (/ (- next-login-allowed-ms (System/currentTimeMillis)) 1000)))]
+              last-login+delay-ms     (+ (.getTime most-recent-attempt) (* delay-seconds 1000))
+              seconds-till-next-login (int (math/round (/ (- last-login+delay-ms (System/currentTimeMillis)) 1000)))]
           (when (> seconds-till-next-login 0)
             seconds-till-next-login))))))
 
@@ -104,11 +104,10 @@
   ;; Remove any out-of-date failed login attempts
   (remove-old-failed-login-attempts)
   ;; Now count the number of recent attempts with this email
-  (let [recent-attempts         (filter (fn [[attempt-email _]]
-                                          (= email attempt-email))
-                                        @failed-login-attempts)
-        [_ most-recent-attempt] (first recent-attempts)]
-    (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan recent-attempts))
+  (let [[[_ most-recent-attempt] :as recent-attempts] (filter (fn [[attempt-email _]]
+                                                                (= email attempt-email))
+                                                              @failed-login-attempts)]
+    (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan recent-attempts)) ;; TODO - remove debug loggin
     (when-let [login-delay (calculate-login-delay most-recent-attempt (count recent-attempts))]
       (let [message (format "Too many recent failed logins! You must wait %d seconds before trying again." login-delay)]
         (throw (ex-info message {:status-code 400
