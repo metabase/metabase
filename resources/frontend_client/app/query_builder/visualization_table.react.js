@@ -142,7 +142,7 @@ export default React.createClass({
     },
 
     columnResized: function(width, idx) {
-        var tableColumnWidths = this.state.columnWidths;
+        var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
