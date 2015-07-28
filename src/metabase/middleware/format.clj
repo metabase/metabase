@@ -3,6 +3,7 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str]])
             [medley.core :refer [filter-vals map-vals]]
+            [metabase.middleware.log-api-call :refer [api-call?]]
             [metabase.models.interface :refer [api-serialize]]
             [metabase.util :as util]))
 
@@ -32,6 +33,15 @@
 (add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
                              (.writeString json-generator (.toString date))))
 
+(defn add-security-headers
+  "Add HTTP headers to tell browsers not to cache API responses."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (update response :headers merge (when (api-call? request)
+                                        {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+                                         "Expires"       "Tue, 03 Jul 2001 06:00:00 GMT" ; rando date in the past
+                                         "Last-Modified" "{now} GMT"})))))
 
 ;; ## FORMAT RESPONSE MIDDLEWARE
 (defn format-response
