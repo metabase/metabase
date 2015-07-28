@@ -79,22 +79,13 @@
 (defn test-startup
   {:expectations-options :before-run}
   []
-  (log/info "Starting up Metabase unit test runner")
-
   (log/info "Setting up test DB and running migrations...")
   (db/setup-db :auto-migrate true)
 
-  ;; add any global settings defaults
-  (metabase.models.setting/set :site-name "Metabase Test")
-
-  ;; Load the test datasets
-  (load-test-datasets)
-
-  ;; startup test web server
-  (core/start-jetty)
-
-  ;; start the task runner
-  (task/start-task-runner!))
+  (metabase.models.setting/set :site-name "Metabase Test") ; add any global settings defaults
+  (load-test-datasets)                                     ; Load the test datasets
+  (core/start-jetty)                                       ; startup test web server
+  (task/start-task-runner!))                               ; start the task runner
 
 
 (defn test-teardown

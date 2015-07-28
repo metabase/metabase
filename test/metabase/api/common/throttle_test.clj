@@ -99,10 +99,10 @@
     (attempt 1 :d)))
 
 ;; Check that the interal list for the throttler doesn't keep growing after throttling starts
-(expect [0 4]
+(expect [0 3]
   [(do (reset! (:attempts test-throttler) '()) ; reset it to 0
        (count @(:attempts test-throttler)))
-   (do (attempt 1000)
+   (do (attempt 10)
        (count @(:attempts test-throttler)))])
 
 ;; Check that attempts clear after the TTL

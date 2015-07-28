@@ -43,39 +43,41 @@
             *sel-disable-logging* true]
     (sync-in-context driver database
       (fn []
-        (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
+        (let [start-time (System/currentTimeMillis)]
+          (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
 
-        (let [active-table-names (active-table-names driver database)
-              table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
-          (assert (set? active-table-names) "active-table-names should return a set.")
-          (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
+          (let [active-table-names (active-table-names driver database)
+                table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
+            (assert (set? active-table-names) "active-table-names should return a set.")
+            (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
 
-          ;; First, let's mark any Tables that are no longer active as such.
-          ;; These are ones that exist in table-name->id but not in active-table-names.
-          (doseq [[table-name table-id] table-name->id]
-            (when-not (contains? active-table-names table-name)
-              (upd Table table-id :active false)
-              (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
+            ;; First, let's mark any Tables that are no longer active as such.
+            ;; These are ones that exist in table-name->id but not in active-table-names.
+            (doseq [[table-name table-id] table-name->id]
+              (when-not (contains? active-table-names table-name)
+                (upd Table table-id :active false)
+                (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
 
-              ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
-              (k/update Field
-                        (k/where {:table_id table-id})
-                        (k/set-fields {:active false}))))
+                ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
+                (k/update Field
+                          (k/where {:table_id table-id})
+                          (k/set-fields {:active false}))))
 
-          ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
-          (let [existing-table-names (set (keys table-name->id))
-                new-table-names      (set/difference active-table-names existing-table-names)]
-            (when (seq new-table-names)
-              (log/debug (u/format-color 'blue "Found new tables: %s" new-table-names))
-              (doseq [new-table-name new-table-names]
-                (ins Table :db_id (:id database), :active true, :name new-table-name)))))
+            ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
+            (let [existing-table-names (set (keys table-name->id))
+                  new-table-names      (set/difference active-table-names existing-table-names)]
+              (when (seq new-table-names)
+                (log/debug (u/format-color 'blue "Found new tables: %s" new-table-names))
+                (doseq [new-table-name new-table-names]
+                  (ins Table :db_id (:id database), :active true, :name new-table-name)))))
 
-        ;; Now sync the active tables
-        (->> (sel :many Table :db_id (:id database) :active true)
-             (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
-             (sync-database-active-tables! driver))
+          ;; Now sync the active tables
+          (->> (sel :many Table :db_id (:id database) :active true)
+               (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
+               (sync-database-active-tables! driver))
 
-        (log/info (u/format-color 'magenta "Finished syncing %s database %s." (name (:engine database)) (:name database)))))))
+          (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
+                                    (- (System/currentTimeMillis) start-time))))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
@@ -146,7 +148,7 @@
 
         (sync-table-fields-metadata! driver table)
         (swap! finished-tables-count inc)
-        (log/info (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
+        (log/debug (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
 
 
 ;; ## sync-table steps.
