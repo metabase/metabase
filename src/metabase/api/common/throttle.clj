@@ -49,21 +49,23 @@
 (declare calculate-delay
          remove-old-attempts)
 
-(defrecord Throttler [;; Name of the API field/value being checked. Used to generate appropriate API error messages, so they'll be displayed in the
-                      ;; right part of the screen
+(defrecord Throttler [;; Name of the API field/value being checked. Used to generate appropriate API error messages, so
+                      ;; they'll be displayed on the right part of the screen
                       ^Keyword exception-field-key
-                      ;; [Internal] List of attempt entries. These are pairs of [key timestamp (ms)], e.g. ["cam@metabase.com" 1438045261132]
+                      ;; [Internal] List of attempt entries. These are pairs of [key timestamp (ms)],
+                      ;; e.g. ["cam@metabase.com" 1438045261132]
                       ^Atom    attempts
                       ;; Amount of time to keep an entry in ATTEMPTS before dropping it.
                       ^Integer attempt-ttl-ms
                       ;; Number of attempts allowed with a given key before throttling is applied.
                       ^Integer attempts-threshold
-                      ;; Once throttling is in effect, initial delay before allowing another attempt. This grows according to DELAY-EXPONENT.
+                      ;; Once throttling is in effect, initial delay before allowing another attempt. This grows
+                      ;; according to DELAY-EXPONENT.
                       ^Integer initial-delay-ms
                       ;; For each subsequent failure past ATTEMPTS-THRESHOLD, increase the delay by
                       ;; (num-attempts-over-theshold ^ DELAY-EXPONENT). e.g. if `initial-delay-ms` is 15 and
-                      ;; `delay-exponent` is 2, the first attempt past attempts-threshold will require the user to wait 15 seconds (15 * 1^2),
-                      ;; the next attempt after that 60 seconds (15 * 2^2), then 135, and so on.
+                      ;; `delay-exponent` is 2, the first attempt past attempts-threshold will require the user to wait
+                      ;; 15 seconds (15 * 1^2), the next attempt after that 60 seconds (15 * 2^2), then 135, and so on.
                       ^Integer delay-exponent])
 
 ;; These are made private because you should use `make-throttler` instead.
@@ -109,7 +111,8 @@
   (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan @(:attempts throttler))) ;; TODO - remove debug logging
   (remove-old-attempts throttler)
   (when-let [delay-ms (calculate-delay throttler keyy)]
-    (let [message (format "Too many attempts! You must wait %d seconds before trying again." (int (math/round (/ delay-ms 1000))))]
+    (let [message (format "Too many attempts! You must wait %d seconds before trying again."
+                          (int (math/round (/ delay-ms 1000))))]
       (throw (ex-info message {:status-code 400
                                :errors      {exception-field-key message}}))))
   (swap! attempts conj [keyy (System/currentTimeMillis)]))
