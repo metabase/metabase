@@ -94,10 +94,8 @@
      (defendpoint POST [:as {{:keys [email]} :body}]
        (throttle/check email-throttler email)
        ...)"
-  [^Throttler {:keys [attempts exception-field-key], :as throttler} keyy]
-  {:pre [(or (= (type throttler) Throttler)
-             (println "THROTTLER IS: " (type throttler)))
-         keyy]}
+  [^Throttler {:keys [attempts exception-field-key], :as throttler} keyy] ; technically, keyy can be nil so you can record *all* attempts
+  {:pre [(= (type throttler) Throttler)]}
   (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan @(:attempts throttler))) ;; TODO - remove debug logging
   (remove-old-attempts throttler)
   (when-let [delay-ms (calculate-delay throttler keyy)]
