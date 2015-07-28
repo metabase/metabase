@@ -82,7 +82,7 @@
   "Create a new `Throttler`.
 
      (require '[metabase.api.common.throttle :as throttle])
-     (def email-throttler (throttle/make-throttler :attempts-threshold 10))"
+     (def email-throttler (throttle/make-throttler :email, :attempts-threshold 10))"
   [exception-field-key & {:as kwargs}]
   (map->Throttler (merge throttler-defaults kwargs {:attempts            (atom '())
                                                     :exception-field-key exception-field-key})))
