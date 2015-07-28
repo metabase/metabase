@@ -279,7 +279,7 @@ CardControllers.controller('CardDetail', [
                     return false;
                 }
             },
-            cellClickedFn: function(rowIndex, columnIndex) {
+            cellClickedFn: function(rowIndex, columnIndex, filter) {
                 if (!queryResult) return false;
 
                 // lookup the coldef and cell value of the cell we are taking action on
@@ -310,7 +310,11 @@ CardControllers.controller('CardDetail', [
 
                     // run it
                     runQuery(card.dataset_query);
-                }
+                } else {
+                    Query.addFilter(card.dataset_query.query);
+                    Query.updateFilter(card.dataset_query.query, card.dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    runQuery(card.dataset_query);
+                 }
             },
             followForeignKeyFn: function(fk) {
                 if (!queryResult || !fk) return false;
