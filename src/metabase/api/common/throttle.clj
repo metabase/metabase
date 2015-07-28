@@ -6,7 +6,7 @@
 ;;; # THROTTLING
 ;;
 ;; A `Throttler` is a simple object used for throttling API endpoints. It keeps track of all calls to an API endpoint
-;; with some value over some past period of time. If the number of calls with this values exceeds some threshold,
+;; with some value over some past period of time. If the number of calls with this value exceeds some threshold,
 ;; an exception is thrown, telling a user they must wait some period of time before trying again.
 ;;
 ;; ### EXAMPLE
