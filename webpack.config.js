@@ -72,7 +72,7 @@ module.exports = {
             'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
             'angular-sanitize':     __dirname + '/node_modules/angular-sanitize/angular-sanitize.min.js',
             // angular 3rd-party
-            'angular-bootstrap':    __dirname + '/node_modules/angular-bootstrap/dist/ui-bootstrap-tpls.min.js',
+            'angular-ui-bootstrap': __dirname + '/node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
             'angular-gridster':     __dirname + '/node_modules/angular-gridster/dist/angular-gridster.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',

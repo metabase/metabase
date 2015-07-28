@@ -13,11 +13,11 @@ import 'angular-route';
 import 'angular-sanitize';
 
 // angular 3rd-party:
-import 'angular-bootstrap';
 import 'angular-cookie';
 import 'angular-gridster';
 import 'angular-http-auth'; // currently pulled from unofficial fork: https://github.com/witoldsz/angular-http-auth/pull/100
 import 'angular-readable-time';
+import 'angular-ui-bootstrap';
 import 'angular-xeditable';
 import 'ng-sortable';
 import 'angularytics';
