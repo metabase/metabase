@@ -107,7 +107,7 @@
   (let [[[_ most-recent-attempt] :as recent-attempts] (filter (fn [[attempt-email _]]
                                                                 (= email attempt-email))
                                                               @failed-login-attempts)]
-    (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan recent-attempts)) ;; TODO - remove debug loggin
+    (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan recent-attempts)) ;; TODO - remove debug logging
     (when-let [login-delay (calculate-login-delay most-recent-attempt (count recent-attempts))]
       (let [message (format "Too many recent failed logins! You must wait %d seconds before trying again." login-delay)]
         (throw (ex-info message {:status-code 400
