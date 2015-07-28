@@ -78,16 +78,6 @@
    :delay-exponent     1.5
    :attempt-ttl-ms     (* 1000 60 60)})
 
-;;
-;;
-;;
-;; Then call `check` within the body of an endpoint with some value to apply throttling.
-;;
-;;    (defendpoint POST [:as {{:keys [email]} :body}]
-;;      (throttle/check email-throttler email)
-;;      ...)
-
-
 (defn make-throttler
   "Create a new `Throttler`.
 
