@@ -41,76 +41,76 @@
 
 ;;; # tests for check
 
-(defn- login
+(defn- attempt
   ([n]
-   (login n (gensym)))
+   (attempt n (gensym)))
   ([n k]
-   (let [login-once (fn []
+   (let [attempt-once (fn []
                       (try
                         (throttle/check test-throttler k)
                         :success
                         (catch Throwable e
                           (:test (:errors (ex-data e))))))]
-     (vec (repeatedly n login-once)))))
+     (vec (repeatedly n attempt-once)))))
 
-;; a couple of quick "logins" shouldn't trigger the throttler
+;; a couple of quick "attempts" shouldn't trigger the throttler
 (expect [:success :success]
-  (login 2))
+  (attempt 2))
 
 ;; nor should 3
 (expect [:success :success :success]
-  (login 3))
+  (attempt 3))
 
 ;; 4 in quick succession should trigger it
 (expect [:success :success :success "Too many attempts! You must wait 0 seconds before trying again."] ; rounded down
-  (login 4))
+  (attempt 4))
 
 ;; Check that throttling correctly lets you try again after certain delay
 (expect [[:success :success :success "Too many attempts! You must wait 0 seconds before trying again."]
          [:success]]
-  [(login 4 :a)
+  [(attempt 4 :a)
    (do
      (Thread/sleep 2)
-     (login 1 :a))])
+     (attempt 1 :a))])
 
 ;; Next attempt should be throttled, however
 (expect [:success "Too many attempts! You must wait 0 seconds before trying again."]
   (do
-    (login 4 :b)
+    (attempt 4 :b)
     (Thread/sleep 2)
-    (login 2 :b)))
+    (attempt 2 :b)))
 
 ;; Sleeping 2 ms after that shouldn't work due to exponential growth
 (expect ["Too many attempts! You must wait 0 seconds before trying again."]
   (do
-    (login 4 :c)
+    (attempt 4 :c)
     (Thread/sleep 2)
-    (login 2 :c)
+    (attempt 2 :c)
     (Thread/sleep 2)
-    (login 1 :c)))
+    (attempt 1 :c)))
 
 ;; Sleeping 8 ms however should work
 (expect [:success]
   (do
-    (login 4 :d)
+    (attempt 4 :d)
     (Thread/sleep 2)
-    (login 2 :d)
+    (attempt 2 :d)
     (Thread/sleep 8)
-    (login 1 :d)))
+    (attempt 1 :d)))
 
 ;; Check that the interal list for the throttler doesn't keep growing after throttling starts
 (expect [0 4]
   [(do (reset! (:attempts test-throttler) '()) ; reset it to 0
        (count @(:attempts test-throttler)))
-   (do (login 1000)
+   (do (attempt 1000)
        (count @(:attempts test-throttler)))])
 
-;; Check that login attempts clear after the TTL
+;; Check that attempts clear after the TTL
 (expect [0 3 1]
   [(do (reset! (:attempts test-throttler) '()) ; reset it to 0
        (count @(:attempts test-throttler)))
-   (do (login 3)
+   (do (attempt 3)
        (count @(:attempts test-throttler)))
    (do (Thread/sleep 10)
-       (login 1)
+       (attempt 1)
        (count @(:attempts test-throttler)))])
