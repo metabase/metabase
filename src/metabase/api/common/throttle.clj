@@ -51,7 +51,7 @@
 
 (defrecord Throttler [;; Name of the API field/value being checked. Used to generate appropriate API error messages, so they'll be displayed in the
                       ;; right part of the screen
-                      ^Keyword field-name
+                      ^Keyword exception-field-key
                       ;; [Internal] List of attempt entries. These are pairs of [key timestamp (ms)], e.g. ["cam@metabase.com" 1438045261132]
                       ^Atom    attempts
                       ;; Amount of time to keep an entry in ATTEMPTS before dropping it.
@@ -91,9 +91,9 @@
 
      (require '[metabase.api.common.throttle :as throttle])
      (def email-throttler (throttle/make-throttler :attempts-threshold 10))"
-  [field-name & {:as kwargs}]
+  [exception-field-key & {:as kwargs}]
   (map->Throttler (merge throttler-defaults kwargs {:attempts   (atom '())
-                                                    :field-name field-name})))
+                                                    :exception-field-key exception-field-key})))
 
 (defn check
   "Throttle an API call based on values of KEYY. Each call to this function will record KEYY to THROTTLER's internal list;
@@ -102,7 +102,7 @@
      (defendpoint POST [:as {{:keys [email]} :body}]
        (throttle/check email-throttler email)
        ...)"
-  [^Throttler {:keys [attempts field-name], :as throttler} keyy]
+  [^Throttler {:keys [attempts exception-field-key], :as throttler} keyy]
   {:pre [(or (= (type throttler) Throttler)
              (println "THROTTLER IS: " (type throttler)))
          keyy]}
@@ -111,7 +111,7 @@
   (when-let [delay-ms (calculate-delay throttler keyy)]
     (let [message (format "Too many attempts! You must wait %d seconds before trying again." (int (math/round (/ delay-ms 1000))))]
       (throw (ex-info message {:status-code 400
-                               :errors      {field-name message}}))))
+                               :errors      {exception-field-key message}}))))
   (swap! attempts conj [keyy (System/currentTimeMillis)]))
 
 
