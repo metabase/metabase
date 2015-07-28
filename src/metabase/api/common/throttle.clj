@@ -63,8 +63,8 @@
                       ;; according to DELAY-EXPONENT.
                       ^Integer initial-delay-ms
                       ;; For each subsequent failure past ATTEMPTS-THRESHOLD, increase the delay by
-                      ;; (num-attempts-over-theshold ^ DELAY-EXPONENT). e.g. if `initial-delay-ms` is 15 and
-                      ;; `delay-exponent` is 2, the first attempt past attempts-threshold will require the user to wait
+                      ;; (num-attempts-over-theshold ^ DELAY-EXPONENT). e.g. if INITIAL-DELAY-MS is 15 and
+                      ;; DELAY-EXPONENT is 2, the first attempt past attempts-threshold will require the user to wait
                       ;; 15 seconds (15 * 1^2), the next attempt after that 60 seconds (15 * 2^2), then 135, and so on.
                       ^Integer delay-exponent])
 
