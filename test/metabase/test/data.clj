@@ -119,8 +119,6 @@
                      (when special-type
                        (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
                        (upd Field (:id @field) :special_type (name special-type)))))))
-
-             (log/info (color/blue "Finished."))
              db))))))
 
 (defn remove-database!
