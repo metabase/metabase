@@ -96,7 +96,6 @@
        ...)"
   [^Throttler {:keys [attempts exception-field-key], :as throttler} keyy] ; technically, keyy can be nil so you can record *all* attempts
   {:pre [(= (type throttler) Throttler)]}
-  (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan @(:attempts throttler))) ;; TODO - remove debug logging
   (remove-old-attempts throttler)
   (when-let [delay-ms (calculate-delay throttler keyy)]
     (let [message (format "Too many attempts! You must wait %d seconds before trying again."
@@ -118,15 +117,18 @@
 
 (defn- calculate-delay
   "Calculate the delay in milliseconds, if any, that should be applied to a given THROTTLER / KEYY combination."
-  ([^Throttler {:keys [attempts initial-delay-ms attempts-threshold delay-exponent]} keyy]
+  ([^Throttler throttler keyy]
+   (calculate-delay throttler keyy (System/currentTimeMillis)))
+
+  ([^Throttler {:keys [attempts initial-delay-ms attempts-threshold delay-exponent]} keyy current-time-ms]
    (let [[[_ most-recent-attempt-ms], :as keyy-attempts] (filter (fn [[k _]] (= k keyy)) @attempts)]
      (when most-recent-attempt-ms
        (let [num-recent-attempts         (count keyy-attempts)
-             num-attempts-over-threshold (- num-recent-attempts attempts-threshold)]
+             num-attempts-over-threshold (- (inc num-recent-attempts) attempts-threshold)] ; add one to the sum to account for the current attempt
          (when (> num-attempts-over-threshold 0)
            (let [delay-ms              (* (math/expt num-attempts-over-threshold delay-exponent)
                                           initial-delay-ms)
                  next-login-allowed-at (+ most-recent-attempt-ms delay-ms)
-                 ms-till-next-login    (- next-login-allowed-at (System/currentTimeMillis))]
+                 ms-till-next-login    (- next-login-allowed-at current-time-ms)]
              (when (> ms-till-next-login 0)
                ms-till-next-login))))))))
