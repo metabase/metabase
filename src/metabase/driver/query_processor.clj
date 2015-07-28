@@ -41,7 +41,6 @@
   (fn [query]
     (try (qp query)
          (catch Throwable e
-           (.printStackTrace e)
            {:status     :failed
             :error      (.getMessage e)
             :stacktrace (u/filtered-stacktrace e)

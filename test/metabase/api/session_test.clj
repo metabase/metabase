@@ -34,6 +34,19 @@
   (client :post 400 "session" (-> (user->credentials :rasta)
                                   (assoc :password "something else"))))
 
+;; Test that people get blocked from attempting to login if they try too many times
+;; (Check that throttling works at the API level -- more tests in metabase.api.common.throttle-test)
+(expect
+    [{:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}
+     {:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}]
+  (let [login #(client :post 400 "session" {:email "fakeaccount3000@metabase.com", :password "toucans"})]
+    ;; attempt to log in 10 times
+    (dorun (repeatedly 10 login))
+    ;; throttling should now be triggered
+    [(login)
+     ;; Trying to login immediately again should still return throttling error
+     (login)]))
+
 
 ;; ## DELETE /api/session
 ;; Test that we can logout
