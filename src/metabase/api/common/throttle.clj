@@ -72,7 +72,7 @@
 
 (def ^:private ^:const throttler-defaults
   {:initial-delay-ms   (* 15 1000)
-   :attempts-threshold 5
+   :attempts-threshold 10
    :delay-exponent     1.5
    :attempt-ttl-ms     (* 1000 60 60)})
 
