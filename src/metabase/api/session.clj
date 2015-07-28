@@ -28,13 +28,14 @@
 
 ;; The basic concept here is to keep a list of failed logins over the last hour. This list looks like:
 ;;
-;; (["cam@metabase.com" #inst "2015-07-27T23:34:48.156-00:00"]
-;;  ["cam@metabase.com" #inst "2015-07-27T23:34:32.783-00:00"]
-;;  ["cam@metabase.com" #inst "2015-07-27T23:34:31.666-00:00"])
+;; (["cam@metabase.com" 1438045261132]
+;;  ["cam@metabase.com" 1438045260450]
+;;  ["cam@metabase.com" 1438045259037]
+;;  ["cam@metabase.com" 1438045258204])
 ;;
-;; Every time there's a failed login, push a new pair of [email timestamp] to the front of the list. The list is thus
-;; automatically ordered by date, and we can drop the portion of the list with failed logins that are over an hour
-;; old as needed.
+;; Every time there's a failed login, push a new pair of [email timestamp (milliseconds)] to the front of the list.
+;; The list is thus automatically ordered by date, and we can drop the portion of the list with failed logins that
+;; are over an hour old as needed.
 ;;
 ;; Once a User has some number of failed login attempts over the past hour (e.g. 4), calculate some delay before
 ;; they're allowed to try to login again (e.g., 15 seconds). This number will increase exponentially as the number of
@@ -68,34 +69,35 @@
 (defn- remove-old-failed-login-attempts
   "Remove `failed-login-attempts` older than an hour."
   []
-  (let [one-hour-ago            (java.util.Date. (- (System/currentTimeMillis) (* 60 60 1000)))
-        less-than-one-hour-old? (fn [[_ ^java.util.Date date]]
-                                  (.after date one-hour-ago))]
+  (let [one-hour-ago            (- (System/currentTimeMillis) (* 1000 60 60))
+        less-than-one-hour-old? (fn [[_ timestamp]]
+                                  (> timestamp one-hour-ago))]
     (reset! failed-login-attempts (take-while less-than-one-hour-old? @failed-login-attempts))))
 
 (defn- push-failed-login-attempt
   "Record a failed login attempt. Add a new pair to `failed-login-attempts` for EMAIL."
   [email]
   {:pre [(string? email)]}
-  ;; First filter out old failed login attempts
-  (remove-old-failed-login-attempts)
-  ;; Now push the new one to the front
-  (swap! failed-login-attempts conj [email (java.util.Date.)]))
+  (remove-old-failed-login-attempts)                                     ; First filter out old failed login attempts
+  (swap! failed-login-attempts conj [email (System/currentTimeMillis)])) ; Now push the new one to the front
 
 (defn- calculate-login-delay
   "Calculate the appropriate delay (in seconds) before a user should be allowed to login again based on
    MOST-RECENT-ATTEMPT and NUM-RECENT-ATTEMPTS. This function returns `nil` if there is no delay that should be required."
-  [^java.util.Date most-recent-attempt num-recent-attempts]
-  (when most-recent-attempt
-    (assert (= (type most-recent-attempt) java.util.Date))
+  [most-recent-attempt-ms num-recent-attempts]
+  (when most-recent-attempt-ms
     (let [num-attempts-over-threshold (- num-recent-attempts failed-login-attempts-throttling-threshold)]
       (when (> num-attempts-over-threshold 0)
-        (let [delay-seconds           (* (math/expt num-attempts-over-threshold failed-login-delay-exponent)
-                                         failed-login-attempts-initial-delay-seconds)
-              last-login+delay-ms     (+ (.getTime most-recent-attempt) (* delay-seconds 1000))
-              seconds-till-next-login (int (math/round (/ (- last-login+delay-ms (System/currentTimeMillis)) 1000)))]
-          (when (> seconds-till-next-login 0)
-            seconds-till-next-login))))))
+        (let [delay-ms                (* (math/expt num-attempts-over-threshold failed-login-delay-exponent)
+                                         failed-login-attempts-initial-delay-seconds
+                                         1000)
+              next-login-allowed-at   (+ most-recent-attempt-ms delay-ms)
+              ms-till-next-login      (- next-login-allowed-at (System/currentTimeMillis))]
+          (when (> ms-till-next-login 0)
+            ;; convert to seconds
+            (-> (/ ms-till-next-login 1000)
+                math/round
+                int)))))))
 
 (defn- check-throttle-login-attempts
   "Throw an Exception if a User has tried (and failed) to log in too many times recently."
@@ -104,11 +106,11 @@
   ;; Remove any out-of-date failed login attempts
   (remove-old-failed-login-attempts)
   ;; Now count the number of recent attempts with this email
-  (let [[[_ most-recent-attempt] :as recent-attempts] (filter (fn [[attempt-email _]]
-                                                                (= email attempt-email))
-                                                              @failed-login-attempts)]
+  (let [[[_ most-recent-attempt-ms] :as recent-attempts] (filter (fn [[attempt-email _]]
+                                                                   (= email attempt-email))
+                                                                 @failed-login-attempts)]
     (println "RECENT ATTEMPTS:\n" (metabase.util/pprint-to-str 'cyan recent-attempts)) ;; TODO - remove debug logging
-    (when-let [login-delay (calculate-login-delay most-recent-attempt (count recent-attempts))]
+    (when-let [login-delay (calculate-login-delay most-recent-attempt-ms (count recent-attempts))]
       (let [message (format "Too many recent failed logins! You must wait %d seconds before trying again." login-delay)]
         (throw (ex-info message {:status-code 400
                                  :errors      {:email message}}))))))
