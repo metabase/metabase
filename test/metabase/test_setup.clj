@@ -67,25 +67,27 @@
 (defn load-test-datasets
   "Call `load-data!` on all the datasets we're testing against."
   []
-  (doseq [dataset-name datasets/test-dataset-names]
+  (u/pdoseq [dataset-name datasets/test-dataset-names]
     (log/info (format "Loading test data: %s..." (name dataset-name)))
     (let [dataset (datasets/dataset-name->dataset dataset-name)]
       (datasets/load-data! dataset)
 
       ;; Check that dataset is loaded and working
       (assert (Table (datasets/table-name->id dataset :venues))
-              (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
+        (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
 
 (defn test-startup
   {:expectations-options :before-run}
   []
-  (log/info "Setting up test DB and running migrations...")
-  (db/setup-db :auto-migrate true)
-
-  (metabase.models.setting/set :site-name "Metabase Test") ; add any global settings defaults
-  (load-test-datasets)                                     ; Load the test datasets
-  (core/start-jetty)                                       ; startup test web server
-  (task/start-task-runner!))                               ; start the task runner
+  ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
+  (let [setup-db           (future (time (do (log/info "Setting up test DB and running migrations...")
+                                             (db/setup-db :auto-migrate true)
+                                             (load-test-datasets)
+                                             (metabase.models.setting/set :site-name "Metabase Test"))))
+        start-task-runner! (future (task/start-task-runner!))]
+    (core/start-jetty)
+    @setup-db
+    @start-task-runner!))
 
 
 (defn test-teardown
