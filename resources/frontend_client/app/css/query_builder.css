@@ -586,6 +586,7 @@
     border-right: 1px solid var(--border-color);
 }
 
-.QueryBuilder .Entity-title {
+.QueryBuilder .Entity-title,
+.QueryBuilder .Entity-attribution {
     margin-left: 0.5rem;
 }
