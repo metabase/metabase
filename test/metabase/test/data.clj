@@ -88,7 +88,6 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (log/info (format "Creating %s database %s..." (name engine) database-name))
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
