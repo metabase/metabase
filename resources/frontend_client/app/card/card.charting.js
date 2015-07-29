@@ -375,7 +375,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
-                var values = valueFormatter(d.data.value);
+                var values = String(d.data.value);
                 if (card.display === 'pie') {
                     // TODO: this is not the ideal way to calculate the percentage, but it works for now
                     values += " (" + valueFormatter((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
