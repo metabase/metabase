@@ -57,11 +57,9 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     });
 }]);
 
-Corvus.run(["AppState", "AppAnalytics", "editableOptions", "editableThemes", function(AppState, AppAnalytics, editableOptions, editableThemes) {
+Corvus.run(["AppState", "editableOptions", "editableThemes", function(AppState, editableOptions, editableThemes) {
     // initialize app state
     AppState.init();
-
-    AppAnalytics.init();
 
     // set `default` theme
     editableOptions.theme = 'default';

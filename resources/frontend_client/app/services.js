@@ -161,6 +161,12 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             }
         };
 
+        // listen for location changes and use that as a trigger for page view tracking
+        $rootScope.$on('$locationChangeSuccess', function() {
+            // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
+            MetabaseAnalytics.trackPageView($location.path());
+        });
+
         // listen for all route changes so that we can update organization as appropriate
         $rootScope.$on('$routeChangeSuccess', service.routeChanged);
 
@@ -205,21 +211,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
         return service;
     }
 ]);
-
-CorvusServices.service('AppAnalytics', ['$rootScope', '$location', function($rootScope, $location) {
-    // This is just a light angular wrapper around MetabaseAnalytics
-
-    this.init = function() {
-        // placeholder
-    };
-
-    // listen for location changes and use that as a trigger for page view tracking
-    $rootScope.$on('$locationChangeSuccess', function() {
-        // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
-        MetabaseAnalytics.trackPageView($location.path());
-    });
-
-}]);
 
 CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, User) {
     this.perms = [{
