@@ -31,6 +31,14 @@
 	border-bottom: 10px solid transparent;
 }
 
+.PopoverBody .Form-input {
+	font-size: 1rem;
+}
+
+.PopoverBody .Form-field {
+	margin-bottom: 0.75rem;
+}
+
 /* create a slightly larger arrow on the top for border purposes */
 .tether-element-attached-top .PopoverBody--withArrow:before {
 	top: -20px;

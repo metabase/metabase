@@ -190,7 +190,7 @@ export default React.createClass({
 
         return (
             <form className="Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset flex align-center mr4">
+                <div className="Form-offset flex align-center mr4 mb2">
                     <h3 className="flex-full">Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
                         <Icon name='close' width="12px" height="12px"/>
@@ -219,7 +219,7 @@ export default React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms">
+                        <select className="mt1" ref="public_perms">
                             {privacyOptions}
                         </select>
                     </label>
