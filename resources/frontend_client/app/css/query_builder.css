@@ -8,7 +8,6 @@
 
 #react_qb_viz {
     z-index: 1;
-    overflow: hidden;
 }
 
 /* @layout */
@@ -45,11 +44,6 @@
 
 .Query-section.Query-section--right {
     justify-content: flex-end;
-}
-
-.QueryVisualization {
-    display: flex;
-    flex: 1;
 }
 
 .QueryName {
