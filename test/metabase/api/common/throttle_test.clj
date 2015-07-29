@@ -102,7 +102,7 @@
 (expect [0 3]
   [(do (reset! (:attempts test-throttler) '()) ; reset it to 0
        (count @(:attempts test-throttler)))
-   (do (attempt 10)
+   (do (attempt 5)
        (count @(:attempts test-throttler)))])
 
 ;; Check that attempts clear after the TTL
