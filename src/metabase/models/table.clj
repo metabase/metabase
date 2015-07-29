@@ -12,6 +12,10 @@
   "Valid values for `Table.entity_type` (field may also be `nil`)."
   #{:person :event :photo :place})
 
+(def ^:const visibility-types
+"Valid values for `Table.visibility_type` (field may also be `nil`)."
+#{:hidden :technical :cruft})
+
 (defrecord TableInstance []
   clojure.lang.IFn
   (invoke [this k]
@@ -23,6 +27,7 @@
   [(table :metabase_table)
    (hydration-keys table)
    (types :entity_type :keyword)
+   (types :visibility_type :keyword)
    timestamped]
 
   (post-select [_ {:keys [id db db_id description] :as table}]
