@@ -1,5 +1,7 @@
 'use strict';
-/*global _, ga, document, confirm*/
+/*global _, document, confirm*/
+
+import MetabaseAnalytics from '../lib/metabase_analytics';
 
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
@@ -9,6 +11,7 @@ import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from '../query_builder/query';
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
+
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -69,8 +72,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'AppAnalytics', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, AppAnalytics, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -148,12 +151,12 @@ CardControllers.controller('CardDetail', [
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
 
-                AppAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
             },
             notifyCardUpdatedFn: function(updatedCard) {
                 setCard(updatedCard, { resetDirty: true, replaceState: true });
 
-                AppAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -503,7 +506,7 @@ CardControllers.controller('CardDetail', [
                 renderAll();
             });
 
-            AppAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
         }
 
         function getDefaultQuery() {
@@ -715,7 +718,7 @@ CardControllers.controller('CardDetail', [
                 queryResult = null;
                 card.display = "table";
 
-                AppAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
             }
         }
 

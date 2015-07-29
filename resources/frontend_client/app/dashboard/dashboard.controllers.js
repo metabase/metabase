@@ -1,5 +1,8 @@
 'use strict';
-/*global _, ga*/
+/*global _*/
+
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
 
 //  Dashboard Controllers
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
@@ -34,7 +37,7 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
 
 }]);
 
-DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'AppAnalytics', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, AppAnalytics, Dashboard, DashCard) {
+DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {
 
     // $scope.dashboard: single Card being displayed/edited
     // $scope.error: any relevant error message to be displayed
@@ -105,9 +108,9 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
 
         // Tracking
         if ($scope.gridsterOptions.resizable.enabled) {
-            AppAnalytics.trackEvent('Dashboard', 'Rearrange Finished');
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Finished');
         } else {
-            AppAnalytics.trackEvent('Dashboard', 'Rearrange Started');
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Started');
         }
     };
 

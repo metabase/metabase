@@ -1,7 +1,9 @@
 'use strict';
 /*jslint browser:true */
-/*global _, ga*/
+/*global _*/
 /* Services */
+
+import MetabaseAnalytics from './lib/metabase_analytics';
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
@@ -205,35 +207,16 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 ]);
 
 CorvusServices.service('AppAnalytics', ['$rootScope', '$location', function($rootScope, $location) {
+    // This is just a light angular wrapper around MetabaseAnalytics
 
     this.init = function() {
         // placeholder
     };
 
-    // track a pageview (a.k.a. route change)
-    this.trackPageView = function(url) {
-        if (url) {
-            // scrub query builder urls to remove serialized json queries from path
-            url = (url.lastIndexOf('/q/', 0) === 0) ? '/q/' : url;
-
-            ga('set', 'page', url);
-            ga('send', 'pageview', url);
-        }
-    };
-
-    // track an event
-    this.trackEvent = function(category, action, label, value) {
-        // category & action are required, rest are optional
-        if (category && action) {
-            ga('send', 'event', category, action, label, value);
-        }
-    };
-
     // listen for location changes and use that as a trigger for page view tracking
-    var analytics = this;
     $rootScope.$on('$locationChangeSuccess', function() {
         // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
-        analytics.trackPageView($location.path());
+        MetabaseAnalytics.trackPageView($location.path());
     });
 
 }]);
