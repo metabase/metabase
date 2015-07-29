@@ -1,10 +1,16 @@
-## Administration Guide
-### Installation
-### Connecting to databases
-### Managing user accounts
-### Annotating data for your users
-### Setting up email
-### Production Deployments
+# Administration Guide
+It is assumed you've already installed a copy of Metabase. If you need help doing that, check out our [Installation Guide](www.github.com/metabase/metabase-init/issues/X)
+
+## Connecting to databases
+
+
+## Managing user accounts
+
+## Annotating data for your users
+
+## Setting up email
+
+## Production Deployments
 * Beanstalk
 * running a container
     * injecting database variables vs using an embedded database
