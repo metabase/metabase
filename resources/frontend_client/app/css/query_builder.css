@@ -1,6 +1,16 @@
 :root {
     --selection-color: #ccdff6;
 }
+
+#react_qb_editor {
+    z-index: 2;
+}
+
+#react_qb_viz {
+    z-index: 1;
+    overflow: hidden;
+}
+
 /* @layout */
 .QueryBuilder {
     transition: margin-right 0.35s;
@@ -111,7 +121,7 @@
 .SelectionItems {
     overflow-y: scroll;
     max-height: 340px;
-    min-width: 320px;
+    max-width: 320px;
 }
 
 .SelectionItems.SelectionItems--open {
@@ -252,6 +262,8 @@
     width: 100%;
 }
 
+/* GUI BUILDER */
+
 .GuiBuilder {
     position: relative;
     display: flex;
@@ -259,61 +271,27 @@
     font-size: 0.9em;
     z-index: 2;
     background-color: #fff;
+
     border: 1px solid #e0e0e0;
 }
 
-.GuiBuilder-section:not(:last-child) {
-    border-right: 1px solid #e0e0e0;
-}
-
-.GuiBuilder-row:not(:last-child) {
+.GuiBuilder-row {
     border-bottom: 1px solid #e0e0e0;
 }
 
-/* for medium breakpoint only expand if data reference is not shown */
-@media screen and (--breakpoint-min-md) {
-    .GuiBuilder {
-        font-size: 1.0em;
-    }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
-        flex-direction: row;
-    }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:not(:last-child) {
-        border-right: 1px solid #e0e0e0;
-        border-bottom: none;
-    }
-}
-
-/* for large breakpoint always expand */
-@media screen and (--breakpoint-min-lg) {
-    .GuiBuilder {
-        font-size: 1.1em;
-        flex-direction: row;
-    }
-    .GuiBuilder-row:not(:last-child) {
-        border-right: 1px solid #e0e0e0;
-        border-bottom: none;
-    }
+.GuiBuilder-row:last-child {
+    border-bottom: none;
 }
 
 .GuiBuilder-section {
     position: relative;
     min-height: 48px;
     min-width: 120px;
+    border-right: 1px solid #e0e0e0;
 }
 
-.GuiBuilder-data {
-    z-index: 1; /* moved the arrow thingy above the filter outline */
-}
-
-.GuiBuilder-sort-limit {
-    min-width: 0px;
-}
-
-.EllipsisButton {
-    font-size: 3em;
-    position: relative;
-    top: -0.8rem;
+.GuiBuilder-section:last-child {
+    border-right: none;
 }
 
 .GuiBuilder-section-label {
@@ -325,11 +303,58 @@
     padding-right: 10px;
 }
 
+/* for medium breakpoint only expand if data reference is not shown */
+@media screen and (--breakpoint-min-md) {
+    .GuiBuilder {
+        font-size: 1.0em;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
+        flex-direction: row;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-section:last-child {
+        border-right: 1px solid #e0e0e0;
+    }
+}
+
+/* for large breakpoint always expand */
+@media screen and (--breakpoint-min-lg) {
+    .GuiBuilder {
+        font-size: 1.1em;
+        flex-direction: row;
+    }
+    .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .GuiBuilder-section:last-child {
+        border-right: 1px solid #e0e0e0;
+    }
+}
+
+.QueryOption {
+    color: color(var(--base-grey) shade(20%));
+    font-weight: 700;
+}
+
+.QueryOption:hover {
+    cursor: pointer;
+}
+
 /* @transitions */
 
 .AddToDashSuccess {
     max-width: 260px;
     text-align: center;
+}
+
+/* DATA SECTION */
+
+.GuiBuilder-data {
+    z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 /* FILTER BY SECTION */
@@ -350,19 +375,24 @@
 .Filter-section-value.selected .QueryOption {
     color: var(--purple-color);
 }
-.Filter-section-value .QueryOption:not(.QueryOption--date):before,
-.Filter-section-value .QueryOption:not(.QueryOption--date):after {
+
+/* put quotes around numeric or text values */
+.Filter-section-value .QueryOption.QueryOption--text:before,
+.Filter-section-value .QueryOption.QueryOption--text:after,
+.Filter-section-value .QueryOption.QueryOption--number:before,
+.Filter-section-value .QueryOption.QueryOption--number:after,
+.Filter-section-value .QueryOption.QueryOption--select:before,
+.Filter-section-value .QueryOption.QueryOption--select:after {
     content: '"';
+}
+
+.Filter-section-sort-field.selected .QueryOption,
+.Filter-section-sort-direction.selected .QueryOption {
+    color: inherit;
 }
 
 .Filter-section-value {
     padding-right: 0.5em;
-}
-
-.Filter-section-value:not(:nth-child(1),:nth-child(2)):before {
-    content: " and ";
-    font-weight: 700;
-    margin-right: 0.5em;
 }
 
 .FilterPopover .ColumnarSelector-row--selected,
@@ -404,13 +434,28 @@
     color: var(--green-color);
 }
 
-.QueryOption {
-    color: color(var(--base-grey) shade(20%));
-    font-weight: 700;
+/* SORT/LIMIT SECTION */
+
+.GuiBuilder-sort-limit {
+    min-width: 0px;
 }
 
-.QueryOption:hover {
-    cursor: pointer;
+.EllipsisButton {
+    font-size: 3em;
+    position: relative;
+    top: -0.8rem;
+}
+
+/* NATIVE */
+
+.NativeQueryEditor .GuiBuilder-data {
+    border-right: none;
+}
+
+/* VISUALIZATION SETTINGS */
+
+.VisualizationSettings .GuiBuilder-section {
+    border-right: none !important;
 }
 
 .ChartType-button {
@@ -442,18 +487,20 @@
 }
 
 .RunButton {
-    position: relative;
     z-index: 1;
-    transition: margin-top 0.5s;
-    margin-top: -150px;
-}
-
-.RunButton.RunButton--isDirty.RunButton--canRun,
-.RunButton.RunButton--isRunning {
     margin-top: 0;
+    opacity: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .22);
+    transition: margin-top 0.5s, opacity 0.5s;
 }
 
-/* data reference */
+.RunButton.RunButton--hidden {
+    margin-top: -110px;
+    opacity: 0;
+}
+
+/* DATA REFERENCE */
+
 .DataReference {
     z-index: -1;
     position: absolute;
@@ -538,4 +585,9 @@
 .ace_gutter-layer {
     background-color: #F9FBFC;
     border-right: 1px solid var(--border-color);
+}
+
+.QueryBuilder .Entity-title,
+.QueryBuilder .Entity-attribution {
+    margin-left: 0.5rem;
 }

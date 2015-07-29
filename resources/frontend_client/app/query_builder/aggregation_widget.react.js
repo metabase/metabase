@@ -3,6 +3,7 @@
 
 import SelectionModule from './selection_module.react';
 import FieldWidget from './field_widget.react';
+import Icon from './icon.react';
 
 import Query from './query';
 
@@ -91,6 +92,7 @@ export default React.createClass({
                         setField={this.setAggregationTarget}
                         isInitiallyOpen={aggregationTargetListOpen}
                     />
+                    <Icon name="chevrondown" width="8px" height="8px" />
                 </div>
             );
         }

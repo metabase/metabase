@@ -109,10 +109,7 @@
      (do (.close reader)
          acc))))
 
-(defn
-  ^{:arglists ([pred? args]
-               [pred? args default])}
-  optional
+(defn optional
   "Helper function for defining functions that accept optional arguments.
    If PRED? is true of the first item in ARGS, a pair like `[first-arg other-args]`
    is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
@@ -126,6 +123,8 @@
         {k nums}))
     (wrap-nums 1 2 3)          -> {:nums [1 2 3]}
     (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
+  {:arglists '([pred? args]
+               [pred? args default])}
   [pred? args & [default]]
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))

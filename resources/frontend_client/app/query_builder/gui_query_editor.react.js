@@ -21,6 +21,7 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
+        options: React.PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: React.PropTypes.bool.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
@@ -205,7 +206,6 @@ export default React.createClass({
 
     renderBreakouts: function() {
         var enabled;
-        var breakoutLabel;
         var breakoutList;
         var addBreakoutButton;
 
@@ -215,19 +215,11 @@ export default React.createClass({
                 !Query.hasEmptyAggregation(this.props.query.query)) {
             enabled = true;
 
-            // only render a label for our breakout if we have a valid breakout clause already
-            if(this.props.query.query.breakout.length > 0) {
-                breakoutLabel = (
-                    <span className="text-bold">
-                        by
-                    </span>
-                );
-            }
-
             // include a button to add a breakout, up to 2 total
             // don't include already used fields
             var usedFields = {};
-            breakoutList = this.props.query.query.breakout.map((breakout, index) => {
+            breakoutList = []
+            this.props.query.query.breakout.forEach((breakout, index) => {
                 var breakoutListOpen = breakout === null;
                 var fieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
 
@@ -239,8 +231,15 @@ export default React.createClass({
                     return null;
                 }
 
-                return (
+                breakoutList.push(
+                    <span key={"_"+index} className="text-bold">
+                        {breakoutList.length > 0 ? "and" : "by"}
+                    </span>
+                );
+
+                breakoutList.push(
                     <FieldWidget
+                        key={index}
                         className="View-section-breakout SelectionModule p1"
                         placeholder='field'
                         field={breakout}
@@ -253,8 +252,8 @@ export default React.createClass({
                 );
             });
 
-            var unusedFieldsCount = this.props.options.breakout_options.fields.length - Object.keys(usedFields).length;
-            if (unusedFieldsCount > 0) {
+            var remainingFieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
+            if (remainingFieldOptions.count > 0) {
                 if (this.props.query.query.breakout.length === 0) {
                     addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
                 } else if (this.props.query.query.breakout.length === 1 &&
@@ -269,11 +268,11 @@ export default React.createClass({
 
         var querySectionClasses = cx({
             "Query-section": true,
+            ml1: true,
             disabled: !enabled
         });
         return (
             <div className={querySectionClasses}>
-                {breakoutLabel}
                 {breakoutList}
                 {addBreakoutButton}
             </div>
@@ -281,56 +280,46 @@ export default React.createClass({
     },
 
     renderSort: function() {
-        var sortList = [];
-        if (this.props.query.query.order_by) {
-            var sortableFields = Query.getSortableFields(this.props.query.query, this.props.options.fields);
+        var sortFieldOptions;
 
-            var component = this;
-            sortList = this.props.query.query.order_by.map(function (order_by, index) {
+        if (this.props.options) {
+            sortFieldOptions = Query.getFieldOptions(
+                this.props.options.fields,
+                true,
+                Query.getSortableFields.bind(null, this.props.query.query)
+            );
+        }
+
+        var sortList = [];
+        if (this.props.query.query.order_by && this.props.options) {
+            sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
-                        placeholder="Attribute"
+                        key={index}
+                        tableName={this.props.options.display_name}
                         sort={order_by}
-                        fieldList={sortableFields}
-                        index={index}
-                        removeSort={component.removeSort}
-                        updateSort={component.updateSort}
+                        fieldOptions={sortFieldOptions}
+                        removeSort={this.removeSort.bind(null, index)}
+                        updateSort={this.updateSort.bind(null, index)}
                     />
                 );
-            }.bind(this));
+            });
         }
 
-        var sortSection;
-        if (sortList.length === 0) {
-            sortSection = (
-                <div className="QueryOption p1 lg-p2 flex align-center">
-                    <a onClick={this.addSort}>
-                        {this.renderAddIcon()}
-                        Add sort
-                    </a>
-                </div>
-            );
-        } else {
-            var addSortButton;
-            if (Query.canAddSort(this.props.query.query)) {
-                addSortButton = (
-                    <a onClick={this.addSort}>Add another sort</a>
-                );
-            }
-
-            sortSection = (
-                <div className="flex align-center">
-                    <span className="m2">sorted by</span>
-                    {sortList}
-                    {addSortButton}
-                </div>
-            );
-        }
-
+        var content;
         if (sortList.length > 0) {
-            return sortList;
-        } else {
-            return this.renderAdd("Pick a field to sort by", this.addSort);
+            content = sortList;
+        } else if (sortFieldOptions && sortFieldOptions.count > 0) {
+            content = this.renderAdd("Pick a field to sort by", this.addSort);
+        }
+
+        if (content) {
+            return (
+                <div className="py1 border-bottom">
+                    <div className="Query-label mb1">Sort by:</div>
+                    {content}
+                </div>
+            );
         }
     },
 
@@ -412,10 +401,7 @@ export default React.createClass({
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
-                        <div className="py1 border-bottom">
-                            <div className="Query-label mb1">Sort by:</div>
-                            {this.renderSort()}
-                        </div>
+                        {this.renderSort()}
                         <div className="py1">
                             <div className="Query-label mb1">Limit:</div>
                             {this.renderLimit()}

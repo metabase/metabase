@@ -24,7 +24,7 @@
 (defn- table->column-names
   "Return a set of the column names for TABLE."
   [table]
-  (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
+  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
          (take max-sync-lazy-seq-results)
          (map keys)
@@ -46,7 +46,7 @@
   IDriver
 ;;; ### Connection
   (can-connect? [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (= (-> (cmd/db-stats conn)
              (conv/from-db-object :keywordize)
              :ok)
@@ -58,7 +58,7 @@
 ;;; ### QP
   (wrap-process-query-middleware [_ qp]
     (fn [query]
-      (with-mongo-connection [^com.mongodb.DBApiLayer conn (:database query)]
+      (with-mongo-connection [^com.mongodb.DB conn (:database query)]
         (qp query))))
 
   (process-query [_ query]
@@ -70,7 +70,7 @@
         (do-sync-fn)))
 
   (active-table-names [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (-> (mdb/get-collection-names conn)
           (set/difference #{"system.indexes"}))))
 

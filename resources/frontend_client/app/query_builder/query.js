@@ -43,9 +43,14 @@ var Query = {
             }
         }
 
-        // TODO: limit
+        if (query.order_by) {
+            query.order_by = query.order_by.filter((s) => Query.isValidField(s[0]) && s[1] != null)
+            if (query.order_by.length === 0) {
+                delete query.order_by;
+            }
+        }
 
-        // TODO: sort
+        // TODO: limit
 
         return query;
     },
@@ -273,7 +278,10 @@ var Query = {
     isValidField: function(field) {
         return (
             typeof field === "number" ||
-            (Array.isArray(field) && field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number")
+            (Array.isArray(field) && (
+                (field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number") ||
+                (field[0] === 'aggregation' && typeof field[1] === "number")
+            ))
         );
     },
 
@@ -288,7 +296,7 @@ var Query = {
         results.count += results.fields.length;
         if (includeJoins) {
             results.fks = fields.filter((f) => f.special_type === "fk").map((joinField) => {
-                var targetFields = filterFn(joinField.target.table.fields).filter((f) => !usedFields[f.id]);
+                var targetFields = filterFn(joinField.target.table.fields).filter((f) => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
                 results.count += targetFields.length;
                 return {
                     field: joinField,

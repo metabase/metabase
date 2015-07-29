@@ -5,6 +5,7 @@
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.models.interface :refer :all]
+            [metabase.models.setting :as setting]
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
@@ -54,11 +55,17 @@
           [:is_active
            :is_staff])) ; but not `password` !
 
+
 ;; ## Related Functions
+
+(declare create-user
+         form-password-reset-url
+         set-user-password
+         set-user-password-reset-token)
 
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome reset-url]
+  [first-name last-name email-address & {:keys [send-welcome invitor]
                                          :or {send-welcome false}}]
   {:pre [(string? first-name)
          (string? last-name)
@@ -68,8 +75,11 @@
                         :first_name first-name
                         :last_name last-name
                         :password (str (java.util.UUID/randomUUID)))]
-    (if send-welcome
-      (email/send-new-user-email first-name email-address reset-url))
+    (when send-welcome
+      (let [reset-token (set-user-password-reset-token (:id new-user))
+            ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+            join-url    (str (form-password-reset-url reset-token) "#new")]
+        (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
 
@@ -84,3 +94,18 @@
       :password password
       :reset_token nil
       :reset_triggered nil)))
+
+(defn set-user-password-reset-token
+  "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (let [reset-token (str user-id "_" (java.util.UUID/randomUUID))]
+    (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+    ;; return the token
+    reset-token))
+
+(defn form-password-reset-url
+  "Generate a properly formed password reset url given a password reset token."
+  [reset-token]
+  {:pre [(string? reset-token)]}
+  (str (setting/get :-site-url) "/auth/reset_password/" reset-token))

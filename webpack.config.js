@@ -10,6 +10,7 @@ var ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
+var fs = require('fs');
 
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
@@ -72,7 +73,7 @@ module.exports = {
             'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
             'angular-sanitize':     __dirname + '/node_modules/angular-sanitize/angular-sanitize.min.js',
             // angular 3rd-party
-            'angular-bootstrap':    __dirname + '/node_modules/angular-bootstrap/dist/ui-bootstrap-tpls.min.js',
+            'angular-ui-bootstrap': __dirname + '/node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
             'angular-gridster':     __dirname + '/node_modules/angular-gridster/dist/angular-gridster.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
@@ -87,16 +88,17 @@ module.exports = {
             'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
             'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
             // react
-            'react':                __dirname + '/node_modules/react/dist/react-with-addons.js',
+            'react':                __dirname + '/node_modules/react/dist/react-with-addons.min.js',
             'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
-            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.js',
+            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
+            // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.js',
+            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
             'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
             'humanize':             __dirname + '/node_modules/humanize-plus/public/src/humanize.js'
         }
@@ -129,9 +131,22 @@ module.exports = {
         compress: false
     },
 
+};
+
+// development environment:
+if (/^dev/.test(process.env["METABASE_ENV"])) {
+    // replace minified files with un-minified versions
+    for (var name in module.exports.resolve.alias) {
+        var minified = module.exports.resolve.alias[name];
+        var unminified = minified.replace(/[.-]min/, '');
+        if (minified !== unminified && fs.existsSync(unminified)) {
+            module.exports.resolve.alias[name] = unminified;
+        }
+    }
+
     // SourceMaps
     // Normal source map works better but takes longer to build
-    // devtool: 'source-map'
+    // module.exports.devtool = 'source-map';
     // Eval source map doesn't work with CSS but is faster to build
-    // devtool: 'eval-source-map'
-};
+    // module.exports.devtool = 'eval-source-map';
+}

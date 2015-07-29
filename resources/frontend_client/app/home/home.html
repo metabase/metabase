@@ -8,16 +8,15 @@
                         <h2 class="text-light text-brand-light">{{subheading}}</h2>
                     </div>
                 </div>
-
-
             </div>
         </div>
         <div class="wrapper">
             <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
             <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'questions'}" ng-click="currentView = 'questions'">Start from a saved question</a>
         </div>
-
     </div>
+
+    <div ng-if="showOnboarding"><mb-new-user-onboarding></mb-new-user-onboarding></div>
 
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">

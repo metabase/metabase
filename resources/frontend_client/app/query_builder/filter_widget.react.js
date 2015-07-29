@@ -281,10 +281,9 @@ export default React.createClass({
                     "Filter-section-value": true,
                     "selected": filterValue != null
                 });
-                var queryOptionClasses = cx({
-                    "QueryOption": true,
-                    "QueryOption--date": this.state.fieldValues.type === "date"
-                });
+                var queryOptionClasses = {};
+                queryOptionClasses["QueryOption"] = true
+                queryOptionClasses["QueryOption--" + this.state.fieldValues.type] = true;
                 var valueString;
                 if (this.state.fieldValues.type === "date") {
                     valueString = value ? moment(value).format("MMMM D, YYYY") : "date";
@@ -293,7 +292,7 @@ export default React.createClass({
                 }
                 return (
                     <div key={valueIndex} className={filterSectionClasses} onClick={this.selectPane.bind(null, filterIndex)}>
-                        <span className={queryOptionClasses}>{valueString}</span>
+                        <span className={cx(queryOptionClasses)}>{valueString}</span>
                     </div>
                 );
             }
@@ -406,11 +405,12 @@ export default React.createClass({
                         {tabs.map((t, index) => {
                             var classes = cx({
                                 "PopoverHeader-item": true,
+                                "PopoverHeader-item--withArrow": index < tabs.length,
                                 "cursor-pointer": t.enabled,
                                 "selected": this.state.currentPane === index,
                                 "disabled": !t.enabled
                             });
-                            return <li className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
+                            return <li key={index} className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
                         })}
                     </ul>
                     <div>{pane}</div>

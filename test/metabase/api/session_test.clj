@@ -96,6 +96,20 @@
     ;; Double check that reset token was cleared
     (sel :one :fields [User :reset_token :reset_triggered] :id id)))
 
+;; Check that password reset returns a valid session token
+(let [user-last-name (random-name)]
+  (expect-eval-actual-first
+    (let [{:keys [id]} (sel :one :fields [User :id] :last_name user-last-name)
+          session (sel :one :fields [Session :id] :user_id id)]
+      {:success    true
+       :session_id (:id session)})
+    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+          token              (str id "_" (java.util.UUID/randomUUID))
+          _                  (upd User id :reset_token token)]
+      ;; run the password reset
+      (metabase.http-client/client :post 200 "session/reset_password" {:token    token
+                                                                       :password "whateverUP12!!"}))))
+
 ;; Test that token and password are required
 (expect {:errors {:token "field is a required param."}}
   (client :post 400 "session/reset_password" {}))
@@ -124,7 +138,7 @@
 ;; GET /session/properties
 ;; Check that a non-superuser can't read settings
 (expect
-  [{:value nil
+  [{:value "Metabase Test"
     :key "site-name"
     :description "The name used for this instance of Metabase."
     :default "Metabase"}]

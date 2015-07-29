@@ -81,6 +81,9 @@ CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'App
             case "setup":
                 $scope.nav = 'setup';
                 break;
+            case "auth":
+                $scope.nav = 'auth';
+                break;
             case "none":
                 $scope.nav = 'none';
                 break;

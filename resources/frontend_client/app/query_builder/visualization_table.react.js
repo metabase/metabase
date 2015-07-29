@@ -142,7 +142,7 @@ export default React.createClass({
     },
 
     columnResized: function(width, idx) {
-        var tableColumnWidths = this.state.columnWidths;
+        var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
@@ -152,7 +152,8 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? (column.display_name.toString() || column.name.toString()) : null;
+            colVal = (column && column.display_name && column.display_name.toString()) ||
+                     (column && column.name && column.name.toString());
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,

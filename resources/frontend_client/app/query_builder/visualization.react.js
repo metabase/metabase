@@ -74,11 +74,9 @@ export default React.createClass({
 
     renderHeader: function() {
         return (
-            <div className="flex mt3">
-                <div className="flex-full">
-                    <VisualizationSettings {...this.props}/>
-                </div>
-                <div className="flex align-center">
+            <div className="relative flex full mt3">
+                <VisualizationSettings {...this.props}/>
+                <div className="absolute left right ml-auto mr-auto layout-centered flex">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
@@ -86,19 +84,33 @@ export default React.createClass({
                         runFn={this.runQuery}
                     />
                 </div>
-                <div className="flex-full"></div>
+                {this.renderCount()}
             </div>
         );
     },
 
-    renderFooter: function(tableFootnote) {
-        if (this.props.isObjectDetail) {
-            // no footer on object detail
-            return false;
+    hasTooManyRows: function () {
+        const dataset_query = this.props.card.dataset_query,
+              rows = this.props.result.data.rows;
+
+        if (this.props.result.data.rows_truncated ||
+            (dataset_query.type === "query" &&
+             dataset_query.query.aggregation[0] === "rows" &&
+             rows.length === 2000))
+        {
+            return true;
         } else {
+            return false;
+        }
+    },
+
+    renderCount: function() {
+        if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
-                <div className="VisualizationFooter wrapper flex">
-                    {tableFootnote}
+                <div className="flex-align-right mt1">
+                    { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
+                    <b>{this.props.result.row_count}</b>
+                    { (this.props.result.data.rows.length > 1) ? (" rows") : (" row")}.
                 </div>
             );
         }
@@ -106,8 +118,7 @@ export default React.createClass({
 
     render: function() {
         var loading,
-            viz,
-            tableFootnote;
+            viz;
 
         if(this.props.isRunning) {
             loading = (
@@ -178,24 +189,6 @@ export default React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    // when we are displaying a data grid, setup a footnote which provides some row information
-                    if (this.props.result.data.rows_truncated ||
-                            (this.props.card.dataset_query.type === "query" &&
-                                this.props.card.dataset_query.query.aggregation[0] === "rows" &&
-                                this.props.result.data.rows.length === 2000)) {
-                        tableFootnote = (
-                            <div className="flex-align-right mt1">
-                                <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                                Result data was capped at <b>{this.props.result.row_count}</b> rows.
-                            </div>
-                        );
-                    } else {
-                        tableFootnote = (
-                            <div className="flex-align-right mt1">
-                                Showing <b>{this.props.result.row_count}</b> rows.
-                            </div>
-                        );
-                    }
 
                     var sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
                                     this.props.card.dataset_query.query.order_by : null;
@@ -217,16 +210,6 @@ export default React.createClass({
                             visualizationSettingsApi={this.props.visualizationSettingsApi}
                             card={this.props.card}
                             data={this.props.result.data} />
-                    );
-                }
-
-                // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !tableFootnote) {
-                    tableFootnote = (
-                        <div className="mt1">
-                            <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                            Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
-                        </div>
                     );
                 }
             }
@@ -252,7 +235,6 @@ export default React.createClass({
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
-                {this.renderFooter(tableFootnote)}
                 {loading}
                 <div className={visualizationClasses}>
                     {viz}
