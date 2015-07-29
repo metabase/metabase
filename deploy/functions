@@ -8,6 +8,9 @@ ARTIFACTS_DIR="$PROJECT_ROOT/deploy/artifacts"
 ARTIFACTS_S3BUCKET=${S3BUCKET:=metabase-artifacts}
 
 BRANCH=$(cd ${PROJECT_ROOT}; $(which git) rev-parse --abbrev-ref HEAD)
+# OpsWorks creates a deploy branch. We'll use master in this case
+[[ "$BRANCH" == "deploy" ]] && BRANCH="master"
+
 COMMITISH=$(cd ${PROJECT_ROOT}; $(which git) rev-parse --short HEAD)
 DATE=$(date +%Y-%m-%d)
 DEFAULT_RELEASE_ZIP_FILE_NAME="metabase-$BRANCH-$DATE-$COMMITISH.zip"
@@ -25,9 +28,6 @@ upload_release_artifacts() {
 }
 
 mk_release_artifacts() {
-    # OpsWorks creates a deploy branch. We'll use master in this case
-    [[ "$BRANCH" == "deploy" ]] && BRANCH="master"
-
     METABASE_JAR_NAME="metabase-standalone.jar"
     RELEASE_TYPE="aws-eb-docker"
     RELEASE_JAR_FILE_NAME=${METABASE_JAR_NAME%-standalone.jar}-$BRANCH-$DATE-$COMMITISH.jar
