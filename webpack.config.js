@@ -7,6 +7,7 @@ var webpackPostcssTools = require('webpack-postcss-tools');
 var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var NgAnnotatePlugin = require('ng-annotate-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
@@ -42,7 +43,8 @@ module.exports = {
     // output to "dist"
     output: {
         path: __dirname + '/resources/frontend_client/app/dist',
-        filename: '[name].bundle.js'
+        filename: '[name].bundle.js?[chunkhash]',
+        publicPath: '/app/dist'
     },
 
     module: {
@@ -114,7 +116,12 @@ module.exports = {
             minChunks: Infinity // (with more entries, this ensures that no other module goes into the vendor chunk)
         }),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
-        new ExtractTextPlugin('styles.bundle.css')
+        new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
+        new HtmlWebpackPlugin({
+          filename: '../../index.html',
+          template: 'resources/frontend_client/index_template.html',
+          inject: 'head'
+        })
     ],
 
     // CSSNext configuration

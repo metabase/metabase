@@ -19,6 +19,7 @@ profiles.clj
 /*.lock.db
 /*.trace.db
 /resources/frontend_client/app/dist/
+/resources/frontend_client/index.html
 /node_modules/
 /.babel_cache
 /coverage
