@@ -74,27 +74,20 @@
 
       ;; Check that dataset is loaded and working
       (assert (Table (datasets/table-name->id dataset :venues))
-              (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
+        (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
 
 (defn test-startup
   {:expectations-options :before-run}
   []
-  (log/info "Starting up Metabase unit test runner")
-
-  (log/info "Setting up test DB and running migrations...")
-  (db/setup-db :auto-migrate true)
-
-  ;; add any global settings defaults
-  (metabase.models.setting/set :site-name "Metabase Test")
-
-  ;; Load the test datasets
-  (load-test-datasets)
-
-  ;; startup test web server
-  (core/start-jetty)
-
-  ;; start the task runner
-  (task/start-task-runner!))
+  ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
+  (let [setup-db           (future (time (do (log/info "Setting up test DB and running migrations...")
+                                             (db/setup-db :auto-migrate true)
+                                             (load-test-datasets)
+                                             (metabase.models.setting/set :site-name "Metabase Test"))))
+        start-task-runner! (future (task/start-task-runner!))]
+    (core/start-jetty)
+    @setup-db
+    @start-task-runner!))
 
 
 (defn test-teardown

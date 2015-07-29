@@ -35,13 +35,12 @@
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
          :error "Column \"ZID\" not found"}
-  (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))      ; this will print a stacktrace
-      (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
-                                     :type     :native
-                                     :database (db-id)})
-              :stacktrace
-              :query
-              :expanded-query)))
+  (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
+                                 :type     :native
+                                 :database (db-id)})
+          :stacktrace
+          :query
+          :expanded-query))
 
 ;; Check that we're not allowed to run SQL against an H2 database with a non-admin account
 (expect "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
