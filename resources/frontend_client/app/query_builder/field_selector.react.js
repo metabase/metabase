@@ -16,13 +16,14 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            partialField: null
+            // must use "undefined" not "null" since null signifies the table itself is "selected" in the first column
+            partialField: undefined
         };
     },
 
     setField: function(field) {
         if (Query.isValidField(field)) {
-            this.setState({ partialField: null });
+            this.setState({ partialField: undefined });
             this.props.setField(field);
         } else {
             this.setState({ partialField: field });
@@ -30,7 +31,7 @@ export default React.createClass({
     },
 
     render: function() {
-        var field = this.state.partialField != null ? this.state.partialField : this.props.field;
+        var field = this.state.partialField !== undefined ? this.state.partialField : this.props.field;
 
         var sourceTable = {
             title: this.props.tableName || null,
