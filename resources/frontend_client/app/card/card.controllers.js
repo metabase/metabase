@@ -1,5 +1,5 @@
 'use strict';
-/*global _, document, confirm*/
+/*global _, ga, document, confirm*/
 
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
@@ -69,8 +69,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'AppAnalytics', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, AppAnalytics, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -147,9 +147,13 @@ CardControllers.controller('CardDetail', [
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
+
+                AppAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
             },
             notifyCardUpdatedFn: function(updatedCard) {
                 setCard(updatedCard, { resetDirty: true, replaceState: true });
+
+                AppAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -498,6 +502,8 @@ CardControllers.controller('CardDetail', [
 
                 renderAll();
             });
+
+            AppAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
         }
 
         function getDefaultQuery() {
@@ -708,6 +714,8 @@ CardControllers.controller('CardDetail', [
                 // clear out any visualization and reset to defaults
                 queryResult = null;
                 card.display = "table";
+
+                AppAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
             }
         }
 

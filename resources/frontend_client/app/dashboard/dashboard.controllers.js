@@ -34,7 +34,7 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
 
 }]);
 
-DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {
+DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'AppAnalytics', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, AppAnalytics, Dashboard, DashCard) {
 
     // $scope.dashboard: single Card being displayed/edited
     // $scope.error: any relevant error message to be displayed
@@ -103,11 +103,11 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         $scope.gridsterOptions.draggable.enabled = !$scope.gridsterOptions.draggable.enabled;
         $scope.gridsterOptions.resizable.enabled = !$scope.gridsterOptions.resizable.enabled;
 
-        // GA Tracking
+        // Tracking
         if ($scope.gridsterOptions.resizable.enabled) {
-            ga('send', 'event', 'Dashboard', 'Rearrange Finished');
+            AppAnalytics.trackEvent('Dashboard', 'Rearrange Finished');
         } else {
-            ga('send', 'event', 'Dashboard', 'Rearrange Started');
+            AppAnalytics.trackEvent('Dashboard', 'Rearrange Started');
         }
     };
 
