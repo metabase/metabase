@@ -6,12 +6,6 @@ machine:
       oraclejdk8
   python:
     version: 2.7.3
-  environment:
-    AWS_ACCESS_KEY_ID: AKIAJPDU4RV42BMZXY7Q
-    AWS_SECRET_ACCESS_KEY: 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
-    AWS_DEFAULT_REGION: us-east-1
-    STACK_ID: f225b462-e024-49a0-b35e-879b34b7aeef
-    APP_ID: 229980a0-dd44-4aa2-9e5d-1322eb23f857
 dependencies:
   pre:
     - pip install awscli==1.7.3
