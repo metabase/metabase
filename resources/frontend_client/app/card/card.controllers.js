@@ -681,10 +681,10 @@ CardControllers.controller('CardDetail', [
         function toggleDataReference() {
             $scope.$apply(function() {
                 $scope.isShowingDataReference = !$scope.isShowingDataReference;
-                renderAll();
+                // renderAll();
                 // render again after 500ms to wait for animation to complete
                 // FIXME: if previous render takes too long this is missed
-                window.setTimeout(renderAll, 500);
+                window.setTimeout(renderAll, 300);
             });
         }
 
