@@ -6,7 +6,7 @@
 
 * [Users Guide](users-guide.md)
 * [Administration Guide](administration-guide.md)
-* [Administration Guide](etl-guide.md)
+* [ETL Guide](etl-guide.md)
 * [Developers Guide](developers-guide.md)
 * [Installation Guide](installation-guide.md)
 * [Data Warehousing Guide](data-warehousing.md)
