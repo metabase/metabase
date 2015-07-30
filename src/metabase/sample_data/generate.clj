@@ -249,24 +249,19 @@
       (assoc person :orders (vec (repeatedly num-orders #(random-order person (rand-nth products))))))))
 
 (defn create-random-data [& {:keys [people products]
-                             :or   {people 2500 products 125}}]
+                             :or   {people 2500 products 200}}]
   {:post [(map? %)
           (= (count (:people %)) people)
           (= (count (:products %)) products)
           (every? keyword? (keys %))
           (every? sequential? (vals %))]}
   (println (format "Generating random data: %d people, %d products..." people products))
-  (let [people   (create-randoms people random-person)
-        products (mapv product-add-reviews (create-randoms products random-product))
-        reviews  (vec (mapcat :reviews products))
-        products (mapv #(dissoc % :reviews) products)
-        people   (mapv (partial person-add-orders products) people)
-        orders   (vec (mapcat :orders people))
-        people   (mapv #(dissoc % :orders) people)]
-    {:people   people
-     :products products
-     :reviews  reviews
-     :orders   orders}))
+  (let [products (mapv product-add-reviews (create-randoms products random-product))
+        people   (mapv (partial person-add-orders products) (create-randoms people random-person))]
+    {:people   (mapv #(dissoc % :orders) people)
+     :products (mapv #(dissoc % :reviews) products)
+     :reviews  (vec (mapcat :reviews products))
+     :orders   (vec (mapcat :orders people))}))
 
 ;;; # LOADING THE DATA
 
