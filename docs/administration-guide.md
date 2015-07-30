@@ -68,4 +68,4 @@ a full description of the metadata Metabase understands and takes advantage of c
 * once you have added them, they will get an email and a link where they can set their password
 * to make a user an admin click on "grant admin"
 * to remove admin priveledges click on "revoke admin"
-* to delete an account, click on "remove". Note that this will delete all the cards this user has created.
+* to delete an account, click on "remove". Note that this will mark the account as inactive and prevent it being used in the future but not actually delete the user's cards or dashboards.
