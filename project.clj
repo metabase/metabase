@@ -30,7 +30,9 @@
                  [com.novemberain/monger "3.0.0"]                     ; MongoDB Driver
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.0"]                                    ; easy environment management
+                 [faker "0.2.2"]                                      ; Fake data generator -- port of Perl/Ruby
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [incanter/incanter-core "1.5.6"]                     ; Satistical functions like normal distibutions
                  [korma "0.4.2"]                                      ; SQL lib
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
