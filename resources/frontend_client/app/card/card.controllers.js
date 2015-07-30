@@ -1,6 +1,8 @@
 'use strict';
 /*global _, document, confirm*/
 
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
@@ -9,6 +11,7 @@ import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from '../query_builder/query';
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
+
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -147,9 +150,13 @@ CardControllers.controller('CardDetail', [
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
             },
             notifyCardUpdatedFn: function(updatedCard) {
                 setCard(updatedCard, { resetDirty: true, replaceState: true });
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -498,6 +505,8 @@ CardControllers.controller('CardDetail', [
 
                 renderAll();
             });
+
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
         }
 
         function getDefaultQuery() {
@@ -708,6 +717,8 @@ CardControllers.controller('CardDetail', [
                 // clear out any visualization and reset to defaults
                 queryResult = null;
                 card.display = "table";
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
             }
         }
 

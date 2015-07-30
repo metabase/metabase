@@ -1,6 +1,8 @@
 'use strict';
 /*global _*/
 
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
 import AggregationWidget from './aggregation_widget.react';
 import DataSelector from './data_selector.react';
 import FieldWidget from './field_widget.react';
@@ -36,48 +38,66 @@ export default React.createClass({
     addDimension: function() {
         Query.addDimension(this.props.query.query);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
     },
 
     updateDimension: function(index, dimension) {
         Query.updateDimension(this.props.query.query, dimension, index);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
     },
 
     removeDimension: function(index) {
         Query.removeDimension(this.props.query.query, index);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
     },
 
     updateAggregation: function(aggregationClause) {
         Query.updateAggregation(this.props.query.query, aggregationClause);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Aggregation', aggregationClause[0]);
     },
 
     addFilter: function() {
         Query.addFilter(this.props.query.query);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
     },
 
     updateFilter: function(index, filter) {
         Query.updateFilter(this.props.query.query, index, filter);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify Filter');
     },
 
     removeFilter: function(index) {
         Query.removeFilter(this.props.query.query, index);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Filter');
     },
 
     addLimit: function() {
         Query.addLimit(this.props.query.query);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
     },
 
     updateLimit: function(limit) {
         if (limit) {
             Query.updateLimit(this.props.query.query, limit);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
         } else {
             Query.removeLimit(this.props.query.query);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
         }
         this.setQuery(this.props.query);
     },
@@ -85,16 +105,22 @@ export default React.createClass({
     addSort: function() {
         Query.addSort(this.props.query.query);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
     },
 
     updateSort: function(index, sort) {
         Query.updateSort(this.props.query.query, index, sort);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
     },
 
     removeSort: function(index) {
         Query.removeSort(this.props.query.query, index);
         this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
     },
 
     renderAdd: function(text, onClick) {
