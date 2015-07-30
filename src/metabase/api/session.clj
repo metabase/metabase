@@ -6,6 +6,7 @@
             [hiccup.core :refer [html]]
             [korma.core :as k]
             [metabase.api.common :refer :all]
+            [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
@@ -24,17 +25,25 @@
     session-id))
 
 
+;;; ## API Endpoints
+
+(def ^:private login-throttlers
+  {:email      (throttle/make-throttler :email)
+   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
+
 (defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password] :as body} :body}]
+  [:as {{:keys [email password] :as body} :body, remote-address :remote-addr}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (let [user (sel :one :fields [User :id :password_salt :password] :email email (k/where {:is_active true}))]
-    (checkp (not (nil? user))
-    ; Don't leak whether the account doesn't exist or the password was incorrect
-      'password "did not match stored password")
-    (checkp (pass/verify-password password (:password_salt user) (:password user))
-      'password "did not match stored password")
+  (throttle/check (login-throttlers :ip-address) remote-address)
+  (throttle/check (login-throttlers :email)      email)
+  (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
+    ;; Don't leak whether the account doesn't exist or the password was incorrect
+    (when-not (and user
+                   (pass/verify-password password (:password_salt user) (:password user)))
+      (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                 :errors      {:password "did not match stored password"}})))
     (let [session-id (create-session (:id user))]
       {:id session-id})))
 
@@ -53,10 +62,16 @@
 ;;
 ;; There's also no need to salt the token because it's already random <3
 
+(def ^:private forgot-password-throttlers
+  {:email      (throttle/make-throttler :email)
+   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
+
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, :as request}]
+  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr, :as request}]
   {email [Required Email]}
+  (throttle/check (forgot-password-throttlers :ip-address) remote-address)
+  (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [user-id (sel :one :id User :email email)]
     (let [reset-token        (set-user-password-reset-token user-id)

@@ -46,11 +46,6 @@
     justify-content: flex-end;
 }
 
-.QueryVisualization {
-    display: flex;
-    flex: 1;
-}
-
 .QueryName {
     font-weight: 200;
     margin-top: 0;
@@ -208,6 +203,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .Loading {
