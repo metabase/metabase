@@ -7,25 +7,24 @@ import Icon from '../../../query_builder/icon.react';
 export default React.createClass({
     displayName: "MetadataHeader",
     propTypes: {
-        database: React.PropTypes.object.isRequired,
+        databaseId: React.PropTypes.number,
         databases: React.PropTypes.array.isRequired,
+        selectDatabase: React.PropTypes.func.isRequired,
         // metabaseApi: React.PropTypes.func.isRequired,
         // isShowingSchema: React.PropTypes.bool.isRequired,
-        selectDatabaseFn: React.PropTypes.func.isRequired,
-        // toggleShowSchemaFn: React.PropTypes.func.isRequired,
+        toggleShowSchema: React.PropTypes.func.isRequired,
     },
 
     renderDbSelector: function() {
-        if (this.props.databases.length > 1) {
-            var database = this.props.databases.filter((db) => db.id === this.props.database.id)[0];
+        var database = this.props.databases.filter((db) => db.id === this.props.databaseId)[0];
+        if (database) {
             var columns = [{
                 selectedItem: database,
                 items: this.props.databases,
                 itemTitleFn: (db) => db.name,
                 itemSelectFn: (db) => {
-                    this.props.selectDatabaseFn(db)
+                    this.props.selectDatabase(db)
                     this.refs.databasePopover.toggleModal();
-                    console.log("toggle")
                 }
             }];
             var tetherOptions = {
@@ -35,7 +34,7 @@ export default React.createClass({
             };
             var triggerElement = (
                 <span className="text-bold cursor-pointer text-default">
-                    {this.props.database.name}
+                    {database.name}
                     <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
                 </span>
             );
@@ -53,13 +52,19 @@ export default React.createClass({
     },
 
     render: function() {
+        var spinner;
+        if (this.props.saving || true) {
+            spinner = (<div className="mx2 px2 border-right"><div className="spinner"></div></div>);
+        }
         return (
             <div className="MetadataEditor-header flex align-center">
                 <div className="MetadataEditor-header-section h2">
-                    Edit Metadata for {this.renderDbSelector()}
+                    <span className="text-grey-4">Edit Metadata for</span> {this.renderDbSelector()}
                 </div>
-                <div className="MetadataEditor-header-section flex-align-right">
-                    Show original schema {this.props.isShowingSchema}
+                <div className="MetadataEditor-header-section flex-align-right flex align-center">
+                    {spinner}
+                    <span>Show original schema</span>
+                    <span className={"Toggle " + (this.props.isShowingSchema ? "selected" : "")} onClick={this.props.toggleShowSchema}></span>
                 </div>
             </div>
         );

@@ -133,7 +133,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
     };
 }]);
 
-CorvusDirectives.directive('mbReactComponent', [function (){
+CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
     return {
         restrict: 'A',
         link: function (scope, element, attr) {
@@ -145,10 +145,11 @@ CorvusDirectives.directive('mbReactComponent', [function (){
                 angular.forEach(scope, function(value, key) {
                     if (typeof value === "function") {
                         props[key] = function() {
-                            var that = this, args = arguments;
-                            scope.$apply(function() {
-                                return value.apply(that, args);
-                            });
+                            try {
+                                return value.apply(this, arguments);
+                            } finally {
+                                $timeout(() => scope.$digest());
+                            }
                         }
                     } else {
                         props[key] = value;

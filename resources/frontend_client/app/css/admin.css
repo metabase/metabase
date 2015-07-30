@@ -210,5 +210,141 @@
 
 .ScrollShadow {
     border-top: 1px solid rgba(0, 0, 0, .05);
-    box-shadow: 0 -1px 0 rgba(0, 0, 0, .12);
+}
+
+
+.AdminList {
+    background-color: #F9FBFC;
+    border: var(--border-size) var(--border-style) var(--border-color);
+    border-radius: var(--default-border-radius);
+    width: 266px;
+    box-shadow: inset -1px -1px 3px rgba(0,0,0,0.05);
+    padding-bottom: 0.75em;
+}
+
+.AdminList-items {
+}
+
+.AdminList-item {
+    padding: 0.75em 1em 0.75em 1em;
+    border: var(--border-size) var(--border-style) transparent;
+    border-radius: var(--default-border-radius);
+    margin-bottom: 0.25em;
+}
+
+.AdminList-item.selected {
+    color: var(--brand-color);
+}
+
+.AdminList-item.selected,
+.AdminList-item:hover {
+    background-color: white;
+    border-color: var(--border-color);
+    margin-left: -10px;
+    margin-right: -10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.AdminList-section {
+    margin-top: 1em;
+    padding: 0.5em 1em 0.5em 1em;
+    text-transform: uppercase;
+    color: color(var(--base-grey) shade(20%));
+    font-weight: 700;
+    font-size: smaller;
+}
+
+.AdminList-search {
+    padding: 0.5em;
+    font-size: 18px;
+    width: 100%;
+    border-top-left-radius: var(--default-border-radius);
+    border-top-right-radius: var(--default-border-radius);
+    border-bottom-color: var(--border-color);
+}
+
+.AdminInput {
+    color: var(--default-font-color);
+    padding: 0.5em;
+    background-color: transparent;
+    border: 1px solid transparent;
+}
+.AdminInput:focus {
+    border-color: var(--brand-color);
+    box-shadow: none;
+    outline: 0;
+}
+
+.MetadataTable-title {
+    background-color: #FCFCFC;
+}
+
+.TableEditor-table-name {
+    font-size: 24px;
+}
+
+.TableEditor-field-name {
+    font-size: 16px;
+}
+
+.TableEditor-table-description,
+.TableEditor-field-description {
+    font-size: 14px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 99px;
+  border: 3px solid rgba(111,122,139,0.25);
+  border-left: 3px solid rgba(111,122,139,1.0);
+  animation-name: spin;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.Toggle {
+    margin: 0.5em;
+
+    width: 48px;
+    height: 24px;
+    border-radius: 99px;
+    border: 1px solid #EAEAEA;
+    background-color: #F7F7F7;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.Toggle.selected {
+    background-color: #33A2FF;
+}
+
+.Toggle:after {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    background-color: #D9D9D9;
+    transition: all 0.3s;
+}
+
+.Toggle.selected:after {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    position: absolute;
+    top: 1px;
+    left: 25px;
+
+    background-color: white;
 }
