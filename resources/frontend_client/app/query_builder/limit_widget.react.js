@@ -10,7 +10,6 @@ export default React.createClass({
         updateLimit: React.PropTypes.func.isRequired,
         removeLimit: React.PropTypes.func.isRequired
     },
-    sectionClassName: 'Filter-section',
 
     getDefaultProps: function() {
         return {
@@ -35,7 +34,7 @@ export default React.createClass({
     render: function() {
         return (
             <div className="Query-filter">
-                <div className={this.sectionClassName}>
+                <div className='Filter-section'>
                     <SelectionModule
                         placeholder="How many rows?"
                         items={this.props.options}

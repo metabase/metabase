@@ -246,23 +246,16 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     // Breakouts and Aggregation options
-    function shortenFields(fields) {
-        return _.map(fields, function(field) {
-            return [field.id, field.display_name];
-        });
-
-    }
-
     function allFields(fields) {
-        return shortenFields(fields);
+        return fields;
     }
 
     function summableFields(fields) {
-        return shortenFields(_.filter(fields, isSummable));
+        return _.filter(fields, isSummable);
     }
 
     function dimensionFields(fields) {
-        return shortenFields(_.filter(fields, isDimension));
+        return _.filter(fields, isDimension);
     }
 
     var Aggregators = [{
@@ -323,7 +316,8 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             'advanced': aggregator.advanced || false,
             'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
                 return validFieldsFilterFn(fields);
-            })
+            }),
+            'validFieldsFilters': aggregator.validFieldsFilters
         };
     }
 
@@ -336,6 +330,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     function getBreakouts(fields) {
         var result = populateFields(BreakoutAggregator, fields);
         result.fields = result.fields[0];
+        result.validFieldsFilter = result.validFieldsFilters[0];
         return result;
     }
 

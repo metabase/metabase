@@ -6,7 +6,10 @@ var IconBorder = React.createClass({
     displayName: 'IconBorder',
     getDefaultProps: function () {
           return {
-              rounded: true,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: 'currentcolor',
+              rounded: true
           }
     },
     computeSize: function () {
@@ -22,10 +25,15 @@ var IconBorder = React.createClass({
         var styles = {
             width: this.computeSize(),
             height: this.computeSize(),
-            borderWidth: '1px',
-            borderStyle: 'solid',
-            borderColor: (this.props.children.props.fill),
-            borderRadius: (this.props.rounded === true) ? '99px' : '0',
+            borderWidth: this.props.borderWidth,
+            borderStyle: this.props.borderStyle,
+            borderColor: this.props.borderColor
+        }
+
+        if (this.props.borderRadius) {
+            styles.borderRadius = this.props.borderRadius;
+        } else if (this.props.rounded) {
+            styles.borderRadius = "99px";
         }
 
         return (

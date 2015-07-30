@@ -1,22 +1,25 @@
 :root {
     --selection-color: #ccdff6;
 }
+
+#react_qb_editor {
+    z-index: 2;
+}
+
+#react_qb_viz {
+    z-index: 1;
+}
+
 /* @layout */
 .QueryBuilder {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
     transition: margin-right 0.35s;
-    background-color: white;
-    box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
  }
 
 .QueryBuilder--showDataReference {
     margin-right: 300px;
 }
 
-.QueryHeader-details,
-.QueryHeader-actions {
+.QueryHeader-details {
     display: flex;
     align-items: center;
 }
@@ -43,11 +46,6 @@
     justify-content: flex-end;
 }
 
-.QueryVisualization {
-    display: flex;
-    flex: 1;
-}
-
 .QueryName {
     font-weight: 200;
     margin-top: 0;
@@ -56,20 +54,30 @@
 }
 
 .Query-label {
-    min-width: 7rem;
-    display: inline-block;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 700;
+    color: color(var(--base-grey) shade(30%));
 }
 
 .Query-filters {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    width: 100%;
+    overflow-x: scroll;
+    max-width: 400px;
+    white-space: nowrap;
 }
 
 .Query-filter {
     display: flex;
     align-items: center;
+    font-size: 0.75em;
+    height: 56px;
+    border: 2px solid transparent;
+    border-radius: var(--default-border-radius);
+}
+
+.Query-filter.selected {
+    border-color: var(--purple-light-color);
 }
 
 .Filter-section {
@@ -79,12 +87,11 @@
 
 .Query-filter .input {
     border-radius: 0;
-    border-color: var(--selection-color);
-}
-
-.Query-filter .Icon-close {
-    margin-left: 1rem;
-    margin-right: 1rem;
+    border: none;
+    font-size: inherit;
+    background-color: transparent;
+    width: 150px;
+    padding: 0;
 }
 
 .QueryTable-wrapper {
@@ -101,21 +108,14 @@
     color: var(--brand-color);
 }
 
+.SelectionList {
+    padding-top: 5px;
+}
+
 .SelectionItems {
-    opacity: 0;
-    pointer-events: none;
-    position: absolute;
-    top: 2.75rem;
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
-    border-radius: 4px;
-    background: #fff;
-    z-index: 3;
-    left: 0;
-    right: 0;
     overflow-y: scroll;
     max-height: 340px;
-    min-width: 320px;
+    max-width: 320px;
 }
 
 .SelectionItems.SelectionItems--open {
@@ -143,7 +143,7 @@
 .SelectionItem .Icon {
     margin-left: 0.5rem;
     margin-right: 0.75rem;
-    color: var(--brand-color);
+    color: currentcolor;
 }
 
 .SelectionItem .Icon-check {
@@ -154,7 +154,7 @@
     opacity: 1;
  }
 
- .SelectionItem:hover .Icon {
+.SelectionItem:hover .Icon {
     color: #fff !important;
 }
 
@@ -170,11 +170,6 @@
     opacity: 1;
 }
 
-.SelectionModule.open .SelectionItems {
-    opacity: 1;
-    pointer-events: all;
-}
-
 .SelectionModule-display {
     color: currentColor;
     margin-bottom: 0.25em;
@@ -186,7 +181,6 @@
 }
 
 .Visualization {
-    overflow-y: scroll;
     transition: background .3s linear;
 }
 
@@ -209,16 +203,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.VisualizationSettings {
-    padding-bottom: 1em;
-    padding-top: 1em;
-    background-color: #fff;
-}
-
-.VisualizationSettings .Select select {
-    padding: 0.5rem;
+    overflow: hidden;
 }
 
 .Loading {
@@ -272,89 +257,200 @@
     width: 100%;
 }
 
+/* GUI BUILDER */
+
 .GuiBuilder {
     position: relative;
-    border-bottom: 1px solid #F0F0F0;
-    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9em;
+    z-index: 2;
+    background-color: #fff;
+
+    border: 1px solid #e0e0e0;
 }
 
-.GuiBuilder.GuiBuilder--collapsed {
-    max-height: 2rem;
-    min-height: 2rem;
+.GuiBuilder-row {
+    border-bottom: 1px solid #e0e0e0;
 }
 
-.GuiBuilder.GuiBuilder--collapsed .Query-section {
-    display: none;
-}
-.QueryToggleWrapper {
-    bottom: -1rem;
-    z-index: 1;
+.GuiBuilder-row:last-child {
+    border-bottom: none;
 }
 
-.QueryToggle {
-    color: #999;
-    border-radius: 99px;
-    z-index: 1000;
-    border: 1px solid #ddd;
+.GuiBuilder-section {
+    position: relative;
+    min-height: 48px;
+    min-width: 120px;
+    border-right: 1px solid #e0e0e0;
 }
 
-.QueryToggle:hover {
-    color: var(--brand-color);
-    border-color: var(--brand-color);
-    transition: color .3s linear, border .3s linear;
+.GuiBuilder-section:last-child {
+    border-right: none;
+}
+
+.GuiBuilder-section-label {
+    background-color: white;
+    position: absolute;
+    top: -7px;
+    left: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* for medium breakpoint only expand if data reference is not shown */
+@media screen and (--breakpoint-min-md) {
+    .GuiBuilder {
+        font-size: 1.0em;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
+        flex-direction: row;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-section:last-child {
+        border-right: 1px solid #e0e0e0;
+    }
+}
+
+/* for large breakpoint always expand */
+@media screen and (--breakpoint-min-lg) {
+    .GuiBuilder {
+        font-size: 1.1em;
+        flex-direction: row;
+    }
+    .GuiBuilder-row:last-child {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .GuiBuilder-section:last-child {
+        border-right: 1px solid #e0e0e0;
+    }
+}
+
+.QueryOption {
+    color: color(var(--base-grey) shade(20%));
+    font-weight: 700;
+}
+
+.QueryOption:hover {
+    cursor: pointer;
 }
 
 /* @transitions */
-
-.Transition-qb-section-enter {
-    opacity: 0.01;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-enter-active {
-    opacity: 1;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-leave {
-    opacity: 1;
-    transition: opacity .3s linear !important;
-}
-
-.Transition-qb-section-leave-active {
-    opacity: 0.01;
-    transition: opacity .3s linear !important;
-}
 
 .AddToDashSuccess {
     max-width: 260px;
     text-align: center;
 }
 
-.QueryOption {
-    border: 1px solid var(--selection-color);
-    border-radius: 2px;
-    color: var(--brand-color);
-    line-height: 1;
+/* DATA SECTION */
+
+.GuiBuilder-data {
+    z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
-.QueryOption--offset {
-    margin-left: 7rem;
+/* FILTER BY SECTION */
+
+.Filter-section-field,
+.Filter-section-operator,
+.Filter-section-value {
+    color: var(--purple-color);
 }
 
-.QueryOption:hover {
-    border-color: color(var(--selection-color) shade(5%));
-    cursor: pointer;
+.Filter-section-field.selected .QueryOption {
+    color: var(--purple-color);
+}
+.Filter-section-operator.selected .QueryOption {
+    color: var(--purple-color);
+    text-transform: lowercase;
+}
+.Filter-section-value.selected .QueryOption {
+    color: var(--purple-color);
 }
 
-.SelectionModule.selected .QueryOption {
-    background-color: var(--selection-color);
+/* put quotes around numeric or text values */
+.Filter-section-value .QueryOption.QueryOption--text:before,
+.Filter-section-value .QueryOption.QueryOption--text:after,
+.Filter-section-value .QueryOption.QueryOption--number:before,
+.Filter-section-value .QueryOption.QueryOption--number:after,
+.Filter-section-value .QueryOption.QueryOption--select:before,
+.Filter-section-value .QueryOption.QueryOption--select:after {
+    content: '"';
 }
 
-.SelectionModule.selected .QueryOption:hover {
-    background-color: var(--brand-color);
-    border-color: var(--brand-color);
-    color: #fff;
+.Filter-section-sort-field.selected .QueryOption,
+.Filter-section-sort-direction.selected .QueryOption {
+    color: inherit;
+}
+
+.Filter-section-value {
+    padding-right: 0.5em;
+}
+
+.FilterPopover .ColumnarSelector-row--selected,
+.FilterPopover .PopoverHeader-item.selected {
+    color: var(--purple-color) !important;
+}
+.FilterPopover .ColumnarSelector-row:hover {
+    background-color: var(--purple-color) !important;
+}
+
+.Filter-section-value .Button,
+.Filter-section-value .input {
+    padding: 0.5rem;
+}
+
+.Filter-section-value .input {
+    font-size: inherit;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.Filter-section-value .input:focus {
+    outline: none;
+    border-color: var(--purple-color);
+    box-shadow: 0 0 2px var(--purple-color);
+}
+
+/* VIEW SECTION */
+
+.View-section-aggregation,
+.View-section-aggregation-target,
+.View-section-breakout {
+    color: var(--green-color);
+}
+
+.View-section-aggregation.selected .QueryOption,
+.View-section-aggregation-target.selected .QueryOption,
+.View-section-breakout.selected .QueryOption {
+    color: var(--green-color);
+}
+
+/* SORT/LIMIT SECTION */
+
+.GuiBuilder-sort-limit {
+    min-width: 0px;
+}
+
+.EllipsisButton {
+    font-size: 3em;
+    position: relative;
+    top: -0.8rem;
+}
+
+/* NATIVE */
+
+.NativeQueryEditor .GuiBuilder-data {
+    border-right: none;
+}
+
+/* VISUALIZATION SETTINGS */
+
+.VisualizationSettings .GuiBuilder-section {
+    border-right: none !important;
 }
 
 .ChartType-button {
@@ -378,7 +474,28 @@
     opacity: 0.5;
 }
 
-/* data reference */
+.ColorWell {
+    width: 18px;
+    height: 18px;
+    margin: 3px;
+    margin-right: 0.3rem;
+}
+
+.RunButton {
+    z-index: 1;
+    margin-top: 0;
+    opacity: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .22);
+    transition: margin-top 0.5s, opacity 0.5s;
+}
+
+.RunButton.RunButton--hidden {
+    margin-top: -110px;
+    opacity: 0;
+}
+
+/* DATA REFERENCE */
+
 .DataReference {
     z-index: -1;
     position: absolute;
@@ -447,4 +564,25 @@
     background-color: #F8F8F8;
     border: 1px solid #dedede;
     border-radius: 2px;
+}
+
+.ace_gutter-cell {
+    padding-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: color(var(--base-grey) shade(30%));
+    padding-left: 0;
+    padding-right: 0;
+    display: block;
+    text-align: center;
+}
+
+.ace_gutter-layer {
+    background-color: #F9FBFC;
+    border-right: 1px solid var(--border-color);
+}
+
+.QueryBuilder .Entity-title,
+.QueryBuilder .Entity-attribution {
+    margin-left: 0.5rem;
 }

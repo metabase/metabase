@@ -65,6 +65,10 @@
   text-transform: uppercase;
 }
 
+.text-lowercase {
+  text-transform: lowercase;
+}
+
 /* text weight */
 .text-light {
     font-weight: 100;

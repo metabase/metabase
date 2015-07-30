@@ -102,7 +102,9 @@ export default React.createClass({
 
         var useForCurrentQuestion;
         if (validForCurrentQuestion) {
-            var validBreakout = this.state.table && this.state.table.breakout_options.fields.filter((f) => f[0] === this.props.field.id).length > 0;
+            var validBreakout = this.state.table && this.state.table.breakout_options.validFieldsFilter(this.state.table.fields).filter((f) => {
+                return f.id === this.props.field.id;
+            }).length > 0;
             var useForCurrentQuestionArray = [];
             useForCurrentQuestionArray.push(
                 <li key="filter-by" className="mt1">

@@ -267,9 +267,7 @@ export default React.createClass({
 
         return (
             <div>
-                <ReactCSSTransitionGroup transitionName="Transition-popover-state">
-                    {content}
-                </ReactCSSTransitionGroup>
+                {content}
             </div>
         );
     }
