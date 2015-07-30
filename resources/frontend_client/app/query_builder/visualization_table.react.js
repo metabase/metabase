@@ -1,4 +1,5 @@
 'use strict';
+/*global _*/
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
@@ -60,8 +61,15 @@ export default React.createClass({
         this.calculateSizing(this.getInitialState());
     },
 
-    componentDidUpdate: function(prevProps, prevState) {
-        this.calculateSizing(prevState);
+    shouldComponentUpdate: function(nextProps, nextState) {
+        // this is required because we don't pass in the containing element size as a property :-/
+        // if size changes don't update yet because state will change in a moment
+        this.calculateSizing(nextState)
+
+        // compare props and state to determine if we should re-render
+        // NOTE: this is essentially the same as React.addons.PureRenderMixin but
+        // we currently need to recalculate the container size here.
+        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
     },
 
     // availableWidth, minColumnWidth, # of columns
@@ -134,7 +142,7 @@ export default React.createClass({
     },
 
     columnResized: function(width, idx) {
-        var tableColumnWidths = this.state.columnWidths;
+        var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
@@ -144,7 +152,8 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? (column.display_name.toString() || column.name.toString()) : null;
+            colVal = (column && column.display_name && column.display_name.toString()) ||
+                     (column && column.name && column.name.toString());
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,
@@ -212,7 +221,7 @@ export default React.createClass({
                 rowGetter={this.rowGetter}
                 rowsCount={this.props.data.rows.length}
                 width={this.state.width}
-                height={this.state.height}
+                maxHeight={this.state.height}
                 headerHeight={50}
                 isColumnResizing={this.isColumnResizing}
                 onColumnResizeEndCallback={component.columnResized}>

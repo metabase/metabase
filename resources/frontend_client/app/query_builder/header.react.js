@@ -5,7 +5,6 @@ import ActionButton from './action_button.react';
 import AddToDashboard from './add_to_dashboard.react';
 import CardFavoriteButton from './card_favorite_button.react';
 import Icon from './icon.react';
-import Popover from './popover.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
@@ -107,7 +106,7 @@ export default React.createClass({
     },
 
     render: function() {
-        var title = this.props.card.name || "What would you like to know?";
+        var title = this.props.card.name || "New question";
 
         var editButton;
         if (!this.props.cardIsNewFn() && this.props.card.is_creator) {
@@ -150,11 +149,7 @@ export default React.createClass({
         if (this.props.downloadLink) {
             downloadButton = (
                 <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download' width="16px" height="16px">
-                        <Popover>
-                            <span>Download data</span>
-                        </Popover>
-                    </Icon>
+                    <Icon name='download' width="16px" height="16px" />
                 </a>
             );
         }
@@ -232,7 +227,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="border-bottom py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+            <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
                 <div className="Entity">
                     <div className="flex align-center">
                         <h1 className="Entity-title">{title}</h1>
@@ -242,7 +237,7 @@ export default React.createClass({
                     {attribution}
                 </div>
 
-                <div className="QueryHeader-actions flex-align-right">
+                <div className="flex align-center flex-align-right">
 
                     <span className="pr3">
                         {saveButton}

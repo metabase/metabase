@@ -86,7 +86,7 @@ CardControllers.controller('CardDetail', [
                 type: "query",
                 query: {
                     source_table: null,
-                    aggregation: [null],
+                    aggregation: ["rows"],
                     breakout: [],
                     filter: []
                 }
@@ -177,13 +177,12 @@ CardControllers.controller('CardDetail', [
 
         var editorModel = {
             isRunning: false,
-            isExpanded: true,
+            isShowingDataReference: null,
             databases: null,
             tables: null,
             options: null,
             tableForeignKeys: null,
             query: null,
-            runQueryFn: runQuery,
             setQueryFn: setQuery,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
@@ -207,6 +206,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys: null,
             tableForeignKeyReferences: null,
             isRunning: false,
+            runQueryFn: runQuery,
             isObjectDetail: false,
             setDisplayFn: setDisplay,
             setChartColorFn: function(color) {
@@ -368,6 +368,7 @@ CardControllers.controller('CardDetail', [
         function renderEditor() {
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
+            editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
             editorModel.tables = tables;
             editorModel.options = tableMetadata;
@@ -510,7 +511,15 @@ CardControllers.controller('CardDetail', [
                 }).$promise.then(function (table) {
                     // Decorate with valid operators
                     // TODO: would be better if this was in our component
-                    return markupTableMetadata(table);
+                    table = markupTableMetadata(table);
+                    // Load joinable tables
+                    return $q.all(table.fields.filter((f) => f.target != null).map((field) => {
+                        return Metabase.table_query_metadata({
+                            'tableId': field.target.table_id
+                        }).$promise.then((targetTable) => {
+                            field.target.table = markupTableMetadata(targetTable);
+                        });
+                    })).then(() => table);
                 }),
                 Metabase.table_fks({
                     'tableId': tableId
@@ -852,23 +861,25 @@ CardControllers.controller('CardDetail', [
         }
 
         // add popstate listener to support undo/redo via browser history
-        window.addEventListener("popstate", popStateListener, false);
+        angular.element($window).on('popstate', popStateListener);
+
+        // When the window is resized we need to re-render, mainly so that our visualization pane updates
+        // Debounce the function to improve resizing performance.
+        var debouncedRenderAll = _.debounce(renderAll, 400);
+        angular.element($window).on('resize', debouncedRenderAll);
 
         $scope.$on("$destroy", function() {
-            window.removeEventListener("popstate", popStateListener, false);
+            angular.element($window).off('popstate', popStateListener);
+            angular.element($window).off('resize', debouncedRenderAll);
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
             React.unmountComponentAtNode(document.getElementById('react_qb_header'));
             React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
             React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
-        // When the window is resized we need to re-render, mainly so that our visualization pane updates
-        // Debounce the function to improve resizing performance.
-        angular.element($window).bind('resize', _.debounce(function() {
-            renderAll();
-        }, 400));
 
         // mildly hacky way to prevent reloading controllers as the URL changes
         var route = $route.current;

@@ -11,6 +11,7 @@ var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
+var fs = require('fs');
 
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
@@ -90,17 +91,17 @@ module.exports = {
             'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
             'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
             // react
-            'react':                __dirname + '/node_modules/react/dist/react-with-addons.js',
+            'react':                __dirname + '/node_modules/react/dist/react-with-addons.min.js',
             'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
-            'react-datepicker':     __dirname + '/node_modules/react-datepicker/react-datepicker.js',
-            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.js',
+            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
+            // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.js',
+            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
             'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
             'humanize':             __dirname + '/node_modules/humanize-plus/public/src/humanize.js'
         }
@@ -139,9 +140,22 @@ module.exports = {
         compress: false
     },
 
+};
+
+// development environment:
+if (/^dev/.test(process.env["METABASE_ENV"])) {
+    // replace minified files with un-minified versions
+    for (var name in module.exports.resolve.alias) {
+        var minified = module.exports.resolve.alias[name];
+        var unminified = minified.replace(/[.-]min/, '');
+        if (minified !== unminified && fs.existsSync(unminified)) {
+            module.exports.resolve.alias[name] = unminified;
+        }
+    }
+
     // SourceMaps
     // Normal source map works better but takes longer to build
-    // devtool: 'source-map'
+    // module.exports.devtool = 'source-map';
     // Eval source map doesn't work with CSS but is faster to build
-    // devtool: 'eval-source-map'
-};
+    // module.exports.devtool = 'eval-source-map';
+}

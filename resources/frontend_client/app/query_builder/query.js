@@ -3,10 +3,7 @@
 var Query = {
 
     canRun: function(query) {
-        if (Query.hasValidAggregation(query)) {
-            return true;
-        }
-        return false;
+        return query && query.source_table != undefined && Query.hasValidAggregation(query);
     },
 
     cleanQuery: function(query) {
@@ -46,9 +43,14 @@ var Query = {
             }
         }
 
-        // TODO: limit
+        if (query.order_by) {
+            query.order_by = query.order_by.filter((s) => Query.isValidField(s[0]) && s[1] != null)
+            if (query.order_by.length === 0) {
+                delete query.order_by;
+            }
+        }
 
-        // TODO: sort
+        // TODO: limit
 
         return query;
     },
@@ -142,22 +144,20 @@ var Query = {
     },
 
     canAddFilter: function(query) {
-        var canAdd = true;
         var queryFilters = Query.getFilters(query);
-        if (queryFilters && queryFilters.length > 0) {
+        if (!queryFilters) {
+            return false;
+        }
+        if (queryFilters.length > 0) {
             var lastFilter = queryFilters[queryFilters.length - 1];
-
             // simply make sure that there are no null values in the last filter
             for (var i=0; i < lastFilter.length; i++) {
                 if (lastFilter[i] === null) {
-                    canAdd = false;
+                    return false
                 }
             }
-        } else {
-            canAdd = false;
         }
-
-        return canAdd;
+        return true;
     },
 
     addFilter: function(query) {
@@ -206,21 +206,15 @@ var Query = {
     getSortableFields: function(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
 
-        // start with all fields
-        var fieldList = [];
-        for(var key in fields) {
-            fieldList.push(fields[key]);
-        }
-
         if (Query.isBareRowsAggregation(query)) {
-            return fieldList;
+            return fields;
         } else if (Query.hasValidBreakout(query)) {
             // further filter field list down to only fields in our breakout clause
             var breakoutFieldList = [];
             query.breakout.map(function (breakoutFieldId) {
-                for (var idx in fieldList) {
-                    if (fieldList[idx].id === breakoutFieldId) {
-                        breakoutFieldList.push(fieldList[idx]);
+                for (var idx in fields) {
+                    if (fields[idx].id === breakoutFieldId) {
+                        breakoutFieldList.push(fields[idx]);
                     }
                 }
             });
@@ -279,6 +273,38 @@ var Query = {
         } else {
             queryOrderBy.splice(index, 1);
         }
+    },
+
+    isValidField: function(field) {
+        return (
+            typeof field === "number" ||
+            (Array.isArray(field) && (
+                (field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number") ||
+                (field[0] === 'aggregation' && typeof field[1] === "number")
+            ))
+        );
+    },
+
+    getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+        var results = {
+            count: 0,
+            fields: null,
+            fks: []
+        };
+        // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (f.special_type !== "fk" || !includeJoins));
+        results.count += results.fields.length;
+        if (includeJoins) {
+            results.fks = fields.filter((f) => f.special_type === "fk").map((joinField) => {
+                var targetFields = filterFn(joinField.target.table.fields).filter((f) => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
+                results.count += targetFields.length;
+                return {
+                    field: joinField,
+                    fields: targetFields
+                }
+            }).filter((r) => r.fields.length > 0);
+        }
+        return results;
     }
 }
 

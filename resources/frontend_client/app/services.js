@@ -416,11 +416,6 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 field.operators_lookup[operator.name] = operator;
             });
         });
-
-        table.aggregation_lookup = {};
-        _.each(table.aggregation_options, function(agg) {
-            table.aggregation_lookup[agg.short] = agg;
-        });
     };
 
     // this just makes it easier to access the current user
