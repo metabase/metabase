@@ -73,9 +73,14 @@ export default React.createClass({
     },
 
     renderHeader: function() {
+        var visualizationSettings = false;
+        if (!this.props.isObjectDetail) {
+            visualizationSettings = (<VisualizationSettings {...this.props}/>);
+        }
+
         return (
             <div className="relative flex full mt3">
-                <VisualizationSettings {...this.props}/>
+                {visualizationSettings}
                 <div className="absolute left right ml-auto mr-auto layout-centered flex">
                     <RunButton
                         canRun={this.canRun()}
