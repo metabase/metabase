@@ -3,6 +3,8 @@
 /*global _*/
 /* Services */
 
+import MetabaseAnalytics from './lib/metabase_analytics';
+
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
 CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
@@ -20,7 +22,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 setupToken: null,
                 currentUser: null,
                 siteSettings: null,
-                appContext: 'unknown'
+                appContext: 'none'
             },
 
             init: function() {
@@ -94,6 +96,11 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 $location.path('/unauthorized/');
             },
 
+            setAppContext: function(appContext) {
+                service.model.appContext = appContext;
+                $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
+            },
+
             routeChanged: function(event) {
                 // establish our application context based on the route (URI)
                 // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
@@ -110,8 +117,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 
                 // if the context of the app has changed due to this route change then send out an event
                 if (service.model.appContext !== routeContext) {
-                    service.model.appContext = routeContext;
-                    $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
+                    service.setAppContext(routeContext);
                 }
 
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
@@ -154,6 +160,12 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 }
             }
         };
+
+        // listen for location changes and use that as a trigger for page view tracking
+        $rootScope.$on('$locationChangeSuccess', function() {
+            // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
+            MetabaseAnalytics.trackPageView($location.path());
+        });
 
         // listen for all route changes so that we can update organization as appropriate
         $rootScope.$on('$routeChangeSuccess', service.routeChanged);
@@ -411,11 +423,6 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
             _.each(field.valid_operators, function(operator) {
                 field.operators_lookup[operator.name] = operator;
             });
-        });
-
-        table.aggregation_lookup = {};
-        _.each(table.aggregation_options, function(agg) {
-            table.aggregation_lookup[agg.short] = agg;
         });
     };
 

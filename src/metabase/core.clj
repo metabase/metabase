@@ -1,8 +1,9 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
-            [clojure.java.browse :refer [browse-url]]
+  (:require [clojure.java.browse :refer [browse-url]]
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
@@ -28,11 +29,28 @@
 
 (defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
+(defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+
+(defn site-url
+  "Fetch the site base URL that should be used for password reset emails, etc.
+   This strips off any trailing slashes that may have been added.
+
+   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
+   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
+   Subsequently, the site URL can only be changed via the admin page."
+  {:arglists '([request])}
+  [{{:strs [origin host]} :headers}]
+  {:pre  [(or origin host)]
+   :post [(string? %)]}
+  (or (some-> (-site-url)
+              (s/replace #"/$" "")) ; strip off trailing slash if one was included
+      (-site-url (or origin host))))
 
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
       (log-api-call :request :response)
+      add-security-headers         ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
       format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
       (wrap-json-body              ; extracts json POST body and makes it avaliable on request
         {:keywords? true})

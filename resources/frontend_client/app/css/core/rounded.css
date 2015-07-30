@@ -24,3 +24,7 @@
   border-top-right-radius:    var(--default-border-radius);
   border-bottom-right-radius: var(--default-border-radius);
 }
+
+.circular {
+    border-radius: 99px !important;
+}

@@ -1,4 +1,4 @@
-<div class="Home full-height" ng-controller="Home">
+<div class="Home" ng-controller="Home">
     <div class="bg-brand text-white">
         <div class="wrapper">
             <div class="Grid Grid--full large-Grid--1of2 align-center">
@@ -8,16 +8,15 @@
                         <h2 class="text-light text-brand-light">{{subheading}}</h2>
                     </div>
                 </div>
-
-
             </div>
         </div>
         <div class="wrapper">
             <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'data' }" ng-click="currentView = 'data'">A new question</a>
             <a class="HomeTab inline-block" ng-class="{'HomeTab--active text-dark' : currentView === 'questions'}" ng-click="currentView = 'questions'">Start from a saved question</a>
         </div>
-
     </div>
+
+    <div ng-if="showOnboarding"><mb-new-user-onboarding></mb-new-user-onboarding></div>
 
 
     <div ng-controller="CardList" ng-if="currentView != 'data'">
@@ -95,9 +94,9 @@
             </div>
             <ul class="wrapper" ng-if="tables">
                 <li ng-repeat="table in tables" ng-if="table.rows > 0">
-                    <a class="no-decoration py2 border-bottom flex align-center" href="/card/create?db={{currentDB.id}}&table={{table.id}}">
+                    <a class="no-decoration py2 border-bottom flex align-center" href="/q?db={{currentDB.id}}&table={{table.id}}">
                         <div class="flex flex-column pr3 lg-pr0">
-                            <h2 class="text-dark text-brand-hover break-word">{{table.name}}</h2>
+                            <h2 class="text-dark text-brand-hover break-word">{{table.display_name}}</h2>
                             <h4 class="TableDescription text-grey-4 text-normal mt1">{{table.description}}</h4>
                         </div>
                         <div class="flex flex-align-right align-center">
@@ -111,7 +110,7 @@
                 </li>
             </ul>
         </div>
-        <div class="full-height" ng-if="tables.length === 0">
+        <div ng-if="tables.length === 0">
             <div class="wrapper flex layout-centered">
                 <h2>No data is avaliable for this database</h2>
             </div>

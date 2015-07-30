@@ -62,36 +62,35 @@
          (or (nil? url-param-kwargs)
              (map? url-param-kwargs))]}
 
-   (let [request-map (cond-> {:accept :json
-                              :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
-                                                                                   credentials))}}
-                       (not (empty? http-body)) (assoc
-                                                 :content-type :json
-                                                 :body (cheshire/generate-string http-body)))
-        request-fn (case method
-                     :get  client/get
-                     :post client/post
-                     :put client/put
-                     :delete client/delete)
-        url (build-url url url-param-kwargs)
+  (let [request-map (cond-> {:accept  :json
+                             :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
+                                                                                  credentials))}}
+                      (seq http-body) (assoc
+                                       :content-type :json
+                                       :body         (cheshire/generate-string http-body)))
+        request-fn  (case method
+                      :get    client/get
+                      :post   client/post
+                      :put    client/put
+                      :delete client/delete)
+        url         (build-url url url-param-kwargs)
         method-name (.toUpperCase ^String (name method))
 
         ;; Now perform the HTTP request
         {:keys [status body]} (try (request-fn url request-map)
                                    (catch clojure.lang.ExceptionInfo e
                                      (log/debug method-name url)
-                                     (-> (.getData ^clojure.lang.ExceptionInfo e)
-                                         :object)))]
+                                     (:object (.getData ^clojure.lang.ExceptionInfo e))))]
 
     ;; -check the status code if EXPECTED-STATUS was passed
     (log/debug method-name url status)
     (when expected-status
       (when-not (= status expected-status)
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              {stacktrace :stacktrace :as body} (try (-> (cheshire/parse-string body)
-                                                         clojure.walk/keywordize-keys)
-                                                     (catch Exception _ body))]
-          (log/warn (with-out-str (clojure.pprint/pprint body)))
+              body    (try (-> (cheshire/parse-string body)
+                               clojure.walk/keywordize-keys)
+                           (catch Exception _ body))]
+          (log/error (u/pprint-to-str 'red body))
           (throw (ex-info message {:status-code status})))))
 
     ;; Deserialize the JSON response or return as-is if that fails

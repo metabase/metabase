@@ -1,25 +1,26 @@
 'use strict';
 
+var cx = React.addons.classSet;
+
 export default React.createClass({
     displayName: 'RunButton',
     propTypes: {
         canRun: React.PropTypes.bool.isRequired,
         isRunning: React.PropTypes.bool.isRequired,
+        isDirty: React.PropTypes.bool.isRequired,
         runFn: React.PropTypes.func.isRequired
     },
-    run: function() {
-
-    },
     render: function () {
-        // default state is to not render anything if we can't actually run
-        var runButton = false;
-        if (this.props.canRun) {
-            var runButtonText = (this.props.isRunning) ? "Loading..." : "Find out!";
-            runButton = (
-                <button className="Button Button--primary" onClick={this.props.runFn}>{runButtonText}</button>
-            );
-        }
-
-        return runButton;
+        var runButtonText = (this.props.isRunning) ? "Loading..." : "Run query";
+        var classes = cx({
+            "Button": true,
+            "Button--primary": true,
+            "circular": true,
+            "RunButton": true,
+            "RunButton--hidden": (!this.props.canRun || !this.props.isDirty)
+        });
+        return (
+            <button className={classes} onClick={this.props.runFn}>{runButtonText}</button>
+        );
     }
 });

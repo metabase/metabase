@@ -88,29 +88,22 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (log/info (u/format-color 'blue "Creating %s database %s..." (name engine) database-name))
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
-           (log/debug (color/blue "Loading data..."))
            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (log/info (u/format-color 'blue "Loading data for table '%s'..." (:table-name table-definition)))
-             (load-table-data! dataset-loader database-definition table-definition)
-             (log/info (u/format-color 'blue "Inserted %d rows." (count (:rows table-definition)))))
+             (load-table-data! dataset-loader database-definition table-definition))
 
            ;; Add DB object to Metabase DB
-           (log/info (color/blue "Adding DB to Metabase..."))
            (let [db (ins Database
                       :name    database-name
                       :engine  (name engine)
                       :details (database->connection-details dataset-loader database-definition))]
 
              ;; Sync the database
-             (log/info (color/blue "Syncing DB..."))
              (driver/sync-database! db)
 
              ;; Add extra metadata like Field field-type, base-type, etc.
-             (log/info (color/blue "Adding schema metadata..."))
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
                      table      (delay (let [table (metabase-instance table-definition db)]
@@ -121,13 +114,11 @@
                                         (assert field)
                                         field))]
                      (when field-type
-                       (log/info (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
+                       (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
                        (upd Field (:id @field) :field_type (name field-type)))
                      (when special-type
-                       (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+                       (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
                        (upd Field (:id @field) :special_type (name special-type)))))))
-
-             (log/info (color/blue "Finished."))
              db))))))
 
 (defn remove-database!

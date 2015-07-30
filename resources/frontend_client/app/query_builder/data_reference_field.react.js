@@ -95,14 +95,16 @@ export default React.createClass({
     },
 
     render: function() {
-        var fieldName = inflection.humanize(this.props.field.name);
-        var tableName = inflection.humanize(this.state.table ? this.state.table.name : "");
+        var fieldName = this.props.field.display_name;
+        var tableName = this.state.table ? this.state.table.display_name : "";
 
         var validForCurrentQuestion = !this.props.query.query || this.props.query.query.source_table == undefined || this.props.query.query.source_table === this.props.field.table_id;
 
         var useForCurrentQuestion;
         if (validForCurrentQuestion) {
-            var validBreakout = this.state.table && this.state.table.breakout_options.fields.filter((f) => f[0] === this.props.field.id).length > 0;
+            var validBreakout = this.state.table && this.state.table.breakout_options.validFieldsFilter(this.state.table.fields).filter((f) => {
+                return f.id === this.props.field.id;
+            }).length > 0;
             var useForCurrentQuestionArray = [];
             useForCurrentQuestionArray.push(
                 <li key="filter-by" className="mt1">

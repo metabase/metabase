@@ -1,5 +1,9 @@
 'use strict';
-/*global document, Tether*/
+/*global document*/
+
+import PopoverContent from './popover_content.react';
+
+import Tether from 'tether';
 
 export default React.createClass({
     displayName: 'Popover',
@@ -33,11 +37,12 @@ export default React.createClass({
     },
 
     _popoverComponent: function() {
-        var className = this.props.className;
         return (
-            <div className={className}>
-                {this.props.children}
-            </div>
+            <PopoverContent handleClickOutside={this.props.handleClickOutside}>
+                <div className={this.props.className}>
+                    {this.props.children}
+                </div>
+            </PopoverContent>
         );
     },
 

@@ -1,10 +1,9 @@
 (ns metabase.config
   (:require [environ.core :as environ]
-            [medley.core :as medley])
+            [medley.core :as m])
   (:import (clojure.lang Keyword)))
 
-
-(def app-defaults
+(def ^:const app-defaults
   "Global application defaults"
   {;; Database Configuration  (general options?  dburl?)
    :mb-db-type "h2"
@@ -22,7 +21,7 @@
    :mb-jetty-port "3000"
    ;; Other Application Settings
    :mb-password-complexity "normal"
-   :mb-password-length "8"
+   ;:mb-password-length "8"
    :max-session-age "20160"})                    ; session length in minutes (14 days)
 
 
@@ -44,7 +43,7 @@
 (defn ^Keyword config-kw [k] (when-let [val (config-str k)] (keyword val)))
 
 
-(def config-all
+(def ^:const config-all
   "Global application configuration as a dictionary.
    Combines hard coded defaults with optional user specified overrides from environment variables."
   (into {} (map (fn [k] [k (config-str k)]) (keys app-defaults))))
@@ -60,6 +59,6 @@
   [prefix]
   (let [prefix-regex (re-pattern (str ":" prefix ".*"))]
     (->> (merge
-          (medley/filter-keys (fn [k] (re-matches prefix-regex (str k))) app-defaults)
-          (medley/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
-      (medley/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))
+          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) app-defaults)
+          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
+      (m/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))

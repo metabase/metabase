@@ -29,11 +29,10 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (let [existing-user (sel :one [User :id :is_active] :email email)
-        password-reset-url (str (java.net.URL. (java.net.URL. (req/request-url request)) "/auth/forgot_password"))]
+  (let [existing-user (sel :one [User :id :is_active] :email email)]
     (-> (cond
           ;; new user account, so create it
-          (nil? existing-user) (create-user first_name last_name email :send-welcome true :reset-url password-reset-url)
+          (nil? existing-user) (create-user first_name last_name email :send-welcome true :invitor @*current-user*)
           ;; this user already exists but is inactive, so simply reactivate the account
           (not (:is_active existing-user)) (do
                                              (upd User (:id existing-user)

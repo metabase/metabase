@@ -4,7 +4,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
-                             [field-values :refer [field-should-have-field-values? create-field-values create-field-values-if-needed]]
+                             [field-values :refer [field-should-have-field-values? create-field-values-if-needed]]
                              [foreign-key :refer [ForeignKey]]
                              [hydrate :refer [hydrate]]
                              [interface :refer :all])
@@ -94,12 +94,13 @@
     (let [defaults {:active          true
                     :preview_display true
                     :field_type      :info
-                    :position        0}]
+                    :position        0
+                    :display_name    (common/name->human-readable-name (:name field))}]
       (merge defaults field)))
 
   (post-insert [_ field]
     (when (field-should-have-field-values? field)
-      (future (create-field-values field)))
+      (create-field-values-if-needed field))
     field)
 
   (post-update [this {:keys [id] :as field}]
@@ -107,7 +108,7 @@
     (when (or (contains? field :base_type)
               (contains? field :field_type)
               (contains? field :special_type))
-      (future (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id)))))
+      (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id))))
 
   (post-select [this {:keys [table_id parent_id] :as field}]
     (map->FieldInstance
@@ -115,8 +116,6 @@
         :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
         :db                        (delay @(:db @(:table <>)))
         :target                    (delay (field->fk-field field))
-        :human_readable_name       (when (not (nil? (name :field)))
-                                     (delay (common/name->human-readable-name (:name field))))
         :parent                    (when parent_id
                                      (delay (this parent_id)))
         :children                  (delay (sel :many this :parent_id (:id field)))

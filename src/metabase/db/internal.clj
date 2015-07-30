@@ -68,13 +68,12 @@
 ;;; Low-level sel implementation
 
 (defmacro sel-fn [& forms]
-  (let [forms               (sel-apply-kwargs forms)
-        entity-placeholder  (gensym "ENTITY--")]
-    (loop [query `(k/select* ~entity-placeholder), [[f & args] & more] forms]
+  (let [forms               (sel-apply-kwargs forms)]
+    (loop [query `(k/select* ~'entity), [[f & args] & more] forms]
       (cond
         f          (recur `(~f ~query ~@args) more)
         (seq more) (recur query more)
-        :else      `[(fn [~entity-placeholder]
+        :else      `[(fn [~'entity]
                        ~query) ~(str query)]))))
 
 (defn sel-exec [entity [select-fn log-str]]

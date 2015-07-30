@@ -93,7 +93,11 @@
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
   ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
-  (assert (contains? field/base-types base-type))
+  (assert (or (contains? field/base-types base-type)
+              (and (map? base-type)
+                   (string? (:native base-type))))
+    (str (format "Invalid field base type: '%s'\n" base-type)
+         "Field base-type should be either a valid base type like :TextField or be some native type wrapped in a map, like {:native \"JSON\"}."))
   (when field-type
     (assert (contains? field/field-types field-type)))
   (when special-type

@@ -6,17 +6,17 @@
             [korma.core :as korma]
             [korma.db :as kdb]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]))
+            [metabase.driver.query-processor :as qp]
+            [metabase.driver.generic-sql.interface :as i]))
 
 (defn- db->connection-spec [{{:keys [short-lived?]} :details, :as database}]
   (let [driver                              (driver/engine->driver (:engine database))
-        database->connection-details        (:database->connection-details driver)
-        connection-details->connection-spec (:connection-details->connection-spec driver)]
+        database->connection-details        (partial i/database->connection-details driver)
+        connection-details->connection-spec (partial i/connection-details->connection-spec driver)]
     (merge (-> database database->connection-details connection-details->connection-spec)
            ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
            ;; TODO - what will we do once we have CLOBS in temp DBs?
-           (when-not short-lived?
-             {:make-pool? true}))))
+           {:make-pool? (not short-lived?)})))
 
 (def ^{:arglists '([database])}
   db->korma-db

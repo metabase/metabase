@@ -8,9 +8,6 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <title>Metabase</title>
 
-        <link rel="stylesheet" href="/app/dist/styles.bundle.css"/>
-        <script charset="utf-8" src="/app/dist/vendor.bundle.js"></script>
-        <script charset="utf-8" src="/app/dist/app.bundle.js"></script>
     </head>
 
     <body ng-controller="Corvus">
@@ -20,7 +17,7 @@
                 <ul class="wrapper flex align-center">
                     <li>
                         <a class="NavItem cursor-pointer text-white flex align-center" href="/">
-                            <mb-logo-icon class="text-white"></mb-logo-icon>
+                            <mb-logo-icon class="text-white my2"></mb-logo-icon>
                         </a>
                     </li>
                     <li>
@@ -37,17 +34,17 @@
                                     <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
                                     <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
                                     <div class="p2 text-bold text-white border-top border-light">
-                                        To create your first dashboard, <a class="text-white" href="/card/create"> ask a question</a> and save it.
+                                        To create your first dashboard, <a class="text-white" href="/q"> ask a question</a> and save it.
                                     </div>
                                 </div>
                                 <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
-                                    <li class="Dropdown-item" ng-repeat="dash in dashboards">
-                                        <a class="text-white no-decoration" href="/dash/{{dash.id}}">
+                                    <li class="block" ng-repeat="dash in dashboards">
+                                        <a class="Dropdown-item block text-white no-decoration" href="/dash/{{dash.id}}">
                                             <div class="flex text-bold">
                                                 {{dash.name}}
                                                 <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
                                             </div>
-                                            <div class="mt1 text-light text-brand-light">
+                                            <div class="mt1 text-light text-brand-light" ng-if="dash.description">
                                                 {{dash.description}}
                                             </div>
                                         </a>
@@ -57,7 +54,7 @@
                         </div>
                     </li>
                     <li class="bullet">
-                        <a class="NavItem text-white cursor-pointer p2 flex align-center no-decoration" href="/card/create">Ask a Question</a>
+                        <a class="NavItem text-white cursor-pointer p2 flex align-center no-decoration" href="/q">Ask a Question</a>
                     </li>
                     <li class="flex-align-right">
                         <mb-profile-link class="text-white" user="user" context="nav"></mb-profile-link>
@@ -96,9 +93,24 @@
                     <mb-profile-link user="user" context="nav"></mb-profile-link>
                 </div>
             </nav>
+
+            <!-- AUTH NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative" ng-show="nav === 'auth'">
+            </nav>
+
+            <!-- NO NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative" ng-show="nav === 'none'">
+                <ul class="wrapper flex align-center">
+                    <li>
+                        <a class="NavItem cursor-pointer flex align-center" href="/">
+                            <mb-logo-icon class="text-brand my2"></mb-logo-icon>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
 
-        <main class="Main full-height flex flex-column" ng-view></main>
+        <main class="Main flex flex-column flex-full" ng-view></main>
     </body>
 
 
@@ -118,6 +130,5 @@
     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
     ga('create', 'UA-60817802-1', 'auto');
-    ga('send', 'pageview');
     </script>
 </html>

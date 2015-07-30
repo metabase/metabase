@@ -1,4 +1,4 @@
-<div class="wrapper full-height flex flex-column">
+<div class="wrapper flex flex-full flex-column">
     <section class="my3 flex align-center">
         <h3 class="py2">{{database.name}}</h2>
         <div class="py2 flex-align-right">
@@ -21,7 +21,7 @@
     </section>
 
     <section ng-show="pane == 'settings'" ng-controller="DatabaseEdit">
-        <div class="Grid Grid--gutters Grid--full md-Grid--1of2" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
+        <div class="Grid Grid--gutters Grid--full sm-Grid--normal" ng-include="'/app/admin/databases/partials/database_edit_pane.html'" >
         </div>
     </section>
 </div>

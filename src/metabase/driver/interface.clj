@@ -10,16 +10,20 @@
     :standard-deviation-aggregations
     :unix-timestamp-special-type-fields})
 
+(def ^:const max-sync-lazy-seq-results
+  "The maximum number of values we should return when using `field-values-lazy-seq`.
+   This many is probably fine for inferring special types and what-not; we don't want
+   to scan millions of values at any rate."
+  10000)
 
 ;; ## IDriver Protocol
 
 (defprotocol IDriver
-  "Methods all drivers must implement."
-  ;; Features
-  (supports? [this ^Keyword feature]
-    "Does this driver support optional FEATURE?
+  "Methods all drivers must implement.
+   They should also include the following properties:
 
-       (supports? metabase.driver.h2/driver :timestamps) -> false")
+   *  `features` (optional)
+      A set containing one or more `driver-optional-features`"
 
   ;; Connection
   (can-connect? [this database]
@@ -48,6 +52,10 @@
     "Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).")
   (table-pks [this table]
     "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).")
+  (field-values-lazy-seq [this field]
+    "Return a lazy sequence of all values of Field.
+     This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
+     if drivers *don't* implement `ISyncDriverFieldAvgLength` or `ISyncDriverFieldPercentUrls`, respectively.")
 
   ;; Query Processing
   (process-query [this query]
@@ -83,35 +91,45 @@
     "Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`."))
 
 
-;; ## ISyncDriverField Protocols
+;; ## ISyncDriverField Protocols (Optional)
 
-;; Sync drivers need to implement either ISyncDriverFieldValues or ISyncDriverFieldAvgLength *and* ISyncDriverFieldPercentUrls.
-;;
-;; ISyncDriverFieldValues is used to provide a generic fallback implementation of the other two that calculate these values by
-;; iterating over a few thousand values of the Field in Clojure-land. Since that's slower, it's preferable to provide implementations
-;; of ISyncDriverFieldAvgLength/ISyncDriverFieldPercentUrls when possible. (You can also implement ISyncDriverFieldValues and
-;; *one* of the other two; the optimized implementation will be used for that and the fallback implementation for the other)
-
-(defprotocol ISyncDriverFieldValues
-  "Optional. Used to implement generic fallback implementations of `ISyncDriverFieldAvgLength` and `ISyncDriverFieldPercentUrls`.
-   If a sync driver doesn't implement *either* of those protocols, it must implement this one."
-  (field-values-lazy-seq [this field]
-    "Return a lazy sequence of all values of Field."))
+;; These are optional protocol that drivers can implement to be used instead of falling back to field-values-lazy-seq for certain Field
+;; syncing operations, which involves iterating over a few thousand values of the Field in Clojure-land. Since that's slower, it's
+;; preferable to provide implementations of ISyncDriverFieldAvgLength/ISyncDriverFieldPercentUrls when possible.
 
 (defprotocol ISyncDriverFieldAvgLength
-  "Optional. If this isn't provided, a fallback implementation that calculates average length in Clojure-land will be used instead.
-   If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
+  "Optional. If this isn't provided, a fallback implementation that calculates average length in Clojure-land will be used instead."
   (field-avg-length [this field]
     "Return the average length of all non-nil values of textual FIELD."))
 
 (defprotocol ISyncDriverFieldPercentUrls
-  "Optional. If this isn't provided, a fallback implementation that calculates URL percentage in Clojure-land will be used instead.
-   If a driver doesn't implement this protocol, it *must* implement `ISyncDriverFieldValues`."
+  "Optional. If this isn't provided, a fallback implementation that calculates URL percentage in Clojure-land will be used instead."
   (field-percent-urls [this field]
     "Return the percentage of non-nil values of textual FIELD that are valid URLs."))
 
 
+;;; ## ISyncDriverSpecificSyncField (Optional)
+
+(defprotocol ISyncDriverSpecificSyncField
+  "Optional. Do driver-specific syncing for a FIELD."
+  (driver-specific-sync-field! [this field]
+    "This is a chance for drivers to do custom Field syncing specific to their database.
+     For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
+     As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified
+     FIELD, if any, or `nil`."))
+
+
 ;; ## Helper Functions
+
+(def ^:private valid-feature? (partial contains? driver-optional-features))
+
+(defn supports?
+  "Does DRIVER support FEATURE?"
+  [{:keys [features]} ^Keyword feature]
+  {:pre [(set? features)
+         (every? valid-feature? features)
+         (valid-feature? feature)]}
+  (contains? features feature))
 
 (defn assert-driver-supports
   "Helper fn. Assert that DRIVER supports FEATURE."

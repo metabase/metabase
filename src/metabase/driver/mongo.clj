@@ -19,21 +19,14 @@
 
 (declare driver)
 
-;; TODO - this isn't necessarily Mongo-specific
-(def ^:private ^:const document-scanning-limit
-  "The maximum number of documents to scan to look for Fields.
-   We can't feasibly scan every document in a million+ document collection, so scan the first `document-scanning-limit`
-   documents and hope that the rest follow the same schema."
-  10000)
-
 ;;; ### Driver Helper Fns
 
 (defn- table->column-names
   "Return a set of the column names for TABLE."
   [table]
-  (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
+  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take document-scanning-limit)
+         (take max-sync-lazy-seq-results)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -49,19 +42,11 @@
 
 ;;; ## MongoDriver
 
-(def ^:const ^:private mongo-driver-features
-  "Optional features supported by the Mongo driver."
-  #{:nested-fields})
-
-(deftype MongoDriver []
+(defrecord MongoDriver []
   IDriver
-;;; ### Features
-  (supports? [_ feature]
-    (contains? mongo-driver-features feature))
-
 ;;; ### Connection
   (can-connect? [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (= (-> (cmd/db-stats conn)
              (conv/from-db-object :keywordize)
              :ok)
@@ -73,7 +58,7 @@
 ;;; ### QP
   (wrap-process-query-middleware [_ qp]
     (fn [query]
-      (with-mongo-connection [^com.mongodb.DBApiLayer conn (:database query)]
+      (with-mongo-connection [^com.mongodb.DB conn (:database query)]
         (qp query))))
 
   (process-query [_ query]
@@ -85,7 +70,7 @@
         (do-sync-fn)))
 
   (active-table-names [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (-> (mdb/get-collection-names conn)
           (set/difference #{"system.indexes"}))))
 
@@ -100,7 +85,6 @@
   (table-pks [_ _]
     #{"_id"})
 
-  ISyncDriverFieldValues
   (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
     (assert (and (map? field)
                  (delay? qualified-name-components)
@@ -121,7 +105,7 @@
     ;; Build a map of nested-field-key -> type -> count
     ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
     (let [field->type->count (atom {})]
-      (doseq [val (take document-scanning-limit (field-values-lazy-seq this field))]
+      (doseq [val (take max-sync-lazy-seq-results (field-values-lazy-seq this field))]
         (when (map? val)
           (doseq [[k v] val]
             (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
@@ -136,4 +120,4 @@
 
 (def driver
   "Concrete instance of the MongoDB driver."
-  (MongoDriver.))
+  (map->MongoDriver {:features #{:nested-fields}}))

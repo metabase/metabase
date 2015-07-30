@@ -1,6 +1,6 @@
 (ns metabase.api.common.internal-test
   (:require [expectations :refer :all]
-            [medley.core :as medley]
+            [medley.core :as m]
             (metabase.api.common [internal :refer :all])))
 
 ;;; TESTS FOR ROUTE-FN-NAME
@@ -32,8 +32,8 @@
 ;; expectations (internally, `clojure.data/diff`) doesn't think two regexes with the same exact pattern are equal.
 ;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"[0-9]+" -> "#[0-9]+"`
 (defmacro no-regex [& body]
-  `(binding [*auto-parse-types* (medley/map-vals #(medley/update % :route-param-regex (partial str "#"))
-                                                 *auto-parse-types*) ]
+  `(binding [*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
+                                            *auto-parse-types*) ]
      ~@body))
 
 (expect nil

@@ -85,7 +85,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             if (!table.field_values) {
                 table.field_values = {};
                 for (var fld in table.fields) {
-                    table.field_values[fld.id] = fld.name; // ???
+                    table.field_values[fld.id] = fld.display_name; // ???
                 }
             }
 
@@ -115,7 +115,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         var validValues = _.map(longitudeFields, function(field) {
             return {
                 'key': field.id,
-                'name': field.name
+                'name': field.display_name
             };
         });
 
@@ -246,23 +246,16 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     }
 
     // Breakouts and Aggregation options
-    function shortenFields(fields) {
-        return _.map(fields, function(field) {
-            return [field.id, field.name];
-        });
-
-    }
-
     function allFields(fields) {
-        return shortenFields(fields);
+        return fields;
     }
 
     function summableFields(fields) {
-        return shortenFields(_.filter(fields, isSummable));
+        return _.filter(fields, isSummable);
     }
 
     function dimensionFields(fields) {
-        return shortenFields(_.filter(fields, isDimension));
+        return _.filter(fields, isDimension);
     }
 
     var Aggregators = [{
@@ -323,7 +316,8 @@ ExploreServices.service('CorvusFormGenerator', [function() {
             'advanced': aggregator.advanced || false,
             'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
                 return validFieldsFilterFn(fields);
-            })
+            }),
+            'validFieldsFilters': aggregator.validFieldsFilters
         };
     }
 
@@ -336,6 +330,7 @@ ExploreServices.service('CorvusFormGenerator', [function() {
     function getBreakouts(fields) {
         var result = populateFields(BreakoutAggregator, fields);
         result.fields = result.fields[0];
+        result.validFieldsFilter = result.validFieldsFilters[0];
         return result;
     }
 
