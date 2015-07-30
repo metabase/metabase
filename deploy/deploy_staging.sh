@@ -1,15 +1,10 @@
 #!/bin/bash
+set -eo pipefail
 
 BASEDIR=$(dirname $0)
+source "$BASEDIR/functions"
 
-if [ -z $1 ]; then
-  echo "Oops!  You need to specify the name of the EB app version to deploy."
-  exit 1
-fi
-
-APP_BUNDLE=$1
-ENVIRONMENT=metabase-staging
-
+EB_ENVIRONMENT=metabase-staging
 
 # deploy EB version to environment
-${BASEDIR}/deploy_version.sh ${APP_BUNDLE} ${ENVIRONMENT}
+deploy_version ${EB_ENVIRONMENT}

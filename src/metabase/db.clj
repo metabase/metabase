@@ -95,7 +95,6 @@
   [& {:keys [auto-migrate]
       :or {auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
-  (log/info "Setting up DB specs...")
 
   ;; Test DB connection and throw exception if we have any troubles connecting
   (log/info "Verifying Database Connection ...")

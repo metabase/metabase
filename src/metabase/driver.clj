@@ -125,7 +125,7 @@
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
       {:pre [(map? database)]}
-      (time (-sync-database! (engine->driver (:engine database)) database)))))
+      (-sync-database! (engine->driver (:engine database)) database))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
@@ -183,10 +183,8 @@
           (when (= :failed (:status query-result))
             (throw (Exception. ^String (get query-result :error "general error"))))
           (query-complete query-execution query-result))
-        (catch Exception ex
-          (log/warn ex)
-          (.printStackTrace ex)
-          (query-fail query-execution (.getMessage ex)))))))
+        (catch Exception e
+          (query-fail query-execution (.getMessage e)))))))
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"

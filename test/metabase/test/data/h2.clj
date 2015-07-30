@@ -76,7 +76,7 @@
     :h2)
 
   (database->connection-details [_ database-definition]
-    ;; Return details with the GUEST user added so SQL queries are allowed
+    ;; Return details with the GUEST user added so SQL queries are allowed.
     (let [details (connection-details database-definition)]
       (update details :db str ";USER=GUEST;PASSWORD=guest")))
 
@@ -88,6 +88,9 @@
     (generic/create-physical-table! this database-definition (format-for-h2 table-definition)))
 
   (create-physical-db! [this database-definition]
+    ;; Disable the undo log (i.e., transactions) for this DB session because the bulk operations to load data don't need to be atomic
+    (generic/execute-sql! this database-definition "SET UNDO_LOG = 0;")
+
     ;; Create the "physical" database which in this case actually just means creating the schema
     (generic/create-physical-db! this (format-for-h2 database-definition))
 
