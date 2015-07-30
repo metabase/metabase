@@ -1,17 +1,22 @@
-## Tutorials
+## For Users
 
 * [Getting Started](getting-started.md)
-
-## Guides
-
 * [Users Guide](users-guide.md)
-* [Administration Guide](administration-guide.md)
-* [ETL Guide](etl-guide.md)
-* [Developers Guide](developers-guide.md)
+
+## For Administrators
+
 * [Installation Guide](installation-guide.md)
-* [Data Warehousing Guide](data-warehousing.md)
+* [Administration Guide](administration-guide.md)
 * [Metadata Guide](metadata-guide.md)
 
-## Reference
+## Advanced Topics 
+
+* [Data Warehousing Guide](data-warehousing.md)
+* [ETL Guide](etl-guide.md)
+
+## For Developers
+* [Developers Guide](developers-guide.md)
 * [API Reference](uberdoc.html)
+
+## Reference
 * [Anonymous Information Collection Reference](information-collection.md)
