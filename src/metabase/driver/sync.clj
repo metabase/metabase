@@ -43,39 +43,41 @@
             *sel-disable-logging* true]
     (sync-in-context driver database
       (fn []
-        (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
+        (let [start-time (System/currentTimeMillis)]
+          (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
 
-        (let [active-table-names (active-table-names driver database)
-              table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
-          (assert (set? active-table-names) "active-table-names should return a set.")
-          (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
+          (let [active-table-names (active-table-names driver database)
+                table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
+            (assert (set? active-table-names) "active-table-names should return a set.")
+            (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
 
-          ;; First, let's mark any Tables that are no longer active as such.
-          ;; These are ones that exist in table-name->id but not in active-table-names.
-          (doseq [[table-name table-id] table-name->id]
-            (when-not (contains? active-table-names table-name)
-              (upd Table table-id :active false)
-              (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
+            ;; First, let's mark any Tables that are no longer active as such.
+            ;; These are ones that exist in table-name->id but not in active-table-names.
+            (doseq [[table-name table-id] table-name->id]
+              (when-not (contains? active-table-names table-name)
+                (upd Table table-id :active false)
+                (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
 
-              ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
-              (k/update Field
-                        (k/where {:table_id table-id})
-                        (k/set-fields {:active false}))))
+                ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
+                (k/update Field
+                          (k/where {:table_id table-id})
+                          (k/set-fields {:active false}))))
 
-          ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
-          (let [existing-table-names (set (keys table-name->id))
-                new-table-names      (set/difference active-table-names existing-table-names)]
-            (when (seq new-table-names)
-              (log/info (u/format-color 'blue "Found new tables: %s" new-table-names))
-              (doseq [new-table-name new-table-names]
-                (ins Table :db_id (:id database), :active true, :name new-table-name)))))
+            ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
+            (let [existing-table-names (set (keys table-name->id))
+                  new-table-names      (set/difference active-table-names existing-table-names)]
+              (when (seq new-table-names)
+                (log/debug (u/format-color 'blue "Found new tables: %s" new-table-names))
+                (doseq [new-table-name new-table-names]
+                  (ins Table :db_id (:id database), :active true, :name new-table-name)))))
 
-        ;; Now sync the active tables
-        (->> (sel :many Table :db_id (:id database) :active true)
-             (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
-             (sync-database-active-tables! driver))
+          ;; Now sync the active tables
+          (->> (sel :many Table :db_id (:id database) :active true)
+               (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
+               (sync-database-active-tables! driver))
 
-        (log/info (u/format-color 'magenta "Finished syncing %s database %s." (name (:engine database)) (:name database)))))))
+          (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
+                                    (- (System/currentTimeMillis) start-time))))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
@@ -146,7 +148,7 @@
 
         (sync-table-fields-metadata! driver table)
         (swap! finished-tables-count inc)
-        (log/info (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
+        (log/debug (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
 
 
 ;; ## sync-table steps.
@@ -186,7 +188,7 @@
   {:pre [(set? pk-fields)
          (every? string? pk-fields)]}
   (doseq [{field-name :name field-id :id} (sel :many :fields [Field :name :id], :table_id (:id table), :special_type nil, :name [in pk-fields], :parent_id nil)]
-    (log/info (u/format-color 'green "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
+    (log/debug (u/format-color 'green "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
     (upd Field field-id :special_type :id)))
 
 (defn- sync-table-active-fields-and-pks!
@@ -212,7 +214,7 @@
       (let [existing-field-names (set (keys existing-field-name->field))
             new-field-names      (set/difference (set (keys active-column-names->type)) existing-field-names)]
         (when (seq new-field-names)
-          (log/info (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
+          (log/debug (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
         (doseq [[active-field-name active-field-type] active-column-names->type]
           ;; If Field doesn't exist create it
           (if-not (contains? existing-field-names active-field-name)
@@ -223,7 +225,7 @@
             ;; Otherwise update the Field type if needed
             (let [{existing-base-type :base_type, existing-field-id :id} (existing-field-name->field active-field-name)]
               (when-not (= active-field-type existing-base-type)
-                (log/info (u/format-color 'blue "Field '%s.%s' has changed from a %s to a %s." (:name table) active-field-name existing-base-type active-field-type))
+                (log/debug (u/format-color 'blue "Field '%s.%s' has changed from a %s to a %s." (:name table) active-field-name existing-base-type active-field-type))
                 (upd Field existing-field-id :base_type active-field-type))))))
       ;; TODO - we need to add functionality to update nested Field base types as well!
 
@@ -262,7 +264,7 @@
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (table-name->id dest-table-name)]
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
-                  (log/info (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
+                  (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
                   (ins ForeignKey
                     :origin_id      fk-column-id
                     :destination_id dest-column-id
@@ -329,7 +331,7 @@
   [field]
   (when (nil? (:display_name field))
     (let [display-name (common/name->human-readable-name (:name field))]
-      (log/info (u/format-color 'green "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
+      (log/debug (u/format-color 'green "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
       (upd Field (:id field) :display_name display-name)
       (assoc field :display_name display-name))))
 
@@ -371,7 +373,7 @@
       (assert (>= percent-urls 0.0))
       (assert (<= percent-urls 100.0))
       (when (> percent-urls percent-valid-url-threshold)
-        (log/info (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
+        (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
         (upd Field (:id field) :special_type :url)
         (assoc field :special_type :url)))))
 
@@ -388,7 +390,7 @@
   (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
     (when (and (> cardinality 0)
                (< cardinality low-cardinality-threshold))
-      (log/info (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
+      (log/debug (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
       (upd Field (:id field) :special_type :category)
       (assoc field :special_type :category))))
 
@@ -431,7 +433,7 @@
     (let [avg-len (field-avg-length driver field)]
       (assert (integer? avg-len) "field-avg-length should return an integer.")
       (when (> avg-len average-length-no-preview-threshold)
-        (log/info (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
+        (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
         (upd Field (:id field) :preview_display false)
         (assoc field :preview_display false)))))
 
@@ -465,7 +467,7 @@
              (contains? #{:CharField :TextField} (:base_type field))
              (values-are-valid-json? (->> (field-values-lazy-seq driver field)
                                           (take max-sync-lazy-seq-results))))
-    (log/info (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+    (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
     (upd Field (:id field) :special_type :json, :preview_display false)
     (assoc field :special_type :json, :preview_display false)))
 
@@ -541,7 +543,7 @@
   [field]
   (when-not (:special_type field)
     (when-let [[pattern _ special-type] (field->name-inferred-special-type field)]
-      (log/info (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
+      (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
                                 (name (:base_type field)) @(:qualified-name field) pattern (name special-type)))
       (upd Field (:id field) :special_type special-type)
       (assoc field :special_type special-type))))
@@ -564,7 +566,7 @@
         ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
         (doseq [[nested-field-name nested-field-type] nested-field-name->type]
           (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
-            (log/info (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
+            (log/debug (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
               ;; Now recursively sync this nested Field
               ;; Replace parent so deref doesn't need to do a DB call
