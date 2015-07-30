@@ -57,3 +57,14 @@ On our roadmap are
 
 If you are interested in the status of any of these drivers, click through to the issues to see what work is being done. If you are interested in a driver to another database, please open an issue!
 
+
+## Production Deployments
+* Beanstalk
+* running a container
+    * injecting database variables vs using an embedded database
+* running a jar
+    * where to put the database?
+* HTTPS!
+	* if beanstalk, use an ELB and terminate there
+	* otherwise, recommend nginx as a proxy + provide instructions
+
