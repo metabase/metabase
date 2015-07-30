@@ -16,7 +16,7 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            showEditor: true
+            showEditor: false
         };
     },
 
