@@ -48,12 +48,13 @@ Metabase currently has drivers for
 * H2
 * MySQL
 * PostgreSQL
+* Mongo
 
 On our roadmap are
 
-* [Druid](www.github.com/metabase/metabase-init/issues/X)
-* [MongoDB](www.github.com/metabase/metabase-init/issues/X) 
-* [Presto](www.github.com/metabase/metabase-init/issues/X)
+* [Druid](www.github.com/metabase/metabase-init/issues/655)
+* [Parse](www.github.com/metabase/metabase-init/issues/654) 
+* [Redshift](www.github.com/metabase/metabase-init/issues/652)
 
 If you are interested in the status of any of these drivers, click through to the issues to see what work is being done. If you are interested in a driver to another database, please open an issue!
 
