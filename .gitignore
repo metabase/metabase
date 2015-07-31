@@ -22,4 +22,4 @@ profiles.clj
 /node_modules/
 /.babel_cache
 /coverage
-/resources/sample-dataset-*
+/resources/sample-dataset*

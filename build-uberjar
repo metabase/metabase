@@ -1,0 +1,17 @@
+#! /bin/bash
+
+echo "Running 'npm install' to download javascript dependencies..." &&
+npm install &&
+
+echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
+if [ -n "$CI_DISABLE_WEBPACK_MINIFICATION" ]; then
+    ./node_modules/webpack/bin/webpack.js
+else
+    ./node_modules/webpack/bin/webpack.js -p
+fi &&
+
+echo "Running 'lein generate-sample-dataset' to generate the sample dataset..." &&
+lein generate-sample-dataset &&
+
+echo "Running 'lein uberjar'..." &&
+lein uberjar

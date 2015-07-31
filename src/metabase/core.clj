@@ -16,6 +16,7 @@
             [medley.core :as medley]
             (metabase [config :as config]
                       [db :as db]
+                      [driver :as driver]
                       [routes :as routes]
                       [setup :as setup]
                       [task :as task])
@@ -23,6 +24,7 @@
                                  [log-api-call :refer :all]
                                  [format :refer :all])
             (metabase.models [setting :refer [defsetting]]
+                             [database :refer [Database]]
                              [user :refer [User]])))
 
 ;; ## CONFIG
@@ -134,6 +136,30 @@
     (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
     (reset! jetty-instance nil)))
 
+(def ^:private ^:const sample-dataset-name "Sample Dataset")
+(def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
+
+(defn- add-sample-dataset! []
+  (db/cascade-delete Database :name sample-dataset-name)
+  (when-not (db/exists? Database :name sample-dataset-name)
+    (try
+      (log/info "Loading sample dataset...")
+      (let [resource (-> (Thread/currentThread) ; hunt down the sample dataset DB file inside the current JAR
+                         .getContextClassLoader
+                         (.getResource sample-dataset-filename))]
+        (if-not resource
+          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found by the ClassLoader." sample-dataset-filename))
+          (let [h2-file (-> (.getPath resource)
+                            (s/replace #"^file:" "zip:")         ; to connect to an H2 DB inside a JAR just replace file: with zip:
+                            (s/replace #"\.mv\.db$" "")          ; strip the .mv.db suffix from the path
+                            (str ";USER=GUEST;PASSWORD=guest"))] ; specify the GUEST user account created for the DB
+            (driver/sync-database! (db/ins Database
+                                     :name    sample-dataset-name
+                                     :details {:db h2-file}
+                                     :engine  :h2)))))
+      (catch Throwable e
+        (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
+
 
 (defn -main
   "Launch Metabase in standalone mode."
@@ -142,7 +168,10 @@
   (try
     ;; run our initialization process
     (init)
+    ;; add the sample dataset DB if applicable
+    (add-sample-dataset!)
     ;; launch embedded webserver
     (start-jetty)
     (catch Exception e
+      (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))

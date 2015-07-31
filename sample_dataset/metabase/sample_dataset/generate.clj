@@ -11,10 +11,8 @@
                    [db :as kdb]))
   (:import java.util.Date))
 
-(def ^:private ^:const sample-dataset-version "1.0.0")
-
 (def ^:private ^:const sample-dataset-filename
-  (str (System/getProperty "user.dir") (format "/resources/sample-dataset-%s.db" sample-dataset-version)))
+  (str (System/getProperty "user.dir") "/resources/sample-dataset.db"))
 
 (defn- normal-distribution-rand [mean median]
   (dist/draw (dist/normal-distribution mean median)))
