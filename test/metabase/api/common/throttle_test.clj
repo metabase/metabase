@@ -3,7 +3,7 @@
             [metabase.api.common.throttle :as throttle]
             [metabase.test.util :refer [resolve-private-fns]]))
 
-(def ^:private test-throttler (throttle/make-throttler :test, :initial-delay-ms 2, :attempts-threshold 3, :delay-exponent 2, :attempt-ttl-ms 10))
+(def ^:private test-throttler (throttle/make-throttler :test, :initial-delay-ms 2, :attempts-threshold 3, :delay-exponent 2, :attempt-ttl-ms 25))
 
 ;;; # tests for calculate-delay
 (resolve-private-fns metabase.api.common.throttle calculate-delay)
@@ -111,6 +111,6 @@
        (count @(:attempts test-throttler)))
    (do (attempt 3)
        (count @(:attempts test-throttler)))
-   (do (Thread/sleep 10)
+   (do (Thread/sleep 25)
        (attempt 1)
        (count @(:attempts test-throttler)))])
