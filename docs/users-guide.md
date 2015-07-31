@@ -66,8 +66,10 @@ Questions are made up of a number of parts:
 
 * source data - database + table. Typically you will be working with a single table in your database as the starting point for you questions. 
 * optional filter - this narrows down the source data to an interesting subset, like "active users" or "bookings after June 15th, 2015"
-* aggregation clause - bare rows, count, etc
-* group by field or fields
+* And a view - 
+	* either bare rows or 
+	* aggregation clause -, count, etc
+	* optional group by field or fields
 * Advanced Options
 	* Limit to 1, 10,1000 or more entries
 	* Sort by a column: either by clicking on the column header or by selecting the column in the advanced section
