@@ -1,4 +1,4 @@
-(ns metabase.sample-data.generate
+(ns metabase.sample-dataset.generate
   (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             (faker [address :as address]
@@ -10,6 +10,11 @@
             (korma [core :as k]
                    [db :as kdb]))
   (:import java.util.Date))
+
+(def ^:private ^:const sample-dataset-version "1.0.0")
+
+(def ^:private ^:const sample-dataset-filename
+  (str (System/getProperty "user.dir") (format "/resources/sample-dataset-%s.db" sample-dataset-version)))
 
 (defn- normal-distribution-rand [mean median]
   (dist/draw (dist/normal-distribution mean median)))
@@ -345,7 +350,7 @@
 
      ;; Insert the data
      (println "Inserting data...")
-     (metabase.util/pdoseq [[table rows] (seq data)]
+     (doseq [[table rows] (seq data)]
        (assert (keyword? table))
        (assert (sequential? rows))
        (let [entity (-> (k/create-entity (s/upper-case (name table)))
@@ -362,3 +367,8 @@
        (k/exec-raw db (format "GRANT SELECT ON %s TO GUEST;" (s/upper-case (name table)))))
 
      (println "Done."))))
+
+(defn -main [& [filename]]
+  (let [filename (or filename sample-dataset-filename)]
+    (println (format "Writing sample dataset to %s..." filename))
+    (create-h2-db filename)))
