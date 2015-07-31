@@ -20,6 +20,15 @@ export default React.createClass({
         };
     },
 
+    componentWillMount: function() {
+        // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
+        if (!this.props.query.native.query) {
+            this.setState({
+                showEditor: true
+            });
+        }
+    },
+
     componentDidMount: function() {
         this.loadAceEditor();
     },
