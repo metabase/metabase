@@ -37,7 +37,6 @@
     "ng-sortable": "1.2.0",
     "ngreact": "0.1.5",
     "react": "0.12.2",
-    "react-datepicker": "0.5.1",
     "react-onclickoutside": "0.2.4",
     "tether": "0.6.5",
     "underscore": "1.8.3"
@@ -55,6 +54,7 @@
     "eslint-plugin-react": "^2.5.0",
     "extract-text-webpack-plugin": "^0.8.1",
     "glob": "^5.0.10",
+    "html-webpack-plugin": "git://github.com/tlrobinson/html-webpack-plugin.git#562acca0363224f156c0bcc87d064a1e2f72611c",
     "istanbul-instrumenter-loader": "^0.1.3",
     "jasmine-core": "^2.3.4",
     "karma": "^0.12.36",

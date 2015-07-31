@@ -1,6 +1,8 @@
 'use strict';
 /*global _, document, confirm*/
 
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
@@ -9,6 +11,7 @@ import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from '../query_builder/query';
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
+
 
 //  Card Controllers
 var CardControllers = angular.module('corvus.card.controllers', []);
@@ -86,7 +89,7 @@ CardControllers.controller('CardDetail', [
                 type: "query",
                 query: {
                     source_table: null,
-                    aggregation: [null],
+                    aggregation: ["rows"],
                     breakout: [],
                     filter: []
                 }
@@ -147,9 +150,13 @@ CardControllers.controller('CardDetail', [
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
             },
             notifyCardUpdatedFn: function(updatedCard) {
                 setCard(updatedCard, { resetDirty: true, replaceState: true });
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -177,13 +184,12 @@ CardControllers.controller('CardDetail', [
 
         var editorModel = {
             isRunning: false,
-            isExpanded: true,
+            isShowingDataReference: null,
             databases: null,
             tables: null,
             options: null,
             tableForeignKeys: null,
             query: null,
-            runQueryFn: runQuery,
             setQueryFn: setQuery,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
@@ -207,6 +213,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys: null,
             tableForeignKeyReferences: null,
             isRunning: false,
+            runQueryFn: runQuery,
             isObjectDetail: false,
             setDisplayFn: setDisplay,
             setChartColorFn: function(color) {
@@ -368,6 +375,7 @@ CardControllers.controller('CardDetail', [
         function renderEditor() {
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
+            editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
             editorModel.tables = tables;
             editorModel.options = tableMetadata;
@@ -497,6 +505,8 @@ CardControllers.controller('CardDetail', [
 
                 renderAll();
             });
+
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
         }
 
         function getDefaultQuery() {
@@ -510,7 +520,15 @@ CardControllers.controller('CardDetail', [
                 }).$promise.then(function (table) {
                     // Decorate with valid operators
                     // TODO: would be better if this was in our component
-                    return markupTableMetadata(table);
+                    table = markupTableMetadata(table);
+                    // Load joinable tables
+                    return $q.all(table.fields.filter((f) => f.target != null).map((field) => {
+                        return Metabase.table_query_metadata({
+                            'tableId': field.target.table_id
+                        }).$promise.then((targetTable) => {
+                            field.target.table = markupTableMetadata(targetTable);
+                        });
+                    })).then(() => table);
                 }),
                 Metabase.table_fks({
                     'tableId': tableId
@@ -699,6 +717,8 @@ CardControllers.controller('CardDetail', [
                 // clear out any visualization and reset to defaults
                 queryResult = null;
                 card.display = "table";
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
             }
         }
 
@@ -779,7 +799,7 @@ CardControllers.controller('CardDetail', [
             }
 
             // run the query
-            if (Query.canRun(card.dataset_query.query)) {
+            if (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native") {
                 runQuery(card.dataset_query);
             }
 
@@ -852,23 +872,25 @@ CardControllers.controller('CardDetail', [
         }
 
         // add popstate listener to support undo/redo via browser history
-        window.addEventListener("popstate", popStateListener, false);
+        angular.element($window).on('popstate', popStateListener);
+
+        // When the window is resized we need to re-render, mainly so that our visualization pane updates
+        // Debounce the function to improve resizing performance.
+        var debouncedRenderAll = _.debounce(renderAll, 400);
+        angular.element($window).on('resize', debouncedRenderAll);
 
         $scope.$on("$destroy", function() {
-            window.removeEventListener("popstate", popStateListener, false);
+            angular.element($window).off('popstate', popStateListener);
+            angular.element($window).off('resize', debouncedRenderAll);
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
             React.unmountComponentAtNode(document.getElementById('react_qb_header'));
             React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
             React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
-        // When the window is resized we need to re-render, mainly so that our visualization pane updates
-        // Debounce the function to improve resizing performance.
-        angular.element($window).bind('resize', _.debounce(function() {
-            renderAll();
-        }, 400));
 
         // mildly hacky way to prevent reloading controllers as the URL changes
         var route = $route.current;

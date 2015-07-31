@@ -212,8 +212,6 @@ CardServices.service('QueryUtils', function() {
     this.populateQueryOptions = function(table) {
         // create empty objects to store our lookups
         table.fields_lookup = {};
-        table.aggregation_lookup = {};
-        table.breakout_lookup = {};
 
         _.each(table.fields, function(field) {
             table.fields_lookup[field.id] = field;
@@ -221,14 +219,6 @@ CardServices.service('QueryUtils', function() {
             _.each(field.valid_operators, function(operator) {
                 field.operators_lookup[operator.name] = operator;
             });
-        });
-
-        _.each(table.aggregation_options, function(agg) {
-            table.aggregation_lookup[agg.short] = agg;
-        });
-
-        _.each(table.breakout_options, function(br) {
-            table.breakout_lookup[br.short] = br;
         });
 
         return table;
