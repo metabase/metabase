@@ -31,9 +31,9 @@ Now that you have Metabase installed, you can sync it to your database.  Go to [
 ##Step 2: Configuring your Instance
 Create a Metabse account by entering your name, email, and super-secretive password—we don't recommend using password123!
 
-Now Metabase needs to find your data.  Where does your data live?  Depending on where you keep your database, the steps to connect with Metabase vary.  Not to worry, though, we outlined the configuration steps for each of the major platforms.  
+Now Metabase needs to find your data.  Where does your data live?  Depending on where you keep your database, the steps to connect with Metabase vary.  Not to worry, though, we outlined the configuration steps for each of the major platforms.  If you're not sure, ask the DBA, System Administrator or Analyst responsible for the data you'll want to use with Metabase.
 
-**If you use Heroku:**
+**If the data you want to use lives on Heroku:**
 
 1. Go to [https://postgres.heroku.com/databses]().  
 2. Click on the databse you want to connect to Metabase.
@@ -45,7 +45,7 @@ Now Metabase needs to find your data.  Where does your data live?  Depending on 
     * Password
 You'll need to input this information into the remainder of the Metabase form.  
 
-**If you use Amazon RDS:**
+**If the data you want to use lives on Amazon RDS:**
 
 1. Go to your AWS Management Console. 
     * Need help finding that?  Visit https://**My_AWS_Account_ID**.signin.aws.com/console/  Be sure to insert your own AWS Account ID, though!
@@ -60,7 +60,7 @@ You'll need to input this information into the remainder of the Metabase form.
     * Password - Ask your database administrator for the password
 You'll need this information to finish syncing Metabase with your database.
 
-**If you use anoter Remote MySQL or Postgres:**
+**If the data you want to use lives on another Remote MySQL or Postgres:**
 
 1. Ask your database administrator (or check your own records) for the following information:
     * Hostname
@@ -70,7 +70,7 @@ You'll need this information to finish syncing Metabase with your database.
     * Password
 You'll need to input this information into the Metabase form.  
 
-**If you use MONGODB:**
+**If the data you want to use lives on MongoDB:**
 
 1.  Collect the following information about the database you'd like to connect:
     * Hostname
@@ -80,7 +80,7 @@ You'll need to input this information into the Metabase form.
     * Password
 Metabase needs this information to finish connecting to your database.  
 
-**If you use H2:**
+**If the data you want to use lives on H2:**
 
 1.  You'll need the file path for your database.
 
