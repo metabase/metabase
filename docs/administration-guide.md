@@ -69,3 +69,14 @@ a full description of the metadata Metabase understands and takes advantage of c
 * to make a user an admin click on "grant admin"
 * to remove admin priveledges click on "revoke admin"
 * to delete an account, click on "remove". Note that this will mark the account as inactive and prevent it being used in the future but not actually delete the user's cards or dashboards.
+
+## Backing up Metabase Application data
+
+### If you're using the embedded database
+Find the file "metabase.db.h2.db". If your system is inactive, you can just make a copy directly. If it's active, you should shut down the Metabase process and make a backup copy of this file and restart the server.
+
+### If you're using RDS for the application database
+Turn on automated RDS backups <find screenshots>
+
+### If you're using a self managed PostgreSQL or MySQL database
+back it up as you would any other PostgreSQL or MySQL database
