@@ -43,10 +43,10 @@ mk_release_artifacts() {
     RELEASE_FILE="${PROJECT_ROOT}/${RELEASE_ZIP_FILE_NAME}"
 
     # package up the release files
-    (cd $RELEASE_FILES; zip -r $RELEASE_FILE * .ebextensions)
+    cd $RELEASE_FILES; zip -r $RELEASE_FILE * .ebextensions
 
     # add the built uberjar
-    (cd $UBERJAR_DIR; cp metabase-*-SNAPSHOT-*.jar $METABASE_JAR_NAME ; zip $RELEASE_FILE $METABASE_JAR_NAME)
+    cd $UBERJAR_DIR; cp metabase-*-SNAPSHOT-*.jar $METABASE_JAR_NAME ; zip $RELEASE_FILE $METABASE_JAR_NAME
 
     mkdir -p $ARTIFACTS_DIR
     rm -f $ARTIFACTS_DIR/*
