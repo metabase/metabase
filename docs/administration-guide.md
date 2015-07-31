@@ -80,3 +80,13 @@ Turn on automated RDS backups <find screenshots>
 
 ### If you're using a self managed PostgreSQL or MySQL database
 back it up as you would any other PostgreSQL or MySQL database
+
+## Settings
+### Base url
+This is used in emails to allow users to click on a url to their specific instance. You should include the protocol (http vs https) and make sure that it is reachable.
+
+### Connection Timezone
+This is used when doing date breakouts, and will set the default timezone for displaying all times. It does not change the timezone of any underlying data, however, if the underlying times don't have a timezone attached to them, this timezone is used.
+
+### Name used for the instance
+If you want to give the instance a name (often the name of your company), you should set it here.
