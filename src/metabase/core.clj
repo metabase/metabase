@@ -140,7 +140,6 @@
 (def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
 (defn- add-sample-dataset! []
-  (db/cascade-delete Database :name sample-dataset-name)
   (when-not (db/exists? Database :name sample-dataset-name)
     (try
       (log/info "Loading sample dataset...")
