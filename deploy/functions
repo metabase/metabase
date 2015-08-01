@@ -16,13 +16,21 @@ COMMITISH=$(cd ${PROJECT_ROOT}; $(which git) rev-parse --short HEAD)
 DATE=$(date +%Y-%m-%d)
 DEFAULT_RELEASE_ZIP_FILE_NAME="metabase-$BRANCH-$DATE-$COMMITISH.zip"
 
+export LANG=en_US.UTF-8
+export LANGUAGE=$LANG
+export LC_ALL=$LANG
+
 build_uberjar() {
     [[ "$USER" == "root" ]] && export LEIN_ROOT=true
+    $(which locale) | $(which sort) || true
+
     echo "building uberjar"
     lein uberjar
 }
 
 upload_release_artifacts() {
+    $(which locale) | $(which sort) || true
+
     echo "uploading $ARTIFACTS_DIR/*.jar -> $ARTIFACTS_S3BUCKET/jar/"
     aws s3 cp $ARTIFACTS_DIR/ s3://$ARTIFACTS_S3BUCKET/jar/ --recursive --exclude "*" --include "*.jar"
     echo "uploading $ARTIFACTS_DIR/*.zip -> $ARTIFACTS_S3BUCKET/eb/"
@@ -44,9 +52,6 @@ mk_release_artifacts() {
     RELEASE_FILES="${PROJECT_ROOT}/deploy/${RELEASE_TYPE}"
     RELEASE_FILE="${PROJECT_ROOT}/${RELEASE_ZIP_FILE_NAME}"
 
-    $(which env) | $(which sort) || true
-    $(which locale) | $(which sort) || true
-
     # package up the release files
     cd $RELEASE_FILES; zip -r $RELEASE_FILE * .ebextensions
 
@@ -66,6 +71,8 @@ create_eb_version() {
     EB_VERSION_LABEL=$1
     S3_KEY=$2
 
+    $(which locale) | $(which sort) || true
+
     [[ -z "$EB_VERSION_LABEL" ]] && EB_VERSION_LABEL="$BRANCH-$DATE-$COMMITISH"
     [[ -z "$S3_KEY" ]] && S3_KEY=$DEFAULT_RELEASE_ZIP_FILE_NAME
 
@@ -76,6 +83,8 @@ create_eb_version() {
 deploy_version() {
     EB_ENVIRONMENT=$1
     EB_VERSION_LABEL=$2
+
+    $(which locale) | $(which sort) || true
 
     [[ -z "$EB_ENVIRONMENT" ]] && EB_VERSION_LABEL="metabase-staging" && echo ""
     [[ -z "$EB_VERSION_LABEL" ]] && EB_VERSION_LABEL="$BRANCH-$DATE-$COMMITISH"
