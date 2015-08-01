@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
+[[ -f /root/.profile ]] && source /root/.profile
+
 BASEDIR=$(dirname $0)
 PROJECT_ROOT=$(cd ${BASEDIR}/..; pwd)
 
@@ -41,6 +43,9 @@ mk_release_artifacts() {
 
     RELEASE_FILES="${PROJECT_ROOT}/deploy/${RELEASE_TYPE}"
     RELEASE_FILE="${PROJECT_ROOT}/${RELEASE_ZIP_FILE_NAME}"
+
+    $(which env) | $(which sort) || true
+    $(which locale) | $(which sort) || true
 
     # package up the release files
     cd $RELEASE_FILES; zip -r $RELEASE_FILE * .ebextensions
