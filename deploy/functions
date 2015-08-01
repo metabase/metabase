@@ -1,7 +1,5 @@
 #!/bin/bash
 set -eo pipefail
-
-[[ -f /root/.profile ]] && source /root/.profile
 [[ -f /root/bin/aws.sh ]] && source /root/bin/aws.sh
 
 BASEDIR=$(dirname $0)
