@@ -2,6 +2,7 @@
 set -eo pipefail
 
 [[ -f /root/.profile ]] && source /root/.profile
+[[ -f /root/bin/aws.sh ]] && source /root/bin/aws.sh
 
 BASEDIR=$(dirname $0)
 PROJECT_ROOT=$(cd ${BASEDIR}/..; pwd)
@@ -18,6 +19,7 @@ DATE=$(date +%Y-%m-%d)
 DEFAULT_RELEASE_ZIP_FILE_NAME="metabase-$BRANCH-$DATE-$COMMITISH.zip"
 
 build_uberjar() {
+    [[ "$USER" == "root" ]] && export LEIN_ROOT=true
     echo "building uberjar"
     lein uberjar
 }
