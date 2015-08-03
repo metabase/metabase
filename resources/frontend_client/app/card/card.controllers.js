@@ -799,7 +799,7 @@ CardControllers.controller('CardDetail', [
             }
 
             // run the query
-            if (Query.canRun(card.dataset_query.query)) {
+            if (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native") {
                 runQuery(card.dataset_query);
             }
 
