@@ -22,6 +22,7 @@
                               (context 2)
                               (create-database-definition 1)
                               (execute-query 1)
+                              (execute-sql! 2)
                               (expect 1)
                               (expect-eval-actual-first 1)
                               (expect-expansion 0)

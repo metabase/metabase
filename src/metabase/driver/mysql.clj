@@ -6,7 +6,7 @@
                                                 ISyncDriverSpecificSyncField driver-specific-sync-field!]])
             (metabase.driver.generic-sql [interface :refer :all])))
 
-(def ^:private ^:const column->base-type
+(def ^:private ^:const column->base-type*
   {:bigint     :BigIntegerField
    :binary     :UnknownField
    :bit        :UnknownField
@@ -38,6 +38,10 @@
    :varchar    :CharField
    :year       :IntegerField})
 
+(defn- column->base-type [t]
+  (println "t ================================================================================>" t)
+  (column->base-type* t))
+
 (defrecord MySQLDriver []
   ISqlDriverDatabaseSpecific
   (connection-details->connection-spec [_ details]
@@ -47,12 +51,21 @@
     details)
 
   (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    ;; TODO
-    )
+    (format "CAST(TIMESTAMPADD(%s, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
+            (case seconds-or-milliseconds
+              :seconds      "SECOND"
+              :milliseconds "MILLISECOND")
+            table-name field-name))
 
   (timezone->set-timezone-sql [_ timezone]
-    ;; see http://stackoverflow.com/questions/930900/how-to-set-time-zone-of-mysql
-    (format "SET @@session.time_zone = '%s';" timezone)))
+    ;; If this fails you need to load the timezone definitions from your system into MySQL;
+    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+    (format "SET @@session.time_zone = '%s';" timezone))
+
+  ISqlDriverQuoteName
+  (quote-name [_ nm]
+    (str \` nm \`)))
 
 (extend MySQLDriver
   IDriver                     GenericSQLIDriverMixin

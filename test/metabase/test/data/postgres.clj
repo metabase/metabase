@@ -84,7 +84,7 @@
     (generic/create-physical-table! this database-definition table-definition))
 
   (create-physical-db! [this {:keys [database-name], :as database-definition}]
-    (execute! :pg database-definition "DROP DATABASE IF EXISTS \"%s\";" database-name)
+    (drop-physical-db! this database-definition)
     (execute! :pg database-definition "CREATE DATABASE \"%s\";" database-name)
 
     ;; double check that we can connect to the newly created DB

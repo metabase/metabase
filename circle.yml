@@ -11,13 +11,13 @@ dependencies:
     - pip install awscli==1.7.3
 test:
   override:
-    # 0) runs unit tests w/ H2 local DB. Runs against both Mongo + H2 test datasets
+    # 0) runs unit tests w/ H2 local DB. Runs against Mongo, H2, Postgres, MySQL test datasets
     # 1) runs unit tests w/ Postgres local DB. Only runs against H2 test dataset so we can be sure tests work in either scenario
     # 2) runs Eastwood linter
     # 3) Bikeshed linter
     # 4) runs JS linter + JS test
     # 5) runs lein uberjar
-    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=h2,mongo,postgres lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood ;; 3) lein bikeshed --max-line-length 240 ;; 4) npm run lint && npm run build && npm run test ;; 5) CI_DISABLE_WEBPACK_MINIFICATION=1 lein uberjar ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=h2,mongo,postgres,mysql lein test ;; 1) MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) lein eastwood ;; 3) lein bikeshed --max-line-length 240 ;; 4) npm run lint && npm run build && npm run test ;; 5) CI_DISABLE_WEBPACK_MINIFICATION=1 lein uberjar ;; esac:
         parallel: true
 deployment:
   master:

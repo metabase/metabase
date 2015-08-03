@@ -12,6 +12,7 @@
             (metabase.test.data [data :as data]
                                 [h2 :as h2]
                                 [mongo :as mongo]
+                                [mysql :as mysql]
                                 [postgres :as postgres])
             [metabase.util :as u]))
 
@@ -76,7 +77,7 @@
   (timestamp-field-type [_] :DateField))
 
 
-;; ## Generic SQL (H2)
+;; ## Generic SQL
 
 ;; TODO - Mongo implementation (etc.) might find these useful
 (def ^:private memoized-table-name->id
@@ -91,67 +92,67 @@
      {:pre [(string? field-name)]}
      (sel :one :id Field :name field-name, :table_id (memoized-table-name->id db-id table-name)))))
 
+(defn- generic-sql-load-data! [{:keys [dbpromise], :as this}]
+  (when-not (realized? dbpromise)
+    (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
+  @dbpromise)
 
-(deftype H2DriverData [dbpromise]
+(def ^:private GenericSQLIDatasetMixin
+  {:load-data!           generic-sql-load-data!
+   :db                   generic-sql-load-data!
+   :table-name->id       (fn [this table-name]
+                           (memoized-table-name->id (:id (db this)) (name table-name)))
+   :table-name->table    (fn [this table-name]
+                           (Table (table-name->id this (name table-name))))
+   :field-name->id       (fn [this table-name field-name]
+                           (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))
+   :format-name          (fn [_ table-or-field-name]
+                           table-or-field-name)
+   :fks-supported?       (constantly true)
+   :timestamp-field-type (constantly :DateTimeField)
+   :id-field-type        (constantly :BigIntegerField)})
+
+
+;;; ### H2
+
+(defrecord H2DriverData [dbpromise])
+
+(extend H2DriverData
   IDataset
-  (dataset-loader [_]
-    (h2/dataset-loader))
-
-  (load-data! [this]
-    (when-not (realized? dbpromise)
-      (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
-    @dbpromise)
-
-  (db [this]
-    (load-data! this))
-
-  (table-name->id [this table-name]
-    (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
-
-  (table-name->table [this table-name]
-    (Table (table-name->id this (s/upper-case (name table-name)))))
-
-  (field-name->id [this table-name field-name]
-    (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
-
-  (format-name [_ table-or-field-name]
-    (clojure.string/upper-case table-or-field-name))
-
-  (fks-supported?       [_] true)
-  (id-field-type        [_] :BigIntegerField)
-  (timestamp-field-type [_] :DateTimeField))
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader    (fn [_]
+                               (h2/dataset-loader))
+          :table-name->id    (fn [this table-name]
+                               (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
+          :table-name->table (fn [this table-name]
+                               (Table (table-name->id this (s/upper-case (name table-name)))))
+          :field-name->id    (fn [this table-name field-name]
+                               (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
+          :format-name       (fn [_ table-or-field-name]
+                               (clojure.string/upper-case table-or-field-name))
+          :id-field-type     (constantly :BigIntegerField)}))
 
 
-;; ## Postgres
+;;; ### Postgres
 
-(deftype PostgresDriverData [dbpromise]
+(defrecord PostgresDriverData [dbpromise])
+
+(extend PostgresDriverData
   IDataset
-  (dataset-loader [_]
-    (postgres/dataset-loader))
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader (fn [_]
+                            (postgres/dataset-loader))}))
 
-  (load-data! [this]
-    (when-not (realized? dbpromise)
-      (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
-    @dbpromise)
 
-  (db [this]
-    (load-data! this))
+;;; ### MySQL
 
-  (table-name->id [this table-name]
-    (memoized-table-name->id (:id (db this)) (name table-name)))
+(defrecord MySQLDriverData [dbpromise])
 
-  (table-name->table [this table-name]
-    (Table (table-name->id this (name table-name))))
-
-  (field-name->id [this table-name field-name]
-    (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))
-
-  (format-name [_ table-or-field-name]
-    table-or-field-name)
-
-  (fks-supported?       [_] true)
-  (id-field-type        [_] :IntegerField)
-  (timestamp-field-type [_] :DateTimeField))
+(extend MySQLDriverData
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader (fn [_]
+                            (mysql/dataset-loader))}))
 
 
 ;; # Concrete Instances
@@ -160,7 +161,8 @@
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
   {:mongo    (MongoDriverData.)
    :h2       (H2DriverData. (promise))
-   :postgres (PostgresDriverData. (promise))})
+   :postgres (PostgresDriverData. (promise))
+   :mysql    (MySQLDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."

@@ -93,18 +93,18 @@
     ([this]
      (formatted this false))
     ([{:keys [table-name field-name base-type special-type]} include-as?]
-     ;; TODO - add Table names
-     (cond
-       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(\"%s\".\"%s\" AS DATE)" table-name field-name)
-                                                                      (when include-as?
-                                                                        (format " AS \"%s\"" field-name))))
-       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                                                                      (when include-as?
-                                                                        (format " AS \"%s\"" field-name))))
-       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                                                                      (when include-as?
-                                                                        (format " AS \"%s\"" field-name))))
-       :else                                              (keyword (format "%s.%s" table-name field-name)))))
+     (let [quot (partial i/quote-name (:driver *query*))]
+       (cond
+         (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quot table-name) (quot field-name))
+                                                                        (when include-as?
+                                                                          (format " AS %s" (quot field-name)))))
+         (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
+                                                                        (when include-as?
+                                                                          (format " AS %s" (quot field-name)))))
+         (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
+                                                                        (when include-as?
+                                                                          (format " AS %s" (quot field-name)))))
+         :else                                              (keyword (format "%s.%s" (quot table-name) (quot field-name)))))))
 
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
