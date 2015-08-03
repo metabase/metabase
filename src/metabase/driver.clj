@@ -30,7 +30,10 @@
               :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}
    :mongo    {:id      "mongo"
               :name    "MongoDB"
-              :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
+              :example "mongodb://password:username@127.0.0.1:27017/db-name"}
+   :mysql    {:id      "mysql"
+              :name    "MySQL"
+              :example "N/A"}}) ; TODO - we don't use connection strings any more so we shouldn't define example ones (!)
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
