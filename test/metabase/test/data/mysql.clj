@@ -13,7 +13,7 @@
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
-   :BooleanField    "BIT" ; There's no boolean type in MySQL (!)
+   :BooleanField    "BOOLEAN" ; Synonym of TINYINT(1)
    :CharField       "VARCHAR(254)"
    :DateField       "DATE"
    :DateTimeField   "TIMESTAMP"
