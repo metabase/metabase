@@ -121,6 +121,16 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             return call.$promise;
         };
 
+        $scope.delete = function() {
+            Metabase.db_delete({
+                'dbId': $scope.database.id
+            }, function(result) {
+                $location.path('/admin/databases/');
+            }, function(error) {
+                console.log('error deleting database', error);
+            });
+        };
+
         // load our form input data
         Metabase.db_form_input(function(form_input) {
             $scope.form_input = form_input;
