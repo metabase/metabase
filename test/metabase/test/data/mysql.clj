@@ -11,9 +11,9 @@
                                          FieldDefinition
                                          TableDefinition)))
 
-(def ^:private ^:const field-base-type->sql-type ;; TODO
+(def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOL"
+   :BooleanField    "BOOL" ;; TODO
    :CharField       "VARCHAR(254)"
    :DateField       "DATE"
    :DateTimeField   "TIMESTAMP"

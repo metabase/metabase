@@ -7,7 +7,36 @@
             (metabase.driver.generic-sql [interface :refer :all])))
 
 (def ^:private ^:const column->base-type
-  {})
+  {:bigint     :BigIntegerField
+   :binary     :UnknownField
+   :bit        :UnknownField
+   :blob       :UnknownField
+   :char       :CharField
+   :date       :DateField
+   :datetime   :DateTimeField
+   :decimal    :DecimalField
+   :double     :FloatField
+   :enum       :UnknownField
+   :float      :FloatField
+   :int        :IntegerField
+   :integer    :IntegerField
+   :longblob   :UnknownField
+   :longtext   :TextField
+   :mediumblob :UnknownField
+   :mediumint  :IntegerField
+   :mediumtext :TextField
+   :numeric    :DecimalField
+   :real       :FloatField
+   :set        :UnknownField
+   :text       :TextField
+   :time       :TimeField
+   :timestamp  :DateTimeField
+   :tinyblob   :UnknownField
+   :tinyint    :IntegerField
+   :tinytext   :TextField
+   :varbinary  :UnknownField
+   :varchar    :CharField
+   :year       :IntegerField})
 
 (defrecord MySQLDriver []
   ISqlDriverDatabaseSpecific
