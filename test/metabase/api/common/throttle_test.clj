@@ -3,38 +3,38 @@
             [metabase.api.common.throttle :as throttle]
             [metabase.test.util :refer [resolve-private-fns]]))
 
-(def ^:private test-throttler (throttle/make-throttler :test, :initial-delay-ms 2, :attempts-threshold 3, :delay-exponent 2, :attempt-ttl-ms 10))
+(def ^:private test-throttler (throttle/make-throttler :test, :initial-delay-ms 5, :attempts-threshold 3, :delay-exponent 2, :attempt-ttl-ms 25))
 
 ;;; # tests for calculate-delay
 (resolve-private-fns metabase.api.common.throttle calculate-delay)
 
 ;; no delay should be calculated for the 3rd attempt
 (expect nil
-  (do (reset! (:attempts test-throttler) '([:x 100],[:x 99]))
+  (do (reset! (:attempts test-throttler) '([:x 100], [:x 99]))
       (calculate-delay test-throttler :x 101)))
 
-;; 1 ms delay on 4th attempt 1ms after the last
-(expect 1
+;; 4 ms delay on 4th attempt 1ms after the last
+(expect 4
   (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98]))
       (calculate-delay test-throttler :x 101)))
 
-;; 2 ms after last attempt, they should be allowed to try again
+;; 5 ms after last attempt, they should be allowed to try again
 (expect nil
   (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98]))
-      (calculate-delay test-throttler :x 102)))
+      (calculate-delay test-throttler :x 105)))
 
-;; However if this was instead the 5th attempt delay should grow exponentially (2 * 2^2 = 8), - 2 ms = 6
-(expect 6
-  (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98], [:x 97]))
-      (calculate-delay test-throttler :x 102)))
-
-;; Should be allowed after 6 more secs
-(expect nil
-  (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98], [:x 97]))
-      (calculate-delay test-throttler :x 108)))
-
-;; Check that delay keeps growing according to delay-exponent (2 * 3^2 = 2 * 9 = 18)
+;; However if this was instead the 5th attempt delay should grow exponentially (5 * 2^2 = 20), - 2ms = 18ms
 (expect 18
+  (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98], [:x 97]))
+      (calculate-delay test-throttler :x 102)))
+
+;; Should be allowed after 18 more secs
+(expect nil
+  (do (reset! (:attempts test-throttler) '([:x 100], [:x 99], [:x 98], [:x 97]))
+      (calculate-delay test-throttler :x 120)))
+
+;; Check that delay keeps growing according to delay-exponent (5 * 3^2 = 5 * 9 = 45)
+(expect 45
   (do (reset! (:attempts test-throttler) '([:x 108], [:x 100], [:x 99], [:x 98], [:x 97]))
       (calculate-delay test-throttler :x 108)))
 
@@ -70,32 +70,32 @@
          [:success]]
   [(attempt 4 :a)
    (do
-     (Thread/sleep 2)
+     (Thread/sleep 5)
      (attempt 1 :a))])
 
 ;; Next attempt should be throttled, however
 (expect [:success "Too many attempts! You must wait 0 seconds before trying again."]
   (do
     (attempt 4 :b)
-    (Thread/sleep 2)
+    (Thread/sleep 5)
     (attempt 2 :b)))
 
-;; Sleeping 2 ms after that shouldn't work due to exponential growth
+;; Sleeping 5 ms after that shouldn't work due to exponential growth
 (expect ["Too many attempts! You must wait 0 seconds before trying again."]
   (do
     (attempt 4 :c)
-    (Thread/sleep 2)
+    (Thread/sleep 5)
     (attempt 2 :c)
-    (Thread/sleep 2)
+    (Thread/sleep 5)
     (attempt 1 :c)))
 
-;; Sleeping 8 ms however should work
+;; Sleeping 20 ms however should work
 (expect [:success]
   (do
     (attempt 4 :d)
-    (Thread/sleep 2)
+    (Thread/sleep 5)
     (attempt 2 :d)
-    (Thread/sleep 8)
+    (Thread/sleep 20)
     (attempt 1 :d)))
 
 ;; Check that the interal list for the throttler doesn't keep growing after throttling starts
@@ -111,6 +111,6 @@
        (count @(:attempts test-throttler)))
    (do (attempt 3)
        (count @(:attempts test-throttler)))
-   (do (Thread/sleep 10)
+   (do (Thread/sleep 25)
        (attempt 1)
        (count @(:attempts test-throttler)))])
