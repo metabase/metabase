@@ -1,6 +1,8 @@
 'use strict';
 /*global _*/
 
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
 import Popover from './popover.react';
@@ -121,6 +123,8 @@ export default React.createClass({
 
     setSort: function(fieldId) {
         this.props.setSortFn(fieldId);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
     },
 
     cellClicked: function(rowIndex, columnIndex) {

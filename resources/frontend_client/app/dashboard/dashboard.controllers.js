@@ -1,6 +1,9 @@
 'use strict';
 /*global _*/
 
+import MetabaseAnalytics from '../lib/metabase_analytics';
+
+
 //  Dashboard Controllers
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 
@@ -102,6 +105,13 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
         $scope.gridsterOptions.draggable.enabled = !$scope.gridsterOptions.draggable.enabled;
         $scope.gridsterOptions.resizable.enabled = !$scope.gridsterOptions.resizable.enabled;
+
+        // Tracking
+        if ($scope.gridsterOptions.resizable.enabled) {
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Finished');
+        } else {
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Started');
+        }
     };
 
     $scope.notifyDashboardSaved = function(dashboard) {

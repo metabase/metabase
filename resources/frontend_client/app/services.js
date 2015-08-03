@@ -3,6 +3,8 @@
 /*global _*/
 /* Services */
 
+import MetabaseAnalytics from './lib/metabase_analytics';
+
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
 CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
@@ -158,6 +160,12 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                 }
             }
         };
+
+        // listen for location changes and use that as a trigger for page view tracking
+        $rootScope.$on('$locationChangeSuccess', function() {
+            // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
+            MetabaseAnalytics.trackPageView($location.path());
+        });
 
         // listen for all route changes so that we can update organization as appropriate
         $rootScope.$on('$routeChangeSuccess', service.routeChanged);
