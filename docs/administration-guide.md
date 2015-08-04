@@ -12,6 +12,7 @@ you can currently add databases of types
 * H2
 * MySQL
 * Postgres
+* MongoDB
 
 for each you'll need the approriate connection information. 
 
