@@ -142,21 +142,21 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
 
             function render() {
                 var props = {};
-                for (var key in scope) {
-                    var value = scope[key];
+                function copyProp(key, value) {
                     if (typeof value === "function") {
-                        (function(value) {
-                            props[key] = function() {
-                                try {
-                                    return value.apply(this, arguments);
-                                } finally {
-                                    $timeout(() => scope.$digest());
-                                }
+                        props[key] = function() {
+                            try {
+                                return value.apply(this, arguments);
+                            } finally {
+                                $timeout(() => scope.$digest());
                             }
-                        })(value);
+                        }
                     } else {
                         props[key] = value;
                     }
+                }
+                for (var key in scope) {
+                    copyProp(key, scope[key]);
                 }
                 React.render(<Component {...props}/>, element[0]);
             }
@@ -170,8 +170,8 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
             scope.$watch(function() {
                 if (!timeout) {
                     timeout = requestAnimationFrame(function() {
-                      timeout = null;
-                      render();
+                        timeout = null;
+                        render();
                     });
                 }
             });
