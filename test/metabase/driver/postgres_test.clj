@@ -2,9 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.driver.generic-sql.interface :as i]
             [metabase.driver.postgres :refer :all]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :as datasets]
-                                [interface :refer [def-database-definition]])
+            [metabase.test.data.interface :refer [def-database-definition]]
             [metabase.test.util.mql :refer [Q]]))
 
 ;; # Check that database->connection details still works whether we're dealing with new-style or legacy details
