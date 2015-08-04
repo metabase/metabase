@@ -1,6 +1,6 @@
 "use strict";
 
-import Query from '../query_builder/query';
+import Query from "metabase/lib/query";
 
 export function serializeCardForUrl(card) {
     var dataset_query = angular.copy(card.dataset_query);

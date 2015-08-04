@@ -2,7 +2,7 @@
 
 import DataReferenceQueryButton from './data_reference_query_button.react';
 import Icon from './icon.react';
-import Query from './query';
+import Query from "metabase/lib/query";
 import inflection from 'inflection';
 
 var cx = React.addons.classSet;

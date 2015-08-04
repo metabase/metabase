@@ -9,7 +9,7 @@ import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
-import Query from '../query_builder/query';
+import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
 

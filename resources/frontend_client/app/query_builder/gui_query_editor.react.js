@@ -13,7 +13,7 @@ import LimitWidget from './limit_widget.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;

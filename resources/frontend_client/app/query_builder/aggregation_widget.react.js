@@ -5,7 +5,7 @@ import SelectionModule from './selection_module.react';
 import FieldWidget from './field_widget.react';
 import Icon from './icon.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 
 export default React.createClass({
     displayName: 'AggregationWidget',
