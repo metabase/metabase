@@ -11,6 +11,7 @@ dependencies:
     - pip install awscli==1.7.3
 database:
   post:
+    # MySQL doesn't load named timezone information automatically, you have to run this command to load it
     - mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql
 test:
   override:
