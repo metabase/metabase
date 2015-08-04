@@ -54,7 +54,7 @@
    :TINYINT    :IntegerField
    :TINYTEXT   :TextField
    :VARBINARY  :UnknownField
-   :VARCHAR    :CharField
+   :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
 #_(defn- column->base-type [t]

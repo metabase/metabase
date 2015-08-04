@@ -111,9 +111,7 @@
   {:pre [(keyword? sql-string-length-fn)]}
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
-                                                    (k/raw (let [s (format "CAST(%s AS CHAR)" (i/quote-name driver (name (:name field))))]
-                                                             (println (u/format-color 'cyan "------------------------------> %s" s))
-                                                             s))))
+                                                    (k/raw (format "CAST(%s AS CHAR)" (i/quote-name driver (name (:name field)))))))
                                      :len))
               first
               :len
