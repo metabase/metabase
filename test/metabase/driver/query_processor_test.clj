@@ -36,14 +36,15 @@
 
 (defmacro qp-expect-with-all-datasets
   "Like `qp-expect-with-datasets`, but tests against *all* datasets."
-  [data query]
+  [data query & post-process-fns]
   `(datasets/expect-with-all-datasets
     {:status    :completed
      :row_count ~(count (:rows data))
      :data      ~data}
-    (driver/process-query {:type     :query
-                           :database (db-id)
-                           :query    ~query})))
+    (-> (driver/process-query {:type     :query
+                               :database (db-id)
+                               :query    ~query})
+        ~@post-process-fns)))
 
 
 (defn ->columns
@@ -264,16 +265,18 @@
   {:source_table (id :venues),
    :aggregation  ["count"]})
 
+
 ;; ### "SUM" AGGREGATION
 (qp-expect-with-all-datasets
     {:rows    [[203]]
      :columns ["sum"]
      :cols    [(aggregate-col :sum (venues-col :price))]}
   {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["sum" (id :venues :price)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["sum" (id :venues :price)]}
+  ;; for some annoying reason SUM(`venues`.`price`) in MySQL comes back from JDBC as a BigDecimal.
+  ;; Cast results as int regardless because ain't nobody got time for dat
+  (update-in [:data :rows] vec)
+  (update-in [:data :rows 0 0] int))
 
 
 ;; ## "AVG" AGGREGATION
@@ -282,10 +285,7 @@
      :columns ["avg"]
      :cols    [(aggregate-col :avg (venues-col :latitude))]}
   {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["avg" (id :venues :latitude)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["avg" (id :venues :latitude)]})
 
 
 ;; ### "DISTINCT COUNT" AGGREGATION
@@ -294,10 +294,7 @@
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
   {:source_table (id :checkins)
-   :filter       [nil nil]
-   :aggregation  ["distinct" (id :checkins :user_id)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["distinct" (id :checkins :user_id)]})
 
 
 ;; ## "ROWS" AGGREGATION
@@ -316,9 +313,7 @@
   :columns (venues-columns)
   :cols    (venues-cols)}
  {:source_table (id :venues)
-  :filter       nil
   :aggregation  ["rows"]
-  :breakout     [nil]
   :limit        10
   :order_by     [[(id :venues :id) "ascending"]]})
 

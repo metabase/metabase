@@ -19,7 +19,7 @@
    :DateField       "DATE"
    :DateTimeField   "TIMESTAMP"
    :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
+   :FloatField      "DOUBLE"
    :IntegerField    "INTEGER"
    :TextField       "TEXT"
    :TimeField       "TIME"})
@@ -36,7 +36,6 @@
          :db (:database-name database-definition)))
 
 (defn- execute! [scope ^DatabaseDefinition database-definition & format-strings]
-  (println "SQL -> " (apply format format-strings))
   (jdbc/execute! (-> ((case scope
                         :mysql mysql-connection-details
                         :db    db-connection-details) database-definition)
