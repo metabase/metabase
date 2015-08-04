@@ -1115,10 +1115,40 @@
      order ag.0))
 
 
-;;; !!!
-#_(defn x []
-    (driver/process-query {:database 1074
-                           :type :query
-                           :query {:source_table 1784
-                                   :filter ["STARTS_WITH" 11588 "San Francisco"]
-                                   :limit 10}}))
+;;; # New Filter Types - CONTAINS, STARTS_WITH, ENDS_WITH
+
+;;; ## STARTS_WITH
+(datasets/expect-with-all-datasets
+ [[41 "Cheese Steak Shop" 18 37.7855 -122.44 1]
+  [74 "Chez Jay" 2 34.0104 -118.493 2]]
+ (Q run
+    return :data :rows
+    aggregate rows of venues
+    filter starts-with name "Che"
+    order id))
+
+
+;;; ## ENDS_WITH
+(datasets/expect-with-all-datasets
+ [[5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
+  [7 "Don Day Korean Restaurant" 44 34.0689 -118.305 2]
+  [17 "Ruen Pair Thai Restaurant" 71 34.1021 -118.306 2]
+  [45 "Tu Lan Restaurant" 4 37.7821 -122.41 1]
+  [55 "Dal Rae Restaurant" 67 33.983 -118.096 4]]
+ (Q run
+    return :data :rows
+    aggregate rows of venues
+    filter ends-with name "Restaurant"
+    order id))
+
+
+;;; ## CONTAINS
+(datasets/expect-with-all-datasets
+ [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+  [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
+  [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+ (Q run
+    return :data :rows
+    aggregate rows of venues
+    filter contains name "BBQ"
+    order id))
