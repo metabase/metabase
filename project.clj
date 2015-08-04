@@ -39,6 +39,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
+                 [mysql/mysql-connector-java "5.1.36"]                ; MySQL JDBC driver
                  [org.liquibase/liquibase-core "3.4.0"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)

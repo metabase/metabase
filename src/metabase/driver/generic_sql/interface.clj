@@ -15,3 +15,14 @@
   (timezone->set-timezone-sql          [this timezone]
     "Return a string that represents the SQL statement that should be used to set the timezone
      for the current transaction."))
+
+(defprotocol ISqlDriverQuoteName
+  "Optionally protocol to override how the Generic SQL driver quotes the names of databases, tables, and fields."
+  (quote-name [this ^String nm]
+    "Quote a name appropriately for this database."))
+
+;; Default implementation quotes using "
+(extend-protocol ISqlDriverQuoteName
+  Object
+  (quote-name [_ nm]
+    (str \" nm \")))

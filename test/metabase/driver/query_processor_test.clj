@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [expectations :refer :all]
+  (:require [clojure.walk :as walk]
+            [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
@@ -35,14 +36,15 @@
 
 (defmacro qp-expect-with-all-datasets
   "Like `qp-expect-with-datasets`, but tests against *all* datasets."
-  [data query]
+  [data query & post-process-fns]
   `(datasets/expect-with-all-datasets
-       {:status    :completed
-        :row_count ~(count (:rows data))
-        :data      ~data}
-     (driver/process-query {:type     :query
-                            :database (db-id)
-                            :query    ~query})))
+    {:status    :completed
+     :row_count ~(count (:rows data))
+     :data      ~data}
+    (-> (driver/process-query {:type     :query
+                               :database (db-id)
+                               :query    ~query})
+        ~@post-process-fns)))
 
 
 (defn ->columns
@@ -260,11 +262,9 @@
     {:rows    [[100]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["count"]
-   :breakout     [nil]
-   :limit        nil})
+  {:source_table (id :venues),
+   :aggregation  ["count"]})
+
 
 ;; ### "SUM" AGGREGATION
 (qp-expect-with-all-datasets
@@ -272,10 +272,11 @@
      :columns ["sum"]
      :cols    [(aggregate-col :sum (venues-col :price))]}
   {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["sum" (id :venues :price)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["sum" (id :venues :price)]}
+  ;; for some annoying reason SUM(`venues`.`price`) in MySQL comes back from JDBC as a BigDecimal.
+  ;; Cast results as int regardless because ain't nobody got time for dat
+  (update-in [:data :rows] vec)
+  (update-in [:data :rows 0 0] int))
 
 
 ;; ## "AVG" AGGREGATION
@@ -284,10 +285,7 @@
      :columns ["avg"]
      :cols    [(aggregate-col :avg (venues-col :latitude))]}
   {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["avg" (id :venues :latitude)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["avg" (id :venues :latitude)]})
 
 
 ;; ### "DISTINCT COUNT" AGGREGATION
@@ -296,10 +294,7 @@
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
   {:source_table (id :checkins)
-   :filter       [nil nil]
-   :aggregation  ["distinct" (id :checkins :user_id)]
-   :breakout     [nil]
-   :limit        nil})
+   :aggregation  ["distinct" (id :checkins :user_id)]})
 
 
 ;; ## "ROWS" AGGREGATION
@@ -318,9 +313,7 @@
   :columns (venues-columns)
   :cols    (venues-cols)}
  {:source_table (id :venues)
-  :filter       nil
   :aggregation  ["rows"]
-  :breakout     [nil]
   :limit        10
   :order_by     [[(id :venues :id) "ascending"]]})
 
@@ -571,13 +564,12 @@
 
 ;; ## CUMULATIVE SUM
 
-;; TODO - Should we move this into IDataset? It's only used here, but the logic might get a little more compilcated when we add more drivers
 (defn- ->sum-type
   "Since summed integer fields come back as different types depending on which DB we're using, cast value V appropriately."
   [v]
-  (case (id-field-type)
-    :IntegerField    (int v)
-    :BigIntegerField (bigdec v)))
+  ((case (sum-field-type)
+      :IntegerField    int
+      :BigIntegerField bigdec) v))
 
 ;; ### cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-datasets

@@ -34,7 +34,7 @@ export default React.createClass({
             return (
                 <Popover
                     tetherOptions={tetherOptions}
-                    className="PopoverBody PopoverBody--withArrow"
+                    className="PopoverBody PopoverBody--withArrow AddToDashboard"
                 >
                     <AddToDashboardPopover
                         card={this.props.card}
