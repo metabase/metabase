@@ -502,6 +502,40 @@ CorvusServices.service('CorvusCore', ['$resource', 'User', function($resource, U
                 }]
             }]
         },
+        mysql: {
+            name: 'MySQL',
+            fields: [{
+                displayName: "Host",
+                fieldName: "host",
+                type: "text",
+                placeholder: "localhost",
+                placeholderIsDefault: true
+            }, {
+                displayName: "Port",
+                fieldName: "port",
+                type: "text",
+                transform: parseInt,
+                placeholder: "3306",
+                placeholderIsDefault: true
+            }, {
+                displayName: "Database name",
+                fieldName: "dbname",
+                type: "text",
+                placeholder: "birds_of_the_world",
+                required: true
+            }, {
+                displayName: "Database username",
+                fieldName: "user",
+                type: "text",
+                placeholder: "What username do you use to login to the database?",
+                required: true
+            }, {
+                displayName: "Database password",
+                fieldName: "password",
+                type: "password",
+                placeholder: "*******"
+            }]
+        },
         h2: {
             name: 'H2',
             fields: [{

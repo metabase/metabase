@@ -2,6 +2,7 @@
   "Common functionality for various Generic SQL dataset loaders."
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
+            [metabase.driver.generic-sql.interface :refer [quote-name]]
             [metabase.test.data.interface :as i])
   (:import (metabase.test.data.interface DatabaseDefinition
                                          TableDefinition)))
@@ -31,39 +32,42 @@
 
   ;; Now create the new table
   (execute-sql! dataset-loader database-definition
-    (format "CREATE TABLE \"%s\" (%s, \"%s\" %s, PRIMARY KEY (\"%s\"));"
-            table-name
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type]}]
-                        (format "\"%s\" %s" field-name (field-base-type->sql-type dataset-loader base-type))))
-                 (interpose ", ")
-                 (apply str))
-            (pk-field-name dataset-loader)
-            (pk-sql-type dataset-loader)
-            (pk-field-name dataset-loader))))
+    (let [quot (partial quote-name dataset-loader)
+          pk-field-name (quot (pk-field-name dataset-loader))]
+      (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s));"
+              (quot table-name)
+              (->> field-definitions
+                   (map (fn [{:keys [field-name base-type]}]
+                          (format "%s %s" (quot field-name) (field-base-type->sql-type dataset-loader base-type))))
+                   (interpose ", ")
+                   (apply str))
+              pk-field-name (pk-sql-type dataset-loader)
+              pk-field-name))))
 
 
-(defn drop-physical-table! [dataset-loader database-definition table-definition]
+(defn drop-physical-table! [dataset-loader database-definition {:keys [table-name]}]
   (execute-sql! dataset-loader database-definition
-    (format "DROP TABLE IF EXISTS \"%s\";" (:table-name table-definition))))
+    (format "DROP TABLE IF EXISTS %s;" (quote-name dataset-loader table-name))))
 
 
 (defn create-physical-db! [dataset-loader {:keys [table-definitions], :as database-definition}]
-  ;; Create all the Tables
-  (doseq [^TableDefinition table-definition table-definitions]
-    (i/create-physical-table! dataset-loader database-definition table-definition))
+  (let [quot (partial quote-name dataset-loader)]
+    ;; Create all the Tables
+    (doseq [^TableDefinition table-definition table-definitions]
+      (i/create-physical-table! dataset-loader database-definition table-definition))
 
-  ;; Now add the foreign key constraints
-  (doseq [{:keys [table-name field-definitions]} table-definitions]
-    (doseq [{dest-table-name :fk, field-name :field-name} field-definitions]
-      (when dest-table-name
-        (execute-sql! dataset-loader database-definition
-          (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"%s\");"
-                  table-name
-                  field-name (name dest-table-name)
-                  field-name
-                  (name dest-table-name)
-                  (pk-field-name dataset-loader)))))))
+    ;; Now add the foreign key constraints
+    (doseq [{:keys [table-name field-definitions]} table-definitions]
+      (doseq [{dest-table-name :fk, field-name :field-name} field-definitions]
+        (when dest-table-name
+          (let [dest-table-name (name dest-table-name)]
+            (execute-sql! dataset-loader database-definition
+              (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
+                      (quot table-name)
+                      (quot (format "FK_%s_%s_%s" table-name field-name dest-table-name))
+                      (quot field-name)
+                      (quot dest-table-name)
+                      (quot (pk-field-name dataset-loader))))))))))
 
 
 (defn load-table-data! [dataset-loader database-definition table-definition]
