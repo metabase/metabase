@@ -25,7 +25,7 @@
                         <a class="text-bold link" href="/admin/databases/{{database.id}}/tables">{{database.name}}</a>
                     </td>
                     <td>
-                        {{database.engine}}
+                        {{ENGINES[database.engine].name}}
                     </td>
                     <td class="Table-actions">
                         <!-- TODO: sync now button? -->

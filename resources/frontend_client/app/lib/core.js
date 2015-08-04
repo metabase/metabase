@@ -247,7 +247,7 @@
     // *  selectionAccent - What accent type should be applied to the field when its value is chosen? Either 'active' (currently green), or 'danger' (currently red).
     this.ENGINES = {
         postgres: {
-            name: 'Postgres',
+            name: 'PostgreSQL',
             fields: [{
                 displayName: "Host",
                 fieldName: "host",

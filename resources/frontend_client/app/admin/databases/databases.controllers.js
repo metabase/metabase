@@ -3,7 +3,9 @@
 
 var DatabasesControllers = angular.module('corvusadmin.databases.controllers', ['corvus.metabase.services']);
 
-DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
+DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'CorvusCore', function($scope, Metabase, CorvusCore) {
+
+    $scope.ENGINES = CorvusCore.ENGINES;
 
     $scope.databases = [];
 
