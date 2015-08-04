@@ -36,7 +36,7 @@ Then run the HTTP server with
 
 Check that the project can compile successfully with
 
-    lein uberjar
+    ./build-uberjar
 
 Run the linters with
 

@@ -1,10 +1,11 @@
-(ns metabase.test.data.postgres
-  "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
+(ns metabase.test.data.mysql
+  "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
+            [metabase.driver.generic-sql.interface :refer [ISqlDriverQuoteName quote-name]]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :refer :all]))
   (:import (metabase.test.data.interface DatabaseDefinition
@@ -13,40 +14,38 @@
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOL"
+   :BooleanField    "BOOLEAN" ; Synonym of TINYINT(1)
    :CharField       "VARCHAR(254)"
    :DateField       "DATE"
    :DateTimeField   "TIMESTAMP"
    :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
+   :FloatField      "DOUBLE"
    :IntegerField    "INTEGER"
    :TextField       "TEXT"
-   :TimeField       "TIME"
-   :UUIDField       "UUID"})
+   :TimeField       "TIME"})
 
-(defn- pg-connection-details [^DatabaseDefinition {:keys [short-lived?]}]
-  (merge {:host         "localhost"
-          :port         5432
-          :short-lived? short-lived?}
-         ;; HACK
-         (when (env :circleci)
-           {:user "ubuntu"})))
+(defn- mysql-connection-details [^DatabaseDefinition {:keys [short-lived?]}]
+  {:host         "localhost"
+   :port         3306
+   :short-lived? short-lived?
+   :user         (if (env :circleci) "ubuntu"
+                     "root")})
 
 (defn- db-connection-details [^DatabaseDefinition database-definition]
-  (assoc (pg-connection-details database-definition)
+  (assoc (mysql-connection-details database-definition)
          :db (:database-name database-definition)))
 
 (defn- execute! [scope ^DatabaseDefinition database-definition & format-strings]
   (jdbc/execute! (-> ((case scope
-                        :pg pg-connection-details
-                        :db db-connection-details) database-definition)
-                     kdb/postgres
+                        :mysql mysql-connection-details
+                        :db    db-connection-details) database-definition)
+                     kdb/mysql
                      (assoc :make-pool? false))
                  [(apply format format-strings)]
                  :transaction? false))
 
 
-(defrecord PostgresDatasetLoader []
+(defrecord MySQLDatasetLoader []
   generic/IGenericSQLDatasetLoader
   (generic/execute-sql! [_ database-definition raw-sql]
     (log/debug raw-sql)
@@ -55,28 +54,32 @@
   (generic/korma-entity [_ database-definition table-definition]
     (-> (k/create-entity (:table-name table-definition))
         (k/database (-> (db-connection-details database-definition)
-                        kdb/postgres
+                        kdb/mysql
                         (assoc :make-pool? false)
                         kdb/create-db))))
 
-  (generic/pk-sql-type   [_] "SERIAL")
+  (generic/pk-sql-type   [_] "INTEGER NOT NULL AUTO_INCREMENT")
   (generic/pk-field-name [_] "id")
 
   (generic/field-base-type->sql-type [_ field-type]
     (if (map? field-type) (:native field-type)
-        (field-base-type->sql-type field-type))))
+        (field-base-type->sql-type field-type)))
+
+  ISqlDriverQuoteName
+  (quote-name [_ nm]
+    (str \` nm \`)))
 
 (extend-protocol IDatasetLoader
-  PostgresDatasetLoader
+  MySQLDatasetLoader
   (engine [_]
-    :postgres)
+    :mysql)
 
   (database->connection-details [_ database-definition]
     (assoc (db-connection-details database-definition)
            :timezone :America/Los_Angeles))
 
   (drop-physical-db! [_ database-definition]
-    (execute! :pg database-definition "DROP DATABASE IF EXISTS \"%s\";" (:database-name database-definition)))
+    (execute! :mysql database-definition "DROP DATABASE IF EXISTS `%s`;" (:database-name database-definition)))
 
   (drop-physical-table! [this database-definition table-definition]
     (generic/drop-physical-table! this database-definition table-definition))
@@ -84,12 +87,12 @@
   (create-physical-table! [this database-definition table-definition]
     (generic/create-physical-table! this database-definition table-definition))
 
-  (create-physical-db! [this {:keys [database-name], :as database-definition}]
+  (create-physical-db! [this database-definition]
     (drop-physical-db! this database-definition)
-    (execute! :pg database-definition "CREATE DATABASE \"%s\";" database-name)
+    (execute! :mysql database-definition "CREATE DATABASE `%s`;" (:database-name database-definition))
 
     ;; double check that we can connect to the newly created DB
-    (metabase.driver/can-connect-with-details? :postgres (db-connection-details database-definition) :rethrow-exceptions)
+    (metabase.driver/can-connect-with-details? :mysql (db-connection-details database-definition) :rethrow-exceptions)
 
     ;; call the generic implementation to create Tables + FKs
     (generic/create-physical-db! this database-definition))
@@ -99,4 +102,4 @@
 
 
 (defn dataset-loader []
-  (->PostgresDatasetLoader))
+  (MySQLDatasetLoader.))

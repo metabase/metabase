@@ -5,7 +5,8 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"test" ["with-profile" "+expectations" "expectations"]}
+  :aliases {"test" ["with-profile" "+expectations" "expectations"]
+            "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -38,6 +39,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
+                 [mysql/mysql-connector-java "5.1.36"]                ; MySQL JDBC driver
                  [org.liquibase/liquibase-core "3.4.0"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.15"]                          ; YAML parser (required by liquibase)
@@ -91,5 +93,9 @@
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
-             :uberjar {:aot :all
-                       :prep-tasks ^:replace ["npm" "webpack" "javac" "compile"]}})
+             :uberjar {:aot :all}
+             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
+                                                      [incanter/incanter-core "1.5.6"]] ; Satistical functions like normal distibutions}})
+                                       :source-paths ["sample_dataset"]
+                                       :global-vars {*warn-on-reflection* false}
+                                       :main ^:skip-aot metabase.sample-dataset.generate}})

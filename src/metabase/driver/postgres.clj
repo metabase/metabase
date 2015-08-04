@@ -65,7 +65,7 @@
    :tsquery       :UnknownField
    :tsvector      :UnknownField
    :txid_snapshot :UnknownField
-   :uuid          :UnknownField
+   :uuid          :UUIDField
    :varbit        :UnknownField
    :varchar       :TextField
    :xml           :TextField

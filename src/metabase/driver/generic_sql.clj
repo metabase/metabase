@@ -47,7 +47,7 @@
 
 (defn- active-table-names [_ database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (.getTables md nil nil nil (into-array String ["TABLE"]))
+    (->> (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))
          jdbc/result-set-seq
          (map :table_name)
          set)))
@@ -105,11 +105,11 @@
                  :dest-column-name (:pkcolumn_name result)}))
          set)))
 
-(defn- field-avg-length [{:keys [sql-string-length-fn]} field]
+(defn- field-avg-length [{:keys [sql-string-length-fn], :as driver} field]
   {:pre [(keyword? sql-string-length-fn)]}
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
-                                                    (k/raw (format "CAST(\"%s\" AS TEXT)" (name (:name field))))))
+                                                    (k/raw (format "CAST(%s AS CHAR)" (i/quote-name driver (name (:name field)))))))
                                      :len))
               first
               :len

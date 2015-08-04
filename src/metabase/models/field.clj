@@ -67,6 +67,7 @@
     :IntegerField
     :TextField
     :TimeField
+    :UUIDField      ; e.g. a Postgres 'UUID' column
     :UnknownField})
 
 (def ^:const field-types

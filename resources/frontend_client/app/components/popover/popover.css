@@ -31,6 +31,14 @@
 	border-bottom: 10px solid transparent;
 }
 
+.PopoverBody .Form-input {
+	font-size: 1rem;
+}
+
+.PopoverBody .Form-field {
+	margin-bottom: 0.75rem;
+}
+
 .PopoverHeader {
 	display: flex;
 	border-bottom: 1px solid var(--border-color);
