@@ -49,8 +49,8 @@
   (check-500 (upd-non-nil-keys Table id
                                :display_name    display_name
                                :entity_type     entity_type
-                               :visibility_type visibility_type
                                :description     description))
+  (check-500 (upd Table id :visibility_type visibility_type))
   (Table id))
 
 (defendpoint GET "/:id/fields"
