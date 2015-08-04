@@ -23,4 +23,5 @@ profiles.clj
 /node_modules/
 /.babel_cache
 /coverage
+/resources/sample-dataset.db.trace.db
 /deploy/artifacts/*
