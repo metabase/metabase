@@ -40,6 +40,14 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                     }, function(error) {
                         deferred.resolve();
                     });
+
+                    // start Intercom updater
+                    // this tells Intercom to update every 60s if we have a currently logged in user
+                    $timeout(function() {
+                        if (service.model.currentUser) {
+                            window.Intercom('update');
+                        }
+                    }, 60000);
                 }
 
                 return initPromise;
@@ -184,6 +192,17 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             // NOTE that we don't really care about callbacks in this case
             Session.delete({
                 'session_id': session_id
+            });
+
+            // close down intercom
+            window.Intercom('shutdown');
+        });
+
+        $rootScope.$on("appstate:user", function(event, user) {
+            window.Intercom('boot', {
+                app_id: "gqfmsgf1",
+                name: user.common_name,
+                email: user.email
             });
         });
 
