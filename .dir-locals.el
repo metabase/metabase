@@ -51,6 +51,7 @@
                               (pre-insert 1)
                               (pre-update 1)
                               (project 1)
+                              (qp-expect-with-all-datasets 1)
                               (qp-expect-with-datasets 1)
                               (query-with-temp-db 1)
                               (resolve-private-fns 1)

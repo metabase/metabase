@@ -33,8 +33,7 @@
 
 (defn- db-connection-details [^DatabaseDefinition database-definition]
   (assoc (mysql-connection-details database-definition)
-         :db (:database-name database-definition)
-         :timezone :America/Los_Angeles))
+         :db (:database-name database-definition)))
 
 (defn- execute! [scope ^DatabaseDefinition database-definition & format-strings]
   (println "SQL -> " (apply format format-strings))

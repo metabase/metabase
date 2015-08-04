@@ -104,7 +104,7 @@
          (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
                                                                         (when include-as?
                                                                           (format " AS %s" (quot field-name)))))
-         :else                                              (keyword (format "%s.%s" (quot table-name) (quot field-name)))))))
+         :else                                              (keyword (format "%s.%s" table-name field-name))))))
 
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
@@ -230,16 +230,16 @@
   (when-not qp/*disable-qp-logging*
     (log/debug
      (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
-                                                       (walk/prewalk (fn [form]                              ; strip korma.core/ qualifications from symbols in the form
-                                                                       (if-not (symbol? form) form           ; to remove some of the clutter
-                                                                               (symbol (name form)))))
-                                                       (u/pprint-to-str)))
+                                                         (walk/prewalk (fn [form]                               ; strip korma.core/ qualifications from symbols in the form
+                                                                         (if-not (symbol? form) form            ; to remove some of the clutter
+                                                                                 (symbol (name form)))))
+                                                         (u/pprint-to-str)))
      (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
-                                                               `(~let-form ~binding-form                     ; has to go there to work correctly
-                                                                           (sql-only ~@body))))
-                                                      (s/replace #"\sFROM" "\nFROM")                         ; add newlines to the SQL to make it more readable
-                                                      (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                                                      (s/replace #"\sWHERE" "\nWHERE")
-                                                      (s/replace #"\sGROUP BY" "\nGROUP BY")
-                                                      (s/replace #"\sORDER BY" "\nORDER BY")
-                                                      (s/replace #"\sLIMIT" "\nLIMIT"))))))
+                                                                `(~let-form ~binding-form                       ; has to go there to work correctly
+                                                                            (sql-only ~@body))))
+                                                        (s/replace #"\sFROM" "\nFROM")                          ; add newlines to the SQL to make it more readable
+                                                        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+                                                        (s/replace #"\sWHERE" "\nWHERE")
+                                                        (s/replace #"\sGROUP BY" "\nGROUP BY")
+                                                        (s/replace #"\sORDER BY" "\nORDER BY")
+                                                        (s/replace #"\sLIMIT" "\nLIMIT"))))))

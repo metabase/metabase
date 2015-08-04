@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [expectations :refer :all]
+  (:require [clojure.walk :as walk]
+            [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
@@ -37,12 +38,12 @@
   "Like `qp-expect-with-datasets`, but tests against *all* datasets."
   [data query]
   `(datasets/expect-with-all-datasets
-       {:status    :completed
-        :row_count ~(count (:rows data))
-        :data      ~data}
-     (driver/process-query {:type     :query
-                            :database (db-id)
-                            :query    ~query})))
+    {:status    :completed
+     :row_count ~(count (:rows data))
+     :data      ~data}
+    (driver/process-query {:type     :query
+                           :database (db-id)
+                           :query    ~query})))
 
 
 (defn ->columns
@@ -260,11 +261,8 @@
     {:rows    [[100]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  {:source_table (id :venues)
-   :filter       [nil nil]
-   :aggregation  ["count"]
-   :breakout     [nil]
-   :limit        nil})
+  {:source_table (id :venues),
+   :aggregation  ["count"]})
 
 ;; ### "SUM" AGGREGATION
 (qp-expect-with-all-datasets
@@ -571,13 +569,12 @@
 
 ;; ## CUMULATIVE SUM
 
-;; TODO - Should we move this into IDataset? It's only used here, but the logic might get a little more compilcated when we add more drivers
 (defn- ->sum-type
   "Since summed integer fields come back as different types depending on which DB we're using, cast value V appropriately."
   [v]
-  (case (id-field-type)
-    :IntegerField    (int v)
-    :BigIntegerField (bigdec v)))
+  ((case (sum-field-type)
+      :IntegerField    int
+      :BigIntegerField bigdec) v))
 
 ;; ### cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-datasets

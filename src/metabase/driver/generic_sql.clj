@@ -60,6 +60,8 @@
          (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
          (map (fn [{:keys [column_name type_name]}]
                 {column_name (or (column->base-type (keyword type_name))
+                                 (println (u/format-color 'red "\n\n--------------------------------------------------------------------------------\nTYPE NAME: %s\n--------------------------------------------------------------------------------\n\n"
+                                                          type_name))
                                  :UnknownField)}))
          (into {}))))
 
@@ -105,11 +107,13 @@
                  :dest-column-name (:pkcolumn_name result)}))
          set)))
 
-(defn- field-avg-length [{:keys [sql-string-length-fn]} field]
+(defn- field-avg-length [{:keys [sql-string-length-fn], :as driver} field]
   {:pre [(keyword? sql-string-length-fn)]}
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
-                                                    (k/raw (format "CAST(\"%s\" AS TEXT)" (name (:name field))))))
+                                                    (k/raw (let [s (format "CAST(%s AS CHAR)" (i/quote-name driver (name (:name field))))]
+                                                             (println (u/format-color 'cyan "------------------------------> %s" s))
+                                                             s))))
                                      :len))
               first
               :len

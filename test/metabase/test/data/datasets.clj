@@ -39,6 +39,8 @@
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
   (id-field-type [this]
     "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`).")
+  (sum-field-type [this]
+    "Return the `base_type` of a aggregate summed field.")
   (timestamp-field-type [this]
     "Return the `base_type` of a `TIMESTAMP` `Field` like `users.last_login`."))
 
@@ -74,6 +76,7 @@
 
   (fks-supported?       [_] false)
   (id-field-type        [_] :IntegerField)
+  (sum-field-type       [_] :IntegerField)
   (timestamp-field-type [_] :DateField))
 
 
@@ -83,13 +86,15 @@
 (def ^:private memoized-table-name->id
   (memoize
    (fn [db-id table-name]
-     {:pre [(string? table-name)]}
+     {:pre  [(string? table-name)]
+      :post [(integer? %)]}
      (sel :one :id Table :name table-name, :db_id db-id))))
 
 (def ^:private memoized-field-name->id
   (memoize
    (fn [db-id table-name field-name]
-     {:pre [(string? field-name)]}
+     {:pre  [(string? field-name)]
+      :post [(integer? %)]}
      (sel :one :id Field :name field-name, :table_id (memoized-table-name->id db-id table-name)))))
 
 (defn- generic-sql-load-data! [{:keys [dbpromise], :as this}]
@@ -110,7 +115,7 @@
                            table-or-field-name)
    :fks-supported?       (constantly true)
    :timestamp-field-type (constantly :DateTimeField)
-   :id-field-type        (constantly :BigIntegerField)})
+   :id-field-type        (constantly :IntegerField)})
 
 
 ;;; ### H2
@@ -130,7 +135,8 @@
                                (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
           :format-name       (fn [_ table-or-field-name]
                                (clojure.string/upper-case table-or-field-name))
-          :id-field-type     (constantly :BigIntegerField)}))
+          :id-field-type     (constantly :BigIntegerField)
+          :sum-field-type    (constantly :BigIntegerField)}))
 
 
 ;;; ### Postgres
@@ -141,7 +147,8 @@
   IDataset
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
-                            (postgres/dataset-loader))}))
+                            (postgres/dataset-loader))
+          :sum-field-type (constantly :IntegerField)}))
 
 
 ;;; ### MySQL
@@ -152,7 +159,8 @@
   IDataset
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
-                            (mysql/dataset-loader))}))
+                            (mysql/dataset-loader))
+          :sum-field-type (constantly :BigIntegerField)}))
 
 
 ;; # Concrete Instances
