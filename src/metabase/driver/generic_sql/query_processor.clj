@@ -93,17 +93,17 @@
     ([this]
      (formatted this false))
     ([{:keys [table-name field-name base-type special-type]} include-as?]
-     (let [quot (partial i/quote-name (:driver *query*))]
+     (let [quote-name (partial i/quote-name (:driver *query*))]
        (cond
-         (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quot table-name) (quot field-name))
+         (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
                                                                         (when include-as?
-                                                                          (format " AS %s" (quot field-name)))))
+                                                                          (format " AS %s" (quote-name field-name)))))
          (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
                                                                         (when include-as?
-                                                                          (format " AS %s" (quot field-name)))))
+                                                                          (format " AS %s" (quote-name field-name)))))
          (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
                                                                         (when include-as?
-                                                                          (format " AS %s" (quot field-name)))))
+                                                                          (format " AS %s" (quote-name field-name)))))
          :else                                              (keyword (format "%s.%s" table-name field-name))))))
 
 
