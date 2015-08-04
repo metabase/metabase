@@ -13,7 +13,7 @@ export default React.createClass({
         databases: React.PropTypes.array.isRequired,
         selectDatabase: React.PropTypes.func.isRequired,
         tableId: React.PropTypes.number,
-        tables: React.PropTypes.array.isRequired,
+        tables: React.PropTypes.object.isRequired,
         selectTable: React.PropTypes.func.isRequired,
         updateTable: React.PropTypes.func.isRequired,
         updateField: React.PropTypes.func.isRequired
@@ -21,8 +21,6 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            saving: false,
-            error: null,
             isShowingSchema: false
         }
     },
@@ -31,32 +29,30 @@ export default React.createClass({
         this.setState({ isShowingSchema: !this.state.isShowingSchema });
     },
 
-    updateTable: function(table) {
-        this.setState({ saving: true });
-        this.props.updateTable(table).then(() => {
-            this.setState({ saving: false });
+    handleSaveResult: function(promise) {
+        this.refs.header.setSaving();
+        promise.then(() => {
+            this.refs.header.setSaved();
         }, (error) => {
-            this.setState({ saving: false, error: error });
+            this.refs.header.setSaveError(error.data);
         });
+    },
+
+    updateTable: function(table) {
+        this.handleSaveResult(this.props.updateTable(table));
     },
 
     updateField: function(field) {
-        this.setState({ saving: true });
-        this.props.updateField(field).then(() => {
-            this.setState({ saving: false });
-        }, (error) => {
-            this.setState({ saving: false, error: error });
-        });
+        this.handleSaveResult(this.props.updateField(field));
     },
 
     render: function() {
-        var table = _.find(this.props.tables, (t) => t.id === this.props.tableId);
+        var table = this.props.tables[this.props.tableId];
         var content;
         if (this.state.isShowingSchema) {
             content = (
                 <MetadataSchema
                     table={table}
-                    metadata={table && this.props.tablesMetadata[table.id]}
                     updateTable={this.updateTable}
                     updateField={this.updateField}
                 />
@@ -65,7 +61,6 @@ export default React.createClass({
             content = (
                 <MetadataTable
                     table={table}
-                    metadata={table && this.props.tablesMetadata[table.id]}
                     updateTable={this.updateTable}
                     updateField={this.updateField}
                 />
@@ -74,10 +69,10 @@ export default React.createClass({
         return (
             <div className="MetadataEditor flex flex-column flex-full p3">
                 <MetadataHeader
+                    ref="header"
                     databaseId={this.props.databaseId}
                     databases={this.props.databases}
                     selectDatabase={this.props.selectDatabase}
-                    saving={this.state.saving}
                     isShowingSchema={this.state.isShowingSchema}
                     toggleShowSchema={this.toggleShowSchema}
                 />

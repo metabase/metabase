@@ -28,6 +28,12 @@
     padding-left: var(--padding-3);
 }
 
+.ColumnarSelector-description {
+    margin-top: 0.5em;
+    color: color(var(--base-grey) shade(30%));
+    max-width: 270px;
+}
+
 .ColumnarSelector-row {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -42,7 +48,12 @@
     color: white !important;
 }
 
+.ColumnarSelector-row:hover .ColumnarSelector-description {
+    color: rgba(255,255,255,0.25);
+}
+
 .ColumnarSelector-row--selected {
+    color: inherit !important;
     background: white;
     border-top: var(--border-size) var(--border-style) var(--border-color);
     border-bottom: var(--border-size) var(--border-style) var(--border-color);

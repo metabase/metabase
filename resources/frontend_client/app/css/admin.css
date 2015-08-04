@@ -240,8 +240,10 @@
 .AdminList-item:hover {
     background-color: white;
     border-color: var(--border-color);
-    margin-left: -10px;
-    margin-right: -10px;
+    margin-left: -0.5em;
+    margin-right: -0.5em;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
@@ -252,6 +254,14 @@
     color: color(var(--base-grey) shade(20%));
     font-weight: 700;
     font-size: smaller;
+}
+
+.AdminList-item .ProgressBar {
+    opacity: 0.2;
+}
+
+.AdminList-item.selected .ProgressBar {
+    opacity: 1.0;
 }
 
 .AdminList-search {
@@ -275,6 +285,16 @@
     outline: 0;
 }
 
+.AdminSelect {
+    padding: 0.6em;
+    border: 1px solid var(--border-color);
+    border-radius: var(--default-border-radius);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+
 .MetadataTable-title {
     background-color: #FCFCFC;
 }
@@ -292,9 +312,29 @@
     font-size: 14px;
 }
 
-.spinner {
-  width: 18px;
-  height: 18px;
+.TableEditor-field-type {
+    color: var(--purple-color);
+}
+
+.TableEditor-field-type .ColumnarSelector-row:hover {
+    background-color: var(--purple-color) !important;
+    color: white !important;
+}
+
+.TableEditor-field-special-type,
+.TableEditor-field-target {
+    color: var(--green-color);
+}
+
+.TableEditor-field-special-type .ColumnarSelector-row:hover,
+.TableEditor-field-target .ColumnarSelector-row:hover {
+    background-color: var(--green-color) !important;
+    color: white !important;
+}
+
+.Spinner {
+  width: 24px;
+  height: 24px;
   border-radius: 99px;
   border: 3px solid rgba(111,122,139,0.25);
   border-left: 3px solid rgba(111,122,139,1.0);
@@ -347,4 +387,28 @@
     left: 25px;
 
     background-color: white;
+}
+
+.ProgressBar {
+    position: relative;
+    border: 1px solid #6F7A8B;
+
+    width: 55px;
+    height: 10px;
+    border-radius: 99px;
+}
+.ProgressBar--mini {
+    width: 17px;
+    height: 8px;
+    border-radius: 2px;
+}
+.ProgressBar-progress {
+    background-color: #6F7A8B;
+    position: absolute;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    border-radius: inherit;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
 }

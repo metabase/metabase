@@ -142,19 +142,22 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
 
             function render() {
                 var props = {};
-                angular.forEach(scope, function(value, key) {
+                for (var key in scope) {
+                    var value = scope[key];
                     if (typeof value === "function") {
-                        props[key] = function() {
-                            try {
-                                return value.apply(this, arguments);
-                            } finally {
-                                $timeout(() => scope.$digest());
+                        (function(value) {
+                            props[key] = function() {
+                                try {
+                                    return value.apply(this, arguments);
+                                } finally {
+                                    $timeout(() => scope.$digest());
+                                }
                             }
-                        }
+                        })(value);
                     } else {
                         props[key] = value;
                     }
-                });
+                }
                 React.render(<Component {...props}/>, element[0]);
             }
 

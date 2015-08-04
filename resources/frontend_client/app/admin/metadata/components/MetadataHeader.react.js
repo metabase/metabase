@@ -10,9 +10,31 @@ export default React.createClass({
         databaseId: React.PropTypes.number,
         databases: React.PropTypes.array.isRequired,
         selectDatabase: React.PropTypes.func.isRequired,
-        // metabaseApi: React.PropTypes.func.isRequired,
-        // isShowingSchema: React.PropTypes.bool.isRequired,
+        isShowingSchema: React.PropTypes.bool.isRequired,
         toggleShowSchema: React.PropTypes.func.isRequired,
+    },
+
+    getInitialState: function() {
+        return {
+            saving: false,
+            recentlySavedTimeout: null,
+            error: null
+        }
+    },
+
+    setSaving: function() {
+        clearTimeout(this.state.recentlySavedTimeout);
+        this.setState({ saving: true, recentlySavedTimeout: null, error: null });
+    },
+
+    setSaved: function() {
+        clearTimeout(this.state.recentlySavedTimeout);
+        var recentlySavedTimeout = setTimeout(() => this.setState({ recentlySavedTimeout: null }), 5000);
+        this.setState({ saving: false, recentlySavedTimeout: recentlySavedTimeout, error: null });
+    },
+
+    setSaveError: function(error) {
+        this.setState({ saving: false, recentlySavedTimeout: null, error: error });
     },
 
     renderDbSelector: function() {
@@ -51,18 +73,24 @@ export default React.createClass({
         }
     },
 
-    render: function() {
-        var spinner;
-        if (this.props.saving || true) {
-            spinner = (<div className="mx2 px2 border-right"><div className="spinner"></div></div>);
+    renderSaveWidget: function() {
+        if (this.state.saving) {
+            return (<div className="mx2 px2 border-right"><div className="Spinner"></div></div>);
+        } else if (this.state.error) {
+            return (<div className="mx2 px2 border-right text-error">Error: {this.state.error}</div>)
+        } else if (this.state.recentlySavedTimeout != null) {
+            return (<div className="mx2 px2 border-right"><Icon name="check" width="12" height="12" /> Saved</div>)
         }
+    },
+
+    render: function() {
         return (
             <div className="MetadataEditor-header flex align-center">
                 <div className="MetadataEditor-header-section h2">
                     <span className="text-grey-4">Edit Metadata for</span> {this.renderDbSelector()}
                 </div>
                 <div className="MetadataEditor-header-section flex-align-right flex align-center">
-                    {spinner}
+                    {this.renderSaveWidget()}
                     <span>Show original schema</span>
                     <span className={"Toggle " + (this.props.isShowingSchema ? "selected" : "")} onClick={this.props.toggleShowSchema}></span>
                 </div>

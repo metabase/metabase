@@ -3,6 +3,7 @@
 
 import Input from "./Input.react";
 import MetadataField from "./MetadataField.react";
+import ProgressBar from "./ProgressBar.react";
 
 import cx from "classnames";
 
@@ -10,7 +11,6 @@ export default React.createClass({
     displayName: "MetadataTable",
     propTypes: {
         table: React.PropTypes.object,
-        metadata: React.PropTypes.object,
         updateTable: React.PropTypes.func.isRequired,
         updateField: React.PropTypes.func.isRequired
     },
@@ -66,12 +66,9 @@ export default React.createClass({
             return false;
         }
 
-        var fields;
-        if (this.props.metadata) {
-            fields = this.props.metadata.fields.map((field) => {
-                return <MetadataField key={field.id} field={field} updateField={this.props.updateField} />
-            });
-        }
+        var fields = this.props.table.fields.map((field) => {
+            return <MetadataField key={field.id} field={field} updateField={this.props.updateField} />
+        });
 
         return (
             <div className="MetadataTable px2 flex-full">
@@ -82,7 +79,10 @@ export default React.createClass({
                 <div className="MetadataTable-header flex align-center py2 text-grey-3">
                     <span className="mx1 text-uppercase">Visibility</span>
                     {this.renderVisibilityWidget()}
-                    <span className="text-uppercase flex-align-right">Metadata Strength</span>
+                    <span className="flex-align-right flex align-center">
+                        <span className="text-uppercase mr1">Metadata Strength</span>
+                        <ProgressBar percentage={table.metadataStrength} />
+                    </span>
                 </div>
                 <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
                     <div className="text-uppercase text-grey-3 py1 flex">

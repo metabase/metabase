@@ -9,8 +9,7 @@ import cx from "classnames";
 export default React.createClass({
     displayName: "MetadataSchema",
     propTypes: {
-        table: React.PropTypes.object,
-        metadata: React.PropTypes.object
+        table: React.PropTypes.object
     },
 
     render: function() {
@@ -19,23 +18,20 @@ export default React.createClass({
             return false;
         }
 
-        var fields;
-        if (this.props.metadata) {
-            fields = this.props.metadata.fields.map((field) => {
-                return (
-                    <li key={field.id} className="px1 py2 flex border-bottom">
-                        <div className="TableEditor-column-column flex flex-column mr1">
-                            <span className="TableEditor-field-name text-bold">{field.name}</span>
-                        </div>
-                        <div className="TableEditor-column-type">
-                            <span className="text-bold">{field.base_type}</span>
-                        </div>
-                        <div className="TableEditor-column-details">
-                        </div>
-                    </li>
-                );
-            });
-        }
+        var fields = this.props.table.fields.map((field) => {
+            return (
+                <li key={field.id} className="px1 py2 flex border-bottom">
+                    <div className="flex-full flex flex-column mr1">
+                        <span className="TableEditor-field-name text-bold">{field.name}</span>
+                    </div>
+                    <div className="flex-half">
+                        <span className="text-bold">{field.base_type}</span>
+                    </div>
+                    <div className="flex-half">
+                    </div>
+                </li>
+            );
+        });
 
         return (
             <div className="MetadataTable px2 flex-full">
@@ -44,9 +40,9 @@ export default React.createClass({
                 </div>
                 <div className="mt2 ">
                     <div className="text-uppercase text-grey-3 py1 flex">
-                        <div className="TableEditor-column-column px1">Column</div>
-                        <div className="TableEditor-column-type px1">Data Type</div>
-                        <div className="TableEditor-column-details px1">Additional Info</div>
+                        <div className="flex-full px1">Column</div>
+                        <div className="flex-half px1">Data Type</div>
+                        <div className="flex-half px1">Additional Info</div>
                     </div>
                     <ol className="border-top border-bottom scroll-y">
                         {fields}

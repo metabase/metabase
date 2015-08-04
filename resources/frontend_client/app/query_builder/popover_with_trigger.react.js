@@ -111,11 +111,9 @@ export default React.createClass({
             classes += " " + this.props.triggerClasses;
         }
         return (
-            <span>
-                <a className={classes} href="#" onClick={this.toggleModal}>
-                    {this.props.triggerElement}
-                </a>
-            </span>
+            <a className={classes} href="#" onClick={this.toggleModal}>
+                {this.props.triggerElement}
+            </a>
         );
     }
 });

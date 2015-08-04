@@ -42,6 +42,10 @@ button {
     outline: none;
 }
 
+a {
+    color: inherit;
+}
+
 .disabled {
   pointer-events: none;
   opacity: 0.4;

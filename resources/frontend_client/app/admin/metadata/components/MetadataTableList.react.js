@@ -1,5 +1,7 @@
 'use strict';
 
+import ProgressBar from './ProgressBar.react';
+
 import cx from 'classnames';
 import Humanize from 'humanize';
 
@@ -7,7 +9,7 @@ export default React.createClass({
     displayName: "MetadataTableList",
     propTypes: {
         tableId: React.PropTypes.number,
-        tables: React.PropTypes.array.isRequired,
+        tables: React.PropTypes.object.isRequired,
         selectTable: React.PropTypes.func.isRequired
     },
 
@@ -31,13 +33,16 @@ export default React.createClass({
         var hiddenTables = [];
 
         if (this.props.tables) {
-            this.props.tables.forEach((table, index) => {
+            _.each(this.props.tables, (table) => {
                 var classes = cx("AdminList-item", {
-                    "selected": this.props.tableId === table.id
+                    "selected": this.props.tableId === table.id,
+                    "flex": true,
+                    "align-center": true
                 });
                 var row = (
                     <li key={table.id} className={classes} onClick={this.props.selectTable.bind(null, table)}>
                         {table.display_name}
+                        <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
                     </li>
                 )
                 var regex = this.state.searchRegex;

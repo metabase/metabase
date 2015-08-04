@@ -6,6 +6,9 @@ var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: "ColumnarSelector",
+    propTypes: {
+        columns: React.PropTypes.array.isRequired
+    },
 
     render: function() {
         var columns = this.props.columns.map((column, columnIndex) => {
@@ -19,13 +22,22 @@ export default React.createClass({
                         var itemClasses = cx({
                             'cursor-pointer': true,
                             'ColumnarSelector-row': true,
-                            'ColumnarSelector-row--selected': item === column.selectedItem
+                            'ColumnarSelector-row--selected': item === column.selectedItem,
+                            'flex': true
                         });
                         var checkIcon = lastColumn ? <Icon name="check" width="14" height="14"/> : null;
+                        var descriptionElement;
+                        var description = column.itemDescriptionFn && column.itemDescriptionFn(item);
+                        if (description) {
+                            descriptionElement = <div className="ColumnarSelector-description">{description}</div>
+                        }
                         return (
                             <li key={rowIndex} className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>
                                 {checkIcon}
-                                {column.itemTitleFn(item)}
+                                <div className="flex flex-column">
+                                    {column.itemTitleFn(item)}
+                                    {descriptionElement}
+                                </div>
                             </li>
                         );
                     });

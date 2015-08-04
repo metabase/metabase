@@ -20,8 +20,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     $scope.databases = databases;
 
     $scope.tableId = null;
-    $scope.tables = [];
-    $scope.tablesMetadata = {};
+    $scope.tables = {};
 
     // mildly hacky way to prevent reloading controllers as the URL changes
     var lastRoute = $route.current;
@@ -48,15 +47,16 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     }, true);
 
     $scope.$watch('databaseId', function() {
+        $scope.tables = {};
         Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise
         .then(function(tables) {
-            $scope.tables = tables;
-            return $q.all($scope.tables.map((table) => {
+            return $q.all(tables.map((table) => {
                 return Metabase.table_query_metadata({
                     'tableId': table.id,
                     'include_sensitive_fields': true
                 }).$promise.then(function(result) {
-                    $scope.tablesMetadata[table.id] = result;
+                    $scope.tables[table.id] = result;
+                    computeMetadataStrength($scope.tables[table.id]);
                 });
             })).then(function() {
                 $timeout(() => $scope.$digest());
@@ -75,10 +75,38 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     };
 
     $scope.updateTable = function(table) {
-        return Metabase.table_update(table).$promise;
+        return Metabase.table_update(table).$promise.then(function(result) {
+            _.each(result, (value, key) => { if (key.charAt(0) !== "$") { table[key] = value } });
+            computeMetadataStrength($scope.tables[table.id]);
+            $timeout(() => $scope.$digest());
+        });
     };
 
     $scope.updateField = function(field) {
-        return Metabase.field_update(field).$promise;
+        return Metabase.field_update(field).$promise.then(function(result) {
+            _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
+            computeMetadataStrength($scope.tables[field.table_id]);
+            $timeout(() => $scope.$digest());
+        });
     };
+
+    function computeMetadataStrength(table) {
+        var total = 0;
+        var completed = 0;
+        function score(value) {
+            total++;
+            if (value) { completed++; }
+        }
+
+        score(table.description);
+        table.fields.forEach(function(field) {
+            score(field.description);
+            score(field.special_type);
+            if (field.special_type === "fk") {
+                score(field.target);
+            }
+        });
+
+        table.metadataStrength = completed / total;
+    }
 }]);
