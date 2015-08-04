@@ -47,7 +47,7 @@
 
 (defn drop-physical-table! [dataset-loader database-definition {:keys [table-name]}]
   (execute-sql! dataset-loader database-definition
-    (format "DROP TABLE IF EXISTS %s;" (quote-name dataset-loader table-name)))) ; don't quote table name because MySQL doesn't like it
+    (format "DROP TABLE IF EXISTS %s;" (quote-name dataset-loader table-name))))
 
 
 (defn create-physical-db! [dataset-loader {:keys [table-definitions], :as database-definition}]
