@@ -23,3 +23,5 @@
     (assoc fk
            :origin      (delay (sel :one 'metabase.models.field/Field :id origin_id))
            :destination (delay (sel :one 'metabase.models.field/Field :id destination_id)))))
+
+(extend-ICanReadWrite ForeignKeyEntity :read :always, :write :superuser)
