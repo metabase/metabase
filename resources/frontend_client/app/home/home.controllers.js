@@ -1,5 +1,7 @@
 'use strict';
 
+import Table from "metabase/lib/table";
+
 var HomeControllers = angular.module('corvus.home.controllers', [
     'corvus.home.directives',
     'corvus.metabase.services'
@@ -63,7 +65,7 @@ HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($
         Metabase.db_tables({
             'dbId': $scope.currentDB.id
         }, function (tables) {
-            $scope.tables = tables;
+            $scope.tables = tables.filter(Table.isQueryable);
         }, function (error) {
             console.log(error);
         })
