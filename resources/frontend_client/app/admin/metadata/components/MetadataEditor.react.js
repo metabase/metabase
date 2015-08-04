@@ -60,22 +60,26 @@ export default React.createClass({
     render: function() {
         var table = this.props.tables[this.props.tableId];
         var content;
-        if (this.state.isShowingSchema) {
-            content = (
-                <MetadataSchema
-                    table={table}
-                />
-            );
+        if (table) {
+            if (this.state.isShowingSchema) {
+                content = (<MetadataSchema table={table} />);
+            } else {
+                content = (
+                    <MetadataTable
+                        table={table}
+                        idfields={this.props.idfields}
+                        updateTable={this.updateTable}
+                        updateField={this.updateField}
+                        updateFieldSpecialType={this.updateFieldSpecialType}
+                        updateFieldTarget={this.updateFieldTarget}
+                    />
+                );
+            }
         } else {
             content = (
-                <MetadataTable
-                    table={table}
-                    idfields={this.props.idfields}
-                    updateTable={this.updateTable}
-                    updateField={this.updateField}
-                    updateFieldSpecialType={this.updateFieldSpecialType}
-                    updateFieldTarget={this.updateFieldTarget}
-                />
+                <div className="flex flex-full layout-centered">
+                    <h2 className="text-grey-3">Select any table to see its schema and add or edit metadata.</h2>
+                </div>
             );
         }
         return (
