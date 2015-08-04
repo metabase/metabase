@@ -21,14 +21,14 @@
 
 (def ^:const available-drivers
   "Available DB drivers."
-  {:h2       {:id      "h2"
-              :name    "H2"}
-   :postgres {:id      "postgres"
-              :name    "Postgres"}
-   :mongo    {:id      "mongo"
-              :name    "MongoDB"}
-   :mysql    {:id      "mysql"
-              :name    "MySQL"}})
+  {:h2       {:id   "h2"
+              :name "H2"}
+   :postgres {:id   "postgres"
+              :name "Postgres"}
+   :mongo    {:id   "mongo"
+              :name "MongoDB"}
+   :mysql    {:id   "mysql"
+              :name "MySQL"}})
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
