@@ -51,28 +51,30 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     }, true);
 
     $scope.$watch('databaseId', Promise.coroutine(function *() {
-        try {
-            $scope.tables = {};
-            var tables = yield Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise;
-            yield Promise.all(tables.map(Promise.coroutine(function *(table) {
-                $scope.tables[table.id] = yield Metabase.table_query_metadata({
-                    'tableId': table.id,
-                    'include_sensitive_fields': true
-                }).$promise;
-                computeMetadataStrength($scope.tables[table.id]);
-            })));
-            var result = yield Metabase.db_idfields({ 'dbId': $scope.databaseId }).$promise;
-            if (result && !result.error) {
-                $scope.idfields = result.map(function(field) {
-                    field.displayName = field.table.display_name + " → " + field.display_name;
-                    return field;
-                });
-            } else {
-                console.warn(result);
+        $scope.tables = {};
+        if ($scope.databaseId != null) {
+            try {
+                var tables = yield Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise;
+                yield Promise.all(tables.map(Promise.coroutine(function *(table) {
+                    $scope.tables[table.id] = yield Metabase.table_query_metadata({
+                        'tableId': table.id,
+                        'include_sensitive_fields': true
+                    }).$promise;
+                    computeMetadataStrength($scope.tables[table.id]);
+                })));
+                var result = yield Metabase.db_idfields({ 'dbId': $scope.databaseId }).$promise;
+                if (result && !result.error) {
+                    $scope.idfields = result.map(function(field) {
+                        field.displayName = field.table.display_name + " → " + field.display_name;
+                        return field;
+                    });
+                } else {
+                    console.warn(result);
+                }
+                $timeout(() => $scope.$digest());
+            } catch (error) {
+                console.warn("error loading tables", error)
             }
-            $timeout(() => $scope.$digest());
-        } catch (error) {
-            console.warn("error loading tables", error)
         }
     }), true);
 
