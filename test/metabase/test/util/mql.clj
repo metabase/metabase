@@ -31,8 +31,11 @@
   `(:id (data/-temp-get ~'db ~@(map name args))))
 
 (defn Q:resolve-dataset [^clojure.lang.Symbol dataset]
-  (require 'metabase.test.data.dataset-definitions)
-  (var-get (ns-resolve 'metabase.test.data.dataset-definitions dataset)))
+  ;; Try to resolve symbol as-is, otherwise try to resolve in the metabase.test.data.dataset-definitions namespace
+  (var-get (or (resolve dataset)
+               (do (require 'metabase.test.data.dataset-definitions)
+                   (ns-resolve 'metabase.test.data.dataset-definitions dataset))
+               (throw (Exception. (format "Don't know how to find dataset '%s'." dataset))))))
 
 (defmacro Q:with-temp-db [dataset body]
   `(data/with-temp-db [~'db (data/dataset-loader) (Q:resolve-dataset '~dataset)]
