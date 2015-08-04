@@ -126,9 +126,12 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value]} _]
-     (if-not (instance? java.util.Date value) value
-             `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))))))
+    ([{:keys [value base-type]} _]
+     (cond
+       (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
+       (= base-type :UUIDField)         (do (assert (string? value))
+                                            (java.util.UUID/fromString value))
+       :else                            value))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
