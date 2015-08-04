@@ -178,17 +178,17 @@ ExploreServices.service('CorvusFormGenerator', [function() {
         },
         'STARTS_WITH': {
             'name': "STARTS_WITH",
-            'verbose_name': "Starts with - ",
+            'verbose_name': "Starts With",
             'validArgumentsFilters': [freeformArgument]
         },
         'ENDS_WITH': {
             'name': "ENDS_WITH",
-            'verbose_name': "Ends with - ",
+            'verbose_name': "Ends With",
             'validArgumentsFilters': [freeformArgument]
         },
         'CONTAINS': {
             'name': "CONTAINS",
-            'verbose_name': "Contains the substring - ",
+            'verbose_name': "Contains",
             'validArgumentsFilters': [freeformArgument]
         }
     };
