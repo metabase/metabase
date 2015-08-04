@@ -26,8 +26,7 @@
 (defentity Table
   [(table :metabase_table)
    (hydration-keys table)
-   (types :entity_type :keyword)
-   (types :visibility_type :keyword)
+   (types :entity_type :keyword, :visibility_type :keyword)
    timestamped]
 
   (post-select [_ {:keys [id db db_id description] :as table}]
