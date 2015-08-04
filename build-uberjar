@@ -11,8 +11,12 @@ else
     ./node_modules/webpack/bin/webpack.js -p
 fi &&
 
-echo "Running 'lein generate-sample-dataset' to generate the sample dataset..." &&
-lein generate-sample-dataset &&
+if [ -f resources/sample-dataset.db.mv.db ]; then
+    echo "Sample Dataset already generated."
+else
+    echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
+    lein generate-sample-dataset
+fi &&
 
 echo "Running 'lein uberjar'..." &&
 lein uberjar
