@@ -48,6 +48,7 @@ export default React.createClass({
         var typeSelect = (
             <Select
                 className="TableEditor-field-type"
+                placeholder="Select a field type"
                 value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
                 options={MetabaseCore.field_field_types}
                 onChange={this.onTypeChange}
@@ -57,6 +58,7 @@ export default React.createClass({
         var specialTypeSelect = (
             <Select
                 className="TableEditor-field-special-type"
+                placeholder="Select a special type"
                 value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
                 options={MetabaseCore.field_special_types}
                 onChange={this.onSpecialTypeChange}
@@ -68,6 +70,7 @@ export default React.createClass({
             targetSelect = (
                 <Select
                     className="TableEditor-field-target"
+                    placeholder="Select a target"
                     value={this.props.field.target && _.find(this.props.idfields, (field) => field.id === this.props.field.target.id)}
                     options={this.props.idfields}
                     optionNameFn={(field) => field.displayName}

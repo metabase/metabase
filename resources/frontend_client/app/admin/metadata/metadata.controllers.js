@@ -64,10 +64,9 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
             var result = yield Metabase.db_idfields({ 'dbId': $scope.databaseId }).$promise;
             if (result && !result.error) {
                 $scope.idfields = result.map(function(field) {
-                    field.displayName = field.table.name + " → " + field.name;
+                    field.displayName = field.table.display_name + " → " + field.display_name;
                     return field;
                 });
-                console.log($scope.idfields);
             } else {
                 console.warn(result);
             }

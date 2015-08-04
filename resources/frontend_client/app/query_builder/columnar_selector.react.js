@@ -46,7 +46,7 @@ export default React.createClass({
                         titleElement = <div className="ColumnarSelector-title">{title}</div>
                     }
                     return (
-                        <section key={sectionIndex}>
+                        <section key={sectionIndex} className="ColumnarSelector-section">
                             {titleElement}
                             <ul className="ColumnarSelector-rows">{items}</ul>
                         </section>

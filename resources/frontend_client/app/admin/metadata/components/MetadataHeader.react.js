@@ -50,9 +50,9 @@ export default React.createClass({
                 }
             }];
             var tetherOptions = {
-                attachment: 'top left',
-                targetAttachment: 'bottom left',
-                targetOffset: '15px 0'
+                attachment: 'top center',
+                targetAttachment: 'bottom center',
+                targetOffset: '10px 0'
             };
             var triggerElement = (
                 <span className="text-bold cursor-pointer text-default">

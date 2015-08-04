@@ -21,11 +21,16 @@
 }
 
 .ColumnarSelector-title {
+    color: color(var(--base-grey) shade(30%));
     text-transform: uppercase;
     font-size: 10px;
     font-weight: 700;
-    padding: var(--padding-2);
+    padding: var(--padding-1);
     padding-left: var(--padding-3);
+}
+
+.ColumnarSelector-section:first-child .ColumnarSelector-title {
+    padding-top: var(--padding-3);
 }
 
 .ColumnarSelector-description {
@@ -49,7 +54,7 @@
 }
 
 .ColumnarSelector-row:hover .ColumnarSelector-description {
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.50);
 }
 
 .ColumnarSelector-row--selected {

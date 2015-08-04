@@ -89,68 +89,86 @@
     };
 
     this.field_special_types = [{
-        'id': null,
-        'name': 'None'
-    }, {
-        'id': 'avatar',
-        'name': 'Avatar Image URL'
-    }, {
-        'id': 'category',
-        'name': 'Category'
-    }, {
-        'id': 'city',
-        'name': 'City'
-    }, {
-        'id': 'country',
-        'name': 'Country'
-    }, {
-        'id': 'desc',
-        'name': 'Description'
-    }, {
-        'id': 'fk',
-        'name': 'Foreign Key'
-    }, {
         'id': 'id',
-        'name': 'Entity Key'
-    }, {
-        'id': 'image',
-        'name': 'Image URL'
-    }, {
-        'id': 'json',
-        'name': 'Field containing JSON'
-    }, {
-        'id': 'latitude',
-        'name': 'Latitude'
-    }, {
-        'id': 'longitude',
-        'name': 'Longitude'
+        'name': 'Entity Key',
+        'section': 'Overall Row',
+        'description': 'The primary key for this table.'
     }, {
         'id': 'name',
-        'name': 'Entity Name'
+        'name': 'Entity Name',
+        'section': 'Overall Row',
+        'description': 'The "name" of each record. Usually a column called "name", "title", etc.'
+    }, {
+        'id': 'fk',
+        'name': 'Foreign Key',
+        'section': 'Overall Row',
+        'description': 'Points to another table to make a connection.'
+    }, {
+        'id': 'avatar',
+        'name': 'Avatar Image URL',
+        'section': 'Common'
+    }, {
+        'id': 'category',
+        'name': 'Category',
+        'section': 'Common'
+    }, {
+        'id': 'city',
+        'name': 'City',
+        'section': 'Common'
+    }, {
+        'id': 'country',
+        'name': 'Country',
+        'section': 'Common'
+    }, {
+        'id': 'desc',
+        'name': 'Description',
+        'section': 'Common'
+    }, {
+        'id': 'image',
+        'name': 'Image URL',
+        'section': 'Common'
+    }, {
+        'id': 'json',
+        'name': 'Field containing JSON',
+        'section': 'Common'
+    }, {
+        'id': 'latitude',
+        'name': 'Latitude',
+        'section': 'Common'
+    }, {
+        'id': 'longitude',
+        'name': 'Longitude',
+        'section': 'Common'
     }, {
         'id': 'number',
-        'name': 'Number'
+        'name': 'Number',
+        'section': 'Common'
     }, {
         'id': 'state',
-        'name': 'State'
+        'name': 'State',
+        'section': 'Common'
     }, {
         id: 'timestamp_seconds',
-        name: 'UNIX Timestamp (Seconds)'
+        name: 'UNIX Timestamp (Seconds)',
+        'section': 'Common'
     }, {
         id: 'timestamp_milliseconds',
-        name: 'UNIX Timestamp (Milliseconds)'
+        name: 'UNIX Timestamp (Milliseconds)',
+        'section': 'Common'
     }, {
         'id': 'url',
-        'name': 'URL'
+        'name': 'URL',
+        'section': 'Common'
     }, {
         'id': 'zip_code',
-        'name': 'Zip Code'
+        'name': 'Zip Code',
+        'section': 'Common'
     }];
 
     this.field_field_types = [{
         'id': 'info',
         'name': 'Information',
-        'description': 'Non-numerical value that is not meant to be used'
+        'description': 'Non-numerical value that is not meant to be used.'
     }, {
         'id': 'metric',
         'name': 'Metric',
@@ -158,11 +176,11 @@
     }, {
         'id': 'dimension',
         'name': 'Dimension',
-        'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping'
+        'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping.'
     }, {
         'id': 'sensitive',
         'name': 'Sensitive Information',
-        'description': 'A Fields that should never be shown anywhere'
+        'description': 'A field that should never be shown anywhere.'
     }];
 
     this.boolean_types = [{
