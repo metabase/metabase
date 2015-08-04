@@ -52,7 +52,7 @@ module.exports = {
     module: {
         loaders: [
             // JavaScript
-            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache' }},
+            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: ['es7.asyncFunctions'] }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?-restructuring&compatibility!cssnext-loader') }

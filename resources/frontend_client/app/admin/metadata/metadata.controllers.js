@@ -3,8 +3,6 @@
 
 import MetadataEditor from './components/MetadataEditor.react';
 
-import Promise from 'bluebird';
-
 angular
 .module('metabase.admin.metadata.controllers', [
     'corvus.services',
@@ -50,33 +48,41 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         }
     }, true);
 
-    $scope.$watch('databaseId', Promise.coroutine(function *() {
+    $scope.$watch('databaseId', async function() {
         $scope.tables = {};
         if ($scope.databaseId != null) {
             try {
-                var tables = yield Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise;
-                yield Promise.all(tables.map(Promise.coroutine(function *(table) {
-                    $scope.tables[table.id] = yield Metabase.table_query_metadata({
-                        'tableId': table.id,
-                        'include_sensitive_fields': true
-                    }).$promise;
-                    computeMetadataStrength($scope.tables[table.id]);
-                })));
-                var result = yield Metabase.db_idfields({ 'dbId': $scope.databaseId }).$promise;
-                if (result && !result.error) {
-                    $scope.idfields = result.map(function(field) {
-                        field.displayName = field.table.display_name + " → " + field.display_name;
-                        return field;
-                    });
-                } else {
-                    console.warn(result);
-                }
+                await loadTableMetadata();
+                await loadIdFields();
                 $timeout(() => $scope.$digest());
             } catch (error) {
                 console.warn("error loading tables", error)
             }
         }
-    }), true);
+    }, true);
+
+    async function loadTableMetadata() {
+        var tables = await Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise;
+        await* tables.map(async function(table) {
+            $scope.tables[table.id] = await Metabase.table_query_metadata({
+                'tableId': table.id,
+                'include_sensitive_fields': true
+            }).$promise;
+            computeMetadataStrength($scope.tables[table.id]);
+        });
+    }
+
+    async function loadIdFields() {
+        var result = await Metabase.db_idfields({ 'dbId': $scope.databaseId }).$promise;
+        if (result && !result.error) {
+            $scope.idfields = result.map(function(field) {
+                field.displayName = field.table.display_name + " → " + field.display_name;
+                return field;
+            });
+        } else {
+            console.warn(result);
+        }
+    }
 
     $scope.selectDatabase = function(db) {
         $location.path('/admin/metadata/'+db.id);
@@ -98,6 +104,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         return Metabase.field_update(field).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
             computeMetadataStrength($scope.tables[field.table_id]);
+            return loadIdFields();
+        }).then(function() {
             $timeout(() => $scope.$digest());
         });
     };
@@ -122,13 +130,13 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         table.metadataStrength = completed / total;
     }
 
-    $scope.updateFieldSpecialType = Promise.coroutine(function *(field) {
+    $scope.updateFieldSpecialType = async function(field) {
         // If we are changing the field from a FK to something else, we should delete any FKs present
         if (field.target && field.target.id != null && field.special_type !== "fk") {
             // we have something that used to be an FK and is now not an FK
             // Let's delete its foreign keys
             try {
-                yield deleteAllFieldForeignKeys(field);
+                await deleteAllFieldForeignKeys(field);
             } catch (e) {
                 console.warn("Errpr deleting foreign keys", e);
             }
@@ -138,32 +146,31 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         }
         // save the field
         return $scope.updateField(field);
-    });
+    };
 
-    $scope.updateFieldTarget = Promise.coroutine(function *(field) {
+    $scope.updateFieldTarget = async function(field) {
         // This function notes a change in the target of the target of a foreign key
         // If there is already a target, we should delete that FK and create a new one
         // This is meant to be transitional until we add an FK modify function to the API
         // If there was not a target, we should create a new FK
         try {
-            yield deleteAllFieldForeignKeys(field);
+            await deleteAllFieldForeignKeys(field);
         } catch (e) {
             console.warn("Error deleting foreign keys", e);
         }
-        var result = yield Metabase.field_addfk({
+        var result = await Metabase.field_addfk({
             "db": $scope.databaseId,
             "fieldId": field.id,
             'target_field': field.target_id,
             "relationship": "Mt1"
         }).$promise;
         field.target = result.destination;
-    });
+    };
 
-    function deleteAllFieldForeignKeys(field) {
-        return Metabase.field_foreignkeys({ 'fieldId': field.id }).$promise.then(function(fks) {
-            return Promise.all(fks.map(function(fk) {
-                return ForeignKey.delete({ 'fkID': fk.id }).$promise;
-            }));
+    async function deleteAllFieldForeignKeys(field) {
+        var fks = await Metabase.field_foreignkeys({ 'fieldId': field.id }).$promise;
+        return await* fks.map(function(fk) {
+            return ForeignKey.delete({ 'fkID': fk.id }).$promise;
         });
     }
 }]);
