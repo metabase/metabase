@@ -34,7 +34,8 @@ export default React.createClass({
         var hiddenTables = [];
 
         if (this.props.tables) {
-            _.each(this.props.tables, (table) => {
+            var tables = _.sortBy(this.props.tables, "display_name");
+            _.each(tables, (table) => {
                 var classes = cx("AdminList-item", {
                     "selected": this.props.tableId === table.id,
                     "flex": true,
