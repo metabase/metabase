@@ -60,8 +60,6 @@
          (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
          (map (fn [{:keys [column_name type_name]}]
                 {column_name (or (column->base-type (keyword type_name))
-                                 (println (u/format-color 'red "\n\n--------------------------------------------------------------------------------\nTYPE NAME: %s\n--------------------------------------------------------------------------------\n\n"
-                                                          type_name))
                                  :UnknownField)}))
          (into {}))))
 
