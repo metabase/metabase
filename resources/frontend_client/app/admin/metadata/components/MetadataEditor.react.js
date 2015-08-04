@@ -15,8 +15,11 @@ export default React.createClass({
         tableId: React.PropTypes.number,
         tables: React.PropTypes.object.isRequired,
         selectTable: React.PropTypes.func.isRequired,
+        idfields: React.PropTypes.array.isRequired,
         updateTable: React.PropTypes.func.isRequired,
-        updateField: React.PropTypes.func.isRequired
+        updateField: React.PropTypes.func.isRequired,
+        updateFieldSpecialType: React.PropTypes.func.isRequired,
+        updateFieldTarget: React.PropTypes.func.isRequired
     },
 
     getInitialState: function() {
@@ -46,6 +49,14 @@ export default React.createClass({
         this.handleSaveResult(this.props.updateField(field));
     },
 
+    updateFieldSpecialType: function(field) {
+        this.handleSaveResult(this.props.updateFieldSpecialType(field));
+    },
+
+    updateFieldTarget: function(field) {
+        this.handleSaveResult(this.props.updateFieldTarget(field));
+    },
+
     render: function() {
         var table = this.props.tables[this.props.tableId];
         var content;
@@ -53,16 +64,17 @@ export default React.createClass({
             content = (
                 <MetadataSchema
                     table={table}
-                    updateTable={this.updateTable}
-                    updateField={this.updateField}
                 />
             );
         } else {
             content = (
                 <MetadataTable
                     table={table}
+                    idfields={this.props.idfields}
                     updateTable={this.updateTable}
                     updateField={this.updateField}
+                    updateFieldSpecialType={this.updateFieldSpecialType}
+                    updateFieldTarget={this.updateFieldTarget}
                 />
             );
         }

@@ -1,4 +1,5 @@
 "use strict";
+/*global _*/
 
 import Input from "./Input.react";
 import Select from "./Select.react";
@@ -10,7 +11,10 @@ export default React.createClass({
     displayName: "MetadataField",
     propTypes: {
         field: React.PropTypes.object,
-        updateField: React.PropTypes.func.isRequired
+        idfields: React.PropTypes.array.isRequired,
+        updateField: React.PropTypes.func.isRequired,
+        updateFieldSpecialType: React.PropTypes.func.isRequired,
+        updateFieldTarget: React.PropTypes.func.isRequired
     },
 
     updateProperty: function(name, value) {
@@ -31,7 +35,13 @@ export default React.createClass({
     },
 
     onSpecialTypeChange: function(special_type) {
-        this.updateProperty("special_type", special_type.id);
+        this.props.field.special_type = special_type.id;
+        this.props.updateFieldSpecialType(this.props.field);
+    },
+
+    onTargetChange: function(target_field) {
+        this.props.field.target_id = target_field.id;
+        this.props.updateFieldTarget(this.props.field);
     },
 
     render: function() {
@@ -53,6 +63,19 @@ export default React.createClass({
             />
         );
 
+        var targetSelect;
+        if (this.props.field.special_type === "fk") {
+            targetSelect = (
+                <Select
+                    className="TableEditor-field-target"
+                    value={this.props.field.target && _.find(this.props.idfields, (field) => field.id === this.props.field.target.id)}
+                    options={this.props.idfields}
+                    optionNameFn={(field) => field.displayName}
+                    onChange={this.onTargetChange}
+                />
+            );
+        }
+
         return (
             <li className="my1 flex">
                 <div className="MetadataTable-title flex flex-column flex-full bordered rounded mr1">
@@ -64,10 +87,7 @@ export default React.createClass({
                 </div>
                 <div className="flex-half flex flex-column justify-between px1">
                     {specialTypeSelect}
-                    <div className="AdminSelect flex align-center">
-                        <span>To → User Login</span>
-                        <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
-                    </div>
+                    {targetSelect}
                 </div>
             </li>
         )

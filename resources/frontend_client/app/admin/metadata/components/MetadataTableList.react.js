@@ -1,4 +1,5 @@
 'use strict';
+/*global _*/
 
 import ProgressBar from './ProgressBar.react';
 

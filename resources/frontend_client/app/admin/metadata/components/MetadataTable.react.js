@@ -11,8 +11,11 @@ export default React.createClass({
     displayName: "MetadataTable",
     propTypes: {
         table: React.PropTypes.object,
+        idfields: React.PropTypes.array.isRequired,
         updateTable: React.PropTypes.func.isRequired,
-        updateField: React.PropTypes.func.isRequired
+        updateField: React.PropTypes.func.isRequired,
+        updateFieldSpecialType: React.PropTypes.func.isRequired,
+        updateFieldTarget: React.PropTypes.func.isRequired
     },
 
     isHidden: function() {
@@ -67,7 +70,16 @@ export default React.createClass({
         }
 
         var fields = this.props.table.fields.map((field) => {
-            return <MetadataField key={field.id} field={field} updateField={this.props.updateField} />
+            return (
+                <MetadataField
+                    key={field.id}
+                    field={field}
+                    idfields={this.props.idfields}
+                    updateField={this.props.updateField}
+                    updateFieldSpecialType={this.props.updateFieldSpecialType}
+                    updateFieldTarget={this.props.updateFieldTarget}
+                />
+            );
         });
 
         return (

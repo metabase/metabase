@@ -9,13 +9,15 @@ export default React.createClass({
     propTypes: {
         value: React.PropTypes.object,
         options: React.PropTypes.array.isRequired,
-        onChange: React.PropTypes.func
+        onChange: React.PropTypes.func,
+        optionNameFn: React.PropTypes.func
     },
 
     getDefaultProps: function() {
         return {
             isInitiallyOpen: false,
-            placeholder: ""
+            placeholder: "",
+            optionNameFn: (field) => field.name
         };
     },
 
@@ -24,7 +26,7 @@ export default React.createClass({
     },
 
     render: function() {
-        var selectedName = this.props.value ? this.props.value.name : this.props.placeholder;
+        var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
 
         var triggerElement = (
             <div className="flex flex-full align-center">
@@ -37,7 +39,7 @@ export default React.createClass({
             {
                 selectedItem: this.props.value,
                 items: this.props.options,
-                itemTitleFn: (item) => item.name,
+                itemTitleFn: this.props.optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
                     this.props.onChange(item)
