@@ -9,6 +9,9 @@ machine:
 dependencies:
   pre:
     - pip install awscli==1.7.3
+database:
+  post:
+    - mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql
 test:
   override:
     # 0) runs unit tests w/ H2 local DB. Runs against Mongo, H2, Postgres, MySQL test datasets
