@@ -171,23 +171,26 @@
     ;; INSIDE filter subclause
     (let [{:keys [lat lon]} filter]
       (list 'and {(formatted (:field lat)) ['< (formatted (:max lat))]}
-                 {(formatted (:field lat)) ['> (formatted (:min lat))]}
-                 {(formatted (:field lon)) ['< (formatted (:max lon))]}
-                 {(formatted (:field lon)) ['> (formatted (:min lon))]}))
+            {(formatted (:field lat)) ['> (formatted (:min lat))]}
+            {(formatted (:field lon)) ['< (formatted (:max lon))]}
+            {(formatted (:field lon)) ['> (formatted (:min lon))]}))
 
     ;; all other filter subclauses
     (let [field (formatted (:field filter))
           value (some-> filter :value formatted)]
-      (case filter-type
-        :between  {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
-        :not-null {field ['not= nil]}
-        :is-null  {field ['=    nil]}
-        :>        {field ['>    value]}
-        :<        {field ['<    value]}
-        :>=       {field ['>=   value]}
-        :<=       {field ['<=   value]}
-        :=        {field ['=    value]}
-        :!=       {field ['not= value]}))))
+      (case          filter-type
+        :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
+        :not-null    {field ['not= nil]}
+        :is-null     {field ['=    nil]}
+        :starts-with {field ['like (str value \%)]}
+        :contains    {field ['like (str \% value \%)]}
+        :ends-with   {field ['like (str \% value)]}
+        :>           {field ['>    value]}
+        :<           {field ['<    value]}
+        :>=          {field ['>=   value]}
+        :<=          {field ['<=   value]}
+        :=           {field ['=    value]}
+        :!=          {field ['not= value]}))))
 
 (defmethod apply-form :filter [[_ {:keys [compound-type subclauses]}]]
   (let [[first-subclause :as subclauses] (map filter-subclause->predicate subclauses)]

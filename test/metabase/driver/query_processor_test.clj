@@ -1113,3 +1113,12 @@
      aggregate count of tips
      breakout source...mayor
      order ag.0))
+
+
+;;; !!!
+#_(defn x []
+    (driver/process-query {:database 1074
+                           :type :query
+                           :query {:source_table 1784
+                                   :filter ["STARTS_WITH" 11588 "San Francisco"]
+                                   :limit 10}}))
