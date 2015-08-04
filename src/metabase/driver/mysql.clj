@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql
-  (:require (korma [db :as kdb]
+  (:require [clojure.set :as set]
+            (korma [db :as kdb]
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as korma-utils])
@@ -57,14 +58,12 @@
    :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
-#_(defn- column->base-type [t]
-  (println "t ================================================================================>" t)
-  (column->base-type* t))
-
 (defrecord MySQLDriver []
   ISqlDriverDatabaseSpecific
   (connection-details->connection-spec [_ details]
-    (kdb/mysql details))
+    (-> details
+        (set/rename-keys {:dbname :db})
+        kdb/mysql))
 
   (database->connection-details [_ {:keys [details]}]
     details)
