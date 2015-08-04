@@ -3,7 +3,7 @@
 /*global _*/
 /* Services */
 
-import MetabaseAnalytics from 'metabase/lib/metabase_analytics';
+import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCore from 'metabase/lib/core';
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);

@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 import AggregationWidget from './aggregation_widget.react';
 import DataSelector from './data_selector.react';

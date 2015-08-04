@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';

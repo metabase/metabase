@@ -1,7 +1,7 @@
 'use strict';
 /*global _, document, confirm*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
