@@ -171,9 +171,9 @@
     ;; INSIDE filter subclause
     (let [{:keys [lat lon]} filter]
       (list 'and {(formatted (:field lat)) ['< (formatted (:max lat))]}
-            {(formatted (:field lat)) ['> (formatted (:min lat))]}
-            {(formatted (:field lon)) ['< (formatted (:max lon))]}
-            {(formatted (:field lon)) ['> (formatted (:min lon))]}))
+                 {(formatted (:field lat)) ['> (formatted (:min lat))]}
+                 {(formatted (:field lon)) ['< (formatted (:max lon))]}
+                 {(formatted (:field lon)) ['> (formatted (:min lon))]}))
 
     ;; all other filter subclauses
     (let [field (formatted (:field filter))
