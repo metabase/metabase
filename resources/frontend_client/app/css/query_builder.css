@@ -586,3 +586,7 @@
 .QueryBuilder .Entity-attribution {
     margin-left: 0.5rem;
 }
+
+.PopoverBody.AddToDashboard {
+    min-width: 25em;
+}

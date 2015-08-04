@@ -1,0 +1,22 @@
+#! /bin/bash
+
+echo "Running 'npm install' to download javascript dependencies..." &&
+npm install &&
+
+if [ -n "$CI_DISABLE_WEBPACK_MINIFICATION" ]; then
+    echo "Running 'webpack' to assemble and minify frontend assets..."
+    ./node_modules/webpack/bin/webpack.js
+else
+    echo "Running 'webpack -p' to assemble and minify frontend assets..."
+    ./node_modules/webpack/bin/webpack.js -p
+fi &&
+
+if [ -f resources/sample-dataset.db.mv.db ]; then
+    echo "Sample Dataset already generated."
+else
+    echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
+    lein generate-sample-dataset
+fi &&
+
+echo "Running 'lein uberjar'..." &&
+lein uberjar

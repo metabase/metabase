@@ -68,6 +68,9 @@
 (defn id-field-type []
   (datasets/id-field-type *dataset*))
 
+(defn sum-field-type []
+  (datasets/sum-field-type *dataset*))
+
 (defn timestamp-field-type []
   (datasets/timestamp-field-type *dataset*))
 
