@@ -428,6 +428,14 @@
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
+  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard Field?) (val :guard string?)]
+  (map->Filter:Field+Value {:filter-type (case filter-type
+                                           "STARTS_WITH" :starts-with
+                                           "CONTAINS"    :contains
+                                           "ENDS_WITH"   :ends-with)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
+
   [(filter-type :guard string?) (field-id :guard Field?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null

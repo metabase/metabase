@@ -297,20 +297,23 @@
   (let [field (when field (field->name field))
         value (when value (format-value value))]
     (case filter-type
-      :inside  (let [lat (:lat filter)
-                     lon (:lon filter)]
-                 {$and [{(field->name (:field lat)) {$gte (format-value (:min lat)), $lte (format-value (:max lat))}}
-                        {(field->name (:field lon)) {$gte (format-value (:min lon)), $lte (format-value (:max lon))}}]})
-      :between  {field {$gte (format-value (:min-val filter))
-                        $lte (format-value (:max-val filter))}}
-      :is-null  {field {$exists false}}
-      :not-null {field {$exists true}}
-      :=        {field value}
-      :!=       {field {$ne  value}}
-      :<        {field {$lt  value}}
-      :>        {field {$gt  value}}
-      :<=       {field {$lte value}}
-      :>=       {field {$gte value}})))
+      :inside      (let [lat (:lat filter)
+                         lon (:lon filter)]
+                     {$and [{(field->name (:field lat)) {$gte (format-value (:min lat)), $lte (format-value (:max lat))}}
+                            {(field->name (:field lon)) {$gte (format-value (:min lon)), $lte (format-value (:max lon))}}]})
+      :between     {field {$gte (format-value (:min-val filter))
+                           $lte (format-value (:max-val filter))}}
+      :is-null     {field {$exists false}}
+      :not-null    {field {$exists true}}
+      :contains    {field (re-pattern value)}
+      :starts-with {field (re-pattern (str \^ value))}
+      :ends-with   {field (re-pattern (str value \$))}
+      :=           {field value}
+      :!=          {field {$ne  value}}
+      :<           {field {$lt  value}}
+      :>           {field {$gt  value}}
+      :<=          {field {$lte value}}
+      :>=          {field {$gte value}})))
 
 
 (defclause :filter filter-clause

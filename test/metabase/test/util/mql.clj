@@ -154,22 +154,25 @@
 
 (defmacro Q:filter* [[subclause & [arg arg2 :as args]]]
   (case (keyword subclause)
-    :and      `["AND" ~@(for [cl (partition-tokens filter-tokens args)]
-                          `(Q:filter* ~cl))]
-    :or       `["OR"  ~@(for [cl (partition-tokens filter-tokens args)]
-                          `(Q:filter* ~cl))]
-    :inside   (let [{:keys [lat lon]} arg]
-                ["INSIDE" `(~'fl ~(:field lat)) `(~'fl ~(:field lon)) (:max lat) (:min lon) (:min lat) (:max lon)])
-    :not-null ["NOT_NULL" `(~'fl ~arg)]
-    :is-null  ["IS_NULL" `(~'fl ~arg)]
-    :between  (let [[id min max] args]
-                ["BETWEEN" `(~'fl ~id) ~min ~max])
-    :=        ["="  `(~'fl ~arg) arg2]
-    :!=       ["!=" `(~'fl ~arg) arg2]
-    :<        ["<"  `(~'fl ~arg) arg2]
-    :>        [">"  `(~'fl ~arg) arg2]
-    :<=       ["<=" `(~'fl ~arg) arg2]
-    :>=       [">=" `(~'fl ~arg) arg2]))
+    :and         `["AND" ~@(for [cl (partition-tokens filter-tokens args)]
+                             `(Q:filter* ~cl))]
+    :or          `["OR"  ~@(for [cl (partition-tokens filter-tokens args)]
+                             `(Q:filter* ~cl))]
+    :inside      (let [{:keys [lat lon]} arg]
+                   ["INSIDE" `(~'fl ~(:field lat)) `(~'fl ~(:field lon)) (:max lat) (:min lon) (:min lat) (:max lon)])
+    :not-null    ["NOT_NULL" `(~'fl ~arg)]
+    :is-null     ["IS_NULL" `(~'fl ~arg)]
+    :between     (let [[id min max] args]
+                   ["BETWEEN" `(~'fl ~id) ~min ~max])
+    :starts-with ["STARTS_WITH" `(~'fl ~arg) arg2]
+    :ends-with   ["ENDS_WITH"   `(~'fl ~arg) arg2]
+    :contains    ["CONTAINS"    `(~'fl ~arg) arg2]
+    :=           ["="  `(~'fl ~arg) arg2]
+    :!=          ["!=" `(~'fl ~arg) arg2]
+    :<           ["<"  `(~'fl ~arg) arg2]
+    :>           [">"  `(~'fl ~arg) arg2]
+    :<=          ["<=" `(~'fl ~arg) arg2]
+    :>=          [">=" `(~'fl ~arg) arg2]))
 
 
 ;; ## lim
