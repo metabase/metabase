@@ -6,7 +6,7 @@
 (defn- diff-str* [t k v1 v2]
   (match [t k v1 v2]
     [_ :name _ _]
-    (format "renamed it from \"%s\" to \"%s\"" v1 v2)
+    (format "renamed it from \"%s\" to \"%s\"" (clojure.string/upper-case v1) v2)
 
     [_ :private true false]
     "made it public"
@@ -16,6 +16,9 @@
 
     [_ :updated_at _ _]
     nil
+
+    [_ :dataset_query _ _]
+    "modified the query"
 
     [_ _ _ _]
     (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))

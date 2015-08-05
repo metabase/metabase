@@ -71,7 +71,10 @@
                       (hydrate :user))]
     (->> revisions
          (revisions-add-diff-strs entity)
-         (map #(dissoc % :user :model :model_id :user_id :object))
+         (map (fn [revision]
+                (-> revision
+                    (dissoc :model :model_id :user_id :object)
+                    (update :user (u/rpartial select-keys [:id :common_name])))))
          (filter :description))))
 
 (defn- delete-old-revisions
