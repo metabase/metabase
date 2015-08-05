@@ -212,6 +212,18 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             /* eslint-enable */
         });
 
+        // enable / disable GA based on opt-out of anonymous tracking
+        $rootScope.$on("appstate:site-settings", function(event, settings) {
+            var tracking = settings['anon-tracking-enabled']['value'];
+            if (tracking === "true" || tracking === null) {
+                // we are doing tracking
+                window['ga-disable-UA-60817802-1'] = null;
+            } else {
+                // tracking is disabled
+                window['ga-disable-UA-60817802-1'] = true;
+            }
+        });
+
         // NOTE: the below events are generated from the http-auth-interceptor which listens on our $http calls
         //       and intercepts calls that result in a 401 or 403 so that we can handle them here.  You must be
         //       careful to consider the implications of this because any endpoint that returns a 401/403 can
