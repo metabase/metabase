@@ -33,6 +33,8 @@
 
 (defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
 
+(defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
+
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
    This strips off any trailing slashes that may have been added.
