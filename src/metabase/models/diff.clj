@@ -35,20 +35,22 @@
   ([username t o1 o2]
    (str username " " (diff-str t o1 o2))))
 
-(defn- y []
-  (diff-str "Cam Saul" "card" {:name "Tips by State", :private false} {:name "Spots by State", :private false}))
+(diff-str "Cam Saul" "card"
+          {:name "Tips by State", :private false}
+          {:name "Spots by State", :private false})
 ;; Cam Saul renamed this card from "Tips by State" to "Spots by State".
 
-(defn z1 []
-  (diff-str "Cam Saul" "card" {:name "Spots by State", :private false} {:name "Spots by State", :private true}))
+(diff-str "Cam Saul" "card"
+          {:name "Spots by State", :private false}
+          {:name "Spots by State", :private true})
 ;; Cam Saul made this card private.
 
-(defn- z []
-  (diff-str "Cam Saul" "card" {:name "Tips by State", :private false} {:name "Spots by State", :private true}))
+(diff-str "Cam Saul" "card"
+          {:name "Tips by State", :private false}
+          {:name "Spots by State", :private true})
 ;; Cam Saul made this card private and renamed it from "Tips by State" to "Spots by State".
 
-(defn- x []
-  (diff-str "Cam Saul" "card"
+(diff-str "Cam Saul" "card"
             {:name "Tips by State", :private false, :priority "Important"}
-            {:name "Spots by State", :private true, :priority "Regular"}))
+            {:name "Spots by State", :private true, :priority "Regular"})
 ;; Cam Saul changed priority from "Important" to "Regular", made this card private and renamed it from "Tips by State" to "Spots by State".

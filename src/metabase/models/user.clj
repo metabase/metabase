@@ -4,8 +4,8 @@
             [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
-            [metabase.models.interface :refer :all]
-            [metabase.models.setting :as setting]
+            (metabase.models [interface :refer :all]
+                             [setting :as setting])
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
