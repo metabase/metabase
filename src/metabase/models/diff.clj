@@ -33,7 +33,9 @@
              interpose-build-runon-sentence
            (s/replace-first #" it " (format " this %s " t)))))))
   ([username t o1 o2]
-   (str username " " (diff-str t o1 o2))))
+   (let [s (diff-str t o1 o2)]
+     (when (seq s)
+       (str username " " s)))))
 
 (diff-str "Cam Saul" "card"
           {:name "Tips by State", :private false}
