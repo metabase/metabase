@@ -24,8 +24,8 @@
 
 (defendpoint POST "/revert"
   "Revert an object to a prior revision."
-  [entity id revision-id]
-  {entity Entity, id Integer, revision-id Integer}
-  (revision/revert :entity entity, :id id, :revision-id revision-id))
+  [:as {{:keys [entity id revision_id]} :body}]
+  {entity Entity, id Integer, revision_id Integer}
+  (revision/revert :entity entity, :id id, :revision-id revision_id))
 
 (define-routes)
