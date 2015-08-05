@@ -222,6 +222,31 @@
     padding-bottom: 0.75em;
 }
 
+.AdminList-search {
+    position: relative;
+}
+
+.AdminList-search .Icon {
+    position: absolute;
+    margin-top: auto;
+    margin-bottom: auto;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    margin-left: 1em;
+    color: #C0C0C0;
+}
+
+.AdminList-search .AdminInput {
+    padding: 0.5em;
+    padding-left: 2em;
+    font-size: 18px;
+    width: 100%;
+    border-top-left-radius: var(--default-border-radius);
+    border-top-right-radius: var(--default-border-radius);
+    border-bottom-color: var(--border-color);
+}
+
 .AdminList-items {
 }
 
@@ -262,15 +287,6 @@
 
 .AdminList-item.selected .ProgressBar {
     opacity: 1.0;
-}
-
-.AdminList-search {
-    padding: 0.5em;
-    font-size: 18px;
-    width: 100%;
-    border-top-left-radius: var(--default-border-radius);
-    border-top-right-radius: var(--default-border-radius);
-    border-bottom-color: var(--border-color);
 }
 
 .AdminInput {

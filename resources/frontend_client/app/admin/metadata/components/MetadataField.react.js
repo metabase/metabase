@@ -45,26 +45,6 @@ export default React.createClass({
     },
 
     render: function() {
-        var typeSelect = (
-            <Select
-                className="TableEditor-field-type"
-                placeholder="Select a field type"
-                value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
-                options={MetabaseCore.field_field_types}
-                onChange={this.onTypeChange}
-            />
-        );
-
-        var specialTypeSelect = (
-            <Select
-                className="TableEditor-field-special-type"
-                placeholder="Select a special type"
-                value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
-                options={MetabaseCore.field_special_types}
-                onChange={this.onSpecialTypeChange}
-            />
-        );
-
         var targetSelect;
         if (this.props.field.special_type === "fk") {
             targetSelect = (
@@ -86,10 +66,22 @@ export default React.createClass({
                     <Input className="AdminInput TableEditor-field-description rounded-bottom" type="text" value={this.props.field.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
                 </div>
                 <div className="flex-half px1">
-                    {typeSelect}
+                    <Select
+                        className="TableEditor-field-type"
+                        placeholder="Select a field type"
+                        value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
+                        options={MetabaseCore.field_field_types}
+                        onChange={this.onTypeChange}
+                    />
                 </div>
                 <div className="flex-half flex flex-column justify-between px1">
-                    {specialTypeSelect}
+                    <Select
+                        className="TableEditor-field-special-type"
+                        placeholder="Select a special type"
+                        value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
+                        options={MetabaseCore.field_special_types}
+                        onChange={this.onSpecialTypeChange}
+                    />
                     {targetSelect}
                 </div>
             </li>

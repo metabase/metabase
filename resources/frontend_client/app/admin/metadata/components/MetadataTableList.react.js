@@ -2,6 +2,7 @@
 /*global _*/
 
 import ProgressBar from './ProgressBar.react';
+import Icon from '../../../query_builder/icon.react';
 
 import cx from 'classnames';
 import Humanize from 'humanize';
@@ -70,13 +71,16 @@ export default React.createClass({
 
         return (
             <div className="MetadataEditor-table-list AdminList">
-                <input
-                    className="AdminList-search AdminInput"
-                    type="text"
-                    placeholder="Find a table"
-                    value={this.state.searchText}
-                    onChange={this.updateSearchText}
-                />
+                <div className="AdminList-search">
+                    <Icon name="search" width="16" height="16"/>
+                    <input
+                        className="AdminInput pl4 border-bottom"
+                        type="text"
+                        placeholder="Find a table"
+                        value={this.state.searchText}
+                        onChange={this.updateSearchText}
+                    />
+                </div>
                 <ul className="AdminList-items">
                     {queryableTablesHeader}
                     {queryableTables}
