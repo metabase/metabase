@@ -45,7 +45,9 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
                     // this tells Intercom to update every 60s if we have a currently logged in user
                     $timeout(function() {
                         if (service.model.currentUser) {
+                            /* eslint-disable */
                             window.Intercom('update');
+                            /* eslint-enable */
                         }
                     }, 60000);
                 }
@@ -195,15 +197,19 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             });
 
             // close down intercom
+            /* eslint-disable */
             window.Intercom('shutdown');
+            /* eslint-enable */
         });
 
         $rootScope.$on("appstate:user", function(event, user) {
+            /* eslint-disable */
             window.Intercom('boot', {
                 app_id: "gqfmsgf1",
                 name: user.common_name,
                 email: user.email
             });
+            /* eslint-enable */
         });
 
         // NOTE: the below events are generated from the http-auth-interceptor which listens on our $http calls
