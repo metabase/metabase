@@ -42,6 +42,12 @@ databaseChangeLog:
                   type: varchar
                   constraints:
                     nullable: false
+              - column:
+                  name: is_reversion
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
         - createIndex:
             tableName: revision
             indexName: idx_revision_model_model_id

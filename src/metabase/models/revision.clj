@@ -4,10 +4,10 @@
             [metabase.db :refer [sel ins upd] :as db]
             [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [card :refer [Card]]
-                             [diff :refer [diff-str]]
                              [hydrate :refer [hydrate]]
                              [interface :refer :all]
                              [user :refer [User]])
+            [metabase.models.revision.diff :refer [diff-str]]
             [metabase.util :as u]))
 
 (def ^:const max-revisions
@@ -92,7 +92,7 @@
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  [& {object :object, :keys [entity id user-id skip-serialization?], :or {user-id *current-user-id*, id (:id object), skip-serialization? false}}]
+  [& {object :object, :keys [entity id user-id skip-serialization? is-reversion?], :or {user-id *current-user-id*, id (:id object), skip-serialization? false, is-reversion? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
@@ -102,7 +102,7 @@
   (let [object (if skip-serialization? object
                    (serialize-instance entity id object))]
     (assert (map? object))
-    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object))
+    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_reversion is-reversion?))
   (delete-old-revisions entity id)
   object)
 
@@ -133,7 +133,7 @@
   (let-404 [serialized-instance (sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
     (revert-to-revision entity id serialized-instance)
     ;; Push a new revision to record this reversion
-    (push-revision :entity entity, :id id, :object serialized-instance, :user-id user-id, :skip-serialization? true)))
+    (push-revision :entity entity, :id id, :object serialized-instance, :user-id user-id, :skip-serialization? true, :is-reversion? true)))
 
 
 (defn a []

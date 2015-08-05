@@ -1,4 +1,4 @@
-(ns metabase.models.diff
+(ns metabase.models.revision.diff
   (:require [clojure.core.match :refer [match]]
             (clojure [data :as data]
                      [string :as s])))
@@ -6,7 +6,7 @@
 (defn- diff-str* [t k v1 v2]
   (match [t k v1 v2]
     [_ :name _ _]
-    (format "renamed it from \"%s\" to \"%s\"" (clojure.string/upper-case v1) v2)
+    (format "renamed it from \"%s\" to \"%s\"" v1 v2)
 
     [_ :private true false]
     "made it public"
@@ -23,12 +23,12 @@
     [_ _ _ _]
     (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
 
-(defn- interpose-build-runon-sentence [parts]
+(defn- build-sentence [parts]
   (when (seq parts)
     (cond
       (= (count parts) 1) (str (first parts) \.)
       (= (count parts) 2) (format "%s and %s." (first parts) (second parts))
-      :else               (format "%s, %s" (first parts) (interpose-build-runon-sentence (rest parts))))))
+      :else               (format "%s, %s" (first parts) (build-sentence (rest parts))))))
 
 (defn diff-str
   ([t o1 o2]
@@ -37,7 +37,7 @@
        (let [ks (keys before)]
          (some-> (filter identity (for [k ks]
                                 (diff-str* t k (k before) (k after))))
-                 interpose-build-runon-sentence
+                 build-sentence
                  (s/replace-first #" it " (format " this %s " t)))))))
   ([username t o1 o2]
    (let [s (diff-str t o1 o2)]
