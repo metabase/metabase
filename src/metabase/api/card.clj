@@ -8,6 +8,7 @@
                              [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
+                             [revision :refer [push-revision]]
                              [user :refer [User]])))
 
 (defannotation CardFilterOption
@@ -75,7 +76,7 @@
                                :name name
                                :public_perms public_perms
                                :visualization_settings visualization_settings))
-  (Card id))
+  (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

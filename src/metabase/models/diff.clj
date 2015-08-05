@@ -14,24 +14,28 @@
     [_ :private false true]
     "made it private"
 
-     [_ _ _ _]
-     (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
+    [_ :updated_at _ _]
+    nil
+
+    [_ _ _ _]
+    (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
 
 (defn- interpose-build-runon-sentence [parts]
-  (cond
-    (= (count parts) 1) (str (first parts) \.)
-    (= (count parts) 2) (format "%s and %s." (first parts) (second parts))
-    :else               (format "%s, %s" (first parts) (interpose-build-runon-sentence (rest parts)))))
+  (when (seq parts)
+    (cond
+      (= (count parts) 1) (str (first parts) \.)
+      (= (count parts) 2) (format "%s and %s." (first parts) (second parts))
+      :else               (format "%s, %s" (first parts) (interpose-build-runon-sentence (rest parts))))))
 
 (defn diff-str
   ([t o1 o2]
    (let [[before after] (data/diff o1 o2)]
      (when before
        (let [ks (keys before)]
-         (-> (for [k ks]
-               (diff-str* t k (k before) (k after)))
-             interpose-build-runon-sentence
-           (s/replace-first #" it " (format " this %s " t)))))))
+         (some-> (filter identity (for [k ks]
+                                (diff-str* t k (k before) (k after))))
+                 interpose-build-runon-sentence
+                 (s/replace-first #" it " (format " this %s " t)))))))
   ([username t o1 o2]
    (let [s (diff-str t o1 o2)]
      (when (seq s)
