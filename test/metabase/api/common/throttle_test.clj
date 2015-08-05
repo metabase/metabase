@@ -70,32 +70,32 @@
          [:success]]
   [(attempt 4 :a)
    (do
-     (Thread/sleep 5)
+     (Thread/sleep 6)
      (attempt 1 :a))])
 
 ;; Next attempt should be throttled, however
 (expect [:success "Too many attempts! You must wait 0 seconds before trying again."]
   (do
     (attempt 4 :b)
-    (Thread/sleep 5)
+    (Thread/sleep 6)
     (attempt 2 :b)))
 
-;; Sleeping 5 ms after that shouldn't work due to exponential growth
+;; Sleeping 5+ ms after that shouldn't work due to exponential growth
 (expect ["Too many attempts! You must wait 0 seconds before trying again."]
   (do
     (attempt 4 :c)
-    (Thread/sleep 5)
+    (Thread/sleep 6)
     (attempt 2 :c)
-    (Thread/sleep 5)
+    (Thread/sleep 6)
     (attempt 1 :c)))
 
-;; Sleeping 20 ms however should work
+;; Sleeping 20+ ms however should work
 (expect [:success]
   (do
     (attempt 4 :d)
-    (Thread/sleep 5)
+    (Thread/sleep 6)
     (attempt 2 :d)
-    (Thread/sleep 20)
+    (Thread/sleep 21)
     (attempt 1 :d)))
 
 ;; Check that the interal list for the throttler doesn't keep growing after throttling starts
