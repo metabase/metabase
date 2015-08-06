@@ -56,7 +56,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (check-404 (sel :one User :id id :is_active true)))
+  (check-404 (sel :one User :id id, :is_active true)))
 
 
 (defendpoint PUT "/:id"
