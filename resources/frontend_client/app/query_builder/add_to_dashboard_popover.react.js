@@ -99,7 +99,7 @@ export default React.createClass({
         var newDash = {
             'name': (name && name.length > 0) ? name : null,
             'description': (description && description.length > 0) ? name : null,
-            'public_perms': 0
+            'public_perms': 2  // TODO: ick!  hard coding
         };
 
         // create a new dashboard, then add the card to that
