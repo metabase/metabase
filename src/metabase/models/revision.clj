@@ -99,11 +99,10 @@
     (when (seq old-revisions)
       (delete Revision (where {:id [in old-revisions]})))))
 
-;; TODO - it would probably be preferable just to take a typed instance instead of ENTITY with ID + OBJECT
-;; Perhaps this function can be made an internal low-level version
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
+  {:arglists '([& {:keys [object entity id user-id skip-serialization? is-reversion?]}])}
   [& {object :object, :keys [entity id user-id skip-serialization? is-reversion?], :or {user-id *current-user-id*, id (:id object), skip-serialization? false, is-reversion? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
@@ -118,21 +117,6 @@
   (delete-old-revisions entity id)
   object)
 
-
-(defn x []
-  (push-revision :entity Card, :id 1, :user-id 1, :object {:name "Tips created by day"})
-  (push-revision :entity Card, :id 1, :user-id 1, :object {:name "Spots created by day"})
-  (revisions Card 1))
-
-(defn z [card-id]
-  )
-
-(defn z2 []
-  (->> (z)))
-
-
-;;; # Reverting to a given revision
-
 (defn revert
   "Revert ENTITY with ID to a given `Revision`."
   [& {:keys [entity id user-id revision-id], :or {user-id *current-user-id*}}]
@@ -146,10 +130,3 @@
     (revert-to-revision entity id serialized-instance)
     ;; Push a new revision to record this reversion
     (push-revision :entity entity, :id id, :object serialized-instance, :user-id user-id, :skip-serialization? true, :is-reversion? true)))
-
-
-(defn a []
-  (revisions+details Card 48))
-
-(defn b [revision-id]
-  (revert :entity Card, :id 48, :user-id 1, :revision-id revision-id))
