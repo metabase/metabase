@@ -8,8 +8,8 @@ import MetabaseCore from 'metabase/lib/core';
 
 var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
-    function($rootScope, $q, $location, $timeout, ipCookie, Session, User, Settings) {
+CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
+    function($rootScope, $q, $location, $interval, $timeout, ipCookie, Session, User, Settings) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
         // 1. appstate:user
@@ -44,8 +44,8 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
 
                     // start Intercom updater
                     // this tells Intercom to update every 60s if we have a currently logged in user
-                    $timeout(function() {
-                        if (service.model.currentUser) {
+                    $interval(function() {
+                        if (service.model.currentUser && isTracking()) {
                             /* eslint-disable */
                             window.Intercom('update');
                             /* eslint-enable */
@@ -59,7 +59,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             clearState: function() {
                 currentUserPromise = null;
                 service.model.currentUser = null;
-                service.model.siteSettings = null;
 
                 // clear any existing session cookies if they exist
                 ipCookie.remove('metabase.SESSION_ID');
@@ -172,6 +171,28 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             }
         };
 
+        function isTracking() {
+            var settings = service.model.siteSettings;
+            if (!settings) return false;
+
+            var tracking = settings['anon-tracking-enabled']['value'];
+            return (tracking === "true" || tracking === null);
+        }
+
+        /* eslint-disable */
+        function startupIntercom(user) {
+            window.Intercom('boot', {
+                app_id: "gqfmsgf1",
+                name: user.common_name,
+                email: user.email
+            });
+        }
+
+        function teardownIntercom() {
+            window.Intercom('shutdown');
+        }
+        /* eslint-enable */
+
         // listen for location changes and use that as a trigger for page view tracking
         $rootScope.$on('$locationChangeSuccess', function() {
             // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
@@ -198,19 +219,32 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$timeout',
             });
 
             // close down intercom
-            /* eslint-disable */
-            window.Intercom('shutdown');
-            /* eslint-enable */
+            teardownIntercom();
         });
 
         $rootScope.$on("appstate:user", function(event, user) {
-            /* eslint-disable */
-            window.Intercom('boot', {
-                app_id: "gqfmsgf1",
-                name: user.common_name,
-                email: user.email
-            });
-            /* eslint-enable */
+            if (isTracking()) {
+                startupIntercom(user);
+            }
+        });
+
+        // enable / disable GA based on opt-out of anonymous tracking
+        $rootScope.$on("appstate:site-settings", function(event, settings) {
+            if (isTracking()) {
+                // we are doing tracking
+                window['ga-disable-UA-60817802-1'] = null;
+
+                if (currentUserPromise) {
+                    currentUserPromise.then(function(user) {
+                        startupIntercom(user);
+                    });
+                }
+            } else {
+                // tracking is disabled
+                window['ga-disable-UA-60817802-1'] = true;
+
+                teardownIntercom();
+            }
         });
 
         // NOTE: the below events are generated from the http-auth-interceptor which listens on our $http calls

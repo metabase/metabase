@@ -3,8 +3,8 @@
 
 var SettingsAdminControllers = angular.module('corvusadmin.settings.controllers', ['corvusadmin.settings.services']);
 
-SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 'SettingsAdminServices',
-    function($scope, $q, SettingsAdminServices) {
+SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 'AppState', 'SettingsAdminServices',
+    function($scope, $q, AppState, SettingsAdminServices) {
         $scope.settings = [];
 
         SettingsAdminServices.list(function(results) {
@@ -36,6 +36,10 @@ SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 
                 }
             })).then(function(results) {
                 $scope.$broadcast("form:api-success", "Successfully saved!");
+
+                // refresh the app-wide settings now as the user may have just changed some of them
+                AppState.refreshSiteSettings();
+
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
                 throw error;
