@@ -1,6 +1,7 @@
 'use strict';
 
 import SaveStatus from './SaveStatus.react';
+import Toggle from './Toggle.react';
 
 import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.react';
 import ColumnarSelector from '../../../query_builder/columnar_selector.react';
@@ -72,8 +73,8 @@ export default React.createClass({
                 </div>
                 <div className="MetadataEditor-header-section flex-align-right flex align-center">
                     <SaveStatus ref="status" />
-                    <span>Show original schema</span>
-                    <span className={"Toggle " + (this.props.isShowingSchema ? "selected" : "")} onClick={this.props.toggleShowSchema}></span>
+                    <span className="mr1">Show original schema</span>
+                    <Toggle value={this.props.isShowingSchema} onChange={this.props.toggleShowSchema} />
                 </div>
             </div>
         );
