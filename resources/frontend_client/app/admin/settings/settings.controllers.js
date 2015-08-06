@@ -23,22 +23,24 @@ var TIMEZONES = [
 
 // temporary hardcoded metadata
 var EXTRA_SETTINGS_METADATA = {
-    "site-name":           { display_name: "Site Name",       section: "General", type: "string" },
-    "-site-url":           { display_name: "Site URL",        section: "General", type: "string" },
-    "report-timezone":     { display_name: "Report Timezone", section: "General", type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
-    "email-from-address":  { display_name: "From Address",    section: "Email",   type: "string" },
-    "email-smtp-host":     { display_name: "SMTP Host",       section: "Email",   type: "string" },
-    "email-smtp-port":     { display_name: "SMTP Port",       section: "Email",   type: "string" },
-    "email-smtp-security": { display_name: "SMTP Security",   section: "Email",   type: "radio", options: { none: "None", tls: "TLS", ssl: "SSL" } },
-    "email-smtp-username": { display_name: "SMTP Username",   section: "Email",   type: "string" },
-    "email-smtp-password": { display_name: "SMTP Password",   section: "Email",   type: "password" },
+    "site-name":            { display_name: "Site Name",          section: "General", index: 0, type: "string" },
+    "-site-url":            { display_name: "Site URL",           section: "General", index: 1, type: "string" },
+    "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 2, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
+    "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 3, type: "boolean" },
+    "email-smtp-host":      { display_name: "SMTP Host",          section: "Email",   index: 0, type: "string" },
+    "email-smtp-port":      { display_name: "SMTP Port",          section: "Email",   index: 1, type: "string" },
+    "email-smtp-security":  { display_name: "SMTP Security",      section: "Email",   index: 2, type: "radio", options: { none: "None", tls: "TLS", ssl: "SSL" } },
+    "email-smtp-username":  { display_name: "SMTP Username",      section: "Email",   index: 3, type: "string" },
+    "email-smtp-password":  { display_name: "SMTP Password",      section: "Email",   index: 4, type: "password" },
+    "email-from-address":   { display_name: "From Address",       section: "Email",   index: 5, type: "string" },
 };
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'SettingsAdminServices', 'settings', function($scope, SettingsAdminServices, settings) {
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'SettingsAdminServices', 'AppState', 'settings', function($scope, SettingsAdminServices, AppState, settings) {
     $scope.SettingsEditor = SettingsEditor;
 
     $scope.updateSetting = async function(setting) {
         await SettingsAdminServices.put({ key: setting.key }, setting).$promise;
+        AppState.refreshSiteSettings();
     }
 
     $scope.sections = {};
@@ -49,6 +51,7 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'SettingsAdminS
         $scope.sections[sectionName] = $scope.sections[sectionName] || [];
         $scope.sections[sectionName].push(setting);
     });
+    _.each($scope.sections, (section) => section.sort((a, b) => a.index - b.index))
 
     function keyToDisplayName(key) {
         return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
