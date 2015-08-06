@@ -39,8 +39,8 @@ export default React.createClass({
 
     renderSettingsPane: function() {
         var section = this.props.sections[this.state.currentSection];
-        var settings = section.map((setting) => {
-            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} />
+        var settings = section.map((setting, index) => {
+            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
         });
         return (
             <div className="MetadataTable px2 flex-full">

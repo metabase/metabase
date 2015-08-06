@@ -3,25 +3,28 @@
 
 import Input from "../../metadata/components/Input.react";
 import Select from "../../metadata/components/Select.react";
+import Toggle from "../../metadata/components/Toggle.react";
 
-import cx from 'classnames';
+import cx from "classnames";
 
 export default React.createClass({
     displayName: "SettingsSetting",
     propTypes: {
         setting: React.PropTypes.object.isRequired,
         updateSetting: React.PropTypes.func.isRequired,
-        handleChangeEvent: React.PropTypes.func.isRequired
+        handleChangeEvent: React.PropTypes.func.isRequired,
+        autoFocus: React.PropTypes.bool
     },
 
     renderStringInput: function(setting, type="text") {
         return (
             <Input
-                className="AdminInput bordered rounded h3 full"
+                className="SettingsInput AdminInput bordered rounded h3"
                 type={type}
                 value={setting.value}
                 placeholder={setting.placeholder}
                 onBlurChange={this.props.handleChangeEvent.bind(null, setting)}
+                autoFocus={this.props.autoFocus}
             />
         );
     },
@@ -41,7 +44,7 @@ export default React.createClass({
     renderSelectInput: function(setting) {
         return (
             <Select
-                className=""
+                className="full-width"
                 placeholder={setting.placeholder}
                 value={setting.value}
                 options={setting.options}
@@ -49,6 +52,16 @@ export default React.createClass({
                 optionNameFn={option => option}
                 optionValueFn={option => option}
             />
+        );
+    },
+
+    renderToggleInput: function(setting) {
+        var on = (setting.value == null ? setting.default : setting.value) === "true";
+        return (
+            <div className="flex align-center pt1">
+                <Toggle value={on} onChange={this.props.updateSetting.bind(null, setting, on ? "false" : "true")}/>
+                <span className="text-bold mx1">{on ? "Enabled" : "Disabled"}</span>
+            </div>
         );
     },
 
@@ -60,6 +73,7 @@ export default React.createClass({
             case "password": control = this.renderStringInput(setting, "password"); break;
             case "select":   control = this.renderSelectInput(setting); break;
             case "radio":    control = this.renderRadioInput(setting); break;
+            case "boolean":  control = this.renderToggleInput(setting); break;
             default:
                 console.warn("No render method for setting type " + setting.type + ", defaulting to string input.");
                 control = this.renderStringInput(setting);
@@ -68,7 +82,7 @@ export default React.createClass({
             <li className="m2 mb4">
                 <div className="text-grey-3 text-bold text-uppercase">{setting.display_name}</div>
                 <div className="text-grey-3 my1">{setting.description}</div>
-                <div>{control}</div>
+                <div className="flex">{control}</div>
             </li>
         );
     }

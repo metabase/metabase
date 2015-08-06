@@ -32,8 +32,8 @@ export default React.createClass({
         var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
 
         var triggerElement = (
-            <div className={"flex flex-full align-center" + (!this.props.value ? " text-grey-3" : "")}>
-                <span>{selectedName}</span>
+            <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+                <span className="mr1">{selectedName}</span>
                 <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
             </div>
         );
@@ -70,7 +70,7 @@ export default React.createClass({
                                 className={"PopoverBody PopoverBody--withArrow " + (this.props.className || "")}
                                 tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
-                                triggerClasses={this.props.className + " AdminSelect flex align-center" }>
+                                triggerClasses={"AdminSelect " + (this.props.className || "")}>
                 <ColumnarSelector columns={columns}/>
             </PopoverWithTrigger>
         );

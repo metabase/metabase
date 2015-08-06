@@ -299,12 +299,14 @@
 }
 
 .AdminSelect {
+    display: inline-block;
     padding: 0.6em;
     border: 1px solid var(--border-color);
     border-radius: var(--default-border-radius);
     font-size: 14px;
     font-weight: 700;
     margin-bottom: 3px;
+    min-width: 90px;
 }
 
 
@@ -346,8 +348,7 @@
 }
 
 .Toggle {
-    margin: 0.5em;
-
+    box-sizing: border-box;
     width: 48px;
     height: 24px;
     border-radius: 99px;
@@ -411,4 +412,12 @@
 
 .SaveStatus:last-child {
     border-right: none !important;
+}
+
+.SettingsInput {
+    width: 400px;
+}
+
+.SettingsInput[type=password] {
+    width: 200px;
 }
