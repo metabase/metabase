@@ -247,9 +247,6 @@
     border-bottom-color: var(--border-color);
 }
 
-.AdminList-items {
-}
-
 .AdminList-item {
     padding: 0.75em 1em 0.75em 1em;
     border: var(--border-size) var(--border-style) transparent;
