@@ -126,9 +126,12 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value]} _]
-     (if-not (instance? java.util.Date value) value
-             `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))))))
+    ([{:keys [value base-type]} _]
+     (cond
+       (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
+       (= base-type :UUIDField)         (do (assert (string? value))
+                                            (java.util.UUID/fromString value))
+       :else                            value))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
@@ -175,16 +178,19 @@
     ;; all other filter subclauses
     (let [field (formatted (:field filter))
           value (some-> filter :value formatted)]
-      (case filter-type
-        :between  {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
-        :not-null {field ['not= nil]}
-        :is-null  {field ['=    nil]}
-        :>        {field ['>    value]}
-        :<        {field ['<    value]}
-        :>=       {field ['>=   value]}
-        :<=       {field ['<=   value]}
-        :=        {field ['=    value]}
-        :!=       {field ['not= value]}))))
+      (case          filter-type
+        :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
+        :not-null    {field ['not= nil]}
+        :is-null     {field ['=    nil]}
+        :starts-with {field ['like (str value \%)]}
+        :contains    {field ['like (str \% value \%)]}
+        :ends-with   {field ['like (str \% value)]}
+        :>           {field ['>    value]}
+        :<           {field ['<    value]}
+        :>=          {field ['>=   value]}
+        :<=          {field ['<=   value]}
+        :=           {field ['=    value]}
+        :!=          {field ['not= value]}))))
 
 (defmethod apply-form :filter [[_ {:keys [compound-type subclauses]}]]
   (let [[first-subclause :as subclauses] (map filter-subclause->predicate subclauses)]

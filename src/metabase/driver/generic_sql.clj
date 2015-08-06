@@ -47,7 +47,7 @@
 
 (defn- active-table-names [_ database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (.getTables md nil nil nil (into-array String ["TABLE"]))
+    (->> (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))
          jdbc/result-set-seq
          (map :table_name)
          set)))

@@ -31,8 +31,11 @@
   `(:id (data/-temp-get ~'db ~@(map name args))))
 
 (defn Q:resolve-dataset [^clojure.lang.Symbol dataset]
-  (require 'metabase.test.data.dataset-definitions)
-  (var-get (ns-resolve 'metabase.test.data.dataset-definitions dataset)))
+  ;; Try to resolve symbol as-is, otherwise try to resolve in the metabase.test.data.dataset-definitions namespace
+  (var-get (or (resolve dataset)
+               (do (require 'metabase.test.data.dataset-definitions)
+                   (ns-resolve 'metabase.test.data.dataset-definitions dataset))
+               (throw (Exception. (format "Don't know how to find dataset '%s'." dataset))))))
 
 (defmacro Q:with-temp-db [dataset body]
   `(data/with-temp-db [~'db (data/dataset-loader) (Q:resolve-dataset '~dataset)]
@@ -151,22 +154,25 @@
 
 (defmacro Q:filter* [[subclause & [arg arg2 :as args]]]
   (case (keyword subclause)
-    :and      `["AND" ~@(for [cl (partition-tokens filter-tokens args)]
-                          `(Q:filter* ~cl))]
-    :or       `["OR"  ~@(for [cl (partition-tokens filter-tokens args)]
-                          `(Q:filter* ~cl))]
-    :inside   (let [{:keys [lat lon]} arg]
-                ["INSIDE" `(~'fl ~(:field lat)) `(~'fl ~(:field lon)) (:max lat) (:min lon) (:min lat) (:max lon)])
-    :not-null ["NOT_NULL" `(~'fl ~arg)]
-    :is-null  ["IS_NULL" `(~'fl ~arg)]
-    :between  (let [[id min max] args]
-                ["BETWEEN" `(~'fl ~id) ~min ~max])
-    :=        ["="  `(~'fl ~arg) arg2]
-    :!=       ["!=" `(~'fl ~arg) arg2]
-    :<        ["<"  `(~'fl ~arg) arg2]
-    :>        [">"  `(~'fl ~arg) arg2]
-    :<=       ["<=" `(~'fl ~arg) arg2]
-    :>=       [">=" `(~'fl ~arg) arg2]))
+    :and         `["AND" ~@(for [cl (partition-tokens filter-tokens args)]
+                             `(Q:filter* ~cl))]
+    :or          `["OR"  ~@(for [cl (partition-tokens filter-tokens args)]
+                             `(Q:filter* ~cl))]
+    :inside      (let [{:keys [lat lon]} arg]
+                   ["INSIDE" `(~'fl ~(:field lat)) `(~'fl ~(:field lon)) (:max lat) (:min lon) (:min lat) (:max lon)])
+    :not-null    ["NOT_NULL" `(~'fl ~arg)]
+    :is-null     ["IS_NULL" `(~'fl ~arg)]
+    :between     (let [[id min max] args]
+                   ["BETWEEN" `(~'fl ~id) ~min ~max])
+    :starts-with ["STARTS_WITH" `(~'fl ~arg) arg2]
+    :ends-with   ["ENDS_WITH"   `(~'fl ~arg) arg2]
+    :contains    ["CONTAINS"    `(~'fl ~arg) arg2]
+    :=           ["="  `(~'fl ~arg) arg2]
+    :!=          ["!=" `(~'fl ~arg) arg2]
+    :<           ["<"  `(~'fl ~arg) arg2]
+    :>           [">"  `(~'fl ~arg) arg2]
+    :<=          ["<=" `(~'fl ~arg) arg2]
+    :>=          [">=" `(~'fl ~arg) arg2]))
 
 
 ;; ## lim

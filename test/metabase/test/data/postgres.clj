@@ -21,7 +21,8 @@
    :FloatField      "FLOAT"
    :IntegerField    "INTEGER"
    :TextField       "TEXT"
-   :TimeField       "TIME"})
+   :TimeField       "TIME"
+   :UUIDField       "UUID"})
 
 (defn- pg-connection-details [^DatabaseDefinition {:keys [short-lived?]}]
   (merge {:host         "localhost"
