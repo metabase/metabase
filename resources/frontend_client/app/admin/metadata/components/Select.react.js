@@ -7,7 +7,7 @@ import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.reac
 export default React.createClass({
     displayName: "Select",
     propTypes: {
-        value: React.PropTypes.object,
+        value: React.PropTypes.any,
         options: React.PropTypes.array.isRequired,
         placeholder: React.PropTypes.string,
         onChange: React.PropTypes.func,
