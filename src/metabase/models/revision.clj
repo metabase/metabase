@@ -62,20 +62,32 @@
 
 (defn- revisions-add-diff-strs [entity revisions]
   (loop [acc [], [r1 r2 & more] revisions]
-    (if-not r2 (conj acc (assoc r1 :description "First revision."))
-            (recur (conj acc (assoc r1 :description (describe-diff entity (:common_name (:user r1)) (:object r2) (:object r1))))
-                   (conj more r2)))))
+    (if-not r2
+      (conj acc (assoc r1 :description "First revision."))
+      (let [username (str (or (:common_name (:user r1))
+                              "An unknown user")
+                          (when (:is_reversion r1)
+                            " reverted to an earlier revision and"))]
+        (recur (conj acc (assoc r1 :description (describe-diff entity username (:object r2) (:object r1))))
+               (conj more r2))))))
 
-(defn revisions+details [entity id]
-  (let [revisions (-> (revisions entity id)
-                      (hydrate :user))]
-    (->> revisions
-         (revisions-add-diff-strs entity)
-         (map (fn [revision]
-                (-> revision
-                    (dissoc :model :model_id :user_id :object)
-                    (update :user (u/rpartial select-keys [:id :common_name])))))
-         (filter :description))))
+(defn- add-details
+  "Hydrate `user` and add `:description` to a sequence of REVISIONS."
+  [entity revisions]
+  (->> (hydrate revisions :user)
+       (revisions-add-diff-strs entity)
+       ;; Filter out revisions where nothing changed from the one before it
+       (filter :description)
+       ;; Filter out irrelevant info
+       (map (fn [revision]
+              (-> revision
+                  (dissoc :model :model_id :user_id :object)
+                  (update :user (u/rpartial select-keys [:id :common_name :first_name :last_name])))))))
+
+(defn revisions+details
+  "Fetch `revisions` for ENTITY with ID and add details."
+  [entity id]
+  (add-details entity (revisions entity id)))
 
 (defn- delete-old-revisions
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."

@@ -20,6 +20,9 @@
     [_ :dataset_query _ _]
     "modified the query"
 
+    [_ :visualization_settings _ _]
+    "changed the visualization settings"
+
     [_ _ _ _]
     (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
 
