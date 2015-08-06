@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 
 //  Dashboard Controllers

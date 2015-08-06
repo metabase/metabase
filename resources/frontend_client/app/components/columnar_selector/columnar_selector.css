@@ -21,11 +21,22 @@
 }
 
 .ColumnarSelector-title {
+    color: color(var(--base-grey) shade(30%));
     text-transform: uppercase;
     font-size: 10px;
     font-weight: 700;
-    padding: var(--padding-2);
+    padding: var(--padding-1);
     padding-left: var(--padding-3);
+}
+
+.ColumnarSelector-section:first-child .ColumnarSelector-title {
+    padding-top: var(--padding-3);
+}
+
+.ColumnarSelector-description {
+    margin-top: 0.5em;
+    color: color(var(--base-grey) shade(30%));
+    max-width: 270px;
 }
 
 .ColumnarSelector-row {
@@ -42,7 +53,12 @@
     color: white !important;
 }
 
+.ColumnarSelector-row:hover .ColumnarSelector-description {
+    color: rgba(255,255,255,0.50);
+}
+
 .ColumnarSelector-row--selected {
+    color: inherit !important;
     background: white;
     border-top: var(--border-size) var(--border-style) var(--border-color);
     border-bottom: var(--border-size) var(--border-style) var(--border-color);

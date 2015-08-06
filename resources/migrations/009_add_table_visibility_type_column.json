@@ -1,0 +1,25 @@
+{
+  "databaseChangeLog": [
+    {
+      "changeSet": {
+        "id": "9",
+        "author": "tlrobinson",
+        "changes": [
+          {
+            "addColumn": {
+              "tableName": "metabase_table",
+              "columns": [
+                {
+                  "column": {
+                    "name": "visibility_type",
+                    "type": "varchar(254)"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

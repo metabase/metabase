@@ -18,6 +18,7 @@
        :table (match-$ (Table (id :users))
                 {:description nil
                  :entity_type nil
+                 :visibility_type nil
                  :db (match-$ (db)
                        {:created_at $
                         :engine "h2"

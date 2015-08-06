@@ -52,7 +52,7 @@
                                   :rows                100
                                   :id                  (id :venues)}]))))
   (->> ((user->client :rasta) :get 200 "meta/table")
-       (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
+       (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type :visibility_type))
        set))
 
 ;; ## GET /api/meta/table/:id
@@ -60,6 +60,7 @@
     (match-$ (Table (id :venues))
       {:description nil
        :entity_type nil
+       :visibility_type nil
        :db          (match-$ (db)
                       {:created_at $
                        :engine "h2"
@@ -120,6 +121,7 @@
     (match-$ (Table (id :categories))
       {:description  nil
        :entity_type  nil
+       :visibility_type nil
        :db           (match-$ (db)
                        {:created_at      $
                         :engine          "h2"
@@ -199,6 +201,7 @@
     (match-$ (sel :one Table :id (id :users))
       {:description  nil
        :entity_type  nil
+       :visibility_type nil
        :db           (match-$ (db)
                        {:created_at      $
                         :engine          "h2"
@@ -311,6 +314,7 @@
     (match-$ (Table (id :users))
       {:description  nil
        :entity_type  nil
+       :visibility_type nil
        :db           (match-$ (db)
                        {:created_at      $
                         :engine          "h2"
@@ -405,10 +409,11 @@
 (expect-eval-actual-first
     (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
-               (upd Table (id :users) :display_name "Users" :entity_type nil :description nil)
+               (upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
                table)
       {:description "What a nice table!"
        :entity_type "person"
+       :visibility_type "hidden"
        :db          (match-$ (db)
                       {:description     nil
                        :organization_id $
@@ -430,6 +435,7 @@
        :created_at  $})
   (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:display_name "Userz"
                                                                                 :entity_type "person"
+                                                                                :visibility_type "hidden"
                                                                                 :description "What a nice table!"})
       ((user->client :crowberto) :get 200 (format "meta/table/%d" (id :users)))))
 
@@ -464,6 +470,7 @@
                          :table           (match-$ (Table (id :checkins))
                                             {:description nil
                                              :entity_type nil
+                                             :visibility_type nil
                                              :name        "CHECKINS"
                                              :display_name "Checkins"
                                              :rows        1000
@@ -500,6 +507,7 @@
                          :table           (match-$ (Table (id :users))
                                             {:description nil
                                              :entity_type nil
+                                             :visibility_type nil
                                              :name        "USERS"
                                              :display_name "Users"
                                              :rows        15
