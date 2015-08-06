@@ -3,6 +3,7 @@
 import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.react';
 import ColumnarSelector from '../../../query_builder/columnar_selector.react';
 import Icon from '../../../query_builder/icon.react';
+import LoadingIcon from '../../../components/icons/loading.react';
 
 export default React.createClass({
     displayName: "MetadataHeader",
@@ -75,7 +76,7 @@ export default React.createClass({
 
     renderSaveWidget: function() {
         if (this.state.saving) {
-            return (<div className="mx2 px2 border-right"><div className="Spinner"></div></div>);
+            return (<div className="mx2 px2 border-right"><LoadingIcon width="24" height="24" /></div>);
         } else if (this.state.error) {
             return (<div className="mx2 px2 border-right text-error">Error: {this.state.error}</div>)
         } else if (this.state.recentlySavedTimeout != null) {

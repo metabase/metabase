@@ -348,23 +348,6 @@
     color: white !important;
 }
 
-.Spinner {
-  width: 24px;
-  height: 24px;
-  border-radius: 99px;
-  border: 3px solid rgba(111,122,139,0.25);
-  border-left: 3px solid rgba(111,122,139,1.0);
-  animation-name: spin;
-  animation-duration: 1s;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .Toggle {
     margin: 0.5em;
 
