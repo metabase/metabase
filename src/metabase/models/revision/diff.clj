@@ -46,23 +46,3 @@
    (let [s (diff-str t o1 o2)]
      (when (seq s)
        (str username " " s)))))
-
-(diff-str "Cam Saul" "card"
-          {:name "Tips by State", :private false}
-          {:name "Spots by State", :private false})
-;; Cam Saul renamed this card from "Tips by State" to "Spots by State".
-
-(diff-str "Cam Saul" "card"
-          {:name "Spots by State", :private false}
-          {:name "Spots by State", :private true})
-;; Cam Saul made this card private.
-
-(diff-str "Cam Saul" "card"
-          {:name "Tips by State", :private false}
-          {:name "Spots by State", :private true})
-;; Cam Saul made this card private and renamed it from "Tips by State" to "Spots by State".
-
-(diff-str "Cam Saul" "card"
-            {:name "Tips by State", :private false, :priority "Important"}
-            {:name "Spots by State", :private true, :priority "Regular"})
-;; Cam Saul changed priority from "Important" to "Regular", made this card private and renamed it from "Tips by State" to "Spots by State".
