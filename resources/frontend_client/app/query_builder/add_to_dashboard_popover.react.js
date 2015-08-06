@@ -32,10 +32,15 @@ export default React.createClass({
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
-            'filterMode': 'mine'
+            'filterMode': 'all'
         }, function(result) {
+            // filter down to dashboards we can modify
+            var editableDashes = _.filter(result, function(dash) {
+                return dash.can_write;
+            });
+
             component.setState({
-                dashboards: result
+                dashboards: editableDashes
             });
         }, function(error) {
             // TODO: do something relevant here
