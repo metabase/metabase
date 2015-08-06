@@ -15,7 +15,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: model
-                  type: char(16)
+                  type: varchar(16)
                   constraints:
                     nullable: false
               - column:
