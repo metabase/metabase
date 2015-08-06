@@ -9,15 +9,18 @@ export default React.createClass({
     propTypes: {
         value: React.PropTypes.object,
         options: React.PropTypes.array.isRequired,
+        placeholder: React.PropTypes.string,
         onChange: React.PropTypes.func,
-        optionNameFn: React.PropTypes.func
+        optionNameFn: React.PropTypes.func,
+        optionValueFn: React.PropTypes.func
     },
 
     getDefaultProps: function() {
         return {
             isInitiallyOpen: false,
             placeholder: "",
-            optionNameFn: (field) => field.name
+            optionNameFn: (option) => option.name,
+            optionValueFn: (option) => option
         };
     },
 
@@ -50,7 +53,7 @@ export default React.createClass({
                 itemTitleFn: this.props.optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    this.props.onChange(item)
+                    this.props.onChange(this.props.optionValueFn(item))
                     this.toggleModal();
                 }
             }

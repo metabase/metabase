@@ -408,3 +408,7 @@
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
 }
+
+.SaveStatus:last-child {
+    border-right: none !important;
+}
