@@ -3,8 +3,7 @@
             [medley.core :as m]
             [metabase.db :refer [sel ins upd] :as db]
             [metabase.api.common :refer [*current-user-id* let-404]]
-            (metabase.models [card :refer [Card]]
-                             [hydrate :refer [hydrate]]
+            (metabase.models [hydrate :refer [hydrate]]
                              [interface :refer :all]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-str]]

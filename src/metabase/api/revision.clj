@@ -3,10 +3,12 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer [exists?]]
             (metabase.models [card :refer [Card]]
+                             [dashboard :refer [Dashboard]]
                              [revision :as revision])))
 
 (def ^:private ^:const entity-kw->entity
-  {:card Card})
+  {:card      Card
+   :dashboard Dashboard})
 
 (defannotation Entity
   "Option must be a valid revisionable entity name. Returns corresponding entity."

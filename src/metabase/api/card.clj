@@ -47,12 +47,12 @@
    display      [Required CardDisplayType]}
   ;; TODO - which other params are required?
   (ins Card
-    :creator_id *current-user-id*
-    :dataset_query dataset_query
-    :description description
-    :display display
-    :name name
-    :public_perms public_perms
+    :creator_id             *current-user-id*
+    :dataset_query          dataset_query
+    :description            description
+    :display                display
+    :name                   name
+    :public_perms           public_perms
     :visualization_settings visualization_settings))
 
 (defendpoint GET "/:id"

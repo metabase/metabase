@@ -26,7 +26,9 @@
     [_ _ _ _]
     (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
 
-(defn- build-sentence [parts]
+(defn build-sentence
+  "Join parts of a sentence together to build a compound one."
+  [parts]
   (when (seq parts)
     (cond
       (= (count parts) 1) (str (first parts) \.)
