@@ -1,4 +1,5 @@
 'use strict';
+/*global _*/
 
 import OnClickOutside from 'react-onclickoutside';
 
@@ -93,13 +94,13 @@ export default React.createClass({
 
         var name = this.refs.name.getDOMNode().value.trim();
         var description = this.refs.description.getDOMNode().value.trim();
-        var perms = this.refs.public_perms.getDOMNode().value;
+        var perms = parseInt(this.refs.public_perms.state.value);
 
         // populate a new Dash object
         var newDash = {
             'name': (name && name.length > 0) ? name : null,
             'description': (description && description.length > 0) ? name : null,
-            'public_perms': 2  // TODO: ick!  hard coding
+            'public_perms': perms
         };
 
         // create a new dashboard, then add the card to that
@@ -149,7 +150,7 @@ export default React.createClass({
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Public (Others can read)</option>)
+            (<option key="2" value={2}>Public</option>)
         ];
 
         var formError;
@@ -224,7 +225,7 @@ export default React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select className="mt1" ref="public_perms">
+                        <select className="mt1" ref="public_perms" defaultValue="2">
                             {privacyOptions}
                         </select>
                     </label>
