@@ -9,7 +9,7 @@
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
 
-(defn- fake-card [& {:as kwargs}]
+(defn fake-card [& {:as kwargs}]
   (m/mapply db/ins Card (merge {:name (str (java.util.UUID/randomUUID))
                                 :display                :table
                                 :public_perms           0
