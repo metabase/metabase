@@ -8,7 +8,8 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])))
+                             [dashboard-card :refer [DashboardCard]]
+                             [revision :refer [push-revision]])))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -50,7 +51,7 @@
                                :description description
                                :name name
                                :public_perms public_perms))
-  (Dashboard id))
+  (push-revision :entity Dashboard, :object (Dashboard id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
@@ -64,14 +65,18 @@
   {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
-  (ins DashboardCard :card_id cardId :dashboard_id id))
+  (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
+    (push-revision :entity Dashboard, :object (Dashboard id))
+    result))
 
 (defendpoint DELETE "/:id/cards"
   "Remove a `Card` from a `Dashboard`."
   [id dashcardId]
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
-  (del DashboardCard :id dashcardId :dashboard_id id))
+  (let [result (del DashboardCard :id dashcardId :dashboard_id id)]
+    (push-revision :entity Dashboard, :object (Dashboard id))
+    result))
 
 (defendpoint POST "/:id/reposition"
   "Reposition `Cards` on a `Dashboard`. Request body should have the form:
@@ -83,10 +88,10 @@
               :col} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
-  (dorun (map (fn [{:keys [card_id sizeX sizeY row col]}]
-                (let [{dashcard-id :id} (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
-                  (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
-              cards))
+  (doseq [{:keys [card_id sizeX sizeY row col]} cards]
+    (let [{dashcard-id :id} (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
+      (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
+  (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 
 (define-routes)

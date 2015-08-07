@@ -8,6 +8,7 @@
                              [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
+                             [revision :refer [push-revision]]
                              [user :refer [User]])))
 
 (defannotation CardFilterOption
@@ -46,12 +47,12 @@
    display      [Required CardDisplayType]}
   ;; TODO - which other params are required?
   (ins Card
-    :creator_id *current-user-id*
-    :dataset_query dataset_query
-    :description description
-    :display display
-    :name name
-    :public_perms public_perms
+    :creator_id             *current-user-id*
+    :dataset_query          dataset_query
+    :description            description
+    :display                display
+    :name                   name
+    :public_perms           public_perms
     :visualization_settings visualization_settings))
 
 (defendpoint GET "/:id"
@@ -75,7 +76,7 @@
                                :name name
                                :public_perms public_perms
                                :visualization_settings visualization_settings))
-  (Card id))
+  (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
