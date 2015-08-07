@@ -55,7 +55,6 @@
     (doseq [dashcard-id all-dashcard-ids]
       (let [serialized-card (id->serialized-card dashcard-id)
             current-card    (id->current-card dashcard-id)]
-        (println "SERIALIZED CARD -> " serialized-card)
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
           (not serialized-card) (del DashboardCard :id dashcard-id)
@@ -65,7 +64,6 @@
 
           ;; If card is in both we need to change :sizeX, :sizeY, :row, and :col to match serialized-card as needed
           :else (let [[_ changes] (diff current-card serialized-card)]
-                  (println "Making these changes:" changes)
                   (m/mapply upd DashboardCard dashcard-id changes))))))
 
   serialized-dashboard)
