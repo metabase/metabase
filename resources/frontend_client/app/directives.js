@@ -133,6 +133,53 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
     };
 }]);
 
+CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attr) {
+            var Component = scope[attr.mbReactComponent];
+            delete scope[attr.mbReactComponent];
+
+            function render() {
+                var props = {};
+                function copyProp(key, value) {
+                    if (typeof value === "function") {
+                        props[key] = function() {
+                            try {
+                                return value.apply(this, arguments);
+                            } finally {
+                                $timeout(() => scope.$digest());
+                            }
+                        }
+                    } else {
+                        props[key] = value;
+                    }
+                }
+                for (var key in scope) {
+                    copyProp(key, scope[key]);
+                }
+                React.render(<Component {...props}/>, element[0]);
+            }
+
+            scope.$on("$destroy", function() {
+                React.unmountComponentAtNode(element[0]);
+            });
+
+            // limit renders to once per animation frame
+            var timeout;
+            scope.$watch(function() {
+                if (!timeout) {
+                    timeout = requestAnimationFrame(function() {
+                        timeout = null;
+                        render();
+                    });
+                }
+            });
+
+            render();
+        }
+    };
+}]);
 
 var NavbarDirectives = angular.module('corvus.navbar.directives', []);
 

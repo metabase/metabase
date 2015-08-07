@@ -2,21 +2,11 @@
     <!-- DB Engine (database.engine) -->
     <div class="Form-field" mb-form-field="engine">
         <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
-        <ul class="Form-offset full mt2" ng-show="!database.engine">
-            <li class="DatabaseEngine" ng-repeat="(type, properties) in ENGINES" ng-click="database.engine = type">
-                <mb-icon name="check" class="DatabaseEngine-check" width="16px" height="16px"></mb-icon>
-                <div>
-                    {{properties.name}}
-                </div>
-            </li>
-        </ul>
-        <div class="Form-offset mr4" ng-show="database.engine">
-            <div class="DatabaseEngine DatabaseEngine--selected flex align-center">
-                <mb-icon name="check" class="DatabaseEngine-check" width="16px" height="16px"></mb-icon>
-                <span class="flex-full">{{database.engine}}</span>
-                <mb-icon name="close" width="16px" height="16px" ng-click="database.engine = null"></mb-icon>
-            </div>
-        </div>
+        <label class="Select Form-offset mt1">
+            <select class="Select" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in ENGINES">
+                <option value="" disabled selected>Select a database type</option>
+            </select>
+        </label>
     </div>
 
     <!-- DB Nickname (database.name) -->

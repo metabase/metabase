@@ -4,6 +4,8 @@ import Icon from './icon.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 import ColumnarSelector from './columnar_selector.react';
 
+import Table from 'metabase/lib/table';
+
 export default React.createClass({
     displayName: "DataSelector",
     propTypes: {
@@ -74,7 +76,7 @@ export default React.createClass({
                 columns.push({
                     title: database.name + " Tables",
                     selectedItem: table,
-                    items: this.props.tables,
+                    items: this.props.tables.filter(Table.isQueryable),
                     itemTitleFn: (table) => table.display_name,
                     itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggleModal() }
                 });

@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 import AggregationWidget from './aggregation_widget.react';
 import DataSelector from './data_selector.react';
@@ -13,7 +13,7 @@ import LimitWidget from './limit_widget.react';
 import SortWidget from './sort_widget.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;

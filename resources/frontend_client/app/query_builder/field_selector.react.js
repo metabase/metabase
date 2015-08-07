@@ -3,7 +3,7 @@
 
 import ColumnarSelector from "./columnar_selector.react";
 
-import Query from "./query";
+import Query from "metabase/lib/query";
 
 export default React.createClass({
     displayName: "FieldSelector",

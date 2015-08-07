@@ -9,7 +9,7 @@ import SelectionModule from './selection_module.react';
 import Popover from './popover.react';
 import ColumnarSelector from './columnar_selector.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 import moment from 'moment';
 
 var cx = React.addons.classSet;

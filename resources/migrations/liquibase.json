@@ -6,6 +6,7 @@
       {"include": {"file": "migrations/005_add_org_report_tz_column.json"}},
       {"include": {"file": "migrations/006_disconnect_orgs.json"}},
       {"include": {"file": "migrations/007_add_field_parent_id.json"}},
-      {"include": {"file": "migrations/008_add_display_name_columns.json"}}
+      {"include": {"file": "migrations/008_add_display_name_columns.json"}},
+      {"include": {"file": "migrations/009_add_table_visibility_type_column.json"}}
   ]
 }

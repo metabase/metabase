@@ -85,6 +85,11 @@
                             </a>
                         </li>
                         <li>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/metadata')}" href="/admin/metadata/">
+                                Metadata
+                            </a>
+                        </li>
+                        <li>
                             <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
                                 Databases
                             </a>
@@ -130,6 +135,9 @@
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
     m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    // start off with tracking disabled (the angular app will re-enable this once we know the app runtime settings)
+    window['ga-disable-UA-60817802-1'] = true;
 
     ga('create', 'UA-60817802-1', 'auto');
     </script>
