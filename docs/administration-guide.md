@@ -1,92 +1,117 @@
-# Administration Guide
-It is assumed you've already installed a copy of Metabase. If you need help doing that, check out our [Installation Guide](installation-guide.md)
+#Administration Guide
+---
+If you haven't already installed a copy of Metabase, you'll need to do so.  If you need help doing that, check out our [Installation Guide](installation-guide.md).  
 
+##Managing Databases
+---
 
-## Managing databases
-To see a list of all databases click on "Databases"
+To see a list of all databases click on "Databases".
 
-### Adding a database connection
-Click on "add database". 
-you can currently add databases of types
+##Adding a Database Connection
 
+Click on "Add database".  You can currently add the following types of databases:
+
+* Amazon RDS
 * H2
+* MONGODB
 * MySQL
 * Postgres
 
-for each you'll need the approriate connection information. 
+For each type of database, you'll need the appropriate connection information.  For help finding your database type's connection information, check out our [Installation Guide](installation-guide.md).
 
+##SSL
 
-### SSL
-when you first add a database, we'll try to connect with and without ssl. if ssl is possible, we'll mark it as an ssl connection as a first choice. you can change this after addition
+Metabase automatically tries to connect to databases with and without SSL.  If it is possible to connect to your database with a SSL connection, Metabase will mark an SSL connection as the default for your database. If you'd like, you can change this setting later.  
 
-### Deleting databases
-you can delete a database by either clicking "Remove this database" under "connection details" or hovering over the database row in the list and clicking on the red "Delete" button. Be extra careful when doing this because it's not reversible and all saved questions and dashboard cards based on this database will be deleted.
+###Database Analysis
 
-### metadata syncing
-after a database is connected and the connection is validated, we'll get all the table and column schema information.
-we'll also do this on a nightly basis
-To sync manually, click on a database in this list, click on "connection details" and click syn
+When connecting with your database, we try to decipher the field types in your table based on their name.  We also take a sample of each table to look for URL's, json, encoded strings, etc.  If we classify a field wrong, you can always edit it later.  
 
-### database analysis
-we'll try to guess your field types based on name
-we'll also pull out a sample of each table and look for urls, json encoded strings, etc
-if we get it wrong you can edit it later
+###Metadata Syncing
 
-## Setting up email
-Once you've connected to a database, the next thing you should do is set up email. Email is used to reset passwords, onboarding new users and notifying you when something happens. 
+Metabase automatically syncs the table and column information from your database every night.  
 
-### Setting it up
+To sync manually:
 
-* set up an smtp server
-* if you use google apps, credentials will be from X
-* if you use SES, credentials from X
-* if you use mandrill, you can get crendentials from X
-* SSL is preferred here
-* if your email service has a whitelist of email addresses that are allowed to send email, make sure to set the "Sender of system notifications" setting to a whitelisted email address
+1. Click on your database.
+2. Click on "Connection Details"
+3. Select "Sync"
 
-## Metadata editing
-a full description of the metadata Metabase understands and takes advantage of can be found in our [Metadata Guide](metadata-guide.md)
+###Deleting Databases
 
-### Tables
+You can delete a database from Metabase by either clicking "Remove this Database" under "Connection Details".  You can also delete it by hovering over the database row in the list and clicking on the red "Delete" button.
 
-* add description to let people know what the table contains and how it can be used
-* descriptions will be displayed in the data model reference
-* control visibility by hiding
-* once you've hidden a field, you should give us the reason 
+**Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted too.**
 
-### Fields
+##Setting up Email
 
-* if metabase got the field type wrong, you should update it here.
-* adding a description allows users to understand what the field contains 
-* a description is especially useful when the fields have values that are abbreviations or encoded in some way
-* descriptions will be displayed in the data model reference
+---
 
-## Managing user accounts
+Once you connect your database to Metabase, you'll want to configure your email settings.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.  
 
-* if you click on "people" you can see a list of all user accounts on this system
-* you can add accounts by clicking "Add person" and telling Metabase their name and email
-* once you have added them, they will get an email and a link where they can set their password
-* to make a user an admin click on "grant admin"
-* to remove admin priveledges click on "revoke admin"
-* to delete an account, click on "remove". Note that this will mark the account as inactive and prevent it being used in the future but not actually delete the user's cards or dashboards.
+###Configuring your Email Account
 
-## Backing up Metabase Application data
+* Set up an smtp server
+* If you use Google Apps, you can find your credentials...
+* If you use SES, your credentials are located
+* If you use Mandrill, your credentials are...
+* SSL is preferred because it is more secure and gives your account exta security and protection from threats.
+* If your email service has a whitelist of email addresses that are allowed to send email, be sure to add the "Sender of System Notifications" setting to a whitelisted email address to ensure you receive all messages from Metabase.  
 
-### If you're using the embedded database
-Find the file "metabase.db.h2.db". If your system is inactive, you can just make a copy directly. If it's active, you should shut down the Metabase process and make a backup copy of this file and restart the server.
+##Metadata Editing
 
-### If you're using RDS for the application database
-Turn on automated RDS backups <find screenshots>
+---
+*For an in-depth description of Metabase's understanding of metadata and how it uses it, check out our [Metadata Guide](metadata-guide.md)*
 
-### If you're using a self managed PostgreSQL or MySQL database
-back it up as you would any other PostgreSQL or MySQL database
+###What is metadata?
+**Metadata** is data about other data.  It's data that tells you about the data found in your database.
+###Tables 
 
-## Settings
-### Base url
-This is used in emails to allow users to click on a url to their specific instance. You should include the protocol (http vs https) and make sure that it is reachable.
+* Add descriptions to tables to let people know type of data a table contains and how it can be used. 
+* Descriptions are displayed in the data model reference.
+* You can control visibility of metadata by hiding it. 
+* If you hide a field, give Metabase a reason so it understands why a field is not being included.
 
-### Connection Timezone
-This is used when doing date breakouts, and will set the default timezone for displaying all times. It does not change the timezone of any underlying data, however, if the underlying times don't have a timezone attached to them, this timezone is used.
+###Fields 
 
-### Name used for the instance
-If you want to give the instance a name (often the name of your company), you should set it here.
+* If Metabase misclassified the type of a field, you can update it here. 
+* Add a description to a field, so users know what data it contains.
+* Descriptions are extra helpful when fields have values that are abbreviated or coded in a particular format.
+* Descriptions are displayed in the data model reference.
+
+##Managing User Accounts
+---
+
+Click **People** from [Where do they click from] to see a list of all user accounts in your organization.
+
+* To add a new user account, click **Add Person** and enter their name and email address.  
+
+* New users will receive an email welcoming them to Metabase and a link to configure their password.
+* To delete a user's account, click **Remove**.  Deleting an account will mark it as inactive and prevent it from being used in the future - but it won't delete the user's cards or dashboards.
+
+* To make an existing user an administrator, click **Grant Admin**
+* To remove administrator privileges from a user, select **Revoke Admin**
+
+##Backing up Metabase Application Data 
+---
+###If you're using an Embedded Database
+Find the file "metabase.db.h2.db".  If your system is inactive, you can make a copy directly.  If your system is active, shut down the Metabase process and make a backup copy of the file.  Then, restart the server.
+
+###If you're using Amazon RDS for the Database Application
+Turn on automated RDS backups.  
+
+###If you're using a self-managed PostgreSQL or MySQL database
+Back up your database as you would to any other PostgreSQL or MySQL database. 
+
+##Settings
+---
+###Base URL
+The **base URL** is used in emails to allow users to click to their specific instance.  Include the protocol (http vs https) to make sure it is reachable. 
+
+###Connection Timezone
+The **connection timezone** sets the default time zone for displaying times.  The timezone is used when doing date breakouts.  
+
+Setting the default timezone will not change the timezone of any data in your database.  If the underlying times in your database aren't assigned to a timezone, Metabase will use the connection timezone as the default timezone.  
+
+###Name used for the Instance
+If you want to name an instance, you can do so under settings.  Many teams use the name of their company, but the choice is yours!
