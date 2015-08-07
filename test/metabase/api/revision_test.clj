@@ -30,22 +30,30 @@
   (with-fake-card [{card-id :id}]
     ((user->client :rasta) :get 200 "revision", :entity :card, :id card-id)))
 
+(defn- get-dashboard-revisions [dashboard-id]
+  (->> ((user->client :rasta) :get 200 "revision", :entity :dashboard, :id dashboard-id)
+       (mapv #(dissoc % :timestamp :id))))
+
+(defn- post-dashcard [dash-id card-id]
+  ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id), {:cardId card-id}))
+
+(defn- delete-dashcard [dash-id card-id]
+  ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard :dashboard_id dash-id, :card_id card-id)))
+
 (expect [{:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id :id}]
-      ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id), {:cardId card-id})
-      (->> ((user->client :rasta) :get 200 "revision", :entity :dashboard, :id dash-id)
-           (mapv #(dissoc % :timestamp :id))))))
+      (post-dashcard dash-id card-id)
+      (get-dashboard-revisions dash-id))))
 
 (expect [{:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan added a card."}
          {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
-        ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id), {:cardId card-id₁})
-        ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id), {:cardId card-id₂})
-        (->> ((user->client :rasta) :get 200 "revision", :entity :dashboard, :id dash-id)
-             (mapv #(dissoc % :timestamp :id)))))))
+        (post-dashcard dash-id card-id₁)
+        (post-dashcard dash-id card-id₂)
+        (get-dashboard-revisions dash-id)))))
 
 (expect [{:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan removed a card."}
          {:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan added a card."}
@@ -53,11 +61,10 @@
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
-        ((user->client :rasta) :post 200   (format "dash/%d/cards" dash-id), {:cardId card-id₁})
-        ((user->client :rasta) :post 200   (format "dash/%d/cards" dash-id), {:cardId card-id₂})
-        ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard (k/order :id :desc)))
-        (->> ((user->client :rasta) :get 200 "revision", :entity :dashboard, :id dash-id)
-             (mapv #(dissoc % :timestamp :id)))))))
+        (post-dashcard   dash-id card-id₁)
+        (post-dashcard   dash-id card-id₂)
+        (delete-dashcard dash-id card-id₂)
+        (get-dashboard-revisions dash-id)))))
 
 ;;; # TESTS FOR POST /api/revision/revert
 (expect [2
@@ -68,14 +75,13 @@
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
-        ((user->client :rasta) :post 200   (format "dash/%d/cards" dash-id), {:cardId card-id₁})
-        ((user->client :rasta) :post 200   (format "dash/%d/cards" dash-id), {:cardId card-id₂})
-        ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard (k/order :id :desc)))
+        (post-dashcard   dash-id card-id₁)
+        (post-dashcard   dash-id card-id₂)
+        (delete-dashcard dash-id card-id₂)
         (let [[_ {previous-revision-id :id}] (metabase.models.revision/revisions Dashboard dash-id)]
           ;; Revert to the previous revision
           ((user->client :rasta) :post 200 "revision/revert", {:entity :dashboard, :id dash-id, :revision_id previous-revision-id})
           [ ;; [1] There should be 2 cards again
            (count @(:ordered_cards (Dashboard dash-id)))
            ;; [2] A new revision recording the reversion should have been pushed
-           (->> ((user->client :rasta) :get 200 "revision", :entity :dashboard, :id dash-id)
-                (mapv #(dissoc % :timestamp :id)))])))))
+           (get-dashboard-revisions dash-id)])))))
