@@ -9,16 +9,6 @@
                              [revision-test :refer [with-fake-card]])
             [metabase.test.data.users :refer :all]))
 
-
-(defn x []
-  (with-fake-card [{card-id₁ :id}]
-    (with-fake-card [{card-id₂ :id}]
-      ((user->client :rasta) :get 200 "revision", :entity :card, :id card-id₁))))
-
-(defn y []
-  (with-fake-card [{card-id :id}]
-    ((user->client :rasta) :get 200 "revision", :entity :card, :id card-id)))
-
 (defn- fake-dashboard [& {:as kwargs}]
   (m/mapply db/ins Dashboard (merge {:name         (str (java.util.UUID/randomUUID))
                                      :public_perms 0
