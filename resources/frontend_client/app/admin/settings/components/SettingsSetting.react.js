@@ -17,9 +17,10 @@ export default React.createClass({
     },
 
     renderStringInput: function(setting, type="text") {
+        var className = type === "password" ? "SettingsPassword" : "SettingsInput";
         return (
             <Input
-                className="SettingsInput AdminInput bordered rounded h3"
+                className={className + " AdminInput bordered rounded h3"}
                 type={type}
                 value={setting.value}
                 placeholder={setting.placeholder}
@@ -80,8 +81,8 @@ export default React.createClass({
         }
         return (
             <li className="m2 mb4">
-                <div className="text-grey-3 text-bold text-uppercase">{setting.display_name}</div>
-                <div className="text-grey-3 my1">{setting.description}</div>
+                <div className="text-grey-4 text-bold text-uppercase">{setting.display_name}</div>
+                <div className="text-grey-4 my1">{setting.description}</div>
                 <div className="flex">{control}</div>
             </li>
         );

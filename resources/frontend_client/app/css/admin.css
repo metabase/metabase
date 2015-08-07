@@ -410,6 +410,10 @@
     border-bottom-left-radius: 0px;
 }
 
+.SaveStatus {
+    line-height: 1;
+}
+
 .SaveStatus:last-child {
     border-right: none !important;
 }
@@ -418,6 +422,6 @@
     width: 400px;
 }
 
-.SettingsInput[type=password] {
+.SettingsPassword {
     width: 200px;
 }

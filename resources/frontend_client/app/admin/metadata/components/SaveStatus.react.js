@@ -5,8 +5,6 @@ import LoadingIcon from '../../../components/icons/loading.react';
 
 export default React.createClass({
     displayName: "SaveStatus",
-    propTypes: {
-    },
 
     getInitialState: function() {
         return {
@@ -37,7 +35,12 @@ export default React.createClass({
         } else if (this.state.error) {
             return (<div className="SaveStatus mx2 px2 border-right text-error">Error: {this.state.error}</div>)
         } else if (this.state.recentlySavedTimeout != null) {
-            return (<div className="SaveStatus mx2 px2 border-right"><Icon name="check" width="12" height="12" /> Saved</div>)
+            return (
+                <div className="SaveStatus mx2 px2 border-right flex align-center text-success">
+                    <Icon name="check" width="16" height="16" />
+                    <div className="ml1 h3 text-bold">Saved</div>
+                </div>
+            )
         } else {
             return <span />;
         }
