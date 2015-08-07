@@ -30,7 +30,8 @@
 (extend-protocol IRevisioned
   Object
   (serialize-instance [_ _ instance]
-    (->> (into {} instance)
+    (->> (dissoc instance :created_at :updated_at)
+         (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
          (m/filter-vals (complement delay?))))
   (revert-to-revision [entity id serialized-instance]
     (m/mapply upd entity id serialized-instance))
