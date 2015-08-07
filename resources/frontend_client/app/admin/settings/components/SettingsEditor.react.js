@@ -51,14 +51,14 @@ export default React.createClass({
 
     renderSettingsSections: function() {
         var sections = _.map(this.props.sections, (section, sectionName, sectionIndex) => {
-            var classes = cx("AdminList-item", {
-                "selected": this.state.currentSection === sectionName,
-                "flex": true,
-                "align-center": true
+            var classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
+                "selected": this.state.currentSection === sectionName
             });
             return (
-                <li key={sectionName} className={classes} onClick={this.selectSection.bind(null, sectionName)}>
-                    {sectionName}
+                <li key={sectionName}>
+                    <a href="#" className={classes} onClick={this.selectSection.bind(null, sectionName)}>
+                        {sectionName}
+                    </a>
                 </li>
             );
         });
