@@ -8,7 +8,7 @@ import RunButton from './run_button.react';
 import VisualizationSettings from './visualization_settings.react';
 import LoadingSpinner from '../components/icons/loading.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;

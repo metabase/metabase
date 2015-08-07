@@ -13,6 +13,7 @@
             (metabase.api.meta [dataset :as dataset]
                                [db :as db]
                                [field :as field]
+                               [fk :as fk]
                                [table :as table])
             [metabase.middleware.auth :as auth]))
 
@@ -31,6 +32,7 @@
   (context "/meta/dataset" [] (+auth dataset/routes))
   (context "/meta/db"      [] (+auth db/routes))
   (context "/meta/field"   [] (+auth field/routes))
+  (context "/meta/fk"      [] (+auth fk/routes))
   (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/revision"     [] (+auth revision/routes))

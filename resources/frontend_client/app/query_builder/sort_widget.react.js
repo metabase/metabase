@@ -4,7 +4,7 @@ import Icon from './icon.react';
 import FieldWidget from './field_widget.react';
 import SelectionModule from './selection_module.react';
 
-import Query from './query';
+import Query from "metabase/lib/query";
 
 export default React.createClass({
     displayName: 'SortWidget',

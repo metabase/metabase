@@ -13,17 +13,8 @@ AdminDatabases.config(['$routeProvider', function ($routeProvider) {
         templateUrl: '/app/admin/databases/partials/database_edit.html',
         controller: 'DatabaseEdit'
     });
-
     $routeProvider.when('/admin/databases/:databaseId', {
-        redirectTo: '/admin/databases/:databaseId/tables'
+        templateUrl: '/app/admin/databases/partials/database_edit.html',
+        controller: 'DatabaseEdit'
     });
-    $routeProvider.when('/admin/databases/:databaseId/:mode', {
-        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
-        controller: 'DatabaseMasterDetail'
-    });
-    $routeProvider.when('/admin/databases/:databaseId/:mode/:tableId', {
-        templateUrl: '/app/admin/databases/partials/database_master_detail.html',
-        controller: 'DatabaseMasterDetail'
-    });
-
 }]);

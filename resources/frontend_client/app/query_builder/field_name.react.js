@@ -3,7 +3,7 @@
 
 import Icon from "./icon.react";
 
-import Query from "./query";
+import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
 

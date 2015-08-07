@@ -1,7 +1,7 @@
 'use strict';
 /*global _, document, confirm*/
 
-import MetabaseAnalytics from '../lib/metabase_analytics';
+import MetabaseAnalytics from '../lib/analytics';
 
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
@@ -9,7 +9,7 @@ import NativeQueryEditor from '../query_builder/native_query_editor.react';
 import QueryHeader from '../query_builder/header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
-import Query from '../query_builder/query';
+import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
 
@@ -286,7 +286,7 @@ CardControllers.controller('CardDetail', [
                     return false;
                 }
             },
-            cellClickedFn: function(rowIndex, columnIndex) {
+            cellClickedFn: function(rowIndex, columnIndex, filter) {
                 if (!queryResult) return false;
 
                 // lookup the coldef and cell value of the cell we are taking action on
@@ -317,7 +317,11 @@ CardControllers.controller('CardDetail', [
 
                     // run it
                     runQuery(card.dataset_query);
-                }
+                } else {
+                    Query.addFilter(card.dataset_query.query);
+                    Query.updateFilter(card.dataset_query.query, card.dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    runQuery(card.dataset_query);
+                 }
             },
             followForeignKeyFn: function(fk) {
                 if (!queryResult || !fk) return false;

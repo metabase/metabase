@@ -16,6 +16,11 @@
   [symb value :nillable]
   (checkp-contains? table/entity-types symb (keyword value)))
 
+(defannotation TableVisibilityType
+  "Param must be one of `hidden`, `technical`, or `cruft`."
+  [symb value :nillable]
+  (checkp-contains? table/visibility-types symb (keyword value)))
+
 (defendpoint GET "/"
   "Get all `Tables`."
   []
@@ -36,14 +41,16 @@
 
 (defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type description]} :body}]
-  {display_name NonEmptyString,
-   entity_type  TableEntityType}
+  [id :as {{:keys [display_name entity_type visibility_type description]} :body}]
+  {display_name    NonEmptyString,
+   entity_type     TableEntityType,
+   visibility_type TableVisibilityType}
   (write-check Table id)
   (check-500 (upd-non-nil-keys Table id
-                               :display_name display_name
-                               :entity_type  entity_type
-                               :description  description))
+                               :display_name    display_name
+                               :entity_type     entity_type
+                               :description     description))
+  (check-500 (upd Table id :visibility_type visibility_type))
   (Table id))
 
 (defendpoint GET "/:id/fields"
