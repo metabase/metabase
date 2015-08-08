@@ -9,6 +9,7 @@ import VisualizationSettings from './visualization_settings.react';
 import LoadingSpinner from '../components/icons/loading.react';
 
 import Query from "metabase/lib/query";
+import DataGrid from "metabase/lib/data_grid";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -195,15 +196,28 @@ export default React.createClass({
 
                 } else if (this.props.card.display === "table") {
 
-                    var sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
+                    var tableData = this.props.result.data,
+                        cellClickable = this.props.cellIsClickableFn,
+                        sortFunction = this.props.setSortFn,
+                        sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
                                     this.props.card.dataset_query.query.order_by : null;
+
+                    // check if the data is pivotable (2 groupings + 1 agg != 'rows')
+                    if (Query.isStructured(this.props.card.dataset_query) &&
+                            !Query.isBareRowsAggregation(this.props.card.dataset_query.query) &&
+                            tableData.cols.length === 3) {
+                        tableData = DataGrid.pivot(this.props.result.data);
+                        sortFunction = undefined;
+                        cellClickable = function() { return false; };
+                    }
+
                     viz = (
                         <QueryVisualizationTable
-                            data={this.props.result.data}
+                            data={tableData}
                             maxRows={this.props.maxTableRows}
-                            setSortFn={this.props.setSortFn}
+                            setSortFn={sortFunction}
                             sort={sort}
-                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellIsClickableFn={cellClickable}
                             cellClickedFn={this.props.cellClickedFn}
                         />
                     );
