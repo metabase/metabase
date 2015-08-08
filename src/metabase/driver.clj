@@ -14,7 +14,7 @@
 
 ;; ## CONFIG
 
-(defsetting report-timezone "Connection timezone to use when executing queries.  Defaults to system timezone.")
+(defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
 
 
 ;; ## Constants
