@@ -7,17 +7,20 @@ import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.reac
 export default React.createClass({
     displayName: "Select",
     propTypes: {
-        value: React.PropTypes.object,
+        value: React.PropTypes.any,
         options: React.PropTypes.array.isRequired,
+        placeholder: React.PropTypes.string,
         onChange: React.PropTypes.func,
-        optionNameFn: React.PropTypes.func
+        optionNameFn: React.PropTypes.func,
+        optionValueFn: React.PropTypes.func
     },
 
     getDefaultProps: function() {
         return {
             isInitiallyOpen: false,
             placeholder: "",
-            optionNameFn: (field) => field.name
+            optionNameFn: (option) => option.name,
+            optionValueFn: (option) => option
         };
     },
 
@@ -29,8 +32,8 @@ export default React.createClass({
         var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
 
         var triggerElement = (
-            <div className={"flex flex-full align-center" + (!this.props.value ? " text-grey-3" : "")}>
-                <span>{selectedName}</span>
+            <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+                <span className="mr1">{selectedName}</span>
                 <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
             </div>
         );
@@ -50,7 +53,7 @@ export default React.createClass({
                 itemTitleFn: this.props.optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    this.props.onChange(item)
+                    this.props.onChange(this.props.optionValueFn(item))
                     this.toggleModal();
                 }
             }
@@ -67,7 +70,7 @@ export default React.createClass({
                                 className={"PopoverBody PopoverBody--withArrow " + (this.props.className || "")}
                                 tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
-                                triggerClasses={this.props.className + " AdminSelect flex align-center" }>
+                                triggerClasses={"AdminSelect " + (this.props.className || "")}>
                 <ColumnarSelector columns={columns}/>
             </PopoverWithTrigger>
         );

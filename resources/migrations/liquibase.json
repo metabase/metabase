@@ -8,6 +8,7 @@
       {"include": {"file": "migrations/007_add_field_parent_id.json"}},
       {"include": {"file": "migrations/008_add_display_name_columns.json"}},
       {"include": {"file": "migrations/009_add_table_visibility_type_column.json"}},
-      {"include": {"file": "migrations/010_cleanup_dashboard_perms.yaml"}}
+      {"include": {"file": "migrations/010_add_revision_table.yaml"}},
+      {"include": {"file": "migrations/011_cleanup_dashboard_perms.yaml"}}
   ]
 }

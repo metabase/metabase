@@ -4,6 +4,7 @@
             (metabase.api [card :as card]
                           [dash :as dash]
                           [notify :as notify]
+                          [revision :as revision]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -34,6 +35,7 @@
   (context "/meta/fk"      [] (+auth fk/routes))
   (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
+  (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)

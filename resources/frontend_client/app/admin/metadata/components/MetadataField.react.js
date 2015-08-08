@@ -49,7 +49,7 @@ export default React.createClass({
         if (this.props.field.special_type === "fk") {
             targetSelect = (
                 <Select
-                    className="TableEditor-field-target"
+                    className="TableEditor-field-target block"
                     placeholder="Select a target"
                     value={this.props.field.target && _.find(this.props.idfields, (field) => field.id === this.props.field.target.id)}
                     options={this.props.idfields}
@@ -67,7 +67,7 @@ export default React.createClass({
                 </div>
                 <div className="flex-half px1">
                     <Select
-                        className="TableEditor-field-type"
+                        className="TableEditor-field-type block"
                         placeholder="Select a field type"
                         value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
                         options={MetabaseCore.field_field_types}
@@ -76,7 +76,7 @@ export default React.createClass({
                 </div>
                 <div className="flex-half flex flex-column justify-between px1">
                     <Select
-                        className="TableEditor-field-special-type"
+                        className="TableEditor-field-special-type block"
                         placeholder="Select a special type"
                         value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
                         options={MetabaseCore.field_special_types}
