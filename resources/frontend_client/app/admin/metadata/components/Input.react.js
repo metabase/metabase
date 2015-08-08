@@ -1,6 +1,21 @@
 "use strict";
 
 export default React.createClass({
+    displayName: "Input",
+    propTypes: {
+        type: React.PropTypes.string,
+        value: React.PropTypes.string,
+        placeholder: React.PropTypes.string,
+        onChange: React.PropTypes.func,
+        onBlurChange: React.PropTypes.func
+    },
+
+    getDefaultProps: function() {
+        return {
+            type: "text"
+        };
+    },
+
     getInitialState: function() {
         return { value: this.props.value };
     },

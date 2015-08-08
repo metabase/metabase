@@ -1,49 +1,59 @@
 'use strict';
 /*global _*/
 
+import SettingsEditor from './components/SettingsEditor.react';
+
+import Humanize from "humanize";
+
 var SettingsAdminControllers = angular.module('corvusadmin.settings.controllers', ['corvusadmin.settings.services']);
 
-SettingsAdminControllers.controller('SettingsAdminController', ['$scope', '$q', 'AppState', 'SettingsAdminServices',
-    function($scope, $q, AppState, SettingsAdminServices) {
-        $scope.settings = [];
+// from common.clj
+var TIMEZONES = [
+    "GMT",
+    "UTC",
+    "US/Alaska",
+    "US/Arizona",
+    "US/Central",
+    "US/Eastern",
+    "US/Hawaii",
+    "US/Mountain",
+    "US/Pacific",
+    "America/Costa_Rica",
+];
 
-        SettingsAdminServices.list(function(results) {
-            $scope.settings = _.map(results, function(result) {
-                result.originalValue = result.value;
-                return result;
-            });
-        }, function(error) {
-            console.log("Error fetching settings list: ", error);
-        });
+// temporary hardcoded metadata
+var EXTRA_SETTINGS_METADATA = {
+    "site-name":            { display_name: "Site Name",          section: "General", index: 0, type: "string" },
+    "-site-url":            { display_name: "Site URL",           section: "General", index: 1, type: "string" },
+    "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 2, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
+    "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 3, type: "boolean" },
+    "email-smtp-host":      { display_name: "SMTP Host",          section: "Email",   index: 0, type: "string" },
+    "email-smtp-port":      { display_name: "SMTP Port",          section: "Email",   index: 1, type: "string" },
+    "email-smtp-security":  { display_name: "SMTP Security",      section: "Email",   index: 2, type: "radio", options: { none: "None", tls: "TLS", ssl: "SSL" } },
+    "email-smtp-username":  { display_name: "SMTP Username",      section: "Email",   index: 3, type: "string" },
+    "email-smtp-password":  { display_name: "SMTP Password",      section: "Email",   index: 4, type: "password" },
+    "email-from-address":   { display_name: "From Address",       section: "Email",   index: 5, type: "string" },
+};
 
-        $scope.settingName = function(setting) {
-            return setting.description.replace(/\.$/, '');
-        }
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'SettingsAdminServices', 'AppState', 'settings', function($scope, SettingsAdminServices, AppState, settings) {
+    $scope.SettingsEditor = SettingsEditor;
 
-        $scope.settingPlaceholder = function(setting) {
-            return setting.default;
-        }
-
-        $scope.save = function() {
-            $scope.$broadcast("form:reset");
-            return $q.all($scope.settings.map(function(setting) {
-                if (setting.value !== setting.originalValue) {
-                    return SettingsAdminServices.put({
-                        key: setting.key
-                    }, setting).$promise.then(function() {
-                        setting.originalValue = setting.value;
-                    });
-                }
-            })).then(function(results) {
-                $scope.$broadcast("form:api-success", "Successfully saved!");
-
-                // refresh the app-wide settings now as the user may have just changed some of them
-                AppState.refreshSiteSettings();
-
-            }, function(error) {
-                $scope.$broadcast("form:api-error", error);
-                throw error;
-            });
-        };
+    $scope.updateSetting = async function(setting) {
+        await SettingsAdminServices.put({ key: setting.key }, setting).$promise;
+        AppState.refreshSiteSettings();
     }
-]);
+
+    $scope.sections = {};
+    settings.forEach(function(setting) {
+        var defaults = { display_name: keyToDisplayName(setting.key), placeholder: setting.default };
+        setting = _.extend(defaults, EXTRA_SETTINGS_METADATA[setting.key], setting);
+        var sectionName = setting.section || "Other";
+        $scope.sections[sectionName] = $scope.sections[sectionName] || [];
+        $scope.sections[sectionName].push(setting);
+    });
+    _.each($scope.sections, (section) => section.sort((a, b) => a.index - b.index))
+
+    function keyToDisplayName(key) {
+        return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
+    }
+}]);
