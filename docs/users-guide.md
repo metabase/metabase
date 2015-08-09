@@ -39,12 +39,12 @@ Examples of types:
 * **Numerical Types** (Integer, Float, DoubleFloat, Decimal, etc) - These fields store numbers. Integers are whole numbers; Floats and Decimals are ways to store numbers with decimals in them. Numerical types store things like age, bank account balances, costs, latitudes, and longitudes, to name a few.
 
 * **Time Types** (Timestamp, etc) - These fields are a special format of a number used to store dates and times (or both). Sometimes databases store an integer timestamp which is either seconds or milliseconds, such as `00:00:00 Coordinated Universal Time (UTC), Thursday, 1 January 1970`. This convention  allows for compact storage of timestamps. 
-* **IDs** (Also called **primary keys**) - This field uniquely identifies each row.  For example, imagine a car reservation app where you can book a car in advance.  The ID could be the customer's username.
+* **IDs** (Also called **primary keys**) - This field uniquely identifies each row.  For example, imagine a car reservation app where you can book a car in advance.  The ID of the reservation could be the reservation number (no two reservations would share the same reservation number, making the ID unique).  
 
 **Customer**
 
 | ID | Name| Age |  
-| ---- | --- |
+| ---- | --- | --- |
 | 11| John | 25 |
 | 12| Jenny | 31 |
 
@@ -62,14 +62,14 @@ For example, in our hypothetical car booking app, we could connect each reservat
 **Reservation**
 
 | ID| Customer | Time   
-| ---- | --- |
+| ---- | --- | --- |
 | 1 | 11 | 12/20/2015 |
 | 2 | 12 | 1/2/2016
 
 **Customer**
 
 | ID | Name| Age |  
-| ---- | --- |
+| ---- | --- | ---| 
 | 11| John | 25 |
 | 12| Jenny | 31 |
 
