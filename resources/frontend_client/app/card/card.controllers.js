@@ -129,6 +129,7 @@ CardControllers.controller('CardDetail', [
 
         var headerModel = {
             card: null,
+            tableMetadata: null,
             cardApi: Card,
             dashboardApi: Dashboard,
             broadcastEventFn: function(eventName, value) {
@@ -176,6 +177,9 @@ CardControllers.controller('CardDetail', [
                     delete card.id;
                     setCard(card, { setDirty: true, replaceState: false })
                 });
+            },
+            revertCardFn: function() {
+                revertCard();
             },
             toggleDataReferenceFn: toggleDataReference,
             cardIsNewFn: cardIsNew,
@@ -365,6 +369,7 @@ CardControllers.controller('CardDetail', [
         function renderHeader() {
             // ensure rendering model is up to date
             headerModel.card = angular.copy(card);
+            headerModel.tableMetadata = tableMetadata;
             headerModel.isShowingDataReference = $scope.isShowingDataReference;
 
             React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
@@ -842,6 +847,10 @@ CardControllers.controller('CardDetail', [
 
         function setDirty() {
             savedCardSerialized = null;
+        }
+
+        function revertCard() {
+            loadAndSetCard();
         }
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion

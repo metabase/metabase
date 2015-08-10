@@ -5,12 +5,15 @@ import OnClickOutside from 'react-onclickoutside';
 import FormField from './form_field.react';
 import Icon from './icon.react';
 
+import Query from "metabase/lib/query";
+
 var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'Saver',
     propTypes: {
         card: React.PropTypes.object.isRequired,
+        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
         saveFn: React.PropTypes.func.isRequired,
         deleteFn: React.PropTypes.func
     },
@@ -72,7 +75,7 @@ export default React.createClass({
         var card = this.props.card;
         card.name = this.refs.name.getDOMNode().value.trim();
         card.description = this.refs.description.getDOMNode().value.trim();
-        card.public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
+        card.public_perms = 2; // public read/write
 
         this.props.saveFn(card).then((success) => {
             if (this.isMounted()) {
@@ -109,12 +112,6 @@ export default React.createClass({
             return false;
         }
 
-        // TODO: hard coding values :(
-        var privacyOptions = [
-            (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Public (others can read)</option>)
-        ];
-
         var formError;
         if (this.state.errors) {
             var errorMessage;
@@ -140,6 +137,8 @@ export default React.createClass({
             "Button--primary": this.isFormReady()
         });
 
+        var name = this.props.card.name || Query.generateQueryDescription(this.props.card.dataset_query, this.props.tableMetadata);
+
         return (
             <form className="NewForm full" onSubmit={this.save}>
                 <div className="Form-header flex align-center">
@@ -154,25 +153,14 @@ export default React.createClass({
                         displayName="Name"
                         fieldName="name"
                         errors={this.state.errors}>
-                        <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={this.props.card.name} autofocus/>
+                        <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={name} autofocus/>
                     </FormField>
 
                     <FormField
                         displayName="Description (optional)"
                         fieldName="description"
                         errors={this.state.errors}>
-                        <input ref="description" className="Form-input full" name="description" placeholder="What else should people know about this?" defaultValue={this.props.card.description} />
-                    </FormField>
-
-                    <FormField
-                        displayName="Privacy"
-                        fieldName="public_perms"
-                        errors={this.state.errors}>
-                        <label className="Select">
-                            <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
-                                {privacyOptions}
-                            </select>
-                        </label>
+                        <textarea ref="description" className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.props.card.description} />
                     </FormField>
 
                     {this.renderCardDelete()}

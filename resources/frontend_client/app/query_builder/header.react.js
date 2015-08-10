@@ -8,6 +8,8 @@ import Icon from './icon.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
 
+import Input from '../admin/metadata/components/Input.react';
+
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -15,9 +17,11 @@ export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: React.PropTypes.object.isRequired,
+        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
         cardApi: React.PropTypes.func.isRequired,
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
+        revertCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         isShowingDataReference: React.PropTypes.bool.isRequired,
         toggleDataReferenceFn: React.PropTypes.func.isRequired,
@@ -104,20 +108,57 @@ export default React.createClass({
         }
     },
 
-    render: function() {
-        var title = this.props.card.name || "New question";
+    renderEditHeader: function() {
+        if (!this.props.cardIsNewFn()) {
+            var updateButton, discardButton;
+            if (this.props.cardIsDirtyFn()) {
+                discardButton = <a className="Button Button--small text-uppercase" href="#" onClick={this.props.revertCardFn}>Discard Changes</a>;
+            }
+            if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
+                updateButton = (
+                    <ActionButton
+                        actionFn={this.save}
+                        className='Button Button--small Button--primary text-uppercase'
+                        normalText="Update"
+                        activeText="Updating…"
+                        failedText="Update failed"
+                        successText="Updated"
+                    />
+                );
+            }
+            return (
+                <div className="EditHeader p1 px3 flex align-center">
+                    <span className="EditHeader-title">You are editing a saved question.</span>
+                    <span className="EditHeader-subtitle mx1">Changes will be reflected in 1 dashboard and can be reverted.</span>
+                    <span className="flex-align-right">
+                        {updateButton}
+                        {discardButton}
+                        <a className="Button Button--small text-uppercase" href="#">Delete</a>
+                    </span>
+                </div>
+            );
+        }
+    },
 
-        var editButton;
+    setCardAttribute: function(attribute, event) {
+        this.props.card[attribute] = event.target.value;
+        this.props.notifyCardChangedFn(this.props.card);
+    },
+
+    render: function() {
+        var titleAndDescription;
         if (!this.props.cardIsNewFn() && this.props.card.is_creator) {
-            editButton = (
-                <Saver
-                    card={this.props.card}
-                    saveFn={this.props.notifyCardChangedFn}
-                    saveButtonText="Update"
-                    className='inline-block ml1 link'
-                    canDelete={this.props.card.is_creator}
-                    deleteFn={this.deleteCard}
-                />
+            titleAndDescription = (
+                <div className="EditTitle flex flex-column flex-full bordered rounded mt1 mb2">
+                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.card.name} onChange={this.setCardAttribute.bind(null, "name")}/>
+                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.card.description} onChange={this.setCardAttribute.bind(null, "description")} placeholder="No description yet" />
+                </div>
+            );
+        } else {
+            titleAndDescription = (
+                <div className="flex align-center">
+                    <h1 className="Entity-title">New question</h1>
+                </div>
             );
         }
 
@@ -127,18 +168,11 @@ export default React.createClass({
             saveButton = (
                 <Saver
                     card={this.props.card}
+                    tableMetadata={this.props.tableMetadata}
                     saveFn={this.saveCard}
                     buttonText="Save"
                     saveButtonText="Save"
                     canDelete={false}
-                />
-            );
-        } else if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
-            // for existing cards we render a very simply ActionButton
-            saveButton = (
-                <ActionButton
-                    actionFn={this.save}
-                    className='Button Button--primary'
                 />
             );
         }
@@ -192,8 +226,7 @@ export default React.createClass({
         );
 
         var attribution;
-
-        if(this.props.card.creator) {
+        if(this.props.card.creator && false) {
             attribution = (
                 <div className="Entity-attribution">
                     Asked by {this.props.card.creator.common_name}
@@ -210,30 +243,29 @@ export default React.createClass({
         }
 
         return (
-            <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
-                <div className="Entity">
-                    <div className="flex align-center">
-                        <h1 className="Entity-title">{title}</h1>
-                        {this.permissions()}
-                        {editButton}
+            <div>
+                {this.renderEditHeader()}
+                <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+                    <div className="Entity">
+                        {titleAndDescription}
+                        {attribution}
                     </div>
-                    {attribution}
-                </div>
 
-                <div className="flex align-center flex-align-right">
+                    <div className="flex align-center flex-align-right">
 
-                    <span className="pr3">
-                        {saveButton}
-                        {queryModeToggle}
-                    </span>
+                        <span className="pr3">
+                            {saveButton}
+                            {queryModeToggle}
+                        </span>
 
-                    {cardFavorite}
-                    {cloneButton}
-                    {addToDashButton}
+                        {cardFavorite}
+                        {cloneButton}
+                        {addToDashButton}
 
-                    {dividerRight}
+                        {dividerRight}
 
-                    {dataReferenceButton}
+                        {dataReferenceButton}
+                    </div>
                 </div>
             </div>
         );

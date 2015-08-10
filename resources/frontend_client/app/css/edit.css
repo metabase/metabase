@@ -1,0 +1,42 @@
+.EditHeader {
+    background-color: #6CAFED;
+}
+
+.EditHeader-title {
+    color: white;
+}
+
+.EditHeader-subtitle {
+    color: rgba(255,255,255,0.5);
+}
+
+.EditHeader .Button {
+    margin-left: 0.75em;
+}
+
+
+.EditHeader .Button {
+    color: var(--brand-color);
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    background-color: rgba(255,255,255,0.5);
+    font-weight: normal;
+}
+
+.EditHeader .Button--primary {
+    background-color: white;
+}
+
+.EditHeader .Button:hover {
+    background-color: white;
+}
+
+
+.EditHeader .Button.Button--primary:hover {
+    background-color: var(--brand-color);
+}
+
+.EditTitle {
+    width: 455px;
+}
