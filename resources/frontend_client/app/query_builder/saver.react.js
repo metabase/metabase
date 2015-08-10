@@ -3,6 +3,7 @@
 import OnClickOutside from 'react-onclickoutside';
 
 import FormField from './form_field.react';
+import Icon from './icon.react';
 
 var cx = React.addons.classSet;
 
@@ -92,8 +93,10 @@ export default React.createClass({
         if(this.props.canDelete) {
            return (
                 <div className="Form-field">
-                    <label className="Form-label Form-offset mb1"><span>Danger zone</span>:</label>
-                    <label className="Form-offset">
+                    <label className="Form-label mb1">
+                        <span>Danger zone</span>:
+                    </label>
+                    <label>
                         <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
                     </label>
                 </div>
@@ -138,43 +141,48 @@ export default React.createClass({
         });
 
         return (
-            <form className="Form-new" onSubmit={this.save}>
-                <FormField
-                    displayName="Name"
-                    fieldName="name"
-                    showCharm={true}
-                    errors={this.state.errors}>
-                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your card?" defaultValue={this.props.card.name} autofocus/>
-                </FormField>
+            <form className="NewForm full" onSubmit={this.save}>
+                <div className="Form-header flex align-center">
+                    <h2 className="flex-full">Save Question</h2>
+                    <a className="text-grey-3" onClick={this.toggleModal}>
+                        <Icon name='close' width="16px" height="16px"/>
+                    </a>
+                </div>
 
-                <FormField
-                    displayName="Description (optional)"
-                    fieldName="description"
-                    showCharm={true}
-                    errors={this.state.errors}>
-                    <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" defaultValue={this.props.card.description} />
-                </FormField>
+                <div className="Form-inputs">
+                    <FormField
+                        displayName="Name"
+                        fieldName="name"
+                        errors={this.state.errors}>
+                        <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={this.props.card.name} autofocus/>
+                    </FormField>
 
-                <FormField
-                    displayName="Privacy"
-                    fieldName="public_perms"
-                    showCharm={false}
-                    errors={this.state.errors}>
-                    <label className="Select Form-offset">
-                        <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
-                            {privacyOptions}
-                        </select>
-                    </label>
-                </FormField>
+                    <FormField
+                        displayName="Description (optional)"
+                        fieldName="description"
+                        errors={this.state.errors}>
+                        <input ref="description" className="Form-input full" name="description" placeholder="What else should people know about this?" defaultValue={this.props.card.description} />
+                    </FormField>
 
-                {this.renderCardDelete()}
+                    <FormField
+                        displayName="Privacy"
+                        fieldName="public_perms"
+                        errors={this.state.errors}>
+                        <label className="Select">
+                            <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
+                                {privacyOptions}
+                            </select>
+                        </label>
+                    </FormField>
+
+                    {this.renderCardDelete()}
+                </div>
+
                 <div className="Form-actions">
                     <button className={buttonClasses}>
                         {this.props.saveButtonText}
                     </button>
-                    <a className="ml1" href="#" onClick={this.toggleModal}>
-                        Cancel
-                    </a>
+                    <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.toggleModal}>Cancel</a>
                     {formError}
                 </div>
             </form>

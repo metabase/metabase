@@ -81,27 +81,30 @@ export default React.createClass({
         );
 
         return (
-            <form className="NewForm Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset flex align-center mr4 mb4">
+            <form className="NewForm" onSubmit={this.createNewDash}>
+                <div className="Form-header flex align-center">
                     <h2 className="flex-full">Create Dashboard</h2>
                     <a className="text-grey-3" onClick={this.props.closeFn}>
                         <Icon name='close' width="16px" height="16px"/>
                     </a>
                 </div>
 
-                <FormField
-                    displayName="Name"
-                    fieldName="name"
-                    errors={this.state.errors}>
-                    <input className="Form-input Form-offset full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
-                </FormField>
+                <div className="Form-inputs">
+                    <FormField
+                        displayName="Name"
+                        fieldName="name"
+                        errors={this.state.errors}>
+                        <input className="Form-input
+                        full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
+                    </FormField>
 
-                <FormField
-                    displayName="Description"
-                    fieldName="description"
-                    errors={this.state.errors}>
-                    <input className="Form-input Form-offset full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
-                </FormField>
+                    <FormField
+                        displayName="Description"
+                        fieldName="description"
+                        errors={this.state.errors}>
+                        <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
+                    </FormField>
+                </div>
 
                 <div className="Form-actions">
                     {createButton}

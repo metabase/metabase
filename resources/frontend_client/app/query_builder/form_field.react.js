@@ -35,7 +35,7 @@ export default React.createClass({
         }
 
         var fieldLabel = (
-            <label className="Form-label Form-offset">{this.props.displayName}: {fieldErrorMessage}</label>
+            <label className="Form-label">{this.props.displayName} {fieldErrorMessage}</label>
         );
 
         var formCharm;

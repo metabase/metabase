@@ -114,7 +114,7 @@ export default React.createClass({
                 <Saver
                     card={this.props.card}
                     saveFn={this.props.notifyCardChangedFn}
-                    saveButtonText="Done"
+                    saveButtonText="Update"
                     className='inline-block ml1 link'
                     canDelete={this.props.card.is_creator}
                     deleteFn={this.deleteCard}
@@ -130,7 +130,7 @@ export default React.createClass({
                     card={this.props.card}
                     saveFn={this.saveCard}
                     buttonText="Save"
-                    saveButtonText="Create card"
+                    saveButtonText="Save"
                     canDelete={false}
                 />
             );

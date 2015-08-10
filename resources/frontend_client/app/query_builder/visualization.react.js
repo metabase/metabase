@@ -1,6 +1,7 @@
 'use strict';
 
 import { CardRenderer } from '../card/card.charting';
+import Icon from './icon.react';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
 import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';

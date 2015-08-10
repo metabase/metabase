@@ -189,44 +189,44 @@ export default React.createClass({
         }
 
         return (
-            <form className="Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset flex align-center mr4 mb2">
+            <form className="NewForm" onSubmit={this.createNewDash}>
+                <div className="Form-header flex align-center">
                     <h3 className="flex-full">Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
                         <Icon name='close' width="12px" height="12px"/>
                     </a>
                 </div>
 
-                <FormField
-                    displayName="Name"
-                    fieldName="name"
-                    showCharm={true}
-                    errors={this.state.errors}>
-                    <input ref="name" className="Form-input Form-offset full" name="name" placeholder="What is the name of your dashboard?" onChange={this.setName} autofocus />
-                </FormField>
+                <div className="Form-inputs">
+                    <FormField
+                        displayName="Name"
+                        fieldName="name"
+                        errors={this.state.errors}>
+                        <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your dashboard?" onChange={this.setName} autofocus />
+                    </FormField>
 
-                <FormField
-                    displayName="Description (optional)"
-                    fieldName="description"
-                    showCharm={true}
-                    errors={this.state.errors}>
-                    <input ref="description" className="Form-input Form-offset full" name="description" placeholder="What else should people know about this?" />
-                </FormField>
+                    <FormField
+                        displayName="Description (optional)"
+                        fieldName="description"
+                        errors={this.state.errors}>
+                        <input ref="description" className="Form-input full" name="description" placeholder="What else should people know about this?" />
+                    </FormField>
 
-                <FormField
-                    displayName="Visibility"
-                    fieldName="public_perms"
-                    showCharm={false}
-                    errors={this.state.errors}>
-                    <label className="Select Form-offset">
-                        <select className="mt1" ref="public_perms">
-                            {privacyOptions}
-                        </select>
-                    </label>
-                </FormField>
+                    <FormField
+                        displayName="Visibility"
+                        fieldName="public_perms"
+                        errors={this.state.errors}>
+                        <label className="Select">
+                            <select className="mt1" ref="public_perms">
+                                {privacyOptions}
+                            </select>
+                        </label>
+                    </FormField>
+                </div>
 
                 <div className="Form-actions">
                     {saveButton}
+                    <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closePopoverFn}>Cancel</a>
                     {formError}
                 </div>
             </form>

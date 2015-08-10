@@ -156,11 +156,6 @@
    color:    var(--form-input-placeholder-color);
 }
 
-.NewForm .Form-offset {
-    padding-left: 0;
-    margin-left: 2.4rem;
-}
-
 .NewForm .Form-label {
     text-transform: uppercase;
     color: color(var(--base-grey) shade(30%));
@@ -181,8 +176,19 @@
     outline: 0;
 }
 
+.NewForm .Form-header {
+    padding: var(--padding-4);
+}
+
+.NewForm .Form-inputs {
+    padding-left: var(--padding-4);
+    padding-right: var(--padding-4);
+}
+
 .NewForm .Form-actions {
     border-top: 1px solid #EAEAEA;
     padding-bottom: 1.2rem;
     padding-top: 1.2rem;
+    padding-left: var(--padding-4);
+    padding-right: var(--padding-4);
 }
