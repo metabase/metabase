@@ -118,7 +118,7 @@ export default React.createClass({
                 var dash = this.state.dashboards[i];
                 dashboardsList.push(
                     (
-                        <li className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
+                        <li key={dash.id} className="SelectionItem" onClick={this.addToExistingDash.bind(null, dash, false)}>
                             <Icon name='check' width="12px" height="12px" />
                     	    <span className="SelectionModule-display">{dash.name}</span>
                         </li>
