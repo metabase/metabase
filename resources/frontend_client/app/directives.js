@@ -142,22 +142,26 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
 
             function render() {
                 var props = {};
-                function copyProp(key, value) {
+                function copyProps(dest, src) {
+                    for (var key in src) {
+                        copyProp(dest, key, src[key]);
+                    }
+                }
+                function copyProp(dest, key, value) {
                     if (typeof value === "function") {
-                        props[key] = function() {
+                        dest[key] = function() {
                             try {
                                 return value.apply(this, arguments);
                             } finally {
                                 $timeout(() => scope.$digest());
                             }
                         }
+                        copyProps(dest[key], value);
                     } else {
-                        props[key] = value;
+                        dest[key] = value;
                     }
                 }
-                for (var key in scope) {
-                    copyProp(key, scope[key]);
-                }
+                copyProps(props, scope)
                 React.render(<Component {...props}/>, element[0]);
             }
 
