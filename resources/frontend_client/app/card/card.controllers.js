@@ -187,7 +187,7 @@ CardControllers.controller('CardDetail', [
             isShowingDataReference: null,
             databases: null,
             tables: null,
-            options: null,
+            tableMetadata: null,
             tableForeignKeys: null,
             query: null,
             setQueryFn: setQuery,
@@ -376,7 +376,7 @@ CardControllers.controller('CardDetail', [
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
             editorModel.tables = tables;
-            editorModel.options = tableMetadata;
+            editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
 

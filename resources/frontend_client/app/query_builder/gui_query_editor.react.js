@@ -23,7 +23,7 @@ export default React.createClass({
     propTypes: {
         databases: React.PropTypes.array.isRequired,
         query: React.PropTypes.object.isRequired,
-        options: React.PropTypes.object, // can't be required, sometimes null
+        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: React.PropTypes.bool.isRequired,
         setQueryFn: React.PropTypes.func.isRequired,
         setDatabaseFn: React.PropTypes.func.isRequired,
@@ -161,7 +161,7 @@ export default React.createClass({
         var filterList;
         var addFilterButton;
 
-        if (this.props.options) {
+        if (this.props.tableMetadata) {
             enabled = true;
 
             var queryFilters = Query.getFilters(this.props.query.query);
@@ -173,7 +173,7 @@ export default React.createClass({
                                 key={index}
                                 placeholder="Item"
                                 filter={filter}
-                                tableMetadata={this.props.options}
+                                tableMetadata={this.props.tableMetadata}
                                 index={index}
                                 removeFilter={this.removeFilter}
                                 updateFilter={this.updateFilter}
@@ -212,11 +212,11 @@ export default React.createClass({
 
     renderAggregation: function() {
         // aggregation clause.  must have table details available
-        if (this.props.options) {
+        if (this.props.tableMetadata) {
             return (
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
-                    tableMetadata={this.props.options}
+                    tableMetadata={this.props.tableMetadata}
                     updateAggregation={this.updateAggregation}
                 />
             );
@@ -236,8 +236,8 @@ export default React.createClass({
         var addBreakoutButton;
 
         // breakout clause.  must have table details available & a valid aggregation defined
-        if (this.props.options &&
-                this.props.options.breakout_options.fields.length > 0 &&
+        if (this.props.tableMetadata &&
+                this.props.tableMetadata.breakout_options.fields.length > 0 &&
                 !Query.hasEmptyAggregation(this.props.query.query)) {
             enabled = true;
 
@@ -247,7 +247,7 @@ export default React.createClass({
             breakoutList = []
             this.props.query.query.breakout.forEach((breakout, index) => {
                 var breakoutListOpen = breakout === null;
-                var fieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
+                var fieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, usedFields);
 
                 if (breakout) {
                     usedFields[breakout] = true;
@@ -270,7 +270,7 @@ export default React.createClass({
                         placeholder='field'
                         field={breakout}
                         fieldOptions={fieldOptions}
-                        tableName={this.props.options.display_name}
+                        tableName={this.props.tableMetadata.display_name}
                         isInitiallyOpen={breakoutListOpen}
                         setField={this.updateDimension.bind(null, index)}
                         removeField={this.removeDimension.bind(null, index)}
@@ -278,7 +278,7 @@ export default React.createClass({
                 );
             });
 
-            var remainingFieldOptions = Query.getFieldOptions(this.props.options.fields, true, this.props.options.breakout_options.validFieldsFilter, usedFields);
+            var remainingFieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, usedFields);
             if (remainingFieldOptions.count > 0) {
                 if (this.props.query.query.breakout.length === 0) {
                     addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
@@ -308,21 +308,21 @@ export default React.createClass({
     renderSort: function() {
         var sortFieldOptions;
 
-        if (this.props.options) {
+        if (this.props.tableMetadata) {
             sortFieldOptions = Query.getFieldOptions(
-                this.props.options.fields,
+                this.props.tableMetadata.fields,
                 true,
                 Query.getSortableFields.bind(null, this.props.query.query)
             );
         }
 
         var sortList = [];
-        if (this.props.query.query.order_by && this.props.options) {
+        if (this.props.query.query.order_by && this.props.tableMetadata) {
             sortList = this.props.query.query.order_by.map((order_by, index) => {
                 return (
                     <SortWidget
                         key={index}
-                        tableName={this.props.options.display_name}
+                        tableName={this.props.tableMetadata.display_name}
                         sort={order_by}
                         fieldOptions={sortFieldOptions}
                         removeSort={this.removeSort.bind(null, index)}
@@ -412,7 +412,7 @@ export default React.createClass({
         var triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
 
         // TODO: use this logic
-        if (this.props.options && !Query.hasEmptyAggregation(this.props.query.query) &&
+        if (this.props.tableMetadata && !Query.hasEmptyAggregation(this.props.query.query) &&
                 (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
 
         } else if (Query.canAddLimitAndSort(this.props.query.query)) {
