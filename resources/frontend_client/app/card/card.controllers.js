@@ -367,12 +367,6 @@ CardControllers.controller('CardDetail', [
             headerModel.card = angular.copy(card);
             headerModel.isShowingDataReference = $scope.isShowingDataReference;
 
-            if (queryResult && !queryResult.error) {
-                headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-            } else {
-                headerModel.downloadLink = null;
-            }
-
             React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
         }
 
@@ -402,6 +396,12 @@ CardControllers.controller('CardDetail', [
             visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
+
+            if (queryResult && !queryResult.error) {
+                visualizationModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
+            } else {
+                visualizationModel.downloadLink = null;
+            }
 
             React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }

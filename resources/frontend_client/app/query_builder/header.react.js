@@ -19,7 +19,6 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
-        downloadLink: React.PropTypes.string,
         isShowingDataReference: React.PropTypes.bool.isRequired,
         toggleDataReferenceFn: React.PropTypes.func.isRequired,
         cardIsNewFn: React.PropTypes.func.isRequired,
@@ -144,16 +143,6 @@ export default React.createClass({
             );
         }
 
-        // NOTE: we expect our component provider set this to something falsey if download not available
-        var downloadButton;
-        if (this.props.downloadLink) {
-            downloadButton = (
-                <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download' width="16px" height="16px" />
-                </a>
-            );
-        }
-
         var cloneButton;
         if (this.props.card.id) {
             cloneButton = (
@@ -212,14 +201,8 @@ export default React.createClass({
             );
         }
 
-        var hasLeft = !!downloadButton;
         var hasMiddle = !!(cardFavorite || cloneButton || addToDashButton);
         var hasRight = !!dataReferenceButton;
-
-        var dividerLeft;
-        if (hasLeft && (hasMiddle || hasRight)) {
-            dividerLeft = <div className="border-right border-dark mx1">&nbsp;</div>
-        }
 
         var dividerRight;
         if (hasRight && hasMiddle) {
@@ -243,10 +226,6 @@ export default React.createClass({
                         {saveButton}
                         {queryModeToggle}
                     </span>
-
-                    {downloadButton}
-
-                    {dividerLeft}
 
                     {cardFavorite}
                     {cloneButton}

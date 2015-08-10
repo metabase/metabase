@@ -20,6 +20,7 @@ export default React.createClass({
         visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
+        downloadLink: React.PropTypes.string,
         setDisplayFn: React.PropTypes.func.isRequired,
         setChartColorFn: React.PropTypes.func.isRequired,
         setSortFn: React.PropTypes.func.isRequired,
@@ -89,8 +90,11 @@ export default React.createClass({
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
+                    {!this.queryIsDirty() && this.renderCount()}
                 </div>
-                {this.renderCount()}
+                <div className="flex-align-right">
+                    {this.renderDownloadButton()}
+                </div>
             </div>
         );
     },
@@ -113,11 +117,22 @@ export default React.createClass({
     renderCount: function() {
         if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
-                <div className="flex-align-right mt1">
+                <div className="mt1">
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
                     <b>{this.props.result.row_count}</b>
                     { (this.props.result.data.rows.length !== 1) ? (" rows") : (" row")}.
                 </div>
+            );
+        }
+    },
+
+    renderDownloadButton: function() {
+        // NOTE: we expect our component provider set this to something falsey if download not available
+        if (this.props.downloadLink) {
+            return (
+                <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                    <Icon name='download' width="16px" height="16px" />
+                </a>
             );
         }
     },
