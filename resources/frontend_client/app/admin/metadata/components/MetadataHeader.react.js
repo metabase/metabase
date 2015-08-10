@@ -1,9 +1,11 @@
 'use strict';
 
+import SaveStatus from './SaveStatus.react';
+import Toggle from './Toggle.react';
+
 import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.react';
 import ColumnarSelector from '../../../query_builder/columnar_selector.react';
 import Icon from '../../../query_builder/icon.react';
-import LoadingIcon from '../../../components/icons/loading.react';
 
 export default React.createClass({
     displayName: "MetadataHeader",
@@ -15,27 +17,16 @@ export default React.createClass({
         toggleShowSchema: React.PropTypes.func.isRequired,
     },
 
-    getInitialState: function() {
-        return {
-            saving: false,
-            recentlySavedTimeout: null,
-            error: null
-        }
-    },
-
     setSaving: function() {
-        clearTimeout(this.state.recentlySavedTimeout);
-        this.setState({ saving: true, recentlySavedTimeout: null, error: null });
+        this.refs.status.setSaving.apply(this, arguments);
     },
 
     setSaved: function() {
-        clearTimeout(this.state.recentlySavedTimeout);
-        var recentlySavedTimeout = setTimeout(() => this.setState({ recentlySavedTimeout: null }), 5000);
-        this.setState({ saving: false, recentlySavedTimeout: recentlySavedTimeout, error: null });
+        this.refs.status.setSaved.apply(this, arguments);
     },
 
-    setSaveError: function(error) {
-        this.setState({ saving: false, recentlySavedTimeout: null, error: error });
+    setSaveError: function() {
+        this.refs.status.setSaveError.apply(this, arguments);
     },
 
     renderDbSelector: function() {
@@ -74,26 +65,16 @@ export default React.createClass({
         }
     },
 
-    renderSaveWidget: function() {
-        if (this.state.saving) {
-            return (<div className="mx2 px2 border-right"><LoadingIcon width="24" height="24" /></div>);
-        } else if (this.state.error) {
-            return (<div className="mx2 px2 border-right text-error">Error: {this.state.error}</div>)
-        } else if (this.state.recentlySavedTimeout != null) {
-            return (<div className="mx2 px2 border-right"><Icon name="check" width="12" height="12" /> Saved</div>)
-        }
-    },
-
     render: function() {
         return (
             <div className="MetadataEditor-header flex align-center">
-                <div className="MetadataEditor-header-section h2">
+                <div className="MetadataEditor-headerSection h2">
                     <span className="text-grey-4">Edit Metadata for</span> {this.renderDbSelector()}
                 </div>
-                <div className="MetadataEditor-header-section flex-align-right flex align-center">
-                    {this.renderSaveWidget()}
-                    <span>Show original schema</span>
-                    <span className={"Toggle " + (this.props.isShowingSchema ? "selected" : "")} onClick={this.props.toggleShowSchema}></span>
+                <div className="MetadataEditor-headerSection flex-align-right flex align-center">
+                    <SaveStatus ref="status" />
+                    <span className="mr1">Show original schema</span>
+                    <Toggle value={this.props.isShowingSchema} onChange={this.props.toggleShowSchema} />
                 </div>
             </div>
         );
