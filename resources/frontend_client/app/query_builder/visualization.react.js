@@ -115,7 +115,7 @@ export default React.createClass({
                 <div className="flex-align-right mt1">
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
                     <b>{this.props.result.row_count}</b>
-                    { (this.props.result.data.rows.length > 1) ? (" rows") : (" row")}.
+                    { (this.props.result.data.rows.length !== 1) ? (" rows") : (" row")}.
                 </div>
             );
         }
