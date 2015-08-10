@@ -1,6 +1,5 @@
 <div class="Dashboard full-height">
-
-    <div class="wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
+    <div class="Dash-wrapper wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
         <div class="full-height text-centered flex layout-centered">
             <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
         </div>
@@ -17,7 +16,7 @@
 
     <div ng-if="dashboardLoaded && !dashboardLoadError">
         <header class="py2 mt2 border-bottom">
-            <div class="wrapper flex align-center">
+            <div class="Dash-wrapper wrapper flex align-center">
                 <div class="Entity">
                     <div class="flex align-center">
                         <h4 class="Entity-title">{{dashboard.name}}</h4>
@@ -37,7 +36,7 @@
             </div>
         </header>
 
-        <div class="wrapper full-height">
+        <div class="Dash-wrapper wrapper full-height">
 
             <div ng-if="!dashboardLoaded">
                 <div class="flex layout-centered text-centered full-height">
