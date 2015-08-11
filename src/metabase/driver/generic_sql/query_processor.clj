@@ -192,12 +192,14 @@
         :=           {field ['=    value]}
         :!=          {field ['not= value]}))))
 
-(defmethod apply-form :filter [[_ {:keys [compound-type subclauses]}]]
-  (let [[first-subclause :as subclauses] (map filter-subclause->predicate subclauses)]
-    `(where ~(case compound-type
-               :and    `(~'and ~@subclauses)
-               :or     `(~'or  ~@subclauses)
-               :simple first-subclause))))
+(defn- filter-clause->predicate [{:keys [compound-type subclauses], :as clause}]
+  (case compound-type
+    :and `(~'and ~@(map filter-clause->predicate subclauses))
+    :or  `(~'or  ~@(map filter-clause->predicate subclauses))
+    nil  (filter-subclause->predicate clause)))
+
+(defmethod apply-form :filter [[_ clause]]
+  `(where ~(filter-clause->predicate clause)))
 
 
 (defmethod apply-form :join-tables [[_ join-tables]]
