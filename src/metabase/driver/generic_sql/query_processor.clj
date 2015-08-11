@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
             [metabase.config :as config]
+            [metabase.driver :as driver]
             (metabase.driver [interface :refer [supports?]]
                              [query-processor :as qp])
             (metabase.driver.generic-sql [interface :as i]
@@ -33,10 +34,11 @@
       (let [korma-select-form `(select ~'entity ~@(->> (map apply-form (:query query))
                                                        (filter identity)
                                                        (mapcat #(if (vector? %) % [%]))))
-            set-timezone-sql  (when-let [timezone (:timezone (:details database))]
-                                (let [driver (:driver *query*)]
-                                  (when (supports? driver :set-timezone)
-                                    `(exec-raw ~(i/timezone->set-timezone-sql driver timezone)))))
+            set-timezone-sql  (when-let [timezone (driver/report-timezone)]
+                                (when (seq timezone)
+                                  (let [driver (:driver *query*)]
+                                    (when (supports? driver :set-timezone)
+                                      `(exec-raw ~(i/timezone->set-timezone-sql driver timezone))))))
             korma-form        `(let [~'entity (korma-entity ~database ~source-table)]
                                  ~(if set-timezone-sql `(korma.db/with-db (:db ~'entity)
                                                           (korma.db/transaction
@@ -87,24 +89,26 @@
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
 
+(defn- quote-name [nm]
+  (i/quote-name (:driver *query*) nm))
+
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
     ([this]
      (formatted this false))
     ([{:keys [table-name field-name base-type special-type]} include-as?]
-     (let [quote-name (partial i/quote-name (:driver *query*))]
-       (cond
-         (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         :else                                              (keyword (format "%s.%s" table-name field-name))))))
+     (cond
+       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       :else                                              (keyword (format "%s.%s" table-name field-name)))))
 
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
@@ -114,12 +118,12 @@
      (formatted this false))
     ([_ _]
      (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
-       `(raw ~(case aggregation-type
-                :avg      "\"avg\""
-                :count    "\"count\""
-                :distinct "\"count\""
-                :stddev   "\"stddev\""
-                :sum      "\"sum\"")))))
+       `(raw ~(quote-name (case aggregation-type
+                            :avg      "avg"
+                            :count    "count"
+                            :distinct "count"
+                            :stddev   "stddev"
+                            :sum      "sum"))))))
 
 
   Value
@@ -178,23 +182,28 @@
     ;; all other filter subclauses
     (let [field (formatted (:field filter))
           value (some-> filter :value formatted)]
-      (case filter-type
-        :between  {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
-        :not-null {field ['not= nil]}
-        :is-null  {field ['=    nil]}
-        :>        {field ['>    value]}
-        :<        {field ['<    value]}
-        :>=       {field ['>=   value]}
-        :<=       {field ['<=   value]}
-        :=        {field ['=    value]}
-        :!=       {field ['not= value]}))))
+      (case          filter-type
+        :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
+        :not-null    {field ['not= nil]}
+        :is-null     {field ['=    nil]}
+        :starts-with {field ['like (str value \%)]}
+        :contains    {field ['like (str \% value \%)]}
+        :ends-with   {field ['like (str \% value)]}
+        :>           {field ['>    value]}
+        :<           {field ['<    value]}
+        :>=          {field ['>=   value]}
+        :<=          {field ['<=   value]}
+        :=           {field ['=    value]}
+        :!=          {field ['not= value]}))))
 
-(defmethod apply-form :filter [[_ {:keys [compound-type subclauses]}]]
-  (let [[first-subclause :as subclauses] (map filter-subclause->predicate subclauses)]
-    `(where ~(case compound-type
-               :and    `(~'and ~@subclauses)
-               :or     `(~'or  ~@subclauses)
-               :simple first-subclause))))
+(defn- filter-clause->predicate [{:keys [compound-type subclauses], :as clause}]
+  (case compound-type
+    :and `(~'and ~@(map filter-clause->predicate subclauses))
+    :or  `(~'or  ~@(map filter-clause->predicate subclauses))
+    nil  (filter-subclause->predicate clause)))
+
+(defmethod apply-form :filter [[_ clause]]
+  `(where ~(filter-clause->predicate clause)))
 
 
 (defmethod apply-form :join-tables [[_ join-tables]]

@@ -8,12 +8,20 @@
     flex: 1;
 }
 
+.flex-half {
+    flex: 0.5;
+}
+
 .align-center {
     align-items: center;
 }
 
 .justify-center {
     justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
 }
 
 .align-start {

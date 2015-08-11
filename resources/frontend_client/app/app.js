@@ -26,6 +26,7 @@ var Corvus = angular.module('corvus', [
     'corvusadmin.databases',
     'corvusadmin.people',
     'corvusadmin.settings',
+    'metabase.admin.metadata',
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({

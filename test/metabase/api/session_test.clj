@@ -151,7 +151,11 @@
 ;; GET /session/properties
 ;; Check that a non-superuser can't read settings
 (expect
-  [{:value "Metabase Test"
+  [{:value nil
+    :key "anon-tracking-enabled"
+    :description "Enable the collection of anonymous usage data in order to help Metabase improve."
+    :default "true"}
+   {:value "Metabase Test"
     :key "site-name"
     :description "The name used for this instance of Metabase."
     :default "Metabase"}]

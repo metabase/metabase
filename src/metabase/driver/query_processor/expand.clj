@@ -423,8 +423,32 @@
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"=" "!=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
+  [(filter-type :guard (partial contains? #{"!=" "=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
+
+  ;; = with more than one value -- Convert to OR and series of = clauses
+  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  (map->Filter {:compound-type :or
+                :subclauses    (vec (for [value values]
+                                      (map->Filter:Field+Value {:filter-type :=
+                                                                :field       (ph field-id)
+                                                                :value       (ph field-id value)})))})
+
+  ;; != with more than one value -- Convert to AND and series of != clauses
+  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  (map->Filter {:compound-type :and
+                :subclauses    (vec (for [value values]
+                                      (map->Filter:Field+Value {:filter-type :!=
+                                                                :field       (ph field-id)
+                                                                :value       (ph field-id value)})))})
+
+  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard Field?) (val :guard string?)]
+  (map->Filter:Field+Value {:filter-type (case filter-type
+                                           "STARTS_WITH" :starts-with
+                                           "CONTAINS"    :contains
+                                           "ENDS_WITH"   :ends-with)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
@@ -436,11 +460,10 @@
 
 (defparser parse-filter
   ["AND" & subclauses] (map->Filter {:compound-type :and
-                                     :subclauses    (mapv parse-filter-subclause subclauses)})
+                                     :subclauses    (mapv parse-filter subclauses)})
   ["OR" & subclauses]  (map->Filter {:compound-type :or
-                                     :subclauses    (mapv parse-filter-subclause subclauses)})
-  subclause            (map->Filter {:compound-type :simple
-                                     :subclauses    [(parse-filter-subclause subclause)]}))
+                                     :subclauses    (mapv parse-filter subclauses)})
+  subclause            (parse-filter-subclause subclause))
 
 
 ;; ## -------------------- Order-By --------------------

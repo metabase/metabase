@@ -5,7 +5,7 @@ import FieldName from "./field_name.react";
 import Icon from "./icon.react";
 import Popover from "./popover.react";
 
-import Query from "./query";
+import Query from "metabase/lib/query";
 
 export default React.createClass({
     displayName: "FieldWidget",

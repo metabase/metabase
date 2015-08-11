@@ -7,7 +7,16 @@ var SettingsAdmin = angular.module('corvusadmin.settings', [
 
 SettingsAdmin.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/admin/settings/', {
-        templateUrl: '/app/admin/settings/partials/settings.html',
-        controller: 'SettingsAdminController'
+        template: '<div class="flex flex-column flex-full" mb-react-component="SettingsEditor"></div>',
+        controller: 'SettingsEditor',
+        resolve: {
+            settings: ['SettingsAdminServices', async function(SettingsAdminServices) {
+                var settings = await SettingsAdminServices.list().$promise
+                return settings.map(function(setting) {
+                    setting.originalValue = setting.value;
+                    return setting;
+                });
+            }]
+        }
     });
 }]);

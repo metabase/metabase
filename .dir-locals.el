@@ -21,6 +21,7 @@
                               (conda 0)
                               (context 2)
                               (create-database-definition 1)
+                              (dataset-case 0)
                               (execute-query 1)
                               (execute-sql! 2)
                               (expect 1)

@@ -42,6 +42,14 @@ button {
     outline: none;
 }
 
+a {
+    color: inherit;
+}
+
+input {
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+}
+
 .disabled {
   pointer-events: none;
   opacity: 0.4;
