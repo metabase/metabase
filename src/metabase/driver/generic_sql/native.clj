@@ -32,7 +32,6 @@
                                                 ;; If timezone is specified in the Query and the driver supports setting the timezone
                                                 ;; then execute SQL to set it
                                                 (when-let [timezone (or (-> query :native :timezone)
-                                                                        (-> database :details :timezone)
                                                                         (driver/report-timezone))]
                                                   (when (seq timezone)
                                                     (let [driver (driver/engine->driver (:engine database))]

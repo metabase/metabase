@@ -34,8 +34,7 @@
       (let [korma-select-form `(select ~'entity ~@(->> (map apply-form (:query query))
                                                        (filter identity)
                                                        (mapcat #(if (vector? %) % [%]))))
-            set-timezone-sql  (when-let [timezone (or (-> database :details :timezone)
-                                                      (driver/report-timezone))]
+            set-timezone-sql  (when-let [timezone (driver/report-timezone)]
                                 (when (seq timezone)
                                   (let [driver (:driver *query*)]
                                     (when (supports? driver :set-timezone)
