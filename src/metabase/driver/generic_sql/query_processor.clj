@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
             [metabase.config :as config]
+            [metabase.driver :as driver]
             (metabase.driver [interface :refer [supports?]]
                              [query-processor :as qp])
             (metabase.driver.generic-sql [interface :as i]
@@ -33,10 +34,11 @@
       (let [korma-select-form `(select ~'entity ~@(->> (map apply-form (:query query))
                                                        (filter identity)
                                                        (mapcat #(if (vector? %) % [%]))))
-            set-timezone-sql  (when-let [timezone (:timezone (:details database))]
-                                (let [driver (:driver *query*)]
-                                  (when (supports? driver :set-timezone)
-                                    `(exec-raw ~(i/timezone->set-timezone-sql driver timezone)))))
+            set-timezone-sql  (when-let [timezone (driver/report-timezone)]
+                                (when (seq timezone)
+                                  (let [driver (:driver *query*)]
+                                    (when (supports? driver :set-timezone)
+                                      `(exec-raw ~(i/timezone->set-timezone-sql driver timezone))))))
             korma-form        `(let [~'entity (korma-entity ~database ~source-table)]
                                  ~(if set-timezone-sql `(korma.db/with-db (:db ~'entity)
                                                           (korma.db/transaction
