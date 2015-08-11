@@ -270,3 +270,16 @@
   `*dataset*` is bound to the current dataset inside each test."
   [expected actual]
   `(expect-with-datasets ~all-valid-dataset-names ~expected ~actual))
+
+(defmacro dataset-case
+  "Case statement that switches off of the current dataset.
+
+     (dataset-case
+       :h2       ...
+       :postgres ...)"
+  [& pairs]
+  `(cond ~@(mapcat (fn [[dataset then]]
+                     (assert (contains? all-valid-dataset-names dataset))
+                     [`(= *dataset* (dataset-name->dataset ~dataset))
+                      then])
+                   (partition 2 pairs))))

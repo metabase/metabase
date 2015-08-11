@@ -3,7 +3,7 @@
             [metabase.driver.generic-sql.interface :as i]
             [metabase.driver.postgres :refer :all]
             [metabase.test.data.interface :refer [def-database-definition]]
-            [metabase.test.util.mql :refer [Q]]))
+            [metabase.test.util.q :refer [Q]]))
 
 ;; # Check that database->connection details still works whether we're dealing with new-style or legacy details
 ;; ## new-style
@@ -67,14 +67,14 @@
                    [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
                    [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
                    [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]}
-  (-> (Q run against metabase.driver.postgres-test/with-uuid using postgres
+  (-> (Q dataset metabase.driver.postgres-test/with-uuid use postgres
          return :data
          aggregate rows of users)
       (update :cols (partial mapv #(dissoc % :id :table_id)))))
 
 ;; Check that we can filter by a UUID Field
 (expect [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (Q run against metabase.driver.postgres-test/with-uuid using postgres
-     return :data :rows
+  (Q dataset metabase.driver.postgres-test/with-uuid use postgres
+     return rows
      aggregate rows of users
      filter = user_id "4652b2e7-d940-4d55-a971-7e484566663e"))

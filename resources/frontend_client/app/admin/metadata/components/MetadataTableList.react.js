@@ -37,17 +37,17 @@ export default React.createClass({
         if (this.props.tables) {
             var tables = _.sortBy(this.props.tables, "display_name");
             _.each(tables, (table) => {
-                var classes = cx("AdminList-item", {
-                    "selected": this.props.tableId === table.id,
-                    "flex": true,
-                    "align-center": true
+                var classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
+                    "selected": this.props.tableId === table.id
                 });
                 var row = (
-                    <li key={table.id} className={classes} onClick={this.props.selectTable.bind(null, table)}>
-                        {table.display_name}
-                        <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
+                    <li key={table.id}>
+                        <a href="#" className={classes} onClick={this.props.selectTable.bind(null, table)}>
+                            {table.display_name}
+                            <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
+                        </a>
                     </li>
-                )
+                );
                 var regex = this.state.searchRegex;
                 if (!regex || regex.test(table.display_name) || regex.test(table.name)) {
                     if (table.visibility_type) {

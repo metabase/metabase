@@ -20,10 +20,10 @@ export default React.createClass({
                     var title = section.title;
                     var items = section.items.map((item, rowIndex) => {
                         var itemClasses = cx({
-                            'cursor-pointer': true,
                             'ColumnarSelector-row': true,
                             'ColumnarSelector-row--selected': item === column.selectedItem,
-                            'flex': true
+                            'flex': true,
+                            'no-decoration': true
                         });
                         var checkIcon = lastColumn ? <Icon name="check" width="14" height="14"/> : null;
                         var descriptionElement;
@@ -32,12 +32,14 @@ export default React.createClass({
                             descriptionElement = <div className="ColumnarSelector-description">{description}</div>
                         }
                         return (
-                            <li key={rowIndex} className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>
-                                {checkIcon}
-                                <div className="flex flex-column">
-                                    {column.itemTitleFn(item)}
-                                    {descriptionElement}
-                                </div>
+                            <li key={rowIndex}>
+                                <a className={itemClasses} href="#" onClick={column.itemSelectFn.bind(null, item)}>
+                                    {checkIcon}
+                                    <div className="flex flex-column">
+                                        {column.itemTitleFn(item)}
+                                        {descriptionElement}
+                                    </div>
+                                </a>
                             </li>
                         );
                     });
