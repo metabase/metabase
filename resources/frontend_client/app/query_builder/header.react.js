@@ -7,8 +7,9 @@ import CardFavoriteButton from './card_favorite_button.react';
 import Icon from './icon.react';
 import QueryModeToggle from './query_mode_toggle.react';
 import Saver from './saver.react';
-
+import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
 import Input from '../admin/metadata/components/Input.react';
+import PopoverWithTrigger from './popover_with_trigger.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -21,6 +22,7 @@ export default React.createClass({
         cardApi: React.PropTypes.func.isRequired,
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
+        notifyCardDeletedFn: React.PropTypes.func.isRequired,
         revertCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         isShowingDataReference: React.PropTypes.bool.isRequired,
@@ -133,7 +135,18 @@ export default React.createClass({
                     <span className="flex-align-right">
                         {updateButton}
                         {discardButton}
-                        <a className="Button Button--small text-uppercase" href="#">Delete</a>
+                        <PopoverWithTrigger
+                            ref="deleteModal"
+                            tether={false}
+                            triggerClasses="Button Button--small text-uppercase"
+                            triggerElement="Delete"
+                        >
+                            <DeleteQuestionModal
+                                card={this.props.card}
+                                deleteCardFn={this.deleteCard}
+                                closeFn={() => this.refs.deleteModal.toggleModal()}
+                            />
+                        </PopoverWithTrigger>
                     </span>
                 </div>
             );

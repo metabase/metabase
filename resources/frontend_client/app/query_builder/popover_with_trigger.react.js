@@ -8,6 +8,12 @@ import Tether from 'tether';
 export default React.createClass({
     displayName: 'PopoverWithTrigger',
 
+    getDefaultProps: function() {
+        return {
+            tether: true
+        };
+    },
+
     getInitialState: function() {
         // a selection module can be told to be open on initialization but otherwise is closed
         var isInitiallyOpen = this.props.isInitiallyOpen || false;
@@ -19,7 +25,9 @@ export default React.createClass({
 
     componentWillMount: function() {
         var popoverContainer = document.createElement('span');
-        popoverContainer.className = 'PopoverContainer';
+        if (this.props.tether) {
+            popoverContainer.className = 'PopoverContainer';
+        }
 
         this._popoverElement = popoverContainer;
 
@@ -87,17 +95,20 @@ export default React.createClass({
             // modal is open, lets do this!
             React.render(this._popoverComponent(), this._popoverElement);
 
-            var tetherOptions = (this.props.tetherOptions) ? this.props.tetherOptions : this._tetherOptions();
+            if (this.props.tether) {
+                var tetherOptions = (this.props.tetherOptions) ? this.props.tetherOptions : this._tetherOptions();
 
-            // NOTE: these must be set here because they relate to OUR component and can't be passed in
-            tetherOptions.element = this._popoverElement;
-            tetherOptions.target = this.getDOMNode();
+                // NOTE: these must be set here because they relate to OUR component and can't be passed in
+                tetherOptions.element = this._popoverElement;
+                tetherOptions.target = this.getDOMNode();
 
-            if (this._tether !== undefined && this._tether !== null) {
-                this._tether.setOptions(tetherOptions);
-            } else {
-                this._tether = new Tether(tetherOptions);
+                if (this._tether !== undefined && this._tether !== null) {
+                    this._tether.setOptions(tetherOptions);
+                } else {
+                    this._tether = new Tether(tetherOptions);
+                }
             }
+
 
         } else {
             // if the modal isn't open then actively unmount our popover

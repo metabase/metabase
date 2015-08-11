@@ -1,6 +1,5 @@
 'use strict';
 
-import PopoverWithTrigger from '../query_builder/popover_with_trigger.react';
 import FormField from '../query_builder/form_field.react';
 import Icon from '../query_builder/icon.react';
 
