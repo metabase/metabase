@@ -51,7 +51,7 @@ export default React.createClass({
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
-                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this data to a dashboard" onClick={this.toggleModal}>
+                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this to a dashboard" onClick={this.toggleModal}>
                     <Icon name='addtodash' width="16px" height="16px"/>
                 </a>
                 {this.addToDash()}
