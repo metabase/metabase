@@ -33,10 +33,11 @@
                                                 ;; then execute SQL to set it
                                                 (when-let [timezone (or (-> query :native :timezone)
                                                                         (driver/report-timezone))]
-                                                  (let [driver (driver/engine->driver (:engine database))]
-                                                    (when (supports? driver :set-timezone)
-                                                      (log/debug "Setting timezone to:" timezone)
-                                                      (jdbc/db-do-prepared conn (i/timezone->set-timezone-sql driver timezone)))))
+                                                  (when (seq timezone)
+                                                    (let [driver (driver/engine->driver (:engine database))]
+                                                      (when (supports? driver :set-timezone)
+                                                        (log/debug "Setting timezone to:" timezone)
+                                                        (jdbc/db-do-prepared conn (i/timezone->set-timezone-sql driver timezone))))))
                                                 (jdbc/query conn sql :as-arrays? true))]
          ;; TODO - Why don't we just use annotate?
          {:rows    rows

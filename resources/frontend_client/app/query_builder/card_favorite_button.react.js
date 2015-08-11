@@ -83,7 +83,7 @@ export default React.createClass({
         });
 
         return (
-            <a className={iconClasses} href="#" onClick={this.toggleFavorite}>
+            <a className={iconClasses} href="#" onClick={this.toggleFavorite} title="Favorite this question">
                 <Icon name="star" width="16px" height="16px"></Icon>
             </a>
         );

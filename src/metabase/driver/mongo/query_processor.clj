@@ -315,14 +315,15 @@
       :<=          {field {$lte value}}
       :>=          {field {$gte value}})))
 
+(defn- parse-filter-clause [{:keys [compound-type subclauses], :as clause}]
+  (cond
+    (= compound-type :and) {$and (mapv parse-filter-clause subclauses)}
+    (= compound-type :or)  {$or  (mapv parse-filter-clause subclauses)}
+    :else                  (parse-filter-subclause clause)))
+
 
 (defclause :filter filter-clause
-  (let [{:keys [compound-type subclauses]} filter-clause
-        subclauses (mapv parse-filter-subclause subclauses)]
-    (case compound-type
-      :and    {$and subclauses}
-      :or     {$or  subclauses}
-      :simple (first subclauses))))
+  (parse-filter-clause filter-clause))
 
 
 ;; ### limit

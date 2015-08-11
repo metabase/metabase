@@ -69,10 +69,9 @@
     details)
 
   (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    (format "CAST(TIMESTAMPADD(%s, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
-            (case seconds-or-milliseconds
-              :seconds      "SECOND"
-              :milliseconds "MILLISECOND")
+    (format (case seconds-or-milliseconds
+              :seconds      "CAST(TIMESTAMPADD(SECOND, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
+              :milliseconds "CAST(TIMESTAMPADD(MICROSECOND, (`%s`.`%s` * 1000), DATE '1970-01-01') AS DATE)" )
             table-name field-name))
 
   (timezone->set-timezone-sql [_ timezone]

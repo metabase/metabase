@@ -22,7 +22,7 @@
         :all  (sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
                                                 {:public_perms [> common/perms-none]})))
         :mine (sel :many Dashboard :creator_id *current-user-id*))
-      (hydrate :creator)))
+      (hydrate :creator :can_read :can_write)))
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."

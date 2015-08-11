@@ -21,16 +21,16 @@
                     <div class="Entity">
                         <div class="flex align-center">
                             <h4 class="Entity-title">{{dashboard.name}}</h4>
-                            <mb-icon class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="dashboard.public_perms === 0"></mb-icon>
+                            <mb-icon title="This Dashboar dis Private" class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="dashboard.public_perms === 0"></mb-icon>
                             <a class="cursor-pointer link ml1" href="#" mb-dashboard-saver ng-attr-dashboard="dashboard" ng-attr-callback="notifyDashboardSaved">Edit</a>
                         </div>
                         <span class="Entity-attribution">
                             Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>
                         </span>
-                    </div>
 
+                    </div>
                     <div class="flex-align-right hide md-show">
-                        <a class="cursor-pointer" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
+                        <a title="Edit Layout" class="cursor-pointer" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
                             <mb-icon name="grid" width="16px" height="16px"></mb-icon>
                         </a>
                     </div>
