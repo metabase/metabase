@@ -87,24 +87,26 @@
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
 
+(defn- quote-name [nm]
+  (i/quote-name (:driver *query*) nm))
+
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
     ([this]
      (formatted this false))
     ([{:keys [table-name field-name base-type special-type]} include-as?]
-     (let [quote-name (partial i/quote-name (:driver *query*))]
-       (cond
-         (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                                                                        (when include-as?
-                                                                          (format " AS %s" (quote-name field-name)))))
-         :else                                              (keyword (format "%s.%s" table-name field-name))))))
+     (cond
+       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
+                                                                      (when include-as?
+                                                                        (format " AS %s" (quote-name field-name)))))
+       :else                                              (keyword (format "%s.%s" table-name field-name)))))
 
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
@@ -114,12 +116,12 @@
      (formatted this false))
     ([_ _]
      (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
-       `(raw ~(case aggregation-type
-                :avg      "\"avg\""
-                :count    "\"count\""
-                :distinct "\"count\""
-                :stddev   "\"stddev\""
-                :sum      "\"sum\"")))))
+       `(raw ~(quote-name (case aggregation-type
+                            :avg      "avg"
+                            :count    "count"
+                            :distinct "count"
+                            :stddev   "stddev"
+                            :sum      "sum"))))))
 
 
   Value
