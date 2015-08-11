@@ -164,9 +164,9 @@ export default React.createClass({
 
         var saveButton;
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
-            // new cards get a custom treatment, like saving a new Excel document
             saveButton = (
                 <Saver
+                    className="h4 px1 text-grey-4 text-brand-hover text-uppercase"
                     card={this.props.card}
                     tableMetadata={this.props.tableMetadata}
                     saveFn={this.saveCard}
@@ -234,14 +234,6 @@ export default React.createClass({
             );
         }
 
-        var hasMiddle = !!(cardFavorite || cloneButton || addToDashButton);
-        var hasRight = !!dataReferenceButton;
-
-        var dividerRight;
-        if (hasRight && hasMiddle) {
-            dividerRight = <div className="border-right border-dark mx1">&nbsp;</div>
-        }
-
         return (
             <div>
                 {this.renderEditHeader()}
@@ -253,18 +245,22 @@ export default React.createClass({
 
                     <div className="flex align-center flex-align-right">
 
-                        <span className="pr3">
+                        {(saveButton || queryModeToggle) &&
+                        <span className="QueryHeader-section">
                             {saveButton}
                             {queryModeToggle}
+                        </span>}
+
+                        {(cardFavorite || cloneButton || addToDashButton) &&
+                        <span className="QueryHeader-section">
+                            {cardFavorite}
+                            {cloneButton}
+                            {addToDashButton}
+                        </span>}
+
+                        <span className="QueryHeader-section">
+                            {dataReferenceButton}
                         </span>
-
-                        {cardFavorite}
-                        {cloneButton}
-                        {addToDashButton}
-
-                        {dividerRight}
-
-                        {dataReferenceButton}
                     </div>
                 </div>
             </div>

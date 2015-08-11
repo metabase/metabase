@@ -24,6 +24,16 @@
     align-items: center;
 }
 
+.QueryHeader-section {
+    padding-right: 0.5em;
+    margin-right: 0.5em;
+    border-right: 1px solid rgba(0,0,0,0.2);
+}
+
+.QueryHeader-section:last-child {
+    border-right: none;
+}
+
 .Icon-download,
 .Icon-addToDash {
     fill: #919191;
