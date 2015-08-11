@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 11
+      author: agilliland
+      changes:
+        - sql:
+            sql: update report_dashboard set public_perms = 2 where public_perms = 1
