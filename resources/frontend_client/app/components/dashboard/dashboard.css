@@ -1,3 +1,5 @@
+.Dashboard { background-color: #f9fbfc; }
+
 .Dash-wrapper {
     width: 100%;
 }
@@ -14,9 +16,6 @@
    .Dash-wrapper { max-width: var(--lg-width); }
 }
 
-@media screen and (--breakpoint-min-xl) {
-   .Dash-wrapper { max-width: var(--xl-width); }
-}
 
 .Dash-card {
   position: relative;

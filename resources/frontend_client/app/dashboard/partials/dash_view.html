@@ -1,12 +1,12 @@
-<div class="Dashboard full-height">
-    <div class="Dash-wrapper wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
+<div class="Dashboard full-height flex flex-row flex-full">
+    <div class="Dash-wrapper wrapper" ng-if="dashboardLoaded && dashboardLoadError">
         <div class="full-height text-centered flex layout-centered">
             <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
         </div>
     </div>
 
     <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
-        <div class="wrapper">
+        <div class="Dash-wrapper wrapper">
             <div class="my4 py4 text-brand">
                 <mb-loading-icon></mb-loading-icon>
                 <h1 class="text-normal text-grey-2">Loading...</h1>
@@ -14,8 +14,8 @@
         </div>
     </div>
 
-    <div ng-if="dashboardLoaded && !dashboardLoadError">
-        <header class="py2 mt2 border-bottom">
+    <div class="full" ng-if="dashboardLoaded && !dashboardLoadError">
+        <header class="py4 bg-white border-bottom">
             <div class="Dash-wrapper wrapper flex align-center">
                 <div class="Entity">
                     <div class="flex align-center">
