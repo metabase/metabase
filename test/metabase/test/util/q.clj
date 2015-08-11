@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [or and filter use = != < > <= >=])
   (:require [clojure.core :as core]
             [clojure.core.match :refer [match]]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :as datasets]
@@ -261,11 +262,12 @@
 (defmacro Q** [{:keys [driver dataset return table-name]} query]
   (assert table-name
     "Table name not specified in query, did you include an 'of' clause?")
-  `(->> (with-driver ~driver
-          (binding [*table-name* ~table-name]
-            (with-temp-db ~dataset
-              (driver/process-query ~query))))
-        ~@return))
+  `(do (db/setup-db-if-needed)
+       (->> (with-driver ~driver
+              (binding [*table-name* ~table-name]
+                (with-temp-db ~dataset
+                  (driver/process-query ~query))))
+            ~@return)))
 
 (defmacro Q* [q & [form & more]]
   (if-not form

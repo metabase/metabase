@@ -58,6 +58,12 @@
    :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
+(defn- -cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
+  (format (case seconds-or-milliseconds
+            :seconds      "CAST(TIMESTAMPADD(SECOND, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
+            :milliseconds "CAST(TIMESTAMPADD(MICROSECOND, (`%s`.`%s` * 1000), DATE '1970-01-01') AS DATE)" )
+          table-name field-name))
+
 (defrecord MySQLDriver []
   ISqlDriverDatabaseSpecific
   (connection-details->connection-spec [_ details]
@@ -69,11 +75,7 @@
     details)
 
   (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    (format "CAST(TIMESTAMPADD(%s, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
-            (case seconds-or-milliseconds
-              :seconds      "SECOND"
-              :milliseconds "MILLISECOND")
-            table-name field-name))
+    (-cast-timestamp-to-date _ table-name field-name seconds-or-milliseconds))
 
   (timezone->set-timezone-sql [_ timezone]
     ;; If this fails you need to load the timezone definitions from your system into MySQL;

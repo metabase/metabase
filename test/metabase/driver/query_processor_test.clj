@@ -562,18 +562,14 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:h2}
+(qp-expect-with-datasets #{:h2 :postgres :mysql}
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
-   :rows    [[3.43467255295115]]}
+   :rows    [[(datasets/dataset-case
+                :h2       3.43467255295115      ; annoying :/
+                :postgres 3.4346725529512736
+                :mysql    3.417456040761316)]]}
   (Q aggregate stddev latitude of venues))
-
-(qp-expect-with-datasets #{:postgres :mysql}
-  {:columns ["stddev"]
-   :cols    [(aggregate-col :stddev (venues-col :latitude))]
-   :rows    [[3.4346725529512736]]}
-  (Q aggregate stddev latitude
-     of venues))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
 (datasets/expect-with-dataset :mongo
