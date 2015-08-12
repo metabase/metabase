@@ -103,7 +103,7 @@ export default React.createClass({
                 case 0:
                     permission = (
                         <span className="ml1 sm-ml1 text-grey-3">
-                            <Icon name="lock" width="12px" height="12px" />
+                            <Icon title="This question is private" name="lock" width="12px" height="12px" />
                         </span>
                     )
                     break;
@@ -201,7 +201,7 @@ export default React.createClass({
         var cloneButton;
         if (this.props.card.id) {
             cloneButton = (
-                <a href="#" className="mx1 text-grey-4 text-brand-hover">
+                <a href="#" className="mx1 text-grey-4 text-brand-hover" title="Ask another question based on this question">
                     <Icon name='clone' width="16px" height="16px" onClick={this.props.cloneCardFn}></Icon>
                 </a>
             );
@@ -241,7 +241,7 @@ export default React.createClass({
             'text-brand-hover': !this.state.isShowingDataReference
         });
         var dataReferenceButton = (
-            <a href="#" className={dataReferenceButtonClasses}>
+            <a href="#" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
         );
