@@ -3,7 +3,7 @@
 
 import Popover from './popover.react';
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import SearchBar from './search_bar.react';
 
 var cx = React.addons.classSet;

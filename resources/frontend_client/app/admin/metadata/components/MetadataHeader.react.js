@@ -1,11 +1,11 @@
 'use strict';
 
-import SaveStatus from './SaveStatus.react';
-import Toggle from './Toggle.react';
+import SaveStatus from "metabase/components/SaveStatus.react";
+import Toggle from "metabase/components/Toggle.react";
 
 import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.react';
 import ColumnarSelector from '../../../query_builder/columnar_selector.react';
-import Icon from '../../../query_builder/icon.react';
+import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({
     displayName: "MetadataHeader",

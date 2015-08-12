@@ -1,7 +1,7 @@
 'use strict';
 
 import FormField from '../query_builder/form_field.react';
-import Icon from '../query_builder/icon.react';
+import Icon from "metabase/components/Icon.react";
 import Modal from 'metabase/components/Modal.react';
 
 import Query from "metabase/lib/query";

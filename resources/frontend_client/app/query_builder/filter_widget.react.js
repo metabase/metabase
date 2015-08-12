@@ -2,7 +2,7 @@
 /*global _*/
 
 import Calendar from './calendar.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import FieldName from './field_name.react';
 import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';

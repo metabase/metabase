@@ -1,13 +1,13 @@
 'use strict';
 
 import { CardRenderer } from '../card/card.charting';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
 import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
 import RunButton from './run_button.react';
 import VisualizationSettings from './visualization_settings.react';
-import LoadingSpinner from '../components/icons/loading.react';
+import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 import Query from "metabase/lib/query";
 

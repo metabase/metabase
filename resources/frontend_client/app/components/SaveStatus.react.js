@@ -1,7 +1,7 @@
 'use strict';
 
-import Icon from '../../../query_builder/icon.react';
-import LoadingIcon from '../../../components/icons/loading.react';
+import Icon from "metabase/components/Icon.react";
+import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 
 export default React.createClass({
     displayName: "SaveStatus",
@@ -31,7 +31,7 @@ export default React.createClass({
 
     render: function() {
         if (this.state.saving) {
-            return (<div className="SaveStatus mx2 px2 border-right"><LoadingIcon width="24" height="24" /></div>);
+            return (<div className="SaveStatus mx2 px2 border-right"><LoadingSpinner width="24" height="24" /></div>);
         } else if (this.state.error) {
             return (<div className="SaveStatus mx2 px2 border-right text-error">Error: {this.state.error}</div>)
         } else if (this.state.recentlySavedTimeout != null) {

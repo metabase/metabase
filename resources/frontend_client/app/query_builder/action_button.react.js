@@ -1,7 +1,7 @@
 'use strict';
 /*global setTimeout, clearTimeout*/
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 
 var cx = React.addons.classSet;
 

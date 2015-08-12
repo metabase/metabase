@@ -1,7 +1,7 @@
 'use strict';
 
 import AddToDashboardPopover from './add_to_dashboard_popover.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import Popover from './popover.react';
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;

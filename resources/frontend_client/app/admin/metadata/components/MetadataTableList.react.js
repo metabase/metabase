@@ -1,8 +1,8 @@
 'use strict';
 /*global _*/
 
-import ProgressBar from './ProgressBar.react';
-import Icon from '../../../query_builder/icon.react';
+import ProgressBar from "metabase/components/ProgressBar.react";
+import Icon from "metabase/components/Icon.react";
 
 import cx from 'classnames';
 import Humanize from 'humanize';

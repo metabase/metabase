@@ -1,6 +1,6 @@
 'use strict';
 
-import Icon from '../query_builder/icon.react';
+import Icon from "metabase/components/Icon.react";
 import Modal from 'metabase/components/Modal.react';
 
 export default React.createClass({

@@ -4,7 +4,7 @@
 import OnClickOutside from 'react-onclickoutside';
 
 import FormField from './form_field.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;

@@ -7,7 +7,7 @@ import AggregationWidget from './aggregation_widget.react';
 import DataSelector from './data_selector.react';
 import FieldWidget from './field_widget.react';
 import FilterWidget from './filter_widget.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import IconBorder from './icon_border.react';
 import LimitWidget from './limit_widget.react';
 import SortWidget from './sort_widget.react';

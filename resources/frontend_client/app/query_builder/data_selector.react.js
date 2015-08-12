@@ -1,6 +1,6 @@
 "use strict";
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from './popover_with_trigger.react';
 import ColumnarSelector from './columnar_selector.react';
 

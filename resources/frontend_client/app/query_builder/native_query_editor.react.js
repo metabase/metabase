@@ -2,7 +2,7 @@
 /*global ace*/
 
 import DataSelector from './data_selector.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({
     displayName: 'NativeQueryEditor',
