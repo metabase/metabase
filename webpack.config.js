@@ -82,8 +82,6 @@ module.exports = {
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
             'angular-readable-time':__dirname + '/node_modules/angular-readable-time/angular-readable-time.min.js',
             'angular-xeditable':    __dirname + '/node_modules/angular-xeditable/dist/js/xeditable.min.js',
-            'ng-sortable':          __dirname + '/node_modules/ng-sortable/dist/ng-sortable.min.js',
-            'angularytics':         __dirname + '/node_modules/angularytics/dist/angularytics.min.js',
             'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
