@@ -3,13 +3,15 @@
 
 import ActionButton from './action_button.react';
 import AddToDashboard from './add_to_dashboard.react';
+import AddToDashSelectDashModal from '../components/AddToDashSelectDashModal.react';
 import CardFavoriteButton from './card_favorite_button.react';
-import Icon from './icon.react';
-import QueryModeToggle from './query_mode_toggle.react';
-import Saver from './saver.react';
 import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
+import Icon from './icon.react';
 import Input from '../admin/metadata/components/Input.react';
 import PopoverWithTrigger from './popover_with_trigger.react';
+import QueryModeToggle from './query_mode_toggle.react';
+import QuestionSavedModal from '../components/QuestionSavedModal.react';
+import SaveQuestionModal from '../components/SaveQuestionModal.react';
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -23,6 +25,7 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         notifyCardDeletedFn: React.PropTypes.func.isRequired,
+        notifyCardAddedToDashFn: React.PropTypes.func.isRequired,
         revertCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         isShowingDataReference: React.PropTypes.bool.isRequired,
@@ -33,7 +36,8 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            recentlySaved: null
+            recentlySaved: null,
+            modal: null
         };
     },
 
@@ -61,7 +65,7 @@ export default React.createClass({
                     this.props.notifyCardCreatedFn(newCard);
 
                     // update local state to reflect new card state
-                    this.setState({ recentlySaved: "created" }, this.resetStateOnTimeout);
+                    this.setState({ recentlySaved: "created", modal: "saved" }, this.resetStateOnTimeout);
                 }
             });
         } else {
@@ -178,15 +182,19 @@ export default React.createClass({
         var saveButton;
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
             saveButton = (
-                <Saver
-                    className="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                    card={this.props.card}
-                    tableMetadata={this.props.tableMetadata}
-                    saveFn={this.saveCard}
-                    buttonText="Save"
-                    saveButtonText="Save"
-                    canDelete={false}
-                />
+                <PopoverWithTrigger
+                    ref="saveModal"
+                    tether={false}
+                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                    triggerElement="Save"
+                >
+                    <SaveQuestionModal
+                        card={this.props.card}
+                        tableMetadata={this.props.tableMetadata}
+                        saveFn={this.saveCard}
+                        closeFn={() => this.refs.saveModal.toggleModal()}
+                    />
+                </PopoverWithTrigger>
             );
         }
 
@@ -247,6 +255,25 @@ export default React.createClass({
             );
         }
 
+        var modal;
+        if (this.state.modal === "saved") {
+            modal = (
+                <QuestionSavedModal
+                    addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
+                    closeFn={() => this.setState({ modal: null })}
+                />
+            );
+        } else if (this.state.modal === "add-to-dashboard") {
+            modal = (
+                <AddToDashSelectDashModal
+                    card={this.props.card}
+                    dashboardApi={this.props.dashboardApi}
+                    closeFn={() => this.setState({ modal: null })}
+                    notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
+                />
+            );
+        }
+
         return (
             <div>
                 {this.renderEditHeader()}
@@ -276,6 +303,7 @@ export default React.createClass({
                         </span>
                     </div>
                 </div>
+                {modal}
             </div>
         );
     }

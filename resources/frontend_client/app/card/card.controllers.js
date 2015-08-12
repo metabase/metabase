@@ -159,6 +159,11 @@ CardControllers.controller('CardDetail', [
 
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
+            notifyCardAddedToDashFn: function(dashCard) {
+                $scope.$apply(() => {
+                    $location.path('/dash/'+dashCard.dashboard_id);
+                });
+            },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
 
