@@ -13,27 +13,6 @@
             [metabase.util :as u]
             [metabase.util.logic :refer :all]))
 
-;; Fields should be returned in the following order:
-;; 1.  Breakout Fields
-;;
-;; 2.  Aggregation Fields (e.g. sum, count)
-;;
-;; 3.  Fields clause Fields, if they were added explicitly
-;;
-;; 4.  All other Fields, sorted by:
-;;     A.  :position (ascending)
-;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return Fields in the specified
-;;         order; most of the time they'll have the default value of 0, in which case we'll compare...
-;;
-;;     B.  :special_type "group" -- :id Fields, then :name Fields, then everyting else
-;;         Attempt to put the most relevant Fields first. Order the Fields as follows:
-;;         1.  :id Fields
-;;         2.  :name Fields
-;;         3.  all other Fields
-;;
-;;     C.  Field Name
-;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
-;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
 
 ;;; # ---------------------------------------- FIELD COLLECTION  ----------------------------------------
 
@@ -87,18 +66,25 @@
 (defn- breakout-field° [{:keys [breakout]}]
   (make-field-in° breakout))
 
-(defn- calculated-field° [{:keys [calculate]}]
-  (if-not (seq calculate)
+(defn- calculated-field° [{:keys [calculated]}]
+  (if-not (seq calculated)
     (constantly fail)
-    (let [field-names (vec (keys calculate))]
-      (partial (fn calc-field° [[field-name & more] field]
-                 (conda
-                   ((field-name° field field-name) (== field {:field-name         field-name
-                                                              :field-display-name field-name
-                                                              :base-type          :UnknownField ; TODO - grab this info from Fields referenced by calculated field
-                                                              :special-type       nil}))
-                   ((!= more '()) (calc-field° more field))))
-               field-names))))
+    (fn calc-field°
+      ([[[f-name f] & more] field-name field]
+       (conda
+         ((== field-name f-name) (== field {:base-type          (:base-type f)
+                                            :special-type       (:special-type f)
+                                            :field-name         f-name
+                                            :field-display-name f-name}))
+         ((when (seq more) s#)   (calc-field° more field-name field))))
+
+      ([field-name field]
+       (calc-field° (seq calculated) field-name field))
+
+      ([field]
+       (fresh [field-name]
+         (field-name° field field-name)
+         (calc-field° field-name field))))))
 
 (defn- explicit-fields-field° [{:keys [fields-is-implicit fields], :as query}]
   (if fields-is-implicit (constantly fail)
@@ -136,28 +122,31 @@
                           (if-let [field (field-name->field field-name)]
                             (== out field)
                             fail)))
-        calced-field° (calculated-field° query)]
+        calc-field°     (calculated-field° query)]
     (fn [field-name field]
       (conda
         ((normal-field° field-name field))
         ((ag-field° field))
-        ((calced-field° field))))))
+        ((calc-field° field-name field))))))
 
 (def ^:const ^:private field-groups
   {:breakout        0
    :aggregation     1
    :explicit-fields 2
-   :other           3})
+   :calculated      3
+   :other           4})
 
 (defn- field-group° [query]
   (let [breakout° (breakout-field° query)
         agg°      (aggregate-field° query)
-        xfields°  (explicit-fields-field° query)]
+        xfields°  (explicit-fields-field° query)
+        calc°     (calculated-field° query)]
     (fn [field out]
       (conda
         ((breakout° field) (== out (field-groups :breakout)))
         ((agg° field)      (== out (field-groups :aggregation)))
         ((xfields° field)  (== out (field-groups :explicit-fields)))
+        ((calc° field)     (== out (field-groups :calculated)))
         (s#                (== out (field-groups :other)))))))
 
 (defn- field-position° [field out]
@@ -220,6 +209,7 @@
                            ((known-field°   result-key field))
                            ((unknown-field° result-key field))))
                        (zipmap result-keys fields))
+               (distincto fields)
                (sorted-permutation° (fields-sorted° query) fields q))))))
 
 

@@ -282,4 +282,17 @@
       (->> (map str (.getStackTrace e))
            (filterv (partial re-find #"metabase"))))))
 
+(defn most-frequent
+  "Return the item in VS with the highest frequency.
+
+    (most-frequent [:a :b :b :b :c :c]) -> :b"
+  [vs]
+  {:pre [(sequential? vs)]}
+  (when (seq vs)
+    (->> (for [[k vs] (group-by identity vs)]
+           [k (count vs)])
+         (sort-by second)
+         last
+         first)))
+
 (require-dox-in-this-namespace)

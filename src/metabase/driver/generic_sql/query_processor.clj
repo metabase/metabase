@@ -99,18 +99,14 @@
   [nm]
   (i/quote-name (:driver *query*) nm))
 
-(defn- calculation-infix
-  "Korma predicate that applies infix OPERATOR across many ARGS.
-
-    (calculation-infix :+ :tbl.field-1 :tbl.field-2)
-       Korma -> {::pred <fn> ::args [\" + \" [:tbl.field-1 :tbl.field-2]]}
-       SQL   -> \"(`tbl`.`field-1` + `tbl`.`field-2`)\""
-  [operator args]
+(defn infix
+  "Custom korma predicate that applies infix OPERATOR across many ARGS."
+  [operator & args]
   {:pre [(keyword? operator)
          (sequential? args)]}
-  (kutils/pred `(comp kutils/wrap
-                      (partial s/join ~(format " %s " (name operator)))
-                      engine/str-values)
+  (kutils/pred (comp kutils/wrap
+                     (partial s/join (format " %s " (name operator)))
+                     engine/str-values)
                [(mapv engine/try-prefix args)]))
 
 
@@ -152,7 +148,7 @@
     ([this]
      (formatted this false))
     ([{:keys [operator args]} _]
-     (calculation-infix operator (map formatted args))))
+     `(infix ~operator ~@(map formatted args))))
 
   CalculatedField
   (formatted
@@ -294,4 +290,7 @@
                                                           (s/replace #"\sORDER BY" "\nORDER BY")
                                                           (s/replace #"\sLIMIT" "\nLIMIT"))))
       (catch Throwable e
-        (log/error (u/pprint-to-str 'red korma-form))))))
+        (log/error (u/pprint-to-str 'red {:error      "Error logging korma form:"
+                                          :form       korma-form
+                                          :stacktrace (u/filtered-stacktrace e)}))
+        (throw e)))))
