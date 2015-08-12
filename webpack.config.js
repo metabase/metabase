@@ -13,6 +13,11 @@ var _ = require('underscore');
 var glob = require('glob');
 var fs = require('fs');
 
+function hasArg(arg) {
+    var regex = new RegExp("^" + ((arg.length === 2) ? ("-\\w*"+arg[1]+"\\w*") : (arg)) + "$");
+    return process.argv.filter(regex.test.bind(regex)).length > 0;
+}
+
 var BASE_PATH = __dirname + '/resources/frontend_client/app/';
 
 // All JS files except dist and test
@@ -22,9 +27,17 @@ var CSS_SRC = glob.sync(BASE_PATH + 'css/**/*.css').concat(glob.sync(BASE_PATH +
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-if (process.argv.indexOf("-w") >= 0 || process.argv.indexOf("--watch") >= 0) {
-    console.warn("Warning: in weback watch mode you must restart webpack if you change any CSS variables or custom media queries");
+if (hasArg("-w") || hasArg("--watch")) {
+    console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
+
+// default METABASE_ENV to "dev" if -d or --debug is specified
+if (hasArg("-d") || hasArg("--debug")) {
+    if (process.env["METABASE_ENV"] == null) {
+        process.env["METABASE_ENV"] = "dev";
+    }
+}
+
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
