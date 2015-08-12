@@ -460,7 +460,7 @@
                         :max-val     (ph field-id max)})
 
   ;; Single-value != and =
-  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) val]
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) (val :guard (complement nil?))]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
