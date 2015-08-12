@@ -317,9 +317,33 @@
         parse-value
         map->Value)))
 
+(defn- ->ValuePlaceholder
+  "Construct a new `ValuePlaceholder`.
+   (This replaces the normal constructor with one that does extra validation and supports things like relative dates)."
+  [^Integer field-id value]
+  (ValuePlaceholder.
+   field-id
+   (match value
+     (_ :guard number?) value
+     (_ :guard string?) value
+     true               true
+     false              false
+
+     ["relative_date" "days" (n :guard integer?)]
+     (u/date->yyyy-mm-dd (u/days-ago (- n)))
+
+     ["relative_date" "months" (n :guard integer?)]
+     (u/date->yyyy-mm-dd (u/months-ago (- n)))
+
+     ["relative_date" "years" (n :guard integer?)]
+     (u/date->yyyy-mm-dd (u/years-ago (- n)))
+
+     _ (throw (Exception. (format "Invalid value: '%s'" value))))))
+
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
+  ;; Field Placeholder
   ([field-id]
    (match field-id
      (id :guard integer?)
@@ -332,7 +356,9 @@
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
 
-      _ (throw (Exception. (str "Invalid field: " field-id)))))
+     _ (throw (Exception. (str "Invalid field: " field-id)))))
+
+  ;; Value Placeholder
   ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
@@ -407,6 +433,16 @@
 
 ;; ### Parsers
 
+(defn- orderable-value?
+  "Is V a value that can be compared with operators such as `<` and `>`?
+   i.e. This is true of numbers and dates, but not of other strings or booleans."
+  [v]
+  (match v
+    (_ :guard number?) true
+    (_ :guard u/date-string?) true
+    ["relative_date" (unit :guard (partial contains? #{"days" "months" "years"})) (n :guard integer?)] true
+    _ false))
+
 (defparser parse-filter-subclause
   ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
@@ -417,19 +453,26 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard (complement nil?)) (max :guard (complement nil?))]
+  ["BETWEEN" (field-id :guard Field?) (min :guard orderable-value?) (max :guard orderable-value?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"!=" "=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
+  ;; Single-value != and =
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) val]
+  (map->Filter:Field+Value {:filter-type (keyword filter-type)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
+
+  ;; <, >, <=, >= - like single-value != and =, but value must be orderable
+  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard orderable-value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["=" (field-id :guard Field?) & (values :guard seq)]
   (map->Filter {:compound-type :or
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :=
@@ -437,7 +480,7 @@
                                                                 :value       (ph field-id value)})))})
 
   ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["!=" (field-id :guard Field?) & (values :guard seq)]
   (map->Filter {:compound-type :and
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :!=

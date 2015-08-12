@@ -8,7 +8,8 @@
             [clj-time.coerce :as coerce])
   (:import (java.net Socket
                      InetSocketAddress
-                     InetAddress)))
+                     InetAddress)
+           java.util.Date))
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -33,7 +34,7 @@
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
-  (-> (java.util.Date.)
+  (-> (Date.)
       .getTime
       (java.sql.Timestamp.)))
 
@@ -58,7 +59,7 @@
 
 (defn date->yyyy-mm-dd
   "Convert a date to a `YYYY-MM-DD` string."
-  ^String [^java.util.Date date]
+  ^String [^Date date]
   (.format yyyy-mm-dd-simple-date-format date))
 
 (defn date-yyyy-mm-dd->unix-timestamp
@@ -68,6 +69,33 @@
       parse-date-yyyy-mm-dd
       .getTime
       (/ 1000)))
+
+(defn date-string?
+  "Is S a `YYYY-MM-DD` date string?"
+  [s]
+  (boolean (when (string? s)
+             (re-matches #"^\d{4}-[01]\d-[0-3]\d$" s)))) ; close enough
+
+(defn ^Date days-ago
+  "Return a `Date` that is N days ago."
+  [n & [^Date d]]
+  (let [^Date d (if d (.clone d) (Date.))]
+    (.setDate d (- (.getDate d) n))
+    d))
+
+(defn ^Date months-ago
+  "Return a `Date` that is N months ago."
+  [n & [^Date d]]
+  (let [^Date d (if d (.clone d) (Date.))]
+    (.setMonth d (- (.getMonth d) n))
+    d))
+
+(defn ^Date years-ago
+  "Return a `Date` that is N years ago."
+  [n & [^Date d]]
+  (let [^Date d (if d (.clone d) (Date.))]
+    (.setYear d (- (.getYear d) n))
+    d))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
