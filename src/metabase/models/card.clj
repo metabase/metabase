@@ -33,10 +33,16 @@
    timestamped]
 
   (post-select [_ {:keys [creator_id] :as card}]
-    (map->CardInstance (assoc card :creator (delay (User creator_id)))))
+    (map->CardInstance (assoc card
+                              :creator         (delay (User creator_id))
+                              :dashboard_count (delay (-> (select metabase.models.dashboard-card/DashboardCard
+                                                                  (aggregate (count :*) :dashboards)
+                                                                  (where {:card_id (:id card)}))
+                                                          first
+                                                          :dashboards)))))
 
   (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete 'metabase.models.dashboard-card/DashboardCard :card_id id)
-    (cascade-delete 'metabase.models.card-favorite/CardFavorite :card_id id)))
+    (cascade-delete 'DashboardCard :card_id id)
+    (cascade-delete 'CardFavorite :card_id id)))
 
 (extend-ICanReadWrite CardEntity :read :public-perms, :write :public-perms)
