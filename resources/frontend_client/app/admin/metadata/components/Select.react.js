@@ -62,7 +62,8 @@ export default React.createClass({
         var tetherOptions = {
             attachment: 'top center',
             targetAttachment: 'bottom center',
-            targetOffset: '5px 0'
+            targetOffset: '5px 0',
+            constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
         };
 
         return (

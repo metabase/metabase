@@ -108,12 +108,3 @@
 .gridster-mobile .Dash-card {
   position: relative;
 }
-
-/* this class is applied when .sortable is applied */
-.sortable-placeholder {
-  float: left; /* can't use util float because element is added dynamically */
-  padding-left: 14px;
-  padding-right: 14px;
-  border: 2px solid #999;
-  min-width: 33.3333333%;
-}
