@@ -35,7 +35,7 @@
   (post-select [_ {:keys [creator_id] :as card}]
     (map->CardInstance (assoc card
                               :creator         (delay (User creator_id))
-                              :dashboard_count (delay (-> (select metabase.models.dashboard-card/DashboardCard
+                              :dashboard_count (delay (-> (select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
                                                                   (aggregate (count :*) :dashboards)
                                                                   (where {:card_id (:id card)}))
                                                           first

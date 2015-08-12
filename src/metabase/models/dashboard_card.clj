@@ -19,4 +19,4 @@
         (set/rename-keys {:sizex :sizeX ; mildly retarded: H2 columns are all uppercase, we're converting them
                           :sizey :sizeY}) ; to all downcase, and the Angular app expected mixed-case names here
         (assoc :card      (delay (Card card_id))
-               :dashboard (delay (sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id))))))
+               :dashboard (delay (sel :one 'Dashboard :id dashboard_id))))))
