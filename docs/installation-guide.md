@@ -61,6 +61,7 @@ If you are interested in the status of any of these drivers, click through to th
 
 ## Production Deployments
 * Beanstalk
+    * [Elastic Beanstalk Installation Recipe](installing-on-elastic-beanstalk.md).
 * running a container
     * injecting database variables vs using an embedded database
 * running a jar
