@@ -2,6 +2,7 @@
 
 import FormField from '../query_builder/form_field.react';
 import Icon from '../query_builder/icon.react';
+import Modal from 'metabase/components/Modal.react';
 
 var cx = React.addons.classSet;
 
@@ -36,8 +37,9 @@ export default React.createClass({
 
         // populate a new Dash object
         var newDash = {
-            'name': (name && name.length > 0) ? name : null,
-            'description': (description && description.length > 0) ? name : null
+            name: (name && name.length > 0) ? name : null,
+            description: (description && description.length > 0) ? name : null,
+            public_perms: 2 // public read/write
         };
 
         // create a new dashboard
@@ -80,37 +82,35 @@ export default React.createClass({
         );
 
         return (
-            <form className="NewForm" onSubmit={this.createNewDash}>
-                <div className="Form-header flex align-center">
-                    <h2 className="flex-full">Create Dashboard</h2>
-                    <a className="text-grey-3" onClick={this.props.closeFn}>
-                        <Icon name='close' width="16px" height="16px"/>
-                    </a>
-                </div>
+            <Modal
+                title="Create Dashboard"
+                closeFn={this.props.closeFn}
+            >
+                <form onSubmit={this.createNewDash}>
+                    <div className="Form-inputs">
+                        <FormField
+                            displayName="Name"
+                            fieldName="name"
+                            errors={this.state.errors}>
+                            <input className="Form-input
+                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
+                        </FormField>
 
-                <div className="Form-inputs">
-                    <FormField
-                        displayName="Name"
-                        fieldName="name"
-                        errors={this.state.errors}>
-                        <input className="Form-input
-                        full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
-                    </FormField>
+                        <FormField
+                            displayName="Description"
+                            fieldName="description"
+                            errors={this.state.errors}>
+                            <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
+                        </FormField>
+                    </div>
 
-                    <FormField
-                        displayName="Description"
-                        fieldName="description"
-                        errors={this.state.errors}>
-                        <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
-                    </FormField>
-                </div>
-
-                <div className="Form-actions">
-                    {createButton}
-                    <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
-                    {formError}
-                </div>
-            </form>
+                    <div className="Form-actions">
+                        {createButton}
+                        <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
+                        {formError}
+                    </div>
+                </form>
+            </Modal>
         );
     }
 });

@@ -30,7 +30,7 @@ export default React.createClass({
         var fieldErrorMessage;
         if (fieldError !== null) {
             fieldErrorMessage = (
-                <span>{fieldError}</span>
+                <span className="text-error mx1">{fieldError}</span>
             );
         }
 

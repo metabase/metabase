@@ -2,6 +2,7 @@
 
 import FormField from '../query_builder/form_field.react';
 import Icon from '../query_builder/icon.react';
+import Modal from 'metabase/components/Modal.react';
 
 var cx = React.addons.classSet;
 
@@ -43,14 +44,10 @@ export default React.createClass({
         }
 
         return (
-            <div className="Modal NewForm">
-                <div className="Form-header flex align-center">
-                    <h2 className="flex-full">Delete Question</h2>
-                    <a className="text-grey-3" onClick={this.props.closeFn}>
-                        <Icon name='close' width="16px" height="16px"/>
-                    </a>
-                </div>
-
+            <Modal
+                title="Delete Question"
+                closeFn={this.props.closeFn}
+            >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>
                     <p>This question will be deleted from Metabase, and will also be removed from: </p>
@@ -65,7 +62,7 @@ export default React.createClass({
                     <button className="Button Button--primary ml1" onClick={this.props.closeFn}>No</button>
                     {formError}
                 </div>
-            </div>
+            </Modal>
         );
     }
 });
