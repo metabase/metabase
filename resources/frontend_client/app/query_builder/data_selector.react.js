@@ -1,8 +1,8 @@
 "use strict";
 
 import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from './popover_with_trigger.react';
-import ColumnarSelector from './columnar_selector.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 
 import Table from 'metabase/lib/table';
 

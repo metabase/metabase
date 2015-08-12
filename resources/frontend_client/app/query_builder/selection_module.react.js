@@ -1,7 +1,7 @@
 'use strict';
 /*global _ */
 
-import Popover from './popover.react';
+import Popover from "metabase/components/Popover.react";
 
 import Icon from "metabase/components/Icon.react";
 import SearchBar from './search_bar.react';

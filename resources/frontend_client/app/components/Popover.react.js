@@ -1,7 +1,7 @@
 'use strict';
 /*global document*/
 
-import PopoverContent from './popover_content.react';
+import PopoverContent from './PopoverContent.react';
 
 import Tether from 'tether';
 

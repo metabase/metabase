@@ -1,7 +1,7 @@
 "use strict";
 
 import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from './popover_with_trigger.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 var cx = React.addons.classSet;
 

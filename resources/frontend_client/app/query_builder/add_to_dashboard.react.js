@@ -2,7 +2,7 @@
 
 import AddToDashboardPopover from './add_to_dashboard_popover.react';
 import Icon from "metabase/components/Icon.react";
-import Popover from './popover.react';
+import Popover from "metabase/components/Popover.react";
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 

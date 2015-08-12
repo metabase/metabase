@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon.react";
 import IconBorder from './icon_border.react';
 import LimitWidget from './limit_widget.react';
 import SortWidget from './sort_widget.react';
-import PopoverWithTrigger from './popover_with_trigger.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 import Query from "metabase/lib/query";
 

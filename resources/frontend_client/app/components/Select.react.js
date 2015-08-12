@@ -1,8 +1,8 @@
 "use strict";
 
-import ColumnarSelector from '../query_builder/columnar_selector.react';
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from '../query_builder/popover_with_trigger.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 export default React.createClass({
     displayName: "Select",

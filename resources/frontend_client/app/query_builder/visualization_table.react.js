@@ -5,7 +5,7 @@ import MetabaseAnalytics from '../lib/analytics';
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from "metabase/components/Icon.react";
-import Popover from './popover.react';
+import Popover from "metabase/components/Popover.react";
 
 var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;

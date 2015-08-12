@@ -1,7 +1,7 @@
 "use strict";
 /*global _*/
 
-import ColumnarSelector from "./columnar_selector.react";
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 
 import Query from "metabase/lib/query";
 

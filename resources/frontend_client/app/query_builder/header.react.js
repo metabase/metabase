@@ -8,7 +8,7 @@ import CardFavoriteButton from './card_favorite_button.react';
 import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
 import Icon from "metabase/components/Icon.react";
 import Input from "metabase/components/Input.react";
-import PopoverWithTrigger from './popover_with_trigger.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import QueryModeToggle from './query_mode_toggle.react';
 import QuestionSavedModal from '../components/QuestionSavedModal.react';
 import SaveQuestionModal from '../components/SaveQuestionModal.react';

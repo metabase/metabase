@@ -3,8 +3,8 @@
 import SaveStatus from "metabase/components/SaveStatus.react";
 import Toggle from "metabase/components/Toggle.react";
 
-import PopoverWithTrigger from '../../../query_builder/popover_with_trigger.react';
-import ColumnarSelector from '../../../query_builder/columnar_selector.react';
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({

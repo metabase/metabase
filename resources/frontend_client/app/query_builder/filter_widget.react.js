@@ -6,8 +6,8 @@ import Icon from "metabase/components/Icon.react";
 import FieldName from './field_name.react';
 import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';
-import Popover from './popover.react';
-import ColumnarSelector from './columnar_selector.react';
+import Popover from "metabase/components/Popover.react";
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 
 import Query from "metabase/lib/query";
 import moment from 'moment';
