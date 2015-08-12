@@ -1,7 +1,7 @@
 (ns metabase.api.meta.db
   "/api/meta/db endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -20,7 +20,7 @@
 (defendpoint GET "/"
   "Fetch all `Databases`."
   []
-  (sel :many Database (order :name)))
+  (sel :many Database (k/order :name)))
 
 (defendpoint POST "/"
   "Add a new `Database`."
@@ -64,7 +64,7 @@
 (defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (check-404 (sel :one Database :id id)))
+  (check-404 (Database id)))
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
@@ -75,7 +75,7 @@
                                :name name
                                :engine engine
                                :details details))
-  (sel :one Database :id id))
+  (Database id))
 
 (defendpoint DELETE "/:id"
   "Delete a `Database`."
@@ -112,7 +112,7 @@
   "Get a list of all `Tables` in `Database`."
   [id]
   (read-check Database id)
-  (sel :many Table :db_id id :active true (order :name)))
+  (sel :many Table :db_id id :active true (k/order :name)))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
@@ -125,7 +125,7 @@
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
   [id]
-  (let-404 [db (sel :one Database :id id)]
+  (let-404 [db (Database id)]
     (write-check db)
     (future (driver/sync-database! db))) ; run sync-tables asynchronously
   {:status :ok})

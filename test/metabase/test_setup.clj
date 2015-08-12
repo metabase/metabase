@@ -8,9 +8,8 @@
                       [db :as db]
                       [task :as task]
                       [util :as u])
+            (metabase.models [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]))
-
-(declare clear-test-db)
 
 ;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
 
@@ -68,29 +67,27 @@
 (defn load-test-datasets
   "Call `load-data!` on all the datasets we're testing against."
   []
-  (doseq [dataset-name @datasets/test-dataset-names]
+  (doseq [dataset-name datasets/test-dataset-names]
     (log/info (format "Loading test data: %s..." (name dataset-name)))
-    (datasets/load-data! (datasets/dataset-name->dataset dataset-name))))
+    (let [dataset (datasets/dataset-name->dataset dataset-name)]
+      (datasets/load-data! dataset)
+
+      ;; Check that dataset is loaded and working
+      (assert (Table (datasets/table-name->id dataset :venues))
+        (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
 
 (defn test-startup
   {:expectations-options :before-run}
   []
-  (log/info "Starting up Metabase unit test runner")
-
-  ;; clear out any previous test data that's lying around
-  (log/info "Clearing out test DB...")
-  (clear-test-db)
-  (log/info "Setting up test DB and running migrations...")
-  (db/setup-db :auto-migrate true)
-
-  ;; Load the test datasets
-  (load-test-datasets)
-
-  ;; startup test web server
-  (core/start-jetty)
-
-  ;; start the task runner
-  (task/start-task-runner!))
+  ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
+  (let [setup-db           (future (time (do (log/info "Setting up test DB and running migrations...")
+                                             (db/setup-db :auto-migrate true)
+                                             (load-test-datasets)
+                                             (metabase.models.setting/set :site-name "Metabase Test"))))
+        start-task-runner! (future (task/start-task-runner!))]
+    (core/start-jetty)
+    @setup-db
+    @start-task-runner!))
 
 
 (defn test-teardown
@@ -99,18 +96,3 @@
   (log/info "Shutting down Metabase unit test runner")
   (task/stop-task-runner!)
   (core/stop-jetty))
-
-
-;; ## DB Setup
-
-(defn- clear-test-db
-  "Delete the test db file if it's still lying around."
-  []
-  (let [filename (-> (re-find #"file:(\w+\.db).*" (db/db-file)) second)] ; db-file is prefixed with "file:", so we strip that off
-    (map (fn [file-extension]                                         ; delete the database files, e.g. `metabase.db.h2.db`, `metabase.db.trace.db`, etc.
-           (let [file (str filename file-extension)]
-             (when (.exists (io/file file))
-               (io/delete-file file))))
-         [".h2.db"
-          ".trace.db"
-          ".lock.db"])))

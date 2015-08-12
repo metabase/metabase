@@ -1,7 +1,7 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [expectations :refer :all]
-            [korma.core :refer :all]
+  (:require [cemerick.friend.credentials :as creds]
+            [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
@@ -25,13 +25,27 @@
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
-(expect {:errors {:email "no account found for the given email"}}
+;; Return same error as incorrect password to avoid leaking existence of user
+(expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking
 (expect {:errors {:password "did not match stored password"}}
   (client :post 400 "session" (-> (user->credentials :rasta)
                                   (assoc :password "something else"))))
+
+;; Test that people get blocked from attempting to login if they try too many times
+;; (Check that throttling works at the API level -- more tests in metabase.api.common.throttle-test)
+(expect
+    [{:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}
+     {:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}]
+  (let [login #(client :post 400 "session" {:email "fakeaccount3000@metabase.com", :password "toucans"})]
+    ;; attempt to log in 10 times
+    (dorun (repeatedly 10 login))
+    ;; throttling should now be triggered
+    [(login)
+     ;; Trying to login immediately again should still return throttling error
+     (login)]))
 
 
 ;; ## DELETE /api/session
@@ -40,7 +54,7 @@
   (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
     (assert session_id)
     ((user->client :rasta) :delete 204 "session" :session_id session_id)
-    (sel :one Session :id session_id)))
+    (Session session_id)))
 
 
 ;; ## POST /api/session/forgot_password
@@ -62,9 +76,9 @@
 (expect {:errors {:email "field is a required param."}}
   (client :post 400 "session/forgot_password" {}))
 
-;; Test that email not found gives 404
-(expect {:errors {:email "no account found for the given email"}}
-  (client :post 400 "session/forgot_password" {:email "not-found@metabase.com"}))
+;; Test that email not found also gives 200 as to not leak existence of user
+(expect nil
+  (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
 
 
 ;; POST /api/session/reset_password
@@ -72,15 +86,16 @@
 (expect
   {:reset_token nil
    :reset_triggered nil}
-  (let [user-last-name (random-name)
-        token (.toString (java.util.UUID/randomUUID))
-        password {:old "password"
-                  :new "whateverUP12!!"}
-        {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name :reset_token token :reset_triggered (System/currentTimeMillis))
-        creds {:old {:password (:old password)
-                     :email    email}
-               :new {:password (:new password)
-                     :email    email}}]
+  (let [user-last-name     (random-name)
+        password           {:old "password"
+                            :new "whateverUP12!!"}
+        {:keys [email id]} (create-user :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+        token              (str id "_" (java.util.UUID/randomUUID))
+        _                  (upd User id :reset_token token)
+        creds              {:old {:password (:old password)
+                                  :email    email}
+                            :new {:password (:new password)
+                                  :email    email}}]
     ;; Check that creds work
     (metabase.http-client/client :post 200 "session" (:old creds))
     ;; Change the PW
@@ -94,6 +109,20 @@
     ;; Double check that reset token was cleared
     (sel :one :fields [User :reset_token :reset_triggered] :id id)))
 
+;; Check that password reset returns a valid session token
+(let [user-last-name (random-name)]
+  (expect-eval-actual-first
+    (let [{:keys [id]} (sel :one :fields [User :id] :last_name user-last-name)
+          session (sel :one :fields [Session :id] :user_id id)]
+      {:success    true
+       :session_id (:id session)})
+    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+          token              (str id "_" (java.util.UUID/randomUUID))
+          _                  (upd User id :reset_token token)]
+      ;; run the password reset
+      (metabase.http-client/client :post 200 "session/reset_password" {:token    token
+                                                                       :password "whateverUP12!!"}))))
+
 ;; Test that token and password are required
 (expect {:errors {:token "field is a required param."}}
   (client :post 400 "session/reset_password" {}))
@@ -101,15 +130,20 @@
 (expect {:errors {:password "field is a required param."}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
-;; Test that invalid token returns 400
-(expect {:errors {:token "Invalid reset token"}}
+;; Test that malformed token returns 400
+(expect "Invalid reset token"
   (client :post 400 "session/reset_password" {:token "not-found"
                                               :password "whateverUP12!!"}))
 
+;; Test that invalid token returns 400
+(expect "Invalid reset token"
+  (client :post 400 "session/reset_password" {:token "1_not-found"
+                                              :password "whateverUP12!!"}))
+
 ;; Test that old token can expire
-(expect {:errors {:token "Reset token has expired"}}
-  (let [token (.toString (java.util.UUID/randomUUID))]
-    (upd User (user->id :rasta) :reset_token token :reset_triggered 0)
+(expect "Reset token has expired"
+  (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
+    (upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
 
@@ -118,6 +152,10 @@
 ;; Check that a non-superuser can't read settings
 (expect
   [{:value nil
+    :key "anon-tracking-enabled"
+    :description "Enable the collection of anonymous usage data in order to help Metabase improve."
+    :default "true"}
+   {:value "Metabase Test"
     :key "site-name"
     :description "The name used for this instance of Metabase."
     :default "Metabase"}]

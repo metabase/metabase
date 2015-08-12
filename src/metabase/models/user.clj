@@ -1,66 +1,71 @@
 (ns metabase.models.user
-  (:require [cemerick.friend.credentials :as creds]
-            [korma.core :refer :all]
+  (:require [clojure.string :as s]
+            [cemerick.friend.credentials :as creds]
+            [korma.core :refer :all, :exclude [defentity update]]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
+            (metabase.models [interface :refer :all]
+                             [setting :as setting])
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
 
 (defentity User
-  (table :core_user)
-  (assoc :hydration-keys #{:author :creator :user}))
+  [(table :core_user)
+   (default-fields id email date_joined first_name last_name last_login is_superuser)
+   (hydration-keys author creator user)]
 
-;; fields to return for Users other `*than current-user*`
-(defmethod default-fields User [_]
-  [:id
-   :email
-   :date_joined
-   :first_name
-   :last_name
-   :last_login
-   :is_superuser])
+  (pre-insert [_ {:keys [email password reset_token] :as user}]
+    (assert (u/is-email? email))
+    (assert (and (string? password)
+                 (not (s/blank? password))))
+    (assert (not (:password_salt user))
+      "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+    (let [salt     (.toString (java.util.UUID/randomUUID))
+          defaults {:date_joined  (u/new-sql-timestamp)
+                    :last_login   (u/new-sql-timestamp)
+                    :is_staff     true
+                    :is_active    true
+                    :is_superuser false}]
+      ;; always salt + encrypt the password before putting new User in the DB
+      ;; TODO - we should do password encryption in pre-update too instead of in the session code
+      (merge defaults user
+             {:password_salt salt
+              :password      (creds/hash-bcrypt (str salt password))}
+             (when reset_token
+               {:reset_token (creds/hash-bcrypt reset_token)}))))
 
-(def current-user-fields
+  (pre-update [_ {:keys [email reset_token] :as user}]
+    (when email
+      (assert (u/is-email? email)))
+    (cond-> user
+      reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
+
+  (post-select [_ {:keys [first_name last_name], :as user}]
+    (cond-> user
+      (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+
+  (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'Session :user_id id)))
+
+
+(def ^:const current-user-fields
   "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
-  (concat (default-fields User)
+  (concat (:metabase.models.interface/default-fields User)
           [:is_active
            :is_staff])) ; but not `password` !
-
-(defmethod post-select User [_ user]
-  (-> user
-      (assoc :common_name   (str (:first_name user) " " (:last_name user)))))
-
-(defmethod pre-insert User [_ {:keys [email password] :as user}]
-  (assert (u/is-email? email))
-  (assert (and (string? password)
-               (not (clojure.string/blank? password))))
-  (assert (not (:password_salt user))
-          "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-  (let [salt (.toString (java.util.UUID/randomUUID))
-        defaults {:date_joined (u/new-sql-timestamp)
-                  :last_login (u/new-sql-timestamp)
-                  :is_staff true
-                  :is_active true
-                  :is_superuser false}]
-    ;; always salt + encrypt the password before put new User in the DB
-    (merge defaults user {:password_salt salt
-                          :password (creds/hash-bcrypt (str salt password))})))
-
-(defmethod pre-update User [_ {:keys [email] :as user}]
-  (when email
-    (assert (u/is-email? email)))
-  user)
-
-(defmethod pre-cascade-delete User [_ {:keys [id]}]
-  (cascade-delete 'metabase.models.session/Session :user_id id))
 
 
 ;; ## Related Functions
 
+(declare create-user
+         form-password-reset-url
+         set-user-password
+         set-user-password-reset-token)
+
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome reset-url]
+  [first-name last-name email-address & {:keys [send-welcome invitor]
                                          :or {send-welcome false}}]
   {:pre [(string? first-name)
          (string? last-name)
@@ -70,8 +75,11 @@
                         :first_name first-name
                         :last_name last-name
                         :password (str (java.util.UUID/randomUUID)))]
-    (if send-welcome
-      (email/send-new-user-email first-name email-address reset-url))
+    (when send-welcome
+      (let [reset-token (set-user-password-reset-token (:id new-user))
+            ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+            join-url    (str (form-password-reset-url reset-token) "#new")]
+        (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
 
@@ -86,3 +94,18 @@
       :password password
       :reset_token nil
       :reset_triggered nil)))
+
+(defn set-user-password-reset-token
+  "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (let [reset-token (str user-id "_" (java.util.UUID/randomUUID))]
+    (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+    ;; return the token
+    reset-token))
+
+(defn form-password-reset-url
+  "Generate a properly formed password reset url given a password reset token."
+  [reset-token]
+  {:pre [(string? reset-token)]}
+  (str (setting/get :-site-url) "/auth/reset_password/" reset-token))

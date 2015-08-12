@@ -40,17 +40,30 @@
 ;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/meta/db/:id
+;; regular users *should not* see DB details
 (expect
     (match-$ (db)
-      {:created_at $
-       :engine "h2"
-       :id $
-       :details $
-       :updated_at $
-       :name "Test Database"
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :updated_at      $
+       :name            "Test Database"
        :organization_id nil
-       :description nil})
+       :description     nil})
   ((user->client :rasta) :get 200 (format "meta/db/%d" (db-id))))
+
+;; superusers *should* see DB details
+(expect
+    (match-$ (db)
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :details         $
+       :updated_at      $
+       :name            "Test Database"
+       :organization_id nil
+       :description     nil})
+  ((user->client :crowberto) :get 200 (format "meta/db/%d" (db-id))))
 
 ;; ## POST /api/meta/db
 ;; Check that we can create a Database
@@ -106,49 +119,38 @@
 
 ;; ## GET /api/meta/db
 ;; Test that we can get all the DBs for an Org, ordered by name
+;; Database details *should not* come back for Rasta since she's not a superuser
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
   (expect-eval-actual-first
-      (filter identity
-              [(datasets/when-testing-dataset :generic-sql
-                 (match-$ (sel :one Database :name db-name)
-                   {:created_at      $
-                    :engine          "postgres"
-                    :id              $
-                    :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
-                    :updated_at      $
-                    :name            $
-                    :organization_id nil
-                    :description     nil}))
-               (datasets/when-testing-dataset :mongo
-                 (match-$ @mongo-test-data/mongo-test-db
-                   {:created_at      $
-                    :engine          "mongo"
-                    :id              $
-                    :details         $
-                    :updated_at      $
-                    :name            "Test Database"
-                    :organization_id nil
-                    :description     nil}))
-               (match-$ (db)
-                 {:created_at      $
-                  :engine          "h2"
-                  :id              $
-                  :details         $
-                  :updated_at      $
-                  :name            "Test Database"
-                  :organization_id nil
-                  :description     nil})])
+      (set (filter identity
+                   (conj (for [dataset-name datasets/all-valid-dataset-names]
+                           (datasets/when-testing-dataset dataset-name
+                             (match-$ (datasets/db (datasets/dataset-name->dataset dataset-name))
+                               {:created_at      $
+                                :engine          (name $engine)
+                                :id              $
+                                :updated_at      $
+                                :name            "Test Database"
+                                :organization_id nil
+                                :description     nil})))
+                         (match-$ (sel :one Database :name db-name)
+                           {:created_at      $
+                            :engine          "postgres"
+                            :id              $
+                            :updated_at      $
+                            :name            $
+                            :organization_id nil
+                            :description     nil}))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        [(datasets/when-testing-dataset :generic-sql
-                                                           (db-id))
-                                                         (datasets/when-testing-dataset :mongo
-                                                           @mongo-test-data/mongo-test-db-id)]))])
+                                                        (for [dataset-name datasets/all-valid-dataset-names]
+                                                          (datasets/when-testing-dataset dataset-name
+                                                            (:id (datasets/db (datasets/dataset-name->dataset dataset-name)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
-      ((user->client :rasta) :get 200 "meta/db"))))
+      (set ((user->client :rasta) :get 200 "meta/db")))))
 
 
 ;; # DB TABLES ENDPOINTS
@@ -157,12 +159,12 @@
 ;; These should come back in alphabetical order
 (expect
     (let [db-id (db-id)]
-      [(match-$ (sel :one Table :id (id :categories))
-         {:description nil, :entity_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (id :checkins))
-         {:description nil, :entity_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (id :users))
-         {:description nil, :entity_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})
-       (match-$ (sel :one Table :id (id :venues))
-         {:description nil, :entity_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $})])
+      [(match-$ (Table (id :categories))
+         {:description nil, :entity_type nil, :visibility_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
+       (match-$ (Table (id :checkins))
+         {:description nil, :entity_type nil, :visibility_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
+       (match-$ (Table (id :users))
+         {:description nil, :entity_type nil, :visibility_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
+       (match-$ (Table (id :venues))
+         {:description nil, :entity_type nil, :visibility_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
   ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))

@@ -1,32 +1,50 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
+            [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
-            [korma.core :as korma]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
+            [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
-            (metabase.models [user :refer [User set-user-password]]
+            (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
             [metabase.util.password :as pass]))
 
 
+(defn- create-session
+  "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
+  [user-id]
+  (let [session-id (str (java.util.UUID/randomUUID))]
+    (ins Session
+         :id session-id
+         :user_id user-id)
+    session-id))
+
+
+;;; ## API Endpoints
+
+(def ^:private login-throttlers
+  {:email      (throttle/make-throttler :email)
+   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
+
 (defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password] :as body} :body}]
+  [:as {{:keys [email password] :as body} :body, remote-address :remote-addr}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (let [user (sel :one :fields [User :id :password_salt :password] :email email (korma/where {:is_active true}))]
-    (checkp (not (nil? user))
-      (symbol "email") "no account found for the given email")
-    (checkp (pass/verify-password password (:password_salt user) (:password user))
-      (symbol "password") "did not match stored password")
-    (let [session-id (str (java.util.UUID/randomUUID))]
-      (ins Session
-        :id session-id
-        :user_id (:id user))
+  (throttle/check (login-throttlers :ip-address) remote-address)
+  (throttle/check (login-throttlers :email)      email)
+  (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
+    ;; Don't leak whether the account doesn't exist or the password was incorrect
+    (when-not (and user
+                   (pass/verify-password password (:password_salt user) (:password user)))
+      (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                 :errors      {:password "did not match stored password"}})))
+    (let [session-id (create-session (:id user))]
       {:id session-id})))
 
 
@@ -37,25 +55,29 @@
   (check-exists? Session session_id)
   (del Session :id session_id))
 
+;; Reset tokens:
+;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
+;; So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g. "100_8a266560-e3a8-4dc1-9cd1-b4471dcd56d7", before hashing it.
+;; "Leaking" the ID this way is ok because the plaintext token is only sent in the password reset email to the user in question.
+;;
+;; There's also no need to salt the token because it's already random <3
+
+(def ^:private forgot-password-throttlers
+  {:email      (throttle/make-throttler :email)
+   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, {:strs [origin]} :headers}]
-  ;; Use the `origin` header, which looks like `http://localhost:3000`, as the base of the reset password URL.
-  ;; (Currently, there's no other way to get this info)
-  ;;
-  ;; This is a bit sketchy. Someone malicious could send a bad origin header and hit this endpoint to send
-  ;; a forgotten password email to another User, and take them to some sort of phishing site. Although not sure
-  ;; what you could phish from them since they already forgot their password.
+  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr, :as request}]
   {email [Required Email]}
-  (let [{user-id :id} (sel :one User :email email)
-        reset-token (java.util.UUID/randomUUID)
-        password-reset-url (str origin "/auth/reset_password/" reset-token)]
-    (checkp (not (nil? user-id))
-      (symbol "email") "no account found for the given email")
-    (upd User user-id :reset_token reset-token :reset_triggered (System/currentTimeMillis))
-    (email/send-password-reset-email email server-name password-reset-url)
-    (log/info password-reset-url)))
+  (throttle/check (forgot-password-throttlers :ip-address) remote-address)
+  (throttle/check (forgot-password-throttlers :email)      email)
+  ;; Don't leak whether the account doesn't exist, just pretend everything is ok
+  (when-let [user-id (sel :one :id User :email email)]
+    (let [reset-token        (set-user-password-reset-token user-id)
+          password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
+      (email/send-password-reset-email email server-name password-reset-url)
+      (log/info password-reset-url))))
 
 
 (defendpoint POST "/reset_password"
@@ -63,20 +85,27 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (let [user (sel :one :fields [User :id :reset_triggered] :reset_token token)]
-    (checkp (not (nil? user))
-      (symbol "token") "Invalid reset token")
-    ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-    (checkp (> (* 60 60 1000) (- (System/currentTimeMillis) (get user :reset_triggered 0)))
-      (symbol "token") "Reset token has expired")
-    (set-user-password (:id user) password)
-    {:success true}))
+  (api-let [400 "Invalid reset token"] [[_ user-id]                           (re-matches #"(^\d+)_.+$" token)
+                                        user-id                               (Integer/parseInt user-id)
+                                        {:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
+    ;; Make sure the plaintext token matches up with the hashed one for this user
+    (check (try (creds/bcrypt-verify token reset_token)
+                (catch Throwable _))
+      [400 "Invalid reset token"]
+
+      ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
+      (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
+      [400 "Reset token has expired"])
+    (set-user-password user-id password)
+    ;; after a successful password update go ahead and offer the client a new session that they can use
+    {:success true
+     :session_id (create-session user-id)}))
 
 
 (defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (filter #(= (:key %) :site-name) (setting/all-with-descriptions)))
+  (filter #(contains? #{:site-name :anon-tracking-enabled} (:key %)) (setting/all-with-descriptions)))
 
 
 (define-routes)

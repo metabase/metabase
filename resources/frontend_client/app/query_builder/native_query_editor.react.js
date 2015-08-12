@@ -1,23 +1,32 @@
 'use strict';
 /*global ace*/
 
-import RunButton from './run_button.react';
-import DatabaseSelector from './database_selector.react';
+import DataSelector from './data_selector.react';
+import Icon from './icon.react';
 
 export default React.createClass({
     displayName: 'NativeQueryEditor',
     propTypes: {
         databases: React.PropTypes.array.isRequired,
-        defaultQuery: React.PropTypes.object.isRequired,
         query: React.PropTypes.object.isRequired,
-        isRunning: React.PropTypes.bool.isRequired,
-        runFn: React.PropTypes.func.isRequired,
-        notifyQueryModifiedFn: React.PropTypes.func.isRequired,
+        setQueryFn: React.PropTypes.func.isRequired,
+        setDatabaseFn: React.PropTypes.func.isRequired,
         autocompleteResultsFn: React.PropTypes.func.isRequired
     },
 
     getInitialState: function() {
-        return {};
+        return {
+            showEditor: false
+        };
+    },
+
+    componentWillMount: function() {
+        // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
+        if (!this.props.query.native.query) {
+            this.setState({
+                showEditor: true
+            });
+        }
     },
 
     componentDidMount: function() {
@@ -53,7 +62,11 @@ export default React.createClass({
         editor.setOptions({
             enableBasicAutocompletion: true,
             enableSnippets: true,
-            enableLiveAutocompletion: true
+            enableLiveAutocompletion: true,
+            showPrintMargin: false,
+            highlightActiveLine: false,
+            highlightGutterLine: false,
+            showLineNumbers: true
         });
 
         var autocompleteFn = this.props.autocompleteResultsFn;
@@ -83,68 +96,61 @@ export default React.createClass({
         });
     },
 
-    setDatabase: function(databaseId) {
-        // check if this is the same db or not
-        if (databaseId !== this.props.query.database) {
-            // reset to a brand new query
-            var query = this.props.defaultQuery;
-
-            // set our new database on the query
-            query.database = databaseId;
-
-            // carry over our previous query
-            query.native.query = this.props.query.native.query;
-
-            // notify parent that we've started over
-            this.props.notifyQueryModifiedFn(query);
-        }
-    },
-
-    canRunQuery: function() {
-        return (this.props.query.database !== undefined && this.props.query.native.query !== "");
-    },
-
-    runQuery: function() {
-        this.props.runFn(this.props.query);
+    setQuery: function(dataset_query) {
+        this.props.setQueryFn(dataset_query);
     },
 
     onChange: function(event) {
         if (this.state.editor) {
             var query = this.props.query;
             query.native.query = this.state.editor.getValue();
-            this.props.notifyQueryModifiedFn(query);
+            this.setQuery(query);
         }
     },
 
+    toggleEditor: function() {
+        this.setState({ showEditor: !this.state.showEditor })
+    },
+
     render: function() {
-        //console.log(this.props.query);
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
-        if(this.props.databases && this.props.databases.length > 1) {
+        if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
-                <DatabaseSelector
+                <DataSelector
+                    name="Database"
                     databases={this.props.databases}
-                    setDatabase={this.setDatabase}
-                    currentDatabaseId={this.props.query.database}
+                    query={this.props.query}
+                    setDatabaseFn={this.props.setDatabaseFn}
                 />
             );
+        } else {
+            dbSelector = <span className="p2 text-grey-4">This question is written in SQL.</span>;
+        }
+
+        var editorClasses, toggleEditorText, toggleEditorIcon;
+        if (this.state.showEditor) {
+            editorClasses = "";
+            toggleEditorText = "Hide Editor";
+            toggleEditorIcon = "contract";
+        } else {
+            editorClasses = "hide";
+            toggleEditorText = "Open Editor";
+            toggleEditorIcon = "expand";
         }
 
         return (
-            <div className="QueryBuilder-section border-bottom">
-                <div className="wrapper">
-                    <div id="id_sql" className="Query-section bordered mt2"></div>
-                    <div className="py2 clearfix">
-                        <div className="float-right">
-                            <RunButton
-                                canRun={this.canRunQuery()}
-                                isRunning={this.props.isRunning}
-                                runFn={this.runQuery}
-                            />
-                        </div>
-                        <div className="float-left">
-                            {dbSelector}
-                        </div>
+            <div className="wrapper">
+                <div className="NativeQueryEditor bordered rounded shadowed">
+                    <div className="flex">
+                        {dbSelector}
+                        <a href="#" className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
+                            <span className="mx2">{toggleEditorText}</span>
+                            <Icon name={toggleEditorIcon} width="20" height="20"/>
+                        </a>
+                    </div>
+                    <div className={"border-top " + editorClasses}>
+                        <div id="id_sql"></div>
                     </div>
                 </div>
             </div>

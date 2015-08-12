@@ -74,11 +74,17 @@ export default React.createClass({
     },
 
     render: function() {
-        var fillColor = (this.state.favorite) ? 'text-gold' : 'text-grey-1';
+        var iconClasses = cx({
+            'mx1': true,
+            'transition-color': true,
+            'text-grey-4': !this.state.favorite,
+            'text-brand-hover': !this.state.favorite,
+            'text-gold': this.state.favorite
+        });
 
         return (
-            <a className="mx1 text-grey-4 text-gold-hover transition-color" href="#" onClick={this.toggleFavorite}>
-                <Icon name="star" width="18px" height="18px"></Icon>
+            <a className={iconClasses} href="#" onClick={this.toggleFavorite} title="Favorite this question">
+                <Icon name="star" width="16px" height="16px"></Icon>
             </a>
         );
     }

@@ -1,19 +1,31 @@
 :root {
   --brand-color: #509EE3;
+  --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+
+  --grey-text-color: #797979;
+  --alt-color: #F5F7F9;
   --alt-bg-color: #F4F6F8;
 
   --success-color: #9CC177;
   --headsup-color: #F5A623;
 
   --gold-color: #F9D45C;
-
+  --purple-color: #A989C5;
+  --purple-light-color: #C5ABDB;
+  --green-color: #9CC177;
+  --dark-color: #4C545B;
   --error-color: #EF8C8C;
 }
 
+.text-default {
+    color: var(--default-font-color) !important;
+}
+
 /* white */
-.text-white { color: #fff; }
+.text-white,
+.text-white-hover:hover { color: #fff; }
 
 .bg-white { background-color: #fff; }
 
@@ -25,10 +37,16 @@
 
 .text-brand-darken,
 .text-brand-darken-hover:hover {
-    color: color(var(--brand-color) shade(20%));
+    color: color(var(--brand-color) shade(20%)) !important;
 }
 
-.bg-brand { background-color: var(--brand-color); }
+.text-brand-light,
+.text-brand-light-hover:hover {
+    color: var(--brand-light-color) !important;
+}
+
+.bg-brand,
+.bg-brand-hover:hover { background-color: var(--brand-color); }
 
 
 /* success */
@@ -57,9 +75,25 @@
     color: var(--gold-color);
 }
 
-.bg-gold {
-    background-color: var(--gold-color);
+.text-purple,
+.text-purple-hover:hover {
+    color: var(--purple-color);
 }
+
+.text-purple-light,
+.text-purple-light-hover:hover {
+    color: var(--purple-light-color);
+}
+
+.text-green,
+.text-green-hover:hover {
+    color: var(--green-color);
+}
+
+.bg-gold { background-color: var(--gold-color); }
+
+/* alt */
+.bg-alt { background-color: var(--alt-color); }
 
 /* grey */
 
@@ -80,5 +114,4 @@
 .bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
 
-
-.text-dark { color: #797979; }
+.text-dark { color: var(--dark-color); }

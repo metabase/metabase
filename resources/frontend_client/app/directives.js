@@ -133,6 +133,53 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
     };
 }]);
 
+CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attr) {
+            var Component = scope[attr.mbReactComponent];
+            delete scope[attr.mbReactComponent];
+
+            function render() {
+                var props = {};
+                function copyProp(key, value) {
+                    if (typeof value === "function") {
+                        props[key] = function() {
+                            try {
+                                return value.apply(this, arguments);
+                            } finally {
+                                $timeout(() => scope.$digest());
+                            }
+                        }
+                    } else {
+                        props[key] = value;
+                    }
+                }
+                for (var key in scope) {
+                    copyProp(key, scope[key]);
+                }
+                React.render(<Component {...props}/>, element[0]);
+            }
+
+            scope.$on("$destroy", function() {
+                React.unmountComponentAtNode(element[0]);
+            });
+
+            // limit renders to once per animation frame
+            var timeout;
+            scope.$watch(function() {
+                if (!timeout) {
+                    timeout = requestAnimationFrame(function() {
+                        timeout = null;
+                        render();
+                    });
+                }
+            });
+
+            render();
+        }
+    };
+}]);
 
 var NavbarDirectives = angular.module('corvus.navbar.directives', []);
 
@@ -165,20 +212,7 @@ NavbarDirectives.directive('mbProfileLink', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template:  '<ul>' +
-                        '<li class="Dropdown inline-block" dropdown on-toggle="toggled(open)">' +
-                            '<a class="flex align-center" selectable-nav-item="settings" dropdown-toggle>' +
-                                '<span class="UserNick">' +
-                                    '<span class="UserInitials NavItem-text">{{initials}}</span> ' +
-                                '</span>' +
-                                '<mb-icon name="chevrondown" class="Dropdown-chevron ml1" width="8px" height="8px"></mb-icon>' +
-                            '</a>' +
-                            '<ul class="Dropdown-content right">' +
-                                '<li><a class="Dropdown-item link block" href="/user/edit_current">Account Settings</a></li>' +
-                                '<li><a class="Dropdown-item link block" href="/auth/logout">Logout</a></li>' +
-                            '</ul>' +
-                        '</li>' +
-                    '</ul>',
+        templateUrl: '/app/partials/mb_profile_link.html',
         scope: {
             context: '=',
             user: '='

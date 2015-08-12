@@ -1,11 +1,10 @@
 (ns metabase.driver
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
-            [medley.core :refer :all]
+            [medley.core :as m]
             [metabase.db :refer [exists? ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
-            [metabase.driver.query-processor.expand :as expand]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
@@ -15,39 +14,42 @@
 
 ;; ## CONFIG
 
-(defsetting report-timezone "Connection timezone to use when executing queries.  Defaults to system timezone.")
+(defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
 
 
 ;; ## Constants
 
 (def ^:const available-drivers
-  "DB drivers that are available as a dictionary.  Each key is a driver with dictionary of attributes.
-  ex: `:h2 {:id \"h2\" :name \"H2\"}`"
-  {:h2       {:id      "h2"
-              :name    "H2"
-              :example "file:[filename]"}
-   :postgres {:id      "postgres"
-              :name    "Postgres"
-              :example "host=[ip address] port=5432 dbname=examples user=corvus password=******"}
-   :mongo    {:id      "mongo"
-              :name    "MongoDB"
-              :example "mongodb://password:username@127.0.0.1:27017/db-name"}})
+  "Available DB drivers."
+  {:h2       {:id   "h2"
+              :name "H2"}
+   :postgres {:id   "postgres"
+              :name "Postgres"}
+   :mongo    {:id   "mongo"
+              :name "MongoDB"}
+   :mysql    {:id   "mysql"
+              :name "MySQL"}})
 
-(def ^:const class->base-type
-  "Map of classes returned from DB call to metabase.models.field/base-types"
-  {java.lang.Boolean            :BooleanField
-   java.lang.Double             :FloatField
-   java.lang.Float              :FloatField
-   java.lang.Integer            :IntegerField
-   java.lang.Long               :IntegerField
-   java.lang.String             :TextField
-   java.math.BigDecimal         :DecimalField
-   java.math.BigInteger         :BigIntegerField
-   java.sql.Date                :DateField
-   java.sql.Timestamp           :DateTimeField
-   java.util.Date               :DateField
-   java.util.UUID               :TextField
-   org.postgresql.util.PGobject :UnknownField}) ; this mapping included here since Native QP uses class->base-type directly. TODO - perhaps make *class-base->type* driver specific?
+(defn class->base-type
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  [klass]
+  (or ({Boolean                         :BooleanField
+        Double                          :FloatField
+        Float                           :FloatField
+        Integer                         :IntegerField
+        Long                            :IntegerField
+        String                          :TextField
+        java.math.BigDecimal            :DecimalField
+        java.math.BigInteger            :BigIntegerField
+        java.sql.Date                   :DateField
+        java.sql.Timestamp              :DateTimeField
+        java.util.Date                  :DateField
+        java.util.UUID                  :TextField
+        org.postgresql.util.PGobject    :UnknownField} klass)
+      (cond
+        (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
+      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
+          :UnknownField)))
 
 ;; ## Driver Lookup
 
@@ -121,7 +123,7 @@
   (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
     (fn [database]
       {:pre [(map? database)]}
-      (time (-sync-database! (engine->driver (:engine database)) database)))))
+      (-sync-database! (engine->driver (:engine database)) database))))
 
 (def ^{:arglists '([table])} sync-table!
   "Sync a `Table` and its `Fields`."
@@ -133,21 +135,7 @@
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  {:pre [(map? query)]}
-  (try
-    (let [driver  (database-id->driver (:database query))]
-      (binding [qp/*query*            query
-                qp/*expanded-query*   (expand/expand query)
-                qp/*internal-context* (atom {})
-                qp/*driver*           driver]
-        (let [query   (qp/preprocess query)
-              results (binding [qp/*query* query]
-                        (i/process-query driver (dissoc-in query [:query :cum_sum])))] ; strip out things that individual impls don't need to know about / deal with
-          (qp/post-process driver query results))))
-    (catch Throwable e
-      (.printStackTrace e)
-      {:status :failed
-       :error  (.getMessage e)})))
+  (qp/process (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff
@@ -193,10 +181,8 @@
           (when (= :failed (:status query-result))
             (throw (Exception. ^String (get query-result :error "general error"))))
           (query-complete query-execution query-result))
-        (catch Exception ex
-          (log/warn ex)
-          (.printStackTrace ex)
-          (query-fail query-execution (.getMessage ex)))))))
+        (catch Exception e
+          (query-fail query-execution (.getMessage e)))))))
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"
@@ -237,7 +223,7 @@
   (if id
     ;; execution has already been saved, so update it
     (do
-      (mapply upd QueryExecution id query-execution)
+      (m/mapply upd QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (mapply ins QueryExecution query-execution)))
+    (m/mapply ins QueryExecution query-execution)))

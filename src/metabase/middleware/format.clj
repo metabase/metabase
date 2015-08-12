@@ -3,6 +3,8 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str]])
             [medley.core :refer [filter-vals map-vals]]
+            [metabase.middleware.log-api-call :refer [api-call?]]
+            [metabase.models.interface :refer [api-serialize]]
             [metabase.util :as util]))
 
 (declare -format-response)
@@ -31,6 +33,15 @@
 (add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
                              (.writeString json-generator (.toString date))))
 
+(defn add-security-headers
+  "Add HTTP headers to tell browsers not to cache API responses."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (update response :headers merge (when (api-call? request)
+                                        {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+                                         "Expires"       "Tue, 03 Jul 2001 06:00:00 GMT" ; rando date in the past
+                                         "Last-Modified" "{now} GMT"})))))
 
 ;; ## FORMAT RESPONSE MIDDLEWARE
 (defn format-response
@@ -45,11 +56,14 @@
   [m]
   (filter-vals #(not (or (delay? %)
                          (fn? %)))
-               m))
+               ;; Convert typed maps such as metabase.models.database/DatabaseInstance to plain maps because empty, which is used internally by filter-vals,
+               ;; will fail otherwise
+               (into {} m)))
 
 (defn- -format-response [obj]
   (cond
-    (map? obj)  (->> (remove-fns-and-delays obj)   ; recurse over all vals in the map
-                     (map-vals -format-response))
-    (coll? obj) (map -format-response obj)        ; recurse over all items in the collection
+    (map? obj)  (->> (api-serialize obj)
+                     remove-fns-and-delays
+                     (map-vals -format-response)) ; recurse over all vals in the map
+    (coll? obj) (map -format-response obj) ; recurse over all items in the collection
     :else       obj))

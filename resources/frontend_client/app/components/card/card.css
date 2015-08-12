@@ -101,3 +101,7 @@
 .Dash-card .Card {
   overflow-y: scroll;
 }
+
+.Card--scalar {
+    margin-left: 1em;
+}

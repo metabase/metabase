@@ -1,4 +1,5 @@
 'use strict';
+/*global _*/
 
 import OnClickOutside from 'react-onclickoutside';
 
@@ -32,10 +33,15 @@ export default React.createClass({
     loadDashboardList: function() {
         var component = this;
         this.props.dashboardApi.list({
-            'filterMode': 'mine'
+            'filterMode': 'all'
         }, function(result) {
+            // filter down to dashboards we can modify
+            var editableDashes = _.filter(result, function(dash) {
+                return dash.can_write;
+            });
+
             component.setState({
-                dashboards: result
+                dashboards: editableDashes
             });
         }, function(error) {
             // TODO: do something relevant here
@@ -88,13 +94,13 @@ export default React.createClass({
 
         var name = this.refs.name.getDOMNode().value.trim();
         var description = this.refs.description.getDOMNode().value.trim();
-        var perms = this.refs.public_perms.getDOMNode().value;
+        var perms = parseInt(this.refs.public_perms.state.value);
 
         // populate a new Dash object
         var newDash = {
             'name': (name && name.length > 0) ? name : null,
             'description': (description && description.length > 0) ? name : null,
-            'public_perms': 0
+            'public_perms': perms
         };
 
         // create a new dashboard, then add the card to that
@@ -144,8 +150,7 @@ export default React.createClass({
         // TODO: hard coding values :(
         var privacyOptions = [
             (<option key="0" value={0}>Private</option>),
-            (<option key="1" value={1}>Others can read</option>),
-            (<option key="2" value={2}>Others can modify</option>)
+            (<option key="2" value={2}>Public</option>)
         ];
 
         var formError;
@@ -191,7 +196,7 @@ export default React.createClass({
 
         return (
             <form className="Form-new" onSubmit={this.createNewDash}>
-                <div className="Form-offset flex align-center mr4">
+                <div className="Form-offset flex align-center mr4 mb2">
                     <h3 className="flex-full">Create a new dashboard</h3>
                     <a className="text-grey-3" onClick={this.toggleCreate}>
                         <Icon name='close' width="12px" height="12px"/>
@@ -220,7 +225,7 @@ export default React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms">
+                        <select className="mt1" ref="public_perms" defaultValue="2">
                             {privacyOptions}
                         </select>
                     </label>
@@ -268,9 +273,7 @@ export default React.createClass({
 
         return (
             <div>
-                <ReactCSSTransitionGroup transitionName="Transition-popover-state">
-                    {content}
-                </ReactCSSTransitionGroup>
+                {content}
             </div>
         );
     }

@@ -22,10 +22,10 @@
                 </tr>
                 <tr ng-repeat="database in databases">
                     <td>
-                        <a class="text-bold link" href="/admin/databases/{{database.id}}/tables">{{database.name}}</a>
+                        <a class="text-bold link" href="/admin/databases/{{database.id}}">{{database.name}}</a>
                     </td>
                     <td>
-                        {{database.engine}}
+                        {{ENGINES[database.engine].name}}
                     </td>
                     <td class="Table-actions">
                         <!-- TODO: sync now button? -->

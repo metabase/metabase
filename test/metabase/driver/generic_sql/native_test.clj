@@ -2,7 +2,9 @@
   (:require [clojure.tools.logging :as log]
             [colorize.core :as color]
             [expectations :refer :all]
+            [metabase.db :refer [ins cascade-delete]]
             [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
             [metabase.test.data :refer :all]))
 
 ;; Just check that a basic query works
@@ -33,7 +35,19 @@
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
          :error "Column \"ZID\" not found"}
-  (do (log/info (color/green "NOTE: The following stacktrace is expected <3"))      ; this will print a stacktrace
-      (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
-                             :type     :native
-                             :database (db-id)})))
+  (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
+                                 :type     :native
+                                 :database (db-id)})
+          :stacktrace
+          :query
+          :expanded-query))
+
+;; Check that we're not allowed to run SQL against an H2 database with a non-admin account
+(expect "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
+  ;; Insert a fake Database. It doesn't matter that it doesn't actually exist since query processing should
+  ;; fail immediately when it realizes this DB doesn't have a USER
+  (let [db (ins Database :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
+    (try (:error (driver/process-query {:database (:id db)
+                                        :type     :native
+                                        :native   {:query "SELECT 1;"}}))
+         (finally (cascade-delete Database :name "Fake-H2-DB")))))

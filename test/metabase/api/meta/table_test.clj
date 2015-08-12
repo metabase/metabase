@@ -10,7 +10,7 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [data :as data]
-                                [datasets :as datasets, :refer [*dataset* with-dataset-when-testing]]
+                                [datasets :as datasets]
                                 [users :refer :all])
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
@@ -25,123 +25,155 @@
 
 ;; ## GET /api/meta/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect (set (mapcat (fn [dataset-name]
-                       (with-dataset-when-testing dataset-name
-                         (let [db-id (:id (datasets/db *dataset*))]
-                           [{:name (datasets/format-name *dataset* "categories"), :db_id db-id, :active true, :rows   75, :id (datasets/table-name->id *dataset* :categories)}
-                            {:name (datasets/format-name *dataset* "checkins"),   :db_id db-id, :active true, :rows 1000, :id (datasets/table-name->id *dataset* :checkins)}
-                            {:name (datasets/format-name *dataset* "users"),      :db_id db-id, :active true, :rows   15, :id (datasets/table-name->id *dataset* :users)}
-                            {:name (datasets/format-name *dataset* "venues"),     :db_id db-id, :active true, :rows  100, :id (datasets/table-name->id *dataset* :venues)}])))
-                     @datasets/test-dataset-names))
+(expect (set (reduce concat (for [dataset-name datasets/test-dataset-names]
+                              (datasets/with-dataset-when-testing dataset-name
+                                [{:name                (format-name "categories")
+                                  :display_name        "Categories"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                75
+                                  :id                  (id :categories)}
+                                 {:name                (format-name "checkins")
+                                  :display_name        "Checkins"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                1000
+                                  :id                  (id :checkins)}
+                                 {:name                (format-name "users")
+                                  :display_name        "Users"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                15
+                                  :id                  (id :users)}
+                                 {:name                (format-name "venues")
+                                  :display_name        "Venues"
+                                  :db_id               (db-id)
+                                  :active              true
+                                  :rows                100
+                                  :id                  (id :venues)}]))))
   (->> ((user->client :rasta) :get 200 "meta/table")
-       (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type))
+       (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type :visibility_type))
        set))
 
 ;; ## GET /api/meta/table/:id
 (expect
-    (match-$ (sel :one Table :id (id :venues))
+    (match-$ (Table (id :venues))
       {:description nil
        :entity_type nil
-       :db (match-$ (db)
-             {:created_at $
-              :engine "h2"
-              :id $
-              :details $
-              :updated_at $
-              :name "Test Database"
-              :organization_id nil
-              :description nil})
-       :name "VENUES"
-       :rows 100
-       :updated_at $
+       :visibility_type nil
+       :db          (match-$ (db)
+                      {:created_at $
+                       :engine "h2"
+                       :id $
+                       :updated_at $
+                       :name "Test Database"
+                       :organization_id nil
+                       :description nil})
+       :name        "VENUES"
+       :display_name "Venues"
+       :rows        100
+       :updated_at  $
        :entity_name nil
-       :active true
-       :pk_field (deref $pk_field)
-       :id (id :venues)
-       :db_id (db-id)
-       :created_at $})
+       :active      true
+       :pk_field    (deref $pk_field)
+       :id          (id :venues)
+       :db_id       (db-id)
+       :created_at  $})
   ((user->client :rasta) :get 200 (format "meta/table/%d" (id :venues))))
 
 ;; ## GET /api/meta/table/:id/fields
-(expect [(match-$ (sel :one Field :id (id :categories :id))
-           {:description nil
-            :table_id (id :categories)
-            :special_type "id"
-            :name "ID"
-            :updated_at $
-            :active true
-            :id (id :categories :id)
-            :field_type "info"
-            :position 0
-            :preview_display true
-            :created_at $
-            :base_type "BigIntegerField"})
-         (match-$ (sel :one Field :id (id :categories :name))
-           {:description nil
-            :table_id (id :categories)
-            :special_type "name"
-            :name "NAME"
-            :updated_at $
-            :active true
-            :id (id :categories :name)
-            :field_type "info"
-            :position 0
-            :preview_display true
-            :created_at $
-            :base_type "TextField"})]
+(expect [(match-$ (Field (id :categories :id))
+           {:description         nil
+            :table_id            (id :categories)
+            :special_type        "id"
+            :name                "ID"
+            :display_name        "Id"
+            :updated_at          $
+            :active              true
+            :id                  (id :categories :id)
+            :field_type          "info"
+            :position            0
+            :preview_display     true
+            :created_at          $
+            :base_type           "BigIntegerField"
+            :parent_id           nil
+            :parent              nil})
+         (match-$ (Field (id :categories :name))
+           {:description         nil
+            :table_id            (id :categories)
+            :special_type        "name"
+            :name                "NAME"
+            :display_name        "Name"
+            :updated_at          $
+            :active              true
+            :id                  (id :categories :name)
+            :field_type          "info"
+            :position            0
+            :preview_display     true
+            :created_at          $
+            :base_type           "TextField"
+            :parent_id           nil
+            :parent              nil})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (id :categories))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 (expect
-    (match-$ (sel :one Table :id (id :categories))
-      {:description nil
-       :entity_type nil
-       :db (match-$ (db)
-             {:created_at $
-              :engine "h2"
-              :id $
-              :details $
-              :updated_at $
-              :name "Test Database"
-              :organization_id nil
-              :description nil})
-       :name "CATEGORIES"
-       :fields [(match-$ (sel :one Field :id (id :categories :id))
-                  {:description nil
-                   :table_id (id :categories)
-                   :special_type "id"
-                   :name "ID"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :categories :name))
-                  {:description nil
-                   :table_id (id :categories)
-                   :special_type "name"
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})]
+    (match-$ (Table (id :categories))
+      {:description  nil
+       :entity_type  nil
+       :visibility_type nil
+       :db           (match-$ (db)
+                       {:created_at      $
+                        :engine          "h2"
+                        :id              $
+                        :updated_at      $
+                        :name            "Test Database"
+                        :organization_id nil
+                        :description     nil})
+       :name         "CATEGORIES"
+       :display_name "Categories"
+       :fields       [(match-$ (Field (id :categories :id))
+                        {:description     nil
+                         :table_id        (id :categories)
+                         :special_type    "id"
+                         :name            "ID"
+                         :display_name    "Id"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "BigIntegerField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (Field (id :categories :name))
+                        {:description     nil
+                         :table_id        (id :categories)
+                         :special_type    "name"
+                         :name            "NAME"
+                         :display_name    "Name"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})]
        :field_values {}
-       :rows 75
-       :updated_at $
-       :entity_name nil
-       :active true
-       :id (id :categories)
-       :db_id (db-id)
-       :created_at $})
+       :rows         75
+       :updated_at   $
+       :entity_name  nil
+       :active       true
+       :id           (id :categories)
+       :db_id        (db-id)
+       :created_at   $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (id :categories))))
 
 
@@ -167,80 +199,93 @@
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
     (match-$ (sel :one Table :id (id :users))
-      {:description nil
-       :entity_type nil
-       :db (match-$ (db)
-             {:created_at $
-              :engine "h2"
-              :id $
-              :details $
-              :updated_at $
-              :name "Test Database"
-              :organization_id nil
-              :description nil})
-       :name "USERS"
-       :fields [(match-$ (sel :one Field :id (id :users :id))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "id"
-                   :name "ID"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :users :last_login))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "LAST_LOGIN"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "DateTimeField"})
-                (match-$ (sel :one Field :id (id :users :name))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})
-                (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "PASSWORD"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "sensitive"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})]
-       :rows 15
-       :updated_at $
-       :entity_name nil
-       :active true
-       :id (id :users)
-       :db_id (db-id)
+      {:description  nil
+       :entity_type  nil
+       :visibility_type nil
+       :db           (match-$ (db)
+                       {:created_at      $
+                        :engine          "h2"
+                        :id              $
+                        :updated_at      $
+                        :name            "Test Database"
+                        :organization_id nil
+                        :description     nil})
+       :name         "USERS"
+       :display_name "Users"
+       :fields       [(match-$ (sel :one Field :id (id :users :id))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "id"
+                         :name            "ID"
+                         :display_name    "Id"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "BigIntegerField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :id (id :users :last_login))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "LAST_LOGIN"
+                         :display_name    "Last Login"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "DateTimeField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :id (id :users :name))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "NAME"
+                         :display_name    "Name"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "PASSWORD"
+                         :display_name    "Password"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "sensitive"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})]
+       :rows         15
+       :updated_at   $
+       :entity_name  nil
+       :active       true
+       :id           (id :users)
+       :db_id        (db-id)
        :field_values {(keyword (str (id :users :last_login)))
                       user-last-login-date-strs
 
@@ -260,73 +305,83 @@
                        "Simcha Yan"
                        "Spiros Teofil"
                        "Szymon Theutrich"]}
-       :created_at $})
+       :created_at   $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
 ;;; GET api/meta/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-    (match-$ (sel :one Table :id (id :users))
-      {:description nil
-       :entity_type nil
-       :db (match-$ (db)
-             {:created_at $
-              :engine "h2"
-              :id $
-              :details $
-              :updated_at $
-              :name "Test Database"
-              :organization_id nil
-              :description nil})
-       :name "USERS"
-       :fields [(match-$ (sel :one Field :id (id :users :id))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "id"
-                   :name "ID"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "BigIntegerField"})
-                (match-$ (sel :one Field :id (id :users :last_login))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "LAST_LOGIN"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "DateTimeField"})
-                (match-$ (sel :one Field :id (id :users :name))
-                  {:description nil
-                   :table_id (id :users)
-                   :special_type "category"
-                   :name "NAME"
-                   :updated_at $
-                   :active true
-                   :id $
-                   :field_type "info"
-                   :position 0
-                   :target nil
-                   :preview_display true
-                   :created_at $
-                   :base_type "TextField"})]
-       :rows 15
-       :updated_at $
-       :entity_name nil
-       :active true
-       :id (id :users)
-       :db_id (db-id)
+    (match-$ (Table (id :users))
+      {:description  nil
+       :entity_type  nil
+       :visibility_type nil
+       :db           (match-$ (db)
+                       {:created_at      $
+                        :engine          "h2"
+                        :id              $
+                        :updated_at      $
+                        :name            "Test Database"
+                        :organization_id nil
+                        :description     nil})
+       :name         "USERS"
+       :display_name "Users"
+       :fields       [(match-$ (Field (id :users :id))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "id"
+                         :name            "ID"
+                         :display_name    "Id"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "BigIntegerField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (Field (id :users :last_login))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "LAST_LOGIN"
+                         :display_name    "Last Login"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "DateTimeField"
+                         :parent_id       nil
+                         :parent          nil})
+                      (match-$ (Field (id :users :name))
+                        {:description     nil
+                         :table_id        (id :users)
+                         :special_type    "category"
+                         :name            "NAME"
+                         :display_name    "Name"
+                         :updated_at      $
+                         :active          true
+                         :id              $
+                         :field_type      "info"
+                         :position        0
+                         :target          nil
+                         :preview_display true
+                         :created_at      $
+                         :base_type       "TextField"
+                         :parent_id       nil
+                         :parent          nil})]
+       :rows         15
+       :updated_at   $
+       :entity_name  nil
+       :active       true
+       :id           (id :users)
+       :db_id        (db-id)
        :field_values {(keyword (str (id :users :last_login)))
                       user-last-login-date-strs
 
@@ -346,39 +401,42 @@
                        "Simcha Yan"
                        "Spiros Teofil"
                        "Szymon Theutrich"]}
-       :created_at $})
+       :created_at   $})
   ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (id :users))))
 
 
 ;; ## PUT /api/meta/table/:id
 (expect-eval-actual-first
-    (match-$ (let [table (sel :one Table :id (id :users))]
+    (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
-               (upd Table (id :users) :entity_name nil :entity_type nil :description nil)
+               (upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
                table)
       {:description "What a nice table!"
        :entity_type "person"
-       :db (match-$ (db)
-             {:description nil
-              :organization_id $
-              :name "Test Database"
-              :updated_at $
-              :details $
-              :id $
-              :engine "h2"
-              :created_at $})
-       :name "USERS"
-       :rows 15
-       :updated_at $
-       :entity_name "Userz"
-       :active true
-       :pk_field (deref $pk_field)
-       :id $
-       :db_id (db-id)
-       :created_at $})
-  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:entity_name "Userz"
-                                                                                       :entity_type "person"
-                                                                                       :description "What a nice table!"})
+       :visibility_type "hidden"
+       :db          (match-$ (db)
+                      {:description     nil
+                       :organization_id $
+                       :name            "Test Database"
+                       :updated_at      $
+                       :details         $
+                       :id              $
+                       :engine          "h2"
+                       :created_at      $})
+       :name        "USERS"
+       :rows        15
+       :updated_at  $
+       :entity_name nil
+       :display_name "Userz"
+       :active      true
+       :pk_field    (deref $pk_field)
+       :id          $
+       :db_id       (db-id)
+       :created_at  $})
+  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:display_name "Userz"
+                                                                                :entity_type "person"
+                                                                                :visibility_type "hidden"
+                                                                                :description "What a nice table!"})
       ((user->client :crowberto) :get 200 (format "meta/table/%d" (id :users)))))
 
 
@@ -387,79 +445,88 @@
 (expect-let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
              users-id-field (sel :one Field :table_id (id :users) :name "ID")]
   [(match-$ (sel :one ForeignKey :destination_id (:id users-id-field))
-     {:id $
-      :origin_id (:id checkins-user-field)
+     {:id             $
+      :origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
-      :relationship "Mt1"
-      :created_at $
-      :updated_at $
-      :origin (match-$ checkins-user-field
-                {:id $
-                 :table_id $
-                 :name "USER_ID"
-                 :description nil
-                 :base_type "IntegerField"
-                 :preview_display $
-                 :position $
-                 :field_type "info"
-                 :active true
-                 :special_type "fk"
-                 :created_at $
-                 :updated_at $
-                 :table (match-$ (sel :one Table :id (id :checkins))
-                          {:description nil
-                           :entity_type nil
-                           :name "CHECKINS"
-                           :rows 1000
-                           :updated_at $
-                           :entity_name nil
-                           :active true
-                           :id $
-                           :db_id $
-                           :created_at $
-                           :db (match-$ (db)
-                                 {:description nil,
-                                  :organization_id nil,
-                                  :name "Test Database",
-                                  :updated_at $,
-                                  :id $,
-                                  :engine "h2",
-                                  :created_at $
-                                  :details $})})})
-      :destination (match-$ users-id-field
-                     {:id $
-                      :table_id $
-                      :name "ID"
-                      :description nil
-                      :base_type "BigIntegerField"
-                      :preview_display $
-                      :position $
-                      :field_type "info"
-                      :active true
-                      :special_type "id"
-                      :created_at $
-                      :updated_at $
-                      :table (match-$ (sel :one Table :id (id :users))
-                               {:description nil
-                                :entity_type nil
-                                :name "USERS"
-                                :rows 15
-                                :updated_at $
-                                :entity_name nil
-                                :active true
-                                :id $
-                                :db_id $
-                                :created_at $})})})]
+      :relationship   "Mt1"
+      :created_at     $
+      :updated_at     $
+      :origin         (match-$ checkins-user-field
+                        {:id              $
+                         :table_id        $
+                         :parent_id       nil
+                         :parent          nil
+                         :name            "USER_ID"
+                         :display_name    "User Id"
+                         :description     nil
+                         :base_type       "IntegerField"
+                         :preview_display $
+                         :position        $
+                         :field_type      "info"
+                         :active          true
+                         :special_type    "fk"
+                         :created_at      $
+                         :updated_at      $
+                         :table           (match-$ (Table (id :checkins))
+                                            {:description nil
+                                             :entity_type nil
+                                             :visibility_type nil
+                                             :name        "CHECKINS"
+                                             :display_name "Checkins"
+                                             :rows        1000
+                                             :updated_at  $
+                                             :entity_name nil
+                                             :active      true
+                                             :id          $
+                                             :db_id       $
+                                             :created_at  $
+                                             :db          (match-$ (db)
+                                                            {:description     nil,
+                                                             :organization_id nil,
+                                                             :name            "Test Database",
+                                                             :updated_at      $,
+                                                             :id              $,
+                                                             :engine          "h2",
+                                                             :created_at      $})})})
+      :destination    (match-$ users-id-field
+                        {:id              $
+                         :table_id        $
+                         :parent_id       nil
+                         :parent          nil
+                         :name            "ID"
+                         :display_name    "Id"
+                         :description     nil
+                         :base_type       "BigIntegerField"
+                         :preview_display $
+                         :position        $
+                         :field_type      "info"
+                         :active          true
+                         :special_type    "id"
+                         :created_at      $
+                         :updated_at      $
+                         :table           (match-$ (Table (id :users))
+                                            {:description nil
+                                             :entity_type nil
+                                             :visibility_type nil
+                                             :name        "USERS"
+                                             :display_name "Users"
+                                             :rows        15
+                                             :updated_at  $
+                                             :entity_name nil
+                                             :active      true
+                                             :id          $
+                                             :db_id       $
+                                             :created_at  $})})})]
   ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (id :users))))
 
 
 ;; ## POST /api/meta/table/:id/reorder
 (expect-eval-actual-first
-  {:result "success"}
-  (let [categories-id-field (sel :one Field :table_id (id :categories) :name "ID")
+    {:result "success"}
+  (let [categories-id-field   (sel :one Field :table_id (id :categories) :name "ID")
         categories-name-field (sel :one Field :table_id (id :categories) :name "NAME")
-        api-response ((user->client :crowberto) :post 200 (format "meta/table/%d/reorder" (id :categories))
-                       {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
+        api-response          ((user->client :crowberto) :post 200 (format "meta/table/%d/reorder" (id :categories))
+                               {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
     (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
     (assert (= 1 (:position (sel :one :fields [Field :position] :id (:id categories-id-field)))))

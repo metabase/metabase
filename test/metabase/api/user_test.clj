@@ -1,7 +1,7 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             [metabase.middleware.auth :as auth]
@@ -81,6 +81,28 @@
        :common_name $
        :is_superuser false})
     (create-user-api rand-name)))
+
+;; Test that reactivating a disabled account works
+(let [rand-name (random-name)]
+  (expect-eval-actual-first
+    (match-$ (sel :one User :first_name rand-name :is_active true)
+      {:id $
+       :email $
+       :first_name rand-name
+       :last_name "whatever"
+       :date_joined $
+       :last_login $
+       :common_name $
+       :is_superuser false})
+    (when-let [user (create-user-api rand-name)]
+      ;; create a random user then set them to :inactive
+      (upd User (:id user)
+        :is_active false
+        :is_superuser true)
+      ;; then try creating the same user again
+      ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
+                                                   :last_name "whatever"
+                                                   :email (:email user)}))))
 
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
@@ -195,7 +217,7 @@
 (let [user-last-name (random-name)]
   (expect-eval-actual-first
       (let [{user-id :id} (sel :one User :last_name user-last-name)]
-        (sel :one :fields [Session :id] :user_id user-id (order :created_at :desc))) ; get the latest Session for this User
+        (sel :one :fields [Session :id] :user_id user-id (k/order :created_at :desc))) ; get the latest Session for this User
     (let [password {:old "password"
                     :new "whateverUP12!!"}
           {:keys [email id] :as user} (create-user :password (:old password) :last_name user-last-name)

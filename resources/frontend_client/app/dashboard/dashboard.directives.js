@@ -18,7 +18,16 @@ DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$
                     controller: ['$scope', '$modalInstance',
                         function($scope, $modalInstance) {
                             $scope.dashboard = angular.copy(scope.dashboard);
-                            $scope.permOptions = CorvusCore.perms;
+
+                            // TODO: hard coding this is wack, but right now there is little choice.
+                            //       we need to cleanup these definitions and ideally get them from the api.
+                            $scope.permOptions = this.perms = [{
+                                'id': 0,
+                                'name': 'Private'
+                            }, {
+                                'id': 2,
+                                'name': 'Public'
+                            }];
 
                             $scope.save = function(dash) {
                                 $scope.$broadcast("form:reset");
@@ -28,6 +37,8 @@ DashboardDirectives.directive('mbDashboardSaver', ['CorvusCore', 'Dashboard', '$
                                     if (scope.callback) {
                                         scope.callback(result);
                                     }
+
+                                    $rootScope.$broadcast("dashboard:update", scope.dashboard.id);
 
                                     // just close out the modal now that we're done
                                     $modalInstance.close();

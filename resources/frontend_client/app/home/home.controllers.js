@@ -1,9 +1,19 @@
 'use strict';
 
-var HomeControllers = angular.module('corvus.home.controllers', []);
+import Table from "metabase/lib/table";
+
+var HomeControllers = angular.module('corvus.home.controllers', [
+    'corvus.home.directives',
+    'corvus.metabase.services'
+]);
 
 HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {
     $scope.currentView = 'data';
+    $scope.showOnboarding = false;
+
+    if('new' in $location.search()) {
+        $scope.showOnboarding = true;
+    }
 }]);
 
 HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($scope, $location) {
@@ -33,5 +43,31 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
     }
 
     $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = "What do you want to know?"
+    $scope.subheading = "What do you want to know?";
+}]);
+
+HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
+
+    $scope.databases = [];
+    $scope.currentDB = {};
+    $scope.tables = [];
+
+    Metabase.db_list(function (databases) {
+        $scope.databases = databases;
+        $scope.selectCurrentDB(0)
+    }, function (error) {
+        console.log(error);
+    });
+
+
+    $scope.selectCurrentDB = function(index) {
+        $scope.currentDB = $scope.databases[index];
+        Metabase.db_tables({
+            'dbId': $scope.currentDB.id
+        }, function (tables) {
+            $scope.tables = tables.filter(Table.isQueryable);
+        }, function (error) {
+            console.log(error);
+        })
+    }
 }]);

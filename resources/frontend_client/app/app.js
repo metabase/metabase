@@ -8,7 +8,6 @@ var Corvus = angular.module('corvus', [
     'ngCookies',
     'ngSanitize',
     'xeditable', // inplace editing capabilities
-    'angularytics', // google analytics
     'ui.bootstrap', // bootstrap LIKE widgets via angular directives
     'gridster', // used for dashboard grids
     'ui.sortable',
@@ -22,13 +21,12 @@ var Corvus = angular.module('corvus', [
     'corvus.dashboard',
     'corvus.explore',
     'corvus.home',
-    'corvus.operator', // this is a short term hack
-    'corvus.reserve',
     'corvus.user',
     'corvus.setup',
     'corvusadmin.databases',
     'corvusadmin.people',
     'corvusadmin.settings',
+    'metabase.admin.metadata',
 ]);
 Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
@@ -55,7 +53,8 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
 
     // TODO: we need an appropriate homepage or something to show in this situation
     $routeProvider.otherwise({
-        redirectTo: '/user/edit_current'
+        templateUrl: '/app/not_found.html',
+        controller: 'NotFound'
     });
 }]);
 
@@ -70,13 +69,3 @@ Corvus.run(["AppState", "editableOptions", "editableThemes", function(AppState, 
     editableThemes['default'].submitTpl = '<button class="Button Button--primary" type="submit">Save</button>';
     editableThemes['default'].cancelTpl = '<button class="Button" ng-click="$form.$cancel()">cancel</button>';
 }]);
-
-
-if (document.location.hostname != "localhost") {
-    // Only set up logging in production
-    Corvus.config(["AngularyticsProvider", function(AngularyticsProvider) {
-        AngularyticsProvider.setEventHandlers(['Console', 'GoogleUniversal']);
-    }]).run(["Angularytics", function(Angularytics) {
-        Angularytics.init();
-    }]);
-}

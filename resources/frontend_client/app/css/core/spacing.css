@@ -10,6 +10,9 @@
   --margin-4: 2rem;
 }
 
+.ml-auto { margin-left: auto; }
+.mr-auto { margin-right: auto; }
+
 /* padding */
 
 /* 0 */
@@ -127,7 +130,7 @@
 
 /* 2 */
 
-.m2 { margin: var(--margin-2) };
+.m2 { margin: var(--margin-2); }
 
 .mx2 {
   margin-left:  var(--margin-2);

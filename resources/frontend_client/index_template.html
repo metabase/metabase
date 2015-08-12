@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="corvus" class="no-js">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <title>Metabase</title>
+
+        <script>(function(){var w=window;var ic=w.Intercom;if(typeof ic==="function"){ic('reattach_activator');ic('update',intercomSettings);}else{var d=document;var i=function(){i.c(arguments)};i.q=[];i.c=function(args){i.q.push(args)};w.Intercom=i;function l(){var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://widget.intercom.io/widget/gqfmsgf1';var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);}if(w.attachEvent){w.attachEvent('onload',l);}else{w.addEventListener('load',l,false);}}})()</script>
+
+    </head>
+
+    <body ng-controller="Corvus">
+        <div class="Nav" ng-controller="Nav" ng-if="user" ng-cloak>
+            <!-- MAIN NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
+                <ul class="wrapper flex align-center">
+                    <li>
+                        <a class="NavItem cursor-pointer text-white flex align-center" href="/">
+                            <mb-logo-icon class="text-white my2"></mb-logo-icon>
+                        </a>
+                    </li>
+                    <li>
+                        <div class="NavDropdown ml1 md-ml3" dropdown on-toggle="toggled(open)">
+                            <a class="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" dropdown-toggle>
+                                <span class="NavDropdown-button-layer">
+                                    Dashboards
+                                    <mb-icon class="ml1" name="chevrondown" width="8px" height="8px"></mb-icon>
+                                </span>
+                            </a>
+                            <div class="NavDropdown-content DashboardList" ng-controller="DashList">
+                                <div class="NavDropdown-content-layer text-white text-centered" ng-if="dashboards.length === 0">
+                                    <div class="p2"><span class="QuestionCircle">?</span></div>
+                                    <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
+                                    <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
+                                    <div class="p2 text-bold text-white border-top border-light">
+                                        To create your first dashboard, <a class="text-white" href="/q"> ask a question</a> and save it.
+                                    </div>
+                                </div>
+                                <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
+                                    <li class="block" ng-repeat="dash in dashboards">
+                                        <a class="Dropdown-item block text-white no-decoration" href="/dash/{{dash.id}}">
+                                            <div class="flex text-bold">
+                                                {{dash.name}}
+                                                <mb-icon class="ml1 flex flex-align-right align-center" name="lock" width="12px" height="12px" ng-if="dash.public_perms === 0"></mb-icon>
+                                            </div>
+                                            <div class="mt1 text-light text-brand-light" ng-if="dash.description">
+                                                {{dash.description}}
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="bullet">
+                        <a class="NavItem text-white cursor-pointer p2 flex align-center no-decoration" href="/q">Ask a Question</a>
+                    </li>
+                    <li class="flex-align-right">
+                        <mb-profile-link class="text-white" user="user" context="nav"></mb-profile-link>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- ADMIN NAV -->
+            <nav class="AdminNav" ng-show="nav === 'admin'">
+                <div class="wrapper flex align-center">
+                    <div class="NavTitle flex align-center">
+                        <mb-icon name="gear" class="AdminGear" width="22px" height="22px"></mb-icon>
+                        <span class="NavItem-text ml1 hide sm-show">Site Administration</span>
+                    </div>
+
+                    <!-- admin sections -->
+                    <ul class="sm-ml4 flex flex-full">
+                        <li>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/settings')}" href="/admin/settings/">
+                                Settings
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/people')}" href="/admin/people/">
+                                People
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/metadata')}" href="/admin/metadata/">
+                                Metadata
+                            </a>
+                        </li>
+                        <li>
+                            <a class="NavItem py1 px2 no-decoration" ng-class="{ 'is--selected' : isActive('/admin/databases')}" href="/admin/databases/">
+                                Databases
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- user profile dropdown -->
+                    <mb-profile-link user="user" context="nav"></mb-profile-link>
+                </div>
+            </nav>
+
+            <!-- AUTH NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative" ng-show="nav === 'auth'">
+            </nav>
+
+            <!-- NO NAV -->
+            <nav class="py2 sm-py1 xl-py3 relative" ng-show="nav === 'none'">
+                <ul class="wrapper flex align-center">
+                    <li>
+                        <a class="NavItem cursor-pointer flex align-center" href="/">
+                            <mb-logo-icon class="text-brand my2"></mb-logo-icon>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <main class="Main flex flex-column flex-full" ng-view></main>
+    </body>
+
+
+    <script src="//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+    <script>
+        WebFont.load({
+          google: {
+            families: ['Lato:n1,n2,n4,n7']
+          }
+        });
+      </script>
+
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    // start off with tracking disabled (the angular app will re-enable this once we know the app runtime settings)
+    window['ga-disable-UA-60817802-1'] = true;
+
+    ga('create', 'UA-60817802-1', 'auto');
+    </script>
+</html>

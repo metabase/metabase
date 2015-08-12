@@ -1,6 +1,9 @@
 'use strict';
 /*global _*/
 
+import MetabaseAnalytics from '../lib/analytics';
+
+
 //  Dashboard Controllers
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 
@@ -22,6 +25,10 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
     });
 
     $scope.$on("dashboard:delete", function(event, dashboardId) {
+        refreshListing();
+    });
+
+    $scope.$on("dashboard:update", function(event, dashboardId) {
         refreshListing();
     });
 
@@ -56,6 +63,7 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
          * window is set to < 600px, even without mobileBreakPoint set.
          */
         //mobileBreakPoint: 640,
+        saveGridItemCalculatedHeightInMobile: true,
         floating: false,
         pushing: false,
         swapping: true,
@@ -70,17 +78,17 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
     };
 
-    var processResize = function(event, $element, item){
+    function processResize(event, $element, item){
         $element.scope().$broadcast('cv-gridster-item-resized', $element);
         savePosition();
-    };
+    }
 
-    var savePosition = function() {
+    function savePosition() {
         Dashboard.reposition_cards({
             'dashId': $scope.dashboard.id,
             'cards': $scope.dashcards
         });
-    };
+    }
 
 
     $scope.toggleDashEditMode = function() {
@@ -97,6 +105,13 @@ DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$locat
         }
         $scope.gridsterOptions.draggable.enabled = !$scope.gridsterOptions.draggable.enabled;
         $scope.gridsterOptions.resizable.enabled = !$scope.gridsterOptions.resizable.enabled;
+
+        // Tracking
+        if ($scope.gridsterOptions.resizable.enabled) {
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Finished');
+        } else {
+            MetabaseAnalytics.trackEvent('Dashboard', 'Rearrange Started');
+        }
     };
 
     $scope.notifyDashboardSaved = function(dashboard) {

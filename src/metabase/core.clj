@@ -1,19 +1,10 @@
+;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
-            [clojure.java.browse :refer [browse-url]]
+  (:require [clojure.java.browse :refer [browse-url]]
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [medley.core :as medley]
-            [metabase.config :as config]
-            [metabase.db :as db]
-            (metabase.middleware [auth :as auth]
-                                 [log-api-call :refer :all]
-                                 [format :refer :all])
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.models.user :refer [User]]
-            [metabase.routes :as routes]
-            [metabase.setup :as setup]
-            [metabase.task :as task]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -21,28 +12,62 @@
                                            wrap-json-body]]
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])))
+                             [session :refer [wrap-session]])
+            [medley.core :as medley]
+            (metabase [config :as config]
+                      [db :as db]
+                      [driver :as driver]
+                      [routes :as routes]
+                      [setup :as setup]
+                      [task :as task])
+            (metabase.middleware [auth :as auth]
+                                 [log-api-call :refer :all]
+                                 [format :refer :all])
+            (metabase.models [setting :refer [defsetting]]
+                             [database :refer [Database]]
+                             [user :refer [User]])))
 
 ;; ## CONFIG
 
 (defsetting site-name "The name used for this instance of Metabase." "Metabase")
 
+(defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+
+(defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
+
+(defn site-url
+  "Fetch the site base URL that should be used for password reset emails, etc.
+   This strips off any trailing slashes that may have been added.
+
+   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
+   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
+   Subsequently, the site URL can only be changed via the admin page."
+  {:arglists '([request])}
+  [{{:strs [origin host]} :headers}]
+  {:pre  [(or origin host)]
+   :post [(string? %)]}
+  (or (some-> (-site-url)
+              (s/replace #"/$" "")) ; strip off trailing slash if one was included
+      (-site-url (or origin host))))
 
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
       (log-api-call :request :response)
-      format-response         ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      (wrap-json-body         ; extracts json POST body and makes it avaliable on request
+      add-security-headers         ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
+      format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
+      (wrap-json-body              ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response      ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params     ; converts string keys in :params to keyword keys
-      wrap-params             ; parses GET and POST params as :query-params/:form-params and both as :params
-      auth/wrap-apikey        ; looks for a Metabase API Key on the request and assocs as :metabase-apikey
-      auth/wrap-sessionid     ; looks for a Metabase sessionid and assocs as :metabase-sessionid
-      wrap-cookies            ; Parses cookies in the request map and assocs as :cookies
-      wrap-session            ; reads in current HTTP session and sets :session/key
-      wrap-gzip))             ; GZIP response if client can handle it
+      wrap-json-response           ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params          ; converts string keys in :params to keyword keys
+      wrap-params                  ; parses GET and POST params as :query-params/:form-params and both as :params
+      auth/bind-current-user       ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+      auth/wrap-current-user-id    ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
+      auth/wrap-api-key            ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
+      auth/wrap-session-id         ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      wrap-cookies                 ; Parses cookies in the request map and assocs as :cookies
+      wrap-session                 ; reads in current HTTP session and sets :session/key
+      wrap-gzip))                  ; GZIP response if client can handle it
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -57,10 +82,7 @@
                          setup-token)]
     (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
                            setup-url
-                           "\n\n"))
-    ;; Attempt to browse URL on user's system; this will just fail silently if we can't do it
-    ;(browse-url setup-url)
-    ))
+                           "\n\n"))))
 
 
 (defn init
@@ -116,6 +138,29 @@
     (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
     (reset! jetty-instance nil)))
 
+(def ^:private ^:const sample-dataset-name "Sample Dataset")
+(def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
+
+(defn- add-sample-dataset! []
+  (when-not (db/exists? Database :name sample-dataset-name)
+    (try
+      (log/info "Loading sample dataset...")
+      (let [resource (-> (Thread/currentThread) ; hunt down the sample dataset DB file inside the current JAR
+                         .getContextClassLoader
+                         (.getResource sample-dataset-filename))]
+        (if-not resource
+          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found by the ClassLoader." sample-dataset-filename))
+          (let [h2-file (-> (.getPath resource)
+                            (s/replace #"^file:" "zip:")         ; to connect to an H2 DB inside a JAR just replace file: with zip:
+                            (s/replace #"\.mv\.db$" "")          ; strip the .mv.db suffix from the path
+                            (str ";USER=GUEST;PASSWORD=guest"))] ; specify the GUEST user account created for the DB
+            (driver/sync-database! (db/ins Database
+                                     :name    sample-dataset-name
+                                     :details {:db h2-file}
+                                     :engine  :h2)))))
+      (catch Throwable e
+        (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
+
 
 (defn -main
   "Launch Metabase in standalone mode."
@@ -124,7 +169,10 @@
   (try
     ;; run our initialization process
     (init)
+    ;; add the sample dataset DB if applicable
+    (add-sample-dataset!)
     ;; launch embedded webserver
     (start-jetty)
     (catch Exception e
+      (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))

@@ -1,6 +1,6 @@
 (ns metabase.api.card
   (:require [compojure.core :refer [GET POST DELETE PUT]]
-            [korma.core :refer :all]
+            [korma.core :as k]
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -8,6 +8,7 @@
                              [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
+                             [revision :refer [push-revision]]
                              [user :refer [User]])))
 
 (defannotation CardFilterOption
@@ -29,9 +30,9 @@
   [f]
   {f CardFilterOption}
   (-> (case (or f :all) ; default value for `f` is `:all`
-        :all  (sel :many Card (order :name :ASC) (where (or {:creator_id *current-user-id*}
-                                                            {:public_perms [> common/perms-none]})))
-        :mine (sel :many Card :creator_id *current-user-id* (order :name :ASC))
+        :all  (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
+                                                              {:public_perms [> common/perms-none]})))
+        :mine (sel :many Card :creator_id *current-user-id* (k/order :name :ASC))
         :fav  (->> (-> (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
                        (hydrate :card))
                    (map :card)
@@ -46,18 +47,18 @@
    display      [Required CardDisplayType]}
   ;; TODO - which other params are required?
   (ins Card
-    :creator_id *current-user-id*
-    :dataset_query dataset_query
-    :description description
-    :display display
-    :name name
-    :public_perms public_perms
+    :creator_id             *current-user-id*
+    :dataset_query          dataset_query
+    :description            description
+    :display                display
+    :name                   name
+    :public_perms           public_perms
     :visualization_settings visualization_settings))
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (->404 (sel :one Card :id id)
+  (->404 (Card id)
          read-check
          (hydrate :creator :can_read :can_write)))
 
@@ -75,7 +76,7 @@
                                :name name
                                :public_perms public_perms
                                :visualization_settings visualization_settings))
-  (sel :one Card :id id))
+  (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

@@ -50,7 +50,7 @@
                     (log-response request response elapsed-time))
                   response))))))
 
-(defn- api-call?
+(defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]
   (and (>= (count uri) 4)

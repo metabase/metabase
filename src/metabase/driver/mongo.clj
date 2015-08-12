@@ -4,6 +4,7 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
+            [medley.core :as m]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
@@ -13,7 +14,8 @@
             [metabase.driver :as driver]
             [metabase.driver.interface :refer :all]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])))
+                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
+            [metabase.util :as u]))
 
 (declare driver)
 
@@ -22,9 +24,9 @@
 (defn- table->column-names
   "Return a set of the column names for TABLE."
   [table]
-  (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
+  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take 10000)                      ; it's probably enough to only consider the first 10,000 docs in the collection instead of iterating over potentially millions of them
+         (take max-sync-lazy-seq-results)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -40,11 +42,11 @@
 
 ;;; ## MongoDriver
 
-(deftype MongoDriver []
+(defrecord MongoDriver []
   IDriver
 ;;; ### Connection
   (can-connect? [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (= (-> (cmd/db-stats conn)
              (conv/from-db-object :keywordize)
              :ok)
@@ -54,6 +56,11 @@
     (can-connect? this {:details details}))
 
 ;;; ### QP
+  (wrap-process-query-middleware [_ qp]
+    (fn [query]
+      (with-mongo-connection [^com.mongodb.DB conn (:database query)]
+        (qp query))))
+
   (process-query [_ query]
     (qp/process-and-run query))
 
@@ -63,31 +70,54 @@
         (do-sync-fn)))
 
   (active-table-names [_ database]
-    (with-mongo-connection [^com.mongodb.DBApiLayer conn database]
+    (with-mongo-connection [^com.mongodb.DB conn database]
       (-> (mdb/get-collection-names conn)
           (set/difference #{"system.indexes"}))))
 
   (active-column-names->type [_ table]
     (with-mongo-connection [_ @(:db table)]
-      (->> (table->column-names table)
-           (map (fn [column-name]
-                  {(name column-name)
-                   (field->base-type {:name (name column-name)
-                                      :table (delay table)})}))
-           (into {}))))
+      (into {} (for [column-name (table->column-names table)]
+                 {(name column-name)
+                  (field->base-type {:name                      (name column-name)
+                                     :table                     (delay table)
+                                     :qualified-name-components (delay [(:name table) (name column-name)])})}))))
 
   (table-pks [_ _]
     #{"_id"})
 
-  ISyncDriverFieldValues
-  (field-values-lazy-seq [_ field]
+  (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
+    (assert (and (map? field)
+                 (delay? qualified-name-components)
+                 (delay? table))
+            (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
     (lazy-seq
-     (let [table @(:table field)]
-       (map (keyword (:name field))
-            (with-mongo-connection [^com.mongodb.DBApiLayer conn @(:db table)]
-              (mq/with-collection conn (:name table)
-                (mq/fields [(:name field)]))))))))
+     (assert *mongo-connection*
+             "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
+     (let [table           @table
+           name-components (rest @qualified-name-components)]
+       (assert (seq name-components))
+       (map #(get-in % (map keyword name-components))
+            (mq/with-collection *mongo-connection* (:name table)
+              (mq/fields [(apply str (interpose "." name-components))]))))))
 
-(def ^:const driver
+  ISyncDriverFieldNestedFields
+  (active-nested-field-name->type [this field]
+    ;; Build a map of nested-field-key -> type -> count
+    ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
+    (let [field->type->count (atom {})]
+      (doseq [val (take max-sync-lazy-seq-results (field-values-lazy-seq this field))]
+        (when (map? val)
+          (doseq [[k v] val]
+            (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
+      ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
+      (->> @field->type->count
+           (m/map-vals (fn [type->count]
+                         (->> (seq type->count)                 ; convert to pairs of [type count]
+                              (sort-by second)                  ; source by count
+                              last                              ; take last item (highest count)
+                              first                             ; keep just the type
+                              driver/class->base-type)))))))    ; get corresponding Field base_type
+
+(def driver
   "Concrete instance of the MongoDB driver."
-  (MongoDriver.))
+  (map->MongoDriver {:features #{:nested-fields}}))

@@ -6,7 +6,6 @@
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             (metabase.models [hydrate :refer [hydrate]]
                              [user :refer [User create-user set-user-password]])
-            [metabase.util.password :as password]
             [ring.util.request :as req]))
 
 (defn ^:private check-self-or-superuser
@@ -30,9 +29,20 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (check-400 (not (exists? User :email email :is_active true)))
-  (let [password-reset-url (str (java.net.URL. (java.net.URL. (req/request-url request)) "/auth/forgot_password"))]
-    (-> (create-user first_name last_name email :send-welcome true :reset-url password-reset-url)
+  (let [existing-user (sel :one [User :id :is_active] :email email)]
+    (-> (cond
+          ;; new user account, so create it
+          (nil? existing-user) (create-user first_name last_name email :send-welcome true :invitor @*current-user*)
+          ;; this user already exists but is inactive, so simply reactivate the account
+          (not (:is_active existing-user)) (do
+                                             (upd User (:id existing-user)
+                                               :first_name first_name
+                                               :last_name last_name
+                                               :is_active true
+                                               :is_superuser false)
+                                             (User (:id existing-user)))
+          ;; account already exists and is active, so do nothing and just return the account
+          :else (User (:id existing-user)))
         (hydrate :user :organization))))
 
 
@@ -46,7 +56,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (check-404 (sel :one User :id id :is_active true)))
+  (check-404 (sel :one User :id id, :is_active true)))
 
 
 (defendpoint PUT "/:id"
@@ -65,7 +75,7 @@
                                :is_superuser (if (:is_superuser @*current-user*)
                                                is_superuser
                                                nil)))
-  (sel :one User :id id))
+  (User id))
 
 
 (defendpoint PUT "/:id/password"
@@ -77,7 +87,7 @@
   (let-404 [user (sel :one [User :password_salt :password] :id id :is_active true)]
     (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password"))
   (set-user-password id password)
-  (sel :one User :id id))
+  (User id))
 
 
 (defendpoint DELETE "/:id"

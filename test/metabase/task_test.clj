@@ -67,16 +67,16 @@
          :restarted]
   [(do
      (stop-task-runner!)
-     (with-redefs [metabase.task/hourly-task-delay (constantly 100)
+     (with-redefs [metabase.task/hourly-task-delay (constantly 200)
                    metabase.task/hourly-tasks-hook mock-hourly-tasks-hook]
        (add-hook! #'hourly-tasks-hook inc-task-test-atom-counter-by-system-hour)
        (reset! task-test-atom-counter 0)
        (start-task-runner!)
 
        [@task-test-atom-counter      ; should be 0, since not enough time has elaspsed for the hook to be executed
-        (do (Thread/sleep 150)
-            @task-test-atom-counter) ; should have been called once (~50ms ago)
-        (do (Thread/sleep 200)
+        (do (Thread/sleep 300)
+            @task-test-atom-counter) ; should have been called once (~100ms ago)
+        (do (Thread/sleep 400)
             @task-test-atom-counter) ; should have been called two more times
         (do (stop-task-runner!)
             :stopped)]))

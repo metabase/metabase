@@ -1,13 +1,12 @@
-<div class="Dashboard full-height">
-
-    <div class="wrapper full-height" ng-if="dashboardLoaded && dashboardLoadError">
+<div class="Dashboard full-height flex flex-row flex-full">
+    <div class="Dash-wrapper wrapper" ng-if="dashboardLoaded && dashboardLoadError">
         <div class="full-height text-centered flex layout-centered">
             <h2 class="text-error text-grey-1">{{dashboardLoadError}}</h2>
         </div>
     </div>
 
     <div class="text-centered my4 py4" ng-if="!dashboardLoaded">
-        <div class="wrapper">
+        <div class="Dash-wrapper wrapper">
             <div class="my4 py4 text-brand">
                 <mb-loading-icon></mb-loading-icon>
                 <h1 class="text-normal text-grey-2">Loading...</h1>
@@ -15,29 +14,31 @@
         </div>
     </div>
 
-    <div ng-if="dashboardLoaded && !dashboardLoadError">
-        <header class="py2 mt2 border-bottom">
-            <div class="wrapper flex align-center">
-                <div class="Entity">
-                    <div class="flex align-center">
-                        <h4 class="Entity-title">{{dashboard.name}}</h4>
-                        <mb-icon class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="dashboard.public_perms === 0"></mb-icon>
-                        <a class="cursor-pointer link ml1" href="#" mb-dashboard-saver ng-attr-dashboard="dashboard" ng-attr-callback="notifyDashboardSaved">Edit</a>
-                    </div>
-                    <span class="Entity-attribution">
-                        Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>
-                    </span>
-                </div>
+    <div class="full" ng-if="dashboardLoaded && !dashboardLoadError">
+        <header class="py2 xl-py4 bg-white border-bottom">
+            <div class="Dash-wrapper wrapper">
+                <div class="mx2 flex align-center">
+                    <div class="Entity">
+                        <div class="flex align-center">
+                            <h4 class="Entity-title">{{dashboard.name}}</h4>
+                            <mb-icon title="This Dashboar dis Private" class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="dashboard.public_perms === 0"></mb-icon>
+                            <a class="cursor-pointer link ml1" href="#" mb-dashboard-saver ng-attr-dashboard="dashboard" ng-attr-callback="notifyDashboardSaved">Edit</a>
+                        </div>
+                        <span class="Entity-attribution">
+                            Created by <span class="Entity-creator">{{dashboard.creator.common_name}}</span>
+                        </span>
 
-                <div class="flex-align-right hide md-show">
-                    <a class="cursor-pointer" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
-                        <mb-icon name="grid" width="16px" height="16px"></mb-icon>
-                    </a>
+                    </div>
+                    <div class="flex-align-right hide md-show">
+                        <a title="Edit Layout" class="cursor-pointer" ng-click="toggleDashEditMode()" ng-if="dashboard.can_write && dashcards.length > 0">
+                            <mb-icon name="grid" width="16px" height="16px"></mb-icon>
+                        </a>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <div class="wrapper full-height">
+        <div class="Dash-wrapper wrapper full-height">
 
             <div ng-if="!dashboardLoaded">
                 <div class="flex layout-centered text-centered full-height">
@@ -49,7 +50,7 @@
 
                 <div ng-if="dashboardLoaded && !dashcards.length > 0">
                     <h1 class="text-normal text-grey-2">This dashboard doesn't have any data yet.</h1>
-                    <a class="Button Button--primary" href="/card/create">Ask a question</a>
+                    <a class="Button Button--primary" href="/q">Ask a question</a>
                 </div>
             </div>
 

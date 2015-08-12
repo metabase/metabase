@@ -44,6 +44,19 @@ var MIN_PIXELS_PER_TICK = {
     y: 50
 };
 
+var precisionNumberFormatter = d3.format(".2r");
+var fixedNumberFormatter = d3.format(",.f");
+
+function formatNumber(number) {
+    if (number > -1 && number < 1) {
+        // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
+        return precisionNumberFormatter(number).replace(/\.?0+$/, "");
+    } else {
+        // anything else rounds to at most 2 decimal points
+        return fixedNumberFormatter(d3.round(number, 2));
+    }
+}
+
 /// return pair of [min, max] values from items in array DATA, using VALUEACCESSOR to retrieve values for each item
 /// VALUEACCESSOR may be an accessor function like fn(ITEM) or can be a string/integer key/index into ITEM which will
 /// use a function like fn(item) { return item(KEY); }
@@ -311,9 +324,10 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
             xAxis.tickValues(visibleKeys);
         }
+        xAxis.tickFormat((d) => d == null ? '[unset]' : d);
     } else {
         xAxis.ticks(0);
-        xAxis.tickFormat(function(d) { return ""; });
+        xAxis.tickFormat('');
     }
 
     chart.x(d3.scale.ordinal().domain(keys))
@@ -367,17 +381,18 @@ function applyChartTooltips(dcjsChart, card, cols) {
         // We should only ever have one tooltip on screen, right?
         Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
 
-        var valueFormatter = d3.format(',.0f');
-
         var tip = d3.tip()
             .attr('class', 'ChartTooltip')
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
-                return (
-                    '<div><span class="ChartTooltip-key">' + cols[0].name + '</span> <span class="ChartTooltip-value">' + d.data.key + '</span></div>' +
-                    '<div><span class="ChartTooltip-key">' + cols[1].name + '</span> <span class="ChartTooltip-value">' + valueFormatter(d.data.value) + '</span></div>'
-                );
+                var values = formatNumber(d.data.value);
+                if (card.display === 'pie') {
+                    // TODO: this is not the ideal way to calculate the percentage, but it works for now
+                    values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
+                }
+                return '<div><span class="ChartTooltip-name">' + d.data.key + '</span></div>' +
+                    '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
@@ -796,6 +811,9 @@ export var CardRenderer = {
                             var index = _.indexOf(keys, d.key);
                             return settings.pie.colors[index % settings.pie.colors.length];
                         })
+                        .label(function(row) {
+                            return row.key == null ? '[unset]' : row.key;
+                        })
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
@@ -803,6 +821,8 @@ export var CardRenderer = {
                             return d.key + ': ' + d.value + ' (' + percent + '%)';
                         });
 
+            // disables ability to select slices
+            chart.filter = function() {};
 
         applyChartTooltips(chart, card, result.cols);
 
@@ -876,7 +896,7 @@ export var CardRenderer = {
         // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
         if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
 
-        chart.barPadding(0.5); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
+        chart.barPadding(0.2); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
         chart.render();
 
         // apply any on-rendering functions
@@ -999,10 +1019,10 @@ export var CardRenderer = {
         var chartData = _.map(result.rows, function(value) {
             // Does this actually make sense? If country is > 2 characters just use the first 2 letters as the country code ?? (WTF)
             var countryCode = value[0];
-            if (countryCode) {
-                if (countryCode.length > 2) countryCode = countryCode.substring(0, 2);
-                countryCode = countryCode.toUpperCase();
+            if (typeof countryCode === "string") {
+                countryCode = countryCode.substring(0, 2).toUpperCase();
             }
+
             return {
                 code: countryCode,
                 value: value[1]

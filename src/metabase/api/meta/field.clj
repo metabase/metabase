@@ -6,7 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values create-field-values-if-needed field-should-have-field-values?]]
+                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
@@ -29,26 +29,29 @@
 (defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (->404 (sel :one Field :id id)
+  (->404 (Field id)
          read-check
          (hydrate [:table :db])))
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [field_type special_type preview_display description]} :body}]
+  [id :as {{:keys [field_type special_type preview_display description display_name]} :body}]
   {field_type   FieldType
-   special_type FieldSpecialType}
+   special_type FieldSpecialType
+   display_name NonEmptyString}
   (write-check Field id)
-  (check-500 (m/mapply upd Field id (merge {:description  description                                                ; you're allowed to unset description and special_type
-                                            :special_type special_type}                                              ; but field_type and preview_display must be replaced
-                                           (when field_type                   {:field_type field_type})              ; with new non-nil values
-                                           (when (not (nil? preview_display)) {:preview_display preview_display}))))
-  (sel :one Field :id id))
+  ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
+  (check-500 (m/mapply upd Field id (merge {:description  description
+                                            :special_type special_type}
+                                           (when display_name               {:display_name display_name})
+                                           (when field_type                 {:field_type field_type})
+                                           (when-not (nil? preview_display) {:preview_display preview_display}))))
+  (Field id))
 
 (defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (read-check field)
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
@@ -79,7 +82,7 @@
   "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `BooleanField`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (read-check field)
     (if-not (field-should-have-field-values? field)
       {:values {} :human_readable_values {}}
@@ -91,14 +94,14 @@
    or whose base type is `BooleanField`."
   [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
-  (let-404 [field (sel :one Field :id id)]
+  (let-404 [field (Field id)]
     (write-check field)
     (check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
     (if-let [field-values-id (sel :one :id FieldValues :field_id id)]
       (check-500 (upd FieldValues field-values-id
                    :human_readable_values values_map))
-      (create-field-values field values_map)))
+      (create-field-values-if-needed field values_map)))
   {:status :success})
 
 

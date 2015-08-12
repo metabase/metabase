@@ -13,7 +13,8 @@
             (metabase.test.data [data :as data]
                                 [datasets :as datasets :refer [*dataset*]]
                                 [h2 :as h2]
-                                [interface :refer :all]))
+                                [interface :refer :all])
+            [metabase.util :as u])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
@@ -67,6 +68,9 @@
 (defn id-field-type []
   (datasets/id-field-type *dataset*))
 
+(defn sum-field-type []
+  (datasets/sum-field-type *dataset*))
+
 (defn timestamp-field-type []
   (datasets/timestamp-field-type *dataset*))
 
@@ -87,29 +91,22 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (log/info (color/blue (format "Creating %s database %s..." (name engine) database-name)))
            (create-physical-db! dataset-loader database-definition)
 
            ;; Load data
-           (log/info (color/blue "Loading data..."))
            (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (log/info (color/blue (format "Loading data for table '%s'..." (:table-name table-definition))))
-             (load-table-data! dataset-loader database-definition table-definition)
-             (log/info (color/blue (format "Inserted %d rows." (count (:rows table-definition))))))
+             (load-table-data! dataset-loader database-definition table-definition))
 
            ;; Add DB object to Metabase DB
-           (log/info (color/blue "Adding DB to Metabase..."))
            (let [db (ins Database
                       :name    database-name
                       :engine  (name engine)
                       :details (database->connection-details dataset-loader database-definition))]
 
              ;; Sync the database
-             (log/info (color/blue "Syncing DB..."))
              (driver/sync-database! db)
 
              ;; Add extra metadata like Field field-type, base-type, etc.
-             (log/info (color/blue "Adding schema metadata..."))
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
                      table      (delay (let [table (metabase-instance table-definition db)]
@@ -120,13 +117,11 @@
                                         (assert field)
                                         field))]
                      (when field-type
-                       (log/info (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
+                       (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
                        (upd Field (:id @field) :field_type (name field-type)))
                      (when special-type
-                       (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+                       (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
                        (upd Field (:id @field) :special_type (name special-type)))))))
-
-             (log/info (color/blue "Finished."))
              db))))))
 
 (defn remove-database!
@@ -151,17 +146,21 @@
 (defn- table-id->field-name->field
   "Return a map of lowercased `Field` names -> fields for `Table` with TABLE-ID."
   [table-id]
-  (->> (sel :many :field->obj [Field :name] :table_id table-id)
-       (m/map-keys s/lower-case)))
+  {:pre [(integer? table-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Field :name], :table_id table-id, :parent_id nil))
+       (m/map-keys s/lower-case)
+       (m/map-keys (u/rpartial s/replace #"^_id$" "id")))) ; rename Mongo _id fields to ID so we can use the same name for any driver
 
 (defn- db-id->table-name->table
   "Return a map of lowercased `Table` names -> Tables for `Database` with DATABASE-ID.
    Add a delay `:field-name->field` to each Table that calls `table-id->field-name->field` for that Table."
   [database-id]
-  (->> (sel :many :field->obj [Table :name] :db_id database-id)
+  {:pre [(integer? database-id)]}
+  (->> (binding [*sel-disable-logging* true]
+         (sel :many :field->obj [Table :name] :db_id database-id))
        (m/map-keys s/lower-case)
-       (m/map-vals (fn [table]
-                     (assoc table :field-name->field (delay (table-id->field-name->field (:id table))))))))
+       (m/map-vals #(assoc % :field-name->field (delay (table-id->field-name->field (:id %)))))))
 
 (defn -temp-db-add-getter-delay
   "Add a delay `:table-name->table` to DB that calls `db-id->table-name->table`."
@@ -174,24 +173,60 @@
    With three args, fetch `Field` with FIELD-NAME by recursively fetching `Table` and using its `:field-name->field` delay."
   ([temp-db table-name]
    {:pre [(map? temp-db)
-          (string? table-name)]}
+          (string? table-name)]
+    :post [(or (map? %) (assert nil (format "Couldn't find table '%s'.\nValid choices are: %s" table-name
+                                            (vec (keys @(:table-name->table temp-db))))))]}
    (@(:table-name->table temp-db) table-name))
+
   ([temp-db table-name field-name]
-   {:pre [(string? field-name)]}
-   (@(:field-name->field (-temp-get temp-db table-name)) field-name)))
+   {:pre [(string? field-name)]
+    :post [(or (map? %) (assert nil (format "Couldn't find field '%s.%s'.\nValid choices are: %s" table-name field-name
+                                            (vec (keys @(:field-name->field (-temp-get temp-db table-name)))))))]}
+   (@(:field-name->field (-temp-get temp-db table-name)) field-name))
+
+  ([temp-db table-name parent-field-name & nested-field-names]
+   {:pre [(every? string? nested-field-names)]
+    :post [(or (map? %) (assert nil (format "Couldn't find nested field '%s.%s.%s'.\nValid choices are: %s" table-name parent-field-name
+                                            (apply str (interpose "." nested-field-names))
+                                            (vec (map :name @(:children (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))))))))]}
+   (binding [*sel-disable-logging* true]
+     (let [parent            (apply -temp-get temp-db table-name parent-field-name (butlast nested-field-names))
+           children          @(:children parent)
+           child-name->child (zipmap (map :name children) children)]
+       (child-name->child (last nested-field-names))))))
 
 (defn- walk-expand-&
-  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms."
+  "Walk BODY looking for symbols like `&table` or `&table.field` and expand them to appropriate `-temp-get` forms.
+   If symbol ends in a `:field` form, wrap the call to `-temp-get` in call in a keyword getter for that field.
+
+    &sightings      -> (-temp-get db \"sightings\")
+    &cities.name    -> (-temp-get db \"cities\" \"name\")
+    &cities.name:id -> (:id (-temp-get db \"cities\" \"name\"))"
   [db-binding body]
   (walk/prewalk
    (fn [form]
      (or (when (symbol? form)
-           (when-let [symbol-name (re-matches #"^&.+$" (name form))]
-             `(-temp-get ~db-binding ~@(-> symbol-name
-                                           (s/replace #"&" "")
-                                           (s/split #"\.")))))
+           (when-let [[_ table-name field-name prop-name] (re-matches #"^&([^.:]+)(?:\.([^.:]+))?(?::([^.:]+))?$" (name form))]
+             (let [temp-get `(-temp-get ~db-binding ~table-name ~@(when field-name [field-name]))]
+               (if prop-name `(~(keyword prop-name) ~temp-get)
+                   temp-get))))
          form))
    body))
+
+(defn -with-temp-db [loader ^DatabaseDefinition dbdef f]
+  (let [dbdef (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
+    (try
+      (binding [*sel-disable-logging* true]
+        (remove-database! loader dbdef)
+        (let [db (-> (get-or-create-database! loader dbdef)
+                     -temp-db-add-getter-delay)]
+          (assert db)
+          (assert (exists? Database :id (:id db)))
+          (binding [*sel-disable-logging* false]
+            (f db))))
+      (finally
+        (binding [*sel-disable-logging* true]
+          (remove-database! loader dbdef))))))
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
@@ -199,8 +234,11 @@
    Remove `Database` and destroy data afterward.
 
    Within BODY, symbols like `&table` and `&table.field` will be expanded into function calls to
-   fetch corresponding `Tables` and `Fields`. These are accessed via lazily-created maps of
-   Table/Field names to the objects themselves. To facilitate mutli-driver tests, these names are lowercased.
+   fetch corresponding `Tables` and `Fields`. Symbols like `&table:id` wrap a getter around the resulting
+   forms (see `walk-expand-&` for details).
+
+   These are accessed via lazily-created maps of Table/Field names to the objects themselves.
+   To facilitate mutli-driver tests, these names are lowercased.
 
      (with-temp-db [db (h2/dataset-loader) us-history-1607-to-1774]
        (driver/process-quiery {:database (:id db)
@@ -209,13 +247,6 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding dataset-loader ^DatabaseDefinition database-definition] & body]
-  `(let [loader# ~dataset-loader
-         ;; Add :short-lived? to the database definition so dataset loaders can use different connection options if desired
-         dbdef# (map->DatabaseDefinition (assoc ~database-definition :short-lived? true))]
-     (try
-       (remove-database! loader# dbdef#)                              ; Remove DB if it already exists for some weird reason
-       (let [~db-binding (-> (get-or-create-database! loader# dbdef#)
-                             -temp-db-add-getter-delay)]              ; Add the :table-name->table delay used by -temp-get
-         ~@(walk-expand-& db-binding body))                           ; expand $table and $table.field forms into -temp-get calls
-       (finally
-         (remove-database! loader# dbdef#)))))
+  `(-with-temp-db ~dataset-loader ~database-definition
+     (fn [~db-binding]
+       ~@(walk-expand-& db-binding body))))

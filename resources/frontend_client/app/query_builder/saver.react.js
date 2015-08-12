@@ -73,24 +73,29 @@ export default React.createClass({
         card.description = this.refs.description.getDOMNode().value.trim();
         card.public_perms = parseInt(this.refs.public_perms.getDOMNode().value);
 
-        var component = this;
-        this.props.saveFn(card).then(function(success) {
-            component.setState({
-                modalOpen: false
-            });
-        }, function(error) {
-            component.setState({
-                errors: error
-            });
+        this.props.saveFn(card).then((success) => {
+            if (this.isMounted()) {
+                this.setState({
+                    modalOpen: false
+                });
+            }
+        }, (error) => {
+            if (this.isMounted()) {
+                this.setState({
+                    errors: error
+                });
+            }
         });
     },
 
     renderCardDelete: function () {
         if(this.props.canDelete) {
            return (
-                <div className="Form-offset mb4">
-                    <label className="block">Danger zone:</label>
-                    <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                <div className="Form-field">
+                    <label className="Form-label Form-offset mb1"><span>Danger zone</span>:</label>
+                    <label className="Form-offset">
+                        <a className="Button Button--danger" onClick={this.props.deleteFn}>Delete card</a>
+                    </label>
                 </div>
            )
         }
@@ -156,7 +161,7 @@ export default React.createClass({
                     showCharm={false}
                     errors={this.state.errors}>
                     <label className="Select Form-offset">
-                        <select ref="public_perms" defaultValue={this.props.card.public_perms}>
+                        <select className="mt1" ref="public_perms" defaultValue={this.props.card.public_perms}>
                             {privacyOptions}
                         </select>
                     </label>

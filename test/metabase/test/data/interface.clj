@@ -50,10 +50,11 @@
                                                        (s/upper-case (:table-name this))}]))
 
   DatabaseDefinition
-  (metabase-instance [this engine-kw]
+  (metabase-instance [{:keys [database-name]} engine-kw]
+    (assert (string? database-name))
     (assert (keyword? engine-kw))
     (setup-db-if-needed :auto-migrate true)
-    (sel :one Database :name (:database-name this) :engine (name engine-kw))))
+    (sel :one Database :name database-name, :engine (name engine-kw))))
 
 
 ;; ## IDatasetLoader
@@ -92,7 +93,11 @@
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
   ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
-  (assert (contains? field/base-types base-type))
+  (assert (or (contains? field/base-types base-type)
+              (and (map? base-type)
+                   (string? (:native base-type))))
+    (str (format "Invalid field base type: '%s'\n" base-type)
+         "Field base-type should be either a valid base type like :TextField or be some native type wrapped in a map, like {:native \"JSON\"}."))
   (when field-type
     (assert (contains? field/field-types field-type)))
   (when special-type

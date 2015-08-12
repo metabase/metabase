@@ -1,7 +1,10 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
   (:require [clojure.core.match :refer [match]]
+            (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [colorize.core :as color]
             (monger [collection :as mc]
                     [core :as mg]
@@ -10,47 +13,42 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.interface :as i]
-            [metabase.driver.query-processor :as qp :refer [*query*]]
+            (metabase.driver [interface :as i]
+                             [query-processor :as qp])
+            [metabase.driver.query-processor.expand :as expand]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u])
   (:import (com.mongodb CommandResult
-                        DBApiLayer)
+                        DB)
            (clojure.lang PersistentArrayMap)
            (org.bson.types ObjectId)))
 
 (declare apply-clause
-         annotate-native-results
-         annotate-results
          eval-raw-command
-         field-id->kw
          process-structured
          process-and-run-structured)
 
+
 ;; # DRIVER QP INTERFACE
 
-
+(def ^:dynamic ^:private *query* nil)
 
 (defn process-and-run
   "Process and run a MongoDB QUERY."
-  [{query-type :type database-id :database :as query}]
-  {:pre [(contains? #{:native :query} (keyword query-type))
-         (integer? database-id)]}
-  (with-mongo-connection [_ (sel :one :fields [Database :details] :id database-id)]
+  [{query-type :type, :as query}]
+  (binding [*query* query]
     (case (keyword query-type)
-      :query (if (zero? (:source_table (:query query))) qp/empty-response
-                 (let [generated-query (process-structured (:query query))]
-                   (when-not qp/*disable-qp-logging*
-                     (log/debug (color/magenta "\n******************** Generated Monger Query: ********************\n"
-                                               (with-out-str (clojure.pprint/pprint generated-query))
-                                               "*****************************************************************\n")))
-                   (->> (eval generated-query)
-                        (annotate-results query))))
-      :native (->> (eval-raw-command (:query (:native query)))
-                   annotate-native-results))))
+      :query (let [generated-query (process-structured (:query query))]
+               (when-not qp/*disable-qp-logging*
+                 (log/debug (u/format-color 'green "\nMONGER FORM:\n%s\n"
+                                            (->> generated-query
+                                                 (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
+                                                 u/pprint-to-str) "\n"))) ; so it's easier to read
+                (eval generated-query))
+      :native (let [results (eval-raw-command (:query (:native query)))]
+                (if (sequential? results) results
+                              [results])))))
 
 
 ;; # NATIVE QUERY PROCESSOR
@@ -63,29 +61,16 @@
      -> {\"_id\" \"01001\", \"city\" \"AGAWAM\", ...}"
   [^String command]
   (assert *mongo-connection* "eval-raw-command must be ran inside the body of with-mongo-connection.")
-  (let [^CommandResult result (.doEval ^DBApiLayer *mongo-connection* command nil)]
+  (let [^CommandResult result (.doEval ^DB *mongo-connection* command nil)]
       (when-not (.ok result)
         (throw (.getException result)))
       (let [{result "retval"} (PersistentArrayMap/create (.toMap result))]
         result)))
 
-(defn annotate-native-results
-  "Package up the results in the way the frontend expects."
-  [results]
-  (if-not (sequential? results) (annotate-native-results [results])
-          {:status :completed
-           :row_count (count results)
-           :data {:rows results
-                  :columns (keys (first results))}}))
-
 
 ;; # STRUCTURED QUERY PROCESSOR
 
 ;; ## AGGREGATION IMPLEMENTATIONS
-
-(def ^:private aggregations
-  "Used internally by `defaggregation` to store the different aggregation patterns to match against."
-  (atom '()))
 
 (def ^:dynamic *collection-name*
   "String name of the collection (i.e., `Table`) that we're currently querying against."
@@ -94,53 +79,45 @@
   "Monger clauses generated from query dict `filter` clauses; bound dynamically so we can insert these as appropriate for various types of aggregations."
   nil)
 
-(defmacro defaggregation
-  "Define a new function that will be called when the `aggregation` clause in a structured query matches MATCH-BINDING.
-   (All functions defined with `defaggregation` are combined into a massive `match` statement inside `match-aggregation`).
-
-   These should emit a form that can be `eval`ed to get the query results; the `aggregate` function takes care of some of the
-   boilerplate for this form."
-  [match-binding & body]
-  `(swap! aggregations concat
-          (quote [~match-binding (try
-                                   ~@body
-                                   (catch Throwable e#
-                                     (log/error (color/red ~(format "Failed to apply aggregation %s: " match-binding)
-                                                           e#))))])))
-
 (defn aggregate
   "Generate a Monger `aggregate` form."
   [& forms]
-  `(mc/aggregate ^DBApiLayer *mongo-connection* ~*collection-name* [~@(when *constraints*
+  `(mc/aggregate ^DB *mongo-connection* ~*collection-name* [~@(when *constraints*
                                                                         [{$match *constraints*}])
                                                                     ~@(filter identity forms)]))
 
-(defn field-id->$string
-  "Given a FIELD-ID, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
-  [field-id]
-  (format "$%s" (name (field-id->kw field-id))))
+(defn- field->name
+  "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
+  (^String [field separator]
+           (apply str (interpose separator (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
+  (^String [field]
+           (field->name field ".")))
 
+(defn- field->$str
+  "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
+  [field]
+  (format "$%s" (field->name field)))
 
-(defaggregation ["rows"]
-  `(doall (with-collection ^DBApiLayer *mongo-connection* ~*collection-name*
+(defn- aggregation:rows []
+  `(doall (with-collection ^DB *mongo-connection* ~*collection-name*
             ~@(when *constraints* [`(find ~*constraints*)])
             ~@(mapcat apply-clause (dissoc (:query *query*) :filter)))))
 
-(defaggregation ["count"]
-  `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
-                      ~*constraints*)}])
+(defn- aggregation:count
+  ([]
+   `[{:count (mc/count ^DB *mongo-connection* ~*collection-name*
+                       ~*constraints*)}])
+  ([field]
+   `[{:count (mc/count ^DB *mongo-connection* ~*collection-name*
+                       (merge ~*constraints*
+                              {~(field->name field) {$exists true}}))}]))
 
-(defaggregation ["avg" field-id]
+(defn- aggregation:avg [field]
   (aggregate {$group {"_id" nil
-                      "avg" {$avg (field-id->$string field-id)}}}
+                      "avg" {$avg (field->$str field)}}}
              {$project {"_id" false, "avg" true}}))
 
-(defaggregation ["count" field-id]
-  `[{:count (mc/count ^DBApiLayer *mongo-connection* ~*collection-name*
-                      (merge ~*constraints*
-                             {(field-id->kw field-id) {$exists true}}))}])
-
-(defaggregation ["distinct" field-id]
+(defn- aggregation:distinct [field]
   ;; Unfortunately trying to do a MongoDB distinct aggregation runs out of memory if there are more than a few thousand values
   ;; because Monger currently doesn't expose any way to enable allowDiskUse in aggregations
   ;; (see https://groups.google.com/forum/#!searchin/clojure-mongodb/$2BallowDiskUse/clojure-mongodb/3qT34rZSFwQ/tYCxj5coo8gJ).
@@ -151,12 +128,12 @@
   ;;
   ;; It's faster and better-behaved to just implement this logic in Clojure-land for the time being.
   ;; Since it's lazy we can handle large data sets (I've ran this successfully over 500,000+ document collections w/o issue).
-  [{:count (let [values (transient (set []))
-                 limit  (:limit (:query *query*))
-                 keep-taking?  (if limit (fn [_]
-                                           (< (count values) limit))
-                                   (constantly true))]
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id field-id)) ; resolve driver at runtime to avoid circular deps
+  [{:count (let [values       (transient (set []))
+                 limit        (:limit (:query *query*))
+                 keep-taking? (if limit (fn [_]
+                                          (< (count values) limit))
+                                  (constantly true))]
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))
@@ -164,20 +141,24 @@
                   dorun)
              (count values))}])
 
-(defaggregation ["stddev" field-id]
-  nil) ; TODO
-
-(defaggregation ["sum" field-id]
+(defn- aggregation:sum [field]
   (aggregate {$group {"_id" nil ; TODO - I don't think this works for _id
-                      "sum" {$sum (field-id->$string field-id)}}}
+                      "sum" {$sum (field->$str field)}}}
              {$project {"_id" false, "sum" true}}))
 
-(defmacro match-aggregation
-  "Match structured query `aggregation` clause against the clauses defined by `defaggregation`."
-  [aggregation]
-  `(match ~aggregation
-     ~@@aggregations
-     ~'_ nil))
+(defn- match-aggregation [{:keys [aggregation-type field]}]
+  (if-not field
+    ;; aggregations with no Field
+    (case aggregation-type
+      :rows  (aggregation:rows)
+      :count (aggregation:count))
+    ;; aggregations with a field
+    ((case       aggregation-type
+       :avg      aggregation:avg
+       :count    aggregation:count
+       :distinct aggregation:distinct
+       :sum      aggregation:sum) ; TODO -- stddev isn't implemented for mongo
+     field)))
 
 
 ;; ## BREAKOUT
@@ -186,54 +167,77 @@
 ;; This is annoying, since it effectively duplicates logic we have in the aggregation definitions above and the
 ;; clause definitions below, but the query we need to generate is different enough that I haven't found a cleaner
 ;; way of doing this yet.
-
-;;
-(defn breakout-aggregation->field-name+expression
-  "Match AGGREGATION clause of a structured query *that contains a `breakout` clause*, and return
+(defn- breakout-aggregation->field-name+expression
+  "Match AGGREGATION clause of a structured query that contains a `breakout` clause, and return
    a pair containing `[field-name aggregation-expression]`, which are used to generate the Mongo aggregate query."
-  [aggregation]
-  ;; AFAIK these are the only aggregation types that make sense in combination with a breakout clause
-  ;; or are we missing something?
+  [{:keys [aggregation-type field]}]
+  ;; AFAIK these are the only aggregation types that make sense in combination with a breakout clause or are we missing something?
   ;; At any rate these seem to be the most common use cases, so we can add more here if and when they're needed.
-  (match aggregation
-    ["rows"]         nil
-    ["count"]        ["count" {$sum 1}]
-    ["avg" field-id] ["avg" {$avg (field-id->$string field-id)}]
-    ["sum" field-id] ["sum" {$sum (field-id->$string field-id)}]))
+  (if-not field
+    (case aggregation-type
+      :rows  nil
+      :count ["count" {$sum 1}])
+    (case aggregation-type
+      :avg ["avg" {$avg (field->$str field)}]
+      :sum ["sum" {$sum (field->$str field)}])))
 
-(defn do-breakout
+;;; BREAKOUT FIELD NAME ESCAPING FOR $GROUP
+;; We're not allowed to use field names that contain a period in the Mongo aggregation $group stage.
+;; Not OK:
+;;   {"$group" {"source.username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
+;;
+;; For *nested* Fields, we'll replace the '.' with '___', and restore the original names afterward.
+;; Escaped:
+;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
+
+(defn ag-unescape-nested-field-names
+  "Restore the original, unescaped nested Field names in the keys of RESULTS.
+   E.g. `:source___service` becomes `:source.service`"
+  [results]
+  ;; Build a map of escaped key -> unescaped key by looking at the keys in the first result
+  ;; e.g. {:source___username :source.username}
+  (let [replacements (into {} (for [k (keys (first results))]
+                                (let [k-str     (name k)
+                                      unescaped (s/replace k-str #"___" ".")]
+                                  (when-not (= k-str unescaped)
+                                    {k (keyword unescaped)}))))]
+    ;; If the map is non-empty then map set/rename-keys over the results with it
+    (if-not (seq replacements)
+      results
+      (for [row results]
+        (set/rename-keys row replacements)))))
+
+(defn- do-breakout
   "Generate a Monger query from a structured QUERY dictionary that contains a `breakout` clause.
    Since the Monger query we generate looks very different from ones we generate when no `breakout` clause
    is present, this is essentialy a separate implementation :/"
-  [{aggregation :aggregation, field-ids :breakout, order-by :order_by, limit :limit, :as query}]
-  {:pre [(sequential? field-ids)
-         (every? integer? field-ids)]}
-  (let [[ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
-        fields               (->> (map field-id->kw field-ids)
-                                  (map name))
-        $fields              (map field-id->$string field-ids)
+  [{aggregation :aggregation, breakout-fields :breakout, order-by :order-by, limit :limit, :as query}]
+  (let [;; Shadow the top-level definition of field->name with one that will use "___" as the separator instead of "."
+        field->escaped-name  (u/rpartial field->name "___")
+        [ag-field ag-clause] (breakout-aggregation->field-name+expression aggregation)
+        fields               (map field->escaped-name breakout-fields)
+        $fields              (map field->$str breakout-fields)
         fields->$fields      (zipmap fields $fields)]
-    (aggregate {$group  (merge {"_id"    (if (= (count fields) 1) (first $fields)
+    `(ag-unescape-nested-field-names
+      ~(aggregate {$group  (merge {"_id" (if (= (count fields) 1) (first $fields)
                                              fields->$fields)}
-                               (when (and ag-field ag-clause)
-                                 {ag-field ag-clause})
-                               (->> fields->$fields
-                                    (map (fn [[field $field]]
-                                           (when-not (= field "_id")
-                                             {field {$first $field}})))
-                                    (into {})))}
-               {$sort    (->> order-by
-                              (mapcat (fn [[field-id asc-or-desc]]
-                                        [(name (field-id->kw field-id)) (case asc-or-desc
-                                                                          "ascending" 1
-                                                                          "descending" -1)]))
-                              (apply sorted-map))}
-               {$project (merge {"_id"    false}
-                                (when ag-field
-                                  {ag-field true})
-                                (zipmap fields (repeat true)))}
-               (when limit
-                 {$limit limit}))))
+                                  (when (and ag-field ag-clause)
+                                    {ag-field ag-clause})
+                                  (into {} (for [[field $field] fields->$fields]
+                                             (when-not (= field "_id")
+                                               {field {$first $field}}))))}
+                  {$sort    (->> order-by
+                                 (mapcat (fn [{:keys [field direction]}]
+                                           [(field->escaped-name field) (case direction
+                                                                  :ascending   1
+                                                                  :descending -1)]))
+                                 (apply sorted-map))}
+                  {$project (merge {"_id" false}
+                                   (when ag-field
+                                     {ag-field true})
+                                   (zipmap fields (repeat true)))}
+                  (when limit
+                    {$limit limit})))))
 
 ;; ## PROCESS-STRUCTURED
 
@@ -244,38 +248,21 @@
    *  queries that contain `breakout` clauses are handled by `do-breakout`
    *  other queries are handled by `match-aggregation`, which hands off to the
       appropriate fn defined by a `defaggregation`."
-  [{:keys [source_table aggregation breakout] :as query}]
-  (binding [*collection-name* (sel :one :field [Table :name] :id source_table)
-            *constraints* (when-let [filter-clause (:filter query)]
-                            (apply-clause [:filter filter-clause]))]
-    (if-not (empty? breakout) (do-breakout query)
-            (match-aggregation aggregation))))
-
-
-;; ## ANNOTATION
-
-;; TODO - This is similar to the implementation in generic-sql; can we combine them and move it into metabase.driver.query-processor?
-(defn annotate-results
-  "Add column information, `row_count`, etc. to the results of a Mongo QP query."
-  [query results]
-  (qp/annotate query results))
+  [{:keys [source-table aggregation breakout] :as query}]
+  (binding [*collection-name* (:name source-table)
+            *constraints*     (when-let [filter-clause (:filter query)]
+                                (apply-clause [:filter filter-clause]))]
+    (if (seq breakout) (do-breakout query)
+        (match-aggregation aggregation))))
 
 
 ;; ## CLAUSE APPLICATION 2.0
-
-(def ^{:arglists '([field-id])} field-id->kw
-  "Return the keyword name of a `Field` with ID FIELD-ID. Memoized."
-  (memoize
-   (fn [field-id]
-     {:pre [(integer? field-id)]
-      :post [(keyword? %)]}
-     (keyword (sel :one :field [Field :name] :id field-id)))))
 
 (def ^:private clauses
   "Used by `defclause` to store the clause definitions generated by it."
   (atom '()))
 
-(defmacro defclause
+(defmacro ^:private defclause
   "Generate a new clause definition that will be called inside of a `match` statement
    whenever CLAUSE matches MATCH-BINDING.
 
@@ -285,75 +272,58 @@
   `(swap! clauses concat '[[~clause ~match-binding] (try
                                                       ~@body
                                                       (catch Throwable e#
-                                                        (log/error (color/red ~(format "Failed to process clause [%s %s]: " clause match-binding)
+                                                        (log/error (color/red ~(format "Failed to process '%s' clause:" (name clause))
                                                                               (.getMessage e#)))))]))
 
 ;; ### CLAUSE DEFINITIONS
 
 ;; ### fields
-(defclause :fields field-ids
-  `[(fields ~(mapv field-id->kw field-ids))])
+(defclause :fields fields
+  `[(fields ~(mapv field->name fields))])
 
-(def ^:private field-id->casting-fn
-  "Return a fn that should be used to cast values that match/filter against `Field` with FIELD-ID."
-  (let [->ObjectId (fn [^String value]
-                     `(ObjectId. ~value))]
-    (memoize
-     (fn [field-id]
-       (let [{base-type :base_type, field-name :name, special-type :special_type} (sel :one [Field :base_type :name :special_type] :id field-id)]
-         (if (and (= field-name "_id")
-                  (= base-type  :UnknownField)) ->ObjectId
-             identity))))))
-
-(defn- cast-value-if-needed
-  "*  Convert dates (which come back as `YYYY-MM-DD` strings) to `java.sql.Date`
-   *  Convert ID strings to `ObjectId`
-   *  Return other values as-is"
-  [field-id ^String value]
-  ((field-id->casting-fn field-id) value))
 
 ;; ### filter
-;; !!! SPECIAL CASE - the results of this clause are bound to *constraints*, which is used differently
-;; by the various defaggregation definitions or by do-breakout. Here, we just return a "constraints" map instead.
-(defclause :filter ["INSIDE" lat-field-id lon-field-id lat-max lon-min lat-min lon-max]
-  (let [lat-field (field-id->kw lat-field-id)
-        lon-field (field-id->kw lon-field-id)]
-    {$and [{lat-field {$gte lat-min, $lte lat-max}}
-           {lon-field {$gte lon-min, $lte lon-max}}]}))
 
-(defclause :filter ["IS_NULL" field-id]
-  {(field-id->kw field-id) {$exists false}})
+(defn- format-value
+  "Convert ID strings to `ObjectId`."
+  [{:keys [field-name base-type value]}]
+  (cond
+    (and (= field-name "_id")
+         (= base-type  :UnknownField))  `(ObjectId. ~value)
+    (= (type value) java.sql.Timestamp) (java.util.Date. (.getTime ^java.sql.Timestamp value)) ; ugg
+    :else                               value))
 
-(defclause :filter ["NOT_NULL" field-id]
-  {(field-id->kw field-id) {$exists true}})
+(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter}]
+  (let [field (when field (field->name field))
+        value (when value (format-value value))]
+    (case filter-type
+      :inside      (let [lat (:lat filter)
+                         lon (:lon filter)]
+                     {$and [{(field->name (:field lat)) {$gte (format-value (:min lat)), $lte (format-value (:max lat))}}
+                            {(field->name (:field lon)) {$gte (format-value (:min lon)), $lte (format-value (:max lon))}}]})
+      :between     {field {$gte (format-value (:min-val filter))
+                           $lte (format-value (:max-val filter))}}
+      :is-null     {field {$exists false}}
+      :not-null    {field {$exists true}}
+      :contains    {field (re-pattern value)}
+      :starts-with {field (re-pattern (str \^ value))}
+      :ends-with   {field (re-pattern (str value \$))}
+      :=           {field value}
+      :!=          {field {$ne  value}}
+      :<           {field {$lt  value}}
+      :>           {field {$gt  value}}
+      :<=          {field {$lte value}}
+      :>=          {field {$gte value}})))
 
-(defclause :filter ["BETWEEN" field-id min max]
-  {(field-id->kw field-id) {$gte (cast-value-if-needed field-id min)
-                            $lte (cast-value-if-needed field-id max)}})
+(defn- parse-filter-clause [{:keys [compound-type subclauses], :as clause}]
+  (cond
+    (= compound-type :and) {$and (mapv parse-filter-clause subclauses)}
+    (= compound-type :or)  {$or  (mapv parse-filter-clause subclauses)}
+    :else                  (parse-filter-subclause clause)))
 
-(defclause :filter ["=" field-id value]
-  {(field-id->kw field-id) (cast-value-if-needed field-id value)})
 
-(defclause :filter ["!=" field-id value]
-  {(field-id->kw field-id) {$ne (cast-value-if-needed field-id value)}})
-
-(defclause :filter ["<" field-id value]
-  {(field-id->kw field-id) {$lt (cast-value-if-needed field-id value)}})
-
-(defclause :filter [">" field-id value]
-  {(field-id->kw field-id) {$gt (cast-value-if-needed field-id value)}})
-
-(defclause :filter ["<=" field-id value]
-  {(field-id->kw field-id) {$lte (cast-value-if-needed field-id value)}})
-
-(defclause :filter [">=" field-id value]
-  {(field-id->kw field-id) {$gte (cast-value-if-needed field-id value)}})
-
-(defclause :filter ["AND" & subclauses]
-  {$and (mapv #(apply-clause [:filter %]) subclauses)})
-
-(defclause :filter ["OR" & subclauses]
-  {$or (mapv #(apply-clause [:filter %]) subclauses)})
+(defclause :filter filter-clause
+  (parse-filter-clause filter-clause))
 
 
 ;; ### limit
@@ -362,12 +332,12 @@
   `[(limit ~value)])
 
 ;; ### order_by
-(defclause :order_by field-dir-pairs
-  (let [sort-options (mapcat (fn [[field-id direction]]
-                               [(field-id->kw field-id) (case (keyword direction)
-                                                          :ascending 1
-                                                          :descending -1)])
-                             field-dir-pairs)]
+(defclause :order-by subclauses
+  (let [sort-options (mapcat (fn [{:keys [field direction]}]
+                               [(field->name field) (case direction
+                                                      :ascending   1
+                                                      :descending -1)])
+                             subclauses)]
     (when (seq sort-options)
       `[(sort (array-map ~@sort-options))])))
 

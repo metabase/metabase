@@ -1,10 +1,14 @@
 'use strict';
 
 import { CardRenderer } from '../card/card.charting';
-import PopoverWithTrigger from './popover_with_trigger.react';
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
 import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
+import RunButton from './run_button.react';
+import VisualizationSettings from './visualization_settings.react';
+import LoadingSpinner from '../components/icons/loading.react';
+
+import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -19,24 +23,15 @@ export default React.createClass({
         setChartColorFn: React.PropTypes.func.isRequired,
         setSortFn: React.PropTypes.func.isRequired,
         cellIsClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
+        cellClickedFn: React.PropTypes.func,
+        isRunning: React.PropTypes.bool.isRequired,
+        runQueryFn: React.PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {
         return {
             // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-            maxTableRows: 2000,
-            visualizationTypes: [
-                'scalar',
-                'table',
-                'line',
-                'bar',
-                'pie',
-                'area',
-                'state',
-                'country',
-                'pin_map'
-            ]
+            maxTableRows: 2000
         };
     },
 
@@ -60,205 +55,80 @@ export default React.createClass({
         return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
     },
 
-    hasLatitudeAndLongitudeColumns: function(columnDefs) {
-        var hasLatitude = false,
-            hasLongitude = false;
-        columnDefs.forEach(function(col, index) {
-            if (col.special_type &&
-                    col.special_type === "latitude") {
-                hasLatitude = true;
-
-            } else if (col.special_type &&
-                    col.special_type === "longitude") {
-                hasLongitude = true;
-            }
-        });
-
-        return (hasLatitude && hasLongitude);
-    },
-
-    isSensibleChartDisplay: function(display) {
-        var data = (this.props.result) ? this.props.result.data : null;
-
-        if (display === "table") {
-            // table is always appropriate
-            return true;
-
-        } else if (display === "scalar" && data &&
-                    data.rows && data.rows.length === 1 &&
-                    data.cols && data.cols.length === 1) {
-            // a 1x1 data set is appropriate for a scalar
-            return true;
-
-        } else if (display === "pin_map" && data && this.hasLatitudeAndLongitudeColumns(data.cols)) {
-            // when we have a latitude and longitude a pin map is cool
-            return true;
-
-        } else if ((display === "line" || display === "area") && data &&
-                    data.rows && data.rows.length > 1 &&
-                    data.cols && data.cols.length > 1) {
-            // if we have 2x2 or more then that's enough to make a line/area chart
-            return true;
-
-        } else if (this.isChartDisplay(display) && data &&
-                    data.cols && data.cols.length > 1) {
-            // general check for charts is that they require 2 columns
-            return true;
-        }
-
-        return false;
-    },
-
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
     },
 
-    setDisplay: function(event) {
-        // notify our parent about our change
-        this.props.setDisplayFn(event.target.value);
+    runQuery: function() {
+        this.props.runQueryFn(this.props.card.dataset_query);
     },
 
-    setChartColor: function(color) {
-        // tell parent about our new color
-        this.props.setChartColorFn(color);
+    canRun: function() {
+        var query = this.props.card.dataset_query;
+        if (query.query) {
+            return Query.canRun(query.query);
+        } else {
+            return (query.database != undefined && query.native.query !== "");
+        }
     },
 
-    renderChartColorPicker: function() {
-        if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
-            var colors = this.props.visualizationSettingsApi.getDefaultColorHarmony();
-            var colorItems = [];
-            for (var i=0; i < colors.length; i++) {
-                var color = colors[i];
-                var localStyles = {
-                    "backgroundColor": color
-                };
+    renderHeader: function() {
+        var visualizationSettings = false;
+        if (!this.props.isObjectDetail) {
+            visualizationSettings = (<VisualizationSettings {...this.props}/>);
+        }
 
-                colorItems.push((
-                    <li key={i} className="CardSettings-colorBlock" style={localStyles} onClick={this.setChartColor.bind(null, color)}></li>
-                ));
-            }
+        return (
+            <div className="relative flex full mt3">
+                {visualizationSettings}
+                <div className="absolute left right ml-auto mr-auto layout-centered flex">
+                    <RunButton
+                        canRun={this.canRun()}
+                        isDirty={this.queryIsDirty()}
+                        isRunning={this.props.isRunning}
+                        runFn={this.runQuery}
+                    />
+                </div>
+                {this.renderCount()}
+            </div>
+        );
+    },
 
-            var colorPickerButton = (
-                <a className="Button">
-                    Change color
-                </a>
-            );
+    hasTooManyRows: function () {
+        const dataset_query = this.props.card.dataset_query,
+              rows = this.props.result.data.rows;
 
-            var tetherOptions = {
-                attachment: 'middle left',
-                targetAttachment: 'middle right',
-                targetOffset: '0 12px'
-            };
-
-            return (
-                <PopoverWithTrigger className="PopoverBody"
-                                    tetherOptions={tetherOptions}
-                                    triggerElement={colorPickerButton}>
-                    <ol className="p1">
-                        {colorItems}
-                    </ol>
-                </PopoverWithTrigger>
-            );
-
+        if (this.props.result.data.rows_truncated ||
+            (dataset_query.type === "query" &&
+             dataset_query.query.aggregation[0] === "rows" &&
+             rows.length === 2000))
+        {
+            return true;
         } else {
             return false;
         }
     },
 
-    clickedForeignKey: function(fk) {
-        this.props.followForeignKeyFn(fk);
-    },
-
-    renderFooter: function(tableFootnote) {
-        if (this.props.isObjectDetail) {
-            if (!this.props.tableForeignKeys) return false;
-
-            var component = this;
-            var relationships = this.props.tableForeignKeys.map(function(fk) {
-                var relationName = (fk.origin.table.entity_name) ? fk.origin.table.entity_name : fk.origin.table.name;
-                return (
-                    <li className="block mb1 lg-mb2">
-                        <a className="QueryOption inline-block no-decoration p2 lg-p2" key={fk.id} href="#" onClick={component.clickedForeignKey.bind(null, fk)}>
-                            {relationName}
-                        </a>
-                    </li>
-                )
-            });
-
+    renderCount: function() {
+        if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
-                <div className="VisualizationSettings wrapper QueryBuilder-section clearfix">
-                    <h3 className="mb1 lg-mb2">Relationships:</h3>
-                    <ul>
-                        {relationships}
-                    </ul>
-                </div>
-            );
-
-        } else {
-            var vizControls;
-            if (this.props.result && this.props.result.error === undefined) {
-                var displayOptions = [];
-                for (var i = 0; i < this.props.visualizationTypes.length; i++) {
-                    var val = this.props.visualizationTypes[i];
-
-                    if (this.isSensibleChartDisplay(val)) {
-                        displayOptions.push(
-                            <option key={i} value={val}>{val}</option>
-                        );
-                    } else {
-                        // NOTE: the key below MUST be different otherwise we get React errors, so we just append a '_' to it (sigh)
-                        displayOptions.push(
-                            <option key={i+'_'} value={val}>{val} (not sensible)</option>
-                        );
-                    }
-                }
-
-                vizControls = (
-                    <div>
-                        Show as:
-                        <label className="Select ml2">
-                            <select onChange={this.setDisplay} value={this.props.card.display}>
-                                {displayOptions}
-                            </select>
-                        </label>
-                        {this.renderChartColorPicker()}
-                    </div>
-                );
-            }
-
-            return (
-                <div className="VisualizationSettings wrapper flex">
-                    {vizControls}
-                    <div className="flex-align-right">
-                        {tableFootnote}
-                    </div>
+                <div className="flex-align-right mt1">
+                    { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
+                    <b>{this.props.result.row_count}</b>
+                    { (this.props.result.data.rows.length > 1) ? (" rows") : (" row")}.
                 </div>
             );
         }
     },
 
-    loader: function() {
-        var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
-        return (
-            <div className="Loading-indicator">
-                <svg viewBox="0 0 32 32" width="32px" height="32px" fill="currentcolor">
-                  <path opacity=".25" d="M16 0 A16 16 0 0 0 16 32 A16 16 0 0 0 16 0 M16 4 A12 12 0 0 1 16 28 A12 12 0 0 1 16 4"/>
-                  <path d="M16 0 A16 16 0 0 1 32 16 L28 16 A12 12 0 0 0 16 4z" dangerouslySetInnerHTML={{__html: animate}}></path>
-                </svg>
-            </div>
-        );
-    },
-
     render: function() {
         var loading,
-            viz,
-            queryModified,
-            tableFootnote;
+            viz;
 
         if(this.props.isRunning) {
             loading = (
                 <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
-                    {this.loader()}
+                    <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
             );
@@ -271,14 +141,6 @@ export default React.createClass({
                 </div>
             );
         } else {
-            if (this.queryIsDirty()) {
-                queryModified = (
-                    <div className="flex mt2 layout-centered text-headsup">
-                        <span className="Badge Badge--headsUp mr2">Heads up</span> The data below is out of date because your query has changed
-                    </div>
-                );
-            }
-
             if (this.props.result.error) {
                 viz = (
                     <div className="QueryError flex full align-center text-error">
@@ -296,8 +158,12 @@ export default React.createClass({
                     viz = (
                         <QueryVisualizationObjectDetailTable
                             data={this.props.result.data}
+                            tableMetadata={this.props.tableMetadata}
+                            tableForeignKeys={this.props.tableForeignKeys}
+                            tableForeignKeyReferences={this.props.tableForeignKeyReferences}
                             cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn} />
+                            cellClickedFn={this.props.cellClickedFn}
+                            followForeignKeyFn={this.props.followForeignKeyFn} />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {
@@ -328,24 +194,6 @@ export default React.createClass({
                     );
 
                 } else if (this.props.card.display === "table") {
-                    // when we are displaying a data grid, setup a footnote which provides some row information
-                    if (this.props.result.data.rows_truncated ||
-                            (this.props.card.dataset_query.type === "query" &&
-                                this.props.card.dataset_query.query.aggregation[0] === "rows" &&
-                                this.props.result.data.rows.length === 2000)) {
-                        tableFootnote = (
-                            <div className="mt1">
-                                <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                                Result data was capped at <b>{this.props.result.row_count}</b> rows.
-                            </div>
-                        );
-                    } else {
-                        tableFootnote = (
-                            <div className="mt1">
-                                Showing <b>{this.props.result.row_count}</b> rows.
-                            </div>
-                        );
-                    }
 
                     var sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
                                     this.props.card.dataset_query.query.order_by : null;
@@ -369,46 +217,33 @@ export default React.createClass({
                             data={this.props.result.data} />
                     );
                 }
-
-                // check if the query result was truncated and let the user know about it if so
-                if (this.props.result.data.rows_truncated && !tableFootnote) {
-                    tableFootnote = (
-                        <div className="mt1">
-                            <span className="Badge Badge--headsUp mr2">Too many rows!</span>
-                            Result data was capped at <b>{this.props.result.data.rows_truncated}</b> rows.
-                        </div>
-                    );
-                }
             }
         }
 
         var wrapperClasses = cx({
-            'relative': true,
+            'wrapper': true,
             'full': true,
+            'relative': true,
+            'mb2': true,
             'flex': !this.props.isObjectDetail,
             'flex-column': !this.props.isObjectDetail
         });
 
         var visualizationClasses = cx({
+            'flex': true,
+            'flex-full': true,
             'Visualization': true,
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning,
-            'wrapper': true,
-            'full': true,
-            'flex': true,
-            'flex-full': true,
-            'QueryBuilder-section': true,
-            'pt2 lg-pt4': true
         });
 
         return (
             <div className={wrapperClasses}>
-                {queryModified}
+                {this.renderHeader()}
                 {loading}
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
-                {this.renderFooter(tableFootnote)}
             </div>
         );
     }

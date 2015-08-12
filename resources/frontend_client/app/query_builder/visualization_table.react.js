@@ -1,7 +1,11 @@
 'use strict';
+/*global _*/
+
+import MetabaseAnalytics from '../lib/analytics';
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
+import Popover from './popover.react';
 
 var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;
@@ -33,7 +37,8 @@ export default React.createClass({
             width: 0,
             height: 0,
             columnWidths: [],
-            colDefs: null
+            colDefs: null,
+            popover: null
         };
     },
 
@@ -60,8 +65,15 @@ export default React.createClass({
         this.calculateSizing(this.getInitialState());
     },
 
-    componentDidUpdate: function(prevProps, prevState) {
-        this.calculateSizing(prevState);
+    shouldComponentUpdate: function(nextProps, nextState) {
+        // this is required because we don't pass in the containing element size as a property :-/
+        // if size changes don't update yet because state will change in a moment
+        this.calculateSizing(nextState)
+
+        // compare props and state to determine if we should re-render
+        // NOTE: this is essentially the same as React.addons.PureRenderMixin but
+        // we currently need to recalculate the container size here.
+        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
     },
 
     // availableWidth, minColumnWidth, # of columns
@@ -80,11 +92,13 @@ export default React.createClass({
     calculateSizing: function(prevState) {
         var element = this.getDOMNode(); //React.findDOMNode(this);
 
-        // account for padding above our parent
+        // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);
         var paddingTop = Math.ceil(parseFloat(style.getPropertyValue("padding-top")));
+        var paddingLeft = Math.ceil(parseFloat(style.getPropertyValue("padding-left")));
+        var paddingRight = Math.ceil(parseFloat(style.getPropertyValue("padding-right")));
 
-        var width = element.parentElement.offsetWidth;
+        var width = element.parentElement.offsetWidth - paddingLeft - paddingRight;
         var height = element.parentElement.offsetHeight - paddingTop;
 
         if (width !== prevState.width || height !== prevState.height) {
@@ -109,14 +123,40 @@ export default React.createClass({
 
     setSort: function(fieldId) {
         this.props.setSortFn(fieldId);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
     },
 
     cellClicked: function(rowIndex, columnIndex) {
         this.props.cellClickedFn(rowIndex, columnIndex);
     },
 
+    popoverFilterClicked: function(rowIndex, columnIndex, operator) {
+        this.props.cellClickedFn(rowIndex, columnIndex, operator);
+        this.setState({ popover: null });
+    },
+
     rowGetter: function(rowIndex) {
-        return this.props.data.rows[rowIndex];
+        var row = {
+            hasPopover: this.state.popover && this.state.popover.rowIndex === rowIndex || false
+        };
+        for (var i = 0; i < this.props.data.rows[rowIndex].length; i++) {
+            row[i] = this.props.data.rows[rowIndex][i];
+        }
+        return row;
+    },
+
+    showPopover: function(rowIndex, cellDataKey) {
+        this.setState({
+            popover: {
+                rowIndex: rowIndex,
+                cellDataKey: cellDataKey
+            }
+        });
+    },
+
+    handleClickOutside: function() {
+        this.setState({ popover: null });
     },
 
     cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
@@ -127,12 +167,37 @@ export default React.createClass({
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
         } else {
-            return (<div key={key}>{cellData}</div>);
+            var popover = null;
+            if (this.state.popover && this.state.popover.rowIndex === rowIndex && this.state.popover.cellDataKey === cellDataKey) {
+                var tetherOptions = {
+                    targetAttachment: "middle center",
+                    attachment: "middle center"
+                };
+                var operators = ["<", "=", "≠", ">"].map(function(operator) {
+                    return (<li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(null, rowIndex, cellDataKey, operator)}>{operator}</li>);
+                }, this);
+                popover = (
+                    <Popover
+                        tetherOptions={tetherOptions}
+                        handleClickOutside={this.handleClickOutside}
+                    >
+                        <div className="bg-white bordered shadowed p1">
+                            <ul className="h1 flex align-center">{operators}</ul>
+                        </div>
+                    </Popover>
+                );
+            }
+            return (
+                <div key={key}>
+                    <div onClick={this.showPopover.bind(null, rowIndex, cellDataKey)}>{cellData}</div>
+                    {popover}
+                </div>
+            );
         }
     },
 
     columnResized: function(width, idx) {
-        var tableColumnWidths = this.state.columnWidths;
+        var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
@@ -142,7 +207,8 @@ export default React.createClass({
 
     tableHeaderRenderer: function(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column !== null) ? column.name.toString() : null;
+            colVal = (column && column.display_name && column.display_name.toString()) ||
+                     (column && column.name && column.name.toString());
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,
@@ -210,7 +276,7 @@ export default React.createClass({
                 rowGetter={this.rowGetter}
                 rowsCount={this.props.data.rows.length}
                 width={this.state.width}
-                height={this.state.height}
+                maxHeight={this.state.height}
                 headerHeight={50}
                 isColumnResizing={this.isColumnResizing}
                 onColumnResizeEndCallback={component.columnResized}>
