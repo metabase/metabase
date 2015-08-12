@@ -9,7 +9,8 @@
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)
-           java.util.Date))
+           (java.util Calendar
+                      Date)))
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -79,23 +80,29 @@
 (defn ^Date days-ago
   "Return a `Date` that is N days ago."
   [n & [^Date d]]
-  (let [^Date d (if d (.clone d) (Date.))]
-    (.setDate d (- (.getDate d) n))
-    d))
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/DAY_OF_MONTH (- (.get c Calendar/DAY_OF_MONTH) n))
+    (.getTime c)))
 
 (defn ^Date months-ago
   "Return a `Date` that is N months ago."
   [n & [^Date d]]
-  (let [^Date d (if d (.clone d) (Date.))]
-    (.setMonth d (- (.getMonth d) n))
-    d))
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/MONTH (- (.get c Calendar/MONTH) n))
+    (.getTime c)))
 
 (defn ^Date years-ago
   "Return a `Date` that is N years ago."
   [n & [^Date d]]
-  (let [^Date d (if d (.clone d) (Date.))]
-    (.setYear d (- (.getYear d) n))
-    d))
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/YEAR (- (.get c Calendar/YEAR) n))
+    (.getTime c)))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
