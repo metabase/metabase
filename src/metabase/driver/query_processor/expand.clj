@@ -440,7 +440,7 @@
   (match v
     (_ :guard number?) true
     (_ :guard u/date-string?) true
-    ["relative_date" (unit :guard (partial contains? #{"days" "months" "years"})) (n :guard integer?)] true
+    ["relative_date" (_ :guard (partial contains? #{"days" "months" "years"})) (_ :guard integer?)] true
     _ false))
 
 (defparser parse-filter-subclause
