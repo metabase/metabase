@@ -317,28 +317,29 @@
         parse-value
         map->Value)))
 
-(defn- ->ValuePlaceholder
-  "Construct a new `ValuePlaceholder`.
-   (This replaces the normal constructor with one that does extra validation and supports things like relative dates)."
-  [^Integer field-id value]
-  (ValuePlaceholder.
-   field-id
-   (match value
-     (_ :guard number?) value
-     (_ :guard string?) value
-     true               true
-     false              false
+;; Replace the default ->ValuePlaceholder constructor with one that does additional validation
+;; and supports relative dates
+(intern
+ 'metabase.driver.query-processor.expand '->ValuePlaceholder
+ (fn [^Integer field-id value]
+   (ValuePlaceholder.
+    field-id
+    (match value
+      (_ :guard number?) value
+      (_ :guard string?) value
+      true               true
+      false              false
 
-     ["relative_date" "days" (n :guard integer?)]
-     (u/date->yyyy-mm-dd (u/days-ago (- n)))
+      ["relative_date" "days" (n :guard integer?)]
+      (u/date->yyyy-mm-dd (u/days-ago (- n)))
 
-     ["relative_date" "months" (n :guard integer?)]
-     (u/date->yyyy-mm-dd (u/months-ago (- n)))
+      ["relative_date" "months" (n :guard integer?)]
+      (u/date->yyyy-mm-dd (u/months-ago (- n)))
 
-     ["relative_date" "years" (n :guard integer?)]
-     (u/date->yyyy-mm-dd (u/years-ago (- n)))
+      ["relative_date" "years" (n :guard integer?)]
+      (u/date->yyyy-mm-dd (u/years-ago (- n)))
 
-     _ (throw (Exception. (format "Invalid value: '%s'" value))))))
+      _ (throw (Exception. (format "Invalid value: '%s'" value)))))))
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
@@ -359,7 +360,8 @@
      _ (throw (Exception. (str "Invalid field: " field-id)))))
 
   ;; Value Placeholder
-  ([field-id value]
+  ([field-id value
+]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
 
