@@ -51,7 +51,9 @@
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
-(declare parse-aggregation
+(declare Calculation?
+         Field?
+         parse-aggregation
          parse-breakout
          parse-fields
          parse-filter
@@ -260,6 +262,49 @@
             [table-name])
           field-name)))
 
+(defrecord CalculationValue [value])
+
+(defn- CalculationValue? [clause]
+  (match clause
+    ["value" (value :guard (complement nil?))] true
+    _                                          false))
+
+(defn- CalculationArg? [arg]
+  (or (Field? arg)
+      (CalculationValue? arg)
+      (Calculation? arg)))
+
+(defn- CalculationOperator? [operator]
+  (and (keyword? operator)
+       (contains? #{:+ :- :* :/} operator)))
+
+(defn- Calculation? [[operator & args]]
+  (and (CalculationOperator? (keyword operator))
+       (every? CalculationArg? args)))
+
+(defrecord Calculation [^Keyword operator ; one of #{:+ :- :* :/}
+                        args]) ; each
+
+(defn- parse-calculation [[operator & args]]
+  (let [operator (keyword operator)]
+    (if-not (CalculationOperator? operator)
+      (throw (Exception. (format "Invalid calculation operator: '%s'" (name operator)))))
+    (->Calculation operator (vec (for [arg args]
+                                   (match [arg]
+                                     [(field :guard Field?)]
+                                     (ph field)
+
+                                     [["value" (value :guard (complement nil?))]]
+                                     (->CalculationValue value)
+
+                                     [(nested-calculation :guard Calculation?)]
+                                     (parse-calculation nested-calculation)))))))
+
+(defrecord CalculatedField [^String      field-name
+                            ^Calculation calculation])
+
+(defrecord CalculatedFieldPlaceholder [^String field-name])
+
 (defn- Field?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
   ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
@@ -267,6 +312,7 @@
   (match field
     (field-id :guard integer?)                                             true
     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    ["calculated" (field-name :guard string?)]                             true
     _                                                                      false))
 
 ;; Value is the expansion of a value within a QL clause
@@ -317,6 +363,9 @@
         parse-value
         map->Value)))
 
+(defn- name->calculated-column [calculated-column-name]
+  (get-in *original-query-dict* [:query :calculate (keyword calculated-column-name)]))
+
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
@@ -331,6 +380,9 @@
          (swap! *field-ids* conj dest-field-id)
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
+
+     ["calculated" (field-name :guard #(and (string? %) (name->calculated-column %)))]
+     (->CalculatedField field-name (parse-calculation (name->calculated-column field-name)))
 
       _ (throw (Exception. (str "Invalid field: " field-id)))))
   ([field-id value]

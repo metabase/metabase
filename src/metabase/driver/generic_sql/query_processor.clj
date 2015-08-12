@@ -5,15 +5,20 @@
             [clojure.string :as s]
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
+            (korma.sql [engine :as engine]
+                       [utils :as kutils])
             [metabase.config :as config]
             [metabase.driver :as driver]
             (metabase.driver [interface :refer [supports?]]
                              [query-processor :as qp])
+            metabase.driver.query-processor.expand
             (metabase.driver.generic-sql [interface :as i]
                                          [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
-  (:import (metabase.driver.query_processor.expand Field
+  (:import (metabase.driver.query_processor.expand Calculation
+                                                   CalculatedField
+                                                   Field
                                                    OrderByAggregateField
                                                    Value)))
 
@@ -89,8 +94,25 @@
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
 
-(defn- quote-name [nm]
+(defn- quote-name
+  "Quote a `Table` or `Field` name in a way appropriate for this DB."
+  [nm]
   (i/quote-name (:driver *query*) nm))
+
+(defn- calculation-infix
+  "Korma predicate that applies infix OPERATOR across many ARGS.
+
+    (calculation-infix :+ :tbl.field-1 :tbl.field-2)
+       Korma -> {::pred <fn> ::args [\" + \" [:tbl.field-1 :tbl.field-2]]}
+       SQL   -> \"(`tbl`.`field-1` + `tbl`.`field-2`)\""
+  [operator args]
+  {:pre [(keyword? operator)
+         (sequential? args)]}
+  (kutils/pred `(comp kutils/wrap
+                      (partial s/join ~(format " %s " (name operator)))
+                      engine/str-values)
+               [(mapv engine/try-prefix args)]))
+
 
 (extend-protocol IGenericSQLFormattable
   Field
@@ -125,6 +147,21 @@
                             :stddev   "stddev"
                             :sum      "sum"))))))
 
+  Calculation
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [operator args]} _]
+     (calculation-infix operator (map formatted args))))
+
+  CalculatedField
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [field-name calculation], :as this} include-as?]
+     (if include-as?
+       [(formatted calculation) (keyword field-name)]
+       (formatted calculation))))
 
   Value
   (formatted
@@ -240,18 +277,21 @@
 (defn- log-korma-form
   [korma-form]
   (when-not qp/*disable-qp-logging*
-    (log/debug
-     (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
-                                                         (walk/prewalk (fn [form]                               ; strip korma.core/ qualifications from symbols in the form
-                                                                         (if-not (symbol? form) form            ; to remove some of the clutter
-                                                                                 (symbol (name form)))))
-                                                         (u/pprint-to-str)))
-     (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
-                                                                `(~let-form ~binding-form                       ; has to go there to work correctly
-                                                                            (sql-only ~@body))))
-                                                        (s/replace #"\sFROM" "\nFROM")                          ; add newlines to the SQL to make it more readable
-                                                        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                                                        (s/replace #"\sWHERE" "\nWHERE")
-                                                        (s/replace #"\sGROUP BY" "\nGROUP BY")
-                                                        (s/replace #"\sORDER BY" "\nORDER BY")
-                                                        (s/replace #"\sLIMIT" "\nLIMIT"))))))
+    (try
+      (log/debug
+       (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
+                                                           (walk/prewalk (fn [form]                               ; strip korma.core/ qualifications from symbols in the form
+                                                                           (if-not (symbol? form) form            ; to remove some of the clutter
+                                                                                   (symbol (name form)))))
+                                                           (u/pprint-to-str)))
+       (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
+                                                                  `(~let-form ~binding-form                       ; has to go there to work correctly
+                                                                              (sql-only ~@body))))
+                                                          (s/replace #"\sFROM" "\nFROM")                          ; add newlines to the SQL to make it more readable
+                                                          (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+                                                          (s/replace #"\sWHERE" "\nWHERE")
+                                                          (s/replace #"\sGROUP BY" "\nGROUP BY")
+                                                          (s/replace #"\sORDER BY" "\nORDER BY")
+                                                          (s/replace #"\sLIMIT" "\nLIMIT"))))
+      (catch Throwable e
+        (log/error (u/pprint-to-str 'red korma-form))))))

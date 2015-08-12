@@ -87,6 +87,19 @@
 (defn- breakout-field° [{:keys [breakout]}]
   (make-field-in° breakout))
 
+(defn- calculated-field° [{:keys [calculate]}]
+  (if-not (seq calculate)
+    (constantly fail)
+    (let [field-names (vec (keys calculate))]
+      (partial (fn calc-field° [[field-name & more] field]
+                 (conda
+                   ((field-name° field field-name) (== field {:field-name         field-name
+                                                              :field-display-name field-name
+                                                              :base-type          :UnknownField ; TODO - grab this info from Fields referenced by calculated field
+                                                              :special-type       nil}))
+                   ((!= more '()) (calc-field° more field))))
+               field-names))))
+
 (defn- explicit-fields-field° [{:keys [fields-is-implicit fields], :as query}]
   (if fields-is-implicit (constantly fail)
       (make-field-in° fields)))
@@ -105,15 +118,13 @@
                                                 ag-type))
                          (assoc :field-display-name (if (= ag-type :distinct) "count"
                                                         (name ag-type)))))]
-      (fn [out]
-        (trace-lvars "*" out)
-        (== out ag-field)))))
+      (partial == ag-field))))
 
 (defn- unknown-field° [field-name out]
   (all
-   (== out {:base-type    :UnknownField
-            :special-type nil
-            :field-name   field-name
+   (== out {:base-type          :UnknownField
+            :special-type       nil
+            :field-name         field-name
             :field-display-name field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 
@@ -124,11 +135,13 @@
                         (fn [field-name out]
                           (if-let [field (field-name->field field-name)]
                             (== out field)
-                            fail)))]
+                            fail)))
+        calced-field° (calculated-field° query)]
     (fn [field-name field]
       (conda
         ((normal-field° field-name field))
-        ((ag-field° field))))))
+        ((ag-field° field))
+        ((calced-field° field))))))
 
 (def ^:const ^:private field-groups
   {:breakout        0
@@ -215,6 +228,7 @@
 ;; Format the results in the way the front-end expects.
 
 (defn- format-col [col]
+  {:pre [(map? col)]}
   (merge {:description nil
           :id          nil
           :table_id    nil}
