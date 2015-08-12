@@ -360,8 +360,7 @@
      _ (throw (Exception. (str "Invalid field: " field-id)))))
 
   ;; Value Placeholder
-  ([field-id value
-]
+  ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
 
