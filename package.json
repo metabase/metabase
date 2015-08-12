@@ -66,9 +66,11 @@
     "ng-annotate-webpack-plugin": "^0.1.2",
     "node-libs-browser": "^0.5.2",
     "protractor": "^2.1.0",
+    "react-hot-loader": "^1.2.8",
     "shelljs": "^0.2.6",
     "style-loader": "^0.12.3",
     "webpack": "^1.9.10",
+    "webpack-dev-server": "^1.10.1",
     "webpack-postcss-tools": "^1.1.1"
   },
   "scripts": {
@@ -78,6 +80,7 @@
     "test-e2e": "./node_modules/protractor/bin/webdriver-manager update && ./node_modules/protractor/bin/protractor resources/frontend_client/test/protractor-conf.js",
     "build": "./node_modules/webpack/bin/webpack.js",
     "build-watch": "./node_modules/webpack/bin/webpack.js --watch",
-    "start": "lein ring server"
+    "start": "lein ring server",
+    "start-hot": "METABASE_ENV=hot ./node_modules/webpack/bin/webpack.js && METABASE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base resources/frontend_client"
   }
 }
