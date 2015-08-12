@@ -433,7 +433,7 @@
 
 ;; ### Parsers
 
-(defn- orderable-value?
+(defn- orderable-Value?
   "Is V a value that can be compared with operators such as `<` and `>`?
    i.e. This is true of numbers and dates, but not of other strings or booleans."
   [v]
@@ -442,6 +442,14 @@
     (_ :guard u/date-string?) true
     ["relative_date" (_ :guard (partial contains? #{"days" "months" "years"})) (_ :guard integer?)] true
     _ false))
+
+(defn- Value?
+  "Is V a valid unexpanded `Value`?"
+  [v]
+  (or (string? v)
+      (= v true)
+      (= v false)
+      (orderable-Value? v)))
 
 (defparser parse-filter-subclause
   ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
@@ -453,26 +461,26 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard orderable-value?) (max :guard orderable-value?)]
+  ["BETWEEN" (field-id :guard Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
   ;; Single-value != and =
-  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) (val :guard (complement nil?))]
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) (val :guard Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; <, >, <=, >= - like single-value != and =, but value must be orderable
-  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard orderable-value?)]
+  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard orderable-Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard Field?) & (values :guard seq)]
+  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :or
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :=
@@ -480,7 +488,7 @@
                                                                 :value       (ph field-id value)})))})
 
   ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard Field?) & (values :guard seq)]
+  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :and
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :!=
