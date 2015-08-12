@@ -1081,8 +1081,8 @@
     (driver/process-query {:database (db-id)
                            :type     :query
                            :query    {:calculated   {"total"  ["+" ["fk->" (id :venues :category_id) (id :categories :id)] (id :venues :price) (id :venues :id)]
-                                                     "total2" ["+" ["calculated" "total"] ["calculated" "total"]]
-                                                     "total3" ["+" ["calculated" "total"] ["calculated" "total2"]]}
+                                                     "total2" ["*" ["calculated" "total"] ["calculated" "total"]]
+                                                     "total3" ["-" ["calculated" "total"] ["calculated" "total2"]]}
                                       :aggregation  ["rows"],
                                       :source_table (id :venues)
                                       :fields       [(id :venues :category_id) ["calculated" "total"] ["calculated" "total2"] ["calculated" "total3"]]
