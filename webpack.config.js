@@ -94,7 +94,7 @@ module.exports = {
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
-            'tether':               __dirname + '/node_modules/tether/tether.min.js',
+            'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
