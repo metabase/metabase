@@ -1,0 +1,4 @@
+.SortableItemList-list {
+    max-height: 330px;
+    overflow-y: scroll;
+}

@@ -6,35 +6,37 @@ import SortableItemList from 'metabase/components/SortableItemList.react';
 import moment from 'moment';
 
 export default React.createClass({
-    displayName: "AddToDashSelectDashModal",
+    displayName: "AddToDashSelectQuestionModal",
     propTypes: {
-        card: React.PropTypes.object.isRequired,
+        dashboard: React.PropTypes.object.isRequired,
+        cardApi: React.PropTypes.func.isRequired,
         dashboardApi: React.PropTypes.func.isRequired,
         closeFn: React.PropTypes.func.isRequired,
         notifyCardAddedToDashFn: React.PropTypes.func.isRequired
     },
 
     getInitialState: function() {
-        this.loadDashboardList();
+        this.loadCardList();
         return {
-            dashboards: []
+            cards: []
         };
     },
 
-    loadDashboardList: async function() {
-        var dashboards = await this.props.dashboardApi.list({
+    loadCardList: async function() {
+        var cards = await this.props.cardApi.list({
             'filterMode': 'mine'
         }).$promise;
-        for (var dashboard of dashboards) {
-            dashboard.updated_at = moment(dashboard.updated_at);
+        for (var card of cards) {
+            card.updated_at = moment(card.updated_at);
+            card.icon = card.display ? 'illustration_visualization_' + card.display : null;
         }
-        this.setState({ dashboards });
+        this.setState({ cards });
     },
 
-    addToDashboard: async function(dashboard) {
+    addToDashboard: async function(card) {
         var dashCard = await this.props.dashboardApi.addcard({
-            'dashId': dashboard.id,
-            'cardId': this.props.card.id
+            'dashId': this.props.dashboard.id,
+            'cardId': card.id
         }).$promise;
         this.props.notifyCardAddedToDashFn(dashCard);
     },
@@ -46,8 +48,9 @@ export default React.createClass({
                 closeFn={this.props.closeFn}
             >
                 <SortableItemList
-                    items={this.state.dashboards}
+                    items={this.state.cards}
                     onClickItemFn={this.addToDashboard}
+                    showIcons={true}
                 />
             </Modal>
         );
