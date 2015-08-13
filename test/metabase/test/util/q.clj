@@ -144,7 +144,20 @@
 ;;; ## FILTER
 
 (def ^:const ^:private filter-clause-tokens
-  '#{inside not-null is-null between starts-with ends-with contains = != < > <= >=})
+  '#{inside not-null is-null between starts-with ends-with contains = != < > <= >= relative-days relative-years relative-months})
+
+;; These don't really need to be macros!
+(defmacro relative-days [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "days" n])
+
+(defmacro relative-months [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "months" n])
+
+(defmacro relative-years [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "years" n])
 
 (defmacro and [& clauses]
   `["AND" ~@clauses])
@@ -206,7 +219,8 @@
        (core/filter seq)))
 
 (defmacro filter* [& args]
-  (first (filter-split args)))
+  (let [[filter-clause & more] (filter-split args)]
+    `(~@filter-clause ~@more)))
 
 (defmacro filter [query & args]
   (assoc-in query [:query :filter] `(filter* ~@args)))
