@@ -53,7 +53,7 @@ export default React.createClass({
             >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>
-                    <p>This question will be deleted from Metabase, and will also be removed from:/p>
+                    <p>This question will be deleted from Metabase, and will also be removed from:</p>
                     <ul>
                         <li>{dashboardCount}</li>
                         <li>0 email reports</li>

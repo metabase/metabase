@@ -13,7 +13,9 @@ import QueryModeToggle from './query_mode_toggle.react';
 import QuestionSavedModal from '../components/QuestionSavedModal.react';
 import SaveQuestionModal from '../components/SaveQuestionModal.react';
 
-var cx = React.addons.classSet;
+import inflection from "inflection";
+import cx from "classnames";
+
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
@@ -132,10 +134,17 @@ export default React.createClass({
                     />
                 );
             }
+
+            var subtitleText;
+            if (this.props.card.dashboard_count > 0) {
+                subtitleText = "Changes will be reflected in " + this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count) + " and can be reverted.";
+            } else {
+                subtitleText = "Changes can be reverted."
+            }
             return (
                 <div className="EditHeader p1 px3 flex align-center">
                     <span className="EditHeader-title">You are editing a saved question.</span>
-                    <span className="EditHeader-subtitle mx1">Changes will be reflected in 1 dashboard and can be reverted.</span>
+                    <span className="EditHeader-subtitle mx1">{subtitleText}</span>
                     <span className="flex-align-right">
                         {updateButton}
                         {discardButton}
