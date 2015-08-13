@@ -8,7 +8,7 @@
 
 ;;; # ---------------------------------------- RELATIVE DATES ----------------------------------------
 
-(defmacro ^:privaet expand-with-filter-val [filter-value]
+(defmacro ^:private expand-with-filter-val [filter-value]
   `(expand ~(Q-expand aggregate count of checkins
                       filter > date filter-value)))
 
