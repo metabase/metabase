@@ -291,7 +291,7 @@
 (defmacro Q* [f & args]
   `(Q** ~f
         {:database (db-id)
-         :type     :query
+         :type     "query"
          :query    {}
          :context  {:driver  nil
                     :dataset nil}}
