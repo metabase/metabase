@@ -150,6 +150,7 @@
   [db]
   (assoc db :table-name->table (delay (db-id->table-name->table (:id db)))))
 
+
 (defn temp-get
   "Internal - don't call this directly.
    With two args, fetch `Table` with TABLE-NAME using `:table-name->table` delay on TEMP-DB.
@@ -170,10 +171,12 @@
                                             (apply str (interpose "." (map name nested-field-names)))
                                             (vec (map :name @(:children (apply temp-get table-name parent-field-name (butlast nested-field-names))))))))]}
    (binding [*sel-disable-logging* true]
-     (let [parent            (apply temp-get table-name parent-field-name (name (butlast nested-field-names)))
+     (let [parent            (apply temp-get table-name parent-field-name (some-> (butlast nested-field-names)
+                                                                                  name))
            children          @(:children parent)
            child-name->child (zipmap (map :name children) children)]
        (child-name->child (name (last nested-field-names)))))))
+
 
 (defn -with-temp-db [^DatabaseDefinition dbdef f]
   (let [loader (dataset-loader)
@@ -191,6 +194,7 @@
       (finally
         (binding [*sel-disable-logging* true]
           (remove-database! loader dbdef))))))
+
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
