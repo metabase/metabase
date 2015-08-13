@@ -11,7 +11,8 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test.util.q :refer [Q-expand]]))
 
 ;; # DASHBOARD LIFECYCLE
 
@@ -120,13 +121,7 @@
                      :name $
                      :creator_id (user->id :rasta)
                      :updated_at $
-                     :dataset_query {:database (db-id)
-                                     :query {:limit nil
-                                             :breakout [nil]
-                                             :aggregation ["count"]
-                                             :filter [nil nil]
-                                             :source_table (id :categories)}
-                                     :type "query"}
+                     :dataset_query (Q-expand aggregate count of categories)
                      :id card-id
                      :display "scalar"
                      :visualization_settings {:global {:title nil}}

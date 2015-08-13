@@ -6,7 +6,8 @@
                              [common :as common])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test.util.q :refer [Q-expand]]))
 
 ;; # CARD LIFECYCLE
 
@@ -17,13 +18,7 @@
                                            :can_read               true
                                            :can_write              true
                                            :display                "scalar"
-                                           :dataset_query          {:type     "query"
-                                                                    :query    {:source_table (id :categories)
-                                                                               :filter       [nil nil]
-                                                                               :aggregation  ["count"]
-                                                                               :breakout     [nil]
-                                                                               :limit        nil}
-                                                                    :database (db-id)}
+                                           :dataset_query          (Q-expand aggregate count of categories)
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
@@ -54,13 +49,7 @@
                                :name card-name
                                :creator_id (user->id :rasta)
                                :updated_at $
-                               :dataset_query {:type "query"
-                                               :query {:source_table (id :categories)
-                                                       :filter [nil nil]
-                                                       :aggregation ["count"]
-                                                       :breakout [nil]
-                                                       :limit nil}
-                                               :database (db-id)}
+                               :dataset_query (Q-expand aggregate count of categories)
                                :id $
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
@@ -89,13 +78,7 @@
                      :email "rasta@metabase.com",
                      :id $})
          :updated_at $
-         :dataset_query {:type "query"
-                         :query {:source_table (id :categories)
-                                 :filter [nil nil]
-                                 :aggregation ["count"]
-                                 :breakout [nil]
-                                 :limit nil}
-                         :database (db-id)}
+         :dataset_query (Q-expand aggregate count of categories)
          :id $
          :display "scalar"
          :visualization_settings {:global {:title nil}}
