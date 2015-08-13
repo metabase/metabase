@@ -4,7 +4,8 @@ import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
 import Modal from 'metabase/components/Modal.react';
 
-var cx = React.addons.classSet;
+import inflection from "inflection";
+import cx from "classnames";
 
 export default React.createClass({
     displayName: "DeleteQuestionModal",
@@ -43,6 +44,8 @@ export default React.createClass({
             );
         }
 
+        var dashboardCount = this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count);
+
         return (
             <Modal
                 title="Delete Question"
@@ -50,10 +53,10 @@ export default React.createClass({
             >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>
-                    <p>This question will be deleted from Metabase, and will also be removed from: </p>
+                    <p>This question will be deleted from Metabase, and will also be removed from:/p>
                     <ul>
-                        <li>3 dashboards </li>
-                        <li>1 email report</li>
+                        <li>{dashboardCount}</li>
+                        <li>0 email reports</li>
                     </ul>
                 </div>
 
