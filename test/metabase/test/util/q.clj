@@ -35,21 +35,7 @@
 
 ;;; ## ID LOOKUP
 
-(def ^:dynamic *db* nil)
 (def ^:dynamic *table-name* nil)
-
-(defn db-id []
-  {:post [(integer? %)]}
-  (core/or (:id *db*)
-              (data/db-id)))
-
-(defn id [& args]
-  {:pre [(every? keyword? args)]
-   :post [(core/or (integer? %)
-                      (println (str "Couldn't find ID of: " args)))]}
-  (if *db*
-    (:id (apply data/-temp-get *db* (map name args)))
-    (apply data/id args)))
 
 (defmacro field [f]
   {:pre [(symbol? f)]}
@@ -70,10 +56,10 @@
 
       ;; table.field <-> (id table field)
       [[_ table field] (re-matches #"^([^\.]+)\.([^\.]+)$" f)]
-      `(id ~(keyword table) ~(keyword field))))
+      `(data/id ~(keyword table) ~(keyword field))))
 
    ;; fallback : (id *table-name* field)
-   `(id *table-name* ~(keyword f))))
+   `(data/id *table-name* ~(keyword f))))
 
 (defn resolve-dataset [dataset]
   (var-get (core/or (resolve dataset)
@@ -93,7 +79,7 @@
 
 (defmacro of [query table-name]
   (-> query
-      (assoc-in [:query :source_table] `(id ~(keyword table-name)))
+      (assoc-in [:query :source_table] `(data/id ~(keyword table-name)))
       (assoc-in [:context :table-name] (keyword table-name))))
 
 
@@ -264,9 +250,8 @@
 (defmacro with-temp-db [dataset query]
   (if-not dataset
     query
-    `(data/with-temp-db [db# (data/dataset-loader) (resolve-dataset ~dataset)]
-       (binding [*db* db#]
-         ~query))))
+    `(data/with-temp-db [~'_ (resolve-dataset ~dataset)]
+       ~query)))
 
 (defmacro with-driver [driver query]
   (if-not driver
@@ -291,7 +276,7 @@
 
 (defmacro Q* [f & args]
   `(Q** ~f
-        {:database (db-id)
+        {:database (data/db-id)
          :type     "query"
          :query    {}
          :context  {:driver  nil
