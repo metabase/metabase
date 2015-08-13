@@ -1,4 +1,5 @@
 (ns metabase.test.util.q
+  "See https://github.com/metabase/metabase-init/wiki/Q-Cheatsheet"
   (:refer-clojure :exclude [or and filter use = != < > <= >=])
   (:require [clojure.core :as core]
             [clojure.core.match :refer [match]]
