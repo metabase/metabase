@@ -273,25 +273,36 @@
     `(datasets/with-dataset ~driver
        ~query)))
 
-(defmacro Q** [{:keys [driver dataset return table-name]} query]
+(defmacro Q*** [f {:keys [driver dataset return table-name]} query]
   (assert table-name
     "Table name not specified in query, did you include an 'of' clause?")
   `(do (db/setup-db-if-needed)
        (->> (with-driver ~driver
               (binding [*table-name* ~table-name]
                 (with-temp-db ~dataset
-                  (driver/process-query ~query))))
+                  (~f ~query))))
             ~@return)))
 
-(defmacro Q* [q & [form & more]]
+(defmacro Q** [f q & [form & more]]
   (if-not form
-    `(Q** ~(:context q) ~(dissoc q :context))
-    `(Q* ~(macroexpand `(-> ~q ~form)) ~@more)))
+    `(Q*** ~f ~(:context q) ~(dissoc q :context))
+    `(Q** ~f ~(macroexpand `(-> ~q ~form)) ~@more)))
 
-(defmacro Q [& args]
-  `(Q* {:database (db-id)
+(defmacro Q* [f & args]
+  `(Q** ~f
+        {:database (db-id)
          :type     :query
          :query    {}
          :context  {:driver  nil
                     :dataset nil}}
         ~@(split-with-tokens top-level-tokens args)))
+
+(defmacro Q
+  "Expand and run a query written with the `Q` shorthand DSL."
+  [& args]
+  `(Q* driver/process-query ~@args))
+
+(defmacro Q-expand
+  "Expand (without running) a query written with the `Q` shorthand DSL."
+  [& args]
+  `(Q* identity ~@args))
