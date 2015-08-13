@@ -289,7 +289,7 @@
 .AdminInput {
     color: var(--default-font-color);
     padding: 0.5em;
-    background-color: transparent;
+    background-color: #FCFCFC;
     border: 1px solid transparent;
 }
 .AdminInput:focus {

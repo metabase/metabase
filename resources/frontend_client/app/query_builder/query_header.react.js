@@ -6,8 +6,8 @@ import AddToDashboard from './add_to_dashboard.react';
 import AddToDashSelectDashModal from '../components/AddToDashSelectDashModal.react';
 import CardFavoriteButton from './card_favorite_button.react';
 import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
+import Header from "metabase/components/Header.react";
 import Icon from "metabase/components/Icon.react";
-import Input from "metabase/components/Input.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import QueryModeToggle from './query_mode_toggle.react';
 import QuestionSavedModal from '../components/QuestionSavedModal.react';
@@ -15,8 +15,6 @@ import SaveQuestionModal from '../components/SaveQuestionModal.react';
 
 import inflection from "inflection";
 import cx from "classnames";
-
-var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
     displayName: 'QueryHeader',
@@ -98,96 +96,12 @@ export default React.createClass({
         this.props.toggleDataReferenceFn();
     },
 
-    permissions: function() {
-        var permission;
-        if(this.props.card.public_perms) {
-            switch(this.props.card.public_perms) {
-                case 0:
-                    permission = (
-                        <span className="ml1 sm-ml1 text-grey-3">
-                            <Icon title="This question is private" name="lock" width="12px" height="12px" />
-                        </span>
-                    )
-                    break;
-                default:
-                    return '';
-            }
-            return permission;
-        }
-    },
-
-    renderEditHeader: function() {
-        if (!this.props.cardIsNewFn()) {
-            var updateButton, discardButton;
-            if (this.props.cardIsDirtyFn()) {
-                discardButton = <a className="Button Button--small text-uppercase" href="#" onClick={this.props.revertCardFn}>Discard Changes</a>;
-            }
-            if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
-                updateButton = (
-                    <ActionButton
-                        actionFn={this.save}
-                        className='Button Button--small Button--primary text-uppercase'
-                        normalText="Update"
-                        activeText="Updating…"
-                        failedText="Update failed"
-                        successText="Updated"
-                    />
-                );
-            }
-
-            var subtitleText;
-            if (this.props.card.dashboard_count > 0) {
-                subtitleText = "Changes will be reflected in " + this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count) + " and can be reverted.";
-            } else {
-                subtitleText = "Changes can be reverted."
-            }
-            return (
-                <div className="EditHeader p1 px3 flex align-center">
-                    <span className="EditHeader-title">You are editing a saved question.</span>
-                    <span className="EditHeader-subtitle mx1">{subtitleText}</span>
-                    <span className="flex-align-right">
-                        {updateButton}
-                        {discardButton}
-                        <PopoverWithTrigger
-                            ref="deleteModal"
-                            tether={false}
-                            triggerClasses="Button Button--small text-uppercase"
-                            triggerElement="Delete"
-                        >
-                            <DeleteQuestionModal
-                                card={this.props.card}
-                                deleteCardFn={this.deleteCard}
-                                closeFn={() => this.refs.deleteModal.toggleModal()}
-                            />
-                        </PopoverWithTrigger>
-                    </span>
-                </div>
-            );
-        }
-    },
-
     setCardAttribute: function(attribute, event) {
         this.props.card[attribute] = event.target.value;
         this.props.notifyCardChangedFn(this.props.card);
     },
 
-    render: function() {
-        var titleAndDescription;
-        if (!this.props.cardIsNewFn() && this.props.card.is_creator) {
-            titleAndDescription = (
-                <div className="EditTitle flex flex-column flex-full bordered rounded mt1 mb2">
-                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.card.name} onChange={this.setCardAttribute.bind(null, "name")}/>
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.card.description} onChange={this.setCardAttribute.bind(null, "description")} placeholder="No description yet" />
-                </div>
-            );
-        } else {
-            titleAndDescription = (
-                <div className="flex align-center">
-                    <h1 className="Entity-title">New question</h1>
-                </div>
-            );
-        }
-
+    getHeaderButtons: function() {
         var saveButton;
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
             saveButton = (
@@ -255,25 +169,59 @@ export default React.createClass({
             </a>
         );
 
-        var attribution;
-        if(this.props.card.creator && false) {
-            attribution = (
-                <div className="Entity-attribution">
-                    Asked by {this.props.card.creator.common_name}
-                </div>
+        return [
+            [saveButton, queryModeToggle],
+            [cardFavorite, cloneButton, addToDashButton],
+            [dataReferenceButton]
+        ].map(section => section.filter(button => !!button)).filter(section => section.length > 0);
+    },
+
+    getEditingButtons: function() {
+        var editingButtons = [];
+        if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
+            editingButtons.push(
+                <ActionButton
+                    actionFn={this.save}
+                    className='Button Button--small Button--primary text-uppercase'
+                    normalText="Update"
+                    activeText="Updating…"
+                    failedText="Update failed"
+                    successText="Updated"
+                />
             );
         }
+        if (this.props.cardIsDirtyFn()) {
+            editingButtons.push(
+                <a className="Button Button--small text-uppercase" href="#" onClick={this.props.revertCardFn}>Discard Changes</a>
+            );
+        }
+        editingButtons.push(
+            <PopoverWithTrigger
+                ref="deleteModal"
+                tether={false}
+                triggerClasses="Button Button--small text-uppercase"
+                triggerElement="Delete"
+            >
+                <DeleteQuestionModal
+                    card={this.props.card}
+                    deleteCardFn={this.deleteCard}
+                    closeFn={() => this.refs.deleteModal.toggleModal()}
+                />
+            </PopoverWithTrigger>
+        );
+        return editingButtons;
+    },
 
-        var modal;
+    getModal: function() {
         if (this.state.modal === "saved") {
-            modal = (
+            return (
                 <QuestionSavedModal
                     addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
                     closeFn={() => this.setState({ modal: null })}
                 />
             );
         } else if (this.state.modal === "add-to-dashboard") {
-            modal = (
+            return (
                 <AddToDashSelectDashModal
                     card={this.props.card}
                     dashboardApi={this.props.dashboardApi}
@@ -281,39 +229,34 @@ export default React.createClass({
                     notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
                 />
             );
+        } else {
+            return null;
+        }
+    },
+
+    render: function() {
+        var subtitleText;
+        if (this.props.card) {
+            if (this.props.card.dashboard_count > 0) {
+                subtitleText = "Changes will be reflected in " + this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count) + " and can be reverted.";
+            } else {
+                subtitleText = "Changes can be reverted."
+            }
         }
 
         return (
-            <div>
-                {this.renderEditHeader()}
-                <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
-                    <div className="Entity">
-                        {titleAndDescription}
-                        {attribution}
-                    </div>
-
-                    <div className="flex align-center flex-align-right">
-
-                        {(saveButton || queryModeToggle) &&
-                        <span className="QueryHeader-section">
-                            {saveButton}
-                            {queryModeToggle}
-                        </span>}
-
-                        {(cardFavorite || cloneButton || addToDashButton) &&
-                        <span className="QueryHeader-section">
-                            {cardFavorite}
-                            {cloneButton}
-                            {addToDashButton}
-                        </span>}
-
-                        <span className="QueryHeader-section">
-                            {dataReferenceButton}
-                        </span>
-                    </div>
-                </div>
-                {modal}
-            </div>
-        );
+            <Header
+                item={this.props.card}
+                isEditing={!this.props.cardIsNewFn()}
+                isEditable={!this.props.cardIsNewFn() && this.props.card.is_creator}
+                headerButtons={this.getHeaderButtons()}
+                editingButtons={this.getEditingButtons()}
+                editingTitle="You are editing a saved question"
+                editingSubtitle={subtitleText}
+                setItemAttributeFn={this.setCardAttribute}
+            >
+                {this.getModal()}
+            </Header>
+        )
     }
 });

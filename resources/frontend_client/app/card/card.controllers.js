@@ -6,7 +6,7 @@ import MetabaseAnalytics from '../lib/analytics';
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
-import QueryHeader from '../query_builder/header.react';
+import QueryHeader from '../query_builder/query_header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from "metabase/lib/query";

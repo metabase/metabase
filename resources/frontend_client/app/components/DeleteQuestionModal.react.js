@@ -56,7 +56,6 @@ export default React.createClass({
                     <p>This question will be deleted from Metabase, and will also be removed from:</p>
                     <ul>
                         <li>{dashboardCount}</li>
-                        <li>0 email reports</li>
                     </ul>
                 </div>
 
