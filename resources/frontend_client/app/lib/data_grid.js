@@ -1,6 +1,12 @@
 'use strict';
 /*global _*/
 
+import SchemaMetadata from "metabase/lib/schema_metadata";
+
+function compareNumbers(a, b) {
+    return a - b;
+}
+
 
 var DataGrid = {
     pivot: function(data) {
@@ -20,8 +26,18 @@ var DataGrid = {
         }
 
         // sort the column values sensibly
-        pivotColValues.sort();
-        normalColValues.sort();
+        if (SchemaMetadata.isNumericType(data.cols[pivotCol])) {
+            pivotColValues.sort(compareNumbers);
+        } else {
+            pivotColValues.sort();
+        }
+
+        if (SchemaMetadata.isNumericType(data.cols[normalCol])) {
+            normalColValues.sort(compareNumbers);
+        } else {
+            normalColValues.sort();
+        }
+
 
         // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
         pivotColValues.unshift(null);

@@ -196,7 +196,7 @@ export default React.createClass({
 
                 } else if (this.props.card.display === "table") {
 
-                    var tableData = this.props.result.data,
+                    var pivotTable = false,
                         cellClickable = this.props.cellIsClickableFn,
                         sortFunction = this.props.setSortFn,
                         sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
@@ -205,15 +205,16 @@ export default React.createClass({
                     // check if the data is pivotable (2 groupings + 1 agg != 'rows')
                     if (Query.isStructured(this.props.card.dataset_query) &&
                             !Query.isBareRowsAggregation(this.props.card.dataset_query.query) &&
-                            tableData.cols.length === 3) {
-                        tableData = DataGrid.pivot(this.props.result.data);
+                            this.props.result.data.cols.length === 3) {
+                        pivotTable = true;
                         sortFunction = undefined;
                         cellClickable = function() { return false; };
                     }
 
                     viz = (
                         <QueryVisualizationTable
-                            data={tableData}
+                            data={this.props.result.data}
+                            pivot={pivotTable}
                             maxRows={this.props.maxTableRows}
                             setSortFn={sortFunction}
                             sort={sort}
