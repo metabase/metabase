@@ -30,7 +30,7 @@ CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
 });
 
-module.exports = {
+var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
@@ -140,38 +140,42 @@ module.exports = {
 
 };
 
+if (process.env["METABASE_ENV"] === "hot") {
+    config.entry.app.unshift(
+        'webpack-dev-server/client?http://localhost:8080',
+        'webpack/hot/only-dev-server'
+    );
+
+    config.output.publicPath = "http://localhost:8080" + config.output.publicPath;
+
+    config.module.loaders.unshift(
+        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?optional[]=es7.asyncFunctions'] }
+    );
+
+    config.plugins.unshift(
+        // new webpack.HotModuleReplacementPlugin(),
+        new webpack.NoErrorsPlugin()
+    );
+} else {
+    config.resolve.alias['react/addons'] = __dirname + '/node_modules/react/dist/react-with-addons.min.js';
+    config.resolve.alias['react'] = __dirname + '/node_modules/react/dist/react-with-addons.min.js';
+    config.module.noParse.push(/node_modules\/react\//);
+}
+
 // development environment:
 if (/^dev/.test(process.env["METABASE_ENV"])) {
     // replace minified files with un-minified versions
-    for (var name in module.exports.resolve.alias) {
-        var minified = module.exports.resolve.alias[name];
+    for (var name in config.resolve.alias) {
+        var minified = config.resolve.alias[name];
         var unminified = minified.replace(/[.-]min/, '');
         if (minified !== unminified && fs.existsSync(unminified)) {
-            module.exports.resolve.alias[name] = unminified;
+            config.resolve.alias[name] = unminified;
         }
     }
 
     // SourceMaps
     // Normal source map works better but takes longer to build
-    // module.exports.devtool = 'source-map';
+    // config.devtool = 'source-map';
     // Eval source map doesn't work with CSS but is faster to build
-    // module.exports.devtool = 'eval-source-map';
-}
-
-if (process.env["METABASE_ENV"] === "hot") {
-    module.exports.entry.app.unshift(
-        'webpack-dev-server/client?http://localhost:8080',
-        'webpack/hot/only-dev-server'
-    );
-
-    module.exports.output.publicPath = "http://localhost:8080" + module.exports.output.publicPath;
-
-    module.exports.module.loaders.unshift(
-        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?optional[]=es7.asyncFunctions'] }
-    );
-
-    module.exports.plugins.unshift(
-        // new webpack.HotModuleReplacementPlugin(),
-        new webpack.NoErrorsPlugin()
-    );
+    // config.devtool = 'eval-source-map';
 }
