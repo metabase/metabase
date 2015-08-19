@@ -82,8 +82,6 @@ module.exports = {
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
             'angular-readable-time':__dirname + '/node_modules/angular-readable-time/angular-readable-time.min.js',
             'angular-xeditable':    __dirname + '/node_modules/angular-xeditable/dist/js/xeditable.min.js',
-            'ng-sortable':          __dirname + '/node_modules/ng-sortable/dist/ng-sortable.min.js',
-            'angularytics':         __dirname + '/node_modules/angularytics/dist/angularytics.min.js',
             'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
@@ -96,7 +94,7 @@ module.exports = {
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
-            'tether':               __dirname + '/node_modules/tether/tether.min.js',
+            'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
