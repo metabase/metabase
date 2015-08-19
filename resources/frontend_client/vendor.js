@@ -28,7 +28,7 @@ import 'ace/mode-sql';
 import 'ace/snippets/sql';
 
 // react:
-import React from 'react';
+import React from 'react/addons';
 window.React = React;
 
 // misc:
