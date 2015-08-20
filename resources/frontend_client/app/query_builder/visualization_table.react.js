@@ -2,6 +2,7 @@
 /*global _*/
 
 import MetabaseAnalytics from '../lib/analytics';
+import DataGrid from "metabase/lib/data_grid";
 
 import FixedDataTable from 'fixed-data-table';
 import Icon from './icon.react';
@@ -45,7 +46,8 @@ export default React.createClass({
     componentWillMount: function() {
         if (this.props.data) {
             this.setState({
-                colDefs: JSON.stringify(this.props.data.cols)
+                colDefs: JSON.stringify(this.props.data.cols),
+                data: (this.props.pivot) ? DataGrid.pivot(this.props.data) : this.props.data
             });
         }
     },
@@ -54,9 +56,11 @@ export default React.createClass({
         // TODO: check if our data has changed and specifically if our columns list has changed
         if (JSON.stringify(newProps.data.cols) !== this.state.colDefs) {
             // if the columns have changed then reset any column widths we have setup
+            var gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
-                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, newProps.data.cols)
+                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols),
+                data: gridData
             });
         }
     },
@@ -68,7 +72,7 @@ export default React.createClass({
     shouldComponentUpdate: function(nextProps, nextState) {
         // this is required because we don't pass in the containing element size as a property :-/
         // if size changes don't update yet because state will change in a moment
-        this.calculateSizing(nextState)
+        this.calculateSizing(nextState);
 
         // compare props and state to determine if we should re-render
         // NOTE: this is essentially the same as React.addons.PureRenderMixin but
@@ -109,7 +113,7 @@ export default React.createClass({
 
             if (width !== prevState.width) {
                 // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
-                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.props.data.cols, prevState.width, prevState.columnWidths);
+                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.state.data.cols, prevState.width, prevState.columnWidths);
                 updatedState.columnWidths = tableColumnWidths;
             }
 
@@ -140,8 +144,8 @@ export default React.createClass({
         var row = {
             hasPopover: this.state.popover && this.state.popover.rowIndex === rowIndex || false
         };
-        for (var i = 0; i < this.props.data.rows[rowIndex].length; i++) {
-            row[i] = this.props.data.rows[rowIndex][i];
+        for (var i = 0; i < this.state.data.rows[rowIndex].length; i++) {
+            row[i] = this.state.data.rows[rowIndex][i];
         }
         return row;
     },
@@ -206,9 +210,13 @@ export default React.createClass({
     },
 
     tableHeaderRenderer: function(columnIndex) {
-        var column = this.props.data.cols[columnIndex],
+        var column = this.state.data.cols[columnIndex],
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
+
+        if (!colVal && this.props.pivot && columnIndex !== 0) {
+            colVal = "Unset";
+        }
 
         var headerClasses = cx({
             'MB-DataTable-header' : true,
@@ -242,12 +250,12 @@ export default React.createClass({
     },
 
     render: function() {
-        if(!this.props.data) {
+        if(!this.state.data) {
             return false;
         }
 
         var component = this;
-        var tableColumns = this.props.data.cols.map(function (column, idx) {
+        var tableColumns = this.state.data.cols.map(function (column, idx) {
             var colVal = (column !== null) ? column.name.toString() : null;
             var colWidth = component.state.columnWidths[idx];
 
@@ -269,19 +277,25 @@ export default React.createClass({
             );
         });
 
+        var classes = cx({
+            'MB-DataTable': true,
+            'MB-DataTable--pivot': this.props.pivot
+        });
+
         return (
-            <Table
-                className="MB-DataTable"
-                rowHeight={35}
-                rowGetter={this.rowGetter}
-                rowsCount={this.props.data.rows.length}
-                width={this.state.width}
-                maxHeight={this.state.height}
-                headerHeight={50}
-                isColumnResizing={this.isColumnResizing}
-                onColumnResizeEndCallback={component.columnResized}>
-                {tableColumns}
-            </Table>
+            <span className={classes}>
+                <Table
+                    rowHeight={35}
+                    rowGetter={this.rowGetter}
+                    rowsCount={this.state.data.rows.length}
+                    width={this.state.width}
+                    maxHeight={this.state.height}
+                    headerHeight={50}
+                    isColumnResizing={this.isColumnResizing}
+                    onColumnResizeEndCallback={component.columnResized}>
+                    {tableColumns}
+                </Table>
+            </span>
         );
     }
 });

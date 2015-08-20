@@ -1,43 +1,32 @@
 'use strict';
 /*global _*/
+
+import SchemaMetadata from "metabase/lib/schema_metadata";
+
+
 var ExploreServices = angular.module('corvus.explore.services', []);
 
 ExploreServices.service('CorvusFormGenerator', [function() {
     // Valid Operators per field
 
-    var DateBaseTypes = ['DateTimeField', 'DateField'];
-    var DateSpecialTypes = ['timestamp_milliseconds', 'timestamp_seconds'];
-    var NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
-    var SummableBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
-    var CategoryBaseTypes = ["BooleanField"];
-    var CategorySpecialTypes = ["category", "zip_code", "city", "state", "country"];
-
-    function isInTypes(type, type_collection) {
-        if (_.indexOf(type_collection, type) >= 0) {
-            return true;
-        }
-        return false;
-
-    }
-
     function isDate(field) {
-        return isInTypes(field.base_type, DateBaseTypes) || isInTypes(field.special_type, DateSpecialTypes);
+        return SchemaMetadata.isDateType(field);
     }
 
     function isNumber(field) {
-        return isInTypes(field.base_type, NumberBaseTypes);
+        return SchemaMetadata.isNumericType(field);
     }
 
     function isSummable(field) {
-        return isInTypes(field.base_type, SummableBaseTypes);
+        return SchemaMetadata.isSummableType(field);
     }
 
     function isCategory(field) {
-        return isInTypes(field.base_type, CategoryBaseTypes) || isInTypes(field.special_type, CategorySpecialTypes);
+        return SchemaMetadata.isCategoryType(field);
     }
 
     function isDimension(field) {
-        return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']);
+        return SchemaMetadata.isDimension(field);
     }
 
 
