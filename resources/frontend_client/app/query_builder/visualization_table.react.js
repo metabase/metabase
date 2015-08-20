@@ -277,19 +277,25 @@ export default React.createClass({
             );
         });
 
+        var classes = cx({
+            'MB-DataTable': true,
+            'MB-DataTable--pivot': this.props.pivot
+        });
+
         return (
-            <Table
-                className="MB-DataTable"
-                rowHeight={35}
-                rowGetter={this.rowGetter}
-                rowsCount={this.state.data.rows.length}
-                width={this.state.width}
-                maxHeight={this.state.height}
-                headerHeight={50}
-                isColumnResizing={this.isColumnResizing}
-                onColumnResizeEndCallback={component.columnResized}>
-                {tableColumns}
-            </Table>
+            <span className={classes}>
+                <Table
+                    rowHeight={35}
+                    rowGetter={this.rowGetter}
+                    rowsCount={this.state.data.rows.length}
+                    width={this.state.width}
+                    maxHeight={this.state.height}
+                    headerHeight={50}
+                    isColumnResizing={this.isColumnResizing}
+                    onColumnResizeEndCallback={component.columnResized}>
+                    {tableColumns}
+                </Table>
+            </span>
         );
     }
 });

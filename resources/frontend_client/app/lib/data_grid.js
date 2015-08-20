@@ -40,7 +40,7 @@ var DataGrid = {
 
 
         // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
-        pivotColValues.unshift(null);
+        pivotColValues.unshift(data.cols[normalCol].display_name);
 
         // start with an empty grid that we'll fill with the appropriate values
         var pivotedRows = [];
@@ -60,7 +60,12 @@ var DataGrid = {
         }
 
         // provide some column metadata to maintain consistency
-        var cols = pivotColValues.map(function(val) {
+        var cols = pivotColValues.map(function(val, idx) {
+            if (idx === 0) {
+                // first column is always the coldef of the normal column
+                return data.cols[normalCol];
+            }
+
             var colDef = _.clone(data.cols[pivotCol]);
             colDef['display_name'] = val || "";
             colDef['name'] = val || "";
