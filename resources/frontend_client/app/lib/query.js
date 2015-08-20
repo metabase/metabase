@@ -4,6 +4,14 @@ import inflection from "inflection";
 
 var Query = {
 
+    isStructured: function(query) {
+        return query && query.type && query.type === "query";
+    },
+
+    isNative: function(query) {
+        return query && query.type && query.type === "native";
+    },
+
     canRun: function(query) {
         return query && query.source_table != undefined && Query.hasValidAggregation(query);
     },
@@ -59,7 +67,17 @@ var Query = {
 
     canAddDimensions: function(query) {
         var MAX_DIMENSIONS = 2;
-        return (query.breakout.length < MAX_DIMENSIONS);
+        return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
+    },
+
+    numDimensions: function(query) {
+        if (query && query.breakout) {
+            return query.breakout.filter(function(b) {
+                return b !== null;
+            }).length;
+        }
+
+        return 0;
     },
 
     hasValidBreakout: function(query) {

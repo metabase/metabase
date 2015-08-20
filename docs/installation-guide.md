@@ -16,13 +16,6 @@ would run the application using a local postgres server instead of the default e
 
 The application will create file named "metabase.db.h2.db" in the directory it is being run in. This can be backed up by either stopping the application server and backing up this file. Alternatively to backup the application data while it is running, you can follow the methods described at the relevant [H2 documentation](http://www.h2database.com/html/tutorial.html#upgrade_backup_restore)
 
-
-# Database connection strings
-
-If you need to access connections over SSL, you should set an environment variable MB_POSTGRES_SSL to true in the environment that you use to run the application, eg
- 
-    MB_POSTGRES_SSL=true java -jar ./metabase.jar
-
 # Scaling
 
 Typically, you'll want to evaluate the application on any database you have access to. If you want to expose the application to other users, you should carefully consider how you access your database. In addition as the data sizes grow, there will be a number of options in how you should setup your overall analytics infrastructure.
@@ -47,7 +40,7 @@ Assuming you do not need to do a lot of transformation or ingest lots of third p
 
 Typically once enough data is in the system and/or the tranformation needs are complex enough, a dedicated analytics database is used. There are many options ranging from a normal general purpose database (MySQL, Postgres, SQL Server, etc), to a dedicated Analytics database (Vertica, Redshift, GreenPlum, Terredata, etc), the new generation of SQL on Hadoop databases (Spark, Presto) or NoSQL databases (Druid, Cassandra, etc). 
 
-Typically, once there is a dedicated analytics database or a datawarehouse, ETL processes become important. Learn more at See the [Data Warehouse Guide](DATAWAREHOUSING.md).
+Typically, once there is a dedicated analytics database or a datawarehouse, ETL processes become important. Learn more at See the [Data Warehouse Guide](data-warehousing.md).
 
 # Database Drivers
 Metabase currently has drivers for
@@ -55,14 +48,26 @@ Metabase currently has drivers for
 * H2
 * MySQL
 * PostgreSQL
+* Mongo
 
 On our roadmap are
 
-* [Druid](www.github.com/metabase/metabase-init/issues/X)
-* [MongoDB](www.github.com/metabase/metabase-init/issues/X) 
-* [Presto](www.github.com/metabase/metabase-init/issues/X)
+* [Druid](www.github.com/metabase/metabase-init/issues/655)
+* [Parse](www.github.com/metabase/metabase-init/issues/654) 
+* [Redshift](www.github.com/metabase/metabase-init/issues/652)
 
 If you are interested in the status of any of these drivers, click through to the issues to see what work is being done. If you are interested in a driver to another database, please open an issue!
 
-# Annotating Data
-[Data Annotations](ANNOTATIONS.md)
+
+## Production Deployments
+* Beanstalk
+    * [Elastic Beanstalk Installation Recipe](installing-on-elastic-beanstalk.md).
+* running a container
+    * injecting database variables vs using an embedded database
+* running a jar
+    * where to put the database?
+* HTTPS!
+	* if beanstalk, use an ELB and terminate there
+	* otherwise, recommend nginx as a proxy + provide instructions
+
+
