@@ -135,15 +135,6 @@ export default React.createClass({
             );
         }
 
-        var cloneButton;
-        if (this.props.card.id) {
-            cloneButton = (
-                <a href="#" className="mx1 text-grey-4 text-brand-hover" title="Ask another question based on this question">
-                    <Icon name='clone' width="16px" height="16px" onClick={this.props.cloneCardFn}></Icon>
-                </a>
-            );
-        }
-
         var queryModeToggle;
         if (this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()) {
             queryModeToggle = (
@@ -154,21 +145,30 @@ export default React.createClass({
             );
         }
 
+        var cloneButton;
+        // if (this.props.card.id) {
+        //     cloneButton = (
+        //         <a href="#" className="mx1 text-grey-4 text-brand-hover" title="Ask another question based on this question">
+        //             <Icon name='clone' width="16px" height="16px" onClick={this.props.cloneCardFn}></Icon>
+        //         </a>
+        //     );
+        // }
+        //
         var cardFavorite;
-        if (this.props.card.id != undefined) {
-            cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
-        }
-
+        // if (this.props.card.id != undefined) {
+        //     cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
+        // }
+        //
         var addToDashButton;
-        if (this.props.card.id != undefined) {
-            addToDashButton = (
-                <AddToDashboard
-                    card={this.props.card}
-                    dashboardApi={this.props.dashboardApi}
-                    broadcastEventFn={this.props.broadcastEventFn}
-                />
-            )
-        }
+        // if (this.props.card.id != undefined) {
+        //     addToDashButton = (
+        //         <AddToDashboard
+        //             card={this.props.card}
+        //             dashboardApi={this.props.dashboardApi}
+        //             broadcastEventFn={this.props.broadcastEventFn}
+        //         />
+        //     )
+        // }
 
         var dataReferenceButtonClasses = cx({
             'mx1': true,
