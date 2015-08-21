@@ -50,9 +50,9 @@
   [col]
   (case col
     :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil,
-           :name (format-name "id") :display_name "Id" :table_id (id :categories), :id (id :categories :id)}
+           :name (format-name "id") :display_name "Id" :preview_display true :table_id (id :categories), :id (id :categories :id)}
     :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil,
-           :name (format-name "name") :display_name "Name" :table_id (id :categories), :id (id :categories :name)}))
+           :name (format-name "name") :display_name "Name" :preview_display true :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### users
 (defn- users-col
@@ -66,6 +66,7 @@
                  :description  nil
                  :name         (format-name "id")
                  :display_name "Id"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :id)}
     :name       {:extra_info   {}
@@ -75,6 +76,7 @@
                  :description  nil
                  :name         (format-name "name")
                  :display_name "Name"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :name)}
     :last_login {:extra_info   {}
@@ -84,6 +86,7 @@
                  :description  nil
                  :name         (format-name "last_login")
                  :display_name "Last Login"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :last_login)}))
 
@@ -104,6 +107,7 @@
                   :description  nil
                   :name         (format-name "id")
                   :display_name "Id"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :id)}
     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
@@ -117,6 +121,7 @@
                   :description  nil
                   :name         (format-name "category_id")
                   :display_name "Category Id"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :category_id)}
     :price       {:extra_info   {}
@@ -126,6 +131,7 @@
                   :description  nil
                   :name         (format-name "price")
                   :display_name "Price"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :price)}
     :longitude   {:extra_info   {}
@@ -135,6 +141,7 @@
                   :description  nil
                   :name         (format-name "longitude")
                   :display_name "Longitude"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :longitude)}
     :latitude    {:extra_info   {}
@@ -144,6 +151,7 @@
                   :description  nil
                   :name         (format-name "latitude")
                   :display_name "Latitude"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :latitude)}
     :name        {:extra_info   {}
@@ -153,6 +161,7 @@
                   :description  nil
                   :name         (format-name "name")
                   :display_name "Name"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :name)}))
 
@@ -173,6 +182,7 @@
                :description  nil
                :name         (format-name "id")
                :display_name "Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :id)}
     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
@@ -186,6 +196,7 @@
                :description  nil
                :name         (format-name "venue_id")
                :display_name "Venue Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :venue_id)}
     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
@@ -199,6 +210,7 @@
                :description  nil
                :name         (format-name "user_id")
                :display_name "User Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :user_id)}))
 
@@ -689,15 +701,21 @@
      order ag.0-))
 
 
-;;; ### make sure that rows where preview_display = false don't get displayed
+;;; ### make sure that rows where preview_display = false are included and properly marked up
 (datasets/expect-with-all-datasets
- [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
-  (set (->columns "category_id" "name" "latitude" "id" "longitude"))
-  (set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))]
+ [(set (venues-cols))
+  #{(venues-col :category_id)
+    (venues-col :name)
+    (venues-col :latitude)
+    (venues-col :id)
+    (venues-col :longitude)
+    (-> (venues-col :price)
+        (assoc :preview_display false))}
+  (set (venues-cols))]
  (let [get-col-names (fn [] (Q aggregate rows of venues
                                order id+
                                limit 1
-                               return :data :columns set))]
+                               return :data :cols set))]
    [(get-col-names)
     (do (upd Field (id :venues :price) :preview_display false)
         (get-col-names))
