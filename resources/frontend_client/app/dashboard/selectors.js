@@ -10,11 +10,16 @@ const dashboardsSelector        = state => state.dashboards
 const dashcardsSelector         = state => state.dashcards
 const dashcardDatasetsSelector  = state => state.dashcardDatasets
 const cardIdListSelector        = state => state.cardList
+const revisionsSelector        = state => state.revisions
 
 const dashboardSelector = createSelector(
-    [selectedDashboardSelector, dashboardsSelector, dashcardsSelector, dashcardDatasetsSelector],
-    (selectedDashboard, dashboards, dashcards, dashcardDatasets) => {
-        var dashboard = dashboards[selectedDashboard];
+    [selectedDashboardSelector, dashboardsSelector],
+    (selectedDashboard, dashboards) => dashboards[selectedDashboard]
+);
+
+const dashboardCompleteSelector = createSelector(
+    [dashboardSelector, dashcardsSelector, dashcardDatasetsSelector],
+    (dashboard, dashcards, dashcardDatasets) => {
         if (dashboard) {
             dashboard = {
                 ...dashboard,
@@ -26,11 +31,19 @@ const dashboardSelector = createSelector(
         }
         return dashboard;
     }
-);
+)
 
 const isDirtySelector = createSelector(
-  [dashboardSelector],
-  dashboard => !!(dashboard && (dashboard.isDirty || _.some(dashboard.ordered_cards, dc => dc.isDirty)))
+  [dashboardSelector, dashcardsSelector],
+  (dashboard, dashcards) => !!(
+      dashboard && (
+          dashboard.isDirty ||
+          _.some(dashboard.ordered_cards, id => (
+              !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
+              (dashcards[id].isDirty || dashcards[id].isAdded || dashcards[id].isRemoved)
+          ))
+      )
+  )
 );
 
 const cardListSelector = createSelector(
@@ -39,6 +52,6 @@ const cardListSelector = createSelector(
 );
 
 export const dashboardSelectors = createSelector(
-    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardSelector, cardListSelector],
-    (isEditing, isDirty, selectedDashboard, dashboard, cards) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards })
+    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector],
+    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions })
 );

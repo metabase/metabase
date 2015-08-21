@@ -377,3 +377,27 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
         }
     });
 }]);
+
+CoreServices.factory('Revision', ['$resource', function($resource) {
+    return $resource('/api/revision', {}, {
+        list: {
+            url: '/api/revision',
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
+            }
+        },
+
+        revert: {
+            url: '/api/revision/revert',
+            method: 'POST',
+            params: {
+                'entity': '@entity',
+                'id': '@id',
+                'revision_id': '@revision_id'
+            }
+        }
+    });
+}]);

@@ -1,11 +1,14 @@
 "use strict";
 
+import React, { Component, PropTypes } from "react";
+
 import ActionButton from "metabase/components/ActionButton.react";
 import Header from "metabase/components/Header.react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.react";
 import DeleteDashboardModal from "./DeleteDashboardModal.react";
+import HistoryModal from "./HistoryModal.react";
 
 import {
     setEditingDashboard,
@@ -17,7 +20,7 @@ import {
 
 import cx from "classnames";
 
-export default class DashboardHeader extends React.Component {
+export default class DashboardHeader extends Component {
 
     onEditDashboard() {
         this.props.dispatch(setEditingDashboard(true))
@@ -43,6 +46,11 @@ export default class DashboardHeader extends React.Component {
         await this.props.dispatch(deleteDashboard(this.props.dashboard.id));
         this.props.onDashboardDeleted(this.props.dashboard.id)
         this.props.onChangeLocation("/")
+    }
+
+    onRevertedRevision() {
+        this.refs.dashboardHistory.toggleModal();
+        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
     }
 
     getEditingButtons() {
@@ -88,6 +96,25 @@ export default class DashboardHeader extends React.Component {
         var buttonSections = [];
 
         var { dashboard, dashcards } = this.props;
+
+        if (this.props.isEditing) {
+            buttonSections.push([
+                <PopoverWithTrigger
+                    ref="dashboardHistory"
+                    tether={false}
+                    triggerElement={<Icon name="history" width="16px" height="16px" />}
+                >
+                    <HistoryModal
+                        dispatch={this.props.dispatch}
+                        entityType="dashboard"
+                        entityId={dashboard.id}
+                        revisions={this.props.revisions}
+                        onClose={() => this.refs.dashboardHistory.toggleModal()}
+                        onReverted={() => this.onRevertedRevision()}
+                    />
+                </PopoverWithTrigger>
+            ]);
+        }
 
         if (dashboard && dashboard.can_write && !this.props.isEditing) {
             buttonSections.push([
@@ -142,7 +169,8 @@ export default class DashboardHeader extends React.Component {
 }
 
 DashboardHeader.propTypes = {
-    dispatch: React.PropTypes.func.isRequired,
-    isEditing: React.PropTypes.bool.isRequired,
-    dashboard: React.PropTypes.object.isRequired
+    dispatch: PropTypes.func.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+    dashboard: PropTypes.object.isRequired,
+    revisions: PropTypes.object.isRequired
 };

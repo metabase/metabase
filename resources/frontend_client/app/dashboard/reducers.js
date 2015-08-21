@@ -13,27 +13,28 @@ import {
     ADD_CARD_TO_DASH,
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
+    FETCH_REVISIONS
 } from './actions';
 
 export const selectedDashboard = handleActions({
-    [SELECT_DASHBOARD]: { next: (state, action) => action.payload }
+    [SELECT_DASHBOARD]: { next: (state, { payload }) => payload }
 }, null);
 
 export const isEditing = handleActions({
-    [SET_EDITING_DASHBOARD]: { next: (state, action) => action.payload }
+    [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
 }, false);
 
 export const cards = handleActions({
-    [FETCH_CARDS]: { next: (state, action) => ({ ...action.payload.entities.card }) }
+    [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
 }, {});
 
 export const cardList = handleActions({
-    [FETCH_CARDS]: { next: (state, action) => action.payload.result },
-    [DELETE_CARD]: { next: (state, action) => state }
+    [FETCH_CARDS]: { next: (state, { payload }) => payload.result },
+    [DELETE_CARD]: { next: (state, { payload }) => state }
 }, []);
 
 export const dashboards = handleActions({
-    [FETCH_DASHBOARD]: { next: (state, action) => ({ ...state, ...action.payload.entities.dashboard }) },
+    [FETCH_DASHBOARD]: { next: (state, { payload }) => ({ ...state, ...payload.entities.dashboard }) },
     [SET_DASHBOARD_ATTRIBUTES]: {
         next: (state, { payload: { id, attributes } }) => ({
             ...state,
@@ -41,15 +42,12 @@ export const dashboards = handleActions({
         })
     },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
-        ...state, [dashcard.dashboard_id]: { ...state[dashcard.dashboard_id], ordered_cards: state[dashcard.dashboard_id].ordered_cards.concat(dashcard.id), isDirty: true }
+        ...state, [dashcard.dashboard_id]: { ...state[dashcard.dashboard_id], ordered_cards: [...state[dashcard.dashboard_id].ordered_cards, dashcard.id] }
     }),
-    [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashId } }) => ({
-        ...state, [dashId]: { ...state[dashId], isDirty: true }
-    })
 }, {});
 
 export const dashcards = handleActions({
-    [FETCH_DASHBOARD]:  { next: (state, action) => ({ ...state, ...action.payload.entities.dashcard }) },
+    [FETCH_DASHBOARD]:  { next: (state, { payload }) => ({ ...state, ...payload.entities.dashcard }) },
     [SET_DASHCARD_ATTRIBUTES]: {
         next: (state, { payload: { id, attributes } }) => ({
             ...state,
@@ -64,6 +62,10 @@ export const dashcards = handleActions({
         ...state,
         [dashcardId]: { ...state[dashcardId], isRemoved: true }
     })
+}, {});
+
+export const revisions = handleActions({
+    [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}
 }, {});
 
 export const dashcardDatasets = handleActions({

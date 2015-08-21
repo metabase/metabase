@@ -1,4 +1,5 @@
 "use strict";
+/*global _*/
 
 import { combineReducers } from "redux";
 import { createAction } from "redux-actions";
@@ -59,11 +60,14 @@ export const SET_DASHCARD_ATTRIBUTES = 'SET_DASHCARD_ATTRIBUTES';
 export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 
 export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
+export const FETCH_REVISIONS = 'FETCH_REVISIONS';
+export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
 // resource wrappers
 const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
 const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
 const Card = new AngularResourceProxy("Card", ["list", "delete"]);
+const Revision = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
 
@@ -151,14 +155,18 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             });
 
         // update the dashboard itself
-        var updateResult = await Dashboard.update(dashboard);
+        if (dashboard.isDirty) {
+            var updateResult = await Dashboard.update(dashboard);
+        }
 
         // reposition the cards
-        var dashcardResult = await Dashboard.reposition_cards({ dashId: dashId, cards: updatedDashcards })
-        if (dashcardResult.status === "ok") {
-            return updateResult;
-        } else {
-            throw new Error(dashcardResult.status);
+        if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
+            var dashcardResult = await Dashboard.reposition_cards({ dashId: dashId, cards: updatedDashcards })
+            if (dashcardResult.status === "ok") {
+                return updateResult;
+            } else {
+                throw new Error(dashcardResult.status);
+            }
         }
     };
 });
@@ -167,6 +175,19 @@ export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dash
     return async function(dispatch, getState) {
         let result = await Dashboard.delete({ dashId });
         return dashId;
+    };
+});
+
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({ entity, id }) {
+    return async function(dispatch, getState) {
+        let revisions = await Revision.list({ entity, id });
+        return { entity, id, revisions };
+    };
+});
+
+export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({ entity, id, revision_id }) {
+    return async function(dispatch, getState) {
+        await Revision.revert({ entity, id, revision_id });
     };
 });
 

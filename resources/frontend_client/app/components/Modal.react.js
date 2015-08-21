@@ -17,14 +17,16 @@ export default React.createClass({
 
     render: function() {
         return (
-            <div className="Modal NewForm">
+            <div className="Modal NewForm flex flex-column">
                 <div className="Form-header flex align-center">
                     <h2 className="flex-full">{this.props.title}</h2>
                     <a href="#" className="text-grey-3 p1" onClick={this.props.closeFn}>
                         <Icon name='close' width="16px" height="16px"/>
                     </a>
                 </div>
-                {this.props.children}
+                <div className="flex-full scroll-y">
+                    {this.props.children}
+                </div>
             </div>
         );
     }
