@@ -156,6 +156,9 @@ function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType
     // specify legend
     chart = applyChartLegend(chart, card);
 
+    // disable animations
+    chart.transitionDuration(0);
+
     // set card title
     setCardTitle(card, elementId);
 
@@ -376,7 +379,7 @@ function applyChartColors(dcjsChart, card) {
 }
 
 function applyChartTooltips(dcjsChart, card, cols) {
-    dcjsChart.renderlet(function(chart) {
+    dcjsChart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
         // We should only ever have one tooltip on screen, right?
         Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
@@ -712,7 +715,7 @@ export var CardRenderer = {
                 parentPaddingTop = getComputedSizeProperty('padding-top', parent),
                 parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
 
-            return parentHeight - parentPaddingTop - parentPaddingBottom;
+            return parentHeight - parentPaddingTop - parentPaddingBottom - 5; // why the magic number :/
         }
 
         return null;

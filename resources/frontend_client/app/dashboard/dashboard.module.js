@@ -14,6 +14,12 @@ var Dashboard = angular.module('corvus.dashboard', [
 ]);
 
 Dashboard.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/dash/:dashId', {templateUrl: '/app/dashboard/partials/dash_view.html', controller: 'DashDetail'});
-    $routeProvider.when('/dash/:dashId/modify', {templateUrl: '/app/dashboard/partials/dash_modify.html', controller: 'DashDetail'});
+    $routeProvider.when('/dash/:dashId', {
+        template: '<div mb-redux-component />',
+        controller: 'Dashboard'
+    });
+    $routeProvider.when('/dash_old/:dashId', {
+        templateUrl: '/app/dashboard/partials/dash_view.html',
+        controller: 'DashDetail'
+    });
 }]);

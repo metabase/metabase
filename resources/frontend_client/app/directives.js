@@ -4,6 +4,9 @@
 /*jslint devel:true */
 /*global ace*/
 
+import { Provider } from 'react-redux';
+import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
+
 /* Directives */
 var CorvusDirectives = angular.module('corvus.directives', []);
 
@@ -128,6 +131,38 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
                     // timeout, reset to base
                     delayedReset();
                 });
+            });
+        }
+    };
+}]);
+
+CorvusDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attr) {
+            if (scope.monitor) {
+                var win = window.open(null, "redux-devtools", "menubar=no,location=no,resizable=yes,scrollbars=no,status=no");
+                win.location.reload();
+                setTimeout(function() {
+                    React.render(
+                        <DebugPanel top right bottom left >
+                            <DevTools store={scope.store} monitor={scope.monitor} />
+                        </DebugPanel>
+                    , win.document.body);
+                }, 10);
+            }
+
+            React.render(
+                <div>
+                    <Provider store={scope.store}>
+                        {() => <scope.Component {...scope.props} />}
+                    </Provider>
+                </div>,
+                element[0]
+            );
+
+            scope.$on("$destroy", function() {
+                React.unmountComponentAtNode(element[0]);
             });
         }
     };

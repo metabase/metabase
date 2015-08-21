@@ -17,7 +17,12 @@ export default React.createClass({
 
     render: function() {
         return (
-            <a href="#" className={cx("Toggle", "no-decoration", { selected: this.props.value })} onClick={this.onClick} />
+            <a
+                href="#"
+                className={cx("Toggle", "no-decoration", { selected: this.props.value }) + " " + (this.props.className||"")}
+                style={{color: this.props.color || null}}
+                onClick={this.onClick}
+            />
         );
     }
 });

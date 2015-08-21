@@ -24,9 +24,10 @@
     align-items: center;
 }
 
+
 .QueryHeader-section {
-    padding-right: 0.5em;
-    margin-right: 0.5em;
+    padding-right: 1em;
+    margin-right: 1em;
     border-right: 1px solid rgba(0,0,0,0.2);
 }
 
@@ -212,7 +213,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: hidden;
 }
 

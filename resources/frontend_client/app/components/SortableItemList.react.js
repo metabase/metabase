@@ -18,32 +18,12 @@ export default class SortableItemList extends React.Component {
     }
 
     render() {
+        var items;
         if (this.state.sort === "Last Modified") {
-            this.props.items.sort((a, b) => a.updated_at < b.updated_at);
+            items = this.props.items.slice().sort((a, b) => a.updated_at < b.updated_at);
         } else if (this.state.sort === "Alphabetical Order") {
-            this.props.items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+            items = this.props.items.slice().sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
         }
-
-        var items = this.props.items.map((item) => {
-            var icon = this.props.showIcons ? <div><img className="mr2" style={{height: "48px"}}  src={"/app/components/icons/assets/" + item.icon + ".png"} /></div> : null;
-            return (
-                <li key={item.id} className="border-row-divider">
-                    <a className="no-decoration flex p2" href="#" onClick={() => this.onClickItem(item)}>
-                        <div className="flex align-center flex-full mr2">
-                            {icon}
-                            <div className="text-brand-hover">
-                                <h3 className="mb1">{item.name}</h3>
-                                <h4 className="text-grey-3">{item.description || "No description yet"}</h4>
-                            </div>
-                        </div>
-                        <div className="flex-align-right text-right text-grey-3">
-                            <div className="mb1">Saved by {item.creator.common_name}</div>
-                            <div>Modified {item.updated_at.fromNow()}</div>
-                        </div>
-                    </a>
-                </li>
-            );
-        });
 
         return (
             <div className="SortableItemList">
@@ -57,7 +37,25 @@ export default class SortableItemList extends React.Component {
                 </div>
 
                 <ul className="SortableItemList-list px2 pb2">
-                    {items}
+                    {items.map(item =>
+                        <li key={item.id} className="border-row-divider">
+                            <a className="no-decoration flex p2" href="#" onClick={() => this.onClickItem(item)}>
+                                <div className="flex align-center flex-full mr2">
+                                    {this.props.showIcons ?
+                                        <div><img className="mr2" style={{height: "48px"}}  src={"/app/components/icons/assets/" + item.icon + ".png"} /></div>
+                                    : null}
+                                    <div className="text-brand-hover">
+                                        <h3 className="mb1">{item.name}</h3>
+                                        <h4 className="text-grey-3">{item.description || "No description yet"}</h4>
+                                    </div>
+                                </div>
+                                <div className="flex-align-right text-right text-grey-3">
+                                    <div className="mb1">Saved by {item.creator.common_name}</div>
+                                    <div>Modified {item.updated_at.fromNow()}</div>
+                                </div>
+                            </a>
+                        </li>
+                    )}
                 </ul>
             </div>
         );

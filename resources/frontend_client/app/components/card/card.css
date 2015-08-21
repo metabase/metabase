@@ -20,20 +20,6 @@
   font-size: 0.8em;
 }
 
-.Card-actions {
-  position: absolute;
-  right: 1em;
-  top: 0;
-  opacity: 0;
-  transition: opacity .3s linear;
-  background-color: #fff;
-}
-
-.Card:hover .Card-actions {
-  opacity: 1;
-  transition: opacity .3s linear;
-}
-
 .Card-dataSource {
   color: #999;
   padding-top: 0.5em;
@@ -96,10 +82,6 @@
   height: 2.5em;
   margin-right: 1em;
   border-radius: 4px;
-}
-
-.Dash-card .Card {
-  overflow-y: scroll;
 }
 
 .Card--scalar {

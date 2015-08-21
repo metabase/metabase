@@ -288,7 +288,7 @@
 
 .AdminInput {
     color: var(--default-font-color);
-    padding: 0.5em;
+    padding: var(--padding-1);
     background-color: #FCFCFC;
     border: 1px solid transparent;
 }
@@ -348,6 +348,7 @@
 }
 
 .Toggle {
+    color: var(--brand-color);
     box-sizing: border-box;
     width: 48px;
     height: 24px;
@@ -359,7 +360,7 @@
 }
 
 .Toggle.selected {
-    background-color: #33A2FF;
+    background-color: currentColor;
 }
 
 .Toggle:after {

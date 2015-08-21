@@ -55,13 +55,10 @@ export default React.createClass({
         }
     },
 
-    toggleModal: function(modalOpen) {
-        if (!this.state.recentlyToggled || modalOpen !== undefined) {
-            if (modalOpen === undefined) {
-                modalOpen = !this.state.modalOpen;
-            }
+    toggleModal: function() {
+        if (!this.state.recentlyToggled) {
             this.setState({
-                modalOpen: modalOpen,
+                modalOpen: !this.state.modalOpen,
                 recentlyToggled: true
             });
             setTimeout(() => this.setState({ recentlyToggled: false }), 500);

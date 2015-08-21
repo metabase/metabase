@@ -1,6 +1,5 @@
 'use strict';
 
-import { CardRenderer } from '../card/card.charting';
 import Icon from "metabase/components/Icon.react";
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';

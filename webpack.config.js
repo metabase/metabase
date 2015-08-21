@@ -43,6 +43,8 @@ CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
 });
 
+var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators'];
+
 var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
@@ -65,7 +67,7 @@ var config = module.exports = {
     module: {
         loaders: [
             // JavaScript
-            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: ['es7.asyncFunctions'] }},
+            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?-restructuring&compatibility!cssnext-loader') }
@@ -102,7 +104,6 @@ var config = module.exports = {
             'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
             'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
             // react
-            // 'react':                __dirname + '/node_modules/react/dist/react-with-addons.min.js',
             'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
@@ -162,7 +163,7 @@ if (process.env["METABASE_ENV"] === "hot") {
     config.output.publicPath = "http://localhost:8080" + config.output.publicPath;
 
     config.module.loaders.unshift(
-        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?optional[]=es7.asyncFunctions'] }
+        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
     );
 
     config.plugins.unshift(
@@ -170,6 +171,7 @@ if (process.env["METABASE_ENV"] === "hot") {
         new webpack.NoErrorsPlugin()
     );
 } else {
+    config.resolve.alias['react/lib'] = __dirname + '/resources/frontend_client/vendor/react/lib';
     config.resolve.alias['react/addons'] = __dirname + '/node_modules/react/dist/react-with-addons.min.js';
     config.resolve.alias['react'] = __dirname + '/node_modules/react/dist/react-with-addons.min.js';
     config.module.noParse.push(/node_modules\/react\//);

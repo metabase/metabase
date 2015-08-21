@@ -20,7 +20,7 @@ export default React.createClass({
             <div className="Modal NewForm">
                 <div className="Form-header flex align-center">
                     <h2 className="flex-full">{this.props.title}</h2>
-                    <a className="text-grey-3" onClick={this.props.closeFn}>
+                    <a href="#" className="text-grey-3 p1" onClick={this.props.closeFn}>
                         <Icon name='close' width="16px" height="16px"/>
                     </a>
                 </div>

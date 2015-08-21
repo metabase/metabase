@@ -4,6 +4,10 @@ import Input from "metabase/components/Input.react";
 
 export default class Header extends React.Component {
 
+    setItemAttribute(attribute, event) {
+        this.props.setItemAttributeFn(attribute, event.target.value);
+    }
+
     renderEditHeader() {
         if (this.props.isEditing) {
             return (
@@ -11,7 +15,7 @@ export default class Header extends React.Component {
                     <span className="EditHeader-title">{this.props.editingTitle}</span>
                     <span className="EditHeader-subtitle mx1">{this.props.editingSubtitle}</span>
                     <span className="flex-align-right">
-                        {this.props.editingButtons}
+                        {this.props.editingButtons.map((button, buttonIndex) => <span key={buttonIndex}>{button}</span>)}
                     </span>
                 </div>
             );
@@ -20,23 +24,32 @@ export default class Header extends React.Component {
 
     render() {
         var titleAndDescription;
-        if (this.props.isEditable) {
+        if (this.props.isEditingInfo) {
             titleAndDescription = (
                 <div className="EditTitle flex flex-column flex-full bordered rounded mt1 mb2">
-                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.item.name} onChange={this.props.setItemAttributeFn.bind(null, "name")}/>
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description} onChange={this.props.setItemAttributeFn.bind(null, "description")} placeholder="No description yet" />
+                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.item.name} onChange={this.setItemAttribute.bind(this, "name")}/>
+                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description} onChange={this.setItemAttribute.bind(this, "description")} placeholder="No description yet" />
                 </div>
             );
         } else {
-            titleAndDescription = (
-                <div className="flex align-center">
-                    <h1 className="Entity-title">New question</h1>
-                </div>
-            );
+            if (this.props.item && this.props.item.id != null) {
+                titleAndDescription = (
+                    <div className="EditTitle flex flex-column flex-full mt1 mb2">
+                        <div className="text-bold h3 p1">{this.props.item.name}</div>
+                        <div className="h4 p1">{this.props.item.description || "No description yet"}</div>
+                    </div>
+                );
+            } else {
+                titleAndDescription = (
+                    <div className="flex align-center">
+                        <h1 className="Entity-title">New {this.props.objectType}</h1>
+                    </div>
+                );
+            }
         }
 
         var attribution;
-        if(this.props.item.creator && false) {
+        if (this.props.item && this.props.item.creator && false) {
             attribution = (
                 <div className="Entity-attribution">
                     Asked by {this.props.item.creator.common_name}
@@ -44,10 +57,12 @@ export default class Header extends React.Component {
             );
         }
 
-        var headerButtons = this.props.headerButtons.map((sectionButtons) => {
+        var headerButtons = this.props.headerButtons.map((section, sectionIndex) => {
             return (
-                <span className="QueryHeader-section">
-                    {sectionButtons}
+                <span key={sectionIndex} className="QueryHeader-section">
+                    {section.map((button, buttonIndex) => {
+                        return <span key={buttonIndex}>{button}</span>;
+                    })}
                 </span>
             );
         });
@@ -73,5 +88,7 @@ export default class Header extends React.Component {
 
 Header.defaultProps = {
     headerButtons: [],
+    editingTitle: "",
+    editingSubtitle: "",
     editingButtons: []
 };

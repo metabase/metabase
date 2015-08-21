@@ -37,8 +37,45 @@ DashboardControllers.controller('DashList', ['$scope', '$location', 'Dashboard',
 
 }]);
 
-DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {
+import React, { Component } from 'react';
+import { Provider } from 'react-redux';
+import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
+import { devTools, persistState } from 'redux-devtools';
+import { LogMonitor } from 'redux-devtools/lib/react';
 
+import promiseMiddleware from 'redux-promise';
+import loggerMiddleware from 'redux-logger';
+import thunkMidleware from "redux-thunk";
+
+import DashboardApp from './containers/DashboardApp.react';
+import * as reducers from './reducers';
+
+const finalCreateStore = compose(
+  applyMiddleware(
+      thunkMidleware,
+      promiseMiddleware/*,
+      loggerMiddleware*/
+  ),
+  // devTools(),
+  // persistState(window.location.href.match(/[?&]debug_session=([^&]+)\b/)),
+  createStore
+);
+
+const reducer = combineReducers(reducers);
+
+DashboardControllers.controller('Dashboard', ['$scope', '$routeParams', '$location', 'VisualizationSettings', function($scope, $routeParams, $location, VisualizationSettings) {
+    $scope.Component = DashboardApp;
+    $scope.props = {
+        visualizationSettingsApi: VisualizationSettings,
+        onChangeLocation: function(url) {
+            $scope.$apply(() => $location.url(url))
+        }
+    };
+    $scope.store = finalCreateStore(reducer, { selectedDashboard: $routeParams.dashId });
+    // $scope.monitor = LogMonitor;
+}]);
+
+DashboardControllers.controller('DashDetail', ['$scope', '$routeParams', '$location', 'Dashboard', 'DashCard', function($scope, $routeParams, $location, Dashboard, DashCard) {
     // $scope.dashboard: single Card being displayed/edited
     // $scope.error: any relevant error message to be displayed
 

@@ -130,6 +130,7 @@ CardControllers.controller('CardDetail', [
         var headerModel = {
             card: null,
             tableMetadata: null,
+            fromUrl: $routeParams.from,
             cardApi: Card,
             dashboardApi: Dashboard,
             broadcastEventFn: function(eventName, value) {
@@ -160,9 +161,7 @@ CardControllers.controller('CardDetail', [
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
             notifyCardAddedToDashFn: function(dashCard) {
-                $scope.$apply(() => {
-                    $location.path('/dash/'+dashCard.dashboard_id);
-                });
+                $scope.$apply(() => $location.path('/dash/'+dashCard.dashboard_id));
             },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
@@ -185,6 +184,9 @@ CardControllers.controller('CardDetail', [
             },
             revertCardFn: function() {
                 revertCard();
+            },
+            onChangeLocation: function(url) {
+                $timeout(() => $location.url(url))
             },
             toggleDataReferenceFn: toggleDataReference,
             cardIsNewFn: cardIsNew,
@@ -704,10 +706,10 @@ CardControllers.controller('CardDetail', [
         function toggleDataReference() {
             $scope.$apply(function() {
                 $scope.isShowingDataReference = !$scope.isShowingDataReference;
-                renderAll();
+                // renderAll();
                 // render again after 500ms to wait for animation to complete
                 // FIXME: if previous render takes too long this is missed
-                window.setTimeout(renderAll, 500);
+                window.setTimeout(renderAll, 300);
             });
         }
 

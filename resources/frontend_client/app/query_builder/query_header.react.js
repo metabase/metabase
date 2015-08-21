@@ -1,7 +1,7 @@
 'use strict';
 /*global setTimeout, clearTimeout*/
 
-import ActionButton from './action_button.react';
+import ActionButton from 'metabase/components/ActionButton.react';
 import AddToDashboard from './add_to_dashboard.react';
 import AddToDashSelectDashModal from '../components/AddToDashSelectDashModal.react';
 import CardFavoriteButton from './card_favorite_button.react';
@@ -61,6 +61,11 @@ export default React.createClass({
         if (card.id === undefined) {
             // creating a new card
             return this.props.cardApi.create(card).$promise.then((newCard) => {
+                if (this.props.fromUrl) {
+                    this.goBack();
+                    return;
+                }
+
                 if (this.isMounted()) {
                     this.props.notifyCardCreatedFn(newCard);
 
@@ -71,6 +76,11 @@ export default React.createClass({
         } else {
             // updating an existing card
             return this.props.cardApi.update(card).$promise.then((updatedCard) => {
+                if (this.props.fromUrl) {
+                    this.goBack();
+                    return;
+                }
+
                 if (this.isMounted()) {
                     this.props.notifyCardUpdatedFn(updatedCard);
 
@@ -96,9 +106,13 @@ export default React.createClass({
         this.props.toggleDataReferenceFn();
     },
 
-    setCardAttribute: function(attribute, event) {
-        this.props.card[attribute] = event.target.value;
+    setCardAttribute: function(attribute, value) {
+        this.props.card[attribute] = value;
         this.props.notifyCardChangedFn(this.props.card);
+    },
+
+    goBack: function() {
+        this.props.onChangeLocation(this.props.fromUrl);
     },
 
     getHeaderButtons: function() {
@@ -178,6 +192,7 @@ export default React.createClass({
 
     getEditingButtons: function() {
         var editingButtons = [];
+
         if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
             editingButtons.push(
                 <ActionButton
@@ -188,6 +203,10 @@ export default React.createClass({
                     failedText="Update failed"
                     successText="Updated"
                 />
+            );
+        } else if (this.props.fromUrl) {
+            editingButtons.push(
+                <a className="Button Button--small Button--primary text-uppercase" href="#" onClick={this.goBack}>Back</a>
             );
         }
         if (this.props.cardIsDirtyFn()) {
@@ -246,17 +265,19 @@ export default React.createClass({
 
         return (
             <Header
+                objectType="question"
                 item={this.props.card}
-                isEditing={!this.props.cardIsNewFn()}
-                isEditable={!this.props.cardIsNewFn() && this.props.card.is_creator}
+                isEditing={!this.props.cardIsNewFn() && this.props.card.is_creator}
+                isEditingInfo={!this.props.cardIsNewFn() && this.props.card.is_creator}
                 headerButtons={this.getHeaderButtons()}
-                editingButtons={this.getEditingButtons()}
                 editingTitle="You are editing a saved question"
                 editingSubtitle={subtitleText}
+                editingButtons={this.getEditingButtons()}
                 setItemAttributeFn={this.setCardAttribute}
             >
+                {this.props.fromUrl}
                 {this.getModal()}
             </Header>
-        )
+        );
     }
 });

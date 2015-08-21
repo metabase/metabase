@@ -481,31 +481,6 @@ DashboardDirectives.directive('mbDashcard', ['Card', 'Metabase', 'VisualizationS
             }
         };
 
-
-        /* based on a raw Highcharts error, returns the following
-         * array:
-         * [error url, error code]
-         *
-         * @param raw error string (i.e. Highcharts error #15: www.highcharts.com/errors/15)
-         * @returns i.e. ["www.highcharts.com/errors/15", "15", index: 22, input: "Highcharts error #15: www.highcharts.com/errors/15"]
-         */
-        var parseHighchartsError = function(error) {
-            var re = /www.highcharts.com\/errors\/(\d+)/g;
-            var results = re.exec(error);
-            return results;
-        };
-
-        var highchartsErrorCodeToMessage = function(code) {
-            var messages = {
-                15: "Please ensure that your data is sorted in ascending order."
-            };
-            if (typeof messages[code] !== "undefined") {
-                return messages[code];
-            } else {
-                return null;
-            }
-        };
-
         var updateMapCenter = function(lat, lon) {
             scope.card.visualization_settings.map.center_latitude = lat;
             scope.card.visualization_settings.map.center_longitude = lon;
