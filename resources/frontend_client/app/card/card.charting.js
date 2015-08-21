@@ -156,6 +156,9 @@ function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType
     // specify legend
     chart = applyChartLegend(chart, card);
 
+    // disable animations
+    chart.transitionDuration(0);
+
     // set card title
     setCardTitle(card, elementId);
 
@@ -712,7 +715,7 @@ export var CardRenderer = {
                 parentPaddingTop = getComputedSizeProperty('padding-top', parent),
                 parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
 
-            return parentHeight - parentPaddingTop - parentPaddingBottom;
+            return parentHeight - parentPaddingTop - parentPaddingBottom - 5; // why the magic number :/
         }
 
         return null;

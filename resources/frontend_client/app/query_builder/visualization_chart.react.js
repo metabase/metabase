@@ -12,38 +12,42 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            chartId: Math.floor((Math.random() * 698754) + 1)
+            chartId: Math.floor((Math.random() * 698754) + 1),
+            width: 0,
+            height: 0,
         };
     },
 
     shouldComponentUpdate: function(nextProps, nextState) {
+        this.calculateSizing(nextState);
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
         if (this.state.error === nextState.error &&
                 this.props.data == nextProps.data &&
                 this.props.card.display === nextProps.card.display &&
-                JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings)) {
+                JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings) &&
+                this.state.width === nextState.width && this.state.height === nextState.height
+        ) {
             return false;
         } else {
             return true;
         }
     },
     componentDidMount: function() {
+        this.calculateSizing(this.getInitialState());
         this.renderChart();
-        window.addEventListener("resize", this.onResize);
-    },
-
-    componentWillUnmount: function() {
-        window.removeEventListener("resize", this.onResize);
     },
 
     componentDidUpdate: function() {
         this.renderChart();
     },
 
-    onResize: function() {
-        // TODO: CardRenderer.setSize would probably be better
-        this.renderChart();
+    calculateSizing: function(prevState) {
+        var width = CardRenderer.getAvailableCanvasWidth(this.state.chartId);
+        var height = CardRenderer.getAvailableCanvasHeight(this.state.chartId);
+        if (width !== prevState.width || height !== prevState.height) {
+            this.setState({ width, height });
+        }
     },
 
     renderChart: function () {
