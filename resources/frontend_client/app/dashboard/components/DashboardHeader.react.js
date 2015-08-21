@@ -15,6 +15,8 @@ import {
     deleteDashboard
 } from '../actions';
 
+import cx from "classnames";
+
 export default class DashboardHeader extends React.Component {
 
     onEditDashboard() {
@@ -100,11 +102,13 @@ export default class DashboardHeader extends React.Component {
         //         <Icon name="add" width="16px" height="16px" />
         //     </a>
         // ]);
+
+        var isEmpty = dashboard.ordered_cards.length === 0;
         buttonSections.push([
             <PopoverWithTrigger
                 ref="addQuestionModal"
                 tether={false}
-                triggerElement={<Icon name="add" width="16px" height="16px" />}
+                triggerElement={<Icon className={cx({ "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />}
             >
                 <AddToDashSelectQuestionModal
                     dispatch={this.props.dispatch}
