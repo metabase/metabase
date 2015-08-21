@@ -19,8 +19,8 @@ import * as reducers from './reducers';
 const finalCreateStore = compose(
   applyMiddleware(
       thunkMidleware,
-      promiseMiddleware/*,
-      loggerMiddleware*/
+      promiseMiddleware
+      //,loggerMiddleware
   ),
   // devTools(),
   // persistState(window.location.href.match(/[?&]debug_session=([^&]+)\b/)),

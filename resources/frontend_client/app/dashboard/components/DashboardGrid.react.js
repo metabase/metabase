@@ -95,8 +95,8 @@ export default class DashboardGrid extends React.Component {
                         <div key={dc.id} className="DashCard">
                             <DashCard
                                 key={dc.id}
-                                card={dc.card}
-                                data={dc.dataset&&dc.dataset.data}
+                                dashcard={dc}
+                                dispatch={this.props.dispatch}
                                 visualizationSettingsApi={this.props.visualizationSettingsApi}
                             />
                             <div className="DashCard-actions absolute top right text-brand p1">
