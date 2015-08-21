@@ -1,41 +1,33 @@
 'use strict';
 
-import FormField from "metabase/components/FormField.react";
-import Icon from "metabase/components/Icon.react";
 import Modal from 'metabase/components/Modal.react';
 
 import inflection from "inflection";
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "DeleteQuestionModal",
-    propTypes: {
-        card: React.PropTypes.object.isRequired,
-        deleteCardFn: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func
-    },
-
-    getInitialState: function () {
-        return {
-            errors: null
+export default class DeleteQuestionModal extends React.Component {
+    constructor() {
+        super();
+        this.state = {
+            error: null
         };
-    },
+    }
 
-    deleteCard: function(event) {
-        this.props.deleteCardFn(this.props.card).then(null, (error) => {
-            this.setState({
-                errors: error
-            });
-        });
-    },
+    async deleteCard() {
+        try {
+            await this.props.deleteCardFn(this.props.card);
+        } catch (error) {
+            this.setState({ error });
+        }
+    }
 
-    render: function() {
+    render() {
         var formError;
-        if (this.state.errors) {
+        if (this.state.error) {
             var errorMessage = "Server error encountered";
-            if (this.state.errors.data &&
-                this.state.errors.data.message) {
-                errorMessage = this.state.errors.data.message;
+            if (this.state.error.data &&
+                this.state.error.data.message) {
+                errorMessage = this.error.errors.data.message;
             }
 
             // TODO: timeout display?
@@ -60,11 +52,17 @@ export default React.createClass({
                 </div>
 
                 <div className="Form-actions">
-                    <button className="Button Button--danger" onClick={this.deleteCard}>Yes</button>
+                    <button className="Button Button--danger" onClick={() => this.deleteCard()}>Yes</button>
                     <button className="Button Button--primary ml1" onClick={this.props.closeFn}>No</button>
                     {formError}
                 </div>
             </Modal>
         );
     }
-});
+}
+
+DeleteQuestionModal.propTypes = {
+    card: React.PropTypes.object.isRequired,
+    deleteCardFn: React.PropTypes.func.isRequired,
+    closeFn: React.PropTypes.func
+};

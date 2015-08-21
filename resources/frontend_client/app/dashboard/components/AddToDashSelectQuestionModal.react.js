@@ -15,14 +15,14 @@ export default class AddToDashSelectQuestionModal extends React.Component {
     onAdd(card) {
         this.props.dispatch(addCardToDashboard({ dashId: this.props.dashboard.id, cardId: card.id }));
         this.props.dispatch(setEditingDashboard(true));
-        this.props.closeFn();
+        this.props.onClose();
     }
 
     render() {
         return (
             <Modal
                 title="Add Question to Dashboard"
-                closeFn={this.props.closeFn}
+                closeFn={this.props.onClose}
             >
                 <SortableItemList
                     items={this.props.cards}
@@ -38,5 +38,5 @@ AddToDashSelectQuestionModal.propTypes = {
     dispatch: React.PropTypes.func.isRequired,
     dashboard: React.PropTypes.object.isRequired,
     cards: React.PropTypes.array,
-    closeFn: React.PropTypes.func.isRequired
+    onClose: React.PropTypes.func.isRequired
 };

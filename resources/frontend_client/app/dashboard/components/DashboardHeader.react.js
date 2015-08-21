@@ -4,28 +4,21 @@ import ActionButton from "metabase/components/ActionButton.react";
 import Header from "metabase/components/Header.react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
-import AddToDashSelectQuestionModal from ".//AddToDashSelectQuestionModal.react";
+import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.react";
+import DeleteDashboardModal from "./DeleteDashboardModal.react";
 
 import {
-    saveDashboard,
     setEditingDashboard,
     fetchDashboard,
-    setDashboardAttributes
+    setDashboardAttributes,
+    saveDashboard,
+    deleteDashboard
 } from '../actions';
 
 export default class DashboardHeader extends React.Component {
 
-    async onSaveDashboard() {
-        await this.props.dispatch(saveDashboard(this.props.dashboard.id));
-        this.props.dispatch(setEditingDashboard(false));
-    }
-
     onEditDashboard() {
         this.props.dispatch(setEditingDashboard(true))
-    }
-
-    onRevertDashboard() {
-        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
     }
 
     onDashboardAttributeChange(attribute, value) {
@@ -33,6 +26,21 @@ export default class DashboardHeader extends React.Component {
             id: this.props.dashboard.id,
             attributes: { [attribute]: value }
         }));
+    }
+
+    onRevertDashboard() {
+        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
+    }
+
+    async onSaveDashboard() {
+        await this.props.dispatch(saveDashboard(this.props.dashboard.id));
+        this.props.dispatch(setEditingDashboard(false));
+    }
+
+    async onDeleteDashboard() {
+        await this.props.dispatch(deleteDashboard(this.props.dashboard.id));
+        this.props.onDashboardDeleted(this.props.dashboard.id)
+        this.props.onChangeLocation("/")
     }
 
     getEditingButtons() {
@@ -58,11 +66,17 @@ export default class DashboardHeader extends React.Component {
         }
         editingButtons.push(
             <PopoverWithTrigger
-                ref="deleteModal"
+                ref="deleteDashboardModal"
                 tether={false}
                 triggerClasses="Button Button--small text-uppercase"
                 triggerElement="Delete"
             >
+                <DeleteDashboardModal
+                    dispatch={this.props.dispatch}
+                    dashboard={this.props.dashboard}
+                    onClose={() => this.refs.deleteDashboardModal.toggleModal()}
+                    onDelete={() => this.onDeleteDashboard()}
+                />
             </PopoverWithTrigger>
         );
         return editingButtons;
@@ -96,10 +110,10 @@ export default class DashboardHeader extends React.Component {
                     dispatch={this.props.dispatch}
                     dashboard={dashboard}
                     cards={this.props.cards}
-                    closeFn={() => this.refs.addQuestionModal.toggleModal()}
+                    onClose={() => this.refs.addQuestionModal.toggleModal()}
                 />
             </PopoverWithTrigger>
-        ])
+        ]);
 
         return buttonSections;
     }

@@ -51,6 +51,7 @@ export const DELETE_CARD = 'DELETE_CARD';
 export const FETCH_DASHBOARD = 'FETCH_DASHBOARD';
 export const SET_DASHBOARD_ATTRIBUTES = 'SET_DASHBOARD_ATTRIBUTES';
 export const SAVE_DASHBOARD = 'SAVE_DASHBOARD';
+export const DELETE_DASHBOARD = 'DELETE_DASHBOARD';
 
 export const ADD_CARD_TO_DASH = 'ADD_CARD_TO_DASH';
 export const REMOVE_CARD_FROM_DASH = 'REMOVE_CARD_FROM_DASH';
@@ -60,12 +61,15 @@ export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
 
 // resource wrappers
-const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "reposition_cards", "addcard", "removecard"]);
+const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
 const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
 const Card = new AngularResourceProxy("Card", ["list", "delete"]);
 
 // action creators
+
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+
+// these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
@@ -156,6 +160,13 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         } else {
             throw new Error(dashcardResult.status);
         }
+    };
+});
+
+export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dashId) {
+    return async function(dispatch, getState) {
+        let result = await Dashboard.delete({ dashId });
+        return dashId;
     };
 });
 

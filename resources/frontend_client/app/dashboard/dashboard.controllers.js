@@ -32,12 +32,15 @@ const reducer = combineReducers(reducers);
 //  Dashboard Controllers
 var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
 
-DashboardControllers.controller('Dashboard', ['$scope', '$routeParams', '$location', 'VisualizationSettings', function($scope, $routeParams, $location, VisualizationSettings) {
+DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routeParams', '$location', 'VisualizationSettings', function($scope, $rootScope, $routeParams, $location, VisualizationSettings) {
     $scope.Component = DashboardApp;
     $scope.props = {
         visualizationSettingsApi: VisualizationSettings,
         onChangeLocation: function(url) {
-            $scope.$apply(() => $location.url(url))
+            $scope.$apply(() => $location.url(url));
+        },
+        onDashboardDeleted: function(id) {
+            $scope.$apply(() => $rootScope.$broadcast("dashboard:delete", id));
         }
     };
     $scope.store = finalCreateStore(reducer, { selectedDashboard: $routeParams.dashId });
