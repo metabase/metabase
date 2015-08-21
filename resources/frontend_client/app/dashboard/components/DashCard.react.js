@@ -8,6 +8,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 
 import { fetchDashCardData } from "../actions";
 
+import cx from "classnames";
+
 class DashCard extends React.Component {
 
     componentDidMount() {
@@ -40,8 +42,9 @@ class DashCard extends React.Component {
 
     render() {
         let { card } = this.props.dashcard;
+        let recent = this.props.dashcard.isAdded;
         return (
-            <div className="Card bordered rounded flex flex-column">
+            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
                 <div className="Card-heading my1 px2">
                     <h3 className="text-normal my1">
                         <a className="Card-title link" href={"/card/"+card.id}>{card.name}</a>
