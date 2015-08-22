@@ -88,6 +88,6 @@
     "build": "./node_modules/webpack/bin/webpack.js",
     "build-watch": "./node_modules/webpack/bin/webpack.js --watch",
     "start": "lein ring server",
-    "start-hot": "METABASE_ENV=hot ./node_modules/webpack/bin/webpack.js && METABASE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base resources/frontend_client"
+    "start-hot": "NODE_ENV=hot ./node_modules/webpack/bin/webpack.js && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base resources/frontend_client"
   }
 }
