@@ -86,8 +86,7 @@
                 (> num-cards₁ num-cards₂) "removed a card"
                 :else                     "rearranged the cards")))]
          (filter identity)
-         build-sentence
-         (#(s/replace-first % "it " "this dashboard ")))))
+         build-sentence)))
 
 (extend DashboardEntity
   IRevisioned
