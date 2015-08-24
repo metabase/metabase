@@ -224,6 +224,7 @@
                                 :field-name         :name
                                 :field-display-name :display_name
                                 :special-type       :special_type
+                                :preview-display    :preview_display
                                 :table-id           :table_id})
              (dissoc :position))))
 
@@ -243,7 +244,7 @@
         ;; Build a map of Destination Field IDs -> Destination Fields
         dest-field-id->field    (when (and (seq fk-field-ids)
                                            (seq (vals field-id->dest-field-id)))
-                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display], :id [in (vals field-id->dest-field-id)]))]
 
     ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
     (vec (for [{field-id :id, :as field} fields]

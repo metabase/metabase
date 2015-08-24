@@ -50,9 +50,9 @@
   [col]
   (case col
     :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil,
-           :name (format-name "id") :display_name "Id" :table_id (id :categories), :id (id :categories :id)}
+           :name (format-name "id") :display_name "Id" :preview_display true :table_id (id :categories), :id (id :categories :id)}
     :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil,
-           :name (format-name "name") :display_name "Name" :table_id (id :categories), :id (id :categories :name)}))
+           :name (format-name "name") :display_name "Name" :preview_display true :table_id (id :categories), :id (id :categories :name)}))
 
 ;; #### users
 (defn- users-col
@@ -66,6 +66,7 @@
                  :description  nil
                  :name         (format-name "id")
                  :display_name "Id"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :id)}
     :name       {:extra_info   {}
@@ -75,6 +76,7 @@
                  :description  nil
                  :name         (format-name "name")
                  :display_name "Name"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :name)}
     :last_login {:extra_info   {}
@@ -84,6 +86,7 @@
                  :description  nil
                  :name         (format-name "last_login")
                  :display_name "Last Login"
+                 :preview_display true
                  :table_id     (id :users)
                  :id           (id :users :last_login)}))
 
@@ -104,6 +107,7 @@
                   :description  nil
                   :name         (format-name "id")
                   :display_name "Id"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :id)}
     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
@@ -117,6 +121,7 @@
                   :description  nil
                   :name         (format-name "category_id")
                   :display_name "Category Id"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :category_id)}
     :price       {:extra_info   {}
@@ -126,6 +131,7 @@
                   :description  nil
                   :name         (format-name "price")
                   :display_name "Price"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :price)}
     :longitude   {:extra_info   {}
@@ -135,6 +141,7 @@
                   :description  nil
                   :name         (format-name "longitude")
                   :display_name "Longitude"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :longitude)}
     :latitude    {:extra_info   {}
@@ -144,6 +151,7 @@
                   :description  nil
                   :name         (format-name "latitude")
                   :display_name "Latitude"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :latitude)}
     :name        {:extra_info   {}
@@ -153,6 +161,7 @@
                   :description  nil
                   :name         (format-name "name")
                   :display_name "Name"
+                  :preview_display true
                   :table_id     (id :venues)
                   :id           (id :venues :name)}))
 
@@ -173,6 +182,7 @@
                :description  nil
                :name         (format-name "id")
                :display_name "Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :id)}
     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
@@ -186,6 +196,7 @@
                :description  nil
                :name         (format-name "venue_id")
                :display_name "Venue Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :venue_id)}
     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
@@ -199,6 +210,7 @@
                :description  nil
                :name         (format-name "user_id")
                :display_name "User Id"
+               :preview_display true
                :table_id     (id :checkins)
                :id           (id :checkins :user_id)}))
 
@@ -689,15 +701,21 @@
      order ag.0-))
 
 
-;;; ### make sure that rows where preview_display = false don't get displayed
+;;; ### make sure that rows where preview_display = false are included and properly marked up
 (datasets/expect-with-all-datasets
- [(set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))
-  (set (->columns "category_id" "name" "latitude" "id" "longitude"))
-  (set (->columns "category_id" "name" "latitude" "id" "longitude" "price"))]
+ [(set (venues-cols))
+  #{(venues-col :category_id)
+    (venues-col :name)
+    (venues-col :latitude)
+    (venues-col :id)
+    (venues-col :longitude)
+    (-> (venues-col :price)
+        (assoc :preview_display false))}
+  (set (venues-cols))]
  (let [get-col-names (fn [] (Q aggregate rows of venues
                                order id+
                                limit 1
-                               return :data :columns set))]
+                               return :data :cols set))]
    [(get-col-names)
     (do (upd Field (id :venues :price) :preview_display false)
         (get-col-names))
@@ -900,7 +918,7 @@
      [426 "Kyle's Low-Carb Grill"]
      [470 "Kyle's Low-Carb Grill"]]
   (Q dataset geographical-tips use mongo
-     return rows (map (fn [[id _ _  {venue-name :name}]] [id venue-name]))
+     return rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
      aggregate rows of tips
      filter = venue...name "Kyle's Low-Carb Grill"
      order id
@@ -911,24 +929,28 @@
 (datasets/expect-when-testing-dataset :mongo
   [[446
     {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
+    "Cam's Mexican Gastro Pub is a historical and underappreciated place to conduct a business meeting with friends."
     {:large  "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/large.jpg",
      :medium "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/med.jpg",
      :small  "http://cloudfront.net/6e3a5256-275f-4056-b61a-25990b4bb484/small.jpg"}
     {:phone "415-320-9123", :name "Cam's Mexican Gastro Pub", :categories ["Mexican" "Gastro Pub"], :id "bb958ac5-758e-4f42-b984-6b0e13f25194"}]
    [230
     {:mentions ["@haight_european_grill"], :tags ["#european" "#grill"], :service "twitter", :username "kyle"}
+    "Haight European Grill is a horrible and amazing place to have a birthday party during winter."
     {:large  "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/large.jpg",
      :medium "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/med.jpg",
      :small  "http://cloudfront.net/1dcef7de-a1c4-405b-a9e1-69c92d686ef1/small.jpg"}
     {:phone "415-191-2778", :name "Haight European Grill", :categories ["European" "Grill"], :id "7e6281f7-5b17-4056-ada0-85453247bc8f"}]
    [319
     {:mentions ["@haight_soul_food_pop_up_food_stand"], :tags ["#soul" "#food" "#pop-up" "#food" "#stand"], :service "twitter", :username "kyle"}
+    "Haight Soul Food Pop-Up Food Stand is a underground and modern place to have breakfast on a Tuesday afternoon."
     {:large  "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/large.jpg",
      :medium "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/med.jpg",
      :small  "http://cloudfront.net/8f613909-550f-4d79-96f6-dc498ff65d1b/small.jpg"}
     {:phone "415-741-8726", :name "Haight Soul Food Pop-Up Food Stand", :categories ["Soul Food" "Pop-Up Food Stand"], :id "9735184b-1299-410f-a98e-10d9c548af42"}]
    [224
     {:mentions ["@pacific_heights_free_range_eatery"], :tags ["#free-range" "#eatery"], :service "twitter", :username "kyle"}
+    "Pacific Heights Free-Range Eatery is a wonderful and modern place to take visiting friends and relatives Friday nights."
     {:large  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/large.jpg",
      :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
