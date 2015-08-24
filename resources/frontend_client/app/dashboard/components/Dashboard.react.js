@@ -32,23 +32,17 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <div className="Dashboard full-height flex flex-row flex-full">
+            <div className="Dashboard full-height flex flex-column flex-full">
                 { !error && !dashboard ?
-                    <div className="text-centered my4 py4">
-                        <div className="Dash-wrapper wrapper">
-                            <div className="my4 py4 text-brand">
-                                <LoadingSpinner />
-                                <h1 className="text-normal text-grey-2">Loading...</h1>
-                            </div>
-                        </div>
+                    <div className="Dash-wrapper wrapper py4 text-brand text-centered flex-full bg-white">
+                        <LoadingSpinner />
+                        <h1 className="text-normal text-grey-2">Loading...</h1>
                     </div>
                 : null }
 
                 { error ?
-                    <div className="Dash-wrapper wrapper">
-                        <div className="full-height text-centered flex layout-centered">
-                            <h2 className="text-error text-grey-1">{error.data}</h2>
-                        </div>
+                    <div className="Dash-wrapper wrapper py4 text-brand text-centered flex-full bg-white">
+                        <h1 className="text-normal text-grey-2">{error.data}</h1>
                     </div>
                 : null }
 
