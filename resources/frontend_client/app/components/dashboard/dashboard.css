@@ -1,5 +1,5 @@
 .Dashboard {
-    background-color: white;
+    background-color: #f9fbfc;
 }
 
 .Dash-wrapper {
@@ -53,6 +53,10 @@
     to {
         background-color: rgba(255, 250, 243, 0.0);
     }
+}
+
+.DashCard .Card {
+    background-color: white;
 }
 
 .Dash--editing .DashCard .Card.Card--recent {
