@@ -47,7 +47,7 @@ class DashCard extends React.Component {
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
                 <div className="Card-heading my1 px2">
                     <h3 className="text-normal my1">
-                        <a className="Card-title link" href={"/card/"+card.id}>{card.name}</a>
+                        <a className="Card-title link" href={"/card/"+card.id+"?clone"}>{card.name}</a>
                     </h3>
                 </div>
                 {this.renderCard()}

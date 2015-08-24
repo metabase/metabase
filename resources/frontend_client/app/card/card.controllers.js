@@ -746,7 +746,7 @@ CardControllers.controller('CardDetail', [
             var card = deserializeCardFromUrl(serialized);
             // consider this since it's not saved:
             card.dirty = true;
-            return $q.resolve(card);
+            return card;
         }
 
         function loadNewCard() {
@@ -766,20 +766,18 @@ CardControllers.controller('CardDetail', [
 
             resetDirty();
 
-            return $q.resolve(card);
+            return card;
         }
 
-        function loadCard() {
+        async function loadCard() {
             if ($routeParams.cardId != undefined) {
-                return loadSavedCard($routeParams.cardId).then(function(result) {
-                    if ($routeParams.serializedCard) {
-                        return loadSerializedCard($routeParams.serializedCard).then(function(result2) {
-                            return _.extend(result, result2);
-                        });
-                    } else {
-                        return result;
-                    }
-                });
+                var card = await loadSavedCard($routeParams.cardId);
+                if ($routeParams.serializedCard) {
+                    let serializedCard = await loadSerializedCard($routeParams.serializedCard);
+                    return _.extend(card, serializedCard);
+                } else {
+                    return card;
+                }
             } else if ($routeParams.serializedCard != undefined) {
                 return loadSerializedCard($routeParams.serializedCard);
             } else {
@@ -824,18 +822,23 @@ CardControllers.controller('CardDetail', [
         }
 
         // meant to be called once on controller startup
-        function loadAndSetCard() {
-            loadCard().then(function (result) {
+        async function loadAndSetCard() {
+            try {
+                let card = await loadCard();
+                if ($routeParams.clone) {
+                    delete card.id;
+                    card.isDirty = true;
+                }
                 // HACK: dirty status passed in the object itself, delete it
-                var isDirty = result.dirty;
-                delete result.dirty;
-                return setCard(result, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
-            }, function (error) {
+                let isDirty = !!card.isDirty;
+                delete card.isDirty;
+                return setCard(card, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
+            } catch (error) {
                 if (error.status == 404) {
                     // TODO() - we should redirect to the card builder with no query instead of /
                     $location.path('/');
                 }
-            });
+            }
         }
 
         function cardIsNew() {
@@ -861,7 +864,7 @@ CardControllers.controller('CardDetail', [
         }
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
-        var updateUrl = _.debounce(function(replaceState) {
+        var updateUrl = (replaceState) => setTimeout(function() {
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,
@@ -877,7 +880,8 @@ CardControllers.controller('CardDetail', [
 
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-            if (replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard)) {
+            replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
+            if (replaceState) {
                 window.history.replaceState(newState, null, url);
             } else {
                 window.history.pushState(newState, null, url);
