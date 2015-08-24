@@ -275,7 +275,6 @@ export default React.createClass({
                 editingButtons={this.getEditingButtons()}
                 setItemAttributeFn={this.setCardAttribute}
             >
-                {this.props.fromUrl}
                 {this.getModal()}
             </Header>
         );
