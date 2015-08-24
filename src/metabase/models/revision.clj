@@ -21,7 +21,7 @@
     "Prepare an instance for serialization in a `Revision`.")
   (revert-to-revision [this id serialized-instance]
     "Return an object to the state recorded by SERIALIZED-INSTANCE.")
-  (describe-diff [this username object1 object2]
+  (describe-diff [this object1 object2]
     "Return a string describing the difference between OBJECT1 and OBJECT2."))
 
 ;;; ## Default Impl
@@ -34,8 +34,8 @@
          (m/filter-vals (complement delay?))))
   (revert-to-revision [entity id serialized-instance]
     (m/mapply upd entity id serialized-instance))
-  (describe-diff [entity username o1 o2]
-    (diff-str username (:name entity) o1 o2)))
+  (describe-diff [entity o1 o2]
+    (diff-str (:name entity) o1 o2)))
 
 
 ;;; # Revision Entity
@@ -64,12 +64,8 @@
   (loop [acc [], [r1 r2 & more] revisions]
     (if-not r2
       (conj acc (assoc r1 :description "First revision."))
-      (let [username (str (or (:common_name (:user r1))
-                              "An unknown user")
-                          (when (:is_reversion r1)
-                            " reverted to an earlier revision and"))]
-        (recur (conj acc (assoc r1 :description (describe-diff entity username (:object r2) (:object r1))))
-               (conj more r2))))))
+      (recur (conj acc (assoc r1 :description (describe-diff entity (:object r2) (:object r1))))
+             (conj more r2)))))
 
 (defn- add-details
   "Hydrate `user` and add `:description` to a sequence of REVISIONS."
