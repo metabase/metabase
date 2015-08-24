@@ -26,6 +26,10 @@ export default class DashboardHeader extends Component {
         this.props.dispatch(setEditingDashboard(true))
     }
 
+    onDoneEditingDashboard() {
+        this.props.dispatch(setEditingDashboard(false));
+    }
+
     onDashboardAttributeChange(attribute, value) {
         this.props.dispatch(setDashboardAttributes({
             id: this.props.dashboard.id,
@@ -56,7 +60,6 @@ export default class DashboardHeader extends Component {
     getEditingButtons() {
         var editingButtons = [];
         if (this.props.isDirty) {
-        // if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
             editingButtons.push(
                 <ActionButton
                     actionFn={() => this.onSaveDashboard()}
@@ -67,12 +70,13 @@ export default class DashboardHeader extends Component {
                     successText="Updated"
                 />
             );
-        // }
-        // if (this.props.cardIsDirtyFn()) {
             editingButtons.push(
                 <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onRevertDashboard()}>Discard Changes</a>
             );
-        // }
+        } else {
+            editingButtons.push(
+                <a className="Button Button--small Button--primary text-uppercase" href="#" onClick={() => this.onDoneEditingDashboard()}>Done</a>
+            );
         }
         editingButtons.push(
             <PopoverWithTrigger

@@ -46,7 +46,6 @@ export default class HistoryModal extends Component {
 
     render() {
         var revisions = this.props.revisions[this.props.entityType+"-"+this.props.entityId];
-        console.log(this.state.error);
         return (
             <Modal
                 title="Change History"
