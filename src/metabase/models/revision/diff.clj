@@ -37,14 +37,12 @@
 
 (defn diff-str
   ([t o1 o2]
-   (let [[before after] (data/diff o1 o2)]
+   (let [[before after] (data/diff o1 o2)
+         reverted (when (:is_reversion o2) "reverted to an earlier revision and ")]
      (when before
        (let [ks (keys before)]
          (some-> (filter identity (for [k ks]
                                 (diff-str* t k (k before) (k after))))
                  build-sentence
-                 (s/replace-first #" it " (format " this %s " t)))))))
-  ([username t o1 o2]
-   (let [s (diff-str t o1 o2)]
-     (when (seq s)
-       (str username " " s)))))
+                 (s/replace-first #" it " (format " this %s " t))
+                 (->> (str (when reverted reverted)))))))))
