@@ -3,7 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import ActionButton from "metabase/components/ActionButton.react";
-import LoadingSpinner from "metabase/components/LoadingSpinner.react";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 import Modal from "metabase/components/Modal.react";
 
 import { fetchRevisions, revertToRevision } from "../actions";
@@ -24,9 +24,18 @@ function formatDate(date) {
 }
 
 export default class HistoryModal extends Component {
-    componentDidMount() {
+    constructor() {
+        super();
+        this.state = { error: null };
+    }
+
+    async componentDidMount() {
         let { entityType, entityId } = this.props;
-        this.props.dispatch(fetchRevisions({ entity: entityType, id: entityId }));
+        try {
+            await this.props.dispatch(fetchRevisions({ entity: entityType, id: entityId }));
+        } catch (error) {
+            this.setState({ error: error });
+        }
     }
 
     async revert(revision) {
@@ -37,12 +46,14 @@ export default class HistoryModal extends Component {
 
     render() {
         var revisions = this.props.revisions[this.props.entityType+"-"+this.props.entityId];
+        console.log(this.state.error);
         return (
             <Modal
                 title="Change History"
                 closeFn={() => this.props.onClose()}
             >
-                { revisions ?
+                <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>
+                {() =>
                     <div className="pb4">
                         <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">
                             <span className="flex-half">When</span>
@@ -73,9 +84,8 @@ export default class HistoryModal extends Component {
                             )}
                         </div>
                     </div>
-                :
-                    <LoadingSpinner />
                 }
+                </LoadingAndErrorWrapper>
             </Modal>
         );
     }

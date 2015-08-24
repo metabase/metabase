@@ -3,9 +3,9 @@
 
 import React, { Component, PropTypes } from "react";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 import DashboardHeader from "../components/DashboardHeader.react";
 import DashboardGrid from "../components/DashboardGrid.react";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 
 import { fetchDashboard } from "../actions";
 
@@ -32,37 +32,24 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <div className="Dashboard full-height flex flex-column flex-full">
-                { !error && !dashboard ?
-                    <div className="Dash-wrapper wrapper py4 text-brand text-centered flex-full bg-white">
-                        <LoadingSpinner />
-                        <h1 className="text-normal text-grey-2">Loading...</h1>
+            <LoadingAndErrorWrapper loading={!dashboard} error={error}>
+            {() =>
+                <div className="full">
+                    <DashboardHeader {...this.props} />
+                    <div className="Dash-wrapper wrapper full-height">
+                        { dashboard.ordered_cards.length === 0 ?
+                            <div className="flex flex-column layout-centered">
+                                <span className="QuestionCircle">?</span>
+                                <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
+                                <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
+                            </div>
+                        :
+                            <DashboardGrid {...this.props} />
+                        }
                     </div>
-                : null }
-
-                { error ?
-                    <div className="Dash-wrapper wrapper py4 text-brand text-centered flex-full bg-white">
-                        <h1 className="text-normal text-grey-2">{error.data}</h1>
-                    </div>
-                : null }
-
-                { dashboard && !error ?
-                    <div className="full">
-                        <DashboardHeader {...this.props} />
-                        <div className="Dash-wrapper wrapper full-height">
-                            { dashboard.ordered_cards.length === 0 ?
-                                <div className="flex flex-column layout-centered">
-                                    <span className="QuestionCircle">?</span>
-                                    <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
-                                    <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
-                                </div>
-                            :
-                                <DashboardGrid {...this.props} />
-                            }
-                        </div>
-                    </div>
-                : null }
-            </div>
+                </div>
+            }
+            </LoadingAndErrorWrapper>
         );
     }
 }
