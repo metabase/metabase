@@ -7,6 +7,7 @@ import AddToDashSelectDashModal from '../components/AddToDashSelectDashModal.rea
 import CardFavoriteButton from './card_favorite_button.react';
 import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
 import Header from "metabase/components/Header.react";
+import HistoryModal from "metabase/components/HistoryModal.react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import QueryModeToggle from './query_mode_toggle.react';
@@ -23,10 +24,11 @@ export default React.createClass({
         tableMetadata: React.PropTypes.object, // can't be required, sometimes null
         cardApi: React.PropTypes.func.isRequired,
         dashboardApi: React.PropTypes.func.isRequired,
+        revisionApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
         notifyCardDeletedFn: React.PropTypes.func.isRequired,
         notifyCardAddedToDashFn: React.PropTypes.func.isRequired,
-        revertCardFn: React.PropTypes.func.isRequired,
+        reloadCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
         isShowingDataReference: React.PropTypes.bool.isRequired,
         toggleDataReferenceFn: React.PropTypes.func.isRequired,
@@ -37,7 +39,8 @@ export default React.createClass({
     getInitialState: function() {
         return {
             recentlySaved: null,
-            modal: null
+            modal: null,
+            revisions: null
         };
     },
 
@@ -115,10 +118,25 @@ export default React.createClass({
         this.props.onChangeLocation(this.props.fromUrl);
     },
 
+    onFetchRevisions: async function({ entity, id }) {
+        var revisions = await this.props.revisionApi.list({ entity, id }).$promise;
+        this.setState({ revisions });
+    },
+
+    onRevertToRevision: function({ entity, id, revision_id }) {
+        return this.props.revisionApi.revert({ entity, id, revision_id }).$promise;
+    },
+
+    onRevertedRevision: function() {
+        this.props.reloadCardFn();
+        this.refs.cardHistory.toggleModal();
+    },
+
     getHeaderButtons: function() {
-        var saveButton;
+        var buttons = [];
+
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
-            saveButton = (
+            buttons.push(
                 <PopoverWithTrigger
                     ref="saveModal"
                     tether={false}
@@ -135,40 +153,34 @@ export default React.createClass({
             );
         }
 
-        var queryModeToggle;
+        if (!this.props.cardIsNewFn()) {
+            buttons.push(
+                <PopoverWithTrigger
+                    ref="cardHistory"
+                    tether={false}
+                    triggerElement={<Icon name="history" width="16px" height="16px" />}
+                >
+                    <HistoryModal
+                        revisions={this.state.revisions}
+                        entityType="card"
+                        entityId={this.props.card.id}
+                        onFetchRevisions={this.onFetchRevisions}
+                        onRevertToRevision={this.onRevertToRevision}
+                        onClose={() => this.refs.cardHistory.toggleModal()}
+                        onReverted={this.onRevertedRevision}
+                    />
+                </PopoverWithTrigger>
+            );
+        }
+
         if (this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()) {
-            queryModeToggle = (
+            buttons.push(
                 <QueryModeToggle
                     currentQueryMode={this.props.card.dataset_query.type}
                     setQueryModeFn={this.setQueryMode}
                 />
             );
         }
-
-        var cloneButton;
-        // if (this.props.card.id) {
-        //     cloneButton = (
-        //         <a href="#" className="mx1 text-grey-4 text-brand-hover" title="Ask another question based on this question">
-        //             <Icon name='clone' width="16px" height="16px" onClick={this.props.cloneCardFn}></Icon>
-        //         </a>
-        //     );
-        // }
-        //
-        var cardFavorite;
-        // if (this.props.card.id != undefined) {
-        //     cardFavorite = (<CardFavoriteButton cardApi={this.props.cardApi} cardId={this.props.card.id}></CardFavoriteButton>);
-        // }
-        //
-        var addToDashButton;
-        // if (this.props.card.id != undefined) {
-        //     addToDashButton = (
-        //         <AddToDashboard
-        //             card={this.props.card}
-        //             dashboardApi={this.props.dashboardApi}
-        //             broadcastEventFn={this.props.broadcastEventFn}
-        //         />
-        //     )
-        // }
 
         var dataReferenceButtonClasses = cx({
             'mx1': true,
@@ -183,11 +195,7 @@ export default React.createClass({
             </a>
         );
 
-        return [
-            [saveButton, queryModeToggle],
-            [cardFavorite, cloneButton, addToDashButton],
-            [dataReferenceButton]
-        ].map(section => section.filter(button => !!button)).filter(section => section.length > 0);
+        return [buttons, [dataReferenceButton]];
     },
 
     getEditingButtons: function() {
@@ -211,7 +219,7 @@ export default React.createClass({
         }
         if (this.props.cardIsDirtyFn()) {
             editingButtons.push(
-                <a className="Button Button--small text-uppercase" href="#" onClick={this.props.revertCardFn}>Discard Changes</a>
+                <a className="Button Button--small text-uppercase" href="#" onClick={this.props.reloadCardFn}>Discard Changes</a>
             );
         }
         editingButtons.push(

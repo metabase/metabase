@@ -74,7 +74,7 @@ export default React.createClass({
             return (
                 <span>
                     <Icon name='check' width="12px" height="12px" />
-                    {this.props.successText}
+                    <span className="ml1">{this.props.successText}</span>
                 </span>
             );
         } else if (this.state.result === "failed") {

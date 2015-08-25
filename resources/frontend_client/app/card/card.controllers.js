@@ -72,8 +72,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -133,22 +133,17 @@ CardControllers.controller('CardDetail', [
             fromUrl: $routeParams.from,
             cardApi: Card,
             dashboardApi: Dashboard,
+            revisionApi: Revision,
             broadcastEventFn: function(eventName, value) {
                 $rootScope.$broadcast(eventName, value);
             },
-            notifyCardChangedFn: function(modifiedCard) {
+            notifyCardChangedFn: async function(modifiedCard) {
                 // these are the only things we let the header change
                 card.name = modifiedCard.name;
                 card.description = modifiedCard.description;
                 card.public_perms = modifiedCard.public_perms;
 
                 renderAll();
-
-                // this looks a little hokey, but its preferrable to setup our functions as promises so that callers can
-                // be certain when they have been resolved.
-                var deferred = $q.defer();
-                deferred.resolve();
-                return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
@@ -182,9 +177,7 @@ CardControllers.controller('CardDetail', [
                     setCard(card, { setDirty: true, replaceState: false })
                 });
             },
-            revertCardFn: function() {
-                revertCard();
-            },
+            reloadCardFn: reloadCard,
             onChangeLocation: function(url) {
                 $timeout(() => $location.url(url))
             },
@@ -859,7 +852,8 @@ CardControllers.controller('CardDetail', [
             savedCardSerialized = null;
         }
 
-        function revertCard() {
+        function reloadCard() {
+            delete $routeParams.serializedCard;
             loadAndSetCard();
         }
 

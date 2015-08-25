@@ -8,14 +8,16 @@ import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.react";
 import DeleteDashboardModal from "./DeleteDashboardModal.react";
-import HistoryModal from "./HistoryModal.react";
+import HistoryModal from "metabase/components/HistoryModal.react";
 
 import {
     setEditingDashboard,
     fetchDashboard,
     setDashboardAttributes,
     saveDashboard,
-    deleteDashboard
+    deleteDashboard,
+    fetchRevisions,
+    revertToRevision
 } from '../actions';
 
 import cx from "classnames";
@@ -55,6 +57,14 @@ export default class DashboardHeader extends Component {
     onRevertedRevision() {
         this.refs.dashboardHistory.toggleModal();
         this.props.dispatch(fetchDashboard(this.props.dashboard.id));
+    }
+
+    onFetchRevisions({ entity, id }) {
+        return this.props.dispatch(fetchRevisions({ entity, id }));
+    }
+
+    onRevertToRevision({ entity, id, revision_id }) {
+        return this.props.dispatch(revertToRevision({ entity, id, revision_id }));
     }
 
     getEditingButtons() {
@@ -112,7 +122,9 @@ export default class DashboardHeader extends Component {
                         dispatch={this.props.dispatch}
                         entityType="dashboard"
                         entityId={dashboard.id}
-                        revisions={this.props.revisions}
+                        revisions={this.props.revisions["dashboard-"+dashboard.id]}
+                        onFetchRevisions={this.onFetchRevisions.bind(this)}
+                        onRevertToRevision={this.onRevertToRevision.bind(this)}
                         onClose={() => this.refs.dashboardHistory.toggleModal()}
                         onReverted={() => this.onRevertedRevision()}
                     />

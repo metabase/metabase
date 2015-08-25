@@ -46,7 +46,7 @@
             <div class="Grid">
                 <ul class="Grid-cell">
                     <li ng-repeat="card in cards | filter:searchFilter">
-                        <a href="/card/{{card.id}}" class="Entity flex align-center no-decoration mb2 py2 lg-p2 border-bottom">
+                        <a href="/card/{{card.id}}?clone" class="Entity flex align-center no-decoration mb2 py2 lg-p2 border-bottom">
                             <div class="flex flex-column">
                                 <div class="flex align-center">
                                     <h4 class="Entity-title break-word text-brand-hover">{{card.name}}</h4>

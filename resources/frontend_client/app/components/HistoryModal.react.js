@@ -6,11 +6,7 @@ import ActionButton from "metabase/components/ActionButton.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 import Modal from "metabase/components/Modal.react";
 
-import { fetchRevisions, revertToRevision } from "../actions";
-
 import moment from "moment";
-
-window.moment = moment;
 
 function formatDate(date) {
     var m = moment(date);
@@ -32,7 +28,7 @@ export default class HistoryModal extends Component {
     async componentDidMount() {
         let { entityType, entityId } = this.props;
         try {
-            await this.props.dispatch(fetchRevisions({ entity: entityType, id: entityId }));
+            await this.props.onFetchRevisions({ entity: entityType, id: entityId });
         } catch (error) {
             this.setState({ error: error });
         }
@@ -40,12 +36,17 @@ export default class HistoryModal extends Component {
 
     async revert(revision) {
         let { entityType, entityId } = this.props;
-        await this.props.dispatch(revertToRevision({ entity: entityType, id: entityId, revision_id: revision.id }));
-        this.props.onReverted();
+        try {
+            await this.props.onRevertToRevision({ entity: entityType, id: entityId, revision_id: revision.id });
+            this.props.onReverted();
+        } catch (e) {
+            console.warn("revert failed", e);
+            throw e;
+        }
     }
 
     render() {
-        var revisions = this.props.revisions[this.props.entityType+"-"+this.props.entityId];
+        var { revisions } = this.props;
         return (
             <Modal
                 title="Change History"
@@ -91,9 +92,11 @@ export default class HistoryModal extends Component {
 }
 
 HistoryModal.propTypes = {
+    revisions: PropTypes.array,
     entityType: PropTypes.string.isRequired,
     entityId: PropTypes.number.isRequired,
-    revisions: PropTypes.object.isRequired,
+    onFetchRevisions: PropTypes.func.isRequired,
+    onRevertToRevision: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     onReverted: PropTypes.func.isRequired
 };
