@@ -85,14 +85,14 @@
 ;;; # ------------------------------------------------------------ DATE FUNCTIONS ------------------------------------------------------------
 
 ;;; ## PARSE-DATE-YYYY-MM-DD
-(expect #inst "2014-01-01T08" (parse-date-yyyy-mm-dd "2014-01-01"))
-(expect #inst "2014-03-03T08" (parse-date-yyyy-mm-dd "2014-02-31"))
+(expect #inst "2014-01-01T08" (parse-iso-8601 "2014-01-01"))
+(expect #inst "2014-03-03T08" (parse-iso-8601 "2014-02-31"))
 
 ;;; ## DATE->YYYY-MM-DD
 (expect "2014-01-01" (date->yyyy-mm-dd #inst "2014-01-01T08"))
 (expect "2014-03-03" (date->yyyy-mm-dd #inst "2014-03-03T08"))
 
-;;; ## DATE-STRING?
+;;; ## DATE-STRING-YYYY-MM-DD??
 (expect false (date-string? nil))
 (expect false (date-string? 100))
 (expect false (date-string? ""))

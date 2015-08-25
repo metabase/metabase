@@ -9,8 +9,10 @@
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)
+           java.text.SimpleDateFormat
            (java.util Calendar
-                      Date)))
+                      Date)
+           javax.xml.bind.DatatypeConverter))
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -35,28 +37,20 @@
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
-  (-> (Date.)
-      .getTime
-      (java.sql.Timestamp.)))
+  (java.sql.Timestamp. (System/currentTimeMillis)))
 
-(defn parse-iso8601
-  "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
-  ^java.sql.Date
+(defn parse-iso-8601
+  "Parse a [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted date string and return a `java.sql.Timestamp`."
+  ^java.sql.Timestamp
   [^String datetime]
   (some->> datetime
-           (time/parse (time/formatters :date-time))
-           (coerce/to-long)
-           (java.sql.Date.)))
+           DatatypeConverter/parseDateTime
+           .getTime         ; Calendar
+           .getTime         ; java.util.Date
+           java.sql.Timestamp.))
 
-(def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
-  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
-
-(defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
-  ^java.sql.Date [^String date]
-  (-> (.parse yyyy-mm-dd-simple-date-format date)
-      .getTime
-      java.sql.Date.))
+(def ^:private ^SimpleDateFormat yyyy-mm-dd-simple-date-format
+  (SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn date->yyyy-mm-dd
   "Convert a date to a `YYYY-MM-DD` string."
@@ -67,15 +61,17 @@
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
   ^Float [^String date]
   (-> date
-      parse-date-yyyy-mm-dd
+      parse-iso-8601
       .getTime
       (/ 1000)))
 
 (defn date-string?
-  "Is S a `YYYY-MM-DD` date string?"
+  "Is S a valid [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) date string?
+   (`YYYY-MM-DD` date strings *are* ISO 8601 date strings)"
   [s]
   (boolean (when (string? s)
-             (re-matches #"^\d{4}-[01]\d-[0-3]\d$" s)))) ; close enough
+             (try (parse-iso-8601 s)
+                  (catch Throwable _)))))
 
 (defn ^Date days-ago
   "Return a `Date` that is N days ago."

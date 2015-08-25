@@ -13,9 +13,13 @@
                                          [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
-  (:import (metabase.driver.query_processor.expand Field
+  (:import java.sql.Timestamp
+           (metabase.driver.query_processor.expand Field
                                                    OrderByAggregateField
-                                                   Value)))
+                                                   Value)
+           (metabase.driver.query_processor.datetime DateTimeField
+                                                     DateTimeLiteral
+                                                     DateTimeValue)))
 
 (declare apply-form
          log-korma-form)
@@ -92,24 +96,17 @@
 (defn- quote-name [nm]
   (i/quote-name (:driver *query*) nm))
 
+(defn- cast-as-date [field]
+  {:korma.sql.utils/func "CAST(%s AS DATE)"
+   :korma.sql.utils/args [field]})
+
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name field-name base-type special-type]} include-as?]
-     (cond
-       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       :else                                              (keyword (format "%s.%s" table-name field-name)))))
-
+    ([{:keys [table-name field-name]} _]
+     (keyword (format "%s.%s" table-name field-name))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
@@ -135,7 +132,44 @@
        (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
        (= base-type :UUIDField)         (do (assert (string? value))
                                             (java.util.UUID/fromString value))
-       :else                            value))))
+       :else                            value)))
+
+  DateTimeValue
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [relative-amount cast-unit extract-unit]} _]
+     (let [v (cond
+               extract-unit       (i/date-extract (:driver *query*) extract-unit cast-unit (sqlfn :NOW))
+               (= cast-unit :day) (cast-as-date (sqlfn :NOW))
+               :else              (i/date-trunc (:driver *query*) cast-unit (sqlfn :NOW)))]
+       (if (zero? relative-amount)
+         v
+         {:korma.sql.utils/func (format "(%%s + %d)" relative-amount)
+          :korma.sql.utils/args [v]}))))
+
+  DateTimeLiteral
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [^Timestamp value]} _]
+     `(Timestamp/valueOf ~(.toString value))))
+
+  DateTimeField
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [cast-unit extract-unit], {:keys [base-type special-type field-name table-name]} :field} include-as?]
+     (let [f     (cond
+                   extract-unit       (partial i/date-extract (:driver *query*) extract-unit cast-unit)
+                   (= cast-unit :day) cast-as-date
+                   :else              (partial i/date-trunc (:driver *query*) cast-unit))
+           field (cond
+                   (= special-type :timestamp_seconds)      (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
+                   (= special-type :timestamp_milliseconds) (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
+                   :else                                    (keyword (format "%s.%s" table-name field-name)))]
+       (cond-> (f field)
+         include-as? (vector (keyword field-name)))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
@@ -243,13 +277,15 @@
     (log/debug
      (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
                                                          (walk/prewalk (fn [form]                               ; strip korma.core/ qualifications from symbols in the form
-                                                                         (if-not (symbol? form) form            ; to remove some of the clutter
-                                                                                 (symbol (name form)))))
+                                                                         (cond                                  ; to remove some of the clutter
+                                                                           (symbol? form)  (symbol (name form))
+                                                                           (keyword? form) (keyword (name form))
+                                                                           :else           form)))
                                                          (u/pprint-to-str)))
      (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
                                                                 `(~let-form ~binding-form                       ; has to go there to work correctly
                                                                             (sql-only ~@body))))
-                                                        (s/replace #"\sFROM" "\nFROM")                          ; add newlines to the SQL to make it more readable
+                                                        #_(s/replace #"\sFROM" "\nFROM")                          ; add newlines to the SQL to make it more readable
                                                         (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
                                                         (s/replace #"\sWHERE" "\nWHERE")
                                                         (s/replace #"\sGROUP BY" "\nGROUP BY")
