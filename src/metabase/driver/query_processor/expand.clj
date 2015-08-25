@@ -125,13 +125,14 @@
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
   [field]
-  (set/rename-keys field {:id           :field-id
-                          :name         :field-name
-                          :display_name :field-display-name
-                          :special_type :special-type
-                          :base_type    :base-type
-                          :table_id     :table-id
-                          :parent_id    :parent-id}))
+  (set/rename-keys field {:id              :field-id
+                          :name            :field-name
+                          :display_name    :field-display-name
+                          :special_type    :special-type
+                          :base_type       :base-type
+                          :preview_display :preview-display
+                          :table_id        :table-id
+                          :parent_id       :parent-id}))
 
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT."
@@ -142,7 +143,7 @@
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])
+      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description], :id [in field-ids])
                         (m/map-vals rename-mb-field-keys)
                         (m/map-vals #(assoc % :parent (when (:parent-id %)
                                                         (ph (:parent-id %))))))]

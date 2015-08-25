@@ -2,6 +2,7 @@
 /*global _, document, confirm*/
 
 import MetabaseAnalytics from '../lib/analytics';
+import DataGrid from "metabase/lib/data_grid";
 
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
@@ -501,6 +502,12 @@ CardControllers.controller('CardDetail', [
                         dataset_query.query.aggregation[0] === "rows") {
                     // if our query aggregation is "rows" then ALWAYS set the display to "table"
                     card.display = "table";
+                }
+
+                // if we are display bare rows, filter out columns with preview_display = false
+                if (Query.isStructured(dataset_query) &&
+                        Query.isBareRowsAggregation(dataset_query.query)) {
+                    queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
                 }
 
                 renderAll();

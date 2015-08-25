@@ -9,6 +9,29 @@ function compareNumbers(a, b) {
 
 
 var DataGrid = {
+    filterOnPreviewDisplay: function(data) {
+        // find any columns where preview_display = false
+        var hiddenColumnIdxs = _.map(data.cols, function(col, idx) { if(!col.preview_display) return idx; });
+        hiddenColumnIdxs = _.filter(hiddenColumnIdxs, function(val) { return val !== undefined; });
+
+        // filter out our data grid using the indexes of the hidden columns
+        var filteredRows = data.rows.map(function(row, rowIdx) {
+            return row.filter(function(cell, cellIdx) {
+                if (_.contains(hiddenColumnIdxs, cellIdx)) {
+                    return false;
+                } else {
+                    return true;
+                }
+            });
+        });
+
+        return {
+            cols: _.filter(data.cols, function(col) { return col.preview_display; }),
+            columns: _.map(data.cols, function(col) { return col.display_name; }),
+            rows: filteredRows
+        };
+    },
+
     pivot: function(data) {
         // find the lowest cardinality dimension and make it our "pivoted" column
         // TODO: we assume dimensions are in the first 2 columns, which is less than ideal
