@@ -1,7 +1,8 @@
 "use strict";
 /*global _*/
 
-import ReactGridLayout from "react-grid-layout";
+import ReactGridLayout, { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
+
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import DashCard from "./DashCard.react";
@@ -16,7 +17,7 @@ export default class DashboardGrid extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            layout: this.getLayout(props),
+            layouts: this.getLayouts(props),
             removeModalDashCard: null,
             rowHeight: 0
         };
@@ -24,10 +25,16 @@ export default class DashboardGrid extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        this.setState({ layout: this.getLayout(nextProps) });
+        this.setState({
+            layouts: this.getLayouts(nextProps)
+        });
     }
 
-    onLayoutChange(layout) {
+    onLayoutChange(layout, allLayouts) {
+        // only set the layout for large breakpoint
+        if (layout !== allLayouts["lg"]) {
+            return;
+        }
         var changes = layout.filter(newLayout => {
             return !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard))
         });
@@ -54,8 +61,11 @@ export default class DashboardGrid extends React.Component {
         });
     }
 
-    getLayout(props) {
-        return props.dashboard.ordered_cards.map(this.getLayoutForDashCard);
+    getLayouts(props) {
+        var mainLayout = props.dashboard.ordered_cards.map(this.getLayoutForDashCard);
+        // for mobile just layout cards vertically
+        var mobileLayout = mainLayout.map((l, i) => ({ ...l, x: 0, y: i * 4, w: 6, h: 4}));
+        return { lg: mainLayout, sm: mobileLayout };
     }
 
     onEditDashCard(dc) {
@@ -81,7 +91,8 @@ export default class DashboardGrid extends React.Component {
 
     // make grid square by getting the container width, then dividing by 6
     calculateSizing() {
-        let rowHeight = React.findDOMNode(this).offsetWidth / 6;
+        let width = React.findDOMNode(this).offsetWidth;
+        let rowHeight = Math.floor(width / 6);
         if (this.state.rowHeight !== rowHeight) {
             this.setState({ rowHeight });
         }
@@ -105,15 +116,20 @@ export default class DashboardGrid extends React.Component {
         // margin-left and margin-right offsets the 10px padding inserted by RGL
         return (
             <div style={{marginLeft: "-10px", marginRight: "-10px"}}>
-                <ReactGridLayout
+                <ResponsiveReactGridLayout
                     className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing })}
-                    cols={6}
+                    breakpoints={{lg: 753, sm: 752}}
+                    layouts={this.state.layouts}
+                    // NOTE: these need to be different otherwise RGL doesn't switch breakpoints
+                    // https://github.com/STRML/react-grid-layout/issues/92
+                    cols={{lg: 6, sm: 1}}
+                    // NOTE: ideally this would vary based on the breakpoint but RGL doesn't support that yet
+                    // instead we keep the same row height and adjust the layout height to get the right aspect ratio
                     rowHeight={this.state.rowHeight}
                     verticalCompact={false}
                     isDraggable={this.props.isEditing}
                     isResizable={this.props.isEditing || true}
-                    onLayoutChange={(layout) => this.onLayoutChange(layout)}
-                    layout={this.state.layout}
+                    onLayoutChange={(...args) => this.onLayoutChange(...args)}
                 >
                     {dashboard.ordered_cards.map(dc =>
                         <div key={dc.id} className="DashCard">
@@ -133,7 +149,7 @@ export default class DashboardGrid extends React.Component {
                             </div>
                         </div>
                     )}
-                </ReactGridLayout>
+                </ResponsiveReactGridLayout>
                 {this.renderRemoveModal()}
             </div>
         );

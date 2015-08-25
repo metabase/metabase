@@ -7,6 +7,8 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
 
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
     methods.forEach((methodName) => {
@@ -97,17 +99,16 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
 
 export const addCardToDashboard = function({ dashId, cardId }) {
     return function(dispatch, getState) {
-        let id = Math.random();
+        var state = getState();
+        var existingCards = state.dashboards[dashId].ordered_cards.map(id => state.dashcards[id]);
+        let id = Math.random(); // temporary id
         dispatch(createAction(ADD_CARD_TO_DASH)({
             id: id,
             dashboard_id: dashId,
             card_id: cardId,
-            card: getState().cards[cardId],
-            col: 0,
-            row: 0,
-            sizeX: 2,
-            sizeY: 2,
-            isAdded: true
+            card: state.cards[cardId],
+            isAdded: true,
+            ...getPositionForNewDashCard(existingCards)
         }));
     };
 }
@@ -148,7 +149,8 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             .map(async dc => {
                 if (dc.isAdded) {
                     var result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
-                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY }
+                    // mark isAdded because addcard doesn't record the position
+                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, isAdded: true }
                 } else {
                     return dc;
                 }
