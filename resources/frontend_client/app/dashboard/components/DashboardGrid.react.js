@@ -17,8 +17,10 @@ export default class DashboardGrid extends React.Component {
         super(props);
         this.state = {
             layout: this.getLayout(props),
-            removeModalDashCard: null
+            removeModalDashCard: null,
+            rowHeight: 0
         };
+        this.calculateSizing = this.calculateSizing.bind(this);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -77,6 +79,27 @@ export default class DashboardGrid extends React.Component {
         }
     }
 
+    // make grid square by getting the container width, then dividing by 6
+    calculateSizing() {
+        let rowHeight = React.findDOMNode(this).offsetWidth / 6;
+        if (this.state.rowHeight !== rowHeight) {
+            this.setState({ rowHeight });
+        }
+    }
+
+    componentDidMount() {
+        window.addEventListener('resize', this.calculateSizing);
+        this.calculateSizing();
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('resize', this.calculateSizing);
+    }
+
+    componentDidUpdate() {
+        this.calculateSizing();
+    }
+
     render() {
         var { dashboard } = this.props;
         // margin-left and margin-right offsets the 10px padding inserted by RGL
@@ -85,7 +108,7 @@ export default class DashboardGrid extends React.Component {
                 <ReactGridLayout
                     className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing })}
                     cols={6}
-                    rowHeight={175}
+                    rowHeight={this.state.rowHeight}
                     verticalCompact={false}
                     isDraggable={this.props.isEditing}
                     isResizable={this.props.isEditing || true}
