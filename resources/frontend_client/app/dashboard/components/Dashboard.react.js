@@ -35,7 +35,9 @@ export default class Dashboard extends Component {
             <LoadingAndErrorWrapper loading={!dashboard} error={error}>
             {() =>
                 <div className="full">
-                    <DashboardHeader {...this.props} />
+                    <header className="bg-white border-bottom">
+                        <DashboardHeader {...this.props} />
+                    </header>
                     <div className="Dash-wrapper wrapper full-height">
                         { dashboard.ordered_cards.length === 0 ?
                             <div className="flex flex-column layout-centered">

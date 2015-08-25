@@ -31,7 +31,7 @@ export default class LoadingAndErrorWrapper extends Component {
         return (
             <div className="Dashboard full-height flex flex-row flex-full">
                 { this.props.error ?
-                    <div className="Dash-wrapper wrapper py4 text-brand text-centered flex-full bg-white">
+                    <div className="wrapper py4 text-brand text-centered flex-full bg-white">
                         <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>
                     </div>
                 : this.props.loading ?

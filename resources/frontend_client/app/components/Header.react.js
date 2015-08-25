@@ -11,7 +11,7 @@ export default class Header extends React.Component {
     renderEditHeader() {
         if (this.props.isEditing) {
             return (
-                <div className="EditHeader p1 px3 flex align-center">
+                <div className="EditHeader wrapper py1 flex align-center">
                     <span className="EditHeader-title">{this.props.editingTitle}</span>
                     <span className="EditHeader-subtitle mx1">{this.props.editingSubtitle}</span>
                     <span className="flex-align-right">
@@ -26,7 +26,7 @@ export default class Header extends React.Component {
         var titleAndDescription;
         if (this.props.isEditingInfo) {
             titleAndDescription = (
-                <div className="EditTitle flex flex-column flex-full bordered rounded mt1 mb2">
+                <div className="Header-title flex flex-column flex-full bordered rounded my1">
                     <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.item.name} onChange={this.setItemAttribute.bind(this, "name")}/>
                     <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description} onChange={this.setItemAttribute.bind(this, "description")} placeholder="No description yet" />
                 </div>
@@ -34,7 +34,7 @@ export default class Header extends React.Component {
         } else {
             if (this.props.item && this.props.item.id != null) {
                 titleAndDescription = (
-                    <div className="EditTitle flex flex-column flex-full mt1 mb2">
+                    <div className="Header-title flex flex-column flex-full my1">
                         <div className="text-bold h3 p1">{this.props.item.name}</div>
                         <div className="h4 p1">{this.props.item.description || "No description yet"}</div>
                     </div>
@@ -42,7 +42,7 @@ export default class Header extends React.Component {
             } else {
                 titleAndDescription = (
                     <div className="flex align-center">
-                        <h1 className="Entity-title">New {this.props.objectType}</h1>
+                        <h1 className="Entity-title my1">{"New " + this.props.objectType}</h1>
                     </div>
                 );
             }
@@ -59,7 +59,7 @@ export default class Header extends React.Component {
 
         var headerButtons = this.props.headerButtons.map((section, sectionIndex) => {
             return (
-                <span key={sectionIndex} className="QueryHeader-section">
+                <span key={sectionIndex} className="Header-buttonSection">
                     {section.map((button, buttonIndex) => {
                         return <span key={buttonIndex}>{button}</span>;
                     })}
@@ -70,7 +70,7 @@ export default class Header extends React.Component {
         return (
             <div>
                 {this.renderEditHeader()}
-                <div className="py1 lg-py2 xl-py3 QueryBuilder-section wrapper flex align-center">
+                <div className={"QueryBuilder-section flex align-center " + this.props.headerClassName}>
                     <div className="Entity">
                         {titleAndDescription}
                         {attribution}
@@ -90,5 +90,6 @@ Header.defaultProps = {
     headerButtons: [],
     editingTitle: "",
     editingSubtitle: "",
-    editingButtons: []
+    editingButtons: [],
+    headerClassName: "py1 lg-py2 xl-py3 wrapper"
 };

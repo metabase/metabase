@@ -170,6 +170,7 @@ export default class DashboardHeader extends Component {
 
         return (
             <Header
+                headerClassName="Dash-wrapper wrapper"
                 objectType="dashboard"
                 item={dashboard}
                 isEditing={this.props.isEditing}
