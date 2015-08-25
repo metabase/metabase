@@ -1,27 +1,8 @@
 'use strict';
 
-var CardDirectives = angular.module('metabase.card.directives', []);
+/*global setTimeout */
 
-CardDirectives.directive('mbLatlongHeatmap', ['CardRenderer', function(CardRenderer) {
-
-    function link(scope, element, attr) {
-
-        scope.$watch('mbLatlongHeatmap', function(value) {
-            if (value) {
-                CardRenderer.latlongHeatmap('map-canvas', 'whatever', value);
-            }
-        });
-    }
-
-    return {
-        restrict: 'A',
-        scope: {
-            mbLatlongHeatmap: '='
-        },
-        link: link
-    };
-}]);
-
+var CardDirectives = angular.module('corvus.card.directives', []);
 
 CardDirectives.directive('mbCardFavoriteButton', ['Card', function(Card) {
 
