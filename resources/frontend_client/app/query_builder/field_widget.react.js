@@ -19,23 +19,23 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            modalOpen: this.props.isInitiallyOpen || false
+            isOpen: this.props.isInitiallyOpen || false
         };
     },
 
     setField:function(value) {
         this.props.setField(value);
         if (Query.isValidField(value)) {
-            this.toggleModal();
+            this.toggle();
         }
     },
 
-    toggleModal: function() {
-        this.setState({ modalOpen: !this.state.modalOpen });
+    toggle: function() {
+        this.setState({ isOpen: !this.state.isOpen });
     },
 
     renderPopover: function() {
-        if (this.state.modalOpen) {
+        if (this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top center',
                 targetAttachment: 'bottom center',
@@ -46,7 +46,7 @@ export default React.createClass({
                     ref="popover"
                     className="PopoverBody PopoverBody--withArrow FieldPopover"
                     tetherOptions={tetherOptions}
-                    handleClickOutside={this.toggleModal}
+                    handleClickOutside={this.toggle}
                 >
                     <FieldSelector
                         tableName={this.props.tableName}
@@ -67,7 +67,7 @@ export default React.createClass({
                     field={this.props.field}
                     fieldOptions={this.props.fieldOptions}
                     removeField={this.props.removeField}
-                    onClick={this.toggleModal}
+                    onClick={this.toggle}
                 />
                 {this.renderPopover()}
             </div>

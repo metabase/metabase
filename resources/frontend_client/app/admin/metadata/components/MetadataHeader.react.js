@@ -38,7 +38,7 @@ export default React.createClass({
                 itemTitleFn: (db) => db.name,
                 itemSelectFn: (db) => {
                     this.props.selectDatabase(db)
-                    this.refs.databasePopover.toggleModal();
+                    this.refs.databasePopover.toggle();
                 }
             }];
             var tetherOptions = {

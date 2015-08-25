@@ -26,8 +26,8 @@ export default React.createClass({
         };
     },
 
-    toggleModal: function() {
-        this.refs.popover.toggleModal();
+    toggle: function() {
+        this.refs.popover.toggle();
     },
 
     render: function() {
@@ -65,7 +65,7 @@ export default React.createClass({
                 itemSelectFn: (db) => {
                     this.props.setDatabaseFn(db.id)
                     if (!this.props.includeTables) {
-                        this.toggleModal();
+                        this.toggle();
                     }
                 }
             }
@@ -78,7 +78,7 @@ export default React.createClass({
                     selectedItem: table,
                     items: this.props.tables.filter(Table.isQueryable),
                     itemTitleFn: (table) => table.display_name,
-                    itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggleModal() }
+                    itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggle() }
                 });
             } else {
                 columns.push(null);

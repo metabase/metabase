@@ -24,8 +24,8 @@ export default React.createClass({
         };
     },
 
-    toggleModal: function() {
-        this.refs.popover.toggleModal();
+    toggle: function() {
+        this.refs.popover.toggle();
     },
 
     render: function() {
@@ -54,7 +54,7 @@ export default React.createClass({
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
                     this.props.onChange(this.props.optionValueFn(item))
-                    this.toggleModal();
+                    this.toggle();
                 }
             }
         ];

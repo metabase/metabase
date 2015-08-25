@@ -129,7 +129,7 @@ export default React.createClass({
 
     onRevertedRevision: function() {
         this.props.reloadCardFn();
-        this.refs.cardHistory.toggleModal();
+        this.refs.cardHistory.toggle();
     },
 
     getHeaderButtons: function() {
@@ -147,7 +147,7 @@ export default React.createClass({
                         card={this.props.card}
                         tableMetadata={this.props.tableMetadata}
                         saveFn={this.saveCard}
-                        closeFn={() => this.refs.saveModal.toggleModal()}
+                        closeFn={() => this.refs.saveModal.toggle()}
                     />
                 </PopoverWithTrigger>
             );
@@ -166,7 +166,7 @@ export default React.createClass({
                         entityId={this.props.card.id}
                         onFetchRevisions={this.onFetchRevisions}
                         onRevertToRevision={this.onRevertToRevision}
-                        onClose={() => this.refs.cardHistory.toggleModal()}
+                        onClose={() => this.refs.cardHistory.toggle()}
                         onReverted={this.onRevertedRevision}
                     />
                 </PopoverWithTrigger>
@@ -232,7 +232,7 @@ export default React.createClass({
                 <DeleteQuestionModal
                     card={this.props.card}
                     deleteCardFn={this.deleteCard}
-                    closeFn={() => this.refs.deleteModal.toggleModal()}
+                    closeFn={() => this.refs.deleteModal.toggle()}
                 />
             </PopoverWithTrigger>
         );

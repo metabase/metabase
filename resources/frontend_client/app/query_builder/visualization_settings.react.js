@@ -46,13 +46,13 @@ export default React.createClass({
     setDisplay: function(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
-        this.refs.displayPopover.toggleModal();
+        this.refs.displayPopover.toggle();
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
-        this.refs.colorPopover.toggleModal();
+        this.refs.colorPopover.toggle();
     },
 
     hasLatitudeAndLongitudeColumns: function(columnDefs) {

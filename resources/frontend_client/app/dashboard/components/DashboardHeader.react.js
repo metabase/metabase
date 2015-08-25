@@ -55,7 +55,7 @@ export default class DashboardHeader extends Component {
     }
 
     onRevertedRevision() {
-        this.refs.dashboardHistory.toggleModal();
+        this.refs.dashboardHistory.toggle();
         this.props.dispatch(fetchDashboard(this.props.dashboard.id));
     }
 
@@ -98,7 +98,7 @@ export default class DashboardHeader extends Component {
                 <DeleteDashboardModal
                     dispatch={this.props.dispatch}
                     dashboard={this.props.dashboard}
-                    onClose={() => this.refs.deleteDashboardModal.toggleModal()}
+                    onClose={() => this.refs.deleteDashboardModal.toggle()}
                     onDelete={() => this.onDeleteDashboard()}
                 />
             </PopoverWithTrigger>
@@ -125,7 +125,7 @@ export default class DashboardHeader extends Component {
                         revisions={this.props.revisions["dashboard-"+dashboard.id]}
                         onFetchRevisions={this.onFetchRevisions.bind(this)}
                         onRevertToRevision={this.onRevertToRevision.bind(this)}
-                        onClose={() => this.refs.dashboardHistory.toggleModal()}
+                        onClose={() => this.refs.dashboardHistory.toggle()}
                         onReverted={() => this.onRevertedRevision()}
                     />
                 </PopoverWithTrigger>
@@ -157,7 +157,7 @@ export default class DashboardHeader extends Component {
                     dispatch={this.props.dispatch}
                     dashboard={dashboard}
                     cards={this.props.cards}
-                    onClose={() => this.refs.addQuestionModal.toggleModal()}
+                    onClose={() => this.refs.addQuestionModal.toggle()}
                 />
             </PopoverWithTrigger>
         ]);
