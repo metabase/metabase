@@ -1,5 +1,6 @@
 (ns metabase.routes
-  (:require [compojure.core :refer [context defroutes GET]]
+  (:require [cheshire.core :as cheshire]
+            [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
             [ring.util.response :as resp]
             [stencil.core :as stencil]
@@ -23,7 +24,10 @@
 
 (def index-page-vars
   "Static values that we inject into the index.html page via Mustache."
-  {:ga_code "UA-60817802-1"})
+  {:ga_code "UA-60817802-1"
+   :intercom_code "gqfmsgf1"
+   :anon_tracking_enabled (metabase.models.setting/get :anon-tracking-enabled)
+   :site_name (metabase.models.setting/get :site-name)})
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (let [redirect-to-setup? (fn [{:keys [uri]}]
@@ -31,7 +35,9 @@
                                 (not (re-matches #"^/setup/.*$" uri))))
       index (fn [request]
               (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))
-                  (-> (resp/response (stencil/render-string (load-index) index-page-vars))
+                  (-> (resp/response (stencil/render-string
+                                       (load-index)
+                                       {:bootstrap_json (cheshire/generate-string index-page-vars)}))
                       (resp/content-type "text/html")
                       (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616)))))]
   (defroutes routes
