@@ -2,7 +2,7 @@
 
 import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
-import Modal from 'metabase/components/Modal.react';
+import ModalBody from "metabase/components/ModalBody.react";
 
 import Query from "metabase/lib/query";
 
@@ -94,7 +94,7 @@ export default React.createClass({
         var name = this.props.card.name || Query.generateQueryDescription(this.props.card.dataset_query, this.props.tableMetadata);
 
         return (
-            <Modal
+            <ModalBody
                 title="Save Question"
                 closeFn={this.props.closeFn}
             >
@@ -123,7 +123,7 @@ export default React.createClass({
                         {formError}
                     </div>
                 </form>
-            </Modal>
+            </ModalBody>
         );
     },
 });

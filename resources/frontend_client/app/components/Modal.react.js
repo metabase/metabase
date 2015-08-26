@@ -1,33 +1,75 @@
-'use strict';
+"use strict";
 
-import Icon from "metabase/components/Icon.react";
-import OnClickOutside from 'react-onclickoutside';
+import React, { Component, PropTypes } from "react";
 
-export default React.createClass({
-    displayName: "Modal",
-    propTypes: {
-        title: React.PropTypes.string.isRequired,
-        closeFn: React.PropTypes.func.isRequired
-    },
-    mixins: [OnClickOutside],
+import ModalContent from "./ModalContent.react";
 
-    handleClickOutside: function() {
-        this.props.closeFn();
-    },
+export default class Modal extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {};
+    }
 
-    render: function() {
+    componentWillMount() {
+        this._modalElement = document.createElement('span');
+        document.querySelector('body').appendChild(this._modalElement);
+    }
+
+    componentDidMount() {
+        this._renderPopover();
+    }
+
+    componentDidUpdate() {
+        this._renderPopover();
+    }
+
+    componentWillUnmount() {
+        React.unmountComponentAtNode(this._modalElement);
+        if (this._modalElement.parentNode) {
+            this._modalElement.parentNode.removeChild(this._modalElement);
+        }
+    }
+
+    handleClickOutside() {
+        if (this.props.onClose) {
+            this.props.onClose()
+        }
+    }
+
+    _modalComponent() {
         return (
-            <div className="Modal NewForm flex flex-column">
-                <div className="Form-header flex align-center">
-                    <h2 className="flex-full">{this.props.title}</h2>
-                    <a href="#" className="text-grey-3 p1" onClick={this.props.closeFn}>
-                        <Icon name='close' width="16px" height="16px"/>
-                    </a>
-                </div>
-                <div className="flex-full scroll-y">
+            <ModalContent handleClickOutside={this.handleClickOutside.bind(this)}>
+                <div className={this.props.className}>
                     {this.props.children}
                 </div>
-            </div>
+            </ModalContent>
         );
     }
-});
+
+    _renderPopover() {
+        if (this.props.isOpen) {
+            // modal is open, lets do this!
+            React.render(
+                <div className="Modal-backdrop">
+                    {this._modalComponent()}
+                </div>
+            , this._modalElement);
+        } else {
+            // if the modal isn't open then actively unmount our popover
+            React.unmountComponentAtNode(this._modalElement);
+        }
+    }
+
+    render() {
+        return <span />;
+    }
+}
+
+Modal.propTypes = {
+    isOpen: PropTypes.bool
+};
+
+Modal.defaultProps = {
+    className: "Modal",
+    isOpen: true
+};

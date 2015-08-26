@@ -1,7 +1,7 @@
 'use strict';
 /*global document*/
 
-import PopoverContent from './PopoverContent.react'
+import ModalContent from './ModalContent.react'
 
 import Tether from 'tether';
 
@@ -10,21 +10,14 @@ export default React.createClass({
 
     getDefaultProps: function() {
         return {
-            tether: true,
             isOpen: true
         };
     },
 
     componentWillMount: function() {
-        var popoverContainer = document.createElement('span');
-        if (this.props.tether) {
-            popoverContainer.className = 'PopoverContainer';
-        }
+        this._popoverElement = document.createElement('span');
+        this._popoverElement.className = 'PopoverContainer';
 
-        this._popoverElement = popoverContainer;
-
-        // TODO: we probably should put this somewhere other than body because then
-        //       its outside our ng-view and could cause lots of issues
         document.querySelector('body').appendChild(this._popoverElement);
     },
 
@@ -55,11 +48,11 @@ export default React.createClass({
 
     _popoverComponent: function() {
         return (
-            <PopoverContent handleClickOutside={this.handleClickOutside}>
+            <ModalContent handleClickOutside={this.handleClickOutside}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
-            </PopoverContent>
+            </ModalContent>
         );
     },
 
@@ -79,18 +72,17 @@ export default React.createClass({
         if (this.props.isOpen) {
             // modal is open, lets do this!
             React.render(this._popoverComponent(), this._popoverElement);
-            if (this.props.tether) {
-                var tetherOptions = (this.props.tetherOptions) ? this.props.tetherOptions : this._tetherOptions();
 
-                // NOTE: these must be set here because they relate to OUR component and can't be passed in
-                tetherOptions.element = this._popoverElement;
-                tetherOptions.target = this.getDOMNode().parentNode;
+            var tetherOptions = this.props.tetherOptions || this._tetherOptions();
 
-                if (this._tether !== undefined && this._tether !== null) {
-                    this._tether.setOptions(tetherOptions);
-                } else {
-                    this._tether = new Tether(tetherOptions);
-                }
+            // NOTE: these must be set here because they relate to OUR component and can't be passed in
+            tetherOptions.element = this._popoverElement;
+            tetherOptions.target = this.getDOMNode().parentNode;
+
+            if (this._tether !== undefined && this._tether !== null) {
+                this._tether.setOptions(tetherOptions);
+            } else {
+                this._tether = new Tether(tetherOptions);
             }
         } else {
             // if the modal isn't open then actively unmount our popover

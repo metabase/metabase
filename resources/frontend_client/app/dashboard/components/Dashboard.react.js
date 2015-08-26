@@ -32,7 +32,7 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <LoadingAndErrorWrapper loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className="Dashboard full-height flex flex-row flex-full" loading={!dashboard} error={error}>
             {() =>
                 <div className="full">
                     <header className="bg-white border-bottom">

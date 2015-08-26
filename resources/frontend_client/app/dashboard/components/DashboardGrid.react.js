@@ -6,6 +6,7 @@ import ReactGridLayout, { Responsive as ResponsiveReactGridLayout } from "react-
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import DashCard from "./DashCard.react";
+import Modal from "metabase/components/Modal.react";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.react";
 
 import { setDashCardAttributes } from "../actions";
@@ -77,16 +78,16 @@ export default class DashboardGrid extends React.Component {
 
     renderRemoveModal() {
         // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-        if (this.state.removeModalDashCard != null) {
-            return (
+        return (
+            <Modal isOpen={this.state.removeModalDashCard != null}>
                 <RemoveFromDashboardModal
                     dispatch={this.props.dispatch}
                     dashcard={this.state.removeModalDashCard}
                     dashboard={this.props.dashboard}
                     onClose={() => this.setState({ removeModalDashCard: null })}
                 />
-            );
-        }
+            </Modal>
+        );
     }
 
     // make grid square by getting the container width, then dividing by 6

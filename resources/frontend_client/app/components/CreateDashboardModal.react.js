@@ -2,7 +2,7 @@
 
 import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
-import Modal from 'metabase/components/Modal.react';
+import ModalBody from "metabase/components/ModalBody.react";
 
 var cx = React.addons.classSet;
 
@@ -82,7 +82,7 @@ export default React.createClass({
         );
 
         return (
-            <Modal
+            <ModalBody
                 title="Create Dashboard"
                 closeFn={this.props.closeFn}
             >
@@ -110,7 +110,7 @@ export default React.createClass({
                         {formError}
                     </div>
                 </form>
-            </Modal>
+            </ModalBody>
         );
     }
 });

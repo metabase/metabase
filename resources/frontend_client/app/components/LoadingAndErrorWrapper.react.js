@@ -29,7 +29,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
     render() {
         return (
-            <div className="Dashboard full-height flex flex-row flex-full">
+            <div className={this.props.className}>
                 { this.props.error ?
                     <div className="wrapper py4 text-brand text-centered flex-full bg-white">
                         <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>

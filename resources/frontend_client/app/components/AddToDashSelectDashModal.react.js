@@ -1,6 +1,6 @@
 'use strict';
 
-import Modal from 'metabase/components/Modal.react';
+import ModalBody from "metabase/components/ModalBody.react";
 import SortableItemList from 'metabase/components/SortableItemList.react';
 
 import moment from 'moment';
@@ -41,7 +41,7 @@ export default React.createClass({
 
     render: function() {
         return (
-            <Modal
+            <ModalBody
                 title="Add Question to Dashboard"
                 closeFn={this.props.closeFn}
             >
@@ -49,7 +49,7 @@ export default React.createClass({
                     items={this.state.dashboards}
                     onClickItemFn={this.addToDashboard}
                 />
-            </Modal>
+            </ModalBody>
         );
     }
 });

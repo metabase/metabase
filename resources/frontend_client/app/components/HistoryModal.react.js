@@ -4,7 +4,7 @@ import React, { Component, PropTypes } from "react";
 
 import ActionButton from "metabase/components/ActionButton.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
-import Modal from "metabase/components/Modal.react";
+import ModalBody from "metabase/components/ModalBody.react";
 
 import moment from "moment";
 
@@ -48,13 +48,13 @@ export default class HistoryModal extends Component {
     render() {
         var { revisions } = this.props;
         return (
-            <Modal
+            <ModalBody
                 title="Change History"
                 closeFn={() => this.props.onClose()}
             >
                 <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>
                 {() =>
-                    <div className="pb4">
+                    <div className="pb4 flex-full">
                         <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">
                             <span className="flex-half">When</span>
                             <span className="flex-half">Who</span>
@@ -86,7 +86,7 @@ export default class HistoryModal extends Component {
                     </div>
                 }
                 </LoadingAndErrorWrapper>
-            </Modal>
+            </ModalBody>
         );
     }
 }

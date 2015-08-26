@@ -9,7 +9,8 @@ import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
 import Header from "metabase/components/Header.react";
 import HistoryModal from "metabase/components/HistoryModal.react";
 import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
+import Modal from "metabase/components/Modal.react";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.react";
 import QueryModeToggle from './query_mode_toggle.react';
 import QuestionSavedModal from '../components/QuestionSavedModal.react';
 import SaveQuestionModal from '../components/SaveQuestionModal.react';
@@ -137,9 +138,8 @@ export default React.createClass({
 
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
             buttons.push(
-                <PopoverWithTrigger
+                <ModalWithTrigger
                     ref="saveModal"
-                    tether={false}
                     triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
                     triggerElement="Save"
                 >
@@ -149,15 +149,14 @@ export default React.createClass({
                         saveFn={this.saveCard}
                         closeFn={() => this.refs.saveModal.toggle()}
                     />
-                </PopoverWithTrigger>
+                </ModalWithTrigger>
             );
         }
 
         if (!this.props.cardIsNewFn()) {
             buttons.push(
-                <PopoverWithTrigger
+                <ModalWithTrigger
                     ref="cardHistory"
-                    tether={false}
                     triggerElement={<Icon name="history" width="16px" height="16px" />}
                 >
                     <HistoryModal
@@ -169,7 +168,7 @@ export default React.createClass({
                         onClose={() => this.refs.cardHistory.toggle()}
                         onReverted={this.onRevertedRevision}
                     />
-                </PopoverWithTrigger>
+                </ModalWithTrigger>
             );
         }
 
@@ -223,9 +222,8 @@ export default React.createClass({
             );
         }
         editingButtons.push(
-            <PopoverWithTrigger
+            <ModalWithTrigger
                 ref="deleteModal"
-                tether={false}
                 triggerClasses="Button Button--small text-uppercase"
                 triggerElement="Delete"
             >
@@ -234,31 +232,9 @@ export default React.createClass({
                     deleteCardFn={this.deleteCard}
                     closeFn={() => this.refs.deleteModal.toggle()}
                 />
-            </PopoverWithTrigger>
+            </ModalWithTrigger>
         );
         return editingButtons;
-    },
-
-    getModal: function() {
-        if (this.state.modal === "saved") {
-            return (
-                <QuestionSavedModal
-                    addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
-                    closeFn={() => this.setState({ modal: null })}
-                />
-            );
-        } else if (this.state.modal === "add-to-dashboard") {
-            return (
-                <AddToDashSelectDashModal
-                    card={this.props.card}
-                    dashboardApi={this.props.dashboardApi}
-                    closeFn={() => this.setState({ modal: null })}
-                    notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
-                />
-            );
-        } else {
-            return null;
-        }
     },
 
     render: function() {
@@ -283,7 +259,20 @@ export default React.createClass({
                 editingButtons={this.getEditingButtons()}
                 setItemAttributeFn={this.setCardAttribute}
             >
-                {this.getModal()}
+                <Modal isOpen={this.state.modal === "saved"}>
+                    <QuestionSavedModal
+                        addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
+                        closeFn={() => this.setState({ modal: null })}
+                    />
+                </Modal>
+                <Modal isOpen={this.state.modal === "add-to-dashboard"}>
+                    <AddToDashSelectDashModal
+                        card={this.props.card}
+                        dashboardApi={this.props.dashboardApi}
+                        closeFn={() => this.setState({ modal: null })}
+                        notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
+                    />
+                </Modal>
             </Header>
         );
     }

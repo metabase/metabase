@@ -9,7 +9,7 @@ import OnClickOutside from 'react-onclickoutside';
 var popoverStack = [];
 
 export default React.createClass({
-    displayName: 'PopoverContent',
+    displayName: 'ModalContent',
     mixins: [OnClickOutside],
 
     componentWillMount: function() {
@@ -18,7 +18,7 @@ export default React.createClass({
 
     componentDidMount: function() {
         // HACK: set the z-index of the parent element to ensure it's always on top
-        this.getDOMNode().parentNode.style.zIndex = popoverStack.length;
+        this.getDOMNode().parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
     },
 
     componentWillUnmount: function() {

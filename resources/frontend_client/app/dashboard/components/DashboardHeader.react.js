@@ -3,12 +3,12 @@
 import React, { Component, PropTypes } from "react";
 
 import ActionButton from "metabase/components/ActionButton.react";
-import Header from "metabase/components/Header.react";
-import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.react";
 import DeleteDashboardModal from "./DeleteDashboardModal.react";
+import Header from "metabase/components/Header.react";
 import HistoryModal from "metabase/components/HistoryModal.react";
+import Icon from "metabase/components/Icon.react";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.react";
 
 import {
     setEditingDashboard,
@@ -89,9 +89,8 @@ export default class DashboardHeader extends Component {
             );
         }
         editingButtons.push(
-            <PopoverWithTrigger
+            <ModalWithTrigger
                 ref="deleteDashboardModal"
-                tether={false}
                 triggerClasses="Button Button--small text-uppercase"
                 triggerElement="Delete"
             >
@@ -101,7 +100,7 @@ export default class DashboardHeader extends Component {
                     onClose={() => this.refs.deleteDashboardModal.toggle()}
                     onDelete={() => this.onDeleteDashboard()}
                 />
-            </PopoverWithTrigger>
+            </ModalWithTrigger>
         );
         return editingButtons;
     }
@@ -113,9 +112,8 @@ export default class DashboardHeader extends Component {
 
         if (this.props.isEditing) {
             buttonSections.push([
-                <PopoverWithTrigger
+                <ModalWithTrigger
                     ref="dashboardHistory"
-                    tether={false}
                     triggerElement={<Icon name="history" width="16px" height="16px" />}
                 >
                     <HistoryModal
@@ -128,7 +126,7 @@ export default class DashboardHeader extends Component {
                         onClose={() => this.refs.dashboardHistory.toggle()}
                         onReverted={() => this.onRevertedRevision()}
                     />
-                </PopoverWithTrigger>
+                </ModalWithTrigger>
             ]);
         }
 
@@ -148,9 +146,8 @@ export default class DashboardHeader extends Component {
 
         var isEmpty = dashboard.ordered_cards.length === 0;
         buttonSections.push([
-            <PopoverWithTrigger
+            <ModalWithTrigger
                 ref="addQuestionModal"
-                tether={false}
                 triggerElement={<Icon className={cx({ "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />}
             >
                 <AddToDashSelectQuestionModal
@@ -159,7 +156,7 @@ export default class DashboardHeader extends Component {
                     cards={this.props.cards}
                     onClose={() => this.refs.addQuestionModal.toggle()}
                 />
-            </PopoverWithTrigger>
+            </ModalWithTrigger>
         ]);
 
         return buttonSections;
