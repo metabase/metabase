@@ -60,12 +60,18 @@
          (integer? id)]}
   (sel :many Revision :model (:name entity), :model_id id, (order :id :DESC)))
 
-(defn- revisions-add-diff-strs [entity revisions]
-  (loop [acc [], [r1 r2 & more] revisions]
+(defn- revisions-add-diff-strs
+  "Add string descriptions of the change to each revision.  It's assumed revisions are in reverse chronological order."
+  [entity revisions]
+  (let [revision-desc (fn [rev1 rev2]
+                        (let [reverted (when (:is_reversion rev2) "reverted to an earlier revision and ")]
+                          (->> (describe-diff entity (:object rev1) (:object rev2))
+                               (str reverted))))]
+    (loop [acc [], [r1 r2 & more] revisions]
     (if-not r2
       (conj acc (assoc r1 :description "First revision."))
-      (recur (conj acc (assoc r1 :description (describe-diff entity (:object r2) (:object r1))))
-             (conj more r2)))))
+      (recur (conj acc (assoc r1 :description (revision-desc r2 r1)))
+             (conj more r2))))))
 
 (defn- add-details
   "Hydrate `user` and add `:description` to a sequence of REVISIONS."

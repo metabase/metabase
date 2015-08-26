@@ -36,13 +36,13 @@
       :else               (format "%s, %s" (first parts) (build-sentence (rest parts))))))
 
 (defn diff-str
-  ([t o1 o2]
-   (let [[before after] (data/diff o1 o2)
-         reverted (when (:is_reversion o2) "reverted to an earlier revision and ")]
-     (when before
-       (let [ks (keys before)]
-         (some-> (filter identity (for [k ks]
-                                (diff-str* t k (k before) (k after))))
-                 build-sentence
-                 (s/replace-first #" it " (format " this %s " t))
-                 (->> (str (when reverted reverted)))))))))
+  "Create a string describing how `o1` is different from `o2`.
+   The directionality of the statement should indicate that `o1` changed into `o2`."
+  [t o1 o2]
+  (let [[before after] (data/diff o1 o2)]
+    (when before
+      (let [ks (keys before)]
+        (some-> (filter identity (for [k ks]
+                                   (diff-str* t k (k before) (k after))))
+                build-sentence
+                (s/replace-first #" it " (format " this %s " t)))))))
