@@ -81,7 +81,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="relative flex full mt3">
+            <div className="relative flex full mt3 mb1">
                 {visualizationSettings}
                 <div className="absolute left right ml-auto mr-auto layout-centered flex">
                     <RunButton
@@ -90,9 +90,9 @@ export default React.createClass({
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
                     />
-                    {!this.queryIsDirty() && this.renderCount()}
                 </div>
-                <div className="flex-align-right">
+                <div className="flex-align-right flex align-center">
+                    {!this.queryIsDirty() && this.renderCount()}
                     {this.renderDownloadButton()}
                 </div>
             </div>
@@ -117,7 +117,7 @@ export default React.createClass({
     renderCount: function() {
         if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
-                <div className="mt1">
+                <div>
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
                     <b>{this.props.result.row_count}</b>
                     { (this.props.result.data.rows.length !== 1) ? (" rows") : (" row")}.
