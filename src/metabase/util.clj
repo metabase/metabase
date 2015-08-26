@@ -309,8 +309,9 @@
   "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
   [^Throwable e]
   (when e
-    (when-let [stacktrace (.getStackTrace e)]
-      (->> (map str (.getStackTrace e))
-           (filterv (partial re-find #"metabase"))))))
+    (vec (or (seq (when-let [stacktrace (.getStackTrace e)]
+                    (->> (map str (.getStackTrace e))
+                         (filter (partial re-find #"metabase")))))
+             (.getStackTrace e)))))
 
 (require-dox-in-this-namespace)

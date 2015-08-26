@@ -42,12 +42,15 @@
   (fn [query]
     (try (qp query)
          (catch Throwable e
-           {:status     :failed
-            :error      (.getMessage e)
-            :stacktrace (u/filtered-stacktrace e)
-            :query      (dissoc query :database :driver)
+           (println e)
+           {:status         :failed
+            :error          (or (.getMessage e) (str e))
+            :stacktrace     (u/filtered-stacktrace e)
+            :query          (dissoc query :database :driver)
             :expanded-query (try (dissoc (expand/expand query) :database :driver)
-                                 (catch Throwable _))}))))
+                                 (catch Throwable e
+                                   {:error      (or (.getMessage e) (str e))
+                                    :stacktrace (u/filtered-stacktrace e) }))}))))
 
 
 (defn- pre-expand [qp]

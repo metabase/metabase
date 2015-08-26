@@ -327,7 +327,7 @@
      (when (non-empty-clause? form#)
        (match form#
          ~@match-forms
-         form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
+         ~'_ (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
 
 ;; ## -------------------- Aggregation --------------------
 
@@ -405,7 +405,41 @@
       (= v false)
       (orderable-Value? v)))
 
+;; [TIME_INTERVAL ...] filters are just syntactic sugar for more complicated datetime filter subclauses.
+;; This function parses the args to the TIME_INTERVAL and returns the appropriate subclause.
+;; This clause is then recursively parsed below by parse-filter-subclause.
+;;
+;; A valid input looks like [TIME_INTERVAL <field> (current|last|next|<int>) <unit>] .
+;;
+;; "current", "last", and "next" are the same as supplying the integers 0, -1, and 1, respectively.
+;; For these values, we want to generate a clause like [= [datetime_field <field> as <unit>] [datetime <int> <unit>]].
+;;
+;; For ints > 1 or < -1, we want to generate a range (i.e., a BETWEEN filter clause). These should *exclude* the current moment in time.
+;;
+;; e.g. [TIME_INTERVAL <field> -30 "day"] refers to the past 30 days, excluding today; i.e. the range of -31 days ago to -1 day ago.
+;; Thus values of n < -1 translate to clauses like [BETWEEN [datetime_field <field> as day] [datetime -31 day] [datetime -1 day]].
+(defparser parse-time-interval-filter-subclause
+  ;; For "current"/"last"/"next" replace with the appropriate int and recurse
+  [field "current" unit] (parse-time-interval-filter-subclause [field  0 unit])
+  [field "last"    unit] (parse-time-interval-filter-subclause [field -1 unit])
+  [field "next"    unit] (parse-time-interval-filter-subclause [field  1 unit])
+
+  ;; For values of -1 <= n <= 1, generate the appropriate [= ...] clause
+  [field  0 unit] ["=" ["datetime_field" field "as" unit] ["datetime" "now"]]
+  [field -1 unit] ["=" ["datetime_field" field "as" unit] ["datetime" -1 unit]]
+  [field  1 unit] ["=" ["datetime_field" field "as" unit] ["datetime"  1 unit]]
+
+  ;; For other int values of n generate the appropriate [BETWEEN ...] clause
+  [field (n :guard #(< % -1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime" (dec n) unit] ["datetime"      -1 unit]]
+  [field (n :guard #(> %  1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime"       1 unit] ["datetime" (inc n) unit]])
+
 (defparser parse-filter-subclause
+  ["TIME_INTERVAL" (field-id :guard field-id?) (n :guard #(or (integer? %) (contains? #{"current" "last" "next"} %))) (unit :guard datetime-value-unit?)]
+  (parse-filter-subclause (parse-time-interval-filter-subclause [field-id n (name unit)]))
+
+  ["TIME_INTERVAL" & args]
+  (throw (Exception. (format "Invalid TIME_INTERVAL clause: %s" args)))
+
   ["INSIDE" (lat-field :guard unexpanded-Field?) (lon-field :guard unexpanded-Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)

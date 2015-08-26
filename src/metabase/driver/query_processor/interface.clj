@@ -78,6 +78,11 @@
   "Units that can be applied to [relative] `DateTimeValues`."
   #{:minute :hour :day :week :month :quarter :year})
 
+(defn datetime-value-unit?
+  "Can unit be used in a `[datetime ...]` clause?"
+  [unit]
+  (contains? datetime-value-units (keyword unit)))
+
 
 ;;; # ------------------------------------------------------------ PLACEHOLDERS ------------------------------------------------------------
 
