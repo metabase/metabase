@@ -1,7 +1,7 @@
 'use strict';
 /*global document*/
 
-import ModalContent from './ModalContent.react'
+import OnClickOutsideWrapper from './OnClickOutsideWrapper.react'
 
 import Tether from 'tether';
 
@@ -48,11 +48,11 @@ export default React.createClass({
 
     _popoverComponent: function() {
         return (
-            <ModalContent handleClickOutside={this.handleClickOutside}>
+            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
-            </ModalContent>
+            </OnClickOutsideWrapper>
         );
     },
 

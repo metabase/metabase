@@ -1,6 +1,6 @@
 'use strict';
 
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from 'metabase/components/SortableItemList.react';
 
 import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
@@ -20,7 +20,7 @@ export default class AddToDashSelectQuestionModal extends React.Component {
 
     render() {
         return (
-            <ModalBody
+            <ModalContent
                 title="Add Question to Dashboard"
                 closeFn={this.props.onClose}
             >
@@ -29,7 +29,7 @@ export default class AddToDashSelectQuestionModal extends React.Component {
                     onClickItemFn={(card) => this.onAdd(card)}
                     showIcons={true}
                 />
-            </ModalBody>
+            </ModalContent>
         );
     }
 }

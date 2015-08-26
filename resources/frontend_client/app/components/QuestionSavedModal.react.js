@@ -1,7 +1,7 @@
 'use strict';
 
 import Icon from "metabase/components/Icon.react";
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 
 export default React.createClass({
     displayName: "QuestionSavedModal",
@@ -12,7 +12,7 @@ export default React.createClass({
 
     render: function() {
         return (
-            <ModalBody
+            <ModalContent
                 title="Saved! What now?"
                 closeFn={this.props.closeFn}
             >
@@ -36,7 +36,7 @@ export default React.createClass({
                         </li>
                     </ul>
                 </div>
-            </ModalBody>
+            </ModalContent>
         );
     }
 });

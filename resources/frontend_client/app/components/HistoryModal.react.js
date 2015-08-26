@@ -4,7 +4,7 @@ import React, { Component, PropTypes } from "react";
 
 import ActionButton from "metabase/components/ActionButton.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 
 import moment from "moment";
 
@@ -48,7 +48,7 @@ export default class HistoryModal extends Component {
     render() {
         var { revisions } = this.props;
         return (
-            <ModalBody
+            <ModalContent
                 title="Change History"
                 closeFn={() => this.props.onClose()}
             >
@@ -86,7 +86,7 @@ export default class HistoryModal extends Component {
                     </div>
                 }
                 </LoadingAndErrorWrapper>
-            </ModalBody>
+            </ModalContent>
         );
     }
 }

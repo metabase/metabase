@@ -1,42 +1,28 @@
-'use strict';
+"use strict";
 
-import OnClickOutside from 'react-onclickoutside';
+import React, { Component, PropTypes } from "react";
 
-// this feels a little silly, but we have this component ONLY so that we can add the OnClickOutside functionality on an
-// arbitrary set of html content.  I wish we could do that more easily
+import Icon from "metabase/components/Icon.react";
 
-// keep track of the order popovers were opened so we only close the last one when clicked outside
-var popoverStack = [];
-
-export default React.createClass({
-    displayName: 'ModalContent',
-    mixins: [OnClickOutside],
-
-    componentWillMount: function() {
-        popoverStack.push(this);
-    },
-
-    componentDidMount: function() {
-        // HACK: set the z-index of the parent element to ensure it's always on top
-        this.getDOMNode().parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
-    },
-
-    componentWillUnmount: function() {
-        // remove popover from the stack
-        var index = popoverStack.indexOf(this);
-        if (index >= 0) {
-            popoverStack.splice(index, 1);
-        }
-    },
-
-    handleClickOutside: function(e) {
-        // only propagate event for the popover on top of the stack
-        if (this === popoverStack[popoverStack.length - 1]) {
-            this.props.handleClickOutside.apply(this, arguments);
-        }
-    },
-
-    render: function() {
-        return this.props.children;
+export default class ModalContent extends Component {
+    render() {
+        return (
+            <div className="Modal-content NewForm">
+                <div className="Modal-header Form-header flex align-center">
+                    <h2 className="flex-full">{this.props.title}</h2>
+                    <a href="#" className="text-grey-3 p1" onClick={this.props.closeFn}>
+                        <Icon name='close' width="16px" height="16px"/>
+                    </a>
+                </div>
+                <div className="Modal-body">
+                    {this.props.children}
+                </div>
+            </div>
+        );
     }
-});
+}
+
+ModalContent.propTypes = {
+    title: PropTypes.string.isRequired,
+    closeFn: PropTypes.func.isRequired
+};
