@@ -4,13 +4,10 @@ set -eo pipefail
 BASEDIR=$(dirname $0)
 source "$BASEDIR/functions"
 
-if [ -z $1 ]; then
-  echo "Oops!  You need to specify the name of the EB app version to deploy."
-  exit 1
-fi
-
-EB_VERSION_LABEL=$1
 EB_ENVIRONMENT=metabase-proto
 
+# create EB version
+create_eb_version
+
 # deploy EB version to environment
-deploy_version ${EB_ENVIRONMENT} ${EB_VERSION_LABEL}
+deploy_version ${EB_ENVIRONMENT}

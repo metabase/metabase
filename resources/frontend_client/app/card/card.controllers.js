@@ -480,6 +480,12 @@ CardControllers.controller('CardDetail', [
 
                 } else {
                     isObjectDetail = false;
+
+                    // if we are display bare rows, filter out columns with preview_display = false
+                    if (Query.isStructured(dataset_query) &&
+                            Query.isBareRowsAggregation(dataset_query.query)) {
+                        queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
+                    }
                 }
 
                 // try a little logic to pick a smart display for the data
@@ -502,12 +508,6 @@ CardControllers.controller('CardDetail', [
                         dataset_query.query.aggregation[0] === "rows") {
                     // if our query aggregation is "rows" then ALWAYS set the display to "table"
                     card.display = "table";
-                }
-
-                // if we are display bare rows, filter out columns with preview_display = false
-                if (Query.isStructured(dataset_query) &&
-                        Query.isBareRowsAggregation(dataset_query.query)) {
-                    queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
                 }
 
                 renderAll();
