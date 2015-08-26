@@ -1,6 +1,16 @@
+# Overview
+
+Metabase is a server process that can be run on anywhere that you can run a Java jar. On installation it will have three main portions. First off is the Jar containing the server code. The most recent stable version can be download from [Metabase Downloads](http://wwww.metabase.com/downloads). Next there will need to be a place where Metabase can store persistent data, or its Application Database. Once the server is up and running with a place to store application data, you can connect to one or more Databases. 
+
+
 # Application database
 
-By default, Metabase uses an embedded database ([H2](http://www.h2database.com/)). If you want to use another database (for ease of administration, backup, or any other reason) you can inject the alternative database vis environment variables. For example
+The application database is where metabase stores information about users, their saved questions, dashboards, as well as the semantic model of any underlying databases or data warehouses Metabase is connected to. 
+
+By default, Metabase uses an embedded database ([H2](http://www.h2database.com/)). 
+
+Often, when running Metabase in production, it is useful to use a another database for ease of administration, backing up the application data and in the case of deployments to AWS or other unreliable instances, to survive instances going down.
+To use an alternative database, you can inject database credentials via environment variables. For example
 
     export MB_DB_TYPE=postgres 
     export MB_DB_DBNAME=metabase 
@@ -12,38 +22,69 @@ By default, Metabase uses an embedded database ([H2](http://www.h2database.com/)
 
 would run the application using a local postgres server instead of the default embedded database.
 
-# Backing up 
+## Backing up the application database
 
-The application will create file named "metabase.db.h2.db" in the directory it is being run in. This can be backed up by either stopping the application server and backing up this file. Alternatively to backup the application data while it is running, you can follow the methods described at the relevant [H2 documentation](http://www.h2database.com/html/tutorial.html#upgrade_backup_restore)
+If you use the embedded datbase, the application will create file named "metabase.db.h2.db" in the directory it is being run in. This can be backed up by either stopping the application server and backing up this file. Alternatively to backup the application data while it is running, you can follow the methods described at the relevant [H2 documentation](http://www.h2database.com/html/tutorial.html#upgrade_backup_restore)
 
-# Scaling
+If you are using an alternative database, you should back it up using the standard tools for that database.
 
-Typically, you'll want to evaluate the application on any database you have access to. If you want to expose the application to other users, you should carefully consider how you access your database. In addition as the data sizes grow, there will be a number of options in how you should setup your overall analytics infrastructure.
+# Running the server
 
-## Starting out
+## Locally
 
-It is typical to point this to a production database of a small application (or a large application with a small number of users). This typically works for periods before launch or when the database is either static, or has a small number of users (like internal applications or low volume but high value paid applications). Eventually, as usage of the Query Server grows, and the load on the production database increases a couple of things happen
+The metabase jar can be run in a number of ways. Simplest is simply to run the jar on any commandline or shell that allows you to run Java programs.  It can run on any java platform that supports Java 6 or more recent versions. To check that you have a working java platform, go to a command shell and type 
+`java -version`
 
-* Expensive queries can slow down the database for production users
-* The occasional scans (like on first installation) the Query Server runs to keep its internal representations of your database sync'd might add significant load
-* Any recurring queries you run might start to add significant load
-* You might need to import third party data for analysis, which typically should not live on your main database
+If you see something like
 
-At some point, you should separate out your main application database and your analytics database. There are a number of ways to do this.
+    java version "1.60_65"
+    Java (TM) SE Runtime Environment (build 1.6.0_65-b14-466.1-11M4716)
+    Java HotSpot (TM) 64-Bit Server VM (build 20.65-b04-466.1, mixed mode)
 
-## Read Replica
+you're good to go. Otherwise, you should install the Java JDK from [Oracle's Java Downloads page](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 
-Assuming you do not need to do a lot of transformation or ingest lots of third party data sources, this can be a good stopgap to setting up a complete data/analytics infrastructure. For MySQL or Postgres, just set up a read replica and make sure to not let production application servers hit it for normal queries.
+Assuming you have a working JDK, you can now run the jar with a command line of 
+
+`java -jar metabase-0.10.0.jar` 
+
+(assuming the jar you downloaded is 'metabase-0.10.0.jar')
+
+Note that unless you specified an alternative application database, this will create a file called "metabase.db.h2.db" in the current directory. It is generally advisable to place the jar in its own directory.
+
+Running the jar directly in a shell is typically the first step in trying out Metabase, and can in a pinch be used for a quick and dirty deployment on a shared server. However, if you are going to be running Metabase on an instance connected to the internet, you should use a more hardened deployment model.
+
+## In production
+
+There are a number of ways to run Metabase in production. 
+
+### Elastic Beanstalk
+
+[Elastic Beanstalk Installation Recipe](installing-on-elastic-beanstalk.md).
+
+### running a container
+
+injecting database variables vs using an embedded database
+
+### running the jar using `screen`
+
+where to put the database?
+
+###  HTTPS!
+
+Regardless of how you deploy Metabase, it is *strongly* recommended that you use HTTPS for all traffic. If you are using 
+
+    * if beanstalk, use an ELB and terminate there
+    * otherwise, recommend nginx as a proxy + provide instructions
 
 
-## Dedicated analytics database
 
-Typically once enough data is in the system and/or the tranformation needs are complex enough, a dedicated analytics database is used. There are many options ranging from a normal general purpose database (MySQL, Postgres, SQL Server, etc), to a dedicated Analytics database (Vertica, Redshift, GreenPlum, Terredata, etc), the new generation of SQL on Hadoop databases (Spark, Presto) or NoSQL databases (Druid, Cassandra, etc). 
+# Connecting to Data Warehouses
 
-Typically, once there is a dedicated analytics database or a datawarehouse, ETL processes become important. Learn more at See the [Data Warehouse Guide](data-warehousing.md).
+In the context of this document, a data warehouse is a database that Metabase will connect to and allow its users to ask questions against. It can either be a dedicated analytics database, a full fledged data warehouse, or just another applications database. 
 
-# Database Drivers
-Metabase currently has drivers for
+
+## Database Drivers
+Metabase can currently connect to the following types of data warehouses:
 
 * H2
 * MySQL
@@ -52,22 +93,10 @@ Metabase currently has drivers for
 
 On our roadmap are
 
-* [Druid](www.github.com/metabase/metabase-init/issues/655)
-* [Parse](www.github.com/metabase/metabase-init/issues/654) 
-* [Redshift](www.github.com/metabase/metabase-init/issues/652)
+* [Druid](http://www.github.com/metabase/metabase-init/issues/655)
+* [Parse](http://www.github.com/metabase/metabase-init/issues/654) 
+* [Redshift](http://www.github.com/metabase/metabase-init/issues/652)
 
 If you are interested in the status of any of these drivers, click through to the issues to see what work is being done. If you are interested in a driver to another database, please open an issue!
-
-
-## Production Deployments
-* Beanstalk
-    * [Elastic Beanstalk Installation Recipe](installing-on-elastic-beanstalk.md).
-* running a container
-    * injecting database variables vs using an embedded database
-* running a jar
-    * where to put the database?
-* HTTPS!
-	* if beanstalk, use an ELB and terminate there
-	* otherwise, recommend nginx as a proxy + provide instructions
 
 
