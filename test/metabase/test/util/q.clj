@@ -1,4 +1,5 @@
 (ns metabase.test.util.q
+  "See https://github.com/metabase/metabase-init/wiki/Q-Cheatsheet"
   (:refer-clojure :exclude [or and filter use = != < > <= >=])
   (:require [clojure.core :as core]
             [clojure.core.match :refer [match]]
@@ -34,21 +35,7 @@
 
 ;;; ## ID LOOKUP
 
-(def ^:dynamic *db* nil)
 (def ^:dynamic *table-name* nil)
-
-(defn db-id []
-  {:post [(integer? %)]}
-  (core/or (:id *db*)
-              (data/db-id)))
-
-(defn id [& args]
-  {:pre [(every? keyword? args)]
-   :post [(core/or (integer? %)
-                      (println (str "Couldn't find ID of: " args)))]}
-  (if *db*
-    (:id (apply data/-temp-get *db* (map name args)))
-    (apply data/id args)))
 
 (defmacro field [f]
   {:pre [(symbol? f)]}
@@ -69,10 +56,10 @@
 
       ;; table.field <-> (id table field)
       [[_ table field] (re-matches #"^([^\.]+)\.([^\.]+)$" f)]
-      `(id ~(keyword table) ~(keyword field))))
+      `(data/id ~(keyword table) ~(keyword field))))
 
    ;; fallback : (id *table-name* field)
-   `(id *table-name* ~(keyword f))))
+   `(data/id *table-name* ~(keyword f))))
 
 (defn resolve-dataset [dataset]
   (var-get (core/or (resolve dataset)
@@ -92,7 +79,7 @@
 
 (defmacro of [query table-name]
   (-> query
-      (assoc-in [:query :source_table] `(id ~(keyword table-name)))
+      (assoc-in [:query :source_table] `(data/id ~(keyword table-name)))
       (assoc-in [:context :table-name] (keyword table-name))))
 
 
@@ -144,7 +131,20 @@
 ;;; ## FILTER
 
 (def ^:const ^:private filter-clause-tokens
-  '#{inside not-null is-null between starts-with ends-with contains = != < > <= >=})
+  '#{inside not-null is-null between starts-with ends-with contains = != < > <= >= relative-days relative-years relative-months})
+
+;; These don't really need to be macros!
+(defmacro relative-days [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "days" n])
+
+(defmacro relative-months [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "months" n])
+
+(defmacro relative-years [n]
+  {:pre [(integer? n)]}
+  ["relative_date" "years" n])
 
 (defmacro and [& clauses]
   `["AND" ~@clauses])
@@ -206,7 +206,8 @@
        (core/filter seq)))
 
 (defmacro filter* [& args]
-  (first (filter-split args)))
+  (let [[filter-clause & more] (filter-split args)]
+    `(~@filter-clause ~@more)))
 
 (defmacro filter [query & args]
   (assoc-in query [:query :filter] `(filter* ~@args)))
@@ -249,9 +250,8 @@
 (defmacro with-temp-db [dataset query]
   (if-not dataset
     query
-    `(data/with-temp-db [db# (data/dataset-loader) (resolve-dataset ~dataset)]
-       (binding [*db* db#]
-         ~query))))
+    `(data/with-temp-db [~'_ (resolve-dataset ~dataset)]
+       ~query)))
 
 (defmacro with-driver [driver query]
   (if-not driver
@@ -259,25 +259,36 @@
     `(datasets/with-dataset ~driver
        ~query)))
 
-(defmacro Q** [{:keys [driver dataset return table-name]} query]
+(defmacro Q*** [f {:keys [driver dataset return table-name]} query]
   (assert table-name
     "Table name not specified in query, did you include an 'of' clause?")
   `(do (db/setup-db-if-needed)
        (->> (with-driver ~driver
               (binding [*table-name* ~table-name]
                 (with-temp-db ~dataset
-                  (driver/process-query ~query))))
+                  (~f ~query))))
             ~@return)))
 
-(defmacro Q* [q & [form & more]]
+(defmacro Q** [f q & [form & more]]
   (if-not form
-    `(Q** ~(:context q) ~(dissoc q :context))
-    `(Q* ~(macroexpand `(-> ~q ~form)) ~@more)))
+    `(Q*** ~f ~(:context q) ~(dissoc q :context))
+    `(Q** ~f ~(macroexpand `(-> ~q ~form)) ~@more)))
 
-(defmacro Q [& args]
-  `(Q* {:database (db-id)
-         :type     :query
+(defmacro Q* [f & args]
+  `(Q** ~f
+        {:database (data/db-id)
+         :type     "query"
          :query    {}
          :context  {:driver  nil
                     :dataset nil}}
         ~@(split-with-tokens top-level-tokens args)))
+
+(defmacro Q
+  "Expand and run a query written with the `Q` shorthand DSL."
+  [& args]
+  `(Q* driver/process-query ~@args))
+
+(defmacro Q-expand
+  "Expand (without running) a query written with the `Q` shorthand DSL."
+  [& args]
+  `(Q* identity ~@args))

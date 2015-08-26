@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             (clojure [set :refer [rename-keys]]
                      [string :as s])
-            [korma.db :as kdb]
+            (korma [core :as k]
+                   [db :as kdb])
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
@@ -11,9 +12,9 @@
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
                              [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
-                                                ISyncDriverSpecificSyncField driver-specific-sync-field!]])
+                                                ISyncDriverSpecificSyncField]])
             [metabase.driver.generic-sql :as generic-sql]
-            (metabase.driver.generic-sql [interface :refer :all]
+            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
                                          [util :refer [with-jdbc-metadata]])))
 
 (def ^:private ^:const column->base-type
@@ -83,48 +84,71 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(defrecord PostgresDriver []
-  ISqlDriverDatabaseSpecific
-  (connection-details->connection-spec [_ {:keys [ssl] :as details-map}]
-    (-> details-map
-        (dissoc :ssl)              ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-        (merge (when ssl           ; merging ssl-params will add :ssl back in if desirable
-                 ssl-params))
-        (rename-keys {:dbname :db})
-        kdb/postgres))
+(defn- connection-details->connection-spec [_ {:keys [ssl] :as details-map}]
+  (-> details-map
+      (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+      (merge (when ssl            ; merging ssl-params will add :ssl back in if desirable
+               ssl-params))
+      (rename-keys {:dbname :db})
+      kdb/postgres))
 
-  (database->connection-details [_ {:keys [details]}]
-    (let [{:keys [host port]} details]
-      (-> details
-          (assoc :host host
-                 :ssl  (:ssl details)
-                 :port (if (string? port) (Integer/parseInt port)
-                           port))
-          (rename-keys {:dbname :db}))))
+(defn- database->connection-details [_ {:keys [details]}]
+  (let [{:keys [host port]} details]
+    (-> details
+        (assoc :host host
+               :ssl  (:ssl details)
+               :port (if (string? port) (Integer/parseInt port)
+                         port))
+        (rename-keys {:dbname :db}))))
 
-  (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 %s'))::date" table-name field-name
-            (case           seconds-or-milliseconds
-              :seconds      "second"
-              :milliseconds "millisecond")))
+(defn- cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
+  (k/raw (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 %s'))" table-name field-name
+                 (case           seconds-or-milliseconds
+                   :seconds      "second"
+                   :milliseconds "millisecond"))))
 
-  (timezone->set-timezone-sql [_ timezone]
-    (format "SET LOCAL timezone TO '%s';" timezone))
+(defn- timezone->set-timezone-sql [_ timezone]
+  (format "SET LOCAL timezone TO '%s';" timezone))
 
-  ISyncDriverSpecificSyncField
-  (driver-specific-sync-field! [_ {:keys [table], :as field}]
-    (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
-      (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
-                                       jdbc/result-set-seq)]
-        (when (= type_name "json")
-          (upd Field (:id field) :special_type :json)
-          (assoc field :special_type :json))))))
+(defn- date-trunc [_ unit field]
+  {:korma.sql.utils/func (format "DATE_TRUNC('%s', %%s)" (name unit))
+   :korma.sql.utils/args [field]})
 
+(defn- date-extract [_ smaller-unit larger-unit field]
+  {:korma.sql.utils/args [field]
+   :korma.sql.utils/func (format "EXTRACT(%s FROM %%s)"
+                                 (case [smaller-unit larger-unit]
+                                   [:minute :hour]  "MINUTE"
+                                   [:hour :day]     "HOUR"
+                                   [:day :week]     "ISODOW"
+                                   [:day :month]    "DAY"
+                                   [:day :year]     "DOY"
+                                   [:week :year]    "WEEK"
+                                   [:month :year]   "MONTH"
+                                   [:quarter :year] "QUARTER"
+                                   _                (throw (Exception. (format "Don't know how to extract %s from %s." (name smaller-unit) (name larger-unit))))))})
+
+(defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
+  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
+    (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
+                                     jdbc/result-set-seq)]
+      (when (= type_name "json")
+        (upd Field (:id field) :special_type :json)
+        (assoc field :special_type :json)))))
+
+(defrecord PostgresDriver [])
 (extend PostgresDriver
-  IDriver                     GenericSQLIDriverMixin
-  ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
-  ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
-  ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
+  ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
+                                :database->connection-details        database->connection-details
+                                :cast-timestamp-to-date              cast-timestamp-to-date
+                                :timezone->set-timezone-sql          timezone->set-timezone-sql
+                                :date-trunc                          date-trunc
+                                :date-extract                        date-extract}
+  ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
+  IDriver                      GenericSQLIDriverMixin
+  ISyncDriverTableFKs          GenericSQLISyncDriverTableFKsMixin
+  ISyncDriverFieldAvgLength    GenericSQLISyncDriverFieldAvgLengthMixin
+  ISyncDriverFieldPercentUrls  GenericSQLISyncDriverFieldPercentUrlsMixin)
 
 (def ^:const driver
   (map->PostgresDriver {:column->base-type    column->base-type

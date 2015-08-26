@@ -8,7 +8,11 @@
             [clj-time.coerce :as coerce])
   (:import (java.net Socket
                      InetSocketAddress
-                     InetAddress)))
+                     InetAddress)
+           java.text.SimpleDateFormat
+           (java.util Calendar
+                      Date)
+           javax.xml.bind.DatatypeConverter))
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -33,41 +37,68 @@
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
-  (-> (java.util.Date.)
-      .getTime
-      (java.sql.Timestamp.)))
+  (java.sql.Timestamp. (System/currentTimeMillis)))
 
-(defn parse-iso8601
-  "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
-  ^java.sql.Date
+(defn parse-iso-8601
+  "Parse a [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted date string and return a `java.sql.Timestamp`."
+  ^java.sql.Timestamp
   [^String datetime]
   (some->> datetime
-           (time/parse (time/formatters :date-time))
-           (coerce/to-long)
-           (java.sql.Date.)))
+           DatatypeConverter/parseDateTime
+           .getTime         ; Calendar
+           .getTime         ; java.util.Date
+           java.sql.Timestamp.))
 
-(def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
-  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
-
-(defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
-  ^java.sql.Date [^String date]
-  (-> (.parse yyyy-mm-dd-simple-date-format date)
-      .getTime
-      java.sql.Date.))
+(def ^:private ^SimpleDateFormat yyyy-mm-dd-simple-date-format
+  (SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn date->yyyy-mm-dd
   "Convert a date to a `YYYY-MM-DD` string."
-  ^String [^java.util.Date date]
+  ^String [^Date date]
   (.format yyyy-mm-dd-simple-date-format date))
 
 (defn date-yyyy-mm-dd->unix-timestamp
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
   ^Float [^String date]
   (-> date
-      parse-date-yyyy-mm-dd
+      parse-iso-8601
       .getTime
       (/ 1000)))
+
+(defn date-string?
+  "Is S a valid [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) date string?
+   (`YYYY-MM-DD` date strings *are* ISO 8601 date strings)"
+  [s]
+  (boolean (when (string? s)
+             (try (parse-iso-8601 s)
+                  (catch Throwable _)))))
+
+(defn ^Date days-ago
+  "Return a `Date` that is N days ago."
+  [n & [^Date d]]
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/DAY_OF_MONTH (- (.get c Calendar/DAY_OF_MONTH) n))
+    (.getTime c)))
+
+(defn ^Date months-ago
+  "Return a `Date` that is N months ago."
+  [n & [^Date d]]
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/MONTH (- (.get c Calendar/MONTH) n))
+    (.getTime c)))
+
+(defn ^Date years-ago
+  "Return a `Date` that is N years ago."
+  [n & [^Date d]]
+  (let [c (Calendar/getInstance)]
+    (when d
+      (.setTime c d))
+    (.set c Calendar/YEAR (- (.get c Calendar/YEAR) n))
+    (.getTime c)))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."

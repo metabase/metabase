@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql
   (:require [clojure.set :as set]
-            (korma [db :as kdb]
+            (korma [core :as k]
+                   [db :as kdb]
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as korma-utils])
@@ -70,8 +71,8 @@
 
   (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
     (format (case seconds-or-milliseconds
-              :seconds      "CAST(TIMESTAMPADD(SECOND, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
-              :milliseconds "CAST(TIMESTAMPADD(MICROSECOND, (`%s`.`%s` * 1000), DATE '1970-01-01') AS DATE)" )
+              :seconds      "FROM_UNIXTIME(`%s`.`%s`)"
+              :milliseconds "FROM_UNIXTIME(`%s`.`%s` * 1000)")
             table-name field-name))
 
   (timezone->set-timezone-sql [_ timezone]

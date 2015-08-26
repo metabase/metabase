@@ -8,7 +8,8 @@
                    [name :as name])
             [incanter.distributions :as dist]
             (korma [core :as k]
-                   [db :as kdb]))
+                   [db :as kdb])
+            [metabase.util :as u])
   (:import java.util.Date))
 
 (def ^:private ^:const sample-dataset-filename
@@ -32,11 +33,6 @@
       (* 360)
       (- 180)))
 
-(defn ^Date years-ago [n]
-  (let [d (Date.)]
-    (.setYear d (- (.getYear d) n))
-    d))
-
 (defn ^Date random-date-between [^Date min ^Date max]
   (let [min-ms (.getTime min)
         max-ms (.getTime max)
@@ -51,7 +47,7 @@
     {:name       (format "%s %s" first last)
      :email      (internet/free-email (format "%s.%s" first last))
      :password   (str (java.util.UUID/randomUUID))
-     :birth_date (random-date-between (years-ago 60) (years-ago 18))
+     :birth_date (random-date-between (u/years-ago 60) (u/years-ago 18))
      :address    (address/street-address)
      :city       (address/city)
      :zip        (apply str (take 5 (address/zip-code)))
@@ -59,7 +55,7 @@
      :latitude   (random-latitude)
      :longitude  (random-longitude)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
-     :created_at (random-date-between (years-ago 1) (Date.))}))
+     :created_at (random-date-between (u/years-ago 1) (Date.))}))
 
 ;;; ## PRODUCTS
 
@@ -109,7 +105,7 @@
    :category   (rand-nth ["Widget" "Gizmo" "Gadget" "Doohickey"])
    :vendor     (random-company-name)
    :price      (random-price 12 100)
-   :created_at (random-date-between (years-ago 1) (Date.))})
+   :created_at (random-date-between (u/years-ago 1) (Date.))})
 
 
 ;;; ## ORDERS

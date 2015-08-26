@@ -94,6 +94,6 @@
              :uberjar {:aot :all}
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.5.6"]] ; Satistical functions like normal distibutions}})
-                                       :source-paths ["sample_dataset"]
+                                       :source-paths ["src", "sample_dataset"]
                                        :global-vars {*warn-on-reflection* false}
                                        :main ^:skip-aot metabase.sample-dataset.generate}})

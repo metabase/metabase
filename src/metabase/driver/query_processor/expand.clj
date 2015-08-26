@@ -44,12 +44,15 @@
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             [metabase.driver.interface :as i]
+            [metabase.driver.query-processor.datetime :as datetime]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u])
-  (:import (clojure.lang Keyword)))
+  (:import (clojure.lang Keyword)
+           (metabase.driver.query_processor.datetime DateTimeField
+                                                     DateTimeValue)))
 
 (declare parse-aggregation
          parse-breakout
@@ -261,19 +264,24 @@
             [table-name])
           field-name)))
 
-(defn- Field?
+(defn- field-id?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
   ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
   [field]
   (match field
-    (field-id :guard integer?)                                             true
-    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
-    _                                                                      false))
+    (_ :guard integer?)                              true
+    ["fk->" (_ :guard integer?) (_ :guard integer?)] true
+    _                                                false))
+
+(defn- Field?
+  "Is this a valid field reference? (i.e. a Field ID or a `datetime_field`)."
+  [field]
+  (or (field-id? field)
+      (datetime/field? field)))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (defrecord Value [value              ; e.g. parsed Date / timestamp
-                  original-value     ; e.g. original YYYY-MM-DD string
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer field-id
@@ -294,33 +302,57 @@
      ;; If that fails just return ourselves as-is
      this)))
 
-(defn- parse-value
-  "Convert the `value` of a `Value` to a date or timestamp if needed.
-   The original `YYYY-MM-DD` string date is retained under the key `:original-value`."
-  [{:keys [value base-type special-type] :as qp-value}]
-  (assoc qp-value
-         :original-value value
-         ;; Since Value *doesn't* revert to YYYY-MM-DD when collapsing make sure we're not parsing it twice
-         :value (or (when (and (string? value)
-                               (or (contains? #{:DateField :DateTimeField} base-type)
-                                   (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
-                      (u/parse-date-yyyy-mm-dd value))
-                    value)))
-
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
-(defrecord ValuePlaceholder [field-id value]
+(defrecord ValuePlaceholder [^Integer field-id value]
   IResolve
-  (resolve-field [this field-id->fields]
-    (-> (:field-id this)
-        field-id->fields
-        (assoc :value (:value this))
-        parse-value
-        map->Value)))
+  (resolve-field [_ field-id->fields]
+    (if-let [field (field-id->fields field-id)]
+      (map->Value (assoc field :value value))
+      (throw (Exception. (format "Field %s does not exist." field-id))))))
+
+(defrecord DateTimeValuePlaceholder [^Integer field-id parsed-value]
+  IResolve
+  (resolve-field [_ field-id->fields]
+    (if-let [field (field-id->fields field-id)]
+      (merge parsed-value field)
+      (throw (Exception. (format "Field %s does not exist." field-id))))))
+
+;; Replace the default ->ValuePlaceholder constructor with one that does additional validation
+;; and supports relative dates
+(intern
+ 'metabase.driver.query-processor.expand '->ValuePlaceholder
+ (fn [^Integer field-id value]
+   (when (or (not (integer? field-id))
+             (<= field-id 0))
+     (throw (Exception. (format "Invalid Field ID: %s" field-id))))
+   (match value
+     (_ :guard number?) (ValuePlaceholder. field-id value)
+     (_ :guard string?) (ValuePlaceholder. field-id value)
+     true               (ValuePlaceholder. field-id true)
+     false              (ValuePlaceholder. field-id false)
+
+     (_ :guard datetime/value?)
+     (DateTimeValuePlaceholder. field-id (datetime/parse-value value))
+
+     _ (throw (Exception. (format "Invalid value: '%s'" value))))))
+
+(defprotocol IFieldID
+  (get-field-id [this]))
+
+(extend-protocol IFieldID
+  FieldPlaceholder
+  (get-field-id [this]
+    (:field-id this))
+
+  DateTimeField
+  (get-field-id [this]
+    (get-field-id (:field this))))
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
+  ;; Field Placeholder
   ([field-id]
    (match field-id
      (id :guard integer?)
@@ -333,9 +365,14 @@
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
 
-      _ (throw (Exception. (str "Invalid field: " field-id)))))
+     (field :guard datetime/field?)
+     (datetime/parse-field field)
+
+     _ (throw (Exception. (str "Invalid field: " field-id)))))
+
+  ;; Value Placeholder
   ([field-id value]
-   (->ValuePlaceholder (:field-id (ph field-id)) value)))
+   (->ValuePlaceholder (get-field-id (ph field-id)) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -408,6 +445,23 @@
 
 ;; ### Parsers
 
+(defn- orderable-Value?
+  "Is V a value that can be compared with operators such as `<` and `>`?
+   i.e. This is true of numbers and dates, but not of other strings or booleans."
+  [v]
+  (match v
+    (_ :guard number?) true
+    (_ :guard datetime/value?) true
+    _ false))
+
+(defn- Value?
+  "Is V a valid unexpanded `Value`?"
+  [v]
+  (or (string? v)
+      (= v true)
+      (= v false)
+      (orderable-Value? v)))
+
 (defparser parse-filter-subclause
   ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
@@ -418,19 +472,26 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard (complement nil?)) (max :guard (complement nil?))]
+  ["BETWEEN" (field-id :guard Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"!=" "=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
+  ;; Single-value != and =
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) (val :guard Value?)]
+  (map->Filter:Field+Value {:filter-type (keyword filter-type)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
+
+  ;; <, >, <=, >= - like single-value != and =, but value must be orderable
+  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard orderable-Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :or
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :=
@@ -438,7 +499,7 @@
                                                                 :value       (ph field-id value)})))})
 
   ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :and
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :!=
