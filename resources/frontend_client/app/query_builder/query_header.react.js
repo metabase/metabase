@@ -27,7 +27,6 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         revisionApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
-        notifyCardDeletedFn: React.PropTypes.func.isRequired,
         notifyCardAddedToDashFn: React.PropTypes.func.isRequired,
         reloadCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
@@ -86,7 +85,7 @@ export default React.createClass({
 
     onDelete: async function () {
         await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
-        this.props.notifyCardDeletedFn();
+        this.onGoBack();
     },
 
     setQueryMode: function(mode) {
@@ -103,7 +102,7 @@ export default React.createClass({
     },
 
     onGoBack: function() {
-        this.props.onChangeLocation(this.props.fromUrl);
+        this.props.onChangeLocation(this.props.fromUrl || "/");
     },
 
     onFetchRevisions: async function({ entity, id }) {

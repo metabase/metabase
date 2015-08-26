@@ -169,9 +169,6 @@ CardControllers.controller('CardDetail', [
                     renderAll();
                 }
             },
-            notifyCardDeletedFn: function () {
-                $location.path('/');
-            },
             cloneCardFn: function() {
                 $scope.$apply(() => {
                     delete card.id;
