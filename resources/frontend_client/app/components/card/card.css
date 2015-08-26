@@ -39,6 +39,10 @@
   min-height: 80px;
 }
 
+.Card-scalarValue {
+    overflow: hidden;
+}
+
 @media screen and (--breakpoint-min-lg) {
   .Card-scalarValue {
     font-size: var(--card-scalar-text-lg);
@@ -85,5 +89,5 @@
 }
 
 .Card--scalar {
-    margin-left: 1em;
+    padding: 1em;
 }
