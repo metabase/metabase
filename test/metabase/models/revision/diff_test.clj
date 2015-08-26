@@ -32,9 +32,3 @@
   (diff-str "card"
             {:name "Tips by State", :private false, :priority "Important"}
             {:name "Spots by State", :private true, :priority "Regular"}))
-
-;; Check that when the revision is a reversion from a previous revision that we update the string accordingly
-(expect "reverted to an earlier revision and renamed this card from \"Tips by State\" to \"Spots by State\"."
-        (diff-str "card"
-                  {:name "Tips by State", :private false}
-                  {:name "Spots by State", :private false, :is_reversion true}))
