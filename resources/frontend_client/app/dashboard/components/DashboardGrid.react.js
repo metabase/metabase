@@ -127,7 +127,7 @@ export default class DashboardGrid extends React.Component {
         var { dashboard } = this.props;
         // margin-left and margin-right offsets the 10px padding inserted by RGL
         return (
-            <div style={{marginLeft: "-10px", marginRight: "-10px"}}>
+            <div className="flex-full full" style={{marginLeft: "-10px", marginRight: "-10px"}}>
                 <ResponsiveReactGridLayout
                     className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing, "Dash--dragging": this.state.isDragging })}
                     breakpoints={{lg: 753, sm: 752}}

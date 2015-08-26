@@ -153,11 +153,9 @@ CorvusDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) 
             }
 
             React.render(
-                <div>
-                    <Provider store={scope.store}>
-                        {() => <scope.Component {...scope.props} />}
-                    </Provider>
-                </div>,
+                <Provider store={scope.store}>
+                    {() => <scope.Component {...scope.props} />}
+                </Provider>,
                 element[0]
             );
 

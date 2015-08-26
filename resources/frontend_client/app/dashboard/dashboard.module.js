@@ -13,7 +13,7 @@ var Dashboard = angular.module('corvus.dashboard', [
 
 Dashboard.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/dash/:dashId', {
-        template: '<div mb-redux-component />',
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
         controller: 'Dashboard'
     });
 }]);
