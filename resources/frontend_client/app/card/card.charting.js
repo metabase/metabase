@@ -8,7 +8,7 @@ import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
-import formatNumber from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting";
 
 import tip from 'd3-tip';
 tip(d3);
