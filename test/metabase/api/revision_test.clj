@@ -46,7 +46,7 @@
       (post-dashcard dash-id card-id)
       (get-dashboard-revisions dash-id))))
 
-(expect [{:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan added a card."}
+(expect [{:is_reversion false, :user @rasta-revision-info, :description "added a card."}
          {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
@@ -55,8 +55,8 @@
         (post-dashcard dash-id card-id₂)
         (get-dashboard-revisions dash-id)))))
 
-(expect [{:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan removed a card."}
-         {:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan added a card."}
+(expect [{:is_reversion false, :user @rasta-revision-info, :description "removed a card."}
+         {:is_reversion false, :user @rasta-revision-info, :description "added a card."}
          {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
@@ -68,9 +68,9 @@
 
 ;;; # TESTS FOR POST /api/revision/revert
 (expect [2
-         [{:is_reversion true,  :user @rasta-revision-info, :description "Rasta Toucan reverted to an earlier revision and added a card."}
-          {:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan removed a card."}
-          {:is_reversion false, :user @rasta-revision-info, :description "Rasta Toucan added a card."}
+         [{:is_reversion true,  :user @rasta-revision-info, :description "reverted to an earlier revision and added a card."}
+          {:is_reversion false, :user @rasta-revision-info, :description "removed a card."}
+          {:is_reversion false, :user @rasta-revision-info, :description "added a card."}
           {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
