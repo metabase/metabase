@@ -1,6 +1,6 @@
 'use strict';
 
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 
 import cx from "classnames";
 
@@ -38,7 +38,7 @@ export default class DeleteDashboardModal extends React.Component {
         }
 
         return (
-            <ModalBody
+            <ModalContent
                 title="Delete Dashboard"
                 closeFn={this.props.onClose}
             >
@@ -51,7 +51,7 @@ export default class DeleteDashboardModal extends React.Component {
                     <button className="Button Button--primary ml1" onClick={this.props.onClose}>No</button>
                     {formError}
                 </div>
-            </ModalBody>
+            </ModalContent>
         );
     }
 }

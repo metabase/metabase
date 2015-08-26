@@ -2,7 +2,7 @@
 
 import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 
 import Query from "metabase/lib/query";
 
@@ -94,11 +94,11 @@ export default React.createClass({
         var name = this.props.card.name || Query.generateQueryDescription(this.props.card.dataset_query, this.props.tableMetadata);
 
         return (
-            <ModalBody
+            <ModalContent
                 title="Save Question"
                 closeFn={this.props.closeFn}
             >
-                <form className="NewForm full" onSubmit={this.save}>
+                <form className="flex flex-column flex-full" onSubmit={this.save}>
                     <div className="Form-inputs">
                         <FormField
                             displayName="Name"
@@ -123,7 +123,7 @@ export default React.createClass({
                         {formError}
                     </div>
                 </form>
-            </ModalBody>
+            </ModalContent>
         );
     },
 });

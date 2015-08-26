@@ -1,5 +1,8 @@
 
-.modal, /* used by angular-ui-bootstrap */
+.modal { /* used by angular-ui-bootstrap */
+    outline: none;
+}
+
 .Modal {
   position: fixed;
 
@@ -22,7 +25,6 @@
 
   outline: none;
 
-  min-height: 400px;
   max-height: 90%;
   overflow-y: scroll;
 }
@@ -35,4 +37,20 @@
     right: 0;
     bottom: 0;
     background-color: rgba(255, 255, 255, .6);
+}
+
+.Modal-body {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.Modal-body .Form-inputs {
+    flex: 1;
+}
+
+.Modal-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }

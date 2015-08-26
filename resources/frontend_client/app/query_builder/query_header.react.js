@@ -27,7 +27,6 @@ export default React.createClass({
         dashboardApi: React.PropTypes.func.isRequired,
         revisionApi: React.PropTypes.func.isRequired,
         notifyCardChangedFn: React.PropTypes.func.isRequired,
-        notifyCardDeletedFn: React.PropTypes.func.isRequired,
         notifyCardAddedToDashFn: React.PropTypes.func.isRequired,
         reloadCardFn: React.PropTypes.func.isRequired,
         setQueryModeFn: React.PropTypes.func.isRequired,
@@ -57,49 +56,36 @@ export default React.createClass({
         }, 5000);
     },
 
-    save: function() {
-        return this.saveCard(this.props.card);
-    },
-
-    saveCard: function(card) {
-        if (card.id === undefined) {
-            // creating a new card
-            return this.props.cardApi.create(card).$promise.then((newCard) => {
-                if (this.props.fromUrl) {
-                    this.goBack();
-                    return;
-                }
-
-                if (this.isMounted()) {
-                    this.props.notifyCardCreatedFn(newCard);
-
-                    // update local state to reflect new card state
-                    this.setState({ recentlySaved: "created", modal: "saved" }, this.resetStateOnTimeout);
-                }
-            });
-        } else {
-            // updating an existing card
-            return this.props.cardApi.update(card).$promise.then((updatedCard) => {
-                if (this.props.fromUrl) {
-                    this.goBack();
-                    return;
-                }
-
-                if (this.isMounted()) {
-                    this.props.notifyCardUpdatedFn(updatedCard);
-
-                    // update local state to reflect new card state
-                    this.setState({ recentlySaved: "updated" }, this.resetStateOnTimeout);
-                }
-            });
+    onCreate: async function(card) {
+        let newCard = await this.props.cardApi.create(card).$promise;
+        this.props.notifyCardCreatedFn(newCard);
+        if (this.isMounted()) {
+            // update local state to reflect new card state
+            this.setState({ recentlySaved: "created", modal: "saved" }, this.resetStateOnTimeout);
         }
     },
 
-    deleteCard: function () {
-        var card = this.props.card;
-        return this.props.cardApi.delete({ 'cardId': card.id }).$promise.then(() => {
-            this.props.notifyCardDeletedFn();
-        });
+    onSave: async function() {
+        let card = this.props.card;
+        let updatedCard = await this.props.cardApi.update(card).$promise;
+        if (this.props.fromUrl) {
+            this.onGoBack();
+            return;
+        }
+        this.props.notifyCardUpdatedFn(updatedCard);
+        if (this.isMounted()) {
+            // update local state to reflect new card state
+            this.setState({ recentlySaved: "updated" }, this.resetStateOnTimeout);
+        }
+    },
+
+    onCancel: async function() {
+        this.onGoBack();
+    },
+
+    onDelete: async function () {
+        await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
+        this.onGoBack();
     },
 
     setQueryMode: function(mode) {
@@ -115,8 +101,8 @@ export default React.createClass({
         this.props.notifyCardChangedFn(this.props.card);
     },
 
-    goBack: function() {
-        this.props.onChangeLocation(this.props.fromUrl);
+    onGoBack: function() {
+        this.props.onChangeLocation(this.props.fromUrl || "/");
     },
 
     onFetchRevisions: async function({ entity, id }) {
@@ -146,7 +132,7 @@ export default React.createClass({
                     <SaveQuestionModal
                         card={this.props.card}
                         tableMetadata={this.props.tableMetadata}
-                        saveFn={this.saveCard}
+                        saveFn={this.onCreate}
                         closeFn={() => this.refs.saveModal.toggle()}
                     />
                 </ModalWithTrigger>
@@ -199,28 +185,19 @@ export default React.createClass({
 
     getEditingButtons: function() {
         var editingButtons = [];
-
-        if (this.state.recentlySaved === "updated" || (this.props.cardIsDirtyFn() && this.props.card.is_creator)) {
-            editingButtons.push(
-                <ActionButton
-                    actionFn={this.save}
-                    className='Button Button--small Button--primary text-uppercase'
-                    normalText="Update"
-                    activeText="Updating…"
-                    failedText="Update failed"
-                    successText="Updated"
-                />
-            );
-        } else if (this.props.fromUrl) {
-            editingButtons.push(
-                <a className="Button Button--small Button--primary text-uppercase" href="#" onClick={this.goBack}>Back</a>
-            );
-        }
-        if (this.props.cardIsDirtyFn()) {
-            editingButtons.push(
-                <a className="Button Button--small text-uppercase" href="#" onClick={this.props.reloadCardFn}>Discard Changes</a>
-            );
-        }
+        editingButtons.push(
+            <ActionButton
+                actionFn={() => this.onSave()}
+                className="Button Button--small Button--primary text-uppercase"
+                normalText="Save"
+                activeText="Saving…"
+                failedText="Save failed"
+                successText="Saved"
+            />
+        );
+        editingButtons.push(
+            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
+        );
         editingButtons.push(
             <ModalWithTrigger
                 ref="deleteModal"
@@ -229,7 +206,7 @@ export default React.createClass({
             >
                 <DeleteQuestionModal
                     card={this.props.card}
-                    deleteCardFn={this.deleteCard}
+                    deleteCardFn={() => this.onDelete()}
                     closeFn={() => this.refs.deleteModal.toggle()}
                 />
             </ModalWithTrigger>

@@ -1,6 +1,6 @@
 'use strict';
 
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 
 import inflection from "inflection";
 import cx from "classnames";
@@ -39,7 +39,7 @@ export default class DeleteQuestionModal extends React.Component {
         var dashboardCount = this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count);
 
         return (
-            <ModalBody
+            <ModalContent
                 title="Delete Question"
                 closeFn={this.props.closeFn}
             >
@@ -56,7 +56,7 @@ export default class DeleteQuestionModal extends React.Component {
                     <button className="Button Button--primary ml1" onClick={this.props.closeFn}>No</button>
                     {formError}
                 </div>
-            </ModalBody>
+            </ModalContent>
         );
     }
 }

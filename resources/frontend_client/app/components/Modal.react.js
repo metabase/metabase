@@ -2,7 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 
-import ModalContent from "./ModalContent.react";
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper.react";
 
 export default class Modal extends Component {
     constructor(props) {
@@ -12,6 +12,8 @@ export default class Modal extends Component {
 
     componentWillMount() {
         this._modalElement = document.createElement('span');
+        this._modalElement.className = 'ModalContainer';
+        this._modalElement.id = Math.floor((Math.random() * 698754) + 1);
         document.querySelector('body').appendChild(this._modalElement);
     }
 
@@ -38,11 +40,11 @@ export default class Modal extends Component {
 
     _modalComponent() {
         return (
-            <ModalContent handleClickOutside={this.handleClickOutside.bind(this)}>
+            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
-            </ModalContent>
+            </OnClickOutsideWrapper>
         );
     }
 

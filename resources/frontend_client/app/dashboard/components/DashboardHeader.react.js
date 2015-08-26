@@ -24,70 +24,72 @@ import cx from "classnames";
 
 export default class DashboardHeader extends Component {
 
-    onEditDashboard() {
+    onEdit() {
         this.props.dispatch(setEditingDashboard(true))
     }
 
-    onDoneEditingDashboard() {
+    onDoneEditing() {
         this.props.dispatch(setEditingDashboard(false));
     }
 
-    onDashboardAttributeChange(attribute, value) {
+    onRevert() {
+        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
+    }
+
+    onAttributeChange(attribute, value) {
         this.props.dispatch(setDashboardAttributes({
             id: this.props.dashboard.id,
             attributes: { [attribute]: value }
         }));
     }
 
-    onRevertDashboard() {
-        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
-    }
-
-    async onSaveDashboard() {
+    async onSave() {
         await this.props.dispatch(saveDashboard(this.props.dashboard.id));
-        this.props.dispatch(setEditingDashboard(false));
+        this.onDoneEditing();
     }
 
-    async onDeleteDashboard() {
+    async onCancel() {
+        this.onRevert();
+        this.onDoneEditing();
+    }
+
+    async onDelete() {
         await this.props.dispatch(deleteDashboard(this.props.dashboard.id));
         this.props.onDashboardDeleted(this.props.dashboard.id)
         this.props.onChangeLocation("/")
     }
 
+    // 1. fetch revisions
+    onFetchRevisions({ entity, id }) {
+        return this.props.dispatch(fetchRevisions({ entity, id }));
+    }
+
+    // 2. revert to a revision
+    onRevertToRevision({ entity, id, revision_id }) {
+        return this.props.dispatch(revertToRevision({ entity, id, revision_id }));
+    }
+
+    // 3. finished reverting to a revision
     onRevertedRevision() {
         this.refs.dashboardHistory.toggle();
         this.props.dispatch(fetchDashboard(this.props.dashboard.id));
     }
 
-    onFetchRevisions({ entity, id }) {
-        return this.props.dispatch(fetchRevisions({ entity, id }));
-    }
-
-    onRevertToRevision({ entity, id, revision_id }) {
-        return this.props.dispatch(revertToRevision({ entity, id, revision_id }));
-    }
-
     getEditingButtons() {
         var editingButtons = [];
-        if (this.props.isDirty) {
-            editingButtons.push(
-                <ActionButton
-                    actionFn={() => this.onSaveDashboard()}
-                    className='Button Button--small Button--primary text-uppercase'
-                    normalText="Update"
-                    activeText="Updating…"
-                    failedText="Update failed"
-                    successText="Updated"
-                />
-            );
-            editingButtons.push(
-                <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onRevertDashboard()}>Discard Changes</a>
-            );
-        } else {
-            editingButtons.push(
-                <a className="Button Button--small Button--primary text-uppercase" href="#" onClick={() => this.onDoneEditingDashboard()}>Done</a>
-            );
-        }
+        editingButtons.push(
+            <ActionButton
+                actionFn={() => this.onSave()}
+                className="Button Button--small Button--primary text-uppercase"
+                normalText="Save"
+                activeText="Saving…"
+                failedText="Save failed"
+                successText="Saved"
+            />
+        );
+        editingButtons.push(
+            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
+        );
         editingButtons.push(
             <ModalWithTrigger
                 ref="deleteDashboardModal"
@@ -98,7 +100,7 @@ export default class DashboardHeader extends Component {
                     dispatch={this.props.dispatch}
                     dashboard={this.props.dashboard}
                     onClose={() => this.refs.deleteDashboardModal.toggle()}
-                    onDelete={() => this.onDeleteDashboard()}
+                    onDelete={() => this.onDelete()}
                 />
             </ModalWithTrigger>
         );
@@ -132,7 +134,7 @@ export default class DashboardHeader extends Component {
 
         if (dashboard && dashboard.can_write && !this.props.isEditing) {
             buttonSections.push([
-                <a title="Edit Dashboard Layout" className="text-brand-hover" onClick={() => this.onEditDashboard()}>
+                <a title="Edit Dashboard Layout" className="text-brand-hover" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
             ]);
@@ -175,7 +177,7 @@ export default class DashboardHeader extends Component {
                 headerButtons={this.getHeaderButtons()}
                 editingTitle="You are editing a dashboard"
                 editingButtons={this.getEditingButtons()}
-                setItemAttributeFn={this.onDashboardAttributeChange.bind(this)}
+                setItemAttributeFn={this.onAttributeChange.bind(this)}
             >
             </Header>
         );

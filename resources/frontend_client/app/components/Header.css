@@ -42,9 +42,6 @@
 }
 
 .EditHeader .Button:hover {
-    background-color: white;
-}
-
-.EditHeader .Button.Button--primary:hover {
+    color: white;
     background-color: var(--brand-color);
 }

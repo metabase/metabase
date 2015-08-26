@@ -1,6 +1,6 @@
 'use strict';
 
-import ModalBody from "metabase/components/ModalBody.react";
+import ModalContent from "metabase/components/ModalContent.react";
 import Toggle from 'metabase/components/Toggle.react';
 import SortableItemList from 'metabase/components/SortableItemList.react';
 
@@ -53,7 +53,7 @@ export default class RemoveFromDashboardModal extends React.Component {
         }
 
         return (
-            <ModalBody
+            <ModalContent
                 title="Remove from Dashboard"
                 closeFn={() => this.props.onClose()}
             >
@@ -66,7 +66,7 @@ export default class RemoveFromDashboardModal extends React.Component {
                     <button className="Button Button--danger" onClick={() => this.onRemove()}>Yes</button>
                     <button className="Button Button--primary ml1" onClick={this.props.onClose}>No</button>
                 </div>
-            </ModalBody>
+            </ModalContent>
         );
     }
 }
