@@ -20,7 +20,8 @@ export default class DashboardGrid extends React.Component {
         this.state = {
             layouts: this.getLayouts(props),
             removeModalDashCard: null,
-            rowHeight: 0
+            rowHeight: 0,
+            isDragging: false
         };
         this.calculateSizing = this.calculateSizing.bind(this);
     }
@@ -112,13 +113,23 @@ export default class DashboardGrid extends React.Component {
         this.calculateSizing();
     }
 
+    // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
+    onDrag(layout, oldItem, newItem, placeholder, e) {
+        if (!this.state.isDragging) {
+            this.setState({ isDragging: true });
+        }
+    }
+    onDragStop(layout, oldItem, newItem, placeholder, e) {
+        this.setState({ isDragging: false });
+    }
+
     render() {
         var { dashboard } = this.props;
         // margin-left and margin-right offsets the 10px padding inserted by RGL
         return (
             <div style={{marginLeft: "-10px", marginRight: "-10px"}}>
                 <ResponsiveReactGridLayout
-                    className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing })}
+                    className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing, "Dash--dragging": this.state.isDragging })}
                     breakpoints={{lg: 753, sm: 752}}
                     layouts={this.state.layouts}
                     // NOTE: these need to be different otherwise RGL doesn't switch breakpoints
@@ -131,6 +142,8 @@ export default class DashboardGrid extends React.Component {
                     isDraggable={this.props.isEditing}
                     isResizable={this.props.isEditing || true}
                     onLayoutChange={(...args) => this.onLayoutChange(...args)}
+                    onDrag={(...args) => this.onDrag(...args)}
+                    onDragStop={(...args) => this.onDragStop(...args)}
                 >
                     {dashboard.ordered_cards.map(dc =>
                         <div key={dc.id} className="DashCard">

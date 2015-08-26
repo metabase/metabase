@@ -133,3 +133,8 @@
 .Dash--editing .Card-title {
     pointer-events: none;
 }
+
+/* ensure action buttons do not respond to events when dragging */
+.Dash--dragging .DashCard-actions {
+    pointer-events: none;
+}
