@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql.util
   "Shared functions for our generic-sql query processor."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [korma.core :as korma]
@@ -81,3 +82,13 @@
    {:table table-name
     :pk    :id
     :db    (db->korma-db db)}))
+
+(defn sql-fn
+  "Return a form that will be treated by Korma as a SQL function.
+
+    (sql-fn \"CAST(%s AS TIMESTAMP)\" :table.field)
+      -> CAST(`table`.`field` AS TIMESTAMP)"
+  [format-string & args]
+  {:pre [((complement s/blank?) format-string)]}
+  {:korma.sql.utils/func format-string
+   :korma.sql.utils/args (vec args)})

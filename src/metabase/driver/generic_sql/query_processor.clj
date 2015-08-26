@@ -134,8 +134,7 @@
     ([this]
      (formatted this false))
     ([{value :value, {unit :unit} :field} _]
-     (i/date (:driver *query*) unit {:korma.sql.utils/args [`(Timestamp/valueOf ~(.toString value))]
-                                     :korma.sql.utils/func "CAST(%s AS TIMESTAMP)"})))
+     (i/date (:driver *query*) unit (sql-fn "CAST(%s AS TIMESTAMP)" `(Timestamp/valueOf ~(.toString value))))))
 
   DateTimeValue
   (formatted

@@ -7,7 +7,8 @@
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table]])
             (metabase.test.data [data :as data]
                                 [h2 :as h2]
@@ -51,9 +52,10 @@
 
 (deftype MongoDriverData []
   IDataset
-  (load-data! [_]
+  (load-data! [this]
     @mongo-data/mongo-test-db
-    (assert (integer? @mongo-data/mongo-test-db-id)))
+    (assert (integer? @mongo-data/mongo-test-db-id))
+    (assert (exists? Database :id @mongo-data/mongo-test-db-id)))
 
   (dataset-loader [_]
     (mongo/dataset-loader))

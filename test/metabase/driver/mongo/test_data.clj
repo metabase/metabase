@@ -11,15 +11,13 @@
 
 ;; ## MONGO-TEST-DB + OTHER DELAYS
 
-(defonce
-  ^{:doc "A delay that fetches or creates the Mongo test `Database`.
-          If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."}
-  mongo-test-db
+(def mongo-test-db
+  "A delay that fetches or creates the Mongo test `Database`.
+   If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."
   (delay ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (loader/dataset-loader) data/test-data)))
 
-(defonce
-  ^{:doc "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."}
-  mongo-test-db-id
+(def mongo-test-db-id
+  "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."
   (delay (let [id (:id @mongo-test-db)]
            (assert (integer? id))
            id)))

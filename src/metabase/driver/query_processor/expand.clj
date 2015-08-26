@@ -1,40 +1,6 @@
 (ns metabase.driver.query-processor.expand
-  "Various query processor functions need to know information about `Fields` and `Values` -- `base_type`, `special_type`, etc,
-   and need to parse the Query dict.
-   Right now there's a lot of duplicated logic to perform this functionality. Ideally, we'd gather all this information in a single place,
-   and various QP components wouldn't need to implement that logic themselves.
-
-   That's the ultimate endgoal of this namespace: parse a Query dict and return an *expanded* form with relevant information added,
-   values already parsed (e.g. date strings will be converted to `java.sql.Date` / Unix timestamps as appropriate), in a more
-   Clojure-friendly format (e.g. using keywords like `:not-null` instead of strings like `\"NOT_NULL\"`, and using maps instead of
-   position-dependent vectors for things like like the `BETWEEN` filter clause. We'll also be able to add useful utility methods to various
-   bits of the Query Language, since they're typed. On top of that, we'll see a big performance improvment when various QP modules aren't
-   making duplicate DB calls.
-
-   Ex.
-   A normal `filter` clause might look something like this:
-
-     [\"=\" 34 \"1760-01-01\"]
-
-   When we expand it, we get:
-
-     {:compound-type :simple
-      :subclauses [{:filter-type :=
-                    :field {:field-id 34
-                            :field-name \"TIMESTAMP\"
-                            :base-type :BigIntegerField
-                            :special-type :timestamp_seconds}
-                    :value {:value -6626937600,
-                            :original-value \"1760-01-01\",
-                            :base-type :BigIntegerField,
-                            :special-type :timestamp_seconds,
-                            :field-id 34}}]}
-
-   ## Expansion Phases
-
-   1.  Parsing:          Various functions parse the query form and replace Field IDs and values with placeholders
-   2.  Field Lookup:     A *batched* DB call is made to fetch Fields with IDs found during Parsing
-   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects"
+  "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
+   construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:require [clojure.core.match :refer [match]]
             (clojure [set :as set]
                      [string :as s]
@@ -56,12 +22,7 @@
                                                       FieldPlaceholder
                                                       Value)))
 
-(declare parse-aggregation
-         parse-breakout
-         parse-fields
-         parse-filter
-         parse-order-by
-         ph)
+(declare parse-aggregation parse-breakout parse-fields parse-filter parse-order-by ph)
 
 ;; ## -------------------- Expansion - Impl --------------------
 
@@ -81,9 +42,6 @@
   "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
   nil)
 
-(def ^:private ^:dynamic *datetime-field-id->unit*
-  "Bound to a map of datetime field IDs to the datetime units we should use for them."
-  nil)
 
 (defn- assert-driver-supports [^Keyword feature]
   {:pre [(:driver *original-query-dict*)]}
@@ -129,23 +87,8 @@
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
       (let [fields (into {} (for [[id field] (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])]
-                              [id (let [{:keys [parent-id base-type special-type], :as field} (rename-mb-field-keys field)]
-                                    (let [field         (map->Field (merge field (when parent-id
-                                                                                   {:parent (ph parent-id)})))
-                                          datetime-unit (@*datetime-field-id->unit* id)]
-                                      (cond
-                                        datetime-unit
-                                        (map->DateTimeField {:field field, :unit datetime-unit})
-
-                                        ;; In order to maintain backwards-compatibility with old queries that don't specify resolution to use with DateTimeFields,
-                                        ;; Default to :day resolution
-                                        (or (= base-type :DateField)
-                                            (= base-type :DateTimeField)
-                                            (= special-type :timestamp_milliseconds)
-                                            (= special-type :timestamp_seconds))
-                                        (map->DateTimeField {:field field, :unit :day})
-
-                                        :else field)))]))]
+                              [id (let [{:keys [parent-id], :as field} (rename-mb-field-keys field)]
+                                    (map->Field (merge field (when parent-id {:parent (ph parent-id)}))))]))]
 
         (swap! *table-ids* set/union (set (map :table-id (vals fields))))
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
@@ -201,11 +144,10 @@
 (defn expand
   "Expand a QUERY-DICT."
   [query-dict]
-  (binding [*original-query-dict*     query-dict
-            *field-ids*               (atom #{})
-            *fk-field-ids*            (atom #{})
-            *table-ids*               (atom #{})
-            *datetime-field-id->unit* (atom {})]
+  (binding [*original-query-dict* query-dict
+            *field-ids*           (atom #{})
+            *fk-field-ids*        (atom #{})
+            *table-ids*           (atom #{})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
@@ -214,9 +156,6 @@
 
 
 ;; ## -------------------- Field + Value --------------------
-
-(defn- datetime-unit? [v]
-  (contains? datetime-units (keyword v)))
 
 (defn- field-id?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
@@ -231,8 +170,8 @@
   "Is this a valid value for a `DateTimeField` in an unexpanded query? (e.g. `[\"datetime_field\" ...]`)"
   [field]
   (match field
-    ["datetime_field" (_ :guard field-id?) "as" (_ :guard datetime-unit?)] true
-    _                                                                      false))
+    ["datetime_field" (_ :guard field-id?) "as" (_ :guard datetime-field-unit?)] true
+    _                                                                           false))
 
 (defn- unexpanded-Field?
   "Is this a valid field reference? (i.e. a Field ID or a `datetime_field`)."
@@ -240,58 +179,23 @@
   (or (field-id? field)
       (unexpanded-DateTimeField? field)))
 
+(defn- legacy-date-literal?
+  "Is this a literal legacy date literal?"
+  [v]
+  (and (string? v)
+       (re-matches #"^\d{4}-[01]\d-[0-3]\d$" v)))
+
 (defn- datetime-value?
   "Is VALUE a datetime literal or relative value?"
   [value]
   (match value
-    (_ :guard u/date-string?)                                  true ; DEPRECATED
-    ["datetime" (_ :guard u/date-string?)]                     true
-    ["datetime" "now"]                                         true
-    ["datetime" (_ :guard integer?) (_ :guard datetime-unit?)] true
-    _                                                          false))
+    (_ :guard legacy-date-literal?)                                  true ; DEPRECATED
+    ["datetime" (_ :guard u/date-string?)]                           true
+    ["datetime" "now"]                                               true
+    ["datetime" (_ :guard integer?) (_ :guard datetime-value-unit?)] true
+    _                                                                false))
 
-(defn- set-field-datetime-unit!
-  "Specify the datetime unit (i.e., resolution) that should be used for this field.
-   If this differs from a previously set value, an exception will be thrown."
-  [field-id unit]
-  {:pre [(integer? field-id)
-         (datetime-unit? unit)]}
-  (when-let [existing-unit (@*datetime-field-id->unit* field-id)]
-         (when (not= unit existing-unit)
-           (throw (Exception. (format "Conflicting types specified for Field %d: %s != %s" field-id (name unit) (name existing-unit))))))
-  (swap! *datetime-field-id->unit* assoc field-id unit))
-
-(defn- value-placeholder
-  "Create a new value placeholder."
-  [field value]
-  {:pre [(or (instance? FieldPlaceholder field)
-             (instance? DateTimeFieldPlaceholder field))]}
-  (match value
-    ;; DEPRECATED - YYYY-MM-DD date strings should now be passed as ["datetime" ...]. Allowed here for backwards-compatibility.
-    (literal :guard u/date-string?)
-    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
-
-    (_ :guard number?) (->ValuePlaceholder field value)
-    (_ :guard string?) (->ValuePlaceholder field value)
-    true               (->ValuePlaceholder field true)
-    false              (->ValuePlaceholder field false)
-
-    ["datetime" (literal :guard u/date-string?)]
-    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
-
-    ["datetime" "now"]
-    (->DateTimeValuePlaceholder field :day 0)
-
-    ["datetime" (relative-amount :guard integer?) (unit :guard datetime-unit?)]
-    (->DateTimeValuePlaceholder field (keyword unit) relative-amount)
-
-    _ (throw (Exception. (format "Invalid value: '%s'" value)))))
-
-(defn- ph
-  "Create a new placeholder object for a Field ID or value.
-   If `*field-ids*` is bound, "
-  ;; Field Placeholder
-  ([field-id]
+(defn- field-placeholder [field-id]
    {:post [(or (instance? FieldPlaceholder %)
                (instance? DateTimeFieldPlaceholder %))]}
    (match field-id
@@ -305,17 +209,40 @@
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
 
-     ["datetime_field" (field :guard field-id?) "as" (unit :guard datetime-unit?)]
-     (let [field-id (:field-id (ph field))
-           unit     (keyword unit)]
-       (set-field-datetime-unit! field-id unit)
-       (->DateTimeFieldPlaceholder field-id unit))
+     ["datetime_field" (field :guard field-id?) "as" (unit :guard datetime-field-unit?)]
+     (->DateTimeFieldPlaceholder (:field-id (ph field)) (keyword unit))
 
      _ (throw (Exception. (str "Invalid field: " field-id)))))
 
-  ;; Value Placeholder
-  ([field-id value]
-   (value-placeholder (ph field-id) value)))
+(defn- value-placeholder [field value]
+  {:pre [(or (instance? FieldPlaceholder field)
+             (instance? DateTimeFieldPlaceholder field))
+         (integer? (:field-id field))]}
+  (match value
+    ;; DEPRECATED - YYYY-MM-DD date strings should now be passed as ["datetime" ...]. Allowed here for backwards-compatibility.
+    (literal :guard legacy-date-literal?)
+    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
+
+    (_ :guard number?) (->ValuePlaceholder field value)
+    (_ :guard string?) (->ValuePlaceholder field value)
+    true               (->ValuePlaceholder field true)
+    false              (->ValuePlaceholder field false)
+
+    ["datetime" (literal :guard u/date-string?)]
+    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
+
+    ["datetime" "now"]
+    (->DateTimeValuePlaceholder field :day 0)
+
+    ["datetime" (relative-amount :guard integer?) (unit :guard datetime-value-unit?)]
+    (->DateTimeValuePlaceholder field (keyword unit) relative-amount)
+
+    _ (throw (Exception. (format "Invalid value: '%s'" value)))))
+
+(defn- ph
+  "Create a new placeholder object for a Field ID or value."
+  ([field-id]       (field-placeholder field-id))
+  ([field-id value] (value-placeholder (ph field-id) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -370,8 +297,8 @@
 ;; ### Subclause Types
 
 (defrecord Filter:Inside [^Keyword filter-type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
-                          lat
-                          lon])
+                          ^Float lat
+                          ^Float lon])
 
 (defrecord Filter:Between [^Keyword filter-type
                            ^Field   field
@@ -383,7 +310,7 @@
                                ^Value   value])
 
 (defrecord Filter:Field [^Keyword filter-type
-                         ^Field field])
+                         ^Field   field])
 
 
 ;; ### Parsers

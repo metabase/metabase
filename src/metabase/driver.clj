@@ -63,7 +63,7 @@
          (contains? (set (keys available-drivers)) engine)]}
   (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
     (try @(ns-resolve nmspc 'driver)
-         (catch NullPointerException _
+         (catch Throwable _
            (log/debug (format "Loading %s..." nmspc))
            (require nmspc)
            @(ns-resolve nmspc 'driver)))))
