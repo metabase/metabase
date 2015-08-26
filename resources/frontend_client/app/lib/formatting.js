@@ -1,3 +1,4 @@
+"use strict";
 
 import d3 from "d3";
 
@@ -11,5 +12,13 @@ export function formatNumber(number) {
     } else {
         // anything else rounds to at most 2 decimal points
         return fixedNumberFormatter(d3.round(number, 2));
+    }
+}
+
+export function formatScalar(scalar) {
+    if (typeof scalar === "number") {
+        return formatNumber(scalar);
+    } else {
+        return String(scalar);
     }
 }
