@@ -53,28 +53,21 @@
 
 ;; ## Driver Lookup
 
-
-(def ^{:arglists '([engine])} engine->driver
+(defn engine->driver
   "Return the driver instance that should be used for given ENGINE.
    This loads the corresponding driver if needed; it is expected that it resides in a var named
 
-     metabase.driver.<engine>/driver
+     metabase.driver.<engine>/driver"
+  [engine]
+  {:pre [(keyword? engine)
+         (contains? (set (keys available-drivers)) engine)]}
+  (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
+    (try @(ns-resolve nmspc 'driver)
+         (catch NullPointerException _
+           (log/debug (format "Loading %s..." nmspc))
+           (require nmspc)
+           @(ns-resolve nmspc 'driver)))))
 
-   i.e., the `:postgres` driver should be bound interned at `metabase.driver.postgres/driver`.
-
-     (require ['metabase.driver.interface :as i])
-     (i/active-table-names (engine->driver :postgres) some-pg-database)"
-  (memoize
-   (fn [engine]
-     {:pre [(keyword? engine)]}
-     (let [ns-symb (symbol (format "metabase.driver.%s" (name engine)))]
-       (log/debug (format "Loading metabase.driver.%s..." (name engine)))
-       (require ns-symb)
-       (let [driver (some-> (ns-resolve ns-symb 'driver)
-                            var-get)]
-         (assert driver)
-         (log/debug "Ok.")
-         driver)))))
 
 ;; Can the type of a DB change?
 (def ^{:arglists '([database-id])} database-id->driver
@@ -82,10 +75,11 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (memoize
-   (fn [database-id]
-     {:pre [(integer? database-id)]}
-     (engine->driver (sel :one :field [Database :engine] :id database-id)))))
+  (let [db-id->engine (memoize
+                       (fn [db-id]
+                         (sel :one :field [Database :engine] :id db-id)))]
+    (fn [db-id]
+      (engine->driver (db-id->engine db-id)))))
 
 
 ;; ## Implementation-Agnostic Driver API

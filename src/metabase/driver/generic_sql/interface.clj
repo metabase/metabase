@@ -1,4 +1,5 @@
-(ns metabase.driver.generic-sql.interface)
+(ns metabase.driver.generic-sql.interface
+  (:import clojure.lang.Keyword))
 
 (defprotocol ISqlDriverDatabaseSpecific
   "Methods a DB-specific concrete SQL driver should implement.
@@ -19,12 +20,11 @@
     "Return a string that represents the SQL statement that should be used to set the timezone
      for the current transaction.")
 
-  (date-trunc [this unit field]
-    "Return a korma form for truncating a date or timestamp field or value to a given resolution.
-     (This doesn't need to handle `:day`, since that is handled generically).")
+  (date [this ^Keyword unit field-or-value]
+    "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
-  (date-extract [this smaller-unit larger-unit field]
-    "Return a korma form for extracting a date component from a date or timestamp field or value."))
+  (date-interval [this ^Keyword unit ^Integer amount]
+    "Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`."))
 
 (defprotocol ISqlDriverQuoteName
   "Optionally protocol to override how the Generic SQL driver quotes the names of databases, tables, and fields."

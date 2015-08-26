@@ -44,15 +44,17 @@
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             [metabase.driver.interface :as i]
-            [metabase.driver.query-processor.datetime :as datetime]
+            [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u])
-  (:import (clojure.lang Keyword)
-           (metabase.driver.query_processor.datetime DateTimeField
-                                                     DateTimeValue)))
+  (:import clojure.lang.Keyword
+           (metabase.driver.query_processor.interface DateTimeFieldPlaceholder
+                                                      Field
+                                                      FieldPlaceholder
+                                                      Value)))
 
 (declare parse-aggregation
          parse-breakout
@@ -60,29 +62,6 @@
          parse-filter
          parse-order-by
          ph)
-
-
-;; ## -------------------- Protocols --------------------
-
-(defprotocol IResolve
-  "Methods called during `Field` and `Table` resolution. Placeholder types should implement this protocol."
-  (resolve-field [this field-id->fields]
-    "This method is called when walking the Query after fetching `Fields`.
-     Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-     return their expanded form. Other objects should just return themselves.")
-  (resolve-table [this table-id->tables]
-    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
-     Objects like `Fields` can add relevant information like the name of their `Table`."))
-
-;; Default impls are just identity
-(extend Object
-  IResolve {:resolve-field (fn [this _] this)
-            :resolve-table (fn [this _] this)})
-
-(extend nil
-  IResolve {:resolve-field (constantly nil)
-            :resolve-table (constantly nil)})
-
 
 ;; ## -------------------- Expansion - Impl --------------------
 
@@ -100,6 +79,10 @@
 
 (def ^:private ^:dynamic *table-ids*
   "Bound to an atom containing a set of `Table` IDs referenced by `Fields` in the query being expanded."
+  nil)
+
+(def ^:private ^:dynamic *datetime-field-id->unit*
+  "Bound to a map of datetime field IDs to the datetime units we should use for them."
   nil)
 
 (defn- assert-driver-supports [^Keyword feature]
@@ -145,28 +128,34 @@
 
     ;; Re-bind *field-ids* in case we need to do recursive Field resolution
     (binding [*field-ids* (atom #{})]
-      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])
-                        (m/map-vals rename-mb-field-keys)
-                        (m/map-vals #(assoc % :parent (when (:parent-id %)
-                                                        (ph (:parent-id %))))))]
-        (swap! *table-ids* set/union (set (map :table-id (vals fields))))
+      (let [fields (into {} (for [[id field] (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :table_id :parent_id :description], :id [in field-ids])]
+                              [id (let [{:keys [parent-id base-type special-type], :as field} (rename-mb-field-keys field)]
+                                    (let [field         (map->Field (merge field (when parent-id
+                                                                                   {:parent (ph parent-id)})))
+                                          datetime-unit (@*datetime-field-id->unit* id)]
+                                      (cond
+                                        datetime-unit
+                                        (map->DateTimeField {:field field, :unit datetime-unit})
 
+                                        ;; In order to maintain backwards-compatibility with old queries that don't specify resolution to use with DateTimeFields,
+                                        ;; Default to :day resolution
+                                        (or (= base-type :DateField)
+                                            (= base-type :DateTimeField)
+                                            (= special-type :timestamp_milliseconds)
+                                            (= special-type :timestamp_seconds))
+                                        (map->DateTimeField {:field field, :unit :day})
+
+                                        :else field)))]))]
+
+        (swap! *table-ids* set/union (set (map :table-id (vals fields))))
         ;; Recurse in case any new [nested] Field placeholders were emitted and we need to do recursive Field resolution
         ;; We can't use recur here because binding wraps body in try/catch
-        (resolve-fields (walk/postwalk #(resolve-field % fields) expanded-query-dict) @*field-ids*)))))
+        (resolve-fields (walk/prewalk #(resolve-field % fields) expanded-query-dict) @*field-ids*)))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
   [{database-id :database, :as expanded-query-dict}]
   (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
-
-(defrecord JoinTableField [^Integer field-id
-                           ^String  field-name])
-
-(defrecord JoinTable [^JoinTableField source-field
-                      ^JoinTableField pk-field
-                      ^Integer        table-id
-                      ^String         table-name])
 
 (defn- join-tables-fetch-field-info
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
@@ -212,10 +201,11 @@
 (defn expand
   "Expand a QUERY-DICT."
   [query-dict]
-  (binding [*original-query-dict* query-dict
-            *field-ids*           (atom #{})
-            *fk-field-ids*        (atom #{})
-            *table-ids*           (atom #{})]
+  (binding [*original-query-dict*     query-dict
+            *field-ids*               (atom #{})
+            *fk-field-ids*            (atom #{})
+            *table-ids*               (atom #{})
+            *datetime-field-id->unit* (atom {})]
     (some-> query-dict
             parse
             (resolve-fields @*field-ids*)
@@ -225,43 +215,8 @@
 
 ;; ## -------------------- Field + Value --------------------
 
-(defprotocol IField
-  "Methods specific to the Query Expander `Field` record type."
-  (qualified-name-components [this]
-    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
-
-;; Field is the expansion of a Field ID in the standard QL
-(defrecord Field [^Integer field-id
-                  ^String  field-name
-                  ^String  field-display-name
-                  ^Keyword base-type
-                  ^Keyword special-type
-                  ^Integer table-id
-                  ^String  table-name
-                  ^Integer position
-                  ^String  description
-                  ^Integer parent-id
-                  parent] ; Field once its resolved; FieldPlaceholder before that
-  IResolve
-  (resolve-field [this field-id->fields]
-    (cond
-      parent          (if (= (type parent) Field)
-                        this
-                        (resolve-field parent field-id->fields))
-      parent-id       (assoc this :parent (or (field-id->fields parent-id)
-                                              (ph parent-id)))
-      :else           this))
-
-  (resolve-table [this table-id->table]
-    (assoc this :table-name (:name (or (table-id->table table-id)
-                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
-
-  IField
-  (qualified-name-components [this]
-    (conj (if parent
-            (qualified-name-components parent)
-            [table-name])
-          field-name)))
+(defn- datetime-unit? [v]
+  (contains? datetime-units (keyword v)))
 
 (defn- field-id?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
@@ -272,87 +227,73 @@
     ["fk->" (_ :guard integer?) (_ :guard integer?)] true
     _                                                false))
 
-(defn- Field?
+(defn- unexpanded-DateTimeField?
+  "Is this a valid value for a `DateTimeField` in an unexpanded query? (e.g. `[\"datetime_field\" ...]`)"
+  [field]
+  (match field
+    ["datetime_field" (_ :guard field-id?) "as" (_ :guard datetime-unit?)] true
+    _                                                                      false))
+
+(defn- unexpanded-Field?
   "Is this a valid field reference? (i.e. a Field ID or a `datetime_field`)."
   [field]
   (or (field-id? field)
-      (datetime/field? field)))
+      (unexpanded-DateTimeField? field)))
 
-;; Value is the expansion of a value within a QL clause
-;; Information about the associated Field is included for convenience
-(defrecord Value [value              ; e.g. parsed Date / timestamp
-                  ^Keyword base-type
-                  ^Keyword special-type
-                  ^Integer field-id
-                  ^String  field-name])
+(defn- datetime-value?
+  "Is VALUE a datetime literal or relative value?"
+  [value]
+  (match value
+    (_ :guard u/date-string?)                                  true ; DEPRECATED
+    ["datetime" (_ :guard u/date-string?)]                     true
+    ["datetime" "now"]                                         true
+    ["datetime" (_ :guard integer?) (_ :guard datetime-unit?)] true
+    _                                                          false))
 
+(defn- set-field-datetime-unit!
+  "Specify the datetime unit (i.e., resolution) that should be used for this field.
+   If this differs from a previously set value, an exception will be thrown."
+  [field-id unit]
+  {:pre [(integer? field-id)
+         (datetime-unit? unit)]}
+  (when-let [existing-unit (@*datetime-field-id->unit* field-id)]
+         (when (not= unit existing-unit)
+           (throw (Exception. (format "Conflicting types specified for Field %d: %s != %s" field-id (name unit) (name existing-unit))))))
+  (swap! *datetime-field-id->unit* assoc field-id unit))
 
-;; ## -------------------- Placeholders --------------------
+(defn- value-placeholder
+  "Create a new value placeholder."
+  [field value]
+  {:pre [(or (instance? FieldPlaceholder field)
+             (instance? DateTimeFieldPlaceholder field))]}
+  (match value
+    ;; DEPRECATED - YYYY-MM-DD date strings should now be passed as ["datetime" ...]. Allowed here for backwards-compatibility.
+    (literal :guard u/date-string?)
+    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
 
-;; Replace Field IDs with these during first pass
-(defrecord FieldPlaceholder [^Integer field-id]
-  IResolve
-  (resolve-field [this field-id->fields]
-    (or
-     ;; try to resolve the Field with the ones available in field-id->fields
-     (some->> (field-id->fields field-id)
-              (merge this)
-              map->Field)
-     ;; If that fails just return ourselves as-is
-     this)))
+    (_ :guard number?) (->ValuePlaceholder field value)
+    (_ :guard string?) (->ValuePlaceholder field value)
+    true               (->ValuePlaceholder field true)
+    false              (->ValuePlaceholder field false)
 
-;; Replace values with these during first pass over Query.
-;; Include associated Field ID so appropriate the info can be found during Field resolution
-(defrecord ValuePlaceholder [^Integer field-id value]
-  IResolve
-  (resolve-field [_ field-id->fields]
-    (if-let [field (field-id->fields field-id)]
-      (map->Value (assoc field :value value))
-      (throw (Exception. (format "Field %s does not exist." field-id))))))
+    ["datetime" (literal :guard u/date-string?)]
+    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
 
-(defrecord DateTimeValuePlaceholder [^Integer field-id parsed-value]
-  IResolve
-  (resolve-field [_ field-id->fields]
-    (if-let [field (field-id->fields field-id)]
-      (merge parsed-value field)
-      (throw (Exception. (format "Field %s does not exist." field-id))))))
+    ["datetime" "now"]
+    (->DateTimeValuePlaceholder field :day 0)
 
-;; Replace the default ->ValuePlaceholder constructor with one that does additional validation
-;; and supports relative dates
-(intern
- 'metabase.driver.query-processor.expand '->ValuePlaceholder
- (fn [^Integer field-id value]
-   (when (or (not (integer? field-id))
-             (<= field-id 0))
-     (throw (Exception. (format "Invalid Field ID: %s" field-id))))
-   (match value
-     (_ :guard number?) (ValuePlaceholder. field-id value)
-     (_ :guard string?) (ValuePlaceholder. field-id value)
-     true               (ValuePlaceholder. field-id true)
-     false              (ValuePlaceholder. field-id false)
+    ["datetime" (relative-amount :guard integer?) (unit :guard datetime-unit?)]
+    (->DateTimeValuePlaceholder field (keyword unit) relative-amount)
 
-     (_ :guard datetime/value?)
-     (DateTimeValuePlaceholder. field-id (datetime/parse-value value))
-
-     _ (throw (Exception. (format "Invalid value: '%s'" value))))))
-
-(defprotocol IFieldID
-  (get-field-id [this]))
-
-(extend-protocol IFieldID
-  FieldPlaceholder
-  (get-field-id [this]
-    (:field-id this))
-
-  DateTimeField
-  (get-field-id [this]
-    (get-field-id (:field this))))
+    _ (throw (Exception. (format "Invalid value: '%s'" value)))))
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
   ;; Field Placeholder
   ([field-id]
+   {:post [(or (instance? FieldPlaceholder %)
+               (instance? DateTimeFieldPlaceholder %))]}
    (match field-id
      (id :guard integer?)
      (do (swap! *field-ids* conj id)
@@ -364,14 +305,17 @@
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
 
-     (field :guard datetime/field?)
-     (datetime/parse-field field)
+     ["datetime_field" (field :guard field-id?) "as" (unit :guard datetime-unit?)]
+     (let [field-id (:field-id (ph field))
+           unit     (keyword unit)]
+       (set-field-datetime-unit! field-id unit)
+       (->DateTimeFieldPlaceholder field-id unit))
 
      _ (throw (Exception. (str "Invalid field: " field-id)))))
 
   ;; Value Placeholder
   ([field-id value]
-   (->ValuePlaceholder (get-field-id (ph field-id)) value)))
+   (value-placeholder (ph field-id) value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -391,15 +335,15 @@
                         ^Field field])
 
 (defparser parse-aggregation
-  ["rows"]                              (->Aggregation :rows nil)
-  ["count"]                             (->Aggregation :count nil)
-  ["avg" (field-id :guard Field?)]      (->Aggregation :avg (ph field-id))
-  ["count" (field-id :guard Field?)]    (->Aggregation :count (ph field-id))
-  ["distinct" (field-id :guard Field?)] (->Aggregation :distinct (ph field-id))
-  ["stddev" (field-id :guard Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
-                                            (->Aggregation :stddev (ph field-id)))
-  ["sum" (field-id :guard Field?)]      (->Aggregation :sum (ph field-id))
-  ["cum_sum" (field-id :guard Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
+  ["rows"]                                         (->Aggregation :rows nil)
+  ["count"]                                        (->Aggregation :count nil)
+  ["avg" (field-id :guard unexpanded-Field?)]      (->Aggregation :avg (ph field-id))
+  ["count" (field-id :guard unexpanded-Field?)]    (->Aggregation :count (ph field-id))
+  ["distinct" (field-id :guard unexpanded-Field?)] (->Aggregation :distinct (ph field-id))
+  ["stddev" (field-id :guard unexpanded-Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
+                                                       (->Aggregation :stddev (ph field-id)))
+  ["sum" (field-id :guard unexpanded-Field?)]      (->Aggregation :sum (ph field-id))
+  ["cum_sum" (field-id :guard unexpanded-Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
 
 
 ;; ## -------------------- Breakout --------------------
@@ -445,13 +389,13 @@
 ;; ### Parsers
 
 (defn- orderable-Value?
-  "Is V a value that can be compared with operators such as `<` and `>`?
+  "Is V an unexpanded value that can be compared with operators such as `<` and `>`?
    i.e. This is true of numbers and dates, but not of other strings or booleans."
   [v]
   (match v
-    (_ :guard number?) true
-    (_ :guard datetime/value?) true
-    _ false))
+    (_ :guard number?)         true
+    (_ :guard datetime-value?) true
+    _                          false))
 
 (defn- Value?
   "Is V a valid unexpanded `Value`?"
@@ -462,7 +406,7 @@
       (orderable-Value? v)))
 
 (defparser parse-filter-subclause
-  ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
+  ["INSIDE" (lat-field :guard unexpanded-Field?) (lon-field :guard unexpanded-Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
                                      :min   (ph lat-field lat-min)
@@ -471,26 +415,26 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
+  ["BETWEEN" (field-id :guard unexpanded-Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
   ;; Single-value != and =
-  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard Field?) (val :guard Value?)]
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard unexpanded-Field?) (val :guard Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; <, >, <=, >= - like single-value != and =, but value must be orderable
-  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard orderable-Value?)]
+  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard unexpanded-Field?) (val :guard orderable-Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
+  ["=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :or
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :=
@@ -498,14 +442,14 @@
                                                                 :value       (ph field-id value)})))})
 
   ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? Value? %)))]
+  ["!=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :and
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :!=
                                                                 :field       (ph field-id)
                                                                 :value       (ph field-id value)})))})
 
-  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard Field?) (val :guard string?)]
+  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard unexpanded-Field?) (val :guard string?)]
   (map->Filter:Field+Value {:filter-type (case filter-type
                                            "STARTS_WITH" :starts-with
                                            "CONTAINS"    :contains
@@ -513,7 +457,7 @@
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
-  [(filter-type :guard string?) (field-id :guard Field?)]
+  [(filter-type :guard string?) (field-id :guard unexpanded-Field?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)
@@ -529,17 +473,7 @@
 
 ;; ## -------------------- Order-By --------------------
 
-(defrecord OrderByAggregateField [^Keyword source           ; Name used in original query. Always :aggregation for right now
-                                  ^Integer index            ; e.g. 0
-                                  ^Aggregation aggregation] ; The aggregation clause being referred to
-  IField
-  (qualified-name-components [_]
-    ;; Return something like [nil "count"]
-    ;; nil is used where Table name would normally go
-    [nil (name (:aggregation-type aggregation))]))
-
-
-(defrecord OrderBySubclause [^Field   field       ; or aggregate Field?
+(defrecord OrderBySubclause [^Field   field       ; or aggregate unexpanded-Field?
                              ^Keyword direction]) ; either :ascending or :descending
 
 (defn- parse-order-by-direction [direction]
@@ -548,11 +482,11 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]    (let [{{:keys [aggregation]} :query} *original-query-dict*]
-                                            (assert aggregation "Query does not contain an aggregation clause.")
-                                            (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
-                                                                (parse-order-by-direction direction)))
-  [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
-                                                           (parse-order-by-direction direction)))
+  [["aggregation" index] direction]               (let [{{:keys [aggregation]} :query} *original-query-dict*]
+                                                    (assert aggregation "Query does not contain an aggregation clause.")
+                                                    (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
+                                                                        (parse-order-by-direction direction)))
+  [(field-id :guard unexpanded-Field?) direction] (->OrderBySubclause (ph field-id)
+                                                                      (parse-order-by-direction direction)))
 (defparser parse-order-by
   subclauses (mapv parse-order-by-subclause subclauses))

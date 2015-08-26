@@ -110,23 +110,37 @@
 (defn- timezone->set-timezone-sql [_ timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
-(defn- date-trunc [_ unit field]
-  {:korma.sql.utils/func (format "DATE_TRUNC('%s', %%s)" (name unit))
-   :korma.sql.utils/args [field]})
+(defn- date [_ unit field-or-value]
+  {:pre [(keyword? unit)]}
+  {:korma.sql.utils/args [field-or-value]
+   :korma.sql.utils/func (case unit
+                           :minute          "DATE_TRUNC('minute', %s)" ; or CAST as timestamp?
+                           :minute-of-hour  "EXTRACT(MINUTE FROM %s)"
+                           :hour            "DATE_TRUNC('hour', %s)"
+                           :hour-of-day     "EXTRACT(HOUR FROM %s)"
+                           :day             "CAST(%s AS DATE)"
+                           :day-of-week     "EXTRACT(ISODOW FROM %s)"
+                           :day-of-month    "EXTRACT(DAY FROM %s)"
+                           :day-of-year     "EXTRACT(DOY FROM %s)"
+                           :week            "DATE_TRUNC('week', %s)"
+                           :week-of-year    "EXTRACT(WEEK FROM %s)"
+                           :month           "DATE_TRUNC('month', %s)"
+                           :month-of-year   "EXTRACT(MONTH FROM %s)"
+                           :quarter         "DATE_TRUNC('quarter', %s)"
+                           :quarter-of-year "EXTRACT(QUARTER FROM %s)"
+                           :year            "DATE_TRUNC('year', %s)")})
 
-(defn- date-extract [_ smaller-unit larger-unit field]
-  {:korma.sql.utils/args [field]
-   :korma.sql.utils/func (format "EXTRACT(%s FROM %%s)"
-                                 (case [smaller-unit larger-unit]
-                                   [:minute :hour]  "MINUTE"
-                                   [:hour :day]     "HOUR"
-                                   [:day :week]     "ISODOW"
-                                   [:day :month]    "DAY"
-                                   [:day :year]     "DOY"
-                                   [:week :year]    "WEEK"
-                                   [:month :year]   "MONTH"
-                                   [:quarter :year] "QUARTER"
-                                   _                (throw (Exception. (format "Don't know how to extract %s from %s." (name smaller-unit) (name larger-unit))))))})
+(defn- date-interval [_ unit amount]
+  {:korma.sql.utils/args []
+   :korma.sql.utils/func (format (case unit
+                                   :minute          "(NOW() + INTERVAL '%d minute')"
+                                   :hour            "(NOW() + INTERVAL '%d hour')"
+                                   :day             "(NOW() + INTERVAL '%d day')"
+                                   :week            "(NOW() + INTERVAL '%d week')"
+                                   :month           "(NOW() + INTERVAL '%d month')"
+                                   :quarter         "(NOW() + INTERVAL '%d quarter')"
+                                   :year            "(NOW() + INTERVAL '%d year')")
+                                 amount)})
 
 (defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
@@ -142,8 +156,8 @@
                                 :database->connection-details        database->connection-details
                                 :cast-timestamp-to-date              cast-timestamp-to-date
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql
-                                :date-trunc                          date-trunc
-                                :date-extract                        date-extract}
+                                :date                                date
+                                :date-interval                       date-interval}
   ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
   IDriver                      GenericSQLIDriverMixin
   ISyncDriverTableFKs          GenericSQLISyncDriverTableFKsMixin

@@ -7,7 +7,8 @@
             (clojure [set :as set]
                      [string :as s])
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.expand :as expand]
+            (metabase.driver.query-processor [expand :as expand]
+                                             [interface :as i])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]
@@ -41,7 +42,7 @@
 ;; how to order the results
 
 (defn- field-qualify-name [field]
-  (assoc field :field-name (keyword (apply str (->> (rest (expand/qualified-name-components field))
+  (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
 (defn- flatten-collect-fields [form]
@@ -95,25 +96,24 @@
   (if-not (contains? #{:avg :count :distinct :stddev :sum} ag-type)
     (constantly fail)
     (let [ag-field (if (contains? #{:count :distinct} ag-type)
-                     {:base-type    :IntegerField
-                      :field-name   :count
-                      :field-display-name "count"
-                      :special-type :number}
+                     {:base-type          :IntegerField
+                      :field-name         :count
+                      :field-display-name :count
+                      :special-type       :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
-                         (assoc :field-name (if (= ag-type :distinct) :count
-                                                ag-type))
-                         (assoc :field-display-name (if (= ag-type :distinct) "count"
-                                                        (name ag-type)))))]
+                         (merge (let [field-name (if (= ag-type :distinct) :count ag-type)]
+                                  {:field-name         field-name
+                                   :field-display-name field-name}))))]
       (fn [out]
         (trace-lvars "*" out)
         (== out ag-field)))))
 
 (defn- unknown-field° [field-name out]
   (all
-   (== out {:base-type    :UnknownField
-            :special-type nil
-            :field-name   field-name
+   (== out {:base-type          :UnknownField
+            :special-type       nil
+            :field-name         field-name
             :field-display-name field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 

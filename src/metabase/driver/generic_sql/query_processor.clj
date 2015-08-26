@@ -14,12 +14,12 @@
                                          [util :refer :all])
             [metabase.util :as u])
   (:import java.sql.Timestamp
-           (metabase.driver.query_processor.expand Field
-                                                   OrderByAggregateField
-                                                   Value)
-           (metabase.driver.query_processor.datetime DateTimeField
-                                                     DateTimeLiteral
-                                                     DateTimeValue)))
+           (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeLiteral
+                                                      DateTimeValue
+                                                      Field
+                                                      OrderByAggregateField
+                                                      Value)))
 
 (declare apply-form
          log-korma-form)
@@ -96,10 +96,6 @@
 (defn- quote-name [nm]
   (i/quote-name (:driver *query*) nm))
 
-(defn- cast-as-date [field]
-  {:korma.sql.utils/func "CAST(%s AS DATE)"
-   :korma.sql.utils/args [field]})
-
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
@@ -127,43 +123,35 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value base-type]} _]
+    ([{value :value, {base-type :base-type} :field} _]
      (cond
-       (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
-       (= base-type :UUIDField)         (do (assert (string? value))
-                                            (java.util.UUID/fromString value))
-       :else                            value)))
-
-  DateTimeValue
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{:keys [relative-amount cast-unit extract-unit]} _]
-     (let [v (cond
-               extract-unit       (i/date-extract (:driver *query*) extract-unit cast-unit (sqlfn :NOW))
-               (= cast-unit :day) (cast-as-date (sqlfn :NOW))
-               :else              (i/date-trunc (:driver *query*) cast-unit (sqlfn :NOW)))]
-       (if (zero? relative-amount)
-         v
-         {:korma.sql.utils/func (format "(%%s + %d)" relative-amount)
-          :korma.sql.utils/args [v]}))))
+       (= base-type :UUIDField) (do (assert (string? value))
+                                    (java.util.UUID/fromString value))
+       :else                    value)))
 
   DateTimeLiteral
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [^Timestamp value]} _]
-     `(Timestamp/valueOf ~(.toString value))))
+    ([{value :value, {unit :unit} :field} _]
+     (i/date (:driver *query*) unit {:korma.sql.utils/args [`(Timestamp/valueOf ~(.toString value))]
+                                     :korma.sql.utils/func "CAST(%s AS TIMESTAMP)"})))
+
+  DateTimeValue
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [relative-amount unit], {field-unit :unit} :field} _]
+     (i/date (:driver *query*) field-unit (if (zero? relative-amount)
+                                            (sqlfn :NOW)
+                                            (i/date-interval (:driver *query*) unit relative-amount)))))
 
   DateTimeField
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [cast-unit extract-unit], {:keys [base-type special-type field-name table-name]} :field} include-as?]
-     (let [f     (cond
-                   extract-unit       (partial i/date-extract (:driver *query*) extract-unit cast-unit)
-                   (= cast-unit :day) cast-as-date
-                   :else              (partial i/date-trunc (:driver *query*) cast-unit))
+    ([{:keys [unit], {:keys [base-type special-type field-name table-name]} :field} include-as?]
+     (let [f     (partial i/date (:driver *query*) unit)
            field (cond
                    (= special-type :timestamp_seconds)      (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
                    (= special-type :timestamp_milliseconds) (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)

@@ -10,7 +10,8 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand])
+                                             [expand :as expand]
+                                             [interface :as qpi])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -72,17 +73,50 @@
        (not breakout)
        (not fields)))
 
+;; (defn- collect-fields
+;;   "Collect all the `Field` and `DateTimeField` objects in the EXPANDED-QUERY, and return a map of ID -> field."
+;;   [expanded-query]
+;;   (let [field-id->field (atom {})]
+;;     (walk/prewalk (fn [form]
+;;                     (cond
+;;                       (instance? metabase.driver.query_processor.interface.Field form)
+;;                       (do (swap! field-id->field assoc (:field-id form) form)
+;;                           nil)
+
+;;                       (instance? metabase.driver.query_processor.interface.DateTimeField form)
+;;                       (do (swap! field-id->field assoc (:field-id (:field form)) form)
+;;                           nil)
+
+;;                       :else form))
+;;                   expanded-query)
+;;     @field-id->field))
+
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
   (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
     (qp (if-not (should-add-implicit-fields? query)
           query
-          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
-                                 :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                            (map expand/rename-mb-field-keys)
-                            (map expand/map->Field)
-                            (map #(expand/resolve-table % {source-table-id source-table})))]
+          ;; Fetch all the Fields for the source table; if they're already referenced in the Query, use those objects;
+          ;; Otherwise create new Field objects as needed
+          (let [;; referenced-fields (collect-fields query)
+                fields            (for [{field-id :id, :as field} (sel :many :fields [Field :name :display_name :base_type :special_type :table_id :id :position :description],
+                                                                       :table_id source-table-id, :active true, :preview_display true, :field_type [not= "sensitive"],
+                                                                       :parent_id nil, (k/order :position :asc), (k/order :id :desc))]
+                                    (or ;; (referenced-fields field-id)
+                                        (let [{:keys [base-type special-type], :as field} (expand/rename-mb-field-keys field)
+                                              field                                       (-> (qpi/map->Field field)
+                                                                                              (qpi/resolve-table {source-table-id source-table}))]
+                                          field
+                                          ;; Fallback to using datetime fields with date resolution, the old behavior before the introduction
+                                          ;; of all the new date stuff.
+                                          ;; (if (or (= base-type :DateField)
+                                          ;;         (= base-type :DateTimeField)
+                                          ;;         (= special-type :timestamp_seconds)
+                                          ;;         (= special-type :timestamp_milliseconds))
+                                          ;;   (qpi/map->DateTimeField {:field field, :unit :day})
+                                          ;;   field)
+                                          )))]
             (if-not (seq fields)
               (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
                   query)
