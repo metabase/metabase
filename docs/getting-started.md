@@ -2,7 +2,7 @@
 Metabase lets you ask questions about your data, drill into specific records, and dashboards to help keep you organized.  
 
 ##Step 1: Installing Metabase
-Metabase uses Java to operate, so you'll need at least version 1.6 or later.  Not sur what version of Java you're using?  No problem.  Here's how to check: 
+Metabase uses Java to operate, so you'll need at least version 1.6 or later.  Not sure what version of Java you're using?  No problem.  Here's how to check: 
 
 ###Mac Users: 
 In Terminal, insert the command prompt: "java -version".  You will receive a message similar to: 
@@ -94,7 +94,7 @@ If you look at your homepage, you'll see the different tables that Metabase was 
 
 *Figure 1*
 
-![Figure 1: Metabase Home with Tables](images/MetabaseTable1.png =500x300)
+![Figure 1: Metabase Home with Tables](images/MetabaseTable1.png)
 
 For example, in the sample data set above, the database (data source) is "Bird Impact" (it's a database of the number of collisions between birds and aircrafts).  The table is "strikes" and the number of rows is 151,069. 
 
@@ -104,7 +104,7 @@ By clicking on an individual table, you enter the interface (pictured below) tha
 
 *Figure 2*
 
-![Figure 2: Metabase Initial Table View](images/MetabaseTable2.png =500x300)
+![Figure 2: Metabase Initial Table View](images/MetabaseTable2.png)
 
 Your screen will reflect the data source you connected to Metabase and the table you selected.  In our example, the data source is "Bird Impact" and the table is "strikes" (exactly what we selected on the previous screen). 
 
@@ -118,7 +118,7 @@ After you select the different components of your question, click **Run query**.
 
 *Figure 4*
 
-![Answer to Query](images/MetabaseQuestion1Answer.png =500x300)
+![Answer to Query](images/MetabaseQuestion1Answer.png)
 
 There were 151,069 collisions between aircraft and birds.  Stated in database parlance, there are 151,069 records in the table.  Does this number look familiar?  When selecting a table on your homepage in Step 3 (See *Figure 1*) 151069 was labeled as "total" and listed next to the table "strikes".  
 
