@@ -121,7 +121,7 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, function(id) {
     return async function(dispatch, getState) {
         let dashcard = getState().dashcards[id];
-        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), 10000);
+        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), 10000, "Card took too long to load.");
         return { id, result };
     };
 });

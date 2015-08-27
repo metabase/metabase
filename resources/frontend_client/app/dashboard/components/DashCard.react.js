@@ -13,22 +13,37 @@ import { fetchDashCardData, markNewCardSeen } from "../actions";
 import cx from "classnames";
 
 class DashCard extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { error: null };
+    }
 
-    componentDidMount() {
-        this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
+    async componentDidMount() {
         // HACK: way to scroll to a newly added card
         if (this.props.dashcard.justAdded) {
             React.findDOMNode(this).scrollIntoView();
             this.props.dispatch(markNewCardSeen(this.props.dashcard.id));
         }
+
+        try {
+            await this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
+        } catch (error) {
+            this.setState({ error });
+        }
     }
 
     renderCard() {
-        let { card, dataset, error } = this.props.dashcard;
+        let { card, dataset } = this.props.dashcard;
         let data = dataset && dataset.data;
+        let { error } = this.state;
 
         if (error) {
-            return <div>{error}</div>;
+            let message = (error.data && error.data.message) || error;
+            return (
+                <div className="p1 text-centered flex-full flex flex-column layout-centered">
+                    <h2 className="text-normal text-grey-2">{message}</h2>
+                </div>
+            );
         }
 
         if (card && data) {
@@ -40,9 +55,9 @@ class DashCard extends React.Component {
         }
 
         return (
-            <div className="my4 py4 text-brand text-centered">
+            <div className="p1 text-brand text-centered flex-full flex flex-column layout-centered">
                 <LoadingSpinner />
-                <h1 className="text-normal text-grey-2">Loading...</h1>
+                <h1 className="ml1 text-normal text-grey-2">Loading...</h1>
             </div>
         );
     }
