@@ -44,6 +44,7 @@
 
 .DashCard .DashCard-actions {
   opacity: 0;
+  pointer-events: none;
   transition: opacity .3s linear;
 }
 
@@ -78,6 +79,7 @@
 
 .Dash--editing .DashCard:hover .DashCard-actions {
   opacity: 1;
+  pointer-events: inherit;
   transition: opacity .3s linear;
 }
 

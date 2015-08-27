@@ -126,6 +126,13 @@ export default class DashboardGrid extends React.Component {
         this.setState({ isDragging: false });
     }
 
+    // we use onMouseDownCapture to prevent dragging due to react-grid-layout bug referenced below
+    onDashCardMouseDown(e) {
+        if (!this.props.isEditing) {
+            e.stopPropagation();
+        }
+    }
+
     render() {
         var { dashboard } = this.props;
         return (
@@ -141,14 +148,16 @@ export default class DashboardGrid extends React.Component {
                     // instead we keep the same row height and adjust the layout height to get the right aspect ratio
                     rowHeight={this.state.rowHeight}
                     verticalCompact={false}
-                    isDraggable={this.props.isEditing}
-                    isResizable={this.props.isEditing || true}
+                    // NOTE: currently leaving these true always instead of using this.props.isEditing due to perf issues caused by
+                    // https://github.com/STRML/react-grid-layout/issues/89
+                    isDraggable={true}
+                    isResizable={true}
                     onLayoutChange={(...args) => this.onLayoutChange(...args)}
                     onDrag={(...args) => this.onDrag(...args)}
                     onDragStop={(...args) => this.onDragStop(...args)}
                 >
                     {dashboard.ordered_cards.map(dc =>
-                        <div key={dc.id} className="DashCard">
+                        <div key={dc.id} className="DashCard" onMouseDownCapture={(...args) => this.onDashCardMouseDown(...args)}>
                             <DashCard
                                 key={dc.id}
                                 dashcard={dc}
