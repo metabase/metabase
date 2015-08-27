@@ -9,6 +9,8 @@ import moment from "moment";
 
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
+const DATASET_TIMEOUT = 1;
+
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
     methods.forEach((methodName) => {
@@ -121,7 +123,7 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, function(id) {
     return async function(dispatch, getState) {
         let dashcard = getState().dashcards[id];
-        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), 10000, "Card took too long to load.");
+        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
         return { id, result };
     };
 });
@@ -142,16 +144,16 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         };
 
         // remove isRemoved dashboards
-        var removedDashcards = await * dashboard.ordered_cards
+        let removedDashcards = await * dashboard.ordered_cards
             .filter(dc => dc.isRemoved && !dc.isAdded)
             .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id }));
 
         // add isAdded dashboards
-        var updatedDashcards = await * dashboard.ordered_cards
+        let updatedDashcards = await * dashboard.ordered_cards
             .filter(dc => !dc.isRemoved)
             .map(async dc => {
                 if (dc.isAdded) {
-                    var result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
+                    let result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
                     // mark isAdded because addcard doesn't record the position
                     return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, isAdded: true }
                 } else {
@@ -161,18 +163,20 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // update the dashboard itself
         if (dashboard.isDirty) {
-            var updateResult = await Dashboard.update(dashboard);
+            let { id, name, description, public_perms } = dashboard;
+            dashboard = await Dashboard.update({ id, name, description, public_perms });
         }
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            var dashcardResult = await Dashboard.reposition_cards({ dashId: dashId, cards: updatedDashcards })
-            if (dashcardResult.status === "ok") {
-                return updateResult;
-            } else {
-                throw new Error(dashcardResult.status);
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY }) => ({ id, row, col, sizeX, sizeY }));
+            var result = await Dashboard.reposition_cards({ dashId, cards });
+            if (result.status !== "ok") {
+                throw new Error(result.status);
             }
         }
+
+        return dashboard;
     };
 });
 
