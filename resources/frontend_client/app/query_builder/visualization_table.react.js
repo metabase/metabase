@@ -39,7 +39,9 @@ export default React.createClass({
             height: 0,
             columnWidths: [],
             colDefs: null,
-            popover: null
+            popover: null,
+            data: null,
+            rawData: null
         };
     },
 
@@ -47,20 +49,22 @@ export default React.createClass({
         if (this.props.data) {
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
-                data: (this.props.pivot) ? DataGrid.pivot(this.props.data) : this.props.data
+                data: (this.props.pivot) ? DataGrid.pivot(this.props.data) : this.props.data,
+                rawData: this.props.data
             });
         }
     },
 
     componentWillReceiveProps: function(newProps) {
-        // TODO: check if our data has changed and specifically if our columns list has changed
-        if (JSON.stringify(newProps.data.cols) !== this.state.colDefs) {
+        // TODO: check if our data has changed
+        if (newProps.data !== this.state.rawData) {
             // if the columns have changed then reset any column widths we have setup
             var gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
-                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols),
-                data: gridData
+                data: gridData,
+                rawData: this.props.data,
+                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols)
             });
         }
     },
