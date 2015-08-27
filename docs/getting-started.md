@@ -16,7 +16,7 @@ As long as the version is at least 1.6, you're all set to go!
 ###Windows Users:
 Under Programs, click on the "Java" icon.  Click on "About" and then find the version number listed.  If you're using version 1.6 or greater, then you're good to go! 
 
-If you don't have the latest version of Java, download it at: [https://java.com/en/download/](https://java.com/en/download/)
+If you don't have the latest version of Java, download the most recent Java Development Kit (JDK) from [Oracle's Java Downloads page](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 
 Once you take care of checking the version of java on your computer, **Download the Metabase file from [www.metabase.com/download](www.metabase.com/download).**  Place the Metabase JAR in the directory.  Run the command `java -jar metabase.jar` to create a file called "metabase.db.h2.db".  **This file contains important application data, so don't delete it!**
 
