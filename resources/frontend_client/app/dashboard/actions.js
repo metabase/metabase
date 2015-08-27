@@ -104,7 +104,7 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
 export const addCardToDashboard = function({ dashId, cardId }) {
     return function(dispatch, getState) {
         var state = getState();
-        var existingCards = state.dashboards[dashId].ordered_cards.map(id => state.dashcards[id]);
+        var existingCards = state.dashboards[dashId].ordered_cards.map(id => state.dashcards[id]).filter(dc => !dc.isRemoved);
         let id = Math.random(); // temporary id
         dispatch(createAction(ADD_CARD_TO_DASH)({
             id: id,
