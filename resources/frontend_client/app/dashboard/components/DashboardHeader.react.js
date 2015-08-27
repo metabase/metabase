@@ -116,7 +116,7 @@ export default class DashboardHeader extends Component {
             buttonSections.push([
                 <ModalWithTrigger
                     ref="dashboardHistory"
-                    triggerElement={<Icon name="history" width="16px" height="16px" />}
+                    triggerElement={<Icon className="text-brand-hover" name="history" width="16px" height="16px" />}
                 >
                     <HistoryModal
                         dispatch={this.props.dispatch}
