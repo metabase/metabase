@@ -36,6 +36,7 @@ function intersects(a, b) {
 }
 
 // for debugging
+/*eslint-disable */
 function printGrid(cards, width) {
     let grid = [];
     for (let card of cards) {
@@ -48,3 +49,4 @@ function printGrid(cards, width) {
     }
     console.log("\n"+grid.map(row => row.join(".")).join("\n")+"\n");
 }
+/*eslint-enable */

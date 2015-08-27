@@ -17,7 +17,6 @@ class DashCard extends React.Component {
     componentDidMount() {
         this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
         // HACK: way to scroll to a newly added card
-        console.log(this.props.dashcard.id, this.props.dashcard.justAdded);
         if (this.props.dashcard.justAdded) {
             React.findDOMNode(this).scrollIntoView();
             this.props.dispatch(markNewCardSeen(this.props.dashcard.id));
