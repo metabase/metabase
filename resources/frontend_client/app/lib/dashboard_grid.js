@@ -6,7 +6,7 @@ export function getPositionForNewDashCard(cards, sizeX = 2, sizeY = 2, width = 6
     let row = 0;
     let col = 0;
     while (row < 1000) {
-        while (col < width) {
+        while (col <= width - sizeX) {
             let good = true;
             let position = { col, row, sizeX, sizeY };
             for (let card of cards) {
@@ -33,4 +33,18 @@ function intersects(a, b) {
         b.row >= a.row + a.sizeY ||
         b.row + b.sizeY <= a.row
     );
+}
+
+// for debugging
+function printGrid(cards, width) {
+    let grid = [];
+    for (let card of cards) {
+        for (let col = card.col; col < card.col + card.sizeX; col++) {
+            for (let row = card.row; row < card.row + card.sizeY; row++) {
+                grid[row] = grid[row] || Array(width).join(".").split(".").map(() => 0);
+                grid[row][col]++;
+            }
+        }
+    }
+    console.log("\n"+grid.map(row => row.join(".")).join("\n")+"\n");
 }
