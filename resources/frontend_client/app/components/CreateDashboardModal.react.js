@@ -38,7 +38,7 @@ export default React.createClass({
         // populate a new Dash object
         var newDash = {
             name: (name && name.length > 0) ? name : null,
-            description: (description && description.length > 0) ? name : null,
+            description: (description && description.length > 0) ? description : null,
             public_perms: 2 // public read/write
         };
 

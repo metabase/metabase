@@ -26,11 +26,12 @@
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name public_perms] :as body} :body}]
+  [:as {{:keys [name description public_perms] :as body} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
   (ins Dashboard
     :name name
+    :description description
     :public_perms public_perms
     :creator_id *current-user-id*))
 
