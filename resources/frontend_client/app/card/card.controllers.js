@@ -742,7 +742,7 @@ CardControllers.controller('CardDetail', [
         function loadSerializedCard(serialized) {
             var card = deserializeCardFromUrl(serialized);
             // consider this since it's not saved:
-            card.dirty = true;
+            card.isDirty = true;
             return card;
         }
 
@@ -759,9 +759,8 @@ CardControllers.controller('CardDetail', [
             }
             if ($routeParams.table != undefined && card.dataset_query.query) {
                 card.dataset_query.query.source_table = parseInt($routeParams.table);
+                card.isDirty = true;
             }
-
-            resetDirty();
 
             return card;
         }

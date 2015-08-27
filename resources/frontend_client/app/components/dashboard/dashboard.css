@@ -18,6 +18,12 @@
    .Dash-wrapper { max-width: var(--lg-width); }
 }
 
+.DashboardGrid {
+    /* offset RGL's 10px padding */
+    margin-left: -10px;
+    margin-right: -10px;
+}
+
 .DashCard {
   position: relative;
   z-index: 1;
@@ -131,5 +137,10 @@
 }
 
 .Dash--editing .Card-title {
+    pointer-events: none;
+}
+
+/* ensure action buttons do not respond to events when dragging */
+.Dash--dragging .DashCard-actions {
     pointer-events: none;
 }

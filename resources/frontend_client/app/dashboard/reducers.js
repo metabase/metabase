@@ -13,7 +13,8 @@ import {
     ADD_CARD_TO_DASH,
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
-    FETCH_REVISIONS
+    FETCH_REVISIONS,
+    MARK_NEW_CARD_SEEN
 } from './actions';
 
 export const selectedDashboard = handleActions({
@@ -31,7 +32,7 @@ export const cards = handleActions({
 export const cardList = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => payload.result },
     [DELETE_CARD]: { next: (state, { payload }) => state }
-}, []);
+}, null);
 
 export const dashboards = handleActions({
     [FETCH_DASHBOARD]: { next: (state, { payload }) => ({ ...state, ...payload.entities.dashboard }) },
@@ -56,11 +57,15 @@ export const dashcards = handleActions({
     },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
         ...state,
-        [dashcard.id]: { ...dashcard, isAdded: true }
+        [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true }
     }),
     [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId }}) => ({
         ...state,
         [dashcardId]: { ...state[dashcardId], isRemoved: true }
+    }),
+    [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
+        ...state,
+        [dashcardId]: { ...state[dashcardId], justAdded: false }
     })
 }, {});
 

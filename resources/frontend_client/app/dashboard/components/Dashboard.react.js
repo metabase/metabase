@@ -32,13 +32,13 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <LoadingAndErrorWrapper className="Dashboard full-height flex flex-row flex-full" loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className="Dashboard flex flex-full" loading={!dashboard} error={error}>
             {() =>
-                <div className="full">
+                <div className="full flex flex-column">
                     <header className="bg-white border-bottom">
                         <DashboardHeader {...this.props} />
                     </header>
-                    <div className="Dash-wrapper wrapper full-height">
+                    <div className="Dash-wrapper wrapper flex layout-centered flex-full flex-column">
                         { dashboard.ordered_cards.length === 0 ?
                             <div className="flex flex-column layout-centered">
                                 <span className="QuestionCircle">?</span>

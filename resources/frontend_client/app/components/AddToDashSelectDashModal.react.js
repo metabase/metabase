@@ -1,5 +1,6 @@
 'use strict';
 
+import CreateDashboardModal from 'metabase/components/CreateDashboardModal.react';
 import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from 'metabase/components/SortableItemList.react';
 
@@ -17,7 +18,7 @@ export default React.createClass({
     getInitialState: function() {
         this.loadDashboardList();
         return {
-            dashboards: []
+            dashboards: null
         };
     },
 
@@ -39,17 +40,29 @@ export default React.createClass({
         this.props.notifyCardAddedToDashFn(dashCard);
     },
 
+    createDashboard: async function(newDashboard) {
+        let dashboard = await this.props.dashboardApi.create(newDashboard).$promise;
+        // this.props.notifyDashboardCreatedFn(dashboard);
+        this.addToDashboard(dashboard);
+    },
+
     render: function() {
-        return (
-            <ModalContent
-                title="Add Question to Dashboard"
-                closeFn={this.props.closeFn}
-            >
-                <SortableItemList
-                    items={this.state.dashboards}
-                    onClickItemFn={this.addToDashboard}
-                />
-            </ModalContent>
-        );
+        if (!this.state.dashboards) {
+            return null;
+        } else if (this.state.dashboards.length === 0) {
+            return <CreateDashboardModal createDashboardFn={this.createDashboard} closeFn={this.props.closeFn} />
+        } else {
+            return (
+                <ModalContent
+                    title="Add Question to Dashboard"
+                    closeFn={this.props.closeFn}
+                >
+                    <SortableItemList
+                        items={this.state.dashboards}
+                        onClickItemFn={this.addToDashboard}
+                    />
+                </ModalContent>
+            );
+        }
     }
 });
