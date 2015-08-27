@@ -134,7 +134,7 @@ export default class DashboardHeader extends Component {
 
         if (dashboard && dashboard.can_write && !this.props.isEditing) {
             buttonSections.push([
-                <a title="Edit Dashboard Layout" className="text-brand-hover" onClick={() => this.onEdit()}>
+                <a title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
             ]);
