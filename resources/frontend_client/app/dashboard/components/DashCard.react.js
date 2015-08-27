@@ -1,12 +1,14 @@
 "use strict";
 
+import React, { Component, PropTypes } from "react";
+
 import ScalarCard from "./cards/ScalarCard.react";
 import TableCard from "./cards/TableCard.react";
 import ChartCard from "./cards/ChartCard.react";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 
-import { fetchDashCardData } from "../actions";
+import { fetchDashCardData, markNewCardSeen } from "../actions";
 
 import cx from "classnames";
 
@@ -14,6 +16,12 @@ class DashCard extends React.Component {
 
     componentDidMount() {
         this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
+        // HACK: way to scroll to a newly added card
+        console.log(this.props.dashcard.id, this.props.dashcard.justAdded);
+        if (this.props.dashcard.justAdded) {
+            React.findDOMNode(this).scrollIntoView();
+            this.props.dispatch(markNewCardSeen(this.props.dashcard.id));
+        }
     }
 
     renderCard() {

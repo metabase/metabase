@@ -65,6 +65,8 @@ export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
 export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
+export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
+
 // resource wrappers
 const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
 const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
@@ -74,6 +76,8 @@ const Revision = new AngularResourceProxy("Revision", ["list", "revert"]);
 // action creators
 
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+
+export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
@@ -107,7 +111,6 @@ export const addCardToDashboard = function({ dashId, cardId }) {
             dashboard_id: dashId,
             card_id: cardId,
             card: state.cards[cardId],
-            isAdded: true,
             ...getPositionForNewDashCard(existingCards)
         }));
     };
