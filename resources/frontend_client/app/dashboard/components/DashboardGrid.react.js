@@ -71,8 +71,11 @@ export default class DashboardGrid extends React.Component {
     }
 
     onEditDashCard(dc) {
-        if (this.props.isDirty && !confirm("You have unsaved changes to this dashboard, are you sure you want to discard them?")) {
-            return;
+        // if editing and card is dirty prompt to save changes
+        if (this.props.isEditing && this.props.isDirty) {
+            if (!confirm("You have unsaved changes to this dashboard, are you sure you want to discard them?")) {
+                return;
+            }
         }
         this.props.onChangeLocation("/card/" + dc.card_id + "?from=" + encodeURIComponent("/dash/" + dc.dashboard_id));
     }
