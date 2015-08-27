@@ -46,8 +46,8 @@
             <div class="Grid">
                 <ul class="Grid-cell">
                     <li ng-repeat="card in cards | filter:searchFilter">
-                        <a href="/card/{{card.id}}?clone" class="Entity flex align-center no-decoration mb2 py2 lg-p2 border-bottom">
-                            <div class="flex flex-column">
+                        <div class="Entity flex align-center mb2 py2 lg-p2 border-bottom">
+                            <a href="/card/{{card.id}}?clone" class="flex flex-column no-decoration">
                                 <div class="flex align-center">
                                     <h4 class="Entity-title break-word text-brand-hover">{{card.name}}</h4>
                                     <mb-icon class="ml1 text-grey-4" name="lock" width="12px" height="12px" ng-if="card.public_perms === 0"></mb-icon>
@@ -55,12 +55,11 @@
                                 <span class="Entity-attribution">
                                     Asked by: {{card.creator.common_name}}
                                 </span>
-                            </div>
-                            <div class="flex flex-align-right">
-                                <mb-card-favorite-button class="mr1 lg-mr4" card-id="card.id"></mb-card-favorite-button>
-                                <mb-icon class="text-grey-1 text-grey-3-hover transition-color flex-align-right" name="chevronright" width="18px" height="18px"></mb-icon>
-                            </div>
-                        </a>
+                            </a>
+                            <a href="/card/{{card.id}}" class="flex-align-right IconCircle flex text-grey-1 text-grey-3-hover transition-color layout-centered">
+                                <mb-icon name="pencil" width="18px" height="18px"></mb-icon>
+                            </a>
+                        </div>
                     </li>
                 </ul>
             </div>
