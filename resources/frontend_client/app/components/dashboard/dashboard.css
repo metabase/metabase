@@ -18,6 +18,12 @@
    .Dash-wrapper { max-width: var(--lg-width); }
 }
 
+.DashboardGrid {
+    /* offset RGL's 10px padding */
+    margin-left: -10px;
+    margin-right: -10px;
+}
+
 .DashCard {
   position: relative;
   z-index: 1;
