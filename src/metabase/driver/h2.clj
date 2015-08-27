@@ -131,6 +131,8 @@
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
     (qp query)))
 
+(defrecord H2Driver [])
+
 (extend H2Driver
   ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
                                :database->connection-details        database->connection-details

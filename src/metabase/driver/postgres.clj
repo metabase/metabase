@@ -119,7 +119,7 @@
                 :hour            "DATE_TRUNC('hour', %s)"
                 :hour-of-day     "EXTRACT(HOUR FROM %s)"
                 :day             "CAST(%s AS DATE)"
-                :day-of-week     "EXTRACT(ISODOW FROM %s)"
+                :day-of-week     "(EXTRACT(DOW FROM %s) + 1)" ; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
                 :day-of-month    "EXTRACT(DAY FROM %s)"
                 :day-of-year     "EXTRACT(DOY FROM %s)"
                 :week            "DATE_TRUNC('week', %s)"

@@ -42,7 +42,6 @@
   (fn [query]
     (try (qp query)
          (catch Throwable e
-           (println e)
            {:status         :failed
             :error          (or (.getMessage e) (str e))
             :stacktrace     (u/filtered-stacktrace e)
@@ -231,7 +230,8 @@
     (let [query   (cond-> query
                     (and (not limit)
                          (not page)
-                         (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
+                         (or (not ag-type)
+                             (= ag-type :rows))) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
       (update results :rows (partial take max-result-rows)))))
 

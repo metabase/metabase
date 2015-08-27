@@ -52,7 +52,7 @@
    ;; Date
    :day             identity
    ;; 1 - 7 (Mon - Sun)
-   :day-of-week     (enum-fn 1 7 :monday :tuesday :wednesday :thursday :friday :saturday :sunday)
+   :day-of-week     (enum-fn 1 7 :sunday :monday :tuesday :wednesday :thursday :friday :saturday)
    ;; 1 - 31
    :day-of-month    (int-in-range-fn 1 31)
    ;; 1 - 365
@@ -144,7 +144,7 @@
   IResolve
   (resolve-field [this field-id->field]
     (or (when-let [resolved-field (field-id->field field-id)]
-          (assert (instance? (resolve 'Field) resolved-field))
+          (assert (instance? (resolve 'metabase.driver.query_processor.interface.Field) resolved-field))
           (map->DateTimeField {:field resolved-field, :unit unit}))
         this)))
 
@@ -161,7 +161,7 @@
   "Resolve FIELD-PLACEHOLDER, converting the `Field` to a `DateTimeField` if needed, or throw an exception."
   [field-placeholder field-id->field]
   (let [field (resolve-field-or-throw field-placeholder field-id->field)]
-    (assert (instance? (resolve 'DateTimeField) field))
+    (assert (instance? (resolve 'metabase.driver.query_processor.interface.DateTimeField) field))
     field))
 
 
@@ -171,9 +171,10 @@
                              value]
   IResolve
   (resolve-field [_ field-id->field]
-    (let [resolved-field (resolve-field-or-throw field field-id->field)]
+    (let [resolved-field (resolve-field-or-throw field field-id->field)
+          DateTimeField? (instance? (resolve 'metabase.driver.query_processor.interface.DateTimeField) resolved-field)]
       (map->Value {:field resolved-field
-                   :value (if-not (instance? (resolve 'DateTimeField) resolved-field) value    ; if we're a holding a value like "July" (etc) and the resolved
+                   :value (if-not DateTimeField? value                                         ; if we're a holding a value like "July" (etc) and the resolved
                                   (let [parser (datetime-unit->parser (:unit resolved-field))] ; field is a DateTimeField, look up the appropriate parser so
                                     (parser value)))}))))                                      ; we can convert ourselves to the actual value (e.g. 6)
 

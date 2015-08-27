@@ -1,6 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [clojure.math.numeric-tower :as math]
+            [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [medley.core :as m]
@@ -73,32 +74,78 @@
              (try (parse-iso-8601 s)
                   (catch Throwable _)))))
 
-(defn ^Date days-ago
-  "Return a `Date` that is N days ago."
-  [n & [^Date d]]
-  (let [c (Calendar/getInstance)]
-    (when d
-      (.setTime c d))
-    (.set c Calendar/DAY_OF_MONTH (- (.get c Calendar/DAY_OF_MONTH) n))
-    (.getTime c)))
+(defn ^Date relative-date
+  "Create a relative date. Valid values of UNITS are the keywords in `metabase.driver.query-processor.interface/datetime-value-units`."
+  [n unit & [^Date date]]
+  (let [[multiplier unit] (case unit
+                            :minute  [1 Calendar/MINUTE]
+                            :hour    [1 Calendar/HOUR_OF_DAY]
+                            :day     [1 Calendar/DATE]
+                            :week    [7 Calendar/DATE]
+                            :month   [1 Calendar/MONTH]
+                            :quarter [3 Calendar/MONTH]
+                            :year    [1 Calendar/YEAR])
+        cal (Calendar/getInstance)]
+    (when date
+      (.setTime cal date))
+    (.set cal unit (+ n (* (.get cal unit) multiplier)))
+    (.getTime cal)))
 
-(defn ^Date months-ago
-  "Return a `Date` that is N months ago."
-  [n & [^Date d]]
-  (let [c (Calendar/getInstance)]
-    (when d
-      (.setTime c d))
-    (.set c Calendar/MONTH (- (.get c Calendar/MONTH) n))
-    (.getTime c)))
+(defn ^Integer date-extract
+  "Extract a UNIT such as `:day-of-month` from DATE."
+  [unit ^Date date]
+  (let [cal (Calendar/getInstance)]
+    (.setTime cal date)
+    (case unit
+      :minute-of-hour  (.get cal Calendar/MINUTE)
+      :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
+      :day-of-week     (.get cal Calendar/DAY_OF_WEEK)  ; 1 (Sunday) - 7 (Saturday)
+      :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
+      :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
+      :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
+      :month-of-year   (inc (.get cal Calendar/MONTH))  ; 1 - 12
+      :quarter-of-year (-> (date-extract :month-of-year date)
+                           (/ 3.0)
+                           math/ceil
+                           int)
+      :year            (.get cal Calendar/YEAR))))
 
-(defn ^Date years-ago
-  "Return a `Date` that is N years ago."
-  [n & [^Date d]]
-  (let [c (Calendar/getInstance)]
-    (when d
-      (.setTime c d))
-    (.set c Calendar/YEAR (- (.get c Calendar/YEAR) n))
-    (.getTime c)))
+(defn ^Integer date-trunc
+  "Floor DATE to the nearest whole UNIT. Accepts the same values of UNIT as `relative-date`."
+  [unit ^Date date]
+  (let [cal (Calendar/getInstance)]
+    (.setTime cal date)
+    (let [set-in-cal! (fn [calendar-unit & [n]]
+                        (.set cal calendar-unit (or n 0)))
+          ;; keyed unit should also do the truncation operations recursively for corresponding value
+          ^:const unit->recursive-truncation {:hour    :minute
+                                              :day     :hour
+                                              :week    :day
+                                              :month   :day
+                                              :quarter :month
+                                              :year    :month}]
+      (loop [unit unit]
+        (case unit
+          :minute  (do (set-in-cal! Calendar/MILLISECOND)
+                       (set-in-cal! Calendar/SECOND))
+          :hour    (set-in-cal! Calendar/MINUTE)
+          :day     (set-in-cal! Calendar/HOUR_OF_DAY)
+          :week    (set-in-cal! Calendar/DAY_OF_WEEK 1)
+          :month   (set-in-cal! Calendar/DAY_OF_MONTH 1)
+          :quarter (set-in-cal! Calendar/MONTH (-> (date-extract :quarter-of-year date) ; 1 - 4
+                                                   dec                                  ; 0 - 3
+                                                   (* 3)))                              ; 0, 3, 6, 9. Java calendar is 0 - 11
+          :year    (set-in-cal! Calendar/MONTH 0))
+        (when-let [unit (unit->recursive-truncation unit)]
+          (recur unit))))
+    (.getTime cal)))
+
+(defn date-trunc-or-extract
+  "Extract (via `date-extract`) or truncate to (via `date-trunc`) UNIT."
+  [unit ^Date date]
+  (if (contains? #{:minute :hour :day :week :month :quarter :year} unit)
+    (date-trunc unit date)
+    (date-extract unit date)))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."
@@ -220,10 +267,16 @@
   [orig-namespace orig-fn-name]
   {:pre [(symbol? orig-namespace)
          (symbol? orig-fn-name)]}
-  (let [resolved-fn (delay (require orig-namespace)
-                           (ns-resolve orig-namespace orig-fn-name))]
-    (fn [& args]
-      (apply @resolved-fn args))))
+  (fn [& args]
+    (require orig-namespace)
+    (apply @(ns-resolve orig-namespace orig-fn-name) args))
+  ;; (let [resolve-fn (fn [] (try @(ns-resolve orig-namespace orig-fn-name)
+  ;;                              (catch Throwable _
+  ;;                                (require orig-namespace)
+  ;;                                @(ns-resolve orig-namespace orig-fn-name))))]
+  ;;   (fn [& args]
+  ;;     (apply (resolve-fn) args)))
+  )
 
 (defmacro deref->
   "Threads OBJ through FORMS, calling `deref` after each.
