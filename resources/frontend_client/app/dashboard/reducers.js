@@ -31,7 +31,7 @@ export const cards = handleActions({
 export const cardList = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => payload.result },
     [DELETE_CARD]: { next: (state, { payload }) => state }
-}, []);
+}, null);
 
 export const dashboards = handleActions({
     [FETCH_DASHBOARD]: { next: (state, { payload }) => ({ ...state, ...payload.entities.dashboard }) },

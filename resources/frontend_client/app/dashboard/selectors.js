@@ -34,21 +34,21 @@ const dashboardCompleteSelector = createSelector(
 )
 
 const isDirtySelector = createSelector(
-  [dashboardSelector, dashcardsSelector],
-  (dashboard, dashcards) => !!(
-      dashboard && (
-          dashboard.isDirty ||
-          _.some(dashboard.ordered_cards, id => (
-              !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
-              (dashcards[id].isDirty || dashcards[id].isAdded || dashcards[id].isRemoved)
-          ))
-      )
-  )
+    [dashboardSelector, dashcardsSelector],
+    (dashboard, dashcards) => !!(
+        dashboard && (
+            dashboard.isDirty ||
+            _.some(dashboard.ordered_cards, id => (
+                !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
+                (dashcards[id].isDirty || dashcards[id].isAdded || dashcards[id].isRemoved)
+            ))
+        )
+    )
 );
 
 const cardListSelector = createSelector(
     [cardIdListSelector, cardsSelector],
-    (cardIdList, cards) => cardIdList.map(id => cards[id])
+    (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
 );
 
 export const dashboardSelectors = createSelector(

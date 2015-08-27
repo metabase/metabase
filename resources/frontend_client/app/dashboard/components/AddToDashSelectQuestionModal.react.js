@@ -1,15 +1,25 @@
 'use strict';
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 import ModalContent from "metabase/components/ModalContent.react";
-import SortableItemList from 'metabase/components/SortableItemList.react';
+import SortableItemList from "metabase/components/SortableItemList.react";
 
 import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
 
 import moment from 'moment';
 
 export default class AddToDashSelectQuestionModal extends React.Component {
-    componentDidMount() {
-        this.props.dispatch(fetchCards());
+    constructor(props) {
+        super(props);
+        this.state = { error: null };
+    }
+
+    async componentDidMount() {
+        try {
+            await this.props.dispatch(fetchCards());
+        } catch (error) {
+            this.setState({ error });
+        }
     }
 
     onAdd(card) {
@@ -19,16 +29,24 @@ export default class AddToDashSelectQuestionModal extends React.Component {
     }
 
     render() {
+        var { error } = this.state;
+        if (this.props.cards && this.props.cards.length === 0) {
+            error = { message: "No cards have been saved." };
+        }
         return (
             <ModalContent
                 title="Add Question to Dashboard"
                 closeFn={this.props.onClose}
             >
-                <SortableItemList
-                    items={this.props.cards}
-                    onClickItemFn={(card) => this.onAdd(card)}
-                    showIcons={true}
-                />
+                <LoadingAndErrorWrapper loading={!this.props.cards} error={error} >
+                {() =>
+                    <SortableItemList
+                        items={this.props.cards}
+                        onClickItemFn={(card) => this.onAdd(card)}
+                        showIcons={true}
+                    />
+                }
+                </LoadingAndErrorWrapper>
             </ModalContent>
         );
     }
