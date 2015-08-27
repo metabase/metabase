@@ -34,8 +34,8 @@ class DashCard extends React.Component {
 
     renderCard() {
         let { card, dataset } = this.props.dashcard;
-        let data = dataset && dataset.data;
-        let { error } = this.state;
+        let data = (dataset && dataset.data);
+        let error = (dataset && dataset.error) || this.state.error;
 
         if (error) {
             let message = (error.data && error.data.message) || error;

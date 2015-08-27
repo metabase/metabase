@@ -9,6 +9,8 @@ import moment from "moment";
 
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
+const DATASET_TIMEOUT = 1;
+
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
     methods.forEach((methodName) => {
@@ -121,7 +123,7 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, function(id) {
     return async function(dispatch, getState) {
         let dashcard = getState().dashcards[id];
-        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), 10000, "Card took too long to load.");
+        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
         return { id, result };
     };
 });
