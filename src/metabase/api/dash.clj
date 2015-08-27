@@ -91,8 +91,9 @@
   (write-check Dashboard id)
   (doseq [{dashcard-id :id :keys [sizeX sizeY row col]} cards]
     ;; we lookup the dashcard purely to ensure the card is part of the given dashboard
-    (let [_ (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
-      (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
+    (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
+      (when dashcard
+        (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
   (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 
