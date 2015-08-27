@@ -34,9 +34,9 @@ export default class Header extends React.Component {
         } else {
             if (this.props.item && this.props.item.id != null) {
                 titleAndDescription = (
-                    <div className="Header-title flex flex-column flex-full my1">
-                        <div className="text-bold h3 p1">{this.props.item.name}</div>
-                        <div className="h4 p1">{this.props.item.description || "No description yet"}</div>
+                    <div className="Header-title my1 py2">
+                        <h2>{this.props.item.name}</h2>
+                        <h4 className="text-grey-3">{this.props.item.description || "No description yet"}</h4>
                     </div>
                 );
             } else {
