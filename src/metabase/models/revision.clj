@@ -68,10 +68,10 @@
                           (->> (describe-diff entity (:object rev1) (:object rev2))
                                (str reverted))))]
     (loop [acc [], [r1 r2 & more] revisions]
-    (if-not r2
-      (conj acc (assoc r1 :description "First revision."))
-      (recur (conj acc (assoc r1 :description (revision-desc r2 r1)))
-             (conj more r2))))))
+      (if-not r2
+        (conj acc (assoc r1 :description "First revision."))
+        (recur (conj acc (assoc r1 :description (revision-desc r2 r1)))
+               (conj more r2))))))
 
 (defn- add-details
   "Hydrate `user` and add `:description` to a sequence of REVISIONS."
