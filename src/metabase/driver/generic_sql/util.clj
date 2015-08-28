@@ -4,8 +4,9 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [korma.core :as korma]
-            [korma.db :as kdb]
+            (korma [core :as korma]
+                   [db :as kdb])
+            [korma.sql.utils :as utils]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             [metabase.driver.generic-sql.interface :as i]))
@@ -83,12 +84,17 @@
     :pk    :id
     :db    (db->korma-db db)}))
 
-(defn sql-fn
-  "Return a form that will be treated by Korma as a SQL function.
+;; On a scale of 1 - 10 do we *really* need this?
+(defn funcs
+  "Convenience for writing nested `utils/func` forms.
+   The first argument is treated the same as with `utils/func`;
+   But when any arg is a vector we'll treat it as a recursive call to `funcs`.
 
-    (sql-fn \"CAST(%s AS TIMESTAMP)\" :table.field)
-      -> CAST(`table`.`field` AS TIMESTAMP)"
-  [format-string & args]
-  {:pre [((complement s/blank?) format-string)]}
-  {:korma.sql.utils/func format-string
-   :korma.sql.utils/args (vec args)})
+     (funcs \"CONCAT(%s)\" [\"YEAR(%s)\" x] y [\"MONTH(%s)\" z])
+       -> (utils/func \"CONCAT(%s)\" [(utils/func \"YEAR(%s)\" [x])
+                                      y
+                                      (utils/func \"MONTH(%s)\" [z])])"
+  [fn-format-str & args]
+  (utils/func fn-format-str (vec (for [arg args]
+                                   (if (vector? arg) (apply funcs arg)
+                                       arg)))))

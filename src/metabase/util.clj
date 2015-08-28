@@ -40,8 +40,17 @@
   []
   (java.sql.Timestamp. (System/currentTimeMillis)))
 
-(defn parse-iso-8601
-  "Parse a [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted date string and return a `java.sql.Timestamp`."
+(defn parse-rfc-3339
+  "Parse a [RFC 3339](https://tools.ietf.org/html/rfc3339) formatted date string and return a `java.sql.Timestamp`.
+
+   What's RFC 3339? RFC 3339 is a slightly simplified subset of [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601);
+   certain forms that are permissible in ISO 8601 are forbidden in RFC 3339.
+
+     \"2015-03-25T08:00\"    ; valid ISO 8601; RFC 3339 requires that you specify the seconds when including times
+     \"2015-03-25T08:00:00\" ; valid in either standard.
+
+   Why choose the less flexible standard? Java & Clojure have better built-in support for RFC 3339 date strings,
+   which seems more important, IMO."
   ^java.sql.Timestamp
   [^String datetime]
   (some->> datetime
@@ -62,17 +71,18 @@
   "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
   ^Float [^String date]
   (-> date
-      parse-iso-8601
+      parse-rfc-3339
       .getTime
       (/ 1000)))
 
 (defn date-string?
-  "Is S a valid [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) date string?
-   (`YYYY-MM-DD` date strings *are* ISO 8601 date strings)"
+  "Is S a valid [RFC 3339](https://tools.ietf.org/html/rfc3339) date string?"
   [s]
   (boolean (when (string? s)
-             (try (parse-iso-8601 s)
-                  (catch Throwable _)))))
+             (try (parse-rfc-3339 s)
+                  (catch Throwable e)))))
+
+;; TODO - Do we need all these wacky functions?
 
 (defn ^Date relative-date
   "Create a relative date. Valid values of UNITS are the keywords in `metabase.driver.query-processor.interface/datetime-value-units`."

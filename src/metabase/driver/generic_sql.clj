@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [korma.core :as k]
+            [korma.sql.utils :as utils]
             [metabase.driver :as driver]
             (metabase.driver [interface :refer [max-sync-lazy-seq-results IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]]
                              [sync :as driver-sync])
@@ -109,7 +110,8 @@
   {:pre [(keyword? sql-string-length-fn)]}
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
-                                                    (k/raw (format "CAST(%s AS CHAR)" (i/quote-name driver (name (:name field)))))))
+                                                    (utils/func "CAST(%s AS CHAR)"
+                                                                [(keyword (:name field))])))
                                      :len))
               first
               :len

@@ -5,6 +5,7 @@
             [clojure.string :as s]
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
+            [korma.sql.utils :as utils]
             [metabase.config :as config]
             [metabase.driver :as driver]
             (metabase.driver [interface :refer [supports?]]
@@ -93,9 +94,6 @@
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
 
-(defn- quote-name [nm]
-  (i/quote-name (:driver *query*) nm))
-
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
@@ -110,14 +108,13 @@
     ([this]
      (formatted this false))
     ([_ _]
-     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
-       `(raw ~(quote-name (case aggregation-type
-                            :avg      "avg"
-                            :count    "count"
-                            :distinct "count"
-                            :stddev   "stddev"
-                            :sum      "sum"))))))
-
+     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+       (case aggregation-type
+         :avg      :avg
+         :count    :count
+         :distinct :count
+         :stddev   :stddev
+         :sum      :sum))))
 
   Value
   (formatted
@@ -134,7 +131,8 @@
     ([this]
      (formatted this false))
     ([{value :value, {unit :unit} :field} _]
-     (i/date (:driver *query*) unit (sql-fn "CAST(%s AS TIMESTAMP)" `(Timestamp/valueOf ~(.toString value))))))
+     (i/date (:driver *query*) unit (utils/func "CAST(%s AS TIMESTAMP)"
+                                                [`(Timestamp/valueOf ~(.toString value))]))))
 
   DateTimeValue
   (formatted
@@ -149,12 +147,12 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [unit], {:keys [base-type special-type field-name table-name]} :field} include-as?]
+    ([{:keys [unit], {:keys [special-type field-name], :as field} :field} include-as?]
      (let [f     (partial i/date (:driver *query*) unit)
            field (cond
-                   (= special-type :timestamp_seconds)      (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                   (= special-type :timestamp_milliseconds) (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                   :else                                    (keyword (format "%s.%s" table-name field-name)))]
+                   (= special-type :timestamp_seconds)      (i/unix-timestamp->date (:driver *query*) (formatted field) :seconds)
+                   (= special-type :timestamp_milliseconds) (i/unix-timestamp->date (:driver *query*) (formatted field) :milliseconds)
+                   :else                                    (formatted field))]
        (cond-> (f field)
          include-as? (vector (keyword field-name)))))))
 

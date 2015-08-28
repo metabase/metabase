@@ -85,8 +85,8 @@
 ;;; # ------------------------------------------------------------ DATE FUNCTIONS ------------------------------------------------------------
 
 ;;; ## PARSE-DATE-YYYY-MM-DD
-(expect #inst "2014-01-01T08" (parse-iso-8601 "2014-01-01"))
-(expect #inst "2014-03-03T08" (parse-iso-8601 "2014-02-31"))
+(expect #inst "2014-01-01T08" (parse-rfc-3339 "2014-01-01"))
+(expect #inst "2014-03-03T08" (parse-rfc-3339 "2014-02-31"))
 
 ;;; ## DATE->YYYY-MM-DD
 (expect "2014-01-01" (date->yyyy-mm-dd #inst "2014-01-01T08"))
@@ -104,41 +104,41 @@
 (expect true  (date-string? "2014-02-01"))
 
 ;;; ## DAYS-AGO
-(expect #inst "2014-01-01T08" (days-ago 1    #inst "2014-01-02T08"))
-(expect #inst "2013-12-31T08" (days-ago 2    #inst "2014-01-02T08"))
-(expect #inst "2014-03-02T08" (days-ago 1    #inst "2014-03-03T08"))
-(expect #inst "2013-09-23T07" (days-ago 100  #inst "2014-01-01T08"))
-(expect #inst "2011-04-07T07" (days-ago 1000 #inst "2014-01-01T08"))
-(expect #inst "2014-03-01T08" (days-ago -1   #inst "2014-02-28T08"))
+(expect #inst "2014-01-01T08" (relative-date -1    :day #inst "2014-01-02T08"))
+(expect #inst "2013-12-31T08" (relative-date -2    :day #inst "2014-01-02T08"))
+(expect #inst "2014-03-02T08" (relative-date -1    :day #inst "2014-03-03T08"))
+(expect #inst "2013-09-23T07" (relative-date -100  :day #inst "2014-01-01T08"))
+(expect #inst "2011-04-07T07" (relative-date -1000 :day #inst "2014-01-01T08"))
+(expect #inst "2014-03-01T08" (relative-date 1     :day #inst "2014-02-28T08"))
 
 ;; Make sure it doesn't modify the date
 (expect #inst "2014-01-01T08"
         (let [d #inst "2014-01-01T08"]
-          (days-ago 1 d)
+          (relative-date -1 :day d)
           d))
 
 ;;; ## MONTHS-AGO
-(expect #inst "2013-12-02T08" (months-ago 1    #inst "2014-01-02T08"))
-(expect #inst "2013-11-02T07" (months-ago 2    #inst "2014-01-02T08"))
-(expect #inst "2014-02-03T08" (months-ago 1    #inst "2014-03-03T08"))
-(expect #inst "2005-09-01T07" (months-ago 100  #inst "2014-01-01T08"))
-(expect #inst "1930-09-01T08" (months-ago 1000 #inst "2014-01-01T08"))
-(expect #inst "2014-03-28T07" (months-ago -1   #inst "2014-02-28T08"))
+(expect #inst "2013-12-02T08" (relative-date -1    :month #inst "2014-01-02T08"))
+(expect #inst "2013-11-02T07" (relative-date -2    :month #inst "2014-01-02T08"))
+(expect #inst "2014-02-03T08" (relative-date -1    :month #inst "2014-03-03T08"))
+(expect #inst "2005-09-01T07" (relative-date -100  :month #inst "2014-01-01T08"))
+(expect #inst "1930-09-01T08" (relative-date -1000 :month #inst "2014-01-01T08"))
+(expect #inst "2014-03-28T07" (relative-date 1     :month #inst "2014-02-28T08"))
 
 (expect #inst "2014-01-01T08"
         (let [d #inst "2014-01-01T08"]
-          (months-ago 1 d)
+          (relative-date -1 :month d)
           d))
 
 ;;; ## YEARS-AGO
-(expect #inst "2013-01-02T08" (years-ago 1    #inst "2014-01-02T08"))
-(expect #inst "2012-01-02T08" (years-ago 2    #inst "2014-01-02T08"))
-(expect #inst "2013-03-03T08" (years-ago 1    #inst "2014-03-03T08"))
-(expect #inst "1914-01-01T08" (years-ago 100  #inst "2014-01-01T08"))
-(expect #inst "1014-01-01T08" (years-ago 1000 #inst "2014-01-01T08"))
-(expect #inst "2015-02-28T08" (years-ago -1   #inst "2014-02-28T08"))
+(expect #inst "2013-01-02T08" (relative-date -1    :year #inst "2014-01-02T08"))
+(expect #inst "2012-01-02T08" (relative-date -2    :year #inst "2014-01-02T08"))
+(expect #inst "2013-03-03T08" (relative-date -1    :year #inst "2014-03-03T08"))
+(expect #inst "1914-01-01T08" (relative-date -100  :year #inst "2014-01-01T08"))
+(expect #inst "1014-01-01T08" (relative-date -1000 :year #inst "2014-01-01T08"))
+(expect #inst "2015-02-28T08" (relative-date 1     :year #inst "2014-02-28T08"))
 
 (expect #inst "2014-01-01T08"
         (let [d #inst "2014-01-01T08"]
-          (years-ago 1 d)
+          (relative-date -1 :year d)
           d))

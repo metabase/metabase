@@ -221,7 +221,7 @@
   (match value
     ;; DEPRECATED - YYYY-MM-DD date strings should now be passed as ["datetime" ...]. Allowed here for backwards-compatibility.
     (literal :guard legacy-date-literal?)
-    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
+    (->DateTimeLiteralPlaceholder field (u/parse-rfc-3339 literal))
 
     (_ :guard number?) (->ValuePlaceholder field value)
     (_ :guard string?) (->ValuePlaceholder field value)
@@ -229,7 +229,7 @@
     false              (->ValuePlaceholder field false)
 
     ["datetime" (literal :guard u/date-string?)]
-    (->DateTimeLiteralPlaceholder field (u/parse-iso-8601 literal))
+    (->DateTimeLiteralPlaceholder field (u/parse-rfc-3339 literal))
 
     ["datetime" "now"]
     (->DateTimeValuePlaceholder field :day 0)

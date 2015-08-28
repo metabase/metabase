@@ -5,6 +5,7 @@
                      [string :as s])
             (korma [core :as k]
                    [db :as kdb])
+            [korma.sql.utils :as utils]
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
@@ -15,7 +16,7 @@
                                                 ISyncDriverSpecificSyncField]])
             [metabase.driver.generic-sql :as generic-sql]
             (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
-                                         [util :refer [with-jdbc-metadata sql-fn]])))
+                                         [util :refer [with-jdbc-metadata]])))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -101,46 +102,45 @@
                          port))
         (rename-keys {:dbname :db}))))
 
-(defn- cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-  (k/raw (format "(TIMESTAMP WITH TIME ZONE 'epoch' + (\"%s\".\"%s\" * INTERVAL '1 %s'))" table-name field-name
-                 (case           seconds-or-milliseconds
-                   :seconds      "second"
-                   :milliseconds "millisecond"))))
+(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
+  (utils/func (case seconds-or-milliseconds
+                :seconds      "TO_TIMESTAMP(%s)"
+                :milliseconds "TO_TIMESTAMP(%s * 1000)")
+              [field-or-value]))
 
 (defn- timezone->set-timezone-sql [_ timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
 (defn- date [_ unit field-or-value]
-  {:pre [(keyword? unit)]}
   (if (= unit :default) field-or-value
-      (sql-fn (case unit
-                :minute          "DATE_TRUNC('minute', %s)" ; or CAST as timestamp?
-                :minute-of-hour  "EXTRACT(MINUTE FROM %s)"
-                :hour            "DATE_TRUNC('hour', %s)"
-                :hour-of-day     "EXTRACT(HOUR FROM %s)"
-                :day             "CAST(%s AS DATE)"
-                :day-of-week     "(EXTRACT(DOW FROM %s) + 1)" ; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-                :day-of-month    "EXTRACT(DAY FROM %s)"
-                :day-of-year     "EXTRACT(DOY FROM %s)"
-                :week            "DATE_TRUNC('week', %s)"
-                :week-of-year    "EXTRACT(WEEK FROM %s)"
-                :month           "DATE_TRUNC('month', %s)"
-                :month-of-year   "EXTRACT(MONTH FROM %s)"
-                :quarter         "DATE_TRUNC('quarter', %s)"
-                :quarter-of-year "EXTRACT(QUARTER FROM %s)"
-                :year            "DATE_TRUNC('year', %s)")
-              field-or-value)))
+      (utils/func (case unit
+                    :minute          "DATE_TRUNC('minute', %s)" ; or CAST as timestamp?
+                    :minute-of-hour  "EXTRACT(MINUTE FROM %s)"
+                    :hour            "DATE_TRUNC('hour', %s)"
+                    :hour-of-day     "EXTRACT(HOUR FROM %s)"
+                    :day             "CAST(%s AS DATE)"
+                    :day-of-week     "(EXTRACT(DOW FROM %s) + 1)" ; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+                    :day-of-month    "EXTRACT(DAY FROM %s)"
+                    :day-of-year     "EXTRACT(DOY FROM %s)"
+                    :week            "DATE_TRUNC('week', %s)"
+                    :week-of-year    "EXTRACT(WEEK FROM %s)"
+                    :month           "DATE_TRUNC('month', %s)"
+                    :month-of-year   "EXTRACT(MONTH FROM %s)"
+                    :quarter         "DATE_TRUNC('quarter', %s)"
+                    :quarter-of-year "EXTRACT(QUARTER FROM %s)"
+                    :year            "DATE_TRUNC('year', %s)")
+                  [field-or-value])))
 
 (defn- date-interval [_ unit amount]
-  (sql-fn (format (case unit
-                    :minute  "(NOW() + INTERVAL '%d minute')"
-                    :hour    "(NOW() + INTERVAL '%d hour')"
-                    :day     "(NOW() + INTERVAL '%d day')"
-                    :week    "(NOW() + INTERVAL '%d week')"
-                    :month   "(NOW() + INTERVAL '%d month')"
-                    :quarter "(NOW() + INTERVAL '%d quarter')"
-                    :year    "(NOW() + INTERVAL '%d year')")
-                  amount)))
+  (utils/generated (format (case unit
+                             :minute  "(NOW() + INTERVAL '%d minute')"
+                             :hour    "(NOW() + INTERVAL '%d hour')"
+                             :day     "(NOW() + INTERVAL '%d day')"
+                             :week    "(NOW() + INTERVAL '%d week')"
+                             :month   "(NOW() + INTERVAL '%d month')"
+                             :quarter "(NOW() + INTERVAL '%d quarter')"
+                             :year    "(NOW() + INTERVAL '%d year')")
+                           amount)))
 
 (defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
@@ -154,7 +154,7 @@
 (extend PostgresDriver
   ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
                                 :database->connection-details        database->connection-details
-                                :cast-timestamp-to-date              cast-timestamp-to-date
+                                :unix-timestamp->date                unix-timestamp->date
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql
                                 :date                                date
                                 :date-interval                       date-interval}

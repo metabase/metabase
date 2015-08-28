@@ -48,7 +48,7 @@
 (defn- flatten-collect-fields [form]
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
-                            (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
+                            (if-not (instance? metabase.driver.query_processor.interface.Field f) f
                                     (do
                                       (conj! fields f)
                                       ;; HACK !!!

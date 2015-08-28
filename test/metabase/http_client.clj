@@ -132,7 +132,7 @@
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
 
 (defn- deserialize-date [date]
-  (some->> (u/parse-iso-8601 date)
+  (some->> (u/parse-rfc-3339 date)
            .getTime
            java.sql.Timestamp.))
 
