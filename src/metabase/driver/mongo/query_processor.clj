@@ -13,9 +13,9 @@
                     [query :refer :all])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            (metabase.driver [interface :as i]
+            (metabase.driver [interface :refer [field-values-lazy-seq]]
                              [query-processor :as qp])
-            [metabase.driver.query-processor.expand :as expand]
+            [metabase.driver.query-processor.interface :as i]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u])
@@ -89,7 +89,7 @@
 (defn- field->name
   "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
   (^String [field separator]
-           (apply str (interpose separator (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
+           (apply str (interpose separator (rest (i/qualified-name-components field))))) ; drop the first part, :table-name
   (^String [field]
            (field->name field ".")))
 
@@ -133,7 +133,7 @@
                  keep-taking? (if limit (fn [_]
                                           (< (count values) limit))
                                   (constantly true))]
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
+             (->> (field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))

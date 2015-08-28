@@ -47,13 +47,6 @@
 (def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
-(defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
-  ^java.sql.Date [^String date]
-  (-> (.parse yyyy-mm-dd-simple-date-format date)
-      .getTime
-      java.sql.Date.))
-
 (defn date->yyyy-mm-dd
   "Convert a date to a `YYYY-MM-DD` string."
   ^String [^java.util.Date date]

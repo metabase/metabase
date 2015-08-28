@@ -111,6 +111,36 @@
 (defn- timezone->set-timezone-sql [_ timezone]
   (format "SET LOCAL timezone TO '%s';" timezone))
 
+(defn- date [_ unit field-or-value]
+  (utils/func (case unit
+                :default         "CAST(%s AS TIMESTAMP)"
+                :minute          "DATE_TRUNC('minute', %s)" ; or CAST as timestamp?
+                :minute-of-hour  "EXTRACT(MINUTE FROM %s)"
+                :hour            "DATE_TRUNC('hour', %s)"
+                :hour-of-day     "EXTRACT(HOUR FROM %s)"
+                :day             "CAST(%s AS DATE)"
+                :day-of-week     "(EXTRACT(DOW FROM %s) + 1)" ; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+                :day-of-month    "EXTRACT(DAY FROM %s)"
+                :day-of-year     "EXTRACT(DOY FROM %s)"
+                :week            "DATE_TRUNC('week', %s)"
+                :week-of-year    "EXTRACT(WEEK FROM %s)"
+                :month           "DATE_TRUNC('month', %s)"
+                :month-of-year   "EXTRACT(MONTH FROM %s)"
+                :quarter         "DATE_TRUNC('quarter', %s)"
+                :quarter-of-year "EXTRACT(QUARTER FROM %s)"
+                :year            "DATE_TRUNC('year', %s)")
+              [field-or-value]))
+
+(defn- date-interval [_ unit amount]
+  (utils/generated (format (case unit
+                             :minute  "(NOW() + INTERVAL '%d minute')"
+                             :hour    "(NOW() + INTERVAL '%d hour')"
+                             :day     "(NOW() + INTERVAL '%d day')"
+                             :week    "(NOW() + INTERVAL '%d week')"
+                             :month   "(NOW() + INTERVAL '%d month')"
+                             :quarter "(NOW() + INTERVAL '%d quarter')"
+                             :year    "(NOW() + INTERVAL '%d year')")
+                           amount)))
 
 (defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
@@ -125,6 +155,8 @@
   ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
                                 :database->connection-details        database->connection-details
                                 :unix-timestamp->date                unix-timestamp->date
+                                :date                                date
+                                :date-interval                       date-interval
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql}
   ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
   IDriver                      GenericSQLIDriverMixin

@@ -132,11 +132,67 @@
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
     (qp query)))
 
+;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
+;; and then converting back to a date.
+;; Format strings are the same as those of SimpleDateFormat.
+(defn- trunc-with-format [format-str]
+  (format "PARSEDATETIME(FORMATDATETIME(%%s, '%s'), '%s')" format-str format-str))
+
+;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
+;; *  extract the year and quarter from the date;
+;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
+;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10])
+;; *  Concatenate the year and quarter start month together to create a yyyyMM date string;
+;; *  Parse the string as a date. :sunglasses:
+;;
+;; Postgres DATE_TRUNC('quarter', x)
+;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
+(defn- trunc-to-quarter [field-or-value]
+  (funcs "PARSEDATETIME(%s, 'yyyyMM')"
+         ["CONCAT(%s)"
+          ["YEAR(%s)" field-or-value]
+          ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
+
+(defn- date [_ unit field-or-value]
+  (if (= unit :quarter)
+    (trunc-to-quarter field-or-value)
+    (utils/func (case unit
+                  :default         "CAST(%s AS TIMESTAMP)"
+                  :minute          (trunc-with-format "yyyyMMddHHmm")
+                  :minute-of-hour  "MINUTE(%s)"
+                  :hour            (trunc-with-format "yyyyMMddHH")
+                  :hour-of-day     "HOUR(%s)"
+                  :day             "CAST(%s AS DATE)"
+                  :day-of-week     "DAY_OF_WEEK(%s)"
+                  :day-of-month    "DAY_OF_MONTH(%s)"
+                  :day-of-year     "DAY_OF_YEAR(%s)"
+                  :week            (trunc-with-format "yyyyww") ; ww = week of year
+                  :week-of-year    "WEEK(%s)"
+                  :month           (trunc-with-format "yyyyMM")
+                  :month-of-year   "MONTH(%s)"
+                  :quarter-of-year "QUARTER(%s)"
+                  :year            "YEAR(%s)")
+                [field-or-value])))
+
+;; TODO - maybe rename this relative-date ?
+(defn- date-interval [_ unit amount]
+  (utils/generated (format (case unit
+                             :minute  "DATEADD('MINUTE', %d,       NOW())"
+                             :hour    "DATEADD('HOUR',   %d,       NOW())"
+                             :day     "DATEADD('DAY',    %d,       NOW())"
+                             :week    "DATEADD('WEEK',   %d,       NOW())"
+                             :month   "DATEADD('MONTH',  %d,       NOW())"
+                             :quarter "DATEADD('MONTH',  (%d * 3), NOW())"
+                             :year    "DATEADD('YEAR',   %d,       NOW())")
+                           amount)))
+
 (defrecord H2Driver [])
 
 (extend H2Driver
   ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
                                :database->connection-details        database->connection-details
+                               :date                                date
+                               :date-interval                       date-interval
                                :unix-timestamp->date                unix-timestamp->date}
   ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
   IDriver                     (assoc GenericSQLIDriverMixin :wrap-process-query-middleware wrap-process-query-middleware)

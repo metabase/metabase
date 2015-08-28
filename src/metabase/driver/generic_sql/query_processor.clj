@@ -14,9 +14,13 @@
                                          [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
-  (:import (metabase.driver.query_processor.expand Field
-                                                   OrderByAggregateField
-                                                   Value)))
+  (:import java.sql.Timestamp
+           (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeLiteral
+                                                      DateTimeValue
+                                                      Field
+                                                      OrderByAggregateField
+                                                      Value)))
 
 (declare apply-form
          log-korma-form)
@@ -116,12 +120,28 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value base-type]} _]
+    ([{value :value, {base-type :base-type} :field} _]
      (cond
-       (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
-       (= base-type :UUIDField)         (do (assert (string? value))
-                                            (java.util.UUID/fromString value))
-       :else                            value))))
+       (= base-type :UUIDField) (do (assert (string? value))
+                                    (java.util.UUID/fromString value))
+       :else                    value)))
+
+  DateTimeLiteral
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{value :value, {unit :unit} :field} _]
+     ;; wrap in a TIMESTAMP cast so
+     (i/date (:driver *query*) unit (i/date (:driver *query*) :default [`(Timestamp/valueOf ~(.toString value))]))))
+
+  DateTimeValue
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [relative-amount unit], {field-unit :unit} :field} _]
+     (i/date (:driver *query*) field-unit (if (zero? relative-amount)
+                                            (sqlfn :NOW)
+                                            (i/date-interval (:driver *query*) unit relative-amount)))))
 
   DateTimeField
   (formatted
