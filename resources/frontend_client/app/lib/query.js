@@ -70,7 +70,9 @@ var Query = {
             }
         }
 
-        // TODO: limit
+        if (typeof query.limit !== "number") {
+            delete query.limit;
+        }
 
         return query;
     },
