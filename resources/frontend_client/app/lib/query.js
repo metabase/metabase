@@ -54,7 +54,17 @@ var Query = {
         }
 
         if (query.order_by) {
-            query.order_by = query.order_by.filter((s) => Query.isValidField(s[0]) && s[1] != null)
+            query.order_by = query.order_by.filter((s) => {
+                // remove aggregation sort if we can't sort by this aggregation
+                if (!Query.canSortByAggregateField(query) && Array.isArray(s[0]) && s[0][0] === "aggregation") {
+                    return false
+                }
+                // remove incomplete sorts
+                if (Query.isValidField(s[0]) && s[1] != null) {
+                    return true;
+                }
+                return false;
+            });
             if (query.order_by.length === 0) {
                 delete query.order_by;
             }
