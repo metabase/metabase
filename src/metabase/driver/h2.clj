@@ -160,25 +160,25 @@
           ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
 
 (defn- date [_ unit field-or-value]
-  (cond
-    (= unit :default) field-or-value
-    (= unit :quarter) (trunc-to-quarter field-or-value)
-    :else             (utils/func (case unit
-                                    :minute          (trunc-with-format "yyyyMMddHHmm")
-                                    :minute-of-hour  "MINUTE(%s)"
-                                    :hour            (trunc-with-format "yyyyMMddHH")
-                                    :hour-of-day     "HOUR(%s)"
-                                    :day             "CAST(%s AS DATE)"
-                                    :day-of-week     "DAY_OF_WEEK(%s)"
-                                    :day-of-month    "DAY_OF_MONTH(%s)"
-                                    :day-of-year     "DAY_OF_YEAR(%s)"
-                                    :week            (trunc-with-format "yyyyww") ; ww = week of year
-                                    :week-of-year    "WEEK(%s)"
-                                    :month           (trunc-with-format "yyyyMM")
-                                    :month-of-year   "MONTH(%s)"
-                                    :quarter-of-year "QUARTER(%s)"
-                                    :year            "YEAR(%s)")
-                                  [field-or-value])))
+  (if (= unit :quarter)
+    (trunc-to-quarter field-or-value)
+    (utils/func (case unit
+                  :default         "CAST(%s AS TIMESTAMP)"
+                  :minute          (trunc-with-format "yyyyMMddHHmm")
+                  :minute-of-hour  "MINUTE(%s)"
+                  :hour            (trunc-with-format "yyyyMMddHH")
+                  :hour-of-day     "HOUR(%s)"
+                  :day             "CAST(%s AS DATE)"
+                  :day-of-week     "DAY_OF_WEEK(%s)"
+                  :day-of-month    "DAY_OF_MONTH(%s)"
+                  :day-of-year     "DAY_OF_YEAR(%s)"
+                  :week            (trunc-with-format "yyyyww") ; ww = week of year
+                  :week-of-year    "WEEK(%s)"
+                  :month           (trunc-with-format "yyyyMM")
+                  :month-of-year   "MONTH(%s)"
+                  :quarter-of-year "QUARTER(%s)"
+                  :year            "YEAR(%s)")
+                [field-or-value])))
 
 ;; TODO - maybe rename this relative-date ?
 (defn- date-interval [_ unit amount]
@@ -192,13 +192,17 @@
                              :year    "DATEADD('YEAR',   %d,       NOW())")
                            amount)))
 
-(defn- x []
+(defn- run-test-query [which-query?]
   (metabase.driver/process-query {:database 420
                                   :type :query
-                                  :query {:source_table 925
-                                          ;; :fields [["datetime_field" 10106 "as" "quarter"]]
-                                          :filter ["TIME_INTERVAL" 10106 "current" "quarter"]
-                                          :limit  40}}))
+                                  :query (merge {:source_table 925
+                                                 :limit  40}
+                                                ;; :fields [["datetime_field" 10106 "as" "quarter"]]
+                                                (case which-query?
+                                                  :a {:filter ["TIME_INTERVAL" 10106 "current" "quarter"]}
+                                                  :e {:filter ["=" ["datetime_field" 10106 "as" "month"] ["datetime" "2015-03-25T00:00:00Z"]]}
+                                                  :f {:fields [["datetime_field" 10106 "as" "week"]
+                                                               ["datetime_field" 10106 "as" "month"]]}))}))
 
 
 (defrecord H2Driver [])

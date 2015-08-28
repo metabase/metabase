@@ -39,7 +39,7 @@
 
 (def ^:private datetime-unit->parser
   "Map of datetime units to functions that should be used to parse associated values."
-  {;; Default resolution, a.k.a. SQL Timestamp (this probably means milliseconds)
+  {;; Use the standard high-resolution option. For SQL this means Timestamp.
    :default         identity
    ;; Timestamp w/ minute resolution
    :minute          identity

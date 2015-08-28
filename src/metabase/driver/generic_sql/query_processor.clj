@@ -131,8 +131,8 @@
     ([this]
      (formatted this false))
     ([{value :value, {unit :unit} :field} _]
-     (i/date (:driver *query*) unit (utils/func "CAST(%s AS TIMESTAMP)"
-                                                [`(Timestamp/valueOf ~(.toString value))]))))
+     ;; wrap in a TIMESTAMP cast so
+     (i/date (:driver *query*) unit (i/date (:driver *query*) :default [`(Timestamp/valueOf ~(.toString value))]))))
 
   DateTimeValue
   (formatted
