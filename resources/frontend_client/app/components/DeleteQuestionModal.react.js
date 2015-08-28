@@ -45,10 +45,9 @@ export default class DeleteQuestionModal extends React.Component {
             >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>
-                    <p>This question will be deleted from Metabase, and will also be removed from:</p>
-                    <ul>
-                        <li>{dashboardCount}</li>
-                    </ul>
+                    { this.props.card.dashboard_count > 0 ?
+                        <p>This question will be deleted from Metabase, and will also be removed from {dashboardCount}.</p>
+                    : null }
                 </div>
 
                 <div className="Form-actions">
