@@ -30,7 +30,7 @@ const finalCreateStore = compose(
 const reducer = combineReducers(reducers);
 
 //  Dashboard Controllers
-var DashboardControllers = angular.module('corvus.dashboard.controllers', []);
+var DashboardControllers = angular.module('metabase.dashboard.controllers', []);
 
 DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routeParams', '$location', 'VisualizationSettings', function($scope, $rootScope, $routeParams, $location, VisualizationSettings) {
     $scope.Component = DashboardApp;

@@ -1,8 +1,8 @@
 'use strict';
 
-var SettingsAdmin = angular.module('corvusadmin.settings', [
-    'corvusadmin.settings.controllers',
-    'corvusadmin.settings.services'
+var SettingsAdmin = angular.module('metabaseadmin.settings', [
+    'metabaseadmin.settings.controllers',
+    'metabaseadmin.settings.services'
 ]);
 
 SettingsAdmin.config(['$routeProvider', function($routeProvider) {

@@ -15,7 +15,7 @@ import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardS
 
 
 //  Card Controllers
-var CardControllers = angular.module('corvus.card.controllers', []);
+var CardControllers = angular.module('metabase.card.controllers', []);
 
 CardControllers.controller('CardList', ['$scope', '$location', 'Card', function($scope, $location, Card) {
 
@@ -73,8 +73,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'MetabaseFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, MetabaseFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -696,7 +696,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function markupTableMetadata(table) {
-            var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
+            var updatedTable = MetabaseFormGenerator.addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
         }
 

@@ -1,6 +1,6 @@
 'use strict';
 
-var HomeDirectives = angular.module('corvus.home.directives', []);
+var HomeDirectives = angular.module('metabase.home.directives', []);
 
 HomeDirectives.directive('mbNewUserOnboarding', ['$modal',
     function($modal) {

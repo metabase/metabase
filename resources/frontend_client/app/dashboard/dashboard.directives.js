@@ -4,8 +4,8 @@ import { CardRenderer } from '../card/card.charting';
 
 import CreateDashboardModal from '../components/CreateDashboardModal.react';
 
-var DashboardDirectives = angular.module('corvus.dashboard.directives', [
-    'corvus.metabase.services',
+var DashboardDirectives = angular.module('metabase.dashboard.directives', [
+    'metabase.metabase.services',
 ]);
 
 DashboardDirectives.directive('mbDashboardCreate', ['Dashboard', '$modal', '$location', '$rootScope',

@@ -1,6 +1,6 @@
 'use strict';
 
-var SettingsAdminServices = angular.module('corvusadmin.settings.services', ['ngResource']);
+var SettingsAdminServices = angular.module('metabaseadmin.settings.services', ['ngResource']);
 
 SettingsAdminServices.factory('SettingsAdminServices', ['$resource', function($resource) {
     return $resource('/api/setting', {}, {

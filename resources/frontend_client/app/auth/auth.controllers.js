@@ -3,10 +3,10 @@
 /*jslint devel:true */
 /*global _*/
 
-var AuthControllers = angular.module('corvus.auth.controllers', [
-    'corvus.auth.services',
+var AuthControllers = angular.module('metabase.auth.controllers', [
+    'metabase.auth.services',
     'ipCookie',
-    'corvus.services',
+    'metabase.services',
     'metabase.forms'
 ]);
 

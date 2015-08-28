@@ -2,9 +2,9 @@
 
 import Table from "metabase/lib/table";
 
-var HomeControllers = angular.module('corvus.home.controllers', [
-    'corvus.home.directives',
-    'corvus.metabase.services'
+var HomeControllers = angular.module('metabase.home.controllers', [
+    'metabase.home.directives',
+    'metabase.metabase.services'
 ]);
 
 HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {

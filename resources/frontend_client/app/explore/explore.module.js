@@ -1,6 +1,6 @@
 'use strict';
 
 // Explore (Metabase)
-var Explore = angular.module('corvus.explore', [
-    'corvus.explore.services'
+var Explore = angular.module('metabase.explore', [
+    'metabase.explore.services'
 ]);

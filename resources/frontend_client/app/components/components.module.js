@@ -1,3 +1,3 @@
 'use strict';
 
-var Components = angular.module('corvus.components', []);
+var Components = angular.module('metabase.components', []);

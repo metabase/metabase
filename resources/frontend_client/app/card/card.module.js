@@ -1,16 +1,16 @@
 'use strict';
 
 // Card
-var Card = angular.module('corvus.card', [
+var Card = angular.module('metabase.card', [
     'ngRoute',
     'ngCookies',
-    'corvus.filters',
-    'corvus.directives',
-    'corvus.services',
-    'corvus.aceeditor.directives',
-    'corvus.card.services',
-    'corvus.card.controllers',
-    'corvus.card.directives'
+    'metabase.filters',
+    'metabase.directives',
+    'metabase.services',
+    'metabase.aceeditor.directives',
+    'metabase.card.services',
+    'metabase.card.controllers',
+    'metabase.card.directives'
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {

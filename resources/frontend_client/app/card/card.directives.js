@@ -3,14 +3,14 @@
 
 import { CardRenderer } from './card.charting';
 
-var CardDirectives = angular.module('corvus.card.directives', []);
+var CardDirectives = angular.module('metabase.card.directives', []);
 
 
-CardDirectives.directive('cvLatlongHeatmap', ['CardRenderer', function(CardRenderer) {
+CardDirectives.directive('mbLatlongHeatmap', ['CardRenderer', function(CardRenderer) {
 
     function link(scope, element, attr) {
 
-        scope.$watch('cvLatlongHeatmap', function(value) {
+        scope.$watch('mbLatlongHeatmap', function(value) {
             if (value) {
                 CardRenderer.latlongHeatmap('map-canvas', 'whatever', value);
             }
@@ -20,7 +20,7 @@ CardDirectives.directive('cvLatlongHeatmap', ['CardRenderer', function(CardRende
     return {
         restrict: 'A',
         scope: {
-            cvLatlongHeatmap: '='
+            mbLatlongHeatmap: '='
         },
         link: link
     };

@@ -2,7 +2,7 @@
 /*jslint browser:true*/
 
 // Declare app level module which depends on filters, and services
-var Corvus = angular.module('corvus', [
+var Metabase = angular.module('metabase', [
     'ngAnimate',
     'ngRoute',
     'ngCookies',
@@ -11,23 +11,23 @@ var Corvus = angular.module('corvus', [
     'ui.bootstrap', // bootstrap LIKE widgets via angular directives
     'gridster', // used for dashboard grids
     'readableTime',
-    'corvus.auth',
-    'corvus.filters',
-    'corvus.directives',
-    'corvus.controllers',
-    'corvus.components',
-    'corvus.card',
-    'corvus.dashboard',
-    'corvus.explore',
-    'corvus.home',
-    'corvus.user',
-    'corvus.setup',
-    'corvusadmin.databases',
-    'corvusadmin.people',
-    'corvusadmin.settings',
+    'metabase.auth',
+    'metabase.filters',
+    'metabase.directives',
+    'metabase.controllers',
+    'metabase.components',
+    'metabase.card',
+    'metabase.dashboard',
+    'metabase.explore',
+    'metabase.home',
+    'metabase.user',
+    'metabase.setup',
+    'metabaseadmin.databases',
+    'metabaseadmin.people',
+    'metabaseadmin.settings',
     'metabase.admin.metadata',
 ]);
-Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
+Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
@@ -57,7 +57,7 @@ Corvus.config(['$routeProvider', '$locationProvider', function($routeProvider, $
     });
 }]);
 
-Corvus.run(["AppState", "editableOptions", "editableThemes", function(AppState, editableOptions, editableThemes) {
+Metabase.run(["AppState", "editableOptions", "editableThemes", function(AppState, editableOptions, editableThemes) {
     // initialize app state
     AppState.init();
 

@@ -8,9 +8,9 @@ import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
 
 /* Directives */
-var CorvusDirectives = angular.module('corvus.directives', []);
+var MetabaseDirectives = angular.module('metabase.directives', []);
 
-CorvusDirectives.directive('deleteConfirm', [function() {
+MetabaseDirectives.directive('deleteConfirm', [function() {
     return {
         priority: 1,
         terminal: true,
@@ -26,7 +26,7 @@ CorvusDirectives.directive('deleteConfirm', [function() {
     };
 }]);
 
-CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
+MetabaseDirectives.directive('mbDelayedCall', ['$timeout', function($timeout) {
 
     function link(scope, element, attr) {
         var delay = attr.delay;
@@ -34,7 +34,7 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
             delay = 8000;
         }
 
-        var func = attr.cvDelayedCall;
+        var func = attr.mbDelayedCall;
 
         var promise = $timeout(function() {
             scope.$eval(func);
@@ -47,7 +47,7 @@ CorvusDirectives.directive('cvDelayedCall', ['$timeout', function($timeout) {
     };
 }]);
 
-CorvusDirectives.directive('mbScrollShadow', [function (){
+MetabaseDirectives.directive('mbScrollShadow', [function (){
     return {
         restrict: 'A',
         link: function (scope, element, attr) {
@@ -64,7 +64,7 @@ CorvusDirectives.directive('mbScrollShadow', [function (){
     };
 }]);
 
-CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
+MetabaseDirectives.directive('mbActionButton', ['$timeout', '$compile', function ($timeout, $compile) {
 
     return {
         restrict: 'A',
@@ -136,7 +136,7 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
     };
 }]);
 
-CorvusDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) {
+MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) {
     return {
         restrict: 'A',
         link: function (scope, element, attr) {
@@ -166,7 +166,7 @@ CorvusDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) 
     };
 }]);
 
-CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
+MetabaseDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
     return {
         restrict: 'A',
         link: function (scope, element, attr) {
@@ -218,7 +218,7 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
     };
 }]);
 
-var NavbarDirectives = angular.module('corvus.navbar.directives', []);
+var NavbarDirectives = angular.module('metabase.navbar.directives', []);
 
 NavbarDirectives.directive('mbProfileLink', [function () {
 
@@ -258,9 +258,9 @@ NavbarDirectives.directive('mbProfileLink', [function () {
     };
 }]);
 
-var CorvusACEEditorDirectives = angular.module('corvus.aceeditor.directives', ['ui.ace']);
+var MetabaseACEEditorDirectives = angular.module('metabase.aceeditor.directives', ['ui.ace']);
 
-CorvusACEEditorDirectives.directive('cvAceSqlEditor', function() {
+MetabaseACEEditorDirectives.directive('mbAceSqlEditor', function() {
 
     function controller($scope, Metabase) {
         $scope.aceLoaded = function(aceEditor) {

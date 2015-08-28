@@ -2,8 +2,8 @@
 
 import 'metabase/controllers';
 
-describe('corvus.controllers', function() {
-    beforeEach(angular.mock.module('corvus.controllers'));
+describe('metabase.controllers', function() {
+    beforeEach(angular.mock.module('metabase.controllers'));
 
     describe('Homepage', function() {
         beforeEach(angular.mock.inject(function($location) {

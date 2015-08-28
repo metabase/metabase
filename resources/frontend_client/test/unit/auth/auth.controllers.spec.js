@@ -2,8 +2,8 @@
 
 import 'metabase/auth/auth.controllers';
 
-describe('corvus.auth.controllers', function() {
-    beforeEach(angular.mock.module('corvus.auth.controllers'));
+describe('metabase.auth.controllers', function() {
+    beforeEach(angular.mock.module('metabase.auth.controllers'));
 
     describe('Login', function() {
         beforeEach(angular.mock.inject(function($location) {

@@ -3,7 +3,7 @@
 /*global _*/
 /* Services */
 
-var MetabaseForms = angular.module('metabase.forms', ['corvus.directives']);
+var MetabaseForms = angular.module('metabase.forms', ['metabase.directives']);
 
 MetabaseForms.directive('mbFormField', [function () {
 
@@ -57,7 +57,7 @@ MetabaseForms.directive('mbFormMessage', [function () {
     return {
         restrict: 'E',
         replace: true,
-        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-show="visible" cv-delayed-call="reset()">{{message}}</span>',
+        template: '<span class="px2" ng-class="{\'text-success\': error === false, \'text-error\': error === true}" ng-show="visible" mb-delayed-call="reset()">{{message}}</span>',
         scope: {},
         link: function(scope, element, attr) {
 
