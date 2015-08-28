@@ -5,6 +5,7 @@
             [clojure.string :as s]
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
+            [korma.sql.utils :as utils]
             [metabase.config :as config]
             [metabase.driver :as driver]
             (metabase.driver [interface :refer [supports?]]
@@ -13,7 +14,9 @@
                                          [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
-  (:import (metabase.driver.query_processor.expand Field
+  (:import java.sql.Timestamp
+           java.util.Date
+           (metabase.driver.query_processor.expand Field
                                                    OrderByAggregateField
                                                    Value)))
 
@@ -85,31 +88,28 @@
 
 (defmethod apply-form :default [form]) ;; nothing
 
+(defn- cast-as-date
+  "Generate a korma form to cast FIELD-OR-VALUE to a `DATE`."
+  [field-or-value]
+  (utils/func "CAST(%s AS DATE)" [field-or-value]))
 
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
-
-(defn- quote-name [nm]
-  (i/quote-name (:driver *query*) nm))
 
 (extend-protocol IGenericSQLFormattable
   Field
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name field-name base-type special-type]} include-as?]
-     (cond
-       (contains? #{:DateField :DateTimeField} base-type) `(raw ~(str (format "CAST(%s.%s AS DATE)" (quote-name table-name) (quote-name field-name))
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       (= special-type :timestamp_seconds)                `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :seconds)
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       (= special-type :timestamp_milliseconds)           `(raw ~(str (i/cast-timestamp-to-date (:driver *query*) table-name field-name :milliseconds)
-                                                                      (when include-as?
-                                                                        (format " AS %s" (quote-name field-name)))))
-       :else                                              (keyword (format "%s.%s" table-name field-name)))))
-
+    ([{:keys [table-name base-type special-type field-name], :as field} include-as?]
+     (let [kw-name (keyword (str table-name \. field-name))
+           field   (cond
+                     (contains? #{:DateField :DateTimeField} base-type) (cast-as-date kw-name)
+                     (= special-type :timestamp_seconds)                (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :seconds))
+                     (= special-type :timestamp_milliseconds)           (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :milliseconds))
+                     :else                                              kw-name)]
+       (if include-as? [field (keyword field-name)]
+           field))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
@@ -117,14 +117,13 @@
     ([this]
      (formatted this false))
     ([_ _]
-     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))] ; determine the name of the aggregation field
-       `(raw ~(quote-name (case aggregation-type
-                            :avg      "avg"
-                            :count    "count"
-                            :distinct "count"
-                            :stddev   "stddev"
-                            :sum      "sum"))))))
-
+     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+       (case aggregation-type
+         :avg      :avg
+         :count    :count
+         :distinct :count
+         :stddev   :stddev
+         :sum      :sum))))
 
   Value
   (formatted
@@ -132,10 +131,9 @@
      (formatted this false))
     ([{:keys [value base-type]} _]
      (cond
-       (instance? java.util.Date value) `(raw ~(format "CAST('%s' AS DATE)" (.toString ^java.util.Date value)))
-       (= base-type :UUIDField)         (do (assert (string? value))
-                                            (java.util.UUID/fromString value))
-       :else                            value))))
+       (instance? Timestamp value) (cast-as-date `(Timestamp/valueOf ~(.toString value))) ; prevent Clojure from converting this to #inst literal, which is a util.date
+       (= base-type :UUIDField)    (java.util.UUID/fromString value)
+       :else                       value))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
@@ -243,8 +241,10 @@
     (log/debug
      (u/format-color 'green "\n\nKORMA FORM: 😏\n%s" (->> (nth korma-form 2)                                    ; korma form is wrapped in a let clause. Discard it
                                                          (walk/prewalk (fn [form]                               ; strip korma.core/ qualifications from symbols in the form
-                                                                         (if-not (symbol? form) form            ; to remove some of the clutter
-                                                                                 (symbol (name form)))))
+                                                                         (cond                                  ; to remove some of the clutter
+                                                                           (symbol? form)  (symbol (name form))
+                                                                           (keyword? form) (keyword (name form))
+                                                                           :else           form)))
                                                          (u/pprint-to-str)))
      (u/format-color 'blue  "\nSQL: 😈\n%s\n"        (-> (eval (let [[let-form binding-form & body] korma-form] ; wrap the (select ...) form in a sql-only clause
                                                                 `(~let-form ~binding-form                       ; has to go there to work correctly
