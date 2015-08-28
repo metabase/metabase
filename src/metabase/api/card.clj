@@ -2,6 +2,7 @@
   (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :as k]
             [medley.core :refer [mapply]]
+            [metabase.activity :as activity]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -63,15 +64,15 @@
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]
    display      [Required CardDisplayType]}
-  ;; TODO - which other params are required?
-  (ins Card
-    :creator_id             *current-user-id*
-    :dataset_query          dataset_query
-    :description            description
-    :display                display
-    :name                   name
-    :public_perms           public_perms
-    :visualization_settings visualization_settings))
+  (->> (ins Card
+            :creator_id             *current-user-id*
+            :dataset_query          dataset_query
+            :description            description
+            :display                display
+            :name                   name
+            :public_perms           public_perms
+            :visualization_settings visualization_settings)
+       (activity/publish-activity :card-create)))
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -87,13 +88,15 @@
    public_perms PublicPerms
    display      CardDisplayType}
   (write-check Card id)
-  (check-500 (upd-non-nil-keys Card id
-                               :dataset_query dataset_query
-                               :description description
-                               :display display
-                               :name name
-                               :public_perms public_perms
-                               :visualization_settings visualization_settings))
+  (->> (upd-non-nil-keys Card id
+                         :dataset_query dataset_query
+                         :description description
+                         :display display
+                         :name name
+                         :public_perms public_perms
+                         :visualization_settings visualization_settings)
+       (activity/publish-activity :card-update))
+  ;; TODO - have revision stuff work using activity framework and then we can remove this call
   (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
