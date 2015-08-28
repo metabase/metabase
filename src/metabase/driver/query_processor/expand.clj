@@ -51,8 +51,11 @@
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
-(declare parse-aggregation
+(declare Field?
+         parse-aggregation
          parse-breakout
+         parse-calculated
+         parse-calculation
          parse-fields
          parse-filter
          parse-order-by
@@ -71,14 +74,26 @@
     "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
      Objects like `Fields` can add relevant information like the name of their `Table`."))
 
+(defprotocol IResolveCalculatedField
+  (resolve-calculated-field [this calculated-field-name->field]
+    "Called when walking the query after the initial parse.
+     `CalculatedFieldPlaceholders` should lookup and return the matching `CalculatedField`."))
+
+(defprotocol IResolveTypes
+  (resolve-types [this]
+    "`CalculatedFields` and the like should use this method to inspect themselves and determine `base-type`/`special-type` if possible
+     (presumably by looking at the types of normal `Fields` nested inside them)."))
+
 ;; Default impls are just identity
 (extend Object
-  IResolve {:resolve-field (fn [this _] this)
-            :resolve-table (fn [this _] this)})
+  IResolve                {:resolve-field            (fn [this _] this)
+                           :resolve-table            (fn [this _] this)}
+  IResolveCalculatedField {:resolve-calculated-field (fn [this _] this)})
 
 (extend nil
-  IResolve {:resolve-field (constantly nil)
-            :resolve-table (constantly nil)})
+  IResolve                {:resolve-field            (constantly nil)
+                           :resolve-table            (constantly nil)}
+  IResolveCalculatedField {:resolve-calculated-field (constantly nil)})
 
 
 ;; ## -------------------- Expansion - Impl --------------------
@@ -117,7 +132,8 @@
                                          :breakout    (parse-breakout    (:breakout %))
                                          :fields      (parse-fields      (:fields %))
                                          :filter      (parse-filter      (:filter %))
-                                         :order_by    (parse-order-by    (:order_by %)))
+                                         :order_by    (parse-order-by    (:order_by %))
+                                         :calculated  (parse-calculated  (:calculated %)))
                                   (set/rename-keys <> {:order_by     :order-by
                                                        :source_table :source-table})
                                   (m/filter-vals non-empty-clause? <>))))
@@ -204,6 +220,21 @@
                    (assoc-in % [:query :join-tables] (join-tables-fetch-field-info source-table-id join-tables))))
          (walk/postwalk #(resolve-table % table-id->table)))))
 
+(defn- resolve-calculated-field-types
+  "Determine effective `base-type` / `special-type` for `CalculatedFields` based on the types of the normal fields in its `Calculation`."
+  [{{calculated-fields :calculated} :query, :as expanded-query-dict}]
+  (if-not (seq calculated-fields)
+    expanded-query-dict
+    (update-in expanded-query-dict [:query :calculated] #(m/map-vals resolve-types %))))
+
+(defn- resolve-calculated-fields
+  "Resolve the `CalculatedFieldPlaceholders` in an EXPANDED-QUERY-DICT."
+  [{{calculated-fields :calculated} :query, :as expanded-query-dict}]
+  (if-not (seq calculated-fields)
+    expanded-query-dict
+    (walk/prewalk #(resolve-calculated-field % calculated-fields)
+                  expanded-query-dict)))
+
 
 ;; ## -------------------- Public Interface --------------------
 
@@ -214,11 +245,16 @@
             *field-ids*           (atom #{})
             *fk-field-ids*        (atom #{})
             *table-ids*           (atom #{})]
-    (some-> query-dict
-            parse
-            (resolve-fields @*field-ids*)
-            resolve-database
-            (resolve-tables @*table-ids*))))
+    (let [expanded (some-> query-dict
+                           parse
+                           (resolve-fields @*field-ids*)
+                           resolve-calculated-field-types
+                           resolve-calculated-fields
+                           resolve-database
+                           (resolve-tables @*table-ids*))]
+      (if-not expanded ; TODO - maybe do some more sophisticated validation ?
+        (throw (Exception. "Query expansion failed: it unexpectedly returned nil.")))
+      expanded)))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -243,12 +279,12 @@
   IResolve
   (resolve-field [this field-id->fields]
     (cond
-      parent          (if (= (type parent) Field)
-                        this
-                        (resolve-field parent field-id->fields))
-      parent-id       (assoc this :parent (or (field-id->fields parent-id)
+      parent    (if (= (type parent) Field)
+                  this
+                  (resolve-field parent field-id->fields))
+      parent-id (assoc this :parent (or (field-id->fields parent-id)
                                               (ph parent-id)))
-      :else           this))
+      :else     this))
 
   (resolve-table [this table-id->table]
     (assoc this :table-name (:name (or (table-id->table table-id)
@@ -268,6 +304,7 @@
   (match field
     (field-id :guard integer?)                                             true
     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    ["calculated" (field-name :guard string?)]                             true
     _                                                                      false))
 
 ;; Value is the expansion of a value within a QL clause
@@ -318,6 +355,12 @@
         parse-value
         map->Value)))
 
+(defrecord CalculatedFieldPlaceholder [^String field-name]
+  IResolveCalculatedField
+  (resolve-calculated-field [_ calculated-field-name->field]
+    (or (calculated-field-name->field (keyword field-name))
+        (throw (Exception. (format "Invalid calculated field reference: there is no calculated field named '%s'." field-name))))))
+
 (defn- ph
   "Create a new placeholder object for a Field ID or value.
    If `*field-ids*` is bound, "
@@ -333,7 +376,11 @@
          (swap! *fk-field-ids* conj fk-field-id)
          (->FieldPlaceholder dest-field-id))
 
-      _ (throw (Exception. (str "Invalid field: " field-id)))))
+     ["calculated" (field-name :guard string?)]
+     (->CalculatedFieldPlaceholder field-name)
+
+     _ (throw (Exception. (str "Invalid field: " field-id)))))
+
   ([field-id value]
    (->ValuePlaceholder (:field-id (ph field-id)) value)))
 
@@ -374,10 +421,62 @@
   field-ids (mapv ph field-ids))
 
 
+;; ## -------------------- Calculated --------------------
+
+(defrecord CalculationValue [value])
+
+(defrecord Calculation [^Keyword operator ; one of #{:+ :- :* :/}
+                        args]             ; each one is one of Field / CalculationValue / Calculation
+  IResolveTypes
+  (resolve-types [this]
+    (loop [base-types [], special-types [], [v & more] args]
+      (if-not v
+        {:base-type    (u/most-frequent base-types)
+         :special-type (u/most-frequent special-types)}
+        (cond
+          (instance? Field v)       (recur (conj base-types (:base-type v))
+                                           (conj special-types (:special-type v))
+                                           more)
+          (instance? Calculation v) (let [types (resolve-types v)]
+                                      (recur (conj base-types (:base-type types))
+                                             (conj special-types (:special-type types))
+                                             more))
+          ;; TODO - What about nested CalculatedFields ? Should we introspect those ??
+          :else                     (recur base-types special-types more))))))
+
+(defrecord CalculatedField [^String      field-name
+                            ^Calculation calculation
+                            ^Keyword     base-type
+                            ^Keyword     special-type]
+  IResolveTypes
+  (resolve-types [this]
+    (merge this (resolve-types calculation))))
+
+(defparser parse-calculation-arg
+  (field :guard Field?)               (ph field)
+  ["value" (value :guard number?)]    (->CalculationValue value)
+  (nested-calculation :guard vector?) (parse-calculation nested-calculation))
+
+(defparser parse-calculation
+  [(operator :guard (partial contains? #{"+" "-" "*" "/"})) & args]
+  (->Calculation (keyword operator)
+                 (mapv parse-calculation-arg args)))
+
+(defparser parse-calculated*
+  [(field-name :guard string?) calculation]
+  {(keyword field-name) (map->CalculatedField {:field-name field-name, :calculation (parse-calculation calculation)})})
+
+
+(defn- parse-calculated [form]
+  (when (seq form)
+    (into {} (map parse-calculated* form))))
+
+
 ;; ## -------------------- Fields --------------------
 
 (defparser parse-fields
   field-ids (mapv ph field-ids))
+
 
 ;; ## -------------------- Filter --------------------
 
