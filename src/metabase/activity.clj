@@ -39,8 +39,10 @@
   "The `Set` of topics which are subscribed to and included in the Metabase published activity feed."
   #{:card-create
     :card-update
+    :card-delete
     :dashboard-create
     :dashboard-update
+    :dashboard-delete
     :dashboard-add-cards
     :dashboard-remove-cards
     :dashboard-reposition-cards})

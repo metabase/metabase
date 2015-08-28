@@ -88,22 +88,23 @@
    public_perms PublicPerms
    display      CardDisplayType}
   (write-check Card id)
-  (->> (upd-non-nil-keys Card id
-                         :dataset_query dataset_query
-                         :description description
-                         :display display
-                         :name name
-                         :public_perms public_perms
-                         :visualization_settings visualization_settings)
-       (activity/publish-activity :card-update))
-  ;; TODO - have revision stuff work using activity framework and then we can remove this call
+  (upd-non-nil-keys Card id
+                    :dataset_query dataset_query
+                    :description description
+                    :display display
+                    :name name
+                    :public_perms public_perms
+                    :visualization_settings visualization_settings)
+  (activity/publish-activity :card-update {:id id :actor_id *current-user-id*})
   (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (cascade-delete Card :id id))
+  (let [result (cascade-delete Card :id id)]
+    (activity/publish-activity :card-delete {:id id :actor_id *current-user-id*})
+    result))
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"
