@@ -86,7 +86,8 @@
 (extend MySQLDriver
   ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
                                :database->connection-details        database->connection-details
-                               :unix-timestamp->timestamp           unix-timestamp->timestamp}
+                               :unix-timestamp->timestamp           unix-timestamp->timestamp
+                               :timezone->set-timezone-sql          timezone->set-timezone-sql}
   IDriver                     GenericSQLIDriverMixin
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
