@@ -131,7 +131,7 @@
      (formatted this false))
     ([{:keys [value base-type]} _]
      (cond
-       (instance? Timestamp value) (cast-as-date (u/date->yyyy-mm-dd value))
+       (instance? Timestamp value) (cast-as-date `(Timestamp/valueOf ~(.toString value))) ; prevent Clojure from converting this to #inst literal, which is a util.date
        (= base-type :UUIDField)    (java.util.UUID/fromString value)
        :else                       value))))
 
