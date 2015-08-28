@@ -4,11 +4,11 @@
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
 
-import DataReference from '../query_builder/data_reference.react';
-import GuiQueryEditor from '../query_builder/gui_query_editor.react';
-import NativeQueryEditor from '../query_builder/native_query_editor.react';
-import QueryHeader from '../query_builder/query_header.react';
-import QueryVisualization from '../query_builder/visualization.react';
+import DataReference from '../query_builder/DataReference.react';
+import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
+import NativeQueryEditor from '../query_builder/NativeQueryEditor.react';
+import QueryHeader from '../query_builder/QueryHeader.react';
+import QueryVisualization from '../query_builder/QueryVisualization.react';
 
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';

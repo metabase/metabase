@@ -1,10 +1,10 @@
 'use strict';
 
-import ExpandableString from './expandable_string.react';
+import ExpandableString from './ExpandableString.react';
 import FixedDataTable from 'fixed-data-table';
 import Humanize from 'humanize';
 import Icon from "metabase/components/Icon.react";
-import IconBorder from './icon_border.react';
+import IconBorder from './IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 var cx = React.addons.classSet;

@@ -1,7 +1,7 @@
 'use strict';
 
 import Icon from "metabase/components/Icon.react";
-import SelectionModule from './selection_module.react';
+import SelectionModule from './SelectionModule.react';
 
 export default React.createClass({
     displayName: 'LimitWidget',

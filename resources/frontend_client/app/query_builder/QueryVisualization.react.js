@@ -1,12 +1,12 @@
 'use strict';
 
 import Icon from "metabase/components/Icon.react";
-import QueryVisualizationTable from './visualization_table.react';
-import QueryVisualizationChart from './visualization_chart.react';
-import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
-import RunButton from './run_button.react';
-import VisualizationSettings from './visualization_settings.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
+import QueryVisualizationTable from './QueryVisualizationTable.react';
+import QueryVisualizationChart from './QueryVisualizationChart.react';
+import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.react';
+import RunButton from './RunButton.react';
+import VisualizationSettings from './VisualizationSettings.react';
 
 import Query from "metabase/lib/query";
 import DataGrid from "metabase/lib/data_grid";

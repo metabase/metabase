@@ -1,6 +1,6 @@
 'use strict';
 
-import AddToDashboardPopover from './add_to_dashboard_popover.react';
+import AddToDashboardPopover from './AddToDashboardPopover.react';
 import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 

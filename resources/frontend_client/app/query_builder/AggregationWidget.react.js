@@ -1,8 +1,8 @@
 'use strict';
 /*global _ */
 
-import SelectionModule from './selection_module.react';
-import FieldWidget from './field_widget.react';
+import SelectionModule from './SelectionModule.react';
+import FieldWidget from './FieldWidget.react';
 import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";

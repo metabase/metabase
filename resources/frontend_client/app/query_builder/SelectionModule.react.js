@@ -4,7 +4,7 @@
 import Popover from "metabase/components/Popover.react";
 
 import Icon from "metabase/components/Icon.react";
-import SearchBar from './search_bar.react';
+import SearchBar from './SearchBar.react';
 
 var cx = React.addons.classSet;
 

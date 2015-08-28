@@ -1,8 +1,8 @@
 'use strict';
 
-import DataReferenceMain from './data_reference_main.react';
-import DataReferenceTable from './data_reference_table.react';
-import DataReferenceField from './data_reference_field.react';
+import DataReferenceMain from './DataReferenceMain.react';
+import DataReferenceTable from './DataReferenceTable.react';
+import DataReferenceField from './DataReferenceField.react';
 import Icon from "metabase/components/Icon.react";
 import inflection from 'inflection';
 
