@@ -399,7 +399,7 @@ export default React.createClass({
                     className="PopoverBody PopoverBody--withArrow FilterPopover"
                     isInitiallyOpen={this.state.field === null}
                     tetherOptions={tetherOptions}
-                    handleClickOutside={this.selectPane.bind(null, -1)}
+                    onClose={this.selectPane.bind(null, -1)}
                 >
                     <ul className="PopoverHeader">
                         {tabs.map((t, index) => {

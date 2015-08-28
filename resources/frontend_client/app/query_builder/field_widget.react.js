@@ -46,7 +46,7 @@ export default React.createClass({
                     ref="popover"
                     className="PopoverBody PopoverBody--withArrow FieldPopover"
                     tetherOptions={tetherOptions}
-                    handleClickOutside={this.toggle}
+                    onClose={this.toggle}
                 >
                     <FieldSelector
                         tableName={this.props.tableName}

@@ -163,7 +163,7 @@ export default React.createClass({
         });
     },
 
-    handleClickOutside: function() {
+    onClosePopover: function() {
         this.setState({ popover: null });
     },
 
@@ -187,7 +187,7 @@ export default React.createClass({
                 popover = (
                     <Popover
                         tetherOptions={tetherOptions}
-                        handleClickOutside={this.handleClickOutside}
+                        onClose={this.onClosePopover}
                     >
                         <div className="bg-white bordered shadowed p1">
                             <ul className="h1 flex align-center">{operators}</ul>

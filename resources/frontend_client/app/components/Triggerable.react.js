@@ -10,8 +10,7 @@ export default ComposedComponent => class extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            isOpen: props.isInitiallyOpen || false,
-            recentlyToggled: false
+            isOpen: props.isInitiallyOpen || false
         }
     }
 
@@ -24,20 +23,25 @@ export default ComposedComponent => class extends Component {
     }
 
     toggle(isOpen = !this.state.isOpen) {
-        if (!this.state.recentlyToggled) {
-            this.setState({ isOpen, recentlyToggled: true });
-            setTimeout(() => this.setState({ recentlyToggled: false }), 500);
+        this.setState({ isOpen });
+    }
+
+    onClose(e) {
+        // don't close if clicked the actual trigger, it will toggle
+        if (e && e.target && this.refs.trigger.getDOMNode().contains(e.target)) {
+            return;
         }
+        this.close();
     }
 
     render() {
         return (
-            <a href="#" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
+            <a ref="trigger" href="#" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
                 {this.props.triggerElement}
                 <ComposedComponent
                     {...this.props}
                     isOpen={this.state.isOpen}
-                    onClose={() => this.close()}
+                    onClose={this.onClose.bind(this)}
                 />
             </a>
         );

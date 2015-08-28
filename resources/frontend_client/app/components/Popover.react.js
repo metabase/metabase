@@ -1,62 +1,59 @@
-'use strict';
-/*global document*/
+"use strict";
 
-import OnClickOutsideWrapper from './OnClickOutsideWrapper.react'
+import React, { Component, PropTypes } from "react";
 
-import Tether from 'tether';
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper.react";
+import Tether from "tether";
 
-export default React.createClass({
-    displayName: 'Popover',
+export default class Popover extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {};
+    }
 
-    getDefaultProps: function() {
-        return {
-            isOpen: true
-        };
-    },
-
-    componentWillMount: function() {
+    componentWillMount() {
         this._popoverElement = document.createElement('span');
         this._popoverElement.className = 'PopoverContainer';
-
+        this._popoverElement.id = Math.floor((Math.random() * 698754) + 1);
         document.querySelector('body').appendChild(this._popoverElement);
-    },
+    }
 
-    componentDidMount: function() {
+    componentDidMount() {
         this._renderPopover();
-    },
+    }
 
-    componentDidUpdate: function() {
+    componentDidUpdate() {
         this._renderPopover();
-    },
+    }
 
-    componentWillUnmount: function() {
+    componentWillUnmount() {
         if (this._tether) {
             this._tether.destroy();
-            this._tether = undefined;
+            delete this._tether;
         }
         React.unmountComponentAtNode(this._popoverElement);
         if (this._popoverElement.parentNode) {
             this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
-    },
+    }
 
-    handleClickOutside: function() {
+    handleClickOutside(...args) {
         if (this.props.onClose) {
-            this.props.onClose()
+            this.props.onClose(...args)
         }
-    },
+    }
 
-    _popoverComponent: function() {
+    _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
+            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
             </OnClickOutsideWrapper>
         );
-    },
+    }
 
-    _tetherOptions: function() {
+    _tetherOptions() {
         // sensible defaults for most popovers
         return {
             attachment: 'bottom right',
@@ -66,18 +63,22 @@ export default React.createClass({
                 moveElement: false // always moves to <body> anyway!
             }
         };
-    },
+    }
 
-    _renderPopover: function() {
+    _renderPopover() {
         if (this.props.isOpen) {
-            // modal is open, lets do this!
-            React.render(this._popoverComponent(), this._popoverElement);
+            // popover is open, lets do this!
+            React.render(
+                <div className="Popover-backdrop">
+                    {this._popoverComponent()}
+                </div>
+            , this._popoverElement);
 
             var tetherOptions = this.props.tetherOptions || this._tetherOptions();
 
             // NOTE: these must be set here because they relate to OUR component and can't be passed in
             tetherOptions.element = this._popoverElement;
-            tetherOptions.target = this.getDOMNode().parentNode;
+            tetherOptions.target = React.findDOMNode(this).parentNode;
 
             if (this._tether !== undefined && this._tether !== null) {
                 this._tether.setOptions(tetherOptions);
@@ -85,12 +86,21 @@ export default React.createClass({
                 this._tether = new Tether(tetherOptions);
             }
         } else {
-            // if the modal isn't open then actively unmount our popover
+            // if the popover isn't open then actively unmount our popover
             React.unmountComponentAtNode(this._popoverElement);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return <span />;
     }
-});
+}
+
+Popover.propTypes = {
+    isOpen: PropTypes.bool
+};
+
+Popover.defaultProps = {
+    className: "Popover",
+    isOpen: true
+};

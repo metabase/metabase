@@ -44,7 +44,7 @@ export default React.createClass({
         };
     },
 
-    handleClickOutside: function() {
+    onClose: function() {
         this.setState({
             open: false,
             expanded: false
@@ -200,7 +200,7 @@ export default React.createClass({
                 <Popover
                     tetherOptions={tetherOptions}
                     className={"SelectionModule PopoverBody PopoverBody--withArrow " + this.props.className}
-                    handleClickOutside={this.handleClickOutside}
+                    onClose={this.onClose}
                 >
                     <div className={itemListClasses}>
                         {searchBar}
