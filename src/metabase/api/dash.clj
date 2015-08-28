@@ -2,7 +2,7 @@
   "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :as k]
-            [metabase.activity :as activity]
+            [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -35,7 +35,7 @@
             :description description
             :public_perms public_perms
             :creator_id *current-user-id*)
-       (activity/publish-activity :dashboard-create)))
+       (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
@@ -54,7 +54,7 @@
                                :description description
                                :name name
                                :public_perms public_perms))
-  (activity/publish-activity :dashboard-update {:id id :actor_id *current-user-id*})
+  (events/publish-event :dashboard-update {:id id :actor_id *current-user-id*})
   (push-revision :entity Dashboard, :object (Dashboard id)))
 
 (defendpoint DELETE "/:id"
@@ -62,7 +62,7 @@
   [id]
   (write-check Dashboard id)
   (let [result (cascade-delete Dashboard :id id)]
-    (activity/publish-activity :dashboard-delete {:id id :actor_id *current-user-id*})
+    (events/publish-event :dashboard-delete {:id id :actor_id *current-user-id*})
     result))
 
 (defendpoint POST "/:id/cards"
@@ -72,7 +72,7 @@
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
   (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
-    (activity/publish-activity :dashboard-add-cards (merge {:actor_id *current-user-id*} result))
+    (events/publish-event :dashboard-add-cards (merge {:actor_id *current-user-id*} result))
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
@@ -82,7 +82,7 @@
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
   (let [result (del DashboardCard :id dashcardId :dashboard_id id)]
-    (activity/publish-activity :dashboard-remove-cards {:id dashcardId :dashboard_id id :actor_id *current-user-id*})
+    (events/publish-event :dashboard-remove-cards {:id dashcardId :dashboard_id id :actor_id *current-user-id*})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
@@ -101,7 +101,7 @@
     (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
       (when dashcard
         (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
-  (activity/publish-activity :dashboard-reposition-cards {:dashboard_id id :actor_id *current-user-id* :cards cards})
+  (events/publish-event :dashboard-reposition-cards {:dashboard_id id :actor_id *current-user-id* :cards cards})
   (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 

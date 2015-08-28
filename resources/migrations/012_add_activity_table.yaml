@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 12
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: activity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: core_user(id)
+                    foreignKeyName: fk_activity_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: varchar
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_topic
+            columns:
+              column:
+                name: topic
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_model_model_id
+            columns:
+              column:
+                name: model
+              column:
+                name: model_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH

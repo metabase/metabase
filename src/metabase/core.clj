@@ -23,7 +23,8 @@
             (metabase.middleware [auth :as auth]
                                  [log-api-call :refer :all]
                                  [format :refer :all])
-            (metabase.models [setting :refer [defsetting]]
+            (metabase.models [activity :refer [start-activity-feed]]
+                             [setting :refer [defsetting]]
                              [database :refer [Database]]
                              [user :refer [User]])))
 
@@ -102,6 +103,9 @@
 
   ;; Now start the task runner
   (task/start-task-runner!)
+
+  ;; Bootstrap the activity feed system
+  (start-activity-feed)
 
   (log/info "Metabase Initialization COMPLETE")
   true)

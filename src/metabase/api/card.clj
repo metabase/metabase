@@ -2,7 +2,7 @@
   (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :as k]
             [medley.core :refer [mapply]]
-            [metabase.activity :as activity]
+            [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -72,7 +72,7 @@
             :name                   name
             :public_perms           public_perms
             :visualization_settings visualization_settings)
-       (activity/publish-activity :card-create)))
+       (events/publish-event :card-create)))
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -95,7 +95,7 @@
                     :name name
                     :public_perms public_perms
                     :visualization_settings visualization_settings)
-  (activity/publish-activity :card-update {:id id :actor_id *current-user-id*})
+  (events/publish-event :card-update {:id id :actor_id *current-user-id*})
   (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
@@ -103,7 +103,7 @@
   [id]
   (write-check Card id)
   (let [result (cascade-delete Card :id id)]
-    (activity/publish-activity :card-delete {:id id :actor_id *current-user-id*})
+    (events/publish-event :card-delete {:id id :actor_id *current-user-id*})
     result))
 
 (defendpoint GET "/:id/favorite"
