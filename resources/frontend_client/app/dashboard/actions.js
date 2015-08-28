@@ -9,7 +9,7 @@ import moment from "moment";
 
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-const DATASET_TIMEOUT = 1;
+const DATASET_TIMEOUT = 60;
 
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
