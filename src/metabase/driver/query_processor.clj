@@ -41,12 +41,14 @@
   (fn [query]
     (try (qp query)
          (catch Throwable e
-           {:status     :failed
-            :error      (.getMessage e)
-            :stacktrace (u/filtered-stacktrace e)
-            :query      (dissoc query :database :driver)
+           {:status         :failed
+            :error          (or (.getMessage e) (str e))
+            :stacktrace     (u/filtered-stacktrace e)
+            :query          (dissoc query :database :driver)
             :expanded-query (try (dissoc (expand/expand query) :database :driver)
-                                 (catch Throwable _))}))))
+                                 (catch Throwable e
+                                   {:error      (or (.getMessage e) (str e))
+                                    :stacktrace (u/filtered-stacktrace e) }))}))))
 
 
 (defn- pre-expand [qp]
@@ -194,7 +196,8 @@
     (let [query   (cond-> query
                     (and (not limit)
                          (not page)
-                         (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
+                         (or (not ag-type)
+                             (= ag-type :rows))) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
       (update results :rows (partial take max-result-rows)))))
 

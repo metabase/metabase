@@ -1,40 +1,6 @@
 (ns metabase.driver.query-processor.expand
-  "Various query processor functions need to know information about `Fields` and `Values` -- `base_type`, `special_type`, etc,
-   and need to parse the Query dict.
-   Right now there's a lot of duplicated logic to perform this functionality. Ideally, we'd gather all this information in a single place,
-   and various QP components wouldn't need to implement that logic themselves.
-
-   That's the ultimate endgoal of this namespace: parse a Query dict and return an *expanded* form with relevant information added,
-   values already parsed (e.g. date strings will be converted to `java.sql.Date` / Unix timestamps as appropriate), in a more
-   Clojure-friendly format (e.g. using keywords like `:not-null` instead of strings like `\"NOT_NULL\"`, and using maps instead of
-   position-dependent vectors for things like like the `BETWEEN` filter clause. We'll also be able to add useful utility methods to various
-   bits of the Query Language, since they're typed. On top of that, we'll see a big performance improvment when various QP modules aren't
-   making duplicate DB calls.
-
-   Ex.
-   A normal `filter` clause might look something like this:
-
-     [\"=\" 34 \"1760-01-01\"]
-
-   When we expand it, we get:
-
-     {:compound-type :simple
-      :subclauses [{:filter-type :=
-                    :field {:field-id 34
-                            :field-name \"TIMESTAMP\"
-                            :base-type :BigIntegerField
-                            :special-type :timestamp_seconds}
-                    :value {:value -6626937600,
-                            :original-value \"1760-01-01\",
-                            :base-type :BigIntegerField,
-                            :special-type :timestamp_seconds,
-                            :field-id 34}}]}
-
-   ## Expansion Phases
-
-   1.  Parsing:          Various functions parse the query form and replace Field IDs and values with placeholders
-   2.  Field Lookup:     A *batched* DB call is made to fetch Fields with IDs found during Parsing
-   3.  Field Resolution: Query is walked depth-first and placeholders are replaced with expanded `Field`/`Value` objects"
+  "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
+   construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:require [clojure.core.match :refer [match]]
             (clojure [set :as set]
                      [string :as s]
@@ -390,8 +356,8 @@
 ;; ### Subclause Types
 
 (defrecord Filter:Inside [^Keyword filter-type ; :inside :not-null :is-null :between := :!= :< :> :<= :>=
-                          lat
-                          lon])
+                          ^Float lat
+                          ^Float lon])
 
 (defrecord Filter:Between [^Keyword filter-type
                            ^Field   field
@@ -403,10 +369,27 @@
                                ^Value   value])
 
 (defrecord Filter:Field [^Keyword filter-type
-                         ^Field field])
+                         ^Field   field])
 
 
 ;; ### Parsers
+
+(defn- orderable-Value?
+  "Is V an unexpanded value that can be compared with operators such as `<` and `>`?
+   i.e. This is true of numbers and dates, but not of other strings or booleans."
+  [v]
+  (match v
+    (_ :guard number?)         true
+    (_ :guard datetime-value?) true
+    _                          false))
+
+(defn- Value?
+  "Is V a valid unexpanded `Value`?"
+  [v]
+  (or (string? v)
+      (= v true)
+      (= v false)
+      (orderable-Value? v)))
 
 (defparser parse-filter-subclause
   ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
@@ -418,19 +401,26 @@
                                      :min   (ph lon-field lon-min)
                                      :max   (ph lon-field lon-max)}})
 
-  ["BETWEEN" (field-id :guard Field?) (min :guard (complement nil?)) (max :guard (complement nil?))]
+  ["BETWEEN" (field-id :guard unexpanded-Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
   (map->Filter:Between {:filter-type :between
                         :field       (ph field-id)
                         :min-val     (ph field-id min)
                         :max-val     (ph field-id max)})
 
-  [(filter-type :guard (partial contains? #{"!=" "=" "<" ">" "<=" ">="})) (field-id :guard Field?) (val :guard (complement nil?))]
+  ;; Single-value != and =
+  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard unexpanded-Field?) (val :guard Value?)]
+  (map->Filter:Field+Value {:filter-type (keyword filter-type)
+                            :field       (ph field-id)
+                            :value       (ph field-id val)})
+
+  ;; <, >, <=, >= - like single-value != and =, but value must be orderable
+  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard unexpanded-Field?) (val :guard orderable-Value?)]
   (map->Filter:Field+Value {:filter-type (keyword filter-type)
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
   ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :or
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :=
@@ -438,14 +428,14 @@
                                                                 :value       (ph field-id value)})))})
 
   ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard Field?) & (values :guard #(and (seq %) (every? (complement nil?) %)))]
+  ["!=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
   (map->Filter {:compound-type :and
                 :subclauses    (vec (for [value values]
                                       (map->Filter:Field+Value {:filter-type :!=
                                                                 :field       (ph field-id)
                                                                 :value       (ph field-id value)})))})
 
-  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard Field?) (val :guard string?)]
+  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard unexpanded-Field?) (val :guard string?)]
   (map->Filter:Field+Value {:filter-type (case filter-type
                                            "STARTS_WITH" :starts-with
                                            "CONTAINS"    :contains
@@ -453,7 +443,7 @@
                             :field       (ph field-id)
                             :value       (ph field-id val)})
 
-  [(filter-type :guard string?) (field-id :guard Field?)]
+  [(filter-type :guard string?) (field-id :guard unexpanded-Field?)]
   (map->Filter:Field {:filter-type (case filter-type
                                      "NOT_NULL" :not-null
                                      "IS_NULL"  :is-null)
@@ -488,11 +478,11 @@
     "descending" :descending))
 
 (defparser parse-order-by-subclause
-  [["aggregation" index] direction]    (let [{{:keys [aggregation]} :query} *original-query-dict*]
-                                            (assert aggregation "Query does not contain an aggregation clause.")
-                                            (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
-                                                                (parse-order-by-direction direction)))
-  [(field-id :guard Field?) direction] (->OrderBySubclause (ph field-id)
-                                                           (parse-order-by-direction direction)))
+  [["aggregation" index] direction]               (let [{{:keys [aggregation]} :query} *original-query-dict*]
+                                                    (assert aggregation "Query does not contain an aggregation clause.")
+                                                    (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
+                                                                        (parse-order-by-direction direction)))
+  [(field-id :guard unexpanded-Field?) direction] (->OrderBySubclause (ph field-id)
+                                                                      (parse-order-by-direction direction)))
 (defparser parse-order-by
   subclauses (mapv parse-order-by-subclause subclauses))

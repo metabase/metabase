@@ -33,9 +33,7 @@
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
-  (-> (java.util.Date.)
-      .getTime
-      (java.sql.Timestamp.)))
+  (java.sql.Timestamp. (System/currentTimeMillis)))
 
 (defn parse-iso8601
   "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
@@ -68,6 +66,13 @@
       parse-date-yyyy-mm-dd
       .getTime
       (/ 1000)))
+
+(defn date-string?
+  "Is S a valid [RFC 3339](https://tools.ietf.org/html/rfc3339) date string?"
+  [s]
+  (boolean (when (string? s)
+             (try (parse-rfc-3339 s)
+                  (catch Throwable e)))))
 
 (defn now-iso8601
   "format the current time as iso8601 date/time string."

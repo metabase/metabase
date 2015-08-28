@@ -5,7 +5,6 @@
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
-            [metabase.driver.generic-sql.interface :refer [ISqlDriverQuoteName quote-name]]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :refer :all]))
   (:import (metabase.test.data.interface DatabaseDefinition
@@ -63,11 +62,7 @@
 
   (generic/field-base-type->sql-type [_ field-type]
     (if (map? field-type) (:native field-type)
-        (field-base-type->sql-type field-type)))
-
-  ISqlDriverQuoteName
-  (quote-name [_ nm]
-    (str \` nm \`)))
+        (field-base-type->sql-type field-type))))
 
 (extend-protocol IDatasetLoader
   MySQLDatasetLoader
@@ -102,4 +97,4 @@
 
 
 (defn dataset-loader []
-  (MySQLDatasetLoader.))
+  (map->MySQLDatasetLoader {:quote-character \`}))

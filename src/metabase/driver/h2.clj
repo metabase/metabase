@@ -1,12 +1,14 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as s]
             [korma.db :as kdb]
+            [korma.sql.utils :as utils]
             [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
                              [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]])
-            [metabase.driver.generic-sql.interface :refer :all]
+            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
+                                         [util :refer [funcs]])
             [metabase.models.database :refer [Database]]))
 
 (def ^:private ^:const column->base-type
@@ -102,21 +104,18 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
-(defrecord H2Driver []
-  ISqlDriverDatabaseSpecific
-  (connection-details->connection-spec [_ details]
-    (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
-                (update details :db connection-string-set-safe-options))))
+(defn- connection-details->connection-spec [_ details]
+  (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
+              (update details :db connection-string-set-safe-options))))
 
-  (database->connection-details [_ {:keys [details]}]
-    details)
+(defn- database->connection-details [_ {:keys [details]}]
+  details)
 
-  (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    (format "CAST(TIMESTAMPADD('%s', \"%s\".\"%s\", DATE '1970-01-01') AS DATE)"
-            (case seconds-or-milliseconds
-              :seconds      "SECOND"
-              :milliseconds "MILLISECOND")
-            table-name field-name)))
+(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
+  (utils/func (format "parseDateTime(%%s, '%s', 'en', 'GMT')" (case seconds-or-milliseconds
+                                                                :seconds      "s"
+                                                                :milliseconds "S"))
+              [field-or-value]))
 
 (defn- wrap-process-query-middleware [_ qp]
   (fn [{query-type :type, :as query}]
@@ -133,7 +132,12 @@
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
     (qp query)))
 
+(defrecord H2Driver [])
+
 (extend H2Driver
+  ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
+                               :database->connection-details        database->connection-details
+                               :unix-timestamp->date                unix-timestamp->date}
   ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
   IDriver                     (assoc GenericSQLIDriverMixin :wrap-process-query-middleware wrap-process-query-middleware)
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin

@@ -176,9 +176,8 @@
   :json
   (with-temp-db
     [_
-     (dataset-loader)
      (create-database-definition "Postgres with a JSON Field"
        ["venues"
         [{:field-name "address", :base-type {:native "json"}}]
         [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
-    (sel :one :field [Field :special_type] :id &venues.address:id)))
+    (sel :one :field [Field :special_type] :id (id :venues :address))))

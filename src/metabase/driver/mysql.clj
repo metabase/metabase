@@ -1,14 +1,17 @@
 (ns metabase.driver.mysql
-  (:require [clojure.set :as set]
-            (korma [db :as kdb]
+  (:require (clojure [set :as set]
+                     [string :as s])
+            (korma [core :as k]
+                   [db :as kdb]
                    mysql)
             (korma.sql [engine :refer [sql-func]]
-                       [utils :as korma-utils])
+                       [utils :as utils])
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
                              [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
                                                 ISyncDriverSpecificSyncField driver-specific-sync-field!]])
-            (metabase.driver.generic-sql [interface :refer :all])))
+            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
+                                         [util :refer [funcs]])))
 
 ;;; # Korma 0.4.2 Bug Workaround
 ;; (Buggy code @ https://github.com/korma/Korma/blob/684178c386df529558bbf82097635df6e75fb339/src/korma/mysql.clj)
@@ -18,7 +21,7 @@
   (sql-func "COUNT" (if (and (or (instance? clojure.lang.Named v) ; the issue was that name was being called on things that like maps when we tried to get COUNT(DISTINCT(...))
                                  (string? v))                     ; which would barf since maps don't implement clojure.lang.Named
                              (= (name v) "*"))
-                      (korma-utils/generated "*")
+                      (utils/generated "*")
                       v)))
 
 (intern 'korma.mysql 'count mysql-count)
@@ -58,33 +61,32 @@
    :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
-(defrecord MySQLDriver []
-  ISqlDriverDatabaseSpecific
-  (connection-details->connection-spec [_ details]
-    (-> details
-        (set/rename-keys {:dbname :db})
-        kdb/mysql))
+(defn- connection-details->connection-spec [_ details]
+  (-> details
+      (set/rename-keys {:dbname :db})
+      kdb/mysql))
 
-  (database->connection-details [_ {:keys [details]}]
-    details)
+(defn- database->connection-details [_ {:keys [details]}]
+  details)
 
-  (cast-timestamp-to-date [_ table-name field-name seconds-or-milliseconds]
-    (format (case seconds-or-milliseconds
-              :seconds      "CAST(TIMESTAMPADD(SECOND, `%s`.`%s`, DATE '1970-01-01') AS DATE)"
-              :milliseconds "CAST(TIMESTAMPADD(MICROSECOND, (`%s`.`%s` * 1000), DATE '1970-01-01') AS DATE)" )
-            table-name field-name))
+(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
+  (utils/func (case seconds-or-milliseconds
+                :seconds      "FROM_UNIXTIME(%s)"
+                :milliseconds "FROM_UNIXTIME(%s * 1000)")
+              [field-or-value]))
 
-  (timezone->set-timezone-sql [_ timezone]
-    ;; If this fails you need to load the timezone definitions from your system into MySQL;
-    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-    (format "SET @@session.time_zone = '%s';" timezone))
+(defn- timezone->set-timezone-sql [_ timezone]
+  ;; If this fails you need to load the timezone definitions from your system into MySQL;
+  ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+  ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+  (format "SET @@session.time_zone = '%s';" timezone))
 
-  ISqlDriverQuoteName
-  (quote-name [_ nm]
-    (str \` nm \`)))
+(defrecord MySQLDriver [])
 
 (extend MySQLDriver
+  ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
+                               :database->connection-details        database->connection-details
+                               :unix-timestamp->date                unix-timestamp->date}
   IDriver                     GenericSQLIDriverMixin
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
