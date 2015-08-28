@@ -111,10 +111,10 @@
 (defn- database->connection-details [_ {:keys [details]}]
   details)
 
-(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
-  (utils/func (format "parseDateTime(%%s, '%s', 'en', 'GMT')" (case seconds-or-milliseconds
-                                                                :seconds      "s"
-                                                                :milliseconds "S"))
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
+  (utils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
+                                                                                    :seconds      "SECOND"
+                                                                                    :milliseconds "MILLISECOND"))
               [field-or-value]))
 
 (defn- wrap-process-query-middleware [_ qp]
@@ -137,7 +137,7 @@
 (extend H2Driver
   ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
                                :database->connection-details        database->connection-details
-                               :unix-timestamp->date                unix-timestamp->date}
+                               :unix-timestamp->timestamp           unix-timestamp->timestamp}
   ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
   IDriver                     (assoc GenericSQLIDriverMixin :wrap-process-query-middleware wrap-process-query-middleware)
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin

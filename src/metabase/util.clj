@@ -8,7 +8,11 @@
             [clj-time.coerce :as coerce])
   (:import (java.net Socket
                      InetSocketAddress
-                     InetAddress)))
+                     InetAddress)
+           java.sql.Timestamp
+           javax.xml.bind.DatatypeConverter))
+
+(set! *warn-on-reflection* true)
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -33,45 +37,33 @@
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
    (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   []
-  (java.sql.Timestamp. (System/currentTimeMillis)))
+  (Timestamp. (System/currentTimeMillis)))
 
+;; Actually this only supports [RFC 3339](https://tools.ietf.org/html/rfc3339), which is basically a subset of ISO 8601
 (defn parse-iso8601
-  "Parse a string value expected in the iso8601 format into a `java.sql.Date`."
-  ^java.sql.Date
+  "Parse a string value expected in the iso8601 format into a `java.sql.Timestamp`.
+   NOTE: `YYYY-MM-DD` dates *are* valid iso8601 dates."
+  ^java.sql.Timestamp
   [^String datetime]
   (some->> datetime
-           (time/parse (time/formatters :date-time))
-           (coerce/to-long)
-           (java.sql.Date.)))
+           DatatypeConverter/parseDateTime
+           .getTime     ; Calendar -> Date
+           .getTime     ; Date -> ms
+           Timestamp.))
 
 (def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
-
-(defn parse-date-yyyy-mm-dd
-  "Parse a date in the `yyyy-mm-dd` format and return a `java.sql.Date`."
-  ^java.sql.Date [^String date]
-  (-> (.parse yyyy-mm-dd-simple-date-format date)
-      .getTime
-      java.sql.Date.))
 
 (defn date->yyyy-mm-dd
   "Convert a date to a `YYYY-MM-DD` string."
   ^String [^java.util.Date date]
   (.format yyyy-mm-dd-simple-date-format date))
 
-(defn date-yyyy-mm-dd->unix-timestamp
-  "Convert a string DATE in the `YYYY-MM-DD` format to a Unix timestamp in seconds."
-  ^Float [^String date]
-  (-> date
-      parse-date-yyyy-mm-dd
-      .getTime
-      (/ 1000)))
-
 (defn date-string?
-  "Is S a valid [RFC 3339](https://tools.ietf.org/html/rfc3339) date string?"
+  "Is S a valid ISO 8601 date string?"
   [s]
   (boolean (when (string? s)
-             (try (parse-rfc-3339 s)
+             (try (parse-iso8601 s)
                   (catch Throwable e)))))
 
 (defn now-iso8601

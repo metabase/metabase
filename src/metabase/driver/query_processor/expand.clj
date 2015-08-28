@@ -227,7 +227,7 @@
             [table-name])
           field-name)))
 
-(defn- Field?
+(defn- unexpanded-Field?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
   ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
   [field]
@@ -270,7 +270,7 @@
          :value (or (when (and (string? value)
                                (or (contains? #{:DateField :DateTimeField} base-type)
                                    (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
-                      (u/parse-date-yyyy-mm-dd value))
+                      (u/parse-iso8601 value))
                     value)))
 
 ;; Replace values with these during first pass over Query.
@@ -321,15 +321,15 @@
                         ^Field field])
 
 (defparser parse-aggregation
-  ["rows"]                              (->Aggregation :rows nil)
-  ["count"]                             (->Aggregation :count nil)
-  ["avg" (field-id :guard Field?)]      (->Aggregation :avg (ph field-id))
-  ["count" (field-id :guard Field?)]    (->Aggregation :count (ph field-id))
-  ["distinct" (field-id :guard Field?)] (->Aggregation :distinct (ph field-id))
-  ["stddev" (field-id :guard Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
-                                            (->Aggregation :stddev (ph field-id)))
-  ["sum" (field-id :guard Field?)]      (->Aggregation :sum (ph field-id))
-  ["cum_sum" (field-id :guard Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
+  ["rows"]                                         (->Aggregation :rows nil)
+  ["count"]                                        (->Aggregation :count nil)
+  ["avg" (field-id :guard unexpanded-Field?)]      (->Aggregation :avg (ph field-id))
+  ["count" (field-id :guard unexpanded-Field?)]    (->Aggregation :count (ph field-id))
+  ["distinct" (field-id :guard unexpanded-Field?)] (->Aggregation :distinct (ph field-id))
+  ["stddev" (field-id :guard unexpanded-Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
+                                                       (->Aggregation :stddev (ph field-id)))
+  ["sum" (field-id :guard unexpanded-Field?)]      (->Aggregation :sum (ph field-id))
+  ["cum_sum" (field-id :guard unexpanded-Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
 
 
 ;; ## -------------------- Breakout --------------------
@@ -380,7 +380,7 @@
   [v]
   (match v
     (_ :guard number?)         true
-    (_ :guard datetime-value?) true
+    (_ :guard u/date-string?)  true
     _                          false))
 
 (defn- Value?
@@ -392,7 +392,7 @@
       (orderable-Value? v)))
 
 (defparser parse-filter-subclause
-  ["INSIDE" (lat-field :guard Field?) (lon-field :guard Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
+   ["INSIDE" (lat-field :guard unexpanded-Field?) (lon-field :guard unexpanded-Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
                                      :min   (ph lat-field lat-min)
