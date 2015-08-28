@@ -38,9 +38,8 @@
     (assoc obj :serialized true))
   (revert-to-revision [_ _ serialized-instance]
     (reset! reverted-to (dissoc serialized-instance :serialized)))
-  (describe-diff [_ _ o1 o2]
-    {:before o1
-     :after o2}))
+  (describe-diff [_ o1 o2]
+    (str "BEFORE=" o1 ",AFTER=" o2)))
 
 (defn- push-fake-revision [card-id & {:as object}]
   (push-revision :entity FakedCard, :id card-id, :user-id (user->id :rasta), :object object))
@@ -100,8 +99,7 @@
 ;; Check that revisions properly defer to describe-diff
 (expect [{:is_reversion false,
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-          :description  {:before {:name "Tips Created by Day", :serialized true}
-                         :after  {:name "Spots Created by Day", :serialized true}}}
+          :description  "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER={:name \"Spots Created by Day\", :serialized true}"}
          {:is_reversion false,
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
           :description  "First revision."}]

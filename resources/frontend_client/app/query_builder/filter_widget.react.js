@@ -2,12 +2,12 @@
 /*global _*/
 
 import Calendar from './calendar.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import FieldName from './field_name.react';
 import FieldSelector from './field_selector.react';
 import SelectionModule from './selection_module.react';
-import Popover from './popover.react';
-import ColumnarSelector from './columnar_selector.react';
+import Popover from "metabase/components/Popover.react";
+import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 
 import Query from "metabase/lib/query";
 import moment from 'moment';
@@ -399,7 +399,7 @@ export default React.createClass({
                     className="PopoverBody PopoverBody--withArrow FilterPopover"
                     isInitiallyOpen={this.state.field === null}
                     tetherOptions={tetherOptions}
-                    handleClickOutside={this.selectPane.bind(null, -1)}
+                    onClose={this.selectPane.bind(null, -1)}
                 >
                     <ul className="PopoverHeader">
                         {tabs.map((t, index) => {

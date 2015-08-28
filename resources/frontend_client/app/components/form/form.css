@@ -155,3 +155,40 @@
 :-ms-input-placeholder { /* Internet Explorer 10+ */
    color:    var(--form-input-placeholder-color);
 }
+
+.NewForm .Form-label {
+    text-transform: uppercase;
+    color: color(var(--base-grey) shade(30%));
+    margin-bottom: 0.5em;
+}
+
+.NewForm .Form-input {
+    font-size: 16px;
+    color: var(--default-font-color);
+    padding: 0.5em;
+    background-color: #FCFCFC;
+    border: 1px solid #EAEAEA;
+    border-radius: 4px;
+}
+.NewForm .Form-input:focus {
+    border-color: var(--brand-color);
+    box-shadow: none;
+    outline: 0;
+}
+
+.NewForm .Form-header {
+    padding: var(--padding-4);
+}
+
+.NewForm .Form-inputs {
+    padding-left: var(--padding-4);
+    padding-right: var(--padding-4);
+}
+
+.NewForm .Form-actions {
+    border-top: 1px solid #EAEAEA;
+    padding-bottom: 1.2rem;
+    padding-top: 1.2rem;
+    padding-left: var(--padding-4);
+    padding-right: var(--padding-4);
+}

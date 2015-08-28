@@ -1,9 +1,9 @@
 "use strict";
 /*global _*/
 
-import Input from "../../metadata/components/Input.react";
-import Select from "../../metadata/components/Select.react";
-import Toggle from "../../metadata/components/Toggle.react";
+import Input from "metabase/components/Input.react";
+import Select from "metabase/components/Select.react";
+import Toggle from "metabase/components/Toggle.react";
 
 import cx from "classnames";
 

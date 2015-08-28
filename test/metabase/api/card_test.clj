@@ -77,6 +77,7 @@
          :can_read true
          :can_write true
          :organization_id nil
+         :dashboard_count 0
          :name card-name
          :creator_id (user->id :rasta)
          :creator (match-$ (fetch-user :rasta)

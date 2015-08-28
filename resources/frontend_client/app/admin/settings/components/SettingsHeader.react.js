@@ -1,6 +1,6 @@
 "use strict";
 
-import SaveStatus from "../../metadata/components/SaveStatus.react";
+import SaveStatus from "metabase/components/SaveStatus.react";
 
 export default React.createClass({
     displayName: "SettingsHeader",

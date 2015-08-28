@@ -3,9 +3,9 @@
 import ExpandableString from './expandable_string.react';
 import FixedDataTable from 'fixed-data-table';
 import Humanize from 'humanize';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import IconBorder from './icon_border.react';
-import LoadingSpinner from './../components/icons/loading.react';
+import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;

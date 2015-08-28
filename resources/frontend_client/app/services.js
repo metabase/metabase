@@ -46,9 +46,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval'
                     // this tells Intercom to update every 60s if we have a currently logged in user
                     $interval(function() {
                         if (service.model.currentUser && isTracking()) {
-                            /* eslint-disable */
                             window.Intercom('update');
-                            /* eslint-enable */
                         }
                     }, 60000);
                 }
@@ -179,7 +177,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval'
             return (tracking === "true" || tracking === null);
         }
 
-        /* eslint-disable */
         function startupIntercom(user) {
             window.Intercom('boot', {
                 app_id: "gqfmsgf1",
@@ -191,7 +188,6 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval'
         function teardownIntercom() {
             window.Intercom('shutdown');
         }
-        /* eslint-enable */
 
         // listen for location changes and use that as a trigger for page view tracking
         $rootScope.$on('$locationChangeSuccess', function() {
@@ -377,6 +373,30 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
             method: 'DELETE',
             params: {
                 key: '@key'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Revision', ['$resource', function($resource) {
+    return $resource('/api/revision', {}, {
+        list: {
+            url: '/api/revision',
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
+            }
+        },
+
+        revert: {
+            url: '/api/revision/revert',
+            method: 'POST',
+            params: {
+                'entity': '@entity',
+                'id': '@id',
+                'revision_id': '@revision_id'
             }
         }
     });

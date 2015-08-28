@@ -1,7 +1,7 @@
 "use strict";
 /*global _*/
 
-import Icon from "./icon.react";
+import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
 

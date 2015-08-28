@@ -1,9 +1,9 @@
 'use strict';
 /*global _ */
 
-import Popover from './popover.react';
+import Popover from "metabase/components/Popover.react";
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import SearchBar from './search_bar.react';
 
 var cx = React.addons.classSet;
@@ -44,7 +44,7 @@ export default React.createClass({
         };
     },
 
-    handleClickOutside: function() {
+    onClose: function() {
         this.setState({
             open: false,
             expanded: false
@@ -200,7 +200,7 @@ export default React.createClass({
                 <Popover
                     tetherOptions={tetherOptions}
                     className={"SelectionModule PopoverBody PopoverBody--withArrow " + this.props.className}
-                    handleClickOutside={this.handleClickOutside}
+                    onClose={this.onClose}
                 >
                     <div className={itemListClasses}>
                         {searchBar}

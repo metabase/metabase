@@ -2,8 +2,8 @@
 
 import FieldSelector from "./field_selector.react";
 import FieldName from "./field_name.react";
-import Icon from "./icon.react";
-import Popover from "./popover.react";
+import Icon from "metabase/components/Icon.react";
+import Popover from "metabase/components/Popover.react";
 
 import Query from "metabase/lib/query";
 
@@ -19,23 +19,23 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            modalOpen: this.props.isInitiallyOpen || false
+            isOpen: this.props.isInitiallyOpen || false
         };
     },
 
     setField:function(value) {
         this.props.setField(value);
         if (Query.isValidField(value)) {
-            this.toggleModal();
+            this.toggle();
         }
     },
 
-    toggleModal: function() {
-        this.setState({ modalOpen: !this.state.modalOpen });
+    toggle: function() {
+        this.setState({ isOpen: !this.state.isOpen });
     },
 
     renderPopover: function() {
-        if (this.state.modalOpen) {
+        if (this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top center',
                 targetAttachment: 'bottom center',
@@ -46,7 +46,7 @@ export default React.createClass({
                     ref="popover"
                     className="PopoverBody PopoverBody--withArrow FieldPopover"
                     tetherOptions={tetherOptions}
-                    handleClickOutside={this.toggleModal}
+                    onClose={this.toggle}
                 >
                     <FieldSelector
                         tableName={this.props.tableName}
@@ -67,7 +67,7 @@ export default React.createClass({
                     field={this.props.field}
                     fieldOptions={this.props.fieldOptions}
                     removeField={this.props.removeField}
-                    onClick={this.toggleModal}
+                    onClick={this.toggle}
                 />
                 {this.renderPopover()}
             </div>

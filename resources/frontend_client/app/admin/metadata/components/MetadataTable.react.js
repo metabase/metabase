@@ -1,9 +1,9 @@
 'use strict';
 /*global _*/
 
-import Input from "./Input.react";
+import Input from "metabase/components/Input.react";
 import MetadataField from "./MetadataField.react";
-import ProgressBar from "./ProgressBar.react";
+import ProgressBar from "metabase/components/ProgressBar.react";
 
 import cx from "classnames";
 

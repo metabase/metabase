@@ -1,6 +1,6 @@
 'use strict';
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({
     displayName: 'DataReferenceQueryButton',
