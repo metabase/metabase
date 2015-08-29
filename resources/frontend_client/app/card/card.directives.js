@@ -1,10 +1,6 @@
 'use strict';
-/*global setTimeout, React */
-
-import { CardRenderer } from './card.charting';
 
 var CardDirectives = angular.module('metabase.card.directives', []);
-
 
 CardDirectives.directive('mbLatlongHeatmap', ['CardRenderer', function(CardRenderer) {
 

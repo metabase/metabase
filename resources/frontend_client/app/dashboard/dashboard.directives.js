@@ -1,7 +1,5 @@
 'use strict';
 
-import { CardRenderer } from '../card/card.charting';
-
 import CreateDashboardModal from '../components/CreateDashboardModal.react';
 
 var DashboardDirectives = angular.module('metabase.dashboard.directives', [
@@ -13,7 +11,7 @@ DashboardDirectives.directive('mbDashboardCreate', ['Dashboard', '$modal', '$loc
         function link(scope, element, attrs) {
 
             var openModal = function() {
-                var modalInstance = $modal.open({
+                $modal.open({
                     template: '<div class="Modal" mb-react-component="CreateDashboardModal"></div>',
                     controller: ['$scope', '$modalInstance',
                         function($scope, $modalInstance) {

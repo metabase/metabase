@@ -1,5 +1,4 @@
 'use strict';
-/*global require*/
 
 angular
 .module('metabase.admin.metadata', [

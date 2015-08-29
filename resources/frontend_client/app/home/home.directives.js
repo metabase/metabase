@@ -7,7 +7,7 @@ HomeDirectives.directive('mbNewUserOnboarding', ['$modal',
         function link(scope, element, attrs) {
 
             function openModal() {
-                var modalInstance = $modal.open({
+                $modal.open({
                     templateUrl: '/app/home/partials/modal_user_onboarding.html',
                     controller: ['$scope', '$modalInstance',
                         function($scope, $modalInstance) {

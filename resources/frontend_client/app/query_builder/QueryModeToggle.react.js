@@ -1,7 +1,5 @@
 'use strict';
 
-import SelectionModule from './SelectionModule.react';
-
 var cx = React.addons.classSet;
 
 export default React.createClass({

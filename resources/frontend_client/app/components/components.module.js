@@ -1,3 +1,3 @@
 'use strict';
 
-var Components = angular.module('metabase.components', []);
+angular.module('metabase.components', []);

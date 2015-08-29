@@ -9,10 +9,8 @@ import RunButton from './RunButton.react';
 import VisualizationSettings from './VisualizationSettings.react';
 
 import Query from "metabase/lib/query";
-import DataGrid from "metabase/lib/data_grid";
 
 var cx = React.addons.classSet;
-var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
     displayName: 'QueryVisualization',

@@ -2,7 +2,6 @@
 
 import FieldSelector from "./FieldSelector.react";
 import FieldName from "./FieldName.react";
-import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 
 import Query from "metabase/lib/query";

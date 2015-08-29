@@ -277,8 +277,7 @@ CardControllers.controller('CardDetail', [
                 if (!queryResult) return false;
 
                 // lookup the coldef and cell value of the cell we are curious about
-                var coldef = queryResult.data.cols[columnIndex],
-                    value = queryResult.data.rows[rowIndex][columnIndex];
+                var coldef = queryResult.data.cols[columnIndex];
 
                 if (!coldef || !coldef.special_type) return false;
 
@@ -437,7 +436,6 @@ CardControllers.controller('CardDetail', [
             renderAll();
 
             // make our api call
-            var firstRunNewCard = (queryResult === null && card.id === undefined);
             Metabase.dataset(dataset_query, function (result) {
                 queryResult = result;
                 isRunning = false;
@@ -923,7 +921,6 @@ CardControllers.controller('CardDetail', [
             // 1. not CardDetail
             // 2. both serializedCard and cardId are not set (new card)
             if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
-                var params = $route.current.params;
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {

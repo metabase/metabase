@@ -12,7 +12,7 @@ import { fetchDashCardData, markNewCardSeen } from "../actions";
 
 import cx from "classnames";
 
-class DashCard extends React.Component {
+export default class DashCard extends Component {
     constructor(props) {
         super(props);
         this.state = { error: null };
@@ -79,9 +79,7 @@ class DashCard extends React.Component {
 }
 
 DashCard.propTypes = {
-    dispatch: React.PropTypes.func.isRequired,
-    dashcard: React.PropTypes.object.isRequired,
-    visualizationSettingsApi: React.PropTypes.object.isRequired
+    dispatch: PropTypes.func.isRequired,
+    dashcard: PropTypes.object.isRequired,
+    visualizationSettingsApi: PropTypes.object.isRequired
 };
-
-export default DashCard;

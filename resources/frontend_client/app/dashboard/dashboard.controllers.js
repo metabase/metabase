@@ -1,20 +1,15 @@
 'use strict';
-/*global _*/
 
-import MetabaseAnalytics from '../lib/analytics';
-
-import React, { Component } from 'react';
-import { Provider } from 'react-redux';
 import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import { devTools, persistState } from 'redux-devtools';
-import { LogMonitor } from 'redux-devtools/lib/react';
-
 import promiseMiddleware from 'redux-promise';
-import loggerMiddleware from 'redux-logger';
 import thunkMidleware from "redux-thunk";
 
 import DashboardApp from './containers/DashboardApp.react';
 import * as reducers from './reducers';
+
+// import { devTools, persistState } from 'redux-devtools';
+// import { LogMonitor } from 'redux-devtools/lib/react';
+// import loggerMiddleware from 'redux-logger';
 
 const finalCreateStore = compose(
   applyMiddleware(

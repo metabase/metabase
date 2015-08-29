@@ -5,7 +5,6 @@ import Calendar from './Calendar.react';
 import Icon from "metabase/components/Icon.react";
 import FieldName from './FieldName.react';
 import FieldSelector from './FieldSelector.react';
-import SelectionModule from './SelectionModule.react';
 import Popover from "metabase/components/Popover.react";
 import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 

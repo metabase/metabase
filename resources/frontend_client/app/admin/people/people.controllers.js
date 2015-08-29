@@ -1,5 +1,4 @@
 'use strict';
-/*global _*/
 
 var PeopleControllers = angular.module('metabaseadmin.people.controllers', [
     'metabase.services',

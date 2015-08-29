@@ -1,5 +1,4 @@
 'use strict';
-/*global _*/
 
 import MetadataHeader from './MetadataHeader.react';
 import MetadataTableList from './MetadataTableList.react';

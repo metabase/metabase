@@ -1,6 +1,6 @@
 'use strict';
 /*jslint browser:true */
-/*global document,_,google,console,vs*/
+/*global document,_,google,console*/
 
 import $ from 'jquery';
 import crossfilter from 'crossfilter';
@@ -1005,6 +1005,8 @@ export var CardRenderer = {
                 });
             })
             .render();
+
+        return chartRenderer;
     },
 
     country: function(id, card, result) {
@@ -1033,11 +1035,12 @@ export var CardRenderer = {
                 });
             })
             .render();
+
+        return chartRenderer;
     },
 
     ll_heatmap: function(id, card, result) {
-        var title = card.title,
-            mapOptions = {
+        var mapOptions = {
                 zoom: 2,
                 center: new google.maps.LatLng(result.average_latitude, result.average_longitude),
                 mapTypeId: google.maps.MapTypeId.MAP
@@ -1079,8 +1082,7 @@ export var CardRenderer = {
     },
 
     pin_map: function(id, card, updateMapCenter, updateMapZoom) {
-        var title = card.title,
-            query = card.dataset_query,
+        var query = card.dataset_query,
             vs = card.visualization_settings,
             latitude_dataset_col_index = vs.map.latitude_dataset_col_index,
             longitude_dataset_col_index = vs.map.longitude_dataset_col_index,

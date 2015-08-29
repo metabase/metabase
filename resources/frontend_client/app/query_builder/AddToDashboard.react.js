@@ -4,8 +4,6 @@ import AddToDashboardPopover from './AddToDashboardPopover.react';
 import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 
-var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
-
 export default React.createClass({
     displayName: 'AddToDashboard',
     propTypes: {

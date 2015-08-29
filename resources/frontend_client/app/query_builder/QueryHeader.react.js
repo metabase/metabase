@@ -2,9 +2,7 @@
 /*global setTimeout, clearTimeout*/
 
 import ActionButton from 'metabase/components/ActionButton.react';
-import AddToDashboard from './AddToDashboard.react';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.react';
-import CardFavoriteButton from './CardFavoriteButton.react';
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.react';
 import Header from "metabase/components/Header.react";
 import HistoryModal from "metabase/components/HistoryModal.react";

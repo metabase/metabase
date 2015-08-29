@@ -4,9 +4,6 @@ import DataReferenceMain from './DataReferenceMain.react';
 import DataReferenceTable from './DataReferenceTable.react';
 import DataReferenceField from './DataReferenceField.react';
 import Icon from "metabase/components/Icon.react";
-import inflection from 'inflection';
-
-var cx = React.addons.classSet;
 
 export default React.createClass({
     displayName: 'DataReference',

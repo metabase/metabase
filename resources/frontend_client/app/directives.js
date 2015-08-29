@@ -36,9 +36,7 @@ MetabaseDirectives.directive('mbDelayedCall', ['$timeout', function($timeout) {
 
         var func = attr.mbDelayedCall;
 
-        var promise = $timeout(function() {
-            scope.$eval(func);
-        }, delay);
+        $timeout(() => scope.$eval(func), delay);
     }
 
     return {

@@ -1,11 +1,11 @@
 "use strict";
-/*global _*/
 
 import Input from "metabase/components/Input.react";
 import Select from "metabase/components/Select.react";
-import Icon from "metabase/components/Icon.react";
 
-import MetabaseCore from 'metabase/lib/core';
+import MetabaseCore from "metabase/lib/core";
+
+import _  from "underscore";
 
 export default React.createClass({
     displayName: "MetadataField",

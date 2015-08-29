@@ -47,8 +47,6 @@ MetabaseControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', '
         // At this point in time we don't actually have any kind of content to show for a homepage, so we just use this
         // as a simple routing controller which sends users somewhere relevant
         if (AppState.model.currentUser) {
-            var currentUser = AppState.model.currentUser;
-
             $location.path('/dash/');
         } else {
             // User is not logged-in, so always send them to login page
