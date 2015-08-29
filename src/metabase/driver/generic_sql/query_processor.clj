@@ -20,10 +20,7 @@
                                                       DateTimeValue
                                                       Field
                                                       OrderByAggregateField
-                                                      Value)
-           (metabase.driver.query_processor.expand Field
-                                                   OrderByAggregateField
-                                                   Value)))
+                                                      Value)))
 
 (declare apply-form
          log-korma-form)
@@ -156,8 +153,8 @@
     ([{:keys [unit], {:keys [special-type field-name], :as field} :field} include-as?]
      (let [f     (partial i/date (:driver *query*) unit)
            field (cond
-                   (= special-type :timestamp_seconds)      (i/unix-timestamp->date (:driver *query*) (formatted field) :seconds)
-                   (= special-type :timestamp_milliseconds) (i/unix-timestamp->date (:driver *query*) (formatted field) :milliseconds)
+                   (= special-type :timestamp_seconds)      (i/unix-timestamp->timestamp (:driver *query*) (formatted field) :seconds)
+                   (= special-type :timestamp_milliseconds) (i/unix-timestamp->timestamp (:driver *query*) (formatted field) :milliseconds)
                    :else                                    (formatted field))]
        (cond-> (f field)
          include-as? (vector (keyword field-name)))))))

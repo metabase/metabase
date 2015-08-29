@@ -102,7 +102,7 @@
                       :special-type       :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
-                         (merge (let [field-name (if (= ag-type :distinct) :count ag-type)]
+                         (merge (let [field-name (if (= ag-type :distinct) "count" (name ag-type))]
                                   {:field-name         field-name
                                    :field-display-name field-name}))))]
       (fn [out]

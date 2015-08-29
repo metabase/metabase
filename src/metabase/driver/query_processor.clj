@@ -10,7 +10,8 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand])
+                                             [expand :as expand]
+                                             [interface :as qpi])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -83,8 +84,8 @@
           (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description], :table_id source-table-id,
                                  :active true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
                             (map expand/rename-mb-field-keys)
-                            (map expand/map->Field)
-                            (map #(expand/resolve-table % {source-table-id source-table})))]
+                            (map qpi/map->Field)
+                            (map #(qpi/resolve-table % {source-table-id source-table})))]
             (if-not (seq fields)
               (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
                   query)
