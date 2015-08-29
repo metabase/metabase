@@ -158,7 +158,7 @@
 
 ;; ## -------------------- Field + Value --------------------
 
-(defn- unexpanded-Field?
+(defn- field-id?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
   ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
   [field]
@@ -180,18 +180,12 @@
   (or (field-id? field)
       (unexpanded-DateTimeField? field)))
 
-(defn- legacy-date-literal?
-  "Is this a literal legacy date literal?"
-  [v]
-  (and (string? v)
-       (re-matches #"^\d{4}-[01]\d-[0-3]\d$" v)))
-
 (defn- datetime-value?
   "Is VALUE a datetime literal or relative value?"
   [value]
   (match value
-    (_ :guard legacy-date-literal?)                                  true ; DEPRECATED
-    ["datetime" (_ :guard u/date-string?)]                           true
+    (_ :guard u/date-string?)                                        true
+    ["datetime" ]                                                    true
     ["datetime" "now"]                                               true
     ["datetime" (_ :guard integer?) (_ :guard datetime-value-unit?)] true
     _                                                                false))
@@ -220,17 +214,13 @@
              (instance? DateTimeFieldPlaceholder field))
          (integer? (:field-id field))]}
   (match value
-    ;; DEPRECATED - YYYY-MM-DD date strings should now be passed as ["datetime" ...]. Allowed here for backwards-compatibility.
-    (literal :guard legacy-date-literal?)
-    (->DateTimeLiteralPlaceholder field (u/parse-rfc-3339 literal))
+    (literal :guard u/date-string?)
+    (->DateTimeLiteralPlaceholder field (u/parse-iso8601 literal))
 
     (_ :guard number?) (->ValuePlaceholder field value)
     (_ :guard string?) (->ValuePlaceholder field value)
     true               (->ValuePlaceholder field true)
     false              (->ValuePlaceholder field false)
-
-    ["datetime" (literal :guard u/date-string?)]
-    (->DateTimeLiteralPlaceholder field (u/parse-rfc-3339 literal))
 
     ["datetime" "now"]
     (->DateTimeValuePlaceholder field :day 0)
