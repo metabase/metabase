@@ -2,6 +2,7 @@
   (:require [compojure.core :refer [defroutes POST]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.events :as events]
             (metabase.models [session :refer [Session]]
                              [user :refer [User set-user-password]])
             [metabase.setup :as setup]
@@ -40,6 +41,8 @@
     (ins Session
       :id session-id
       :user_id (:id new-user))
+    ;; notify someone that we've got a new user in the system
+    (events/publish-event :user-create {:user_id (:id new-user)})
     {:id session-id}))
 
 

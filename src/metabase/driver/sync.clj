@@ -11,6 +11,7 @@
             (metabase.driver [interface :refer :all]
                              [query-processor :as qp])
             [metabase.driver.sync.queries :as queries]
+            [metabase.events :as events]
             (metabase.models [common :as common]
                              [field :refer [Field] :as field]
                              [field-values :as field-values]
@@ -76,6 +77,7 @@
                (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
                (sync-database-active-tables! driver))
 
+          (events/publish-event :driver-sync-database {:database_id (:id database) :running_time (- (System/currentTimeMillis) start-time)})
           (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
                                     (- (System/currentTimeMillis) start-time))))))))
 
@@ -87,7 +89,8 @@
     (binding [qp/*disable-qp-logging* true]
       (sync-in-context driver database
         (fn []
-          (sync-database-active-tables! driver [table]))))))
+          (sync-database-active-tables! driver [table])
+          (events/publish-event :driver-sync-table {:table_id (:id table)}))))))
 
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables

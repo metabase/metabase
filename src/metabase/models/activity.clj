@@ -6,7 +6,8 @@
             [metabase.db :refer :all]
             [metabase.events :as events]
             (metabase.models [interface :refer :all]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.util :as u]))
 
 
 ;;; ## ---------------------------------------- ACTIVITY ENTITY ----------------------------------------
@@ -20,14 +21,19 @@
 (extend-ICanReadWrite ActivityFeedItemInstance :read :public-perms, :write :public-perms)
 
 
-(defentity ActivityFeedItem
-           [(table :activity_feed)
-            timestamped]
+(defentity Activity
+           [(table :activity)
+            (types :details :json, :topic :keyword)]
 
-           (post-select [_ {:keys [user_id] :as feed-item}]
-                        (map->ActivityFeedItemInstance (assoc feed-item :user (delay (User user_id))))))
+           (pre-insert [_ {:keys [details] :as activity}]
+                       (let [defaults {:timestamp (u/new-sql-timestamp)
+                                       :details {}}]
+                         (merge defaults activity)))
 
-(extend-ICanReadWrite ActivityFeedItemEntity :read :public-perms, :write :public-perms)
+           (post-select [_ {:keys [user_id] :as activity}]
+                        (map->ActivityFeedItemInstance (assoc activity :user (delay (User user_id))))))
+
+(extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)
 
 
 ;;; ## ---------------------------------------- ACTIVITY FEED ----------------------------------------
@@ -43,7 +49,15 @@
     :dashboard-delete
     :dashboard-add-cards
     :dashboard-remove-cards
-    :dashboard-reposition-cards})
+    :dashboard-reposition-cards
+    :database-sync
+    :table-sync
+    :user-create})
+
+(defn valid-activity-topic?
+  "Predicate function that checks if a topic is in `activity-feed-topics`. true if included, false otherwise."
+  [topic]
+  (contains? activity-feed-topics (keyword topic)))
 
 (def ^:private activity-feed-channel
   "Channel for receiving event notifications we want to subscribe to for the activity feed."
@@ -66,14 +80,34 @@
         (log/error "Unexpected error listening on activity-feed-channel" e)))
     (recur)))
 
+(defn- topic->model
+  "Determine a valid `model` identifier for the given `topic`."
+  [topic]
+  {:pre [(valid-activity-topic? topic)]}
+  ;; just take the first part of the topic name after splitting on dashes.
+  (first (clojure.string/split (name topic) #"-")))
+
+(defn- object->model-id
+  "Determine the appropriate `model_id` (if possible) for a given `object`."
+  [topic object]
+  (if (contains? (set (keys object)) :id)
+    (:id object)
+    (let [model (topic->model topic)]
+      (get object (keyword (format "%s_id" model))))))
+
 (defn- process-activity-event
   "Handle processing for a single event notification received on the activity-feed-channel"
   [activity-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic object :item} activity-event]
-      ;; TODO - real work will include inserting new Activity entries based on the object
       (log/info "Activity:" topic)
-      (clojure.pprint/pprint object))
+      (clojure.pprint/pprint object)
+      ;; TODO - we need a protocol on our Entities for providing relevant details
+      (ins Activity
+        :topic topic
+        :user_id (or (:actor_id object) (:creator_id object) (:user_id object))
+        :model (topic->model topic)
+        :model_id (when (topic->model topic) (object->model-id topic object))))
     (catch Exception e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
