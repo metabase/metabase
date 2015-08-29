@@ -68,7 +68,7 @@
 
   serialized-dashboard)
 
-(defn- describe-diff [_ username dashboard₁ dashboard₂]
+(defn- describe-diff [_ dashboard₁ dashboard₂]
   (let [[removals changes] (diff dashboard₁ dashboard₂)]
     (->> [(when (:name changes)
             (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
@@ -86,9 +86,7 @@
                 (> num-cards₁ num-cards₂) "removed a card"
                 :else                     "rearranged the cards")))]
          (filter identity)
-         build-sentence
-         (apply str username " ")
-         (#(s/replace-first % "it " "this dashboard ")))))
+         build-sentence)))
 
 (extend DashboardEntity
   IRevisioned

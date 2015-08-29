@@ -158,14 +158,14 @@
 
 ;; ## -------------------- Field + Value --------------------
 
-(defn- field-id?
+(defn- unexpanded-Field?
   "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
   ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
   [field]
   (match field
-    (_ :guard integer?)                              true
-    ["fk->" (_ :guard integer?) (_ :guard integer?)] true
-    _                                                false))
+    (field-id :guard integer?)                                             true
+    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
+    _                                                                      false))
 
 (defn- unexpanded-DateTimeField?
   "Is this a valid value for a `DateTimeField` in an unexpanded query? (e.g. `[\"datetime_field\" ...]`)"
@@ -322,7 +322,7 @@
   [v]
   (match v
     (_ :guard number?)         true
-    (_ :guard datetime-value?) true
+    (_ :guard u/date-string?)  true
     _                          false))
 
 (defn- Value?

@@ -5,8 +5,8 @@ import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
 
 import FixedDataTable from 'fixed-data-table';
-import Icon from './icon.react';
-import Popover from './popover.react';
+import Icon from "metabase/components/Icon.react";
+import Popover from "metabase/components/Popover.react";
 
 var cx = React.addons.classSet;
 var Table = FixedDataTable.Table;
@@ -163,7 +163,7 @@ export default React.createClass({
         });
     },
 
-    handleClickOutside: function() {
+    onClosePopover: function() {
         this.setState({ popover: null });
     },
 
@@ -187,7 +187,7 @@ export default React.createClass({
                 popover = (
                     <Popover
                         tetherOptions={tetherOptions}
-                        handleClickOutside={this.handleClickOutside}
+                        onClose={this.onClosePopover}
                     >
                         <div className="bg-white bordered shadowed p1">
                             <ul className="h1 flex align-center">{operators}</ul>

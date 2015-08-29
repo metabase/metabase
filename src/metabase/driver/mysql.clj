@@ -69,10 +69,10 @@
 (defn- database->connection-details [_ {:keys [details]}]
   details)
 
-(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 :seconds      "FROM_UNIXTIME(%s)"
-                :milliseconds "FROM_UNIXTIME(%s * 1000)")
+                :milliseconds "FROM_UNIXTIME(%s / 1000)")
               [field-or-value]))
 
 (defn- timezone->set-timezone-sql [_ timezone]
@@ -136,7 +136,8 @@
                                :database->connection-details        database->connection-details
                                :date                                date
                                :date-interval                       date-interval
-                               :unix-timestamp->date                unix-timestamp->date}
+                               :unix-timestamp->timestamp           unix-timestamp->timestamp
+                               :timezone->set-timezone-sql          timezone->set-timezone-sql}
   IDriver                     GenericSQLIDriverMixin
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin

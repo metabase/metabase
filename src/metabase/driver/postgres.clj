@@ -102,10 +102,10 @@
                          port))
         (rename-keys {:dbname :db}))))
 
-(defn- unix-timestamp->date [_ field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 :seconds      "TO_TIMESTAMP(%s)"
-                :milliseconds "TO_TIMESTAMP(%s * 1000)")
+                :milliseconds "TO_TIMESTAMP(%s / 1000)")
               [field-or-value]))
 
 (defn- timezone->set-timezone-sql [_ timezone]
@@ -154,9 +154,9 @@
 (extend PostgresDriver
   ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
                                 :database->connection-details        database->connection-details
-                                :unix-timestamp->date                unix-timestamp->date
                                 :date                                date
                                 :date-interval                       date-interval
+                                :unix-timestamp->timestamp           unix-timestamp->timestamp
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql}
   ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
   IDriver                      GenericSQLIDriverMixin

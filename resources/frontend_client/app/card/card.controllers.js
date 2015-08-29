@@ -7,7 +7,7 @@ import DataGrid from "metabase/lib/data_grid";
 import DataReference from '../query_builder/data_reference.react';
 import GuiQueryEditor from '../query_builder/gui_query_editor.react';
 import NativeQueryEditor from '../query_builder/native_query_editor.react';
-import QueryHeader from '../query_builder/header.react';
+import QueryHeader from '../query_builder/query_header.react';
 import QueryVisualization from '../query_builder/visualization.react';
 
 import Query from "metabase/lib/query";
@@ -73,8 +73,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -130,24 +130,21 @@ CardControllers.controller('CardDetail', [
 
         var headerModel = {
             card: null,
+            tableMetadata: null,
+            fromUrl: $routeParams.from,
             cardApi: Card,
             dashboardApi: Dashboard,
+            revisionApi: Revision,
             broadcastEventFn: function(eventName, value) {
                 $rootScope.$broadcast(eventName, value);
             },
-            notifyCardChangedFn: function(modifiedCard) {
+            notifyCardChangedFn: async function(modifiedCard) {
                 // these are the only things we let the header change
                 card.name = modifiedCard.name;
                 card.description = modifiedCard.description;
                 card.public_perms = modifiedCard.public_perms;
 
                 renderAll();
-
-                // this looks a little hokey, but its preferrable to setup our functions as promises so that callers can
-                // be certain when they have been resolved.
-                var deferred = $q.defer();
-                deferred.resolve();
-                return deferred.promise;
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
@@ -159,6 +156,9 @@ CardControllers.controller('CardDetail', [
 
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
+            notifyCardAddedToDashFn: function(dashCard) {
+                $scope.$apply(() => $location.path('/dash/'+dashCard.dashboard_id));
+            },
             setQueryModeFn: function(mode) {
                 if (!card.dataset_query.type || mode !== card.dataset_query.type) {
 
@@ -169,14 +169,15 @@ CardControllers.controller('CardDetail', [
                     renderAll();
                 }
             },
-            notifyCardDeletedFn: function () {
-                $location.path('/');
-            },
             cloneCardFn: function() {
                 $scope.$apply(() => {
                     delete card.id;
                     setCard(card, { setDirty: true, replaceState: false })
                 });
+            },
+            reloadCardFn: reloadCard,
+            onChangeLocation: function(url) {
+                $timeout(() => $location.url(url))
             },
             toggleDataReferenceFn: toggleDataReference,
             cardIsNewFn: cardIsNew,
@@ -188,7 +189,7 @@ CardControllers.controller('CardDetail', [
             isShowingDataReference: null,
             databases: null,
             tables: null,
-            options: null,
+            tableMetadata: null,
             tableForeignKeys: null,
             query: null,
             setQueryFn: setQuery,
@@ -366,13 +367,8 @@ CardControllers.controller('CardDetail', [
         function renderHeader() {
             // ensure rendering model is up to date
             headerModel.card = angular.copy(card);
+            headerModel.tableMetadata = tableMetadata;
             headerModel.isShowingDataReference = $scope.isShowingDataReference;
-
-            if (queryResult && !queryResult.error) {
-                headerModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-            } else {
-                headerModel.downloadLink = null;
-            }
 
             React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
         }
@@ -383,7 +379,7 @@ CardControllers.controller('CardDetail', [
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
             editorModel.tables = tables;
-            editorModel.options = tableMetadata;
+            editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
 
@@ -403,6 +399,12 @@ CardControllers.controller('CardDetail', [
             visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
+
+            if (queryResult && !queryResult.error) {
+                visualizationModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
+            } else {
+                visualizationModel.downloadLink = null;
+            }
 
             React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
@@ -701,10 +703,10 @@ CardControllers.controller('CardDetail', [
         function toggleDataReference() {
             $scope.$apply(function() {
                 $scope.isShowingDataReference = !$scope.isShowingDataReference;
-                renderAll();
+                // renderAll();
                 // render again after 500ms to wait for animation to complete
                 // FIXME: if previous render takes too long this is missed
-                window.setTimeout(renderAll, 500);
+                window.setTimeout(renderAll, 300);
             });
         }
 
@@ -740,8 +742,8 @@ CardControllers.controller('CardDetail', [
         function loadSerializedCard(serialized) {
             var card = deserializeCardFromUrl(serialized);
             // consider this since it's not saved:
-            card.dirty = true;
-            return $q.resolve(card);
+            card.isDirty = true;
+            return card;
         }
 
         function loadNewCard() {
@@ -757,24 +759,21 @@ CardControllers.controller('CardDetail', [
             }
             if ($routeParams.table != undefined && card.dataset_query.query) {
                 card.dataset_query.query.source_table = parseInt($routeParams.table);
+                card.isDirty = true;
             }
 
-            resetDirty();
-
-            return $q.resolve(card);
+            return card;
         }
 
-        function loadCard() {
+        async function loadCard() {
             if ($routeParams.cardId != undefined) {
-                return loadSavedCard($routeParams.cardId).then(function(result) {
-                    if ($routeParams.serializedCard) {
-                        return loadSerializedCard($routeParams.serializedCard).then(function(result2) {
-                            return _.extend(result, result2);
-                        });
-                    } else {
-                        return result;
-                    }
-                });
+                var card = await loadSavedCard($routeParams.cardId);
+                if ($routeParams.serializedCard) {
+                    let serializedCard = await loadSerializedCard($routeParams.serializedCard);
+                    return _.extend(card, serializedCard);
+                } else {
+                    return card;
+                }
             } else if ($routeParams.serializedCard != undefined) {
                 return loadSerializedCard($routeParams.serializedCard);
             } else {
@@ -819,18 +818,23 @@ CardControllers.controller('CardDetail', [
         }
 
         // meant to be called once on controller startup
-        function loadAndSetCard() {
-            loadCard().then(function (result) {
+        async function loadAndSetCard() {
+            try {
+                let card = await loadCard();
+                if ($routeParams.clone) {
+                    delete card.id;
+                    card.isDirty = true;
+                }
                 // HACK: dirty status passed in the object itself, delete it
-                var isDirty = result.dirty;
-                delete result.dirty;
-                return setCard(result, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
-            }, function (error) {
+                let isDirty = !!card.isDirty;
+                delete card.isDirty;
+                return setCard(card, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
+            } catch (error) {
                 if (error.status == 404) {
                     // TODO() - we should redirect to the card builder with no query instead of /
                     $location.path('/');
                 }
-            });
+            }
         }
 
         function cardIsNew() {
@@ -851,8 +855,13 @@ CardControllers.controller('CardDetail', [
             savedCardSerialized = null;
         }
 
+        function reloadCard() {
+            delete $routeParams.serializedCard;
+            loadAndSetCard();
+        }
+
         // needs to be performed asynchronously otherwise we get weird infinite recursion
-        var updateUrl = _.debounce(function(replaceState) {
+        var updateUrl = (replaceState) => setTimeout(function() {
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,
@@ -868,7 +877,8 @@ CardControllers.controller('CardDetail', [
 
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-            if (replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard)) {
+            replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
+            if (replaceState) {
                 window.history.replaceState(newState, null, url);
             } else {
                 window.history.pushState(newState, null, url);

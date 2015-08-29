@@ -1,7 +1,7 @@
 "use strict";
 
-import Icon from './icon.react';
-import PopoverWithTrigger from './popover_with_trigger.react';
+import Icon from "metabase/components/Icon.react";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 var cx = React.addons.classSet;
 
@@ -46,13 +46,13 @@ export default React.createClass({
     setDisplay: function(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
-        this.refs.displayPopover.toggleModal();
+        this.refs.displayPopover.toggle();
     },
 
     setChartColor: function(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
-        this.refs.colorPopover.toggleModal();
+        this.refs.colorPopover.toggle();
     },
 
     hasLatitudeAndLongitudeColumns: function(columnDefs) {
@@ -205,7 +205,7 @@ export default React.createClass({
     render: function() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
-                <div className="VisualizationSettings flex align-center mb2">
+                <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
                     {this.renderChartColorPicker()}
                 </div>

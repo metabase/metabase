@@ -8,6 +8,8 @@ import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
+import { formatNumber } from "metabase/lib/formatting";
+
 import tip from 'd3-tip';
 tip(d3);
 
@@ -43,19 +45,6 @@ var MIN_PIXELS_PER_TICK = {
     x: 100,
     y: 50
 };
-
-var precisionNumberFormatter = d3.format(".2r");
-var fixedNumberFormatter = d3.format(",.f");
-
-function formatNumber(number) {
-    if (number > -1 && number < 1) {
-        // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
-        return precisionNumberFormatter(number).replace(/\.?0+$/, "");
-    } else {
-        // anything else rounds to at most 2 decimal points
-        return fixedNumberFormatter(d3.round(number, 2));
-    }
-}
 
 /// return pair of [min, max] values from items in array DATA, using VALUEACCESSOR to retrieve values for each item
 /// VALUEACCESSOR may be an accessor function like fn(ITEM) or can be a string/integer key/index into ITEM which will
@@ -155,6 +144,9 @@ function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType
 
     // specify legend
     chart = applyChartLegend(chart, card);
+
+    // disable animations
+    chart.transitionDuration(0);
 
     // set card title
     setCardTitle(card, elementId);
@@ -376,7 +368,7 @@ function applyChartColors(dcjsChart, card) {
 }
 
 function applyChartTooltips(dcjsChart, card, cols) {
-    dcjsChart.renderlet(function(chart) {
+    dcjsChart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
         // We should only ever have one tooltip on screen, right?
         Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
@@ -712,7 +704,7 @@ export var CardRenderer = {
                 parentPaddingTop = getComputedSizeProperty('padding-top', parent),
                 parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
 
-            return parentHeight - parentPaddingTop - parentPaddingBottom;
+            return parentHeight - parentPaddingTop - parentPaddingBottom - 5; // why the magic number :/
         }
 
         return null;

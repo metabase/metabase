@@ -1,4 +1,6 @@
-.Dashboard { background-color: #f9fbfc; }
+.Dashboard {
+    background-color: #f9fbfc;
+}
 
 .Dash-wrapper {
     width: 100%;
@@ -16,95 +18,131 @@
    .Dash-wrapper { max-width: var(--lg-width); }
 }
 
+.DashboardGrid {
+    /* offset RGL's 10px padding */
+    margin-left: -10px;
+    margin-right: -10px;
+}
 
-.Dash-card {
+.DashCard {
   position: relative;
-  background: #fff;
   z-index: 1;
 }
 
-.DashCard-inner {
+.DashCard .Card {
   position: absolute;
   top: 0;
-  right: 0;
   left: 0;
   bottom: 0;
-  overflow: hidden; /* make sure dash cards content doesn't overflow its bounds */
+  right: 0;
 }
 
-.DashCard-remove {
-  display: none; /* hidden until the user starts editing */
-  position: absolute;
-  z-index: 4;
-  top: -10px;
-  right: -10px;
-  width: 24px;
-  height: 24px;
-  border-radius: 99px;
-  background: #222;
-  color: #fff;
-  cursor: pointer;
+.DashCard .Card-outer {
+    overflow: hidden;
+    flex: 1;
 }
 
-.DashCard-removeIcon {
-  position: absolute;
-  left: 6px;
-  top: 2px;
-}
-
-.Dash--editing .Dash-card:hover .DashCard-remove {
-  display: block;
-}
-
-.Dash--editing .Card {
-  border-color: #acacac;
-  border-style: dashed;
-}
-
-.Dash--editing .Card:hover {
-  border-color: #777;
-  transition: border .3s linear;
-}
-
-/* hide card actions when editing the dash */
-.Dash--editing .Card:hover .Card-actions,
-.Dash--editing .Card:hover .Card-footing {
+.DashCard .DashCard-actions {
   opacity: 0;
   pointer-events: none;
-}
-
-.Dash-card .Card {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-}
-
-.Dash-card .Card-outer {
-    overflow: hidden;
-}
-
-.Dash-card .card-inner {
-  display: block;
-  overflow: hidden;
-}
-
-.Dash-card .Card-footing {
-  opacity: 0;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #fff;
   transition: opacity .3s linear;
 }
 
-.Dash-card:hover .Card-footing {
+.Dash--editing .DashCard .Card {
+    border: 1px dashed rgba(149, 149, 149, 0.5);
+    transition: border .3s, background-color .3s;
+}
+
+@keyframes fade-out-yellow {
+    from {
+        background-color: rgba(255, 250, 243, 1.0);
+    }
+    to {
+        background-color: rgba(255, 250, 243, 0.0);
+    }
+}
+
+.DashCard .Card {
+    background-color: white;
+}
+
+.Dash--editing .DashCard .Card.Card--recent {
+    /*background-color: rgb(255, 250, 243);*/
+    animation-duration: 30s;
+    animation-name: fade-out-yellow;
+}
+
+.Dash--editing .DashCard:hover .Card {
+  border: 1px dashed var(--brand-color);
+  background-color: #F6FAFD;
+}
+
+.Dash--editing .DashCard:hover .DashCard-actions {
   opacity: 1;
+  pointer-events: inherit;
   transition: opacity .3s linear;
 }
 
-.gridster-mobile .Dash-card {
-  position: relative;
+.Dash--editing .DashCard .Card {
+    background: #fff;
+}
+
+.Dash--editing .DashCard.react-draggable {
+    user-select: none;
+}
+
+.Dash--editing .DashCard.react-draggable-dragging .Card {
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
+}
+
+.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.resizing {
+    z-index: 2;
+}
+
+.Dash--editing .DashCard.react-draggable-dragging .Card,
+.Dash--editing .DashCard.resizing .Card {
+    background-color: #E5F1FB !important;
+    border: 1px solid var(--brand-color);
+}
+
+.Dash--editing .DashCard.react-draggable-dragging .DashCard-actions,
+.Dash--editing .DashCard.resizing .DashCard-actions {
+  opacity: 0;
+  transition: opacity .3s linear;
+}
+
+.Dash--editing .DashCard {
+    transition: transform .3s;
+}
+
+.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.resizing {
+    transition: transform 0s;
+}
+
+.Dash--editing .DashCard.react-draggable {
+    cursor: url(/app/components/icons/assets/cursor_move.svg) 16 16, auto;
+}
+
+.Dash--editing .DashCard .react-resizable-handle {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    bottom: 0;
+    right: 0;
+    cursor: url(/app/components/icons/assets/cursor_resize.svg) 16 16, auto;
+}
+
+.Dash--editing .react-grid-placeholder {
+    background-color: #F2F2F2;
+}
+
+.Dash--editing .Card-title {
+    pointer-events: none;
+}
+
+/* ensure action buttons do not respond to events when dragging */
+.Dash--dragging .DashCard-actions {
+    pointer-events: none !important;
 }

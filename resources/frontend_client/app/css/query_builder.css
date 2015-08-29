@@ -24,6 +24,17 @@
     align-items: center;
 }
 
+
+.QueryHeader-section {
+    padding-right: 1em;
+    margin-right: 1em;
+    border-right: 1px solid rgba(0,0,0,0.2);
+}
+
+.QueryHeader-section:last-child {
+    border-right: none;
+}
+
 .Icon-download,
 .Icon-addToDash {
     fill: #919191;
@@ -202,7 +213,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: hidden;
 }
 
@@ -220,41 +231,6 @@
     margin-bottom: 2em;
     border: 4px solid var(--error-color);
     border-radius: 99px;
-}
-
-/* @save */
-
-.SaveModal {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    background-color: rgba(255, 255, 255, 0.75);
-    z-index: 5000;
-}
-
-.SaveModal.Modal--showing {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.SaveModal .ModalContent {
-    background: #fff;
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-    display: flex;
-    max-width: 40em;
-    flex: 1;
-}
-
-.SaveModal .ModalContent .Form-new {
-    width: 100%;
 }
 
 /* GUI BUILDER */

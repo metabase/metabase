@@ -1,8 +1,8 @@
 'use strict';
 
 import AddToDashboardPopover from './add_to_dashboard_popover.react';
-import Icon from './icon.react';
-import Popover from './popover.react';
+import Icon from "metabase/components/Icon.react";
+import Popover from "metabase/components/Popover.react";
 
 var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
@@ -14,17 +14,17 @@ export default React.createClass({
     },
     getInitialState: function () {
         return {
-            modalOpen: false
+            isOpen: false
         };
     },
-    toggleModal: function () {
-        var modalOpen = !this.state.modalOpen;
+    toggle: function () {
+        var isOpen = !this.state.isOpen;
         this.setState({
-            modalOpen: modalOpen
+            isOpen: isOpen
         });
     },
     addToDash: function () {
-        if(this.state.modalOpen) {
+        if(this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top right',
                 targetAttachment: 'bottom right',
@@ -40,7 +40,7 @@ export default React.createClass({
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
                         broadcastEventFn={this.props.broadcastEventFn}
-                        closePopoverFn={this.toggleModal}
+                        closePopoverFn={this.toggle}
                     />
                 </Popover>
             );
@@ -51,7 +51,7 @@ export default React.createClass({
         //       ex: someone modifies a query but hasn't run/save the change?
         return (
             <span>
-                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this to a dashboard" onClick={this.toggleModal}>
+                <a className="mx1 text-grey-4 text-brand-hover" href="#" title="Add this to a dashboard" onClick={this.toggle}>
                     <Icon name='addtodash' width="16px" height="16px"/>
                 </a>
                 {this.addToDash()}

@@ -1,7 +1,7 @@
 'use strict';
 /*global _*/
 
-import Input from "./Input.react";
+import Input from "metabase/components/Input.react";
 import MetadataField from "./MetadataField.react";
 
 import cx from "classnames";

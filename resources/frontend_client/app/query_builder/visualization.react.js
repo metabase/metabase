@@ -1,12 +1,12 @@
 'use strict';
 
-import { CardRenderer } from '../card/card.charting';
+import Icon from "metabase/components/Icon.react";
 import QueryVisualizationTable from './visualization_table.react';
 import QueryVisualizationChart from './visualization_chart.react';
 import QueryVisualizationObjectDetailTable from './visualization_object_detail_table.react';
 import RunButton from './run_button.react';
 import VisualizationSettings from './visualization_settings.react';
-import LoadingSpinner from '../components/icons/loading.react';
+import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 import Query from "metabase/lib/query";
 import DataGrid from "metabase/lib/data_grid";
@@ -20,6 +20,7 @@ export default React.createClass({
         visualizationSettingsApi: React.PropTypes.object.isRequired,
         card: React.PropTypes.object.isRequired,
         result: React.PropTypes.object,
+        downloadLink: React.PropTypes.string,
         setDisplayFn: React.PropTypes.func.isRequired,
         setChartColorFn: React.PropTypes.func.isRequired,
         setSortFn: React.PropTypes.func.isRequired,
@@ -80,7 +81,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="relative flex full mt3">
+            <div className="relative flex full mt3 mb1">
                 {visualizationSettings}
                 <div className="absolute left right ml-auto mr-auto layout-centered flex">
                     <RunButton
@@ -90,7 +91,10 @@ export default React.createClass({
                         runFn={this.runQuery}
                     />
                 </div>
-                {this.renderCount()}
+                <div className="flex-align-right flex align-center">
+                    {!this.queryIsDirty() && this.renderCount()}
+                    {this.renderDownloadButton()}
+                </div>
             </div>
         );
     },
@@ -113,11 +117,22 @@ export default React.createClass({
     renderCount: function() {
         if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
-                <div className="flex-align-right mt1">
+                <div>
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
                     <b>{this.props.result.row_count}</b>
-                    { (this.props.result.data.rows.length > 1) ? (" rows") : (" row")}.
+                    { (this.props.result.data.rows.length !== 1) ? (" rows") : (" row")}.
                 </div>
+            );
+        }
+    },
+
+    renderDownloadButton: function() {
+        // NOTE: we expect our component provider set this to something falsey if download not available
+        if (this.props.downloadLink) {
+            return (
+                <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                    <Icon name='download' width="16px" height="16px" />
+                </a>
             );
         }
     },

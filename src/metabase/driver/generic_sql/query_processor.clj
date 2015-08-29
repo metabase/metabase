@@ -15,12 +15,15 @@
                                          [util :refer :all])
             [metabase.util :as u])
   (:import java.sql.Timestamp
+           java.util.Date
            (metabase.driver.query_processor.interface DateTimeField
-                                                      DateTimeLiteral
                                                       DateTimeValue
                                                       Field
                                                       OrderByAggregateField
-                                                      Value)))
+                                                      Value)
+           (metabase.driver.query_processor.expand Field
+                                                   OrderByAggregateField
+                                                   Value)))
 
 (declare apply-form
          log-korma-form)
@@ -90,6 +93,10 @@
 
 (defmethod apply-form :default [form]) ;; nothing
 
+(defn- cast-as-date
+  "Generate a korma form to cast FIELD-OR-VALUE to a `DATE`."
+  [field-or-value]
+  (utils/func "CAST(%s AS DATE)" [field-or-value]))
 
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
@@ -99,8 +106,15 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name field-name]} _]
-     (keyword (format "%s.%s" table-name field-name))))
+    ([{:keys [table-name base-type special-type field-name], :as field} include-as?]
+     (let [kw-name (keyword (str table-name \. field-name))
+           field   (cond
+                     (contains? #{:DateField :DateTimeField} base-type) (cast-as-date kw-name)
+                     (= special-type :timestamp_seconds)                (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :seconds))
+                     (= special-type :timestamp_milliseconds)           (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :milliseconds))
+                     :else                                              kw-name)]
+       (if include-as? [field (keyword field-name)]
+           field))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   OrderByAggregateField
@@ -122,17 +136,9 @@
      (formatted this false))
     ([{value :value, {base-type :base-type} :field} _]
      (cond
-       (= base-type :UUIDField) (do (assert (string? value))
-                                    (java.util.UUID/fromString value))
-       :else                    value)))
-
-  DateTimeLiteral
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{value :value, {unit :unit} :field} _]
-     ;; wrap in a TIMESTAMP cast so
-     (i/date (:driver *query*) unit (i/date (:driver *query*) :default [`(Timestamp/valueOf ~(.toString value))]))))
+       (instance? Timestamp value) (cast-as-date `(Timestamp/valueOf ~(.toString value))) ; prevent Clojure from converting this to #inst literal, which is a util.date
+       (= base-type :UUIDField)    (java.util.UUID/fromString value)
+       :else                       value)))
 
   DateTimeValue
   (formatted

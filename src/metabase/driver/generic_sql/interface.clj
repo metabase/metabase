@@ -11,7 +11,7 @@
   (connection-details->connection-spec [this connection-details])
   (database->connection-details        [this database])
 
-  (unix-timestamp->date [this ^Keyword seconds-or-milliseconds field-or-value]
+  (unix-timestamp->timestamp [this ^Keyword seconds-or-milliseconds field-or-value]
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.")
 
