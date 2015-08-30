@@ -16,9 +16,9 @@
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (metabase.driver.query_processor.expand Field
-                                                   OrderByAggregateField
-                                                   Value)))
+           (metabase.driver.query_processor.interface Field
+                                                      OrderByAggregateField
+                                                      Value)))
 
 (declare apply-form
          log-korma-form)

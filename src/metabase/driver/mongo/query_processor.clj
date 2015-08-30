@@ -15,7 +15,7 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
-            [metabase.driver.query-processor.expand :as expand]
+            [metabase.driver.query-processor.interface :refer [qualified-name-components]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u])
@@ -89,7 +89,7 @@
 (defn- field->name
   "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
   (^String [field separator]
-           (apply str (interpose separator (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
+           (apply str (interpose separator (rest (qualified-name-components field))))) ; drop the first part, :table-name
   (^String [field]
            (field->name field ".")))
 
