@@ -214,13 +214,11 @@
              (instance? DateTimeFieldPlaceholder field))
          (integer? (:field-id field))]}
   (match value
-    (literal :guard u/date-string?)
-    (->ValuePlaceholder field value)
-
-    (_ :guard number?) (->ValuePlaceholder field value)
-    (_ :guard string?) (->ValuePlaceholder field value)
-    true               (->ValuePlaceholder field true)
-    false              (->ValuePlaceholder field false)
+    (_ :guard number?)        (->ValuePlaceholder field value)
+    true                      (->ValuePlaceholder field true)
+    false                     (->ValuePlaceholder field false)
+    (_ :guard u/date-string?) (->ValuePlaceholder field (u/parse-iso8601 value))
+    (_ :guard string?)        (->ValuePlaceholder field value)
 
     ["datetime" "now"]
     (->DateTimeValuePlaceholder field :day 0)
