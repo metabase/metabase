@@ -6,9 +6,10 @@
            java.sql.Timestamp))
 
 (declare map->DateTimeField
-         map->DateTimeLiteral
          map->DateTimeValue
          map->Value)
+
+;; TODO - This interface seems more complicated than it needs to be, IMO.
 
 ;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
 
@@ -188,13 +189,6 @@
                          :unit            unit
                          :relative-amount relative-amount})))
 
-(defrecord DateTimeLiteralPlaceholder [^DateTimeFieldPlaceholder field
-                                       ^Timestamp                value]
-  IResolve
-  (resolve-field [_ field-id->field]
-    (map->DateTimeLiteral {:field (resolve-datetime-field-or-throw field field-id->field)
-                           :value value})))
-
 
 ;;; # ------------------------------------------------------------ JOIN TABLE + JOIN FIELD ------------------------------------------------------------
 
@@ -283,9 +277,8 @@
 (defrecord Value [value
                   ^Field field])
 
-(defrecord DateTimeLiteral [^DateTimeField field
-                            ^Timestamp     value])
-
+;; As in a relative date using the ["datetime" <relative-amount> <unit>] syntax.
+;; DateTime literals are just kept as normal Values.
 (defrecord DateTimeValue [^DateTimeField field
                           ^Keyword       unit
                           ^Integer       relative-amount])

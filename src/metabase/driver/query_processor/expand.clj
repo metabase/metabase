@@ -215,7 +215,7 @@
          (integer? (:field-id field))]}
   (match value
     (literal :guard u/date-string?)
-    (->DateTimeLiteralPlaceholder field (u/parse-iso8601 literal))
+    (->ValuePlaceholder field value)
 
     (_ :guard number?) (->ValuePlaceholder field value)
     (_ :guard string?) (->ValuePlaceholder field value)

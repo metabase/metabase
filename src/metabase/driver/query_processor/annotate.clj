@@ -98,13 +98,13 @@
     (let [ag-field (if (contains? #{:count :distinct} ag-type)
                      {:base-type          :IntegerField
                       :field-name         :count
-                      :field-display-name :count
+                      :field-display-name "count"
                       :special-type       :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
-                         (merge (let [field-name (if (= ag-type :distinct) "count" (name ag-type))]
+                         (merge (let [field-name (if (= ag-type :distinct) :count ag-type)]
                                   {:field-name         field-name
-                                   :field-display-name field-name}))))]
+                                   :field-display-name (name field-name)}))))]
       (fn [out]
         (trace-lvars "*" out)
         (== out ag-field)))))
@@ -259,12 +259,16 @@
 
 (defn post-annotate [qp]
   (fn [query]
-    (let [results (qp query)
-          cols    (->> (assoc (:query query) :result-keys (vec (sort (keys (first results)))))
-                       resolve+order-cols
-                       (map format-col)
-                       add-fields-extra-info)
-          columns (map :name cols)]
+    (let [results     (qp query)
+          result-keys (vec (sort (keys (first results))))
+          cols        (->> (assoc (:query query) :result-keys result-keys)
+                                resolve+order-cols
+                                (map format-col)
+                                add-fields-extra-info)
+          columns     (mapv :name cols)]
+      (when (not= (set result-keys)
+                  (set columns))
+        (throw (Exception. (format "Annotation failed: result-keys %s != columns %s" result-keys columns))))
       {:cols    (vec (for [col cols]
                        (update col :name name)))
        :columns (mapv name columns)

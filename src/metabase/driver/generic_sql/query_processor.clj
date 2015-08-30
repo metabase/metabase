@@ -104,12 +104,7 @@
     ([this]
      (formatted this false))
     ([{:keys [table-name base-type special-type field-name], :as field} include-as?]
-     (let [kw-name (keyword (str table-name \. field-name))
-           field   (cond
-                     (contains? #{:DateField :DateTimeField} base-type) (cast-as-date kw-name)
-                     (= special-type :timestamp_seconds)                (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :seconds))
-                     (= special-type :timestamp_milliseconds)           (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :milliseconds))
-                     :else                                              kw-name)]
+     (let [field (keyword (str table-name \. field-name))]
        (if include-as? [field (keyword field-name)]
            field))))
 
