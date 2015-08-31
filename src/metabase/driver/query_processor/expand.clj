@@ -68,18 +68,7 @@
     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
     _                                                                      false))
 
-(defn- parse-value
-  "Convert the `value` of a `Value` to a date or timestamp if needed.
-   The original `YYYY-MM-DD` string date is retained under the key `:original-value`."
-  [{:keys [value base-type special-type] :as qp-value}]
-  (assoc qp-value
-         :original-value value
-         ;; Since Value *doesn't* revert to YYYY-MM-DD when collapsing make sure we're not parsing it twice
-         :value (or (when (and (string? value)
-                               (or (contains? #{:DateField :DateTimeField} base-type)
-                                   (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
-                      (u/parse-iso8601 value))
-                    value)))
+
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value that can be resolved later."
@@ -95,7 +84,7 @@
 
       _ (throw (Exception. (str "Invalid field: " field-id))))))
   ([field-id value]
-   (->ValuePlaceholder (:field-id (ph field-id)) value)))
+   (->ValuePlaceholder (ph field-id) value)))
 
 
 

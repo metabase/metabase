@@ -16,7 +16,9 @@
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (metabase.driver.query_processor.interface Field
+           (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeValue
+                                                      Field
                                                       OrderByAggregateField
                                                       Value)))
 
@@ -101,13 +103,20 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name base-type special-type field-name], :as field} include-as?]
-     (let [kw-name (keyword (str table-name \. field-name))
-           field   (cond
-                     (contains? #{:DateField :DateTimeField} base-type) (cast-as-date kw-name)
-                     (= special-type :timestamp_seconds)                (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :seconds))
-                     (= special-type :timestamp_milliseconds)           (cast-as-date (i/unix-timestamp->timestamp (:driver *query*) kw-name :milliseconds))
-                     :else                                              kw-name)]
+    ([{:keys [table-name special-type field-name], :as field} include-as?]
+     (let [->timestamp (partial i/unix-timestamp->timestamp (:driver *query*))
+           field       (cond-> (keyword (str table-name \. field-name))
+                         (= special-type :timestamp_seconds)      (->timestamp :seconds)
+                         (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
+       (if include-as? [field (keyword field-name)]
+           field))))
+
+  DateTimeField
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{unit :unit, {:keys [field-name base-type special-type], :as field} :field} include-as?]
+     (let [field (cast-as-date (formatted field))]
        (if include-as? [field (keyword field-name)]
            field))))
 
@@ -129,11 +138,18 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value base-type]} _]
-     (cond
-       (instance? Timestamp value) (cast-as-date `(Timestamp/valueOf ~(.toString value))) ; prevent Clojure from converting this to #inst literal, which is a util.date
-       (= base-type :UUIDField)    (java.util.UUID/fromString value)
-       :else                       value))))
+    ([{value :value, {:keys [base-type]} :field} _]
+     (if (= base-type :UUIDField)
+       (java.util.UUID/fromString value)
+       value)))
+
+  DateTimeValue
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [value]} _]
+     ;; prevent Clojure from converting this to #inst literal, which is a util.date
+     (cast-as-date `(Timestamp/valueOf ~(.toString value))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]

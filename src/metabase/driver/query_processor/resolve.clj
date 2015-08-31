@@ -6,7 +6,8 @@
             [medley.core :as m]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.interface :refer :all]
+            (metabase.driver.query-processor [interface :refer :all]
+                                             [parse :as parse])
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
@@ -29,84 +30,85 @@
                           :table_id        :table-id
                           :parent_id       :parent-id}))
 
-;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL (INTERNAL) ------------------------------------------------------------
+;;; # ------------------------------------------------------------ MULTIMETHODS - INTERNAL ------------------------------------------------------------
 
-(defprotocol IResolve
-  "Methods called during `Field` and `Table` resolution. Placeholder types should implement this protocol."
-  (unresolved-field-id [this]
-    "Return the unresolved Field ID associated with this object, if any.")
-  (fk-field-id [this]
-    "Return a the FK Field ID (for joining) associated with this object, if any.")
-  (resolve-field [this field-id->fields]
-    "This method is called when walking the Query after fetching `Fields`.
-     Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-     return their expanded form. Other objects should just return themselves.")
-  (resolve-table [this table-id->tables]
-    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
-     Objects like `Fields` can add relevant information like the name of their `Table`."))
+;; Return the unresolved Field ID associated with this object, if any.
+(defmulti unresolved-field-id class)
 
-(extend Object
-  IResolve {:unresolved-field-id (constantly nil)
-            :fk-field-id         (constantly nil)
-            :resolve-field       (fn [this _] this)
-            :resolve-table       (fn [this _] this)})
+(defmethod unresolved-field-id :default [_]
+  nil)
 
-(extend nil
-  IResolve {:unresolved-field-id (constantly nil)
-            :fk-field-id         (constantly nil)
-            :resolve-field       (constantly nil)
-            :resolve-table       (constantly nil)})
+;; Return a the FK Field ID (for joining) associated with this object, if any.
+(defmulti fk-field-id class)
 
-(extend-protocol IResolve
-  Field
-  (unresolved-field-id [{:keys [parent parent-id]}]
-    (or (unresolved-field-id parent)
-        parent-id))
+(defmethod fk-field-id :default [_]
+  nil)
 
-  (fk-field-id [_] nil)
+;; This method is called when walking the Query after fetching `Fields`.
+;; Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
+;; return their expanded form. Other objects should just return themselves.
+(defmulti resolve-field (fn [this field-id->fields]
+                          (class this)))
 
-  (resolve-field [{:keys [parent parent-id], :as this} field-id->fields]
-    (cond
-      parent    (if (= (type parent) Field)
-                  this
-                  (resolve-field parent field-id->fields))
-      parent-id (assoc this :parent (or (field-id->fields parent-id)
-                                        (map->FieldPlaceholder {:field-id parent-id})))
-      :else     this))
+(defmethod resolve-field :default [this _]
+  this)
 
-  (resolve-table [{:keys [table-id], :as this} table-id->table]
-    (assoc this :table-name (:name (or (table-id->table table-id)
-                                       (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
+;; Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
+;; Objects like `Fields` can add relevant information like the name of their `Table`.
+(defmulti resolve-table (fn [this table-id->tables]
+                          (class this)))
+
+(defmethod resolve-table :default [this _]
+  this)
 
 
-  FieldPlaceholder
-  (unresolved-field-id [{:keys [field-id]}]
+;; ## Field
+(defmethod unresolved-field-id Field [{:keys [parent parent-id]}]
+  (or (unresolved-field-id parent)
+      parent-id))
+
+(defmethod resolve-field Field [{:keys [parent parent-id], :as this} field-id->fields]
+  (cond
+    parent    (if (= (type parent) Field)
+                this
+                (resolve-field parent field-id->fields))
+    parent-id (assoc this :parent (or (field-id->fields parent-id)
+                                      (map->FieldPlaceholder {:field-id parent-id})))
+    :else     this))
+
+(defmethod resolve-table Field [{:keys [table-id], :as this} table-id->table]
+  (assoc this :table-name (:name (or (table-id->table table-id)
+                                     (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
+
+
+;; ## FieldPlaceholder
+(defmethod unresolved-field-id FieldPlaceholder [{:keys [field-id]}]
     field-id)
 
-  (fk-field-id [{:keys [fk-field-id]}]
-    fk-field-id)
+(defmethod fk-field-id FieldPlaceholder [{:keys [fk-field-id]}]
+  fk-field-id)
 
-  (resolve-field [this field-id->fields]
-    (or
-     ;; try to resolve the Field with the ones available in field-id->fields
-     (some->> (field-id->fields (:field-id this))
-              (merge (select-keys this [:value]))
-              map->Field)
-     ;; If that fails just return ourselves as-is
-     this))
+(defmethod resolve-field FieldPlaceholder [{:keys [field-id, datetime-unit], :as this} field-id->fields]
+  (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->fields field-id)
+                                                               map->Field)]
+    ;; try to resolve the Field with the ones available in field-id->fields
+    (let [datetime-field? (or datetime-unit
+                              (contains? #{:DateField :DateTimeField} base-type)
+                              (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
+      (if-not datetime-field?
+        field
+        (map->DateTimeField {:field field
+                             :unit  (or datetime-unit :day)})))
+    ;; If that fails just return ourselves as-is
+    this))
 
 
-  ValuePlaceholder
-  (unresolved-field-id [{:keys [field-id]}]
-    field-id)
-
-  (fk-field-id [_] nil)
-
-  (resolve-field [this field-id->fields]
-    (let [resolved-field (field-id->fields (:field-id this))]
-      (when-not resolved-field
-        (throw (Exception. (format "Unable to resolve field: %d" (:field-id this)))))
-      (map->Value (merge this (select-keys resolved-field [:base-type :special-type :field-id :field-name]))))))
+;; ## ValuePlaceholder
+(defmethod resolve-field ValuePlaceholder [{:keys [field-placeholder value], :as this} field-id->fields]
+  (let [resolved-field (resolve-field field-placeholder field-id->fields)]
+    (when-not resolved-field
+      (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
+    (parse/parse-value resolved-field value)))
 
 
 ;;; # ------------------------------------------------------------ IMPL ------------------------------------------------------------

@@ -2,7 +2,8 @@
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.driver.query-processor.expand`."
-  (:import clojure.lang.Keyword))
+  (:import clojure.lang.Keyword
+           java.sql.Timestamp))
 
 ;; Expansion Happens in a Few Stages:
 ;; 1. A query dict is parsed via pattern-matching code in the Query Expander.
@@ -52,24 +53,29 @@
             [table-name])
           field-name)))
 
+;; wrapper around Field
+(defrecord DateTimeField [^Field   field
+                          ^Keyword unit])
+
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
-(defrecord Value [value              ; e.g. parsed Date / timestamp
-                  ^Keyword base-type
-                  ^Keyword special-type
-                  ^Integer field-id
-                  ^String  field-name])
+(defrecord Value [value
+                  ^Field field])
+
+(defrecord DateTimeValue [^Timestamp value
+                          ^DateTimeField field])
 
 
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------
 
 ;; Replace Field IDs with these during first pass
 (defrecord FieldPlaceholder [^Integer field-id
-                             ^Integer fk-field-id]) ;
+                             ^Integer fk-field-id
+                             ^Keyword datetime-unit])
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
-(defrecord ValuePlaceholder [^Integer field-id
+(defrecord ValuePlaceholder [^FieldPlaceholder field-placeholder
                              value])
 
 
