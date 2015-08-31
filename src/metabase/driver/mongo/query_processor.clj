@@ -159,8 +159,10 @@
                  limit        (:limit (:query *query*))
                  keep-taking? (if limit (fn [_]
                                           (< (count values) limit))
-                                  (constantly true))]
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one field/Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
+                                  (constantly true))
+                 field-id     (or (:field-id field)             ; Field
+                                  (:field-id (:field field)))]  ; DateTimeField
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one field/Field :id field)) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))
