@@ -780,13 +780,6 @@ CardControllers.controller('CardDetail', [
         }
 
         function setCard(result, options = {}) {
-            // when loading an existing card for viewing, mark when the card creator is our current user
-            // TODO: there may be a better way to maintain this, but it seemed worse to inject currentUser
-            //       into a bunch of our react models and then bury this conditional in react component code
-            if (result.creator_id === $scope.user.id) {
-                result.is_creator = true;
-            }
-
             // update our react models as needed
             card = result;
 

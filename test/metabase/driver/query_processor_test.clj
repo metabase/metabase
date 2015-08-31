@@ -9,7 +9,8 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*dataset*]])
+                                [datasets :as datasets :refer [*dataset*]]
+                                [interface :refer [create-database-definition]])
             [metabase.test.util.q :refer [Q]]
             [metabase.util :as u]))
 
@@ -1074,3 +1075,224 @@
  (Q return first-row
     aggregate count of venues
     filter != price 1 2))
+
+
+;; +-------------------------------------------------------------------------------------------------------------+
+;; |                                                NEW DATE STUFF                                               |
+;; +-------------------------------------------------------------------------------------------------------------+
+
+
+;; ## BUCKETING
+
+(defn- sad-toucan-incidents-with-bucketing [unit]
+  (vec (Q dataset sad-toucan-incidents
+          aggregate count of incidents
+          breakout ["datetime_field" (id :incidents :timestamp) "as" unit]
+          limit 10
+          return rows)))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-06-01T10:31" 1]
+   [#inst "2015-06-01T16:06" 1]
+   [#inst "2015-06-01T17:23" 1]
+   [#inst "2015-06-01T18:55" 1]
+   [#inst "2015-06-01T21:04" 1]
+   [#inst "2015-06-01T21:19" 1]
+   [#inst "2015-06-02T02:13" 1]
+   [#inst "2015-06-02T05:37" 1]
+   [#inst "2015-06-02T08:20" 1]
+   [#inst "2015-06-02T11:11" 1]]
+  (sad-toucan-incidents-with-bucketing :default))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-06-01T10:31" 1]
+   [#inst "2015-06-01T16:06" 1]
+   [#inst "2015-06-01T17:23" 1]
+   [#inst "2015-06-01T18:55" 1]
+   [#inst "2015-06-01T21:04" 1]
+   [#inst "2015-06-01T21:19" 1]
+   [#inst "2015-06-02T02:13" 1]
+   [#inst "2015-06-02T05:37" 1]
+   [#inst "2015-06-02T08:20" 1]
+   [#inst "2015-06-02T11:11" 1]]
+  (sad-toucan-incidents-with-bucketing :minute))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[0 5]
+   [1 4]
+   [2 2]
+   [3 4]
+   [4 4]
+   [5 3]
+   [6 5]
+   [7 1]
+   [8 1]
+   [9 1]]
+  (sad-toucan-incidents-with-bucketing :minute-of-hour))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-06-01T10" 1]
+   [#inst "2015-06-01T16" 1]
+   [#inst "2015-06-01T17" 1]
+   [#inst "2015-06-01T18" 1]
+   [#inst "2015-06-01T21" 2]
+   [#inst "2015-06-02T02" 1]
+   [#inst "2015-06-02T05" 1]
+   [#inst "2015-06-02T08" 1]
+   [#inst "2015-06-02T11" 1]
+   [#inst "2015-06-02T13" 1]]
+  (sad-toucan-incidents-with-bucketing :hour))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[0 8]
+   [1 9]
+   [2 7]
+   [3 10]
+   [4 10]
+   [5 9]
+   [6 6]
+   [7 5]
+   [8 7]
+   [9 7]]
+  (sad-toucan-incidents-with-bucketing :hour-of-day))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-06-01T07" 8]
+   [#inst "2015-06-02T07" 9]
+   [#inst "2015-06-03T07" 9]
+   [#inst "2015-06-04T07" 4]
+   [#inst "2015-06-05T07" 11]
+   [#inst "2015-06-06T07" 8]
+   [#inst "2015-06-07T07" 6]
+   [#inst "2015-06-08T07" 10]
+   [#inst "2015-06-09T07" 6]
+   [#inst "2015-06-10T07" 10]]
+  (sad-toucan-incidents-with-bucketing :day))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[1 29]
+   [2 36]
+   [3 33]
+   [4 29]
+   [5 13]
+   [6 38]
+   [7 22]]
+  (sad-toucan-incidents-with-bucketing :day-of-week))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[1 8]
+   [2 9]
+   [3 9]
+   [4 4]
+   [5 11]
+   [6 8]
+   [7 6]
+   [8 10]
+   [9 6]
+   [10 10]]
+  (sad-toucan-incidents-with-bucketing :day-of-month))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[152 8]
+   [153 9]
+   [154 9]
+   [155 4]
+   [156 11]
+   [157 8]
+   [158 6]
+   [159 10]
+   [160 6]
+   [161 10]]
+  (sad-toucan-incidents-with-bucketing :day-of-year))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-05-31T07" 49]
+   [#inst "2015-06-07T07" 47]
+   [#inst "2015-06-14T07" 39]
+   [#inst "2015-06-21T07" 58]
+   [#inst "2015-06-28T07" 7]]
+  (sad-toucan-incidents-with-bucketing :week))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[23 49]
+   [24 47]
+   [25 39]
+   [26 58]
+   [27 7]]
+  (sad-toucan-incidents-with-bucketing :week-of-year))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-06-01T07" 200]]
+  (sad-toucan-incidents-with-bucketing :month))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[6 200]]
+  (sad-toucan-incidents-with-bucketing :month-of-year))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[#inst "2015-04-01T07" 200]]
+  (sad-toucan-incidents-with-bucketing :quarter))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[2 200]]
+  (sad-toucan-incidents-with-bucketing :quarter-of-year))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  [[2015 200]]
+  (sad-toucan-incidents-with-bucketing :year))
+
+;; RELATIVE DATES
+(defn- database-def-with-timestamps [interval-seconds]
+  (create-database-definition "DB"
+    ["checkins"
+     [{:field-name "timestamp"
+       :base-type  :DateTimeField}]
+     (vec (for [i (range -15 15)]
+            [(java.sql.Timestamp. (+ (System/currentTimeMillis) (* i 1000 interval-seconds)))]))]))
+
+(def ^:private checkins:4-per-minute (database-def-with-timestamps 15))
+(def ^:private checkins:4-per-hour   (database-def-with-timestamps (* 60 15)))
+(def ^:private checkins:1-per-day    (database-def-with-timestamps (* 60 60 24)))
+
+(defn- count-of-grouping [db field-grouping & relative-datetime-args]
+  (with-temp-db [_ db]
+    (Q aggregate count of checkins
+       filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
+       return first-row first)))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute -1 "minute"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute  1 "minute"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour -1 "hour"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour  1 "hour"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day -1 "day"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day  1 "day"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 7 (count-of-grouping checkins:1-per-day :week "current"))
+
+;; SYNTACTIC SUGAR
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  1
+  (with-temp-db [_ checkins:1-per-day]
+    (-> (driver/process-query
+         {:database (db-id)
+          :type     :query
+          :query    {:source_table (id :checkins)
+                     :aggregation  ["count"]
+                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
+        :data :rows first first)))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  7
+  (with-temp-db [_ checkins:1-per-day]
+    (-> (driver/process-query
+         {:database (db-id)
+          :type     :query
+          :query    {:source_table (id :checkins)
+                     :aggregation  ["count"]
+                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "last" "week"]}})
+        :data :rows first first)))
