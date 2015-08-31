@@ -228,8 +228,8 @@ export default React.createClass({
             <Header
                 objectType="question"
                 item={this.props.card}
-                isEditing={!this.props.cardIsNewFn() && this.props.card.is_creator}
-                isEditingInfo={!this.props.cardIsNewFn() && this.props.card.is_creator}
+                isEditing={!this.props.cardIsNewFn()}
+                isEditingInfo={!this.props.cardIsNewFn()}
                 headerButtons={this.getHeaderButtons()}
                 editingTitle="You are editing a saved question"
                 editingSubtitle={subtitleText}
