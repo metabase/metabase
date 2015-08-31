@@ -1,13 +1,13 @@
 'use strict';
 
-var HomeDirectives = angular.module('corvus.home.directives', []);
+var HomeDirectives = angular.module('metabase.home.directives', []);
 
 HomeDirectives.directive('mbNewUserOnboarding', ['$modal',
     function($modal) {
         function link(scope, element, attrs) {
 
             function openModal() {
-                var modalInstance = $modal.open({
+                $modal.open({
                     templateUrl: '/app/home/partials/modal_user_onboarding.html',
                     controller: ['$scope', '$modalInstance',
                         function($scope, $modalInstance) {

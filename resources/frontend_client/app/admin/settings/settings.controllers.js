@@ -5,7 +5,7 @@ import SettingsEditor from './components/SettingsEditor.react';
 
 import Humanize from "humanize";
 
-var SettingsAdminControllers = angular.module('corvusadmin.settings.controllers', ['corvusadmin.settings.services']);
+var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabaseadmin.settings.services']);
 
 // from common.clj
 var TIMEZONES = [

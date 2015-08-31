@@ -1,7 +1,7 @@
 'use strict';
 
-var Home = angular.module('corvus.home', [
-    'corvus.home.controllers',
+var Home = angular.module('metabase.home', [
+    'metabase.home.controllers',
 ]);
 
 Home.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {

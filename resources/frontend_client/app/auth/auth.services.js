@@ -1,6 +1,6 @@
 'use strict';
 
-var AuthServices = angular.module('corvus.auth.services', []);
+var AuthServices = angular.module('metabase.auth.services', []);
 
 AuthServices.service('AuthUtil', ['$rootScope', '$location', 'ipCookie', function($rootScope, $location, ipCookie) {
 

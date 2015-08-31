@@ -6,9 +6,9 @@
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCore from 'metabase/lib/core';
 
-var CorvusServices = angular.module('corvus.services', ['http-auth-interceptor', 'ipCookie', 'corvus.core.services']);
+var MetabaseServices = angular.module('metabase.services', ['http-auth-interceptor', 'ipCookie', 'metabase.core.services']);
 
-CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
+MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
     function($rootScope, $q, $location, $interval, $timeout, ipCookie, Session, User, Settings) {
         // this is meant to be a global service used for keeping track of our overall app state
         // we fire 2 events as things change in the app
@@ -268,7 +268,7 @@ CorvusServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval'
     }
 ]);
 
-CorvusServices.service('CorvusCore', ['User', function(User) {
+MetabaseServices.service('MetabaseCore', ['User', function(User) {
     // this just makes it easier to access the current user
     this.currentUser = User.current;
 
@@ -278,7 +278,7 @@ CorvusServices.service('CorvusCore', ['User', function(User) {
 
 
 // User Services
-var CoreServices = angular.module('corvus.core.services', ['ngResource', 'ngCookies']);
+var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
 
 CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/session/', {}, {

@@ -1,6 +1,5 @@
 'use strict';
 
-import Icon from "metabase/components/Icon.react";
 import inflection from 'inflection';
 
 var cx = React.addons.classSet;

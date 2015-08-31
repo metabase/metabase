@@ -2,9 +2,9 @@
 
 import Table from "metabase/lib/table";
 
-var HomeControllers = angular.module('corvus.home.controllers', [
-    'corvus.home.directives',
-    'corvus.metabase.services'
+var HomeControllers = angular.module('metabase.home.controllers', [
+    'metabase.home.directives',
+    'metabase.metabase.services'
 ]);
 
 HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {
@@ -33,7 +33,7 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
 
     function buildGreeting (greetingOptions, personalization) {
         // TODO - this can result in an undefined thing
-        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1) + 0);
+        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1));
         var greeting = greetingOptions[randomGreetingIndex];
 
         if(personalization) {
@@ -43,7 +43,7 @@ HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($sc
     }
 
     $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = "What do you want to know?";
+    $scope.subheading = subheadPrefixes[Math.floor(Math.random() * (subheadPrefixes.length - 1))];
 }]);
 
 HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {

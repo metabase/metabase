@@ -3,8 +3,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [korma.core :as korma]
-            [korma.db :as kdb]
+            (korma [core :as korma]
+                   [db :as kdb])
+            [korma.sql.utils :as utils]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             [metabase.driver.generic-sql.interface :as i]))
@@ -81,3 +82,17 @@
    {:table table-name
     :pk    :id
     :db    (db->korma-db db)}))
+
+(defn funcs
+  "Convenience for writing nested `utils/func` forms.
+   The first argument is treated the same as with `utils/func`;
+   But when any arg is a vector we'll treat it as a recursive call to `funcs`.
+
+     (funcs \"CONCAT(%s)\" [\"YEAR(%s)\" x] y [\"MONTH(%s)\" z])
+       -> (utils/func \"CONCAT(%s)\" [(utils/func \"YEAR(%s)\" [x])
+                                      y
+                                      (utils/func \"MONTH(%s)\" [z])])"
+  [fn-format-str & args]
+  (utils/func fn-format-str (vec (for [arg args]
+                                   (if (vector? arg) (apply funcs arg)
+                                       arg)))))

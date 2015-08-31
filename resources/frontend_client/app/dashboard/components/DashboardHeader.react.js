@@ -110,7 +110,7 @@ export default class DashboardHeader extends Component {
     getHeaderButtons() {
         var buttonSections = [];
 
-        var { dashboard, dashcards } = this.props;
+        var { dashboard } = this.props;
 
         if (this.props.isEditing) {
             buttonSections.push([
@@ -165,7 +165,7 @@ export default class DashboardHeader extends Component {
     }
 
     render() {
-        var { dashboard, dashcards } = this.props;
+        var { dashboard } = this.props;
 
         return (
             <Header

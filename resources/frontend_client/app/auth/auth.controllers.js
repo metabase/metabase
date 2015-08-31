@@ -1,27 +1,20 @@
 'use strict';
 /*jslint browser:true*/
 /*jslint devel:true */
-/*global _*/
 
-var AuthControllers = angular.module('corvus.auth.controllers', [
-    'corvus.auth.services',
+var AuthControllers = angular.module('metabase.auth.controllers', [
+    'metabase.auth.services',
     'ipCookie',
-    'corvus.services',
+    'metabase.services',
     'metabase.forms'
 ]);
 
 AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState',
     function($scope, $location, $timeout, AuthUtil, Session, AppState) {
-
-        var formFields = {
-            email: 'email',
-            password: 'password'
-        };
-
-        var validEmail = function(email) {
+        function validEmail(email) {
             var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
             return re.test(email);
-        };
+        }
 
         $scope.login = function(email, password, remember_me) {
             $scope.$broadcast("form:reset");

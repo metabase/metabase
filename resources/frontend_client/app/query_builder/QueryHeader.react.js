@@ -2,18 +2,16 @@
 /*global setTimeout, clearTimeout*/
 
 import ActionButton from 'metabase/components/ActionButton.react';
-import AddToDashboard from './add_to_dashboard.react';
-import AddToDashSelectDashModal from '../components/AddToDashSelectDashModal.react';
-import CardFavoriteButton from './card_favorite_button.react';
-import DeleteQuestionModal from '../components/DeleteQuestionModal.react';
+import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.react';
+import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.react';
 import Header from "metabase/components/Header.react";
 import HistoryModal from "metabase/components/HistoryModal.react";
 import Icon from "metabase/components/Icon.react";
 import Modal from "metabase/components/Modal.react";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.react";
-import QueryModeToggle from './query_mode_toggle.react';
-import QuestionSavedModal from '../components/QuestionSavedModal.react';
-import SaveQuestionModal from '../components/SaveQuestionModal.react';
+import QueryModeToggle from './QueryModeToggle.react';
+import QuestionSavedModal from 'metabase/components/QuestionSavedModal.react';
+import SaveQuestionModal from 'metabase/components/SaveQuestionModal.react';
 
 import Query from "metabase/lib/query";
 
@@ -235,8 +233,8 @@ export default React.createClass({
             <Header
                 objectType="question"
                 item={this.props.card}
-                isEditing={!this.props.cardIsNewFn() && this.props.card.is_creator}
-                isEditingInfo={!this.props.cardIsNewFn() && this.props.card.is_creator}
+                isEditing={!this.props.cardIsNewFn()}
+                isEditingInfo={!this.props.cardIsNewFn()}
                 headerButtons={this.getHeaderButtons()}
                 editingTitle="You are editing a saved question"
                 editingSubtitle={subtitleText}

@@ -2,11 +2,8 @@
 
 import ModalContent from "metabase/components/ModalContent.react";
 import Toggle from 'metabase/components/Toggle.react';
-import SortableItemList from 'metabase/components/SortableItemList.react';
 
-import { removeCardFromDashboard, deleteCard } from '../actions';
-
-import moment from 'moment';
+import { removeCardFromDashboard } from '../actions';
 
 export default class RemoveFromDashboardModal extends React.Component {
     constructor() {

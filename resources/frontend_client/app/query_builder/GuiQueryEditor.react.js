@@ -1,22 +1,18 @@
 'use strict';
-/*global _*/
 
-import MetabaseAnalytics from '../lib/analytics';
-
-import AggregationWidget from './aggregation_widget.react';
-import DataSelector from './data_selector.react';
-import FieldWidget from './field_widget.react';
-import FilterWidget from './filter_widget.react';
+import AggregationWidget from './AggregationWidget.react';
+import DataSelector from './DataSelector.react';
+import FieldWidget from './FieldWidget.react';
+import FilterWidget from './FilterWidget.react';
 import Icon from "metabase/components/Icon.react";
-import IconBorder from './icon_border.react';
-import LimitWidget from './limit_widget.react';
-import SortWidget from './sort_widget.react';
+import IconBorder from './IconBorder.react';
+import SortWidget from './SortWidget.react';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
+import MetabaseAnalytics from 'metabase/lib/analytics';
 import Query from "metabase/lib/query";
 
 var cx = React.addons.classSet;
-var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
     displayName: 'GuiQueryEditor',

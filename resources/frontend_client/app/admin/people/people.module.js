@@ -1,7 +1,7 @@
 'use strict';
 
-var AdminPeople = angular.module('corvusadmin.people', [
-    'corvusadmin.people.controllers'
+var AdminPeople = angular.module('metabaseadmin.people', [
+    'metabaseadmin.people.controllers'
 ]);
 
 AdminPeople.config(['$routeProvider', function ($routeProvider) {

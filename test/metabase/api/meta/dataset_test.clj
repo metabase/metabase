@@ -6,7 +6,8 @@
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first]]
+            [metabase.test.util.q :refer [Q-expand]]))
 
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
@@ -20,13 +21,7 @@
        :status    "completed"
        :id        $
        :uuid      $})
-  ((user->client :rasta) :post 200 "meta/dataset" {:database (db-id)
-                                                   :type     "query"
-                                                   :query    {:aggregation  ["count"]
-                                                              :breakout     [nil]
-                                                              :filter       [nil nil]
-                                                              :limit        nil
-                                                              :source_table (id :checkins)}}))
+  ((user->client :rasta) :post 200 "meta/dataset" (Q-expand aggregate count of checkins)))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect-eval-actual-first

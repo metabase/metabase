@@ -10,7 +10,7 @@ import { loadIcon } from 'metabase/icon_paths';
         React: <Icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>" />
 */
 
-angular.module('corvus.components')
+angular.module('metabase.components')
     .directive('mbIcon', function () {
 
         return {
@@ -59,7 +59,7 @@ angular.module('corvus.components')
     };
 
 
-    angular.module('corvus.components')
+    angular.module('metabase.components')
         .directive('mbLogoIcon', function () {
             return {
                 restrict: 'E',
@@ -69,7 +69,7 @@ angular.module('corvus.components')
             };
         });
 
-    angular.module('corvus.components')
+    angular.module('metabase.components')
         .directive('mbLoadingIcon', function () {
             return {
                 restrict: 'E',
