@@ -26,6 +26,7 @@
            (metabase.driver.query_processor.interface DateTimeField
                                                       DateTimeValue
                                                       Field
+                                                      OrderByAggregateField
                                                       Value)))
 
 (declare apply-clause
@@ -100,6 +101,18 @@
    (field->name this "."))
   ([this separator]
    (apply str (interpose separator (rest (qualified-name-components this))))))
+
+(defmethod field->name OrderByAggregateField
+  ([this]
+   (field->name this nil))
+  ([this _]
+   (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+     (case aggregation-type
+       :avg      "avg"
+       :count    "count"
+       :distinct "count"
+       :stddev   "stddev"
+       :sum      "sum"))))
 
 (defmethod field->name DateTimeField
   ([this]
