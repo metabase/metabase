@@ -2,13 +2,19 @@
   "Common functionality for various Generic SQL dataset loaders."
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
-            [metabase.driver.generic-sql.interface :refer [quote-name]]
             [metabase.test.data.interface :as i])
   (:import (metabase.test.data.interface DatabaseDefinition
                                          TableDefinition)))
 
+(defn- quote-name [{:keys [quote-character], :or {quote-character \"}} nm]
+  (str quote-character nm quote-character))
+
 (defprotocol IGenericSQLDatasetLoader
-  "Methods that generic SQL dataset loaders should implement so they can use the shared functions in `metabase.test.data.generic-sql`."
+  "Methods that generic SQL dataset loaders should implement so they can use the shared functions in `metabase.test.data.generic-sql`.
+
+   (Optional) Properies:
+
+   *  `quote-character`: Character to use to quote table & field names in raw SQL. Defaults to double-quote."
   (execute-sql! [this ^DatabaseDefinition database-definition ^String raw-sql]
     "Execute RAW-SQL against  database defined by DATABASE-DEFINITION.")
 

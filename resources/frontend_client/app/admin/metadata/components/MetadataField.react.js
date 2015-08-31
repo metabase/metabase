@@ -1,9 +1,9 @@
 "use strict";
 /*global _*/
 
-import Input from "./Input.react";
-import Select from "./Select.react";
-import Icon from '../../../query_builder/icon.react';
+import Input from "metabase/components/Input.react";
+import Select from "metabase/components/Select.react";
+import Icon from "metabase/components/Icon.react";
 
 import MetabaseCore from 'metabase/lib/core';
 

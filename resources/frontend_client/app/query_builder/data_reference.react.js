@@ -3,7 +3,7 @@
 import DataReferenceMain from './data_reference_main.react';
 import DataReferenceTable from './data_reference_table.react';
 import DataReferenceField from './data_reference_field.react';
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import inflection from 'inflection';
 
 var cx = React.addons.classSet;

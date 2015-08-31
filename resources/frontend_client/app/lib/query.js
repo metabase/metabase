@@ -1,6 +1,16 @@
 'use strict';
 
+import inflection from "inflection";
+
 var Query = {
+
+    isStructured: function(query) {
+        return query && query.type && query.type === "query";
+    },
+
+    isNative: function(query) {
+        return query && query.type && query.type === "native";
+    },
 
     canRun: function(query) {
         return query && query.source_table != undefined && Query.hasValidAggregation(query);
@@ -57,7 +67,17 @@ var Query = {
 
     canAddDimensions: function(query) {
         var MAX_DIMENSIONS = 2;
-        return (query.breakout.length < MAX_DIMENSIONS);
+        return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
+    },
+
+    numDimensions: function(query) {
+        if (query && query.breakout) {
+            return query.breakout.filter(function(b) {
+                return b !== null;
+            }).length;
+        }
+
+        return 0;
     },
 
     hasValidBreakout: function(query) {
@@ -305,6 +325,68 @@ var Query = {
             }).filter((r) => r.fields.length > 0);
         }
         return results;
+    },
+
+    generateQueryDescription: function(dataset_query, tableMetadata) {
+        if (!tableMetadata) {
+            return "";
+        }
+
+        function getFieldName(id, table) {
+            if (Array.isArray(id)) {
+                if (id[0] === "fk->") {
+                    var field = table.fields_lookup[id[1]];
+                    if (field) {
+                        return field.display_name + " " + getFieldName(id[2], field.target.table);
+                    }
+                }
+            } else if (table.fields_lookup[id]) {
+                return table.fields_lookup[id].display_name
+            }
+            return '[unknown]';
+        }
+
+        function getFilterDescription(filter) {
+            if (filter[0] === "AND" || filter[0] === "OR") {
+                return filter.slice(1).map(getFilterDescription).join(" " + filter[0].toLowerCase() + " ");
+            } else {
+                return getFieldName(filter[1], tableMetadata);
+            }
+        }
+
+        var query = dataset_query.query;
+
+        var name = inflection.pluralize(tableMetadata.display_name) + " ";
+
+        switch (query.aggregation[0]) {
+            case "rows":     name += "raw data"; break;
+            case "count":    name += "count"; break;
+            case "avg":      name += "average of " + getFieldName(query.aggregation[1], tableMetadata); break;
+            case "distinct": name += "distinct values of " + getFieldName(query.aggregation[1], tableMetadata); break;
+            case "stddev":   name += "standard deviation of " + getFieldName(query.aggregation[1], tableMetadata); break;
+            case "sum":      name += "sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
+            case "cum_sum":  name += "cumulative sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
+            default:
+        }
+
+        if (query.breakout && query.breakout.length > 0) {
+            name += ", grouped by " + query.breakout.map((b) => getFieldName(b, tableMetadata)).join(" and ");
+        }
+
+        var filters = Query.getFilters(dataset_query.query);
+        if (filters && filters.length > 0) {
+            name += ", filtered by " + getFilterDescription(filters);
+        }
+
+        if (query.order_by && query.order_by.length > 0) {
+            name += ", sorted by " + query.order_by.map((ordering) => getFieldName(ordering[0], tableMetadata) + " " + ordering[1]).join(" and ");
+        }
+
+        if (query.limit != null) {
+            name += ", " + query.limit + " " + inflection.inflect("row", query.limit);
+        }
+
+        return name;
     }
 }
 

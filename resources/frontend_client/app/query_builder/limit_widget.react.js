@@ -1,6 +1,6 @@
 'use strict';
 
-import Icon from './icon.react';
+import Icon from "metabase/components/Icon.react";
 import SelectionModule from './selection_module.react';
 
 export default React.createClass({

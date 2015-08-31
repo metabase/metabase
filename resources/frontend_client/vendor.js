@@ -19,8 +19,6 @@ import 'angular-http-auth'; // currently pulled from unofficial fork: https://gi
 import 'angular-readable-time';
 import 'angular-ui-bootstrap';
 import 'angular-xeditable';
-import 'ng-sortable';
-import 'angularytics';
 
 // ace:
 import 'angular-ui-ace';
@@ -30,7 +28,7 @@ import 'ace/mode-sql';
 import 'ace/snippets/sql';
 
 // react:
-import React from 'react';
+import React from 'react/addons';
 window.React = React;
 
 // misc:

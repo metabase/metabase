@@ -24,7 +24,8 @@
         "space-unary-ops": 0,
         "semi": 0,
         "no-console": 0,
-        "global-strict": 0
+        "global-strict": 0,
+        "new-cap": 0
     },
     "plugins": [
         "react"

@@ -10,7 +10,6 @@ var Corvus = angular.module('corvus', [
     'xeditable', // inplace editing capabilities
     'ui.bootstrap', // bootstrap LIKE widgets via angular directives
     'gridster', // used for dashboard grids
-    'ui.sortable',
     'readableTime',
     'corvus.auth',
     'corvus.filters',

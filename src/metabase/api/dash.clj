@@ -26,11 +26,12 @@
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name public_perms] :as body} :body}]
+  [:as {{:keys [name description public_perms] :as body} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
   (ins Dashboard
     :name name
+    :description description
     :public_perms public_perms
     :creator_id *current-user-id*))
 
@@ -81,16 +82,18 @@
 (defendpoint POST "/:id/reposition"
   "Reposition `Cards` on a `Dashboard`. Request body should have the form:
 
-    {:cards [{:card_id ...
+    {:cards [{:id ...
               :sizeX ...
               :sizeY ...
               :row ...
               :col} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
-  (doseq [{:keys [card_id sizeX sizeY row col]} cards]
-    (let [{dashcard-id :id} (sel :one [DashboardCard :id] :card_id card_id :dashboard_id id)]
-      (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col)))
+  (doseq [{dashcard-id :id :keys [sizeX sizeY row col]} cards]
+    ;; we lookup the dashcard purely to ensure the card is part of the given dashboard
+    (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
+      (when dashcard
+        (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
   (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 

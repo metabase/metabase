@@ -1,4 +1,5 @@
-(ns metabase.driver.generic-sql.interface)
+(ns metabase.driver.generic-sql.interface
+  (:import clojure.lang.Keyword))
 
 (defprotocol ISqlDriverDatabaseSpecific
   "Methods a DB-specific concrete SQL driver should implement.
@@ -6,23 +7,20 @@
 
    *  `column->base-type`
    *  `sql-string-length-fn`"
+
   (connection-details->connection-spec [this connection-details])
   (database->connection-details        [this database])
-  (cast-timestamp-to-date              [this table-name field-name seconds-or-milliseconds]
-    "Return the raw SQL that should be used to cast a Unix-timestamped column with string
-     TABLE-NAME and string FIELD-NAME to a SQL `DATE`. SECONDS-OR-MILLISECONDS will be either
-     `:seconds` or `:milliseconds`.")
-  (timezone->set-timezone-sql          [this timezone]
+
+  (unix-timestamp->timestamp [this ^Keyword seconds-or-milliseconds field-or-value]
+    "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
+     SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.")
+
+  (timezone->set-timezone-sql [this timezone]
     "Return a string that represents the SQL statement that should be used to set the timezone
-     for the current transaction."))
+     for the current transaction.")
 
-(defprotocol ISqlDriverQuoteName
-  "Optionally protocol to override how the Generic SQL driver quotes the names of databases, tables, and fields."
-  (quote-name [this ^String nm]
-    "Quote a name appropriately for this database."))
+  (date [this ^Keyword unit field-or-value]
+    "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
-;; Default implementation quotes using "
-(extend-protocol ISqlDriverQuoteName
-  Object
-  (quote-name [_ nm]
-    (str \" nm \")))
+  (date-interval [this ^Keyword unit ^Integer amount]
+    "Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`."))

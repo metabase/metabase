@@ -7,7 +7,7 @@
             (clojure [set :as set]
                      [string :as s])
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.expand :as expand]
+            [metabase.driver.query-processor.interface :as i]
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]
@@ -41,13 +41,13 @@
 ;; how to order the results
 
 (defn- field-qualify-name [field]
-  (assoc field :field-name (keyword (apply str (->> (rest (expand/qualified-name-components field))
+  (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
 (defn- flatten-collect-fields [form]
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
-                            (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
+                            (if-not (= (type f) metabase.driver.query_processor.interface.Field) f
                                     (do
                                       (conj! fields f)
                                       ;; HACK !!!
@@ -224,6 +224,7 @@
                                 :field-name         :name
                                 :field-display-name :display_name
                                 :special-type       :special_type
+                                :preview-display    :preview_display
                                 :table-id           :table_id})
              (dissoc :position))))
 
@@ -243,7 +244,7 @@
         ;; Build a map of Destination Field IDs -> Destination Fields
         dest-field-id->field    (when (and (seq fk-field-ids)
                                            (seq (vals field-id->dest-field-id)))
-                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type], :id [in (vals field-id->dest-field-id)]))]
+                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display], :id [in (vals field-id->dest-field-id)]))]
 
     ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
     (vec (for [{field-id :id, :as field} fields]

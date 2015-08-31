@@ -15,14 +15,19 @@
             [metabase.driver :as driver]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
-            [metabase.driver.query-processor.expand :as expand]
+            [metabase.driver.query-processor.interface :refer [qualified-name-components]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models.field :as field]
             [metabase.util :as u])
   (:import (com.mongodb CommandResult
                         DB)
            (clojure.lang PersistentArrayMap)
-           (org.bson.types ObjectId)))
+           (org.bson.types ObjectId)
+           (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeValue
+                                                      Field
+                                                      OrderByAggregateField
+                                                      Value)))
 
 (declare apply-clause
          eval-raw-command
@@ -86,12 +91,34 @@
                                                                         [{$match *constraints*}])
                                                                     ~@(filter identity forms)]))
 
-(defn- field->name
-  "Return qualified string name of FIELD, e.g. `venue` or `venue.address`."
-  (^String [field separator]
-           (apply str (interpose separator (rest (expand/qualified-name-components field))))) ; drop the first part, :table-name
-  (^String [field]
-           (field->name field ".")))
+;; Return qualified string name of FIELD, e.g. `venue` or `venue.address`.
+(defmulti field->name (fn
+                         (^String [this]           (class this))
+                         (^String [this separator] (class this))))
+
+(defmethod field->name Field
+  ([this]
+   (field->name this "."))
+  ([this separator]
+   (apply str (interpose separator (rest (qualified-name-components this))))))
+
+(defmethod field->name OrderByAggregateField
+  ([this]
+   (field->name this nil))
+  ([this _]
+   (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+     (case aggregation-type
+       :avg      "avg"
+       :count    "count"
+       :distinct "count"
+       :stddev   "stddev"
+       :sum      "sum"))))
+
+(defmethod field->name DateTimeField
+  ([this]
+   (field->name (:field this)))
+  ([this separator]
+   (field->name (:field this) separator)))
 
 (defn- field->$str
   "Given a FIELD, return a `$`-qualified field name for use in a Mongo aggregate query, e.g. `\"$user_id\"`."
@@ -132,8 +159,10 @@
                  limit        (:limit (:query *query*))
                  keep-taking? (if limit (fn [_]
                                           (< (count values) limit))
-                                  (constantly true))]
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one Field :id (:field-id field))) ; resolve driver at runtime to avoid circular deps
+                                  (constantly true))
+                 field-id     (or (:field-id field)             ; Field
+                                  (:field-id (:field field)))]  ; DateTimeField
+             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one field/Field :id field-id)) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))
@@ -284,14 +313,16 @@
 
 ;; ### filter
 
-(defn- format-value
-  "Convert ID strings to `ObjectId`."
-  [{:keys [field-name base-type value]}]
-  (cond
-    (and (= field-name "_id")
-         (= base-type  :UnknownField))  `(ObjectId. ~value)
-    (= (type value) java.sql.Timestamp) (java.util.Date. (.getTime ^java.sql.Timestamp value)) ; ugg
-    :else                               value))
+(defmulti format-value class)
+
+(defmethod format-value Value [{value :value, {:keys [field-name base-type]} :field}]
+  (if (and (= field-name "_id")
+           (= base-type  :UnknownField))
+    `(ObjectId. ~value)
+    value))
+
+(defmethod format-value DateTimeValue [{^java.sql.Timestamp value :value}]
+  (java.util.Date. (.getTime value)))
 
 (defn- parse-filter-subclause [{:keys [filter-type field value] :as filter}]
   (let [field (when field (field->name field))

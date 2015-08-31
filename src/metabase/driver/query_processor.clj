@@ -10,7 +10,9 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand])
+                                             [expand :as expand]
+                                             [interface :refer :all]
+                                             [resolve :as resolve])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -41,17 +43,19 @@
   (fn [query]
     (try (qp query)
          (catch Throwable e
-           {:status     :failed
-            :error      (.getMessage e)
-            :stacktrace (u/filtered-stacktrace e)
-            :query      (dissoc query :database :driver)
-            :expanded-query (try (dissoc (expand/expand query) :database :driver)
-                                 (catch Throwable _))}))))
+           {:status         :failed
+            :error          (or (.getMessage e) (str e))
+            :stacktrace     (u/filtered-stacktrace e)
+            :query          (dissoc query :database :driver)
+            :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
+                                 (catch Throwable e
+                                   {:error      (or (.getMessage e) (str e))
+                                    :stacktrace (u/filtered-stacktrace e) }))}))))
 
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (expand/expand query))))
+    (qp (resolve/resolve (expand/expand query)))))
 
 
 (defn- post-add-row-count-and-status
@@ -78,11 +82,11 @@
   (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
     (qp (if-not (should-add-implicit-fields? query)
           query
-          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :table_id :id :position :description], :table_id source-table-id, :active true,
-                                 :preview_display true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                            (map expand/rename-mb-field-keys)
-                            (map expand/map->Field)
-                            (map #(expand/resolve-table % {source-table-id source-table})))]
+          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description], :table_id source-table-id,
+                                 :active true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
+                            (map resolve/rename-mb-field-keys)
+                            (map map->Field)
+                            (map #(resolve/resolve-table % {source-table-id source-table})))]
             (if-not (seq fields)
               (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
                   query)
@@ -100,29 +104,8 @@
                                                     breakout-fields)]
       (qp (cond-> query
             (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                           (expand/map->OrderBySubclause {:field     field
-                                                                                                                          :direction :ascending}))))))))
-
-
-(defn- post-convert-unix-timestamps-to-dates
-  "Convert the values of Unix timestamps (for `Fields` whose `:special_type` is `:timestamp_seconds` or `:timestamp_milliseconds`) to dates."
-  [qp]
-  (fn [query]
-    (let [{:keys [cols rows], :as results} (qp query)
-          timestamp-seconds-col-indecies   (u/indecies-satisfying #(= (:special_type %) :timestamp_seconds)      cols)
-          timestamp-millis-col-indecies    (u/indecies-satisfying #(= (:special_type %) :timestamp_milliseconds) cols)]
-      (if-not (or (seq timestamp-seconds-col-indecies)
-                  (seq timestamp-millis-col-indecies))
-        ;; If we don't have any columns whose special type is a seconds or milliseconds timestamp return results as-is
-        results
-        ;; Otherwise go modify the results of each row
-        (update-in results [:rows] #(for [row %]
-                                      (for [[i val] (m/indexed row)]
-                                        (cond
-                                          (instance? java.util.Date val)               val ; already converted to Date as part of preprocessing,
-                                          (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000)) ; nothing to do here
-                                          (contains? timestamp-millis-col-indecies i)  (java.sql.Date. val)
-                                          :else                                        val))))))))
+                                                                                           (map->OrderBySubclause {:field     field
+                                                                                                                   :direction :ascending}))))))))
 
 
 (defn- pre-cumulative-sum
@@ -146,15 +129,15 @@
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
                                                                            (dissoc :breakout)
-                                                                           (assoc :aggregation    (expand/map->Aggregation {:aggregation-type :rows})
-                                                                                  :fields         [ag-field])))]
+                                                                           (assoc :aggregation (map->Aggregation {:aggregation-type :rows})
+                                                                                  :fields      [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
       cum-sum-with-breakout? [ag-field (-> query
-                                           (assoc-in [:query :aggregation]    (expand/map->Aggregation {:aggregation-type :sum, :field ag-field})))]
+                                           (assoc-in [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field})))]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] (expand/map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
 
       ;; Otherwise if this isn't a cum_sum query return it as-is
       :else [false query])))
@@ -194,7 +177,8 @@
     (let [query   (cond-> query
                     (and (not limit)
                          (not page)
-                         (= ag-type :rows)) (assoc-in [:query :limit] max-result-bare-rows))
+                         (or (not ag-type)
+                             (= ag-type :rows))) (assoc-in [:query :limit] max-result-bare-rows))
           results (qp query)]
       (update results :rows (partial take max-result-rows)))))
 
@@ -265,7 +249,6 @@
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
-          post-convert-unix-timestamps-to-dates
           cumulative-sum
           limit
           annotate/post-annotate
@@ -279,7 +262,6 @@
     ((<<- wrap-catch-exceptions
           driver-wrap-process-query
           post-add-row-count-and-status
-          post-convert-unix-timestamps-to-dates
           limit
           wrap-guard-multiple-calls
           driver-process-query) query)))

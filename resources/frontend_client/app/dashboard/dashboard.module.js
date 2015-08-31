@@ -3,8 +3,6 @@
 // Dashboard
 var Dashboard = angular.module('corvus.dashboard', [
     'ngRoute',
-    'ngCookies',
-    'corvus.filters',
     'corvus.directives',
     'corvus.services',
     'corvus.dashboard.services',
@@ -14,6 +12,8 @@ var Dashboard = angular.module('corvus.dashboard', [
 ]);
 
 Dashboard.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/dash/:dashId', {templateUrl: '/app/dashboard/partials/dash_view.html', controller: 'DashDetail'});
-    $routeProvider.when('/dash/:dashId/modify', {templateUrl: '/app/dashboard/partials/dash_modify.html', controller: 'DashDetail'});
+    $routeProvider.when('/dash/:dashId', {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: 'Dashboard'
+    });
 }]);

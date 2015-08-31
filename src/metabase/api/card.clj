@@ -60,7 +60,7 @@
   [id]
   (->404 (Card id)
          read-check
-         (hydrate :creator :can_read :can_write)))
+         (hydrate :creator :can_read :can_write :dashboard_count)))
 
 (defendpoint PUT "/:id"
   "Update a `Card`."

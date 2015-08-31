@@ -4,6 +4,9 @@
 /*jslint devel:true */
 /*global ace*/
 
+import { Provider } from 'react-redux';
+import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
+
 /* Directives */
 var CorvusDirectives = angular.module('corvus.directives', []);
 
@@ -133,6 +136,36 @@ CorvusDirectives.directive('mbActionButton', ['$timeout', '$compile', function (
     };
 }]);
 
+CorvusDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout) {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attr) {
+            if (scope.monitor) {
+                var win = window.open(null, "redux-devtools", "menubar=no,location=no,resizable=yes,scrollbars=no,status=no");
+                win.location.reload();
+                setTimeout(function() {
+                    React.render(
+                        <DebugPanel top right bottom left >
+                            <DevTools store={scope.store} monitor={scope.monitor} />
+                        </DebugPanel>
+                    , win.document.body);
+                }, 10);
+            }
+
+            React.render(
+                <Provider store={scope.store}>
+                    {() => <scope.Component {...scope.props} />}
+                </Provider>,
+                element[0]
+            );
+
+            scope.$on("$destroy", function() {
+                React.unmountComponentAtNode(element[0]);
+            });
+        }
+    };
+}]);
+
 CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) {
     return {
         restrict: 'A',
@@ -142,22 +175,26 @@ CorvusDirectives.directive('mbReactComponent', ['$timeout', function ($timeout) 
 
             function render() {
                 var props = {};
-                function copyProp(key, value) {
+                function copyProps(dest, src) {
+                    for (var key in src) {
+                        copyProp(dest, key, src[key]);
+                    }
+                }
+                function copyProp(dest, key, value) {
                     if (typeof value === "function") {
-                        props[key] = function() {
+                        dest[key] = function() {
                             try {
                                 return value.apply(this, arguments);
                             } finally {
                                 $timeout(() => scope.$digest());
                             }
                         }
+                        copyProps(dest[key], value);
                     } else {
-                        props[key] = value;
+                        dest[key] = value;
                     }
                 }
-                for (var key in scope) {
-                    copyProp(key, scope[key]);
-                }
+                copyProps(props, scope)
                 React.render(<Component {...props}/>, element[0]);
             }
 

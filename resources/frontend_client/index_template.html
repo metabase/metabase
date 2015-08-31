@@ -18,8 +18,8 @@
             <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
                 <ul class="wrapper flex align-center">
                     <li>
-                        <a class="NavItem cursor-pointer text-white flex align-center" href="/">
-                            <mb-logo-icon class="text-white my2"></mb-logo-icon>
+                        <a class="NavItem cursor-pointer text-white flex align-center my1" href="/">
+                            <mb-logo-icon class="text-white m1"></mb-logo-icon>
                         </a>
                     </li>
                     <li>
@@ -35,8 +35,8 @@
                                     <div class="p2"><span class="QuestionCircle">?</span></div>
                                     <div class="px2 py1 text-bold">You don’t have any dashboards yet.</div>
                                     <div class="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
-                                    <div class="p2 text-bold text-white border-top border-light">
-                                        To create your first dashboard, <a class="text-white" href="/q"> ask a question</a> and save it.
+                                    <div class="border-top border-light">
+                                        <a class="Dropdown-item block text-white no-decoration" href="#" mb-dashboard-create>Create a new dashboard</a>
                                     </div>
                                 </div>
                                 <ul class="NavDropdown-content-layer" ng-if="dashboards.length > 0">
@@ -50,6 +50,9 @@
                                                 {{dash.description}}
                                             </div>
                                         </a>
+                                    </li>
+                                    <li class="block border-top border-light">
+                                        <a class="Dropdown-item block text-white no-decoration" href="#" mb-dashboard-create>Create a new dashboard</a>
                                     </li>
                                 </ul>
                             </div>
