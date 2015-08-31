@@ -72,7 +72,7 @@
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
   (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
-    (events/publish-event :dashboard-add-cards (merge {:actor_id *current-user-id*} result))
+    (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcard result})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
@@ -82,7 +82,7 @@
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
   (let [result (del DashboardCard :id dashcardId :dashboard_id id)]
-    (events/publish-event :dashboard-remove-cards {:id dashcardId :dashboard_id id :actor_id *current-user-id*})
+    (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcard dashcardId})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
@@ -101,7 +101,7 @@
     (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
       (when dashcard
         (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
-  (events/publish-event :dashboard-reposition-cards {:dashboard_id id :actor_id *current-user-id* :cards cards})
+  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :cards cards})
   (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 

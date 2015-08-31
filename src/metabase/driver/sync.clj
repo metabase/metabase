@@ -77,7 +77,7 @@
                (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
                (sync-database-active-tables! driver))
 
-          (events/publish-event :driver-sync-database {:database_id (:id database) :running_time (- (System/currentTimeMillis) start-time)})
+          (events/publish-event :database-sync {:database_id (:id database) :running_time (- (System/currentTimeMillis) start-time)})
           (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
                                     (- (System/currentTimeMillis) start-time))))))))
 
@@ -90,7 +90,7 @@
       (sync-in-context driver database
         (fn []
           (sync-database-active-tables! driver [table])
-          (events/publish-event :driver-sync-table {:table_id (:id table)}))))))
+          (events/publish-event :table-sync {:table_id (:id table)}))))))
 
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
