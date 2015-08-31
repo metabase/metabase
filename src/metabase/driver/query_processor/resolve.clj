@@ -71,7 +71,7 @@
                   this
                   (resolve-field parent field-id->fields))
       parent-id (assoc this :parent (or (field-id->fields parent-id)
-                                        (->FieldPlaceholder parent-id)))
+                                        (map->FieldPlaceholder {:field-id parent-id})))
       :else     this))
 
   (resolve-table [{:keys [table-id], :as this} table-id->table]
