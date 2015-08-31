@@ -53,6 +53,14 @@
             [table-name])
           field-name)))
 
+(def ^:const datetime-field-units
+  "Valid units for a `DateTimeField`."
+  #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
+    :week :week-of-year :month :month-of-year :quarter :quarter-of-year})
+
+(defn datetime-field-unit? [unit]
+  (contains? datetime-field-units (keyword unit)))
+
 ;; wrapper around Field
 (defrecord DateTimeField [^Field   field
                           ^Keyword unit])
@@ -62,8 +70,19 @@
 (defrecord Value [value
                   ^Field field])
 
+;; e.g. an absolute point in time (literal)
 (defrecord DateTimeValue [^Timestamp value
                           ^DateTimeField field])
+
+(def ^:const relative-datetime-value-units
+  "Valid units for a `RelativeDateTimeValue`."
+  #{:minute :hour :day :week :month :quarter :year})
+
+(defn relative-datetime-value-unit? [unit]
+  (contains? relative-datetime-value-units (keyword unit)))
+
+(defrecord RelativeDateTimeValue [^Integer amount
+                                  ^Keyword unit])
 
 
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------
@@ -76,6 +95,7 @@
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (defrecord ValuePlaceholder [^FieldPlaceholder field-placeholder
+                             ^Keyword          relative-unit
                              value])
 
 

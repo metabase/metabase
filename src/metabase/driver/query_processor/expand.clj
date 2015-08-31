@@ -59,33 +59,47 @@
 
 ;; ## -------------------- Field + Value --------------------
 
-(defn- unexpanded-Field?
-  "Is this a valid value for a `Field` ID in an unexpanded query? (i.e. an integer or `fk->` form)."
-  ;; ["aggregation" 0] "back-reference" form not included here since its specific to the order_by clause
-  [field]
-  (match field
-    (field-id :guard integer?)                                             true
-    ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)] true
-    _                                                                      false))
+(defn- unexpanded-Field? [field-id]
+  (match field-id
+    (_ :guard integer?)                                                             true
+    ["fk->" (_ :guard integer?) (_ :guard integer?)]                                true
+    ["datetime_field" (_ :guard unexpanded-Field?) (_ :guard datetime-field-unit?)] true
+    :else                                                                           false))
 
+(defn- parse-field [field-id]
+  (map->FieldPlaceholder
+   (match field-id
+     (_ :guard integer?)
+     {:field-id field-id}
 
+     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)]
+     (do (assert-driver-supports :foreign-keys)
+         (map->FieldPlaceholder {:field-id dest-field-id, :fk-field-id fk-field-id}))
+
+     ["datetime_field" field-id (unit :guard datetime-field-unit?)]
+     (assoc (ph field-id)
+            :datetime-unit (keyword unit))
+
+     _ (throw (Exception. (str "Invalid field: " field-id))))))
+
+(defn- parse-value [field-id value]
+  (map->ValuePlaceholder
+   (merge {:field-placeholder (ph field-id)}
+          (match value
+            ["relative_datetime" "current" (unit :guard relative-datetime-value-unit?)]
+            {:value         0
+             :relative-unit unit}
+
+            ["relative_datetime" (amount :guard integer?) (unit :guard relative-datetime-value-unit?)]
+            {:value         amount
+             :relative-unit unit}
+
+            _ {:value value}))))
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value that can be resolved later."
-  ([field-id]
-   (map->FieldPlaceholder
-    (match field-id
-      (_ :guard integer?)
-      {:field-id field-id}
-
-      ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)]
-      (do (assert-driver-supports :foreign-keys)
-          (map->FieldPlaceholder {:field-id dest-field-id, :fk-field-id fk-field-id}))
-
-      _ (throw (Exception. (str "Invalid field: " field-id))))))
-  ([field-id value]
-   (->ValuePlaceholder (ph field-id) value)))
-
+  ([field-id]       (parse-field field-id))
+  ([field-id value] (parse-value field-id value)))
 
 
 ;; # ======================================== CLAUSE DEFINITIONS ========================================
@@ -146,7 +160,41 @@
       (= v false)
       (orderable-Value? v)))
 
+;; [TIME_INTERVAL ...] filters are just syntactic sugar for more complicated datetime filter subclauses.
+;; This function parses the args to the TIME_INTERVAL and returns the appropriate subclause.
+;; This clause is then recursively parsed below by parse-filter-subclause.
+;;
+;; A valid input looks like [TIME_INTERVAL <field> (current|last|next|<int>) <unit>] .
+;;
+;; "current", "last", and "next" are the same as supplying the integers 0, -1, and 1, respectively.
+;; For these values, we want to generate a clause like [= [datetime_field <field> as <unit>] [datetime <int> <unit>]].
+;;
+;; For ints > 1 or < -1, we want to generate a range (i.e., a BETWEEN filter clause). These should *exclude* the current moment in time.
+;;
+;; e.g. [TIME_INTERVAL <field> -30 "day"] refers to the past 30 days, excluding today; i.e. the range of -31 days ago to -1 day ago.
+;; Thus values of n < -1 translate to clauses like [BETWEEN [datetime_field <field> as day] [datetime -31 day] [datetime -1 day]].
+(defparser parse-time-interval-filter-subclause
+  ;; For "current"/"last"/"next" replace with the appropriate int and recurse
+  [field "current" unit] (parse-time-interval-filter-subclause [field  0 unit])
+  [field "last"    unit] (parse-time-interval-filter-subclause [field -1 unit])
+  [field "next"    unit] (parse-time-interval-filter-subclause [field  1 unit])
+
+  ;; For values of -1 <= n <= 1, generate the appropriate [= ...] clause
+  [field  0 unit] ["=" ["datetime_field" field "as" unit] ["datetime" "now"]]
+  [field -1 unit] ["=" ["datetime_field" field "as" unit] ["datetime" -1 unit]]
+  [field  1 unit] ["=" ["datetime_field" field "as" unit] ["datetime"  1 unit]]
+
+  ;; For other int values of n generate the appropriate [BETWEEN ...] clause
+  [field (n :guard #(< % -1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime" (dec n) unit] ["datetime"      -1 unit]]
+  [field (n :guard #(> %  1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime"       1 unit] ["datetime" (inc n) unit]])
+
 (defparser parse-filter-subclause
+  ["TIME_INTERVAL" (field-id :guard unexpanded-Field?) (n :guard #(or (integer? %) (contains? #{"current" "last" "next"} %))) (unit :guard relative-datetime-value-unit?)]
+  (parse-filter-subclause (parse-time-interval-filter-subclause [field-id n (name unit)]))
+
+  ["TIME_INTERVAL" & args]
+  (throw (Exception. (format "Invalid TIME_INTERVAL clause: %s" args)))
+
    ["INSIDE" (lat-field :guard unexpanded-Field?) (lon-field :guard unexpanded-Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
   (map->Filter:Inside {:filter-type :inside
                        :lat         {:field (ph lat-field)
