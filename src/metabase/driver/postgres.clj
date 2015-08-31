@@ -120,11 +120,47 @@
         (upd Field (:id field) :special_type :json)
         (assoc field :special_type :json)))))
 
+(defn- date [_ unit field-or-value]
+  (utils/func (case unit
+                :default         "CAST(%s AS TIMESTAMP)"
+                :minute          "DATE_TRUNC('minute', %s)"
+                :minute-of-hour  "CAST(EXTRACT(MINUTE FROM %s) AS INTEGER)"
+                :hour            "DATE_TRUNC('hour', %s)"
+                :hour-of-day     "CAST(EXTRACT(HOUR FROM %s) AS INTEGER)"
+                :day             "CAST(%s AS DATE)"
+                ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+                :day-of-week     "(CAST(EXTRACT(DOW FROM %s) AS INTEGER) + 1)"
+                :day-of-month    "CAST(EXTRACT(DAY FROM %s) AS INTEGER)"
+                :day-of-year     "CAST(EXTRACT(DOY FROM %s) AS INTEGER)"
+                ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+                :week            "(DATE_TRUNC('week', (%s + INTERVAL '1 day')) - INTERVAL '1 day')"
+                :week-of-year    "CAST(EXTRACT(WEEK FROM (%s + INTERVAL '1 day')) AS INTEGER)"
+                :month           "DATE_TRUNC('month', %s)"
+                :month-of-year   "CAST(EXTRACT(MONTH FROM %s) AS INTEGER)"
+                :quarter         "DATE_TRUNC('quarter', %s)"
+                :quarter-of-year "CAST(EXTRACT(QUARTER FROM %s) AS INTEGER)"
+                :year            "CAST(EXTRACT(YEAR FROM %s) AS INTEGER)")
+              [field-or-value]))
+
+(defn- date-interval [_ unit amount]
+  (utils/generated (format (case unit
+                             :minute  "(NOW() + INTERVAL '%d minute')"
+                             :hour    "(NOW() + INTERVAL '%d hour')"
+                             :day     "(NOW() + INTERVAL '%d day')"
+                             :week    "(NOW() + INTERVAL '%d week')"
+                             :month   "(NOW() + INTERVAL '%d month')"
+                             :quarter "(NOW() + INTERVAL '%d quarter')"
+                             :year    "(NOW() + INTERVAL '%d year')")
+                           amount)))
+
 (defrecord PostgresDriver [])
+
 (extend PostgresDriver
   ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
                                 :database->connection-details        database->connection-details
                                 :unix-timestamp->timestamp           unix-timestamp->timestamp
+                                :date                                date
+                                :date-interval                       date-interval
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql}
   ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
   IDriver                      GenericSQLIDriverMixin

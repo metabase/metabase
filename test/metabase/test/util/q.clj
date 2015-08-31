@@ -38,25 +38,25 @@
 (def ^:dynamic *table-name* nil)
 
 (defmacro field [f]
-  {:pre [(symbol? f)]}
   (core/or
-   (let [f (name f)]
-     (u/cond-let
-      ;; x->y <-> ["fk->" x y]
-      [[_ from to] (re-matches #"^(.+)->(.+)$" f)]
-      ["fk->" `(field ~(symbol from)) `(field ~(symbol to))]
+   (if-not (symbol? f) f
+     (let [f (name f)]
+       (u/cond-let
+        ;; x->y <-> ["fk->" x y]
+        [[_ from to] (re-matches #"^(.+)->(.+)$" f)]
+        ["fk->" `(field ~(symbol from)) `(field ~(symbol to))]
 
-      ;; x...y <-> ?
-      [[_ f sub] (re-matches #"^(.+)\.\.\.(.+)$" f)]
-      `(~@(macroexpand-1 `(field ~(symbol f))) ~(keyword sub))
+        ;; x...y <-> ?
+        [[_ f sub] (re-matches #"^(.+)\.\.\.(.+)$" f)]
+        `(~@(macroexpand-1 `(field ~(symbol f))) ~(keyword sub))
 
-      ;; ag.0 <-> ["aggregation" 0]
-      [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
-      ["aggregation" (Integer/parseInt ag-field-index)]
+        ;; ag.0 <-> ["aggregation" 0]
+        [[_ ag-field-index] (re-matches #"^ag\.(\d+)$" f)]
+        ["aggregation" (Integer/parseInt ag-field-index)]
 
-      ;; table.field <-> (id table field)
-      [[_ table field] (re-matches #"^([^\.]+)\.([^\.]+)$" f)]
-      `(data/id ~(keyword table) ~(keyword field))))
+        ;; table.field <-> (id table field)
+        [[_ table field] (re-matches #"^([^\.]+)\.([^\.]+)$" f)]
+        `(data/id ~(keyword table) ~(keyword field)))))
 
    ;; fallback : (id *table-name* field)
    `(data/id *table-name* ~(keyword f))))
