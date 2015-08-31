@@ -65,13 +65,15 @@
 ;; ## Field
 (defmethod unresolved-field-id Field [{:keys [parent parent-id]}]
   (or (unresolved-field-id parent)
-      parent-id))
+      (when (instance? FieldPlaceholder parent)
+        parent-id)))
 
 (defmethod resolve-field Field [{:keys [parent parent-id], :as this} field-id->fields]
   (cond
-    parent    (if (= (type parent) Field)
-                this
-                (resolve-field parent field-id->fields))
+    parent    (or (when (instance? FieldPlaceholder parent)
+                    (when-let [resolved (resolve-field parent field-id->fields)]
+                      (assoc this :parent resolved)))
+                  this)
     parent-id (assoc this :parent (or (field-id->fields parent-id)
                                       (map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
@@ -119,8 +121,7 @@
          (walk/postwalk (fn [form]
                           (when-let [id (f form)]
                             (conj! ids id)))))
-    (let [ids (persistent! ids)]
-      (when (seq ids) ids))))
+    (persistent! ids)))
 (def ^:private collect-unresolved-field-ids (partial collect-ids-with unresolved-field-id))
 (def ^:private collect-fk-field-ids         (partial collect-ids-with fk-field-id))
 
@@ -133,24 +134,27 @@
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT.
    Record `:table-ids` referenced in the Query."
   [expanded-query-dict]
-  (let [field-ids (collect-unresolved-field-ids expanded-query-dict)]
-    (if-not field-ids
-      ;; If there are no more Field IDs to resolve we're done.
-      expanded-query-dict
-      ;; Otherwise fetch + resolve the Fields in question
-      (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
-                             :id [in field-ids])
-                        (m/map-vals rename-mb-field-keys)
-                        (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
-                                                        (map->FieldPlaceholder {:field-id parent-id})))))]
-        (->>
-         ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query dict.
-         ;; Those will be used for Table resolution in the next step.
-         (update expanded-query-dict :table-ids set/union (set (map :table-id (vals fields))))
-         ;; Walk the query and resolve all fields
-         (walk/postwalk #(resolve-field % fields))
-         ;; Recurse in case any new (nested) unresolved fields were found.
-         recur)))))
+  (loop [max-iterations 5, expanded-query-dict expanded-query-dict]
+    (when (< max-iterations 0)
+      (throw (Exception. "Failed to resolve fields: too many iterations.")))
+    (let [field-ids (collect-unresolved-field-ids expanded-query-dict)]
+      (if-not (seq field-ids)
+        ;; If there are no more Field IDs to resolve we're done.
+        expanded-query-dict
+        ;; Otherwise fetch + resolve the Fields in question
+        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
+                               :id [in field-ids])
+                          (m/map-vals rename-mb-field-keys)
+                          (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
+                                                          (map->FieldPlaceholder {:field-id parent-id})))))]
+          (->>
+           ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query dict.
+           ;; Those will be used for Table resolution in the next step.
+           (update expanded-query-dict :table-ids set/union (set (map :table-id (vals fields))))
+           ;; Walk the query and resolve all fields
+           (walk/postwalk #(resolve-field % fields))
+           ;; Recurse in case any new (nested) unresolved fields were found.
+           (recur (dec max-iterations))))))))
 
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
