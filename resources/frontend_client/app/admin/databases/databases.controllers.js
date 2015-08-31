@@ -1,5 +1,6 @@
 "use strict";
-/*global _*/
+
+import _ from "underscore";
 
 var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.metabase.services']);
 

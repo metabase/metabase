@@ -1,5 +1,3 @@
-/*global window*/
-
 "use strict";
 
 import 'babel/polyfill';

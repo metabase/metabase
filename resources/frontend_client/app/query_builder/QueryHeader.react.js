@@ -1,5 +1,4 @@
 'use strict';
-/*global setTimeout, clearTimeout*/
 
 import ActionButton from 'metabase/components/ActionButton.react';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.react';

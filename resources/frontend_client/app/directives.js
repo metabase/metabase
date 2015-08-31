@@ -1,7 +1,5 @@
 'use strict';
 
-/*jslint browser:true */
-/*jslint devel:true */
 /*global ace*/
 
 import { Provider } from 'react-redux';

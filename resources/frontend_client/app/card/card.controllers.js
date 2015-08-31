@@ -1,5 +1,6 @@
 'use strict';
-/*global _, document, confirm*/
+
+import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
@@ -12,7 +13,6 @@ import QueryVisualization from '../query_builder/QueryVisualization.react';
 
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
-
 
 //  Card Controllers
 var CardControllers = angular.module('metabase.card.controllers', []);

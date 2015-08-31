@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import SettingsHeader from "./SettingsHeader.react";
 import SettingsSetting from "./SettingsSetting.react";

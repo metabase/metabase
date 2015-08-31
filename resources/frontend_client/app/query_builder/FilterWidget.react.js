@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import Calendar from './Calendar.react';
 import Icon from "metabase/components/Icon.react";
