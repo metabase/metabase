@@ -7,7 +7,6 @@ import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
 
 var cx = React.addons.classSet;
-var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 
 export default React.createClass({
     displayName: 'AddToDashboardPopover',

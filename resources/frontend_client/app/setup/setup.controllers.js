@@ -1,6 +1,6 @@
 'use strict';
 
-var SetupControllers = angular.module('corvus.setup.controllers', ['corvus.metabase.services', 'corvusadmin.settings.services', 'corvus.setup.services']);
+var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.metabase.services', 'metabaseadmin.settings.services', 'metabase.setup.services']);
 
 SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams', 'AppState',
     function($scope, $location, $routeParams, AppState) {

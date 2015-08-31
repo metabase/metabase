@@ -1,8 +1,8 @@
 'use strict';
 
-var Setup = angular.module('corvus.setup', [
-    'corvus.setup.controllers',
-    'corvus.setup.directives'
+var Setup = angular.module('metabase.setup', [
+    'metabase.setup.controllers',
+    'metabase.setup.directives'
 ]);
 
 Setup.config(['$routeProvider', function($routeProvider) {

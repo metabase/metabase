@@ -1,7 +1,6 @@
 "use strict";
 /*global _*/
 
-import { combineReducers } from "redux";
 import { createAction } from "redux-actions";
 import { normalize, Schema, arrayOf } from "normalizr";
 
@@ -98,7 +97,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
 
 export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
     return async function(dispatch, getState) {
-        let result = await Card.delete({ cardId });
+        await Card.delete({ cardId });
         return cardId;
     };
 });
@@ -144,7 +143,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         };
 
         // remove isRemoved dashboards
-        let removedDashcards = await * dashboard.ordered_cards
+        await * dashboard.ordered_cards
             .filter(dc => dc.isRemoved && !dc.isAdded)
             .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id }));
 
@@ -182,7 +181,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
 export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
-        let result = await Dashboard.delete({ dashId });
+        await Dashboard.delete({ dashId });
         return dashId;
     };
 });
@@ -211,6 +210,6 @@ function timeout(promise, duration, error) {
 }
 
 // returns a promise that resolves after a given duration
-function delay(duration) {
-    return new Promise((resolve, reject) => setTimeout(resolve, duration));
-}
+// function delay(duration) {
+//     return new Promise((resolve, reject) => setTimeout(resolve, duration));
+// }

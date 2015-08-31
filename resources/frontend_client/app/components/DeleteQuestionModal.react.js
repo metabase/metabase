@@ -3,7 +3,6 @@
 import ModalContent from "metabase/components/ModalContent.react";
 
 import inflection from "inflection";
-import cx from "classnames";
 
 export default class DeleteQuestionModal extends React.Component {
     constructor() {

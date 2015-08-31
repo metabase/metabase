@@ -2,8 +2,8 @@
 
 import 'metabase/filters';
 
-describe('corvus.filters', function() {
-    beforeEach(angular.mock.module('corvus.filters'));
+describe('metabase.filters', function() {
+    beforeEach(angular.mock.module('metabase.filters'));
 
     describe('interpolate', function() {
         beforeEach(angular.mock.module(function($provide) {

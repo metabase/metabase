@@ -2,7 +2,7 @@
 /*global _*/
 
 // Card Services
-var CardServices = angular.module('corvus.card.services', ['ngResource', 'ngCookies']);
+var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);
 
 CardServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/card/:cardId', {}, {

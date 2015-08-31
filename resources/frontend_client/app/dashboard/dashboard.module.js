@@ -1,14 +1,14 @@
 'use strict';
 
 // Dashboard
-var Dashboard = angular.module('corvus.dashboard', [
+var Dashboard = angular.module('metabase.dashboard', [
     'ngRoute',
-    'corvus.directives',
-    'corvus.services',
-    'corvus.dashboard.services',
-    'corvus.dashboard.controllers',
-    'corvus.dashboard.directives',
-    'corvus.card.services'
+    'metabase.directives',
+    'metabase.services',
+    'metabase.dashboard.services',
+    'metabase.dashboard.controllers',
+    'metabase.dashboard.directives',
+    'metabase.card.services'
 ]);
 
 Dashboard.config(['$routeProvider', function ($routeProvider) {

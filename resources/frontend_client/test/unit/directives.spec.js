@@ -2,8 +2,8 @@
 
 import 'metabase/directives';
 
-describe('corvus.directives', function() {
-    beforeEach(angular.mock.module('corvus.directives'));
+describe('metabase.directives', function() {
+    beforeEach(angular.mock.module('metabase.directives'));
 
     describe('mb-scroll-shadow', function() {
         var element;

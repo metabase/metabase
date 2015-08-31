@@ -1,13 +1,13 @@
 'use strict';
 
 // Metabase Services
-var MetabaseServices = angular.module('corvus.metabase.services', [
+var MetabaseServices = angular.module('metabase.metabase.services', [
     'ngResource',
     'ngCookies',
-    'corvus.services'
+    'metabase.services'
 ]);
 
-MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'CorvusCore', function($resource, $cookies, CorvusCore) {
+MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_form_input: {
             url: '/api/meta/db/form_input',
@@ -27,7 +27,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'CorvusCore', fun
                 }
             },
             transformRequest: function(data) {
-                data = CorvusCore.prepareDatabaseDetails(data);
+                data = MetabaseCore.prepareDatabaseDetails(data);
                 return angular.toJson(data);
             }
         },
@@ -40,7 +40,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'CorvusCore', fun
                 }
             },
             transformRequest: function(data) {
-                data = CorvusCore.prepareDatabaseDetails(data);
+                data = MetabaseCore.prepareDatabaseDetails(data);
                 return angular.toJson(data);
             }
         },

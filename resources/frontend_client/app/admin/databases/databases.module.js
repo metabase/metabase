@@ -1,7 +1,7 @@
 'use strict';
 
-var AdminDatabases = angular.module('corvusadmin.databases', [
-    'corvusadmin.databases.controllers'
+var AdminDatabases = angular.module('metabaseadmin.databases', [
+    'metabaseadmin.databases.controllers'
 ]);
 
 AdminDatabases.config(['$routeProvider', function ($routeProvider) {

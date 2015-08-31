@@ -1,6 +1,6 @@
 "use strict";
 
-var UserControllers = angular.module('corvus.user.controllers', ['metabase.forms']);
+var UserControllers = angular.module('metabase.user.controllers', ['metabase.forms']);
 
 UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {
     $scope.tab_focus = 'details';

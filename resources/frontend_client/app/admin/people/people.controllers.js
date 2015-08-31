@@ -1,8 +1,7 @@
 'use strict';
-/*global _*/
 
-var PeopleControllers = angular.module('corvusadmin.people.controllers', [
-    'corvus.services',
+var PeopleControllers = angular.module('metabaseadmin.people.controllers', [
+    'metabase.services',
     'metabase.forms'
 ]);
 

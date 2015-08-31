@@ -1,5 +1,4 @@
 'use strict';
-/*global _*/
 
 import Input from "metabase/components/Input.react";
 import MetadataField from "./MetadataField.react";

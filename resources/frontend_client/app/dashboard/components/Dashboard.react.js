@@ -1,5 +1,4 @@
 "use strict";
-/*global _*/
 
 import React, { Component, PropTypes } from "react";
 

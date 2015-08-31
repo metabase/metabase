@@ -1,8 +1,7 @@
 "use strict";
 
-import FieldSelector from "./field_selector.react";
-import FieldName from "./field_name.react";
-import Icon from "metabase/components/Icon.react";
+import FieldSelector from "./FieldSelector.react";
+import FieldName from "./FieldName.react";
 import Popover from "metabase/components/Popover.react";
 
 import Query from "metabase/lib/query";

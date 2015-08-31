@@ -1,15 +1,12 @@
 'use strict';
 
-import ExpandableString from './expandable_string.react';
-import FixedDataTable from 'fixed-data-table';
+import ExpandableString from './ExpandableString.react';
 import Humanize from 'humanize';
 import Icon from "metabase/components/Icon.react";
-import IconBorder from './icon_border.react';
+import IconBorder from './IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 var cx = React.addons.classSet;
-var Table = FixedDataTable.Table;
-var Column = FixedDataTable.Column;
 
 export default React.createClass({
     displayName: 'QueryVisualizationObjectDetailTable',
@@ -41,7 +38,6 @@ export default React.createClass({
         // TODO: should we be casting all values toString()?
         // Check out the expected format of each row above in the rowGetter() function
         var row = this.rowGetter(rowIndex),
-            cell,
             key = 'cl'+rowIndex+'_'+cellDataKey;
 
         if (cellDataKey === 'field') {

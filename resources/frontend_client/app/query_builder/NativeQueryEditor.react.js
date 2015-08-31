@@ -1,7 +1,7 @@
 'use strict';
 /*global ace*/
 
-import DataSelector from './data_selector.react';
+import DataSelector from './DataSelector.react';
 import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({

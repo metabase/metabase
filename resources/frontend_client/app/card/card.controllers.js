@@ -4,18 +4,18 @@
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
 
-import DataReference from '../query_builder/data_reference.react';
-import GuiQueryEditor from '../query_builder/gui_query_editor.react';
-import NativeQueryEditor from '../query_builder/native_query_editor.react';
-import QueryHeader from '../query_builder/query_header.react';
-import QueryVisualization from '../query_builder/visualization.react';
+import DataReference from '../query_builder/DataReference.react';
+import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
+import NativeQueryEditor from '../query_builder/NativeQueryEditor.react';
+import QueryHeader from '../query_builder/QueryHeader.react';
+import QueryVisualization from '../query_builder/QueryVisualization.react';
 
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
 
 //  Card Controllers
-var CardControllers = angular.module('corvus.card.controllers', []);
+var CardControllers = angular.module('metabase.card.controllers', []);
 
 CardControllers.controller('CardList', ['$scope', '$location', 'Card', function($scope, $location, Card) {
 
@@ -73,8 +73,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'CorvusFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, CorvusFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'MetabaseFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, MetabaseFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -277,8 +277,7 @@ CardControllers.controller('CardDetail', [
                 if (!queryResult) return false;
 
                 // lookup the coldef and cell value of the cell we are curious about
-                var coldef = queryResult.data.cols[columnIndex],
-                    value = queryResult.data.rows[rowIndex][columnIndex];
+                var coldef = queryResult.data.cols[columnIndex];
 
                 if (!coldef || !coldef.special_type) return false;
 
@@ -437,7 +436,6 @@ CardControllers.controller('CardDetail', [
             renderAll();
 
             // make our api call
-            var firstRunNewCard = (queryResult === null && card.id === undefined);
             Metabase.dataset(dataset_query, function (result) {
                 queryResult = result;
                 isRunning = false;
@@ -696,7 +694,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function markupTableMetadata(table) {
-            var updatedTable = CorvusFormGenerator.addValidOperatorsToFields(table);
+            var updatedTable = MetabaseFormGenerator.addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
         }
 
@@ -916,7 +914,6 @@ CardControllers.controller('CardDetail', [
             // 1. not CardDetail
             // 2. both serializedCard and cardId are not set (new card)
             if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
-                var params = $route.current.params;
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {

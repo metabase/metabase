@@ -1,11 +1,8 @@
 'use strict';
 
-import Icon from "metabase/components/Icon.react";
-import DataReferenceQueryButton from './data_reference_query_button.react';
+import DataReferenceQueryButton from './DataReferenceQueryButton.react';
+
 import inflection from 'inflection';
-
-import Query from "metabase/lib/query";
-
 var cx = React.addons.classSet;
 
 export default React.createClass({

@@ -2,8 +2,6 @@
 
 import ModalContent from "metabase/components/ModalContent.react";
 
-import cx from "classnames";
-
 export default class DeleteDashboardModal extends React.Component {
     constructor() {
         super();

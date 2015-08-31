@@ -1,14 +1,14 @@
 "use strict";
 
-var UserAdmin = angular.module('corvus.user', [
+var UserAdmin = angular.module('metabase.user', [
     'ngRoute',
     'ngCookies',
-    'corvus.filters',
-    'corvus.directives',
-    'corvus.services',
-    'corvus.metabase.services',
-    'corvus.user.controllers',
-    'corvus.user.directives'
+    'metabase.filters',
+    'metabase.directives',
+    'metabase.services',
+    'metabase.metabase.services',
+    'metabase.user.controllers',
+    'metabase.user.directives'
 ]);
 
 UserAdmin.config(['$routeProvider', function ($routeProvider) {
