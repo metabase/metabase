@@ -108,27 +108,6 @@
                                                                                                                    :direction :ascending}))))))))
 
 
-(defn- post-convert-unix-timestamps-to-dates
-  "Convert the values of Unix timestamps (for `Fields` whose `:special_type` is `:timestamp_seconds` or `:timestamp_milliseconds`) to dates."
-  [qp]
-  (fn [query]
-    (let [{:keys [cols rows], :as results} (qp query)
-          timestamp-seconds-col-indecies   (u/indecies-satisfying #(= (:special_type %) :timestamp_seconds)      cols)
-          timestamp-millis-col-indecies    (u/indecies-satisfying #(= (:special_type %) :timestamp_milliseconds) cols)]
-      (if-not (or (seq timestamp-seconds-col-indecies)
-                  (seq timestamp-millis-col-indecies))
-        ;; If we don't have any columns whose special type is a seconds or milliseconds timestamp return results as-is
-        results
-        ;; Otherwise go modify the results of each row
-        (update-in results [:rows] #(for [row %]
-                                      (for [[i val] (m/indexed row)]
-                                        (cond
-                                          (instance? java.util.Date val)               val ; already converted to Date as part of preprocessing,
-                                          (contains? timestamp-seconds-col-indecies i) (java.sql.Date. (* val 1000)) ; nothing to do here
-                                          (contains? timestamp-millis-col-indecies i)  (java.sql.Date. val)
-                                          :else                                        val))))))))
-
-
 (defn- pre-cumulative-sum
   "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
    (Cumulative sum is a special case; it is implemented in post-processing).
@@ -270,7 +249,6 @@
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
-          post-convert-unix-timestamps-to-dates
           cumulative-sum
           limit
           annotate/post-annotate
@@ -284,7 +262,6 @@
     ((<<- wrap-catch-exceptions
           driver-wrap-process-query
           post-add-row-count-and-status
-          post-convert-unix-timestamps-to-dates
           limit
           wrap-guard-multiple-calls
           driver-process-query) query)))

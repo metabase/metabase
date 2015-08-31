@@ -76,8 +76,8 @@
      (do (assert-driver-supports :foreign-keys)
          (map->FieldPlaceholder {:field-id dest-field-id, :fk-field-id fk-field-id}))
 
-     ["datetime_field" field-id (unit :guard datetime-field-unit?)]
-     (assoc (ph field-id)
+     ["datetime_field" id (unit :guard datetime-field-unit?)]
+     (assoc (ph id)
             :datetime-unit (keyword unit))
 
      _ (throw (Exception. (str "Invalid field: " field-id))))))

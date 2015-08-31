@@ -123,21 +123,23 @@
 (defn- date [_ unit field-or-value]
   (utils/func (case unit
                 :default         "CAST(%s AS TIMESTAMP)"
-                :minute          "DATE_TRUNC('minute', %s)" ; or CAST as timestamp?
-                :minute-of-hour  "EXTRACT(MINUTE FROM %s)"
+                :minute          "DATE_TRUNC('minute', %s)"
+                :minute-of-hour  "CAST(EXTRACT(MINUTE FROM %s) AS INTEGER)"
                 :hour            "DATE_TRUNC('hour', %s)"
-                :hour-of-day     "EXTRACT(HOUR FROM %s)"
+                :hour-of-day     "CAST(EXTRACT(HOUR FROM %s) AS INTEGER)"
                 :day             "CAST(%s AS DATE)"
-                :day-of-week     "(EXTRACT(DOW FROM %s) + 1)" ; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-                :day-of-month    "EXTRACT(DAY FROM %s)"
-                :day-of-year     "EXTRACT(DOY FROM %s)"
-                :week            "DATE_TRUNC('week', %s)"
-                :week-of-year    "EXTRACT(WEEK FROM %s)"
+                ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+                :day-of-week     "(CAST(EXTRACT(DOW FROM %s) AS INTEGER) + 1)"
+                :day-of-month    "CAST(EXTRACT(DAY FROM %s) AS INTEGER)"
+                :day-of-year     "CAST(EXTRACT(DOY FROM %s) AS INTEGER)"
+                ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+                :week            "(DATE_TRUNC('week', (%s + INTERVAL '1 day')) - INTERVAL '1 day')"
+                :week-of-year    "CAST(EXTRACT(WEEK FROM (%s + INTERVAL '1 day')) AS INTEGER)"
                 :month           "DATE_TRUNC('month', %s)"
-                :month-of-year   "EXTRACT(MONTH FROM %s)"
+                :month-of-year   "CAST(EXTRACT(MONTH FROM %s) AS INTEGER)"
                 :quarter         "DATE_TRUNC('quarter', %s)"
-                :quarter-of-year "EXTRACT(QUARTER FROM %s)"
-                :year            "DATE_TRUNC('year', %s)")
+                :quarter-of-year "CAST(EXTRACT(QUARTER FROM %s) AS INTEGER)"
+                :year            "CAST(EXTRACT(YEAR FROM %s) AS INTEGER)")
               [field-or-value]))
 
 (defn- date-interval [_ unit amount]

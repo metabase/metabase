@@ -56,7 +56,7 @@
 (def ^:const datetime-field-units
   "Valid units for a `DateTimeField`."
   #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-    :week :week-of-year :month :month-of-year :quarter :quarter-of-year})
+    :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
 
 (defn datetime-field-unit? [unit]
   (contains? datetime-field-units (keyword unit)))

@@ -73,7 +73,7 @@
   (utils/func (case seconds-or-milliseconds
                 :seconds      "FROM_UNIXTIME(%s)"
                 :milliseconds "FROM_UNIXTIME(%s / 1000)")
-              [field-or-value]))
+                [field-or-value]))
 
 (defn- timezone->set-timezone-sql [_ timezone]
   ;; If this fails you need to load the timezone definitions from your system into MySQL;
@@ -90,19 +90,21 @@
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
 (defn- trunc-to-quarter [field-or-value]
-  (funcs "STR_TO_DATE(%s, '%%Y%%m')"
+  (funcs "STR_TO_DATE(%s, '%%Y-%%m-%%d')"
          ["CONCAT(%s)"
           ["YEAR(%s)" field-or-value]
-          ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
+          (k/raw "'-'")
+          ["((QUARTER(%s) * 3) - 2)" field-or-value]
+          (k/raw "'-01'")]))
 
 (defn- date [_ unit field-or-value]
   (if (= unit :quarter)
     (trunc-to-quarter field-or-value)
     (utils/func (case unit
                   :default         "TIMESTAMP(%s)"
-                  :minute          (trunc-with-format "%Y%m%d%H%i")
+                  :minute          (trunc-with-format "%Y-%m-%d %H:%i")
                   :minute-of-hour  "MINUTE(%s)"
-                  :hour            (trunc-with-format "%Y%m%d%H")
+                  :hour            (trunc-with-format "%Y-%m-%d %H")
                   :hour-of-day     "HOUR(%s)"
                   :day             "DATE(%s)"
                   :day-of-week     "DAYOFWEEK(%s)"
@@ -110,9 +112,10 @@
                   :day-of-year     "DAYOFYEAR(%s)"
                   ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
                   ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
-                  :week            "STR_TO_DATE(CONCAT(YEARWEEK(%s), 'Sunday'), '%%X%%V%%W')"
-                  :week-of-year    "WEEK(%s)"
-                  :month           (trunc-with-format "%Y%m")
+                  :week            "STR_TO_DATE(CONCAT(YEARWEEK(%s), ' Sunday'), '%%X%%V %%W')"
+                  ;; mode 6: Sunday is first day of week, first week of year is the first one with 4+ days
+                  :week-of-year    "(WEEK(%s, 6) + 1)"
+                  :month           "STR_TO_DATE(CONCAT(DATE_FORMAT(%s, '%%Y-%%m'), '-01'), '%%Y-%%m-%%d')"
                   :month-of-year   "MONTH(%s)"
                   :quarter-of-year "QUARTER(%s)"
                   :year            "YEAR(%s)")

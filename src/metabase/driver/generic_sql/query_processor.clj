@@ -90,11 +90,6 @@
 
 (defmethod apply-form :default [form]) ;; nothing
 
-(defn- cast-as-date
-  "Generate a korma form to cast FIELD-OR-VALUE to a `DATE`."
-  [field-or-value]
-  (utils/func "CAST(%s AS DATE)" [field-or-value]))
-
 (defprotocol IGenericSQLFormattable
   (formatted [this] [this include-as?]))
 
@@ -116,7 +111,7 @@
     ([this]
      (formatted this false))
     ([{unit :unit, {:keys [field-name base-type special-type], :as field} :field} include-as?]
-     (let [field (cast-as-date (formatted field))]
+     (let [field (i/date (:driver *query*) unit (formatted field))]
        (if include-as? [field (keyword field-name)]
            field))))
 
@@ -147,9 +142,9 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [value]} _]
+    ([{value :value, {unit :unit} :field} _]
      ;; prevent Clojure from converting this to #inst literal, which is a util.date
-     (cast-as-date `(Timestamp/valueOf ~(.toString value))))))
+     (i/date (:driver *query*) unit `(Timestamp/valueOf ~(.toString value))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]
