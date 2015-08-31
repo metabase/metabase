@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon.react";
 import IconBorder from './IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'QueryVisualizationObjectDetailTable',
