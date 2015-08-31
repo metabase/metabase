@@ -81,8 +81,9 @@
 (defn relative-datetime-value-unit? [unit]
   (contains? relative-datetime-value-units (keyword unit)))
 
-(defrecord RelativeDateTimeValue [^Integer amount
-                                  ^Keyword unit])
+(defrecord RelativeDateTimeValue [^Integer       amount
+                                  ^Keyword       unit
+                                  ^DateTimeField field])
 
 
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------

@@ -20,6 +20,7 @@
                                                       DateTimeValue
                                                       Field
                                                       OrderByAggregateField
+                                                      RelativeDateTimeValue
                                                       Value)))
 
 (declare apply-form
@@ -144,7 +145,17 @@
      (formatted this false))
     ([{value :value, {unit :unit} :field} _]
      ;; prevent Clojure from converting this to #inst literal, which is a util.date
-     (i/date (:driver *query*) unit `(Timestamp/valueOf ~(.toString value))))))
+     (i/date (:driver *query*) unit `(Timestamp/valueOf ~(.toString value)))))
+
+  RelativeDateTimeValue
+  (formatted
+    ([this]
+     (formatted this false))
+    ([{:keys [amount unit], {field-unit :unit} :field} _]
+     (let [driver (:driver *query*)]
+       (i/date driver field-unit (if (zero? amount)
+                                   (sqlfn :NOW)
+                                   (i/date-interval driver unit amount)))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]

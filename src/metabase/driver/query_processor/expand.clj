@@ -61,10 +61,10 @@
 
 (defn- unexpanded-Field? [field-id]
   (match field-id
-    (_ :guard integer?)                                                             true
-    ["fk->" (_ :guard integer?) (_ :guard integer?)]                                true
-    ["datetime_field" (_ :guard unexpanded-Field?) (_ :guard datetime-field-unit?)] true
-    :else                                                                           false))
+    (_ :guard integer?)                                                                  true
+    ["fk->" (_ :guard integer?) (_ :guard integer?)]                                     true
+    ["datetime_field" (_ :guard unexpanded-Field?) "as" (_ :guard datetime-field-unit?)] true
+    :else                                                                                false))
 
 (defn- parse-field [field-id]
   (map->FieldPlaceholder
@@ -76,25 +76,15 @@
      (do (assert-driver-supports :foreign-keys)
          (map->FieldPlaceholder {:field-id dest-field-id, :fk-field-id fk-field-id}))
 
-     ["datetime_field" id (unit :guard datetime-field-unit?)]
+     ["datetime_field" id "as" (unit :guard datetime-field-unit?)]
      (assoc (ph id)
             :datetime-unit (keyword unit))
 
      _ (throw (Exception. (str "Invalid field: " field-id))))))
 
 (defn- parse-value [field-id value]
-  (map->ValuePlaceholder
-   (merge {:field-placeholder (ph field-id)}
-          (match value
-            ["relative_datetime" "current" (unit :guard relative-datetime-value-unit?)]
-            {:value         0
-             :relative-unit unit}
-
-            ["relative_datetime" (amount :guard integer?) (unit :guard relative-datetime-value-unit?)]
-            {:value         amount
-             :relative-unit unit}
-
-            _ {:value value}))))
+  (map->ValuePlaceholder {:field-placeholder (ph field-id)
+                          :value             value}))
 
 (defn- ph
   "Create a new placeholder object for a Field ID or value that can be resolved later."
@@ -148,9 +138,11 @@
    i.e. This is true of numbers and dates, but not of other strings or booleans."
   [v]
   (match v
-    (_ :guard number?)         true
-    (_ :guard u/date-string?)  true
-    _                          false))
+    (_ :guard number?)                                                                 true
+    (_ :guard u/date-string?)                                                          true
+    ["relative_datetime" "current"]                                                    true
+    ["relative_datetime" (_ :guard integer?) (_ :guard relative-datetime-value-unit?)] true
+    _                                                                                  false))
 
 (defn- Value?
   "Is V a valid unexpanded `Value`?"
@@ -180,13 +172,13 @@
   [field "next"    unit] (parse-time-interval-filter-subclause [field  1 unit])
 
   ;; For values of -1 <= n <= 1, generate the appropriate [= ...] clause
-  [field  0 unit] ["=" ["datetime_field" field "as" unit] ["datetime" "now"]]
-  [field -1 unit] ["=" ["datetime_field" field "as" unit] ["datetime" -1 unit]]
-  [field  1 unit] ["=" ["datetime_field" field "as" unit] ["datetime"  1 unit]]
+  [field  0 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime" "current"]]
+  [field -1 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime" -1 unit]]
+  [field  1 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime"  1 unit]]
 
   ;; For other int values of n generate the appropriate [BETWEEN ...] clause
-  [field (n :guard #(< % -1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime" (dec n) unit] ["datetime"      -1 unit]]
-  [field (n :guard #(> %  1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["datetime"       1 unit] ["datetime" (inc n) unit]])
+  [field (n :guard #(< % -1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["relative_datetime" (dec n) unit] ["relative_datetime"      -1 unit]]
+  [field (n :guard #(> %  1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["relative_datetime"       1 unit] ["relative_datetime" (inc n) unit]])
 
 (defparser parse-filter-subclause
   ["TIME_INTERVAL" (field-id :guard unexpanded-Field?) (n :guard #(or (integer? %) (contains? #{"current" "last" "next"} %))) (unit :guard relative-datetime-value-unit?)]

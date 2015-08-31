@@ -9,7 +9,8 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*dataset*]])
+                                [datasets :as datasets :refer [*dataset*]]
+                                [interface :refer [create-database-definition]])
             [metabase.test.util.q :refer [Q]]
             [metabase.util :as u]))
 
@@ -1086,7 +1087,7 @@
 (defn- sad-toucan-incidents-with-bucketing [unit]
   (vec (Q dataset sad-toucan-incidents
           aggregate count of incidents
-          breakout ["datetime_field" (id :incidents :timestamp) unit]
+          breakout ["datetime_field" (id :incidents :timestamp) "as" unit]
           limit 10
           return rows)))
 
@@ -1241,5 +1242,57 @@
   (sad-toucan-incidents-with-bucketing :year))
 
 ;; RELATIVE DATES
+(defn- database-def-with-timestamps [interval-seconds]
+  (create-database-definition "DB"
+    ["checkins"
+     [{:field-name "timestamp"
+       :base-type  :DateTimeField}]
+     (vec (for [i (range -15 15)]
+            [(java.sql.Timestamp. (+ (System/currentTimeMillis) (* i 1000 interval-seconds)))]))]))
+
+(def ^:private checkins:4-per-minute (database-def-with-timestamps 15))
+(def ^:private checkins:4-per-hour   (database-def-with-timestamps (* 60 15)))
+(def ^:private checkins:1-per-day    (database-def-with-timestamps (* 60 60 24)))
+
+(defn- count-of-grouping [db field-grouping & relative-datetime-args]
+  (with-temp-db [_ db]
+    (Q aggregate count of checkins
+       filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
+       return first-row first)))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute -1 "minute"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute  1 "minute"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour -1 "hour"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour  1 "hour"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day "current"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day -1 "day"))
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day  1 "day"))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql} 7 (count-of-grouping checkins:1-per-day :week "current"))
 
 ;; SYNTACTIC SUGAR
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  1
+  (with-temp-db [_ checkins:1-per-day]
+    (-> (driver/process-query
+         {:database (db-id)
+          :type     :query
+          :query    {:source_table (id :checkins)
+                     :aggregation  ["count"]
+                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
+        :data :rows first first)))
+
+(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+  7
+  (with-temp-db [_ checkins:1-per-day]
+    (-> (driver/process-query
+         {:database (db-id)
+          :type     :query
+          :query    {:source_table (id :checkins)
+                     :aggregation  ["count"]
+                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "last" "week"]}})
+        :data :rows first first)))
