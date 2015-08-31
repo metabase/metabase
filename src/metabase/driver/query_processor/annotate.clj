@@ -7,7 +7,7 @@
             (clojure [set :as set]
                      [string :as s])
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.expand :as expand]
+            [metabase.driver.query-processor.interface :as i]
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]
@@ -41,13 +41,13 @@
 ;; how to order the results
 
 (defn- field-qualify-name [field]
-  (assoc field :field-name (keyword (apply str (->> (rest (expand/qualified-name-components field))
+  (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
 (defn- flatten-collect-fields [form]
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
-                            (if-not (= (type f) metabase.driver.query_processor.expand.Field) f
+                            (if-not (= (type f) metabase.driver.query_processor.interface.Field) f
                                     (do
                                       (conj! fields f)
                                       ;; HACK !!!

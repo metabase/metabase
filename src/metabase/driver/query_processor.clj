@@ -10,7 +10,9 @@
             [metabase.db :refer :all]
             [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand])
+                                             [expand :as expand]
+                                             [interface :refer :all]
+                                             [resolve :as resolve])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
             [metabase.util :as u]))
@@ -45,7 +47,7 @@
             :error          (or (.getMessage e) (str e))
             :stacktrace     (u/filtered-stacktrace e)
             :query          (dissoc query :database :driver)
-            :expanded-query (try (dissoc (expand/expand query) :database :driver)
+            :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
                                  (catch Throwable e
                                    {:error      (or (.getMessage e) (str e))
                                     :stacktrace (u/filtered-stacktrace e) }))}))))
@@ -53,7 +55,7 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (expand/expand query))))
+    (qp (resolve/resolve (expand/expand query)))))
 
 
 (defn- post-add-row-count-and-status
@@ -82,9 +84,9 @@
           query
           (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description], :table_id source-table-id,
                                  :active true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                            (map expand/rename-mb-field-keys)
-                            (map expand/map->Field)
-                            (map #(expand/resolve-table % {source-table-id source-table})))]
+                            (map resolve/rename-mb-field-keys)
+                            (map map->Field)
+                            (map #(resolve/resolve-table % {source-table-id source-table})))]
             (if-not (seq fields)
               (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
                   query)
@@ -102,8 +104,8 @@
                                                     breakout-fields)]
       (qp (cond-> query
             (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                           (expand/map->OrderBySubclause {:field     field
-                                                                                                                          :direction :ascending}))))))))
+                                                                                           (map->OrderBySubclause {:field     field
+                                                                                                                   :direction :ascending}))))))))
 
 
 (defn- post-convert-unix-timestamps-to-dates
@@ -148,15 +150,15 @@
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
                                                                            (dissoc :breakout)
-                                                                           (assoc :aggregation    (expand/map->Aggregation {:aggregation-type :rows})
-                                                                                  :fields         [ag-field])))]
+                                                                           (assoc :aggregation (map->Aggregation {:aggregation-type :rows})
+                                                                                  :fields      [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
       cum-sum-with-breakout? [ag-field (-> query
-                                           (assoc-in [:query :aggregation]    (expand/map->Aggregation {:aggregation-type :sum, :field ag-field})))]
+                                           (assoc-in [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field})))]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] (expand/map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
 
       ;; Otherwise if this isn't a cum_sum query return it as-is
       :else [false query])))
