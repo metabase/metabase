@@ -55,9 +55,21 @@ var Query = {
 
         if (query.order_by) {
             query.order_by = query.order_by.filter((s) => {
-                // remove aggregation sort if we can't sort by this aggregation
-                if (!Query.canSortByAggregateField(query) && Array.isArray(s[0]) && s[0][0] === "aggregation") {
-                    return false
+                let field = s[0];
+
+                if (Query.isAggregateField(field)) {
+                    // remove aggregation sort if we can't sort by this aggregation
+                    if (!Query.canSortByAggregateField(query)) {
+                        return false
+                    }
+                } else if (Query.hasValidBreakout(query)) {
+                    // remove sort if it references a non-broken-out field
+                    if (query.breakout.filter(b => b === field).length === 0) {
+                        return false;
+                    }
+                } else if (!Query.isBareRowsAggregation(query)) {
+                    // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
+                    return false;
                 }
                 // remove incomplete sorts
                 if (Query.isValidField(s[0]) && s[1] != null) {
@@ -75,6 +87,10 @@ var Query = {
         }
 
         return query;
+    },
+
+    isAggregateField: function(field) {
+        return Array.isArray(field) && field[0] === "aggregation";
     },
 
     canAddDimensions: function(query) {
