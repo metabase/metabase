@@ -51,7 +51,8 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :dashboard-reposition-cards
-    :database-sync
+    :database-sync-begin
+    :database-sync-end
     :install
     :user-login})
 
@@ -104,9 +105,21 @@
   ""
   [])
 
-(defn- process-database-activity
-  ""
-  [])
+(defn- process-database-activity [topic object]
+  (case topic
+    :database-sync-begin (ins Activity
+                           :topic :database-sync
+                           :model (topic->model topic)
+                           :model_id (object->model-id topic object)
+                           :custom_id (:tracking-hash object)
+                           :details (-> object
+                                        (assoc :status "started")
+                                        (dissoc :database_id :tracking-hash)))
+    :database-sync-end (let [{activity-id :id} (sel :one Activity :custom_id (:tracking-hash object))]
+                         (upd Activity activity-id
+                           :details (-> object
+                                        (assoc :status "completed")
+                                        (dissoc :database_id :tracking-hash))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
@@ -129,7 +142,7 @@
       (case (topic->model topic)
         "card"      (process-card-activity)
         "dashboard" (process-dashboard-activity)
-        "database"  (process-database-activity)
+        "database"  (process-database-activity topic object)
         "install"   (when-not (sel :one :fields [Activity :id])
                       (ins Activity :topic :install))
         "user"      (process-user-activity topic object)))

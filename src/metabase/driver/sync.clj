@@ -44,8 +44,10 @@
             *sel-disable-logging* true]
     (sync-in-context driver database
       (fn []
-        (let [start-time (System/currentTimeMillis)]
+        (let [start-time (System/currentTimeMillis)
+              tracking-hash (str (java.util.UUID/randomUUID))]
           (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
+          (events/publish-event :database-sync-begin {:database_id (:id database) :tracking-hash tracking-hash})
 
           (let [active-table-names (active-table-names driver database)
                 table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
@@ -77,7 +79,7 @@
                (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
                (sync-database-active-tables! driver))
 
-          (events/publish-event :database-sync {:database_id (:id database) :running_time (- (System/currentTimeMillis) start-time)})
+          (events/publish-event :database-sync-end {:database_id (:id database) :tracking-hash tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
           (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
                                     (- (System/currentTimeMillis) start-time))))))))
 

@@ -43,6 +43,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: custom_id
+                  type: varchar(48)
+                  constraints:
+                    nullable: true
+              - column:
                   name: details
                   type: varchar
                   constraints:
