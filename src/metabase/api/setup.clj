@@ -41,8 +41,9 @@
     (ins Session
       :id session-id
       :user_id (:id new-user))
-    ;; notify someone that we've got a new user in the system
+    ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event :user-create {:user_id (:id new-user)})
+    (events/publish-event :user-login {:user_id (:id new-user) :session_id session-id})
     {:id session-id}))
 
 

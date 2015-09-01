@@ -9,6 +9,7 @@
             [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
+            [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
@@ -45,6 +46,7 @@
       (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                  :errors      {:password "did not match stored password"}})))
     (let [session-id (create-session (:id user))]
+      (events/publish-event :user-login {:user_id (:id user) :session_id session-id})
       {:id session-id})))
 
 
