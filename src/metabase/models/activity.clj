@@ -6,8 +6,10 @@
             [metabase.db :refer :all]
             [metabase.events :as events]
             (metabase.models [dashboard :refer [Dashboard]]
+                             [database :refer [Database]]
                              [interface :refer :all]
                              [session :refer [Session]]
+                             [table :refer [Table]]
                              [user :refer [User]])
             [metabase.util :as u]))
 
@@ -32,8 +34,13 @@
                                        :details {}}]
                          (merge defaults activity)))
 
-           (post-select [_ {:keys [user_id] :as activity}]
-                        (map->ActivityFeedItemInstance (assoc activity :user (delay (User user_id))))))
+           (post-select [_ {:keys [user_id database_id table_id] :as activity}]
+                        (-> (map->ActivityFeedItemInstance activity)
+                            (assoc :user (delay (User user_id)))
+                            (assoc :database (delay (-> (Database database_id)
+                                                        (select-keys [:id :name :description]))))
+                            (assoc :table (delay (-> (Table table_id)
+                                                     (select-keys [:id :name :description])))))))
 
 (extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)
 

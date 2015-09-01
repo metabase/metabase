@@ -12,6 +12,6 @@
   "Get recent activity."
   []
   (-> (sel :many Activity (k/order :timestamp :DESC))
-      (hydrate :user)))
+      (hydrate :user :table :database)))
 
 (define-routes)
