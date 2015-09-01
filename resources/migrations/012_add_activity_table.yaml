@@ -19,15 +19,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: model
-                  type: varchar(16)
+                  name: timestamp
+                  type: DATETIME
                   constraints:
-                    nullable: true
-              - column:
-                  name: model_id
-                  type: int
-                  constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: user_id
                   type: int
@@ -38,10 +33,25 @@ databaseChangeLog:
                     deferrable: false
                     initiallyDeferred: false
               - column:
-                  name: timestamp
-                  type: DATETIME
+                  name: model
+                  type: varchar(16)
                   constraints:
-                    nullable: false
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
               - column:
                   name: custom_id
                   type: varchar(48)
@@ -54,18 +64,22 @@ databaseChangeLog:
                     nullable: false
         - createIndex:
             tableName: activity
-            indexName: idx_activity_topic
+            indexName: idx_activity_timestamp
             columns:
               column:
-                name: topic
+                name: timestamp
         - createIndex:
             tableName: activity
-            indexName: idx_activity_model_model_id
+            indexName: idx_activity_user_id
             columns:
               column:
-                name: model
+                name: user_id
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_custom_id
+            columns:
               column:
-                name: model_id
+                name: custom_id
         - modifySql:
             dbms: postgresql
             replace:

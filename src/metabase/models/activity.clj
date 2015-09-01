@@ -108,29 +108,38 @@
 (defn- record-activity
   "Simple base function for recording activity using defaults.
   Allows caller to specify a custom serialization function to apply to `object` to generate the activity `:details`."
-  ([topic object serialize-fn]
-   (ins Activity
-     :topic topic
-     :model (topic->model topic)
-     :model_id (object->model-id topic object)
-     :custom_id (:custom_id object)
-     :user_id (object->user-id object)
-     :details (if (fn? serialize-fn)
-                (serialize-fn object)
-                object)))
+  ([topic object details-fn database-table-fn]
+   (let [{:keys [table-id database-id]} (when (fn? database-table-fn)
+                                          (database-table-fn object))]
+     (ins Activity
+       :topic topic
+       :user_id (object->user-id object)
+       :model (topic->model topic)
+       :model_id (object->model-id topic object)
+       :database_id database-id
+       :table_id table-id
+       :custom_id (:custom_id object)
+       :details (if (fn? details-fn)
+                  (details-fn object)
+                  object))))
+  ([topic object details-fn]
+   (record-activity topic object details-fn nil))
   ([topic object]
-    (record-activity topic object nil)))
+   (record-activity topic object nil)))
 
-(defn- process-card-activity
-  ""
-  [])
+(defn- process-card-activity [topic object]
+  (let [details-fn #(select-keys % [:name :description :public_perms])
+        database-table-fn (fn [obj]
+                            {:database-id (get-in obj [:dataset_query :database])
+                             :table-id    (get-in obj [:dataset_query :query :source_table])})]
+    (record-activity topic object details-fn database-table-fn)))
 
 (defn- process-dashboard-activity [topic object]
   (let [create-delete-details #(select-keys % [:description :name :public_perms])
         add-remove-card-details (fn [{:keys [dashcards] :as obj}]
                                   ;; we expect that the object has just a dashboard :id at the top level
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (sel :one Dashboard :id (:id obj))
+                                  (-> (sel :one Dashboard :id (object->model-id topic obj))
                                       (select-keys [:description :name :public_perms])
                                       (assoc :dashcards (for [{:keys [id card_id card]} dashcards]
                                                           (-> @card
@@ -145,9 +154,9 @@
 
 (defn- process-database-activity [topic object]
   (case topic
-    :database-sync-begin (record-activity topic object (fn [obj] (-> obj
-                                                                     (assoc :status "started")
-                                                                     (dissoc :database_id :custom_id))))
+    :database-sync-begin (record-activity :database-sync object (fn [obj] (-> obj
+                                                                              (assoc :status "started")
+                                                                              (dissoc :database_id :custom_id))))
     :database-sync-end   (let [{activity-id :id} (sel :one Activity :custom_id (:custom_id object))]
                            (upd Activity activity-id
                              :details (-> object
@@ -172,7 +181,7 @@
       (log/info "Activity:" topic)
       (clojure.pprint/pprint object)
       (case (topic->model topic)
-        "card"      (process-card-activity)
+        "card"      (process-card-activity topic object)
         "dashboard" (process-dashboard-activity topic object)
         "database"  (process-database-activity topic object)
         "install"   (when-not (sel :one :fields [Activity :id])

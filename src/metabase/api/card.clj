@@ -95,15 +95,16 @@
                     :name name
                     :public_perms public_perms
                     :visualization_settings visualization_settings)
-  (events/publish-event :card-update {:id id :actor_id *current-user-id*})
+  (events/publish-event :card-update (assoc (sel :one Card :id id) :actor_id *current-user-id*))
   (push-revision :entity Card, :object (Card id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (let [result (cascade-delete Card :id id)]
-    (events/publish-event :card-delete {:id id :actor_id *current-user-id*})
+  (let [card (sel :one Card :id id)
+        result (cascade-delete Card :id id)]
+    (events/publish-event :card-delete (assoc card :actor_id *current-user-id*))
     result))
 
 (defendpoint GET "/:id/favorite"
