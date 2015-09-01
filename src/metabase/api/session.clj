@@ -100,8 +100,10 @@
       [400 "Reset token has expired"])
     (set-user-password user-id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
-    {:success true
-     :session_id (create-session user-id)}))
+    (let [session-id (create-session user-id)]
+      (events/publish-event :user-login {:user_id user-id :session_id session-id})
+      {:success    true
+       :session_id session-id})))
 
 
 (defendpoint GET "/properties"

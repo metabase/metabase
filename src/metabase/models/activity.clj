@@ -6,6 +6,7 @@
             [metabase.db :refer :all]
             [metabase.events :as events]
             (metabase.models [interface :refer :all]
+                             [session :refer [Session]]
                              [user :refer [User]])
             [metabase.util :as u]))
 
@@ -40,7 +41,7 @@
 
 
 (def activity-feed-topics
-  "The `Set` of topics which are subscribed to and included in the Metabase published activity feed."
+  "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:card-create
     :card-update
     :card-delete
@@ -51,8 +52,8 @@
     :dashboard-remove-cards
     :dashboard-reposition-cards
     :database-sync
-    :table-sync
-    :user-create})
+    :install
+    :user-login})
 
 (defn valid-activity-topic?
   "Predicate function that checks if a topic is in `activity-feed-topics`. true if included, false otherwise."
@@ -71,7 +72,7 @@
   (log/info "Starting up Metabase activity feed and listening for things of interest!")
   ;; create the core.async subscription for each of our activity-feed-topics
   (events/subscribe-to-topics activity-feed-topics activity-feed-channel)
-  ;; start listening for events we care about and does something with them
+  ;; start listening for events we care about and do something with them
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
     (try
@@ -95,6 +96,27 @@
     (let [model (topic->model topic)]
       (get object (keyword (format "%s_id" model))))))
 
+(defn- process-card-activity
+  ""
+  [])
+
+(defn- process-dashboard-activity
+  ""
+  [])
+
+(defn- process-database-activity
+  ""
+  [])
+
+(defn- process-user-activity [topic object]
+  ;; we only care about login activity when its the users first session (a.k.a. new user!)
+  (when (and (= :user-login topic)
+             (= (:session_id object) (sel :one :field [Session :id] :user_id (:user_id object))))
+    (ins Activity
+      :topic :user-joined
+      :user_id (:user_id object)
+      :model (topic->model topic))))
+
 (defn- process-activity-event
   "Handle processing for a single event notification received on the activity-feed-channel"
   [activity-event]
@@ -104,10 +126,12 @@
       (log/info "Activity:" topic)
       (clojure.pprint/pprint object)
       ;; TODO - we need a protocol on our Entities for providing relevant details
-      (ins Activity
-        :topic topic
-        :user_id (or (:actor_id object) (:creator_id object) (:user_id object))
-        :model (topic->model topic)
-        :model_id (when (topic->model topic) (object->model-id topic object))))
+      (case (topic->model topic)
+        "card"      (process-card-activity)
+        "dashboard" (process-dashboard-activity)
+        "database"  (process-database-activity)
+        "install"   (when-not (sel :one :fields [Activity :id])
+                      (ins Activity :topic :install))
+        "user"      (process-user-activity topic object)))
     (catch Exception e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
