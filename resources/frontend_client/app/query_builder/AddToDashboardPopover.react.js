@@ -7,7 +7,7 @@ import OnClickOutside from 'react-onclickoutside';
 import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'AddToDashboardPopover',

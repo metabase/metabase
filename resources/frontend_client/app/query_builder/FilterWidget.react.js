@@ -12,7 +12,7 @@ import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Query from "metabase/lib/query";
 import moment from 'moment';
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'FilterWidget',

@@ -10,7 +10,7 @@ import VisualizationSettings from './VisualizationSettings.react';
 
 import Query from "metabase/lib/query";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'QueryVisualization',

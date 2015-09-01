@@ -3,7 +3,7 @@
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'VisualizationSettings',

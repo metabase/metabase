@@ -2,7 +2,7 @@
 
 import Icon from "metabase/components/Icon.react";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: "ColumnarSelector",
