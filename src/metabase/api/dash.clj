@@ -74,17 +74,19 @@
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
   (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
-    (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcard result})
+    (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
 (defendpoint DELETE "/:id/cards"
-  "Remove a `Card` from a `Dashboard`."
+  "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
-  (let [result (del DashboardCard :id dashcardId :dashboard_id id)]
-    (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcard dashcardId})
+  ;; TODO - it would be nicer to do this if `del` returned the object that was deleted instead of an api response
+  (let [dashcard (sel :one DashboardCard :id dashcardId)
+        result (del DashboardCard :id dashcardId :dashboard_id id)]
+    (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcards [dashcard]})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 

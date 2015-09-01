@@ -5,7 +5,8 @@
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :refer :all]
             [metabase.events :as events]
-            (metabase.models [interface :refer :all]
+            (metabase.models [dashboard :refer [Dashboard]]
+                             [interface :refer :all]
                              [session :refer [Session]]
                              [user :refer [User]])
             [metabase.util :as u]))
@@ -107,26 +108,40 @@
 (defn- record-activity
   "Simple base function for recording activity using defaults.
   Allows caller to specify a custom serialization function to apply to `object` to generate the activity `:details`."
-  [topic object object-serialize-fn]
-  (ins Activity
-    :topic topic
-    :model (topic->model topic)
-    :model_id (object->model-id topic object)
-    :custom_id (:custom_id object)
-    :user_id (object->user-id object)
-    :details (if (fn? object-serialize-fn)
-               (object-serialize-fn object)
-               object)))
+  ([topic object serialize-fn]
+   (ins Activity
+     :topic topic
+     :model (topic->model topic)
+     :model_id (object->model-id topic object)
+     :custom_id (:custom_id object)
+     :user_id (object->user-id object)
+     :details (if (fn? serialize-fn)
+                (serialize-fn object)
+                object)))
+  ([topic object]
+    (record-activity topic object nil)))
 
 (defn- process-card-activity
   ""
   [])
 
 (defn- process-dashboard-activity [topic object]
-  (let [create-delete-details #(select-keys % [:description :name :public_perms])]
+  (let [create-delete-details #(select-keys % [:description :name :public_perms])
+        add-remove-card-details (fn [{:keys [dashcards] :as obj}]
+                                  ;; we expect that the object has just a dashboard :id at the top level
+                                  ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
+                                  (-> (sel :one Dashboard :id (:id obj))
+                                      (select-keys [:description :name :public_perms])
+                                      (assoc :dashcards (for [{:keys [id card_id card]} dashcards]
+                                                          (-> @card
+                                                              (select-keys [:name :description :public_perms])
+                                                              (assoc :id id)
+                                                              (assoc :card_id card_id))))))]
     (case topic
-      :dashboard-create (record-activity topic object create-delete-details)
-      :dashboard-delete (record-activity topic object create-delete-details))))
+      :dashboard-create       (record-activity topic object create-delete-details)
+      :dashboard-delete       (record-activity topic object create-delete-details)
+      :dashboard-add-cards    (record-activity topic object add-remove-card-details)
+      :dashboard-remove-cards (record-activity topic object add-remove-card-details))))
 
 (defn- process-database-activity [topic object]
   (case topic
@@ -156,7 +171,6 @@
     (when-let [{topic :topic object :item} activity-event]
       (log/info "Activity:" topic)
       (clojure.pprint/pprint object)
-      ;; TODO - we need a protocol on our Entities for providing relevant details
       (case (topic->model topic)
         "card"      (process-card-activity)
         "dashboard" (process-dashboard-activity topic object)
