@@ -1,5 +1,5 @@
 'use strict';
-/*global google, window, document*/
+/*global google*/
 
 window.google = window.google || {};
 google.maps = google.maps || {};

@@ -1,5 +1,6 @@
 "use strict";
-/*global _*/
+
+import _ from "underscore";
 
 import { createSelector } from 'reselect';
 

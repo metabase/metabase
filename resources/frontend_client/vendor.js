@@ -1,5 +1,3 @@
-/*global window*/
-
 "use strict";
 
 import 'babel/polyfill';
@@ -30,7 +28,3 @@ import 'ace/snippets/sql';
 // react:
 import React from 'react/addons';
 window.React = React;
-
-// misc:
-import _ from 'underscore';
-window._ = _;

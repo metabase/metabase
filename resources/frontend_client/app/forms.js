@@ -1,5 +1,5 @@
 'use strict';
-/*jslint browser:true */
+
 /* Services */
 
 var MetabaseForms = angular.module('metabase.forms', ['metabase.directives']);

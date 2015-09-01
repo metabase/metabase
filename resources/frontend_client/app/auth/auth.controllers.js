@@ -1,6 +1,4 @@
 'use strict';
-/*jslint browser:true*/
-/*jslint devel:true */
 
 var AuthControllers = angular.module('metabase.auth.controllers', [
     'metabase.auth.services',

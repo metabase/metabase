@@ -1,5 +1,6 @@
 "use strict";
-/*global _*/
+
+import _ from "underscore";
 
 import { createAction } from "redux-actions";
 import { normalize, Schema, arrayOf } from "normalizr";

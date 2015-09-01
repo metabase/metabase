@@ -1,5 +1,4 @@
 'use strict';
-/*global setTimeout, clearTimeout*/
 
 import Icon from "metabase/components/Icon.react";
 

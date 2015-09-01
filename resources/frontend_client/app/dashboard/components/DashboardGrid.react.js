@@ -1,5 +1,6 @@
 "use strict";
-/*global _*/
+
+import _ from "underscore";
 
 import { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
 

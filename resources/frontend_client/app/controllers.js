@@ -1,6 +1,4 @@
 'use strict';
-/*jslint browser:true*/
-/*jslint devel:true */
 
 // Global Controllers
 var MetabaseControllers = angular.module('metabase.controllers', ['metabase.services', 'metabase.navbar.directives']);
