@@ -111,15 +111,15 @@
                            :topic :database-sync
                            :model (topic->model topic)
                            :model_id (object->model-id topic object)
-                           :custom_id (:tracking-hash object)
+                           :custom_id (:custom_id object)
                            :details (-> object
                                         (assoc :status "started")
-                                        (dissoc :database_id :tracking-hash)))
-    :database-sync-end (let [{activity-id :id} (sel :one Activity :custom_id (:tracking-hash object))]
+                                        (dissoc :database_id :custom_id)))
+    :database-sync-end (let [{activity-id :id} (sel :one Activity :custom_id (:custom_id object))]
                          (upd Activity activity-id
                            :details (-> object
                                         (assoc :status "completed")
-                                        (dissoc :database_id :tracking-hash))))))
+                                        (dissoc :database_id :custom_id))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
