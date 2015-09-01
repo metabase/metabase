@@ -61,8 +61,10 @@
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
-  (let [result (cascade-delete Dashboard :id id)]
-    (events/publish-event :dashboard-delete {:id id :actor_id *current-user-id*})
+  ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
+  (let [dashboard (sel :one Dashboard :id id)
+        result (cascade-delete Dashboard :id id)]
+    (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))
 
 (defendpoint POST "/:id/cards"

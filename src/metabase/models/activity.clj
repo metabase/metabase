@@ -46,11 +46,9 @@
     :card-update
     :card-delete
     :dashboard-create
-    :dashboard-update
     :dashboard-delete
     :dashboard-add-cards
     :dashboard-remove-cards
-    :dashboard-reposition-cards
     :database-sync-begin
     :database-sync-end
     :install
@@ -82,6 +80,10 @@
         (log/error "Unexpected error listening on activity-feed-channel" e)))
     (recur)))
 
+
+;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+
+
 (defn- topic->model
   "Determine a valid `model` identifier for the given `topic`."
   [topic]
@@ -97,29 +99,45 @@
     (let [model (topic->model topic)]
       (get object (keyword (format "%s_id" model))))))
 
+(defn- object->user-id
+  "Determine the appropriate `user_id` (if possible) for a given `object`."
+  [object]
+  (or (:actor_id object) (:user_id object) (:creator_id object)))
+
+(defn- record-activity
+  "Simple base function for recording activity using defaults.
+  Allows caller to specify a custom serialization function to apply to `object` to generate the activity `:details`."
+  [topic object object-serialize-fn]
+  (ins Activity
+    :topic topic
+    :model (topic->model topic)
+    :model_id (object->model-id topic object)
+    :custom_id (:custom_id object)
+    :user_id (object->user-id object)
+    :details (if (fn? object-serialize-fn)
+               (object-serialize-fn object)
+               object)))
+
 (defn- process-card-activity
   ""
   [])
 
-(defn- process-dashboard-activity
-  ""
-  [])
+(defn- process-dashboard-activity [topic object]
+  (let [create-delete-details #(select-keys % [:description :name :public_perms])]
+    (case topic
+      :dashboard-create (record-activity topic object create-delete-details)
+      :dashboard-delete (record-activity topic object create-delete-details))))
 
 (defn- process-database-activity [topic object]
   (case topic
-    :database-sync-begin (ins Activity
-                           :topic :database-sync
-                           :model (topic->model topic)
-                           :model_id (object->model-id topic object)
-                           :custom_id (:custom_id object)
-                           :details (-> object
-                                        (assoc :status "started")
-                                        (dissoc :database_id :custom_id)))
-    :database-sync-end (let [{activity-id :id} (sel :one Activity :custom_id (:custom_id object))]
-                         (upd Activity activity-id
-                           :details (-> object
-                                        (assoc :status "completed")
-                                        (dissoc :database_id :custom_id))))))
+    :database-sync-begin (record-activity topic object (fn [obj] (-> obj
+                                                                     (assoc :status "started")
+                                                                     (dissoc :database_id :custom_id))))
+    :database-sync-end   (let [{activity-id :id} (sel :one Activity :custom_id (:custom_id object))]
+                           (upd Activity activity-id
+                             :details (-> object
+                                          (assoc :status "completed")
+                                          (dissoc :database_id :custom_id))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
@@ -141,7 +159,7 @@
       ;; TODO - we need a protocol on our Entities for providing relevant details
       (case (topic->model topic)
         "card"      (process-card-activity)
-        "dashboard" (process-dashboard-activity)
+        "dashboard" (process-dashboard-activity topic object)
         "database"  (process-database-activity topic object)
         "install"   (when-not (sel :one :fields [Activity :id])
                       (ins Activity :topic :install))
