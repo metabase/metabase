@@ -4,7 +4,7 @@
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
-                             [field-values :refer [field-should-have-field-values? create-field-values-if-needed]]
+                             [field-values :refer [FieldValues field-should-have-field-values? create-field-values-if-needed]]
                              [foreign-key :refer [ForeignKey]]
                              [hydrate :refer [hydrate]]
                              [interface :refer :all])
@@ -91,7 +91,7 @@
               (contains? field :special_type))
       (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id))))
 
-  (post-select [this {:keys [table_id parent_id] :as field}]
+  (post-select [this {:keys [id table_id parent_id] :as field}]
     (map->FieldInstance
       (u/assoc* field
         :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
@@ -100,6 +100,7 @@
         :parent                    (when parent_id
                                      (delay (this parent_id)))
         :children                  (delay (sel :many this :parent_id (:id field)))
+        :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
         :qualified-name-components (delay (qualified-name-components <>))
         :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
 
