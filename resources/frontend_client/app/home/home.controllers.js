@@ -2,49 +2,51 @@
 
 import Table from "metabase/lib/table";
 
+import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
+import promiseMiddleware from 'redux-promise';
+import thunkMidleware from "redux-thunk";
+
+import HomepageApp from './containers/HomepageApp.react';
+import * as reducers from './reducers';
+
+// import { devTools, persistState } from 'redux-devtools';
+// import { LogMonitor } from 'redux-devtools/lib/react';
+// import loggerMiddleware from 'redux-logger';
+
+const finalCreateStore = compose(
+  applyMiddleware(
+      thunkMidleware,
+      promiseMiddleware
+      // ,loggerMiddleware
+  ),
+  // devTools(),
+  // persistState(window.location.href.match(/[?&]debug_session=([^&]+)\b/)),
+  createStore
+);
+
+const reducer = combineReducers(reducers);
+
+
 var HomeControllers = angular.module('metabase.home.controllers', [
     'metabase.home.directives',
     'metabase.metabase.services'
 ]);
 
-HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {
-    $scope.currentView = 'data';
-    $scope.showOnboarding = false;
-
-    if('new' in $location.search()) {
-        $scope.showOnboarding = true;
-    }
-}]);
-
-HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($scope, $location) {
-    var greetingPrefixes = [
-        'Hey there',
-        'How\'s it going',
-        'Howdy',
-        'Greetings',
-        'Good to see you',
-    ];
-
-    var subheadPrefixes = [
-        'What do you want to know?',
-        'What\'s on your mind?',
-        'What do you want to find out?',
-    ];
-
-    function buildGreeting (greetingOptions, personalization) {
-        // TODO - this can result in an undefined thing
-        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1));
-        var greeting = greetingOptions[randomGreetingIndex];
-
-        if(personalization) {
-            greeting = greeting + ' ' + personalization;
+HomeControllers.controller('Homepage', ['$scope', '$location', function($scope, $location) {
+    $scope.Component = HomepageApp;
+    $scope.props = {
+        user: $scope.user,
+        showOnboarding: ('new' in $location.search()),
+        onChangeLocation: function(url) {
+            $scope.$apply(() => $location.url(url));
         }
-        return greeting;
-    }
+    };
+    $scope.store = finalCreateStore(reducer, { selectedTab: 'activity' });
+    // TODO: reflect onboarding state
 
-    $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = subheadPrefixes[Math.floor(Math.random() * (subheadPrefixes.length - 1))];
+    // $scope.monitor = LogMonitor;
 }]);
+
 
 HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
 
