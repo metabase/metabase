@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :refer :all]
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [database :refer [Database]])
@@ -53,6 +54,10 @@
            (card-returned? 2 id1)
            (card-returned? 2 id2)])))))
 
+;; Make sure `id` is required when `f` is :database
+(expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
+  ((user->client :crowberto) :get 400 "card" :f :database))
+
 ;; Filter cards by table
 (expect [true
          false
@@ -79,6 +84,10 @@
       [(card-returned? 1 id1)
        (card-returned? 2 id1)
        (card-returned? 2 id2)]))))
+
+;; Make sure `id` is required when `f` is :table
+(expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
+  ((user->client :crowberto) :get 400 "card" :f :table))
 
 ;; Check that only the creator of a private Card can see it
 (expect [true

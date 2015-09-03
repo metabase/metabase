@@ -34,6 +34,8 @@
   [f id]
   {f CardFilterOption
    id Integer}
+  (when (contains? #{:database :table} f)
+    (checkp (integer? id) "id" (format "id is required parameter when filter mode is '%s'" (name f))))
   (-> (case (or f :all) ; default value for `f` is `:all`
         :all      (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
                                                                     {:public_perms [> common/perms-none]})))
