@@ -54,7 +54,10 @@
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
                                :public_perms 0
-                               :created_at $})
+                               :created_at $
+                               :database_id (db-id)
+                               :table_id (id :categories)
+                               :query_type "query"})
     (post-card card-name)))
 
 ;; ## GET /api/card/:id
@@ -84,7 +87,10 @@
          :display "scalar"
          :visualization_settings {:global {:title nil}}
          :public_perms 0
-         :created_at $})
+         :created_at $
+         :database_id (db-id)
+         :table_id (id :categories)
+         :query_type "query"})
     (let [{:keys [id]} (post-card card-name)]
       ((user->client :rasta) :get 200 (format "card/%d" id)))))
 
