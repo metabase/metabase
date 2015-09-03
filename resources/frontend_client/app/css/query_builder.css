@@ -511,16 +511,10 @@
 
 /* object detail */
 .ObjectDetail {
-    border: 1px solid #DEDEDE;
-    min-width: 906px;
+    width: 100%;
     margin: 0 auto;
     margin-bottom: 2rem;
-}
-
-@media screen and (--breakpoint-min-lg) {
-   .ObjectDetail {
-       min-width: 1140px;
-   }
+    border: 1px solid #DEDEDE;
 }
 
 .ObjectDetail-headingGroup {
