@@ -85,10 +85,11 @@
 
 (defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
-   Returns DB, fields, field FKs, and field values."
+   Returns DB, fields, and field values."
   [id]
   (->404 (Database id)
          read-check
+         ;; TODO - this is a bit slow due to the nested hydration.  needs some optimizing.
          (hydrate [:tables [:fields :target :values]])))
 
 (defendpoint GET "/:id/autocomplete_suggestions"
