@@ -27,7 +27,7 @@
 
 /* height */
 .full-height {
-  height: 100%;
+  height: 100vh;
 }
 
 .scroll-y { overflow-y: scroll; }
