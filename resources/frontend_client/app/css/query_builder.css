@@ -517,6 +517,11 @@
     border: 1px solid #DEDEDE;
 }
 
+@media screen and (--breakpoint-min-xl) {
+  /* prevent the object detail from getting too wide on large screens */
+  .ObjectDetail { max-width: 1140px; }
+}
+
 .ObjectDetail-headingGroup {
     border-bottom: 1px solid #DEDEDE;
 }
