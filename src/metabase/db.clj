@@ -119,7 +119,11 @@
   (log/info "Database Migrations Current ... CHECK")
 
   ;; Establish our 'default' Korma DB Connection
-  (kdb/default-connection (kdb/create-db @jdbc-connection-details)))
+  (kdb/default-connection (kdb/create-db @jdbc-connection-details))
+
+  ;; Do any custom code-based migrations now that the db structure is up to date
+  ;; NOTE: we use dynamic resolution to prevent circular dependencies
+  ((u/runtime-resolved-fn 'metabase.db.migrations 'run-all)))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?

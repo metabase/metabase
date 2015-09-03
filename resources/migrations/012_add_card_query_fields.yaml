@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 12
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: metabase_database(id)
+                    foreignKeyName: fk_report_card_ref_database_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: metabase_table(id)
+                    foreignKeyName: fk_report_card_ref_table_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: query_type
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
