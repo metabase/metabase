@@ -2,14 +2,10 @@
 
 // Declare app level module which depends on filters, and services
 var Metabase = angular.module('metabase', [
-    'ngAnimate',
     'ngRoute',
     'ngCookies',
     'ngSanitize',
-    'xeditable', // inplace editing capabilities
     'ui.bootstrap', // bootstrap LIKE widgets via angular directives
-    'gridster', // used for dashboard grids
-    'readableTime',
     'metabase.auth',
     'metabase.filters',
     'metabase.directives',
@@ -56,14 +52,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     });
 }]);
 
-Metabase.run(["AppState", "editableOptions", "editableThemes", function(AppState, editableOptions, editableThemes) {
+Metabase.run(["AppState", function(AppState) {
     // initialize app state
     AppState.init();
-
-    // set `default` theme
-    editableOptions.theme = 'default';
-
-    // overwrite submit button template
-    editableThemes['default'].submitTpl = '<button class="Button Button--primary" type="submit">Save</button>';
-    editableThemes['default'].cancelTpl = '<button class="Button" ng-click="$form.$cancel()">cancel</button>';
 }]);
