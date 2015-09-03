@@ -16,7 +16,6 @@
     "angular-http-auth": "1.2.1",
     "angular-resource": "1.2.28",
     "angular-route": "1.2.28",
-    "angular-sanitize": "1.2.28",
     "angular-ui-ace": "0.2.3",
     "angular-ui-bootstrap": "^0.12.1",
     "classnames": "^2.1.3",

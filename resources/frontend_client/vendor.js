@@ -7,7 +7,6 @@ import 'angular';
 import 'angular-cookies';
 import 'angular-resource';
 import 'angular-route';
-import 'angular-sanitize';
 
 // angular 3rd-party:
 import 'angular-cookie';
