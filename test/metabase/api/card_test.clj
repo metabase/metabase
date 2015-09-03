@@ -50,9 +50,9 @@
                                                (map :id)
                                                set)
                                           card-id))]
-          [(card-returned? 1 id1)
-           (card-returned? 2 id1)
-           (card-returned? 2 id2)])))))
+          [(card-returned? (db-id) id1)
+           (card-returned? dbid id1)
+           (card-returned? dbid id2)])))))
 
 ;; Make sure `id` is required when `f` is :database
 (expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
