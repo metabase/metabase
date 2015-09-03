@@ -40,7 +40,7 @@
     (checkp (integer? id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database id)
-      :table    (read-check Database (:db_id (sel :one :fields [Table :database_id])))))
+      :table    (read-check Database (:db_id (sel :one :fields [Table :db_id])))))
   (-> (case (or f :all) ; default value for `f` is `:all`
         :all      (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
                                                                     {:public_perms [> common/perms-none]})))
