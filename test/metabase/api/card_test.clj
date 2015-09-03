@@ -3,7 +3,8 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             (metabase.models [card :refer [Card]]
-                             [common :as common])
+                             [common :as common]
+                             [database :refer [Database]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
@@ -22,6 +23,63 @@
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
+;; Filter cards by database
+(expect [true
+         false
+         true]
+  (with-temp Database [{dbid :id} {:name    (random-name)
+                                    :engine  :h2
+                                    :details {}}]
+    (with-temp Card [{id1 :id} {:name                   (random-name)
+                                :public_perms           common/perms-none
+                                :creator_id             (user->id :crowberto)
+                                :display                :table
+                                :dataset_query          {}
+                                :visualization_settings {}
+                                :database_id            (db-id)}]
+      (with-temp Card [{id2 :id} {:name                   (random-name)
+                                  :public_perms           common/perms-none
+                                  :creator_id             (user->id :crowberto)
+                                  :display                :table
+                                  :dataset_query          {}
+                                  :visualization_settings {}
+                                  :database_id            dbid}]
+        (let [card-returned? (fn [database-id card-id]
+                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :id database-id)
+                                               (map :id)
+                                               set)
+                                          card-id))]
+          [(card-returned? 1 id1)
+           (card-returned? 2 id1)
+           (card-returned? 2 id2)])))))
+
+;; Filter cards by table
+(expect [true
+         false
+         true]
+  (with-temp Card [{id1 :id} {:name                   (random-name)
+                              :public_perms           common/perms-none
+                              :creator_id             (user->id :crowberto)
+                              :display                :table
+                              :dataset_query          {}
+                              :visualization_settings {}
+                              :table_id               1}]
+    (with-temp Card [{id2 :id} {:name                   (random-name)
+                                :public_perms           common/perms-none
+                                :creator_id             (user->id :crowberto)
+                                :display                :table
+                                :dataset_query          {}
+                                :visualization_settings {}
+                                :table_id               2}]
+      (let [card-returned? (fn [table-id card-id]
+                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :id table-id)
+                                             (map :id)
+                                             set)
+                                        card-id))]
+      [(card-returned? 1 id1)
+       (card-returned? 2 id1)
+       (card-returned? 2 id2)]))))
+
 ;; Check that only the creator of a private Card can see it
 (expect [true
          false]
