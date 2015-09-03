@@ -1,7 +1,36 @@
 (ns metabase.events
   "Provides a very simply event bus using `core.async` to allow publishing and subscribing to intersting
    topics happening throughout the Metabase system in a decoupled way."
-  (:require [clojure.core.async :as async]))
+  (:require [clojure.core.async :as async]
+            [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]))
+
+
+;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
+
+
+(defonce ^:private events-initialized
+  (atom nil))
+
+(defn- find-and-load-event-handlers
+  "Search Classpath for namespaces that start with `metabase.events.`, then `require` them so initialization can happen."
+  []
+  (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
+       (filter (fn [ns-symb]
+                 (re-find #"^metabase\.events\." (name ns-symb))))
+       set
+       (map (fn [events-ns]
+              (log/info "\tloading events namespace: " events-ns)
+              (require events-ns)))
+       dorun))
+
+(defn initialize-events!
+  "Initialize the asynchronous internal events system."
+  []
+  (when-not @events-initialized
+    (log/info "Starting events system ...")
+    (find-and-load-event-handlers)
+    (reset! events-initialized true)))
 
 
 ;;; ## ---------------------------------------- PUBLICATION ----------------------------------------
@@ -44,3 +73,20 @@
   (loop [[topic & rest] (vec topics)]
     (subscribe-to-topic topic channel)
     (when rest (recur rest))))
+
+(defn start-event-listener
+  "Initialize an event listener which runs on a background thread via `go-loop`."
+  [topics channel handler-fn]
+  {:pre [(seq topics)
+         (fn? handler-fn)]}
+  ;; create the core.async subscription for each of our topics
+  (subscribe-to-topics topics channel)
+  ;; start listening for events we care about and do something with them
+  (async/go-loop []
+    ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
+    (try
+      (let [evt (async/<! channel)]
+        (handler-fn evt))
+      (catch Exception e
+        (log/error "Unexpected error listening on events" e)))
+    (recur)))
