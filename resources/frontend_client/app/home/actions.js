@@ -2,6 +2,7 @@
 
 import { createAction } from "redux-actions";
 import { normalize, Schema, arrayOf } from "normalizr";
+import moment from "moment";
 
 
 // HACK: just use our Angular resources for now
@@ -65,9 +66,14 @@ export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
     };
 });
 
-export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode) {
+export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, filterEntityId) {
     return async function(dispatch, getState) {
         let cards = await Card.list({'filterMode' : filterMode});
+        for (var c of cards) {
+            c.created_at = moment(c.created_at);
+            c.updated_at = moment(c.updated_at);
+            c.icon = c.display ? 'illustration_visualization_' + c.display : null;
+        }
         return normalize(cards, arrayOf(card));
     };
 });

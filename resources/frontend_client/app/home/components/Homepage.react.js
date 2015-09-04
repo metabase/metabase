@@ -23,13 +23,19 @@ export default class Homepage extends Component {
 
         this.styles = {
             main: {
-                marginRight: "346px"
+                width: "auto",
+                marginRight: "346px",
+                borderWidth: "2px"
             },
             mainWrapper: {
                 width: "100%",
                 margin: "0 auto",
                 paddingLeft: "12em",
                 paddingRight: "3em"
+            },
+            sidebar: {
+                width: "346px",
+                backgroundColor: "#F9FBFC"
             },
             headerGreeting: {
                 fontSize: "x-large"
@@ -50,14 +56,14 @@ export default class Homepage extends Component {
                                 <span className="float-left"><Icon name={'star'}></Icon></span>
                                 <span className="pl1">{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
                             </header>
-                            <div className="ml4">
+                            <div className="">
                                 <HeaderTabs {...this.props} />
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="">
-                    <div style={this.styles.main}>
+                <div className="relative">
+                    <div style={this.styles.main} className="border-right">
                         <div style={this.styles.mainWrapper}>
                             { selectedTab === 'activity' ?
                                 <Activity {...this.props} />
@@ -66,7 +72,7 @@ export default class Homepage extends Component {
                             }
                         </div>
                     </div>
-                    <div className="">
+                    <div style={this.styles.sidebar} className="absolute top right">
                         { selectedTab === 'activity' ?
                             <RecentViews {...this.props} />
                         :
