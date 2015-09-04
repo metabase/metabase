@@ -74,7 +74,7 @@ export default React.createClass({
 
     render: function() {
         return (
-            <div className="MetadataEditor flex flex-column flex-full p4">
+            <div className="MetadataEditor force-content flex flex-column flex-full p4">
                 <SettingsHeader ref="header" />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     {this.renderSettingsSections()}
