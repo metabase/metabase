@@ -53,10 +53,11 @@ export default class Homepage extends Component {
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             <header style={this.styles.headerGreeting} className="pb4">
-                                <span className="float-left"><Icon name={'star'}></Icon></span>
-                                <span className="pl1">{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
+                                <span className="float-left"><Icon className="mr3" name={'star'} height={36} width={36}></Icon></span>
+                                <span>{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
                             </header>
                             <div className="">
+                                <span className="float-left text-brand"><Icon className="mr3" name={'star'} height={36} width={36}></Icon></span>
                                 <HeaderTabs {...this.props} />
                             </div>
                         </div>
