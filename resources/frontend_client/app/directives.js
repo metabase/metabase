@@ -5,6 +5,8 @@
 import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
 
+import ProfileLink from './components/ProfileLink.react'
+
 /* Directives */
 var MetabaseDirectives = angular.module('metabase.directives', []);
 
@@ -218,39 +220,24 @@ var NavbarDirectives = angular.module('metabase.navbar.directives', []);
 
 NavbarDirectives.directive('mbProfileLink', [function () {
 
-    function link($scope, element, attr) {
-
-        $scope.userIsSuperuser = false;
-
-        $scope.$watch('user', function (user) {
-            if (!user) return;
-
-            // extract a couple informational pieces about user
-            $scope.userIsSuperuser = user.is_superuser;
-
-            // determine initials for profile logo
-            var initials = '??';
-            if (user.first_name !== 'undefined') {
-                initials = user.first_name.substring(0, 1);
-            }
-
-            if (user.last_name !== 'undefined') {
-                initials = initials + user.last_name.substring(0, 1);
-            }
-
-            $scope.initials = initials;
-        });
-    }
-
     return {
-        restrict: 'E',
+        restrict: 'A',
         replace: true,
-        templateUrl: '/app/partials/mb_profile_link.html',
+        template: '<div mb-react-component="ProfileLink"></div>',
+        controller: function ($scope) {
+            $scope.ProfileLink = ProfileLink
+            $scope.userIsSuperuser = false;
+
+            $scope.$watch('user', function (user) {
+                if (!user) return;
+                // extract a couple informational pieces about user
+                $scope.userIsSuperuser = user.is_superuser;
+            });
+        },
         scope: {
             context: '=',
             user: '='
         },
-        link: link
     };
 }]);
 

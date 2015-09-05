@@ -36,6 +36,7 @@
     "normalizr": "^0.1.3",
     "react": "^0.13.3",
     "react-grid-layout": "^0.8.5",
+    "react-onclickout": "^1.1.0",
     "react-onclickoutside": "^0.2.5",
     "react-redux": "^0.9.0",
     "redux": "^1.0.1",
