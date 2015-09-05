@@ -34,6 +34,6 @@
                             (assoc :database (delay (-> (Database database_id)
                                                         (select-keys [:id :name :description]))))
                             (assoc :table (delay (-> (Table table_id)
-                                                     (select-keys [:id :name :description])))))))
+                                                     (select-keys [:id :name :display_name :description])))))))
 
 (extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)
