@@ -222,17 +222,9 @@ NavbarDirectives.directive('mbProfileLink', [function () {
 
     return {
         restrict: 'A',
-        replace: true,
         template: '<div mb-react-component="ProfileLink"></div>',
         controller: function ($scope) {
-            $scope.ProfileLink = ProfileLink
-            $scope.userIsSuperuser = false;
-
-            $scope.$watch('user', function (user) {
-                if (!user) return;
-                // extract a couple informational pieces about user
-                $scope.userIsSuperuser = user.is_superuser;
-            });
+            $scope.ProfileLink = ProfileLink;
         },
         scope: {
             context: '=',
