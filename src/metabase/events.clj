@@ -1,7 +1,8 @@
 (ns metabase.events
   "Provides a very simply event bus using `core.async` to allow publishing and subscribing to intersting
    topics happening throughout the Metabase system in a decoupled way."
-  (:require [clojure.core.async :as async]
+  (:require clojure.java.classpath
+            [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]))
 
