@@ -1,5 +1,6 @@
 "use strict";
 
+import _ from "underscore";
 import { createAction } from "redux-actions";
 import { normalize, Schema, arrayOf } from "normalizr";
 import moment from "moment";
@@ -62,6 +63,23 @@ export const setSelectedTab = createAction(SET_SELECTED_TAB);
 export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
     return async function(dispatch, getState) {
         let activityItems = await Activity.list();
+        for (var ai of activityItems) {
+            ai.timestamp = moment(ai.timestamp);
+            ai.hasLinkableModel = function() {
+                return (_.contains(["card", "dashboard"], this.model));
+            };
+            ai.activityDescription = function() {
+                switch (this.topic) {
+                    case "card-create": return "saved a question about";
+                    case "card-update": return "saved a question about";
+                    case "card-delete": return "deleted a question";
+                    case "dashboard-create": return "created a dashboard";
+                    case "dashboard-update": return "";
+                    case "dashboard-delete": return "deleted a dashboard";
+                    default: return "did some super awesome stuff";
+                }
+            }
+        }
         return normalize(activityItems, arrayOf(activity));
     };
 });

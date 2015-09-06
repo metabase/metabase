@@ -2,7 +2,10 @@
 
 import React, { Component, PropTypes } from "react";
 
+import Icon from "metabase/components/Icon.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
+import Urls from "metabase/lib/urls";
+
 import { fetchActivity } from "../actions";
 
 
@@ -11,6 +14,12 @@ export default class Activity extends Component {
     constructor() {
         super();
         this.state = { error: null };
+
+        this.styles = {
+            modelLink: {
+                borderWidth: "2px"
+            }
+        }
     }
 
     async componentDidMount() {
@@ -27,13 +36,38 @@ export default class Activity extends Component {
         // do we show user initials or the MB user icon
 
         return (
-            <div>
-            {activity.map(item =>
-                <div key={item.id} className="ActivityItem">
-                    user = {item.user}, {item.topic}
-                </div>
-            )}
-            </div>
+            <ul className="pt2 pb4">
+                {activity.map(item =>
+                    <li key={item.id} className="flex pt2">
+                        <div className="mr3">
+                            <Icon name={'filter'} width={36} height={36}></Icon>
+                        </div>
+                        <div className="flex-full">
+                            <div className="">
+                                <div className="float-left text-grey-4">
+                                    <span className="text-dark">{item.user.common_name}</span>
+                                    &nbsp;{item.activityDescription()}&nbsp;
+                                    { item.table ?
+                                        <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a>
+                                    :
+                                        null
+                                    }
+                                </div>
+                                <div className="text-right text-grey-2">
+                                    {item.timestamp.fromNow()}
+                                </div>
+                            </div>
+                            { item.hasLinkableModel() ?
+                                <div style={this.styles.modelLink} className="bordered rounded p2 mt1">
+                                    <a className="link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.details.name}</a>
+                                </div>
+                            :
+                                null
+                            }
+                        </div>
+                    </li>
+                )}
+            </ul>
         );
     }
 

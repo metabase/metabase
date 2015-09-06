@@ -28,7 +28,6 @@ export default class HeaderTabs extends Component {
     render() {
         const { selectedTab } = this.props;
 
-        // component = Tab (selected, label, action)
         const activityTab = cx({
             'HomeTab': true,
             'inline-block': true,
