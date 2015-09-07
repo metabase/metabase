@@ -35,6 +35,7 @@
     "moment": "^2.10.6",
     "normalizr": "^0.1.3",
     "react": "^0.13.3",
+    "react-d3": "^0.4.0",
     "react-grid-layout": "^0.8.5",
     "react-onclickoutside": "^0.2.5",
     "react-redux": "^0.9.0",

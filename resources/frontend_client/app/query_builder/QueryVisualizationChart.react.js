@@ -43,8 +43,9 @@ export default React.createClass({
     },
 
     calculateSizing: function(prevState) {
-        var width = CardRenderer.getAvailableCanvasWidth(this.state.chartId);
-        var height = CardRenderer.getAvailableCanvasHeight(this.state.chartId);
+        let width, height
+        // var width = CardRenderer.getAvailableCanvasWidth(this.state.chartId);
+        // var height = CardRenderer.getAvailableCanvasHeight(this.state.chartId);
         if (width !== prevState.width || height !== prevState.height) {
             this.setState({ width, height });
         }
@@ -67,14 +68,14 @@ export default React.createClass({
             }
 
             if (dataError) {
-                this.setState({
-                    error: dataError
-                });
+                // this.setState({
+                //     error: dataError
+                // });
                 return;
             } else {
-                this.setState({
-                    error: null
-                });
+                // this.setState({
+                //     error: null
+                // });
             }
 
             try {
@@ -106,30 +107,27 @@ export default React.createClass({
                     //     scope.$apply();
                     // };
 
-                    var no_op = function(a, b) {
-                        // do nothing for now
-                    };
+                    // var no_op = function(a, b) {
+                    //     // do nothing for now
+                    // };
 
-                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, no_op, no_op);
+                    return (<CardRenderer type={this.props.card.display} data={this.props.data} />)
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
+                    return (<CardRenderer type={this.props.card.display} data={this.props.data} width={React.findDOMNode(this).offsetWidth} height={React.findDOMNode(this).offsetHeight}/>)
                 }
             } catch (err) {
-                console.error(err);
-                this.setState({
-                    error: (err.message || err)
-                });
+                console.log('err', err)
+                // this.setState({
+                //     error: (err.message || err)
+                // });
             }
         }
     },
 
     render: function() {
-        // rendering a chart of some type
-        var titleId = 'card-title--'+this.state.chartId;
-        var innerId = 'card-inner--'+this.state.chartId;
+        let errorMessage;
 
-        var errorMessage;
         if (this.state.error) {
             errorMessage = (
                 <div className="QueryError flex full align-center text-error">
@@ -144,9 +142,8 @@ export default React.createClass({
         }
 
         return (
-            <div className={"Card--" + this.props.card.display + " Card-outer px1"} id={this.state.chartId}>
-                <div id={titleId} className="text-centered"></div>
-                <div id={innerId} className="card-inner"></div>
+            <div className={"Card--" + this.props.card.display + " Card-outer px1"}>
+                { this.renderChart() }
                 {errorMessage}
             </div>
         );

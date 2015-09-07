@@ -33,6 +33,7 @@ export default class DashCard extends Component {
     }
 
     renderCard() {
+        console.log('yo from card')
         let { card, dataset } = this.props.dashcard;
         let data = (dataset && dataset.data);
         let error = (dataset && dataset.error) || this.state.error;
