@@ -34,14 +34,14 @@
    *  `table`       Return all `Cards` with `:table_id` equal to `id`
 
    All returned cards must be either created by current user or are publicly visible."
-  [f id]
+  [f model_id]
   {f CardFilterOption
-   id Integer}
+   model_id Integer}
   (when (contains? #{:database :table} f)
-    (checkp (integer? id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
+    (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
-      :database (read-check Database id)
-      :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id id)))))
+      :database (read-check Database model_id)
+      :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
   (-> (case (or f :all) ; default value for `f` is `:all`
         :all      (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
                                                                     {:public_perms [> common/perms-none]})))
@@ -50,10 +50,10 @@
                            (hydrate :card))
                        (map :card)
                        (sort-by :name))
-        :database (sel :many Card (k/order :name :ASC) (k/where (and {:database_id id}
+        :database (sel :many Card (k/order :name :ASC) (k/where (and {:database_id model_id}
                                                                   (or {:creator_id *current-user-id*}
                                                                       {:public_perms [> common/perms-none]}))))
-        :table    (sel :many Card (k/order :name :ASC) (k/where (and {:table_id id}
+        :table    (sel :many Card (k/order :name :ASC) (k/where (and {:table_id model_id}
                                                                      (or {:creator_id *current-user-id*}
                                                                          {:public_perms [> common/perms-none]})))))
       (hydrate :creator)))

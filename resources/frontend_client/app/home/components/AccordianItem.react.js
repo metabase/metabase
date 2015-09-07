@@ -1,0 +1,47 @@
+"use strict";
+
+import React, { Component, PropTypes } from "react";
+
+import Icon from "metabase/components/Icon.react";
+
+
+export default class AccordianItem extends Component {
+
+    constructor(props) {
+        super(props);
+
+        this.styles = {
+            heading: {
+
+            }
+        };
+    }
+
+    render() {
+        let { children, onClickFn, isOpen, itemId, title } = this.props;
+
+        return (
+            <div key={itemId}>
+                <div styles={this.styles.heading} className="p2 text-grey-4 text-brand-hover" onClick={() => (onClickFn(itemId))}>
+                    <span className="float-left">{title}</span>
+                    <div className="text-right text-grey-2 text-brand-hover">
+                        { isOpen ?
+                            <Icon name="chevronup" width={12} height={12}></Icon>
+                        :
+                            <Icon name="chevrondown" width={12} height={12}></Icon>
+                        }
+                    </div>
+                </div>
+                { isOpen ?
+                    <div className="articlewrap">
+                        <div className="article">
+                            {children}
+                        </div>
+                    </div>
+                :
+                    null
+                }
+            </div>
+        );
+    }
+}

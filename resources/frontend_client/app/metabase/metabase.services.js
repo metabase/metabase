@@ -75,6 +75,13 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
+        db_metadata: {
+            url: '/api/meta/db/:dbId/metadata',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            }
+        },
         db_tables: {
             url: '/api/meta/db/:dbId/tables',
             method: 'GET',

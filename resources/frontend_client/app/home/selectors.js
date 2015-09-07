@@ -1,14 +1,19 @@
 "use strict";
 
-// import _ from "underscore";
-
 import { createSelector } from 'reselect';
 
+
 const selectedTabSelector         = state => state.selectedTab;
+const cardsFilterSelector         = state => state.cardsFilter;
+
 const activitySelector            = state => state.activity;
 const activityIdListSelector      = state => state.activityIdList;
+
 const cardsSelector               = state => state.cards;
 const cardIdListSelector          = state => state.cardIdList;
+
+const databasesSelector           = state => state.databases;
+const databaseMetadataSelector    = state => state.databaseMetadata;
 
 
 const activityListSelector = createSelector(
@@ -23,6 +28,6 @@ const cardListSelector = createSelector(
 
 // our master selector which combines all of our partial selectors above
 export const homepageSelectors = createSelector(
-	[selectedTabSelector, activityListSelector, cardListSelector],
-	(selectedTab, activity, cards) => ({selectedTab, activity, cards})
+	[selectedTabSelector, cardsFilterSelector, activityListSelector, cardListSelector, databasesSelector, databaseMetadataSelector],
+	(selectedTab, cardsFilter, activity, cards, databases, databaseMetadata) => ({selectedTab, cardsFilter, activity, cards, databases, databaseMetadata})
 );

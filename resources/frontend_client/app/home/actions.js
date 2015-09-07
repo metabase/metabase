@@ -33,6 +33,11 @@ function createThunkAction(actionType, actionThunkCreator) {
     }
 }
 
+// resource wrappers
+const ActivityApi = new AngularResourceProxy("Activity", ["list"]);
+const CardApi = new AngularResourceProxy("Card", ["list"]);
+const MetadataApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata"]);
+
 // normalizr schemas
 const activity = new Schema('activity');
 const card = new Schema('card');
@@ -48,21 +53,36 @@ const card = new Schema('card');
 
 // action constants
 export const SET_SELECTED_TAB = 'SET_SELECTED_TAB';
+export const SET_CARDS_FILTER = 'SET_CARDS_FILTER';
 export const FETCH_ACTIVITY = 'FETCH_ACTIVITY';
 export const FETCH_CARDS = 'FETCH_CARDS';
+export const FETCH_DATABASES = 'FETCH_DATABASES';
+export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 
-// resource wrappers
-const Activity = new AngularResourceProxy("Activity", ["list"]);
-const Card = new AngularResourceProxy("Card", ["list"]);
 
 // action creators
 
-// select tab
 export const setSelectedTab = createAction(SET_SELECTED_TAB);
+
+export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filterDef) {
+    return function(dispatch, getState) {
+        let {database, table} = filterDef;
+
+        if (database && !table) {
+            // if we have a new database then fetch its metadata
+            dispatch(fetchDatabaseMetadata(database));
+        } else if (database && table) {
+            // if we have a new table then refetch the cards
+            dispatch(fetchCards('table', table));
+        }
+
+        return filterDef;
+    };
+});
 
 export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
     return async function(dispatch, getState) {
-        let activityItems = await Activity.list();
+        let activityItems = await ActivityApi.list();
         for (var ai of activityItems) {
             ai.timestamp = moment(ai.timestamp);
             ai.hasLinkableModel = function() {
@@ -84,9 +104,9 @@ export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
     };
 });
 
-export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, filterEntityId) {
+export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, filterModelId) {
     return async function(dispatch, getState) {
-        let cards = await Card.list({'filterMode' : filterMode});
+        let cards = await CardApi.list({'filterMode' : filterMode, 'model_id' : filterModelId });
         for (var c of cards) {
             c.created_at = moment(c.created_at);
             c.updated_at = moment(c.updated_at);
@@ -96,7 +116,20 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, fi
     };
 });
 
+export const fetchDatabases = createThunkAction(FETCH_DATABASES, function() {
+    return async function(dispatch, getState) {
+        let databases = await MetadataApi.db_list();
+        return databases;
+    };
+});
+
+export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(database_id) {
+    return async function(dispatch, getState) {
+        let metadata = await MetadataApi.db_metadata({'dbId': database_id});
+        return metadata;
+    };
+});
+
 // fetch recent items (user)
-// fetch database list
 // fetch table list (database)
 
