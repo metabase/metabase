@@ -4,7 +4,7 @@ import React, { Component, PropTypes } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 
-import { fetchDatabaseMetadata, setCardsFilter } from "../actions";
+import { setCardsFilter } from "../actions";
 
 
 export default class TableListing extends Component {
