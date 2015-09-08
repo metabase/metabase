@@ -126,7 +126,10 @@
                      :display "scalar"
                      :visualization_settings {:global {:title nil}}
                      :public_perms 0
-                     :created_at $})
+                     :created_at $
+                     :database_id (db-id)
+                     :table_id (id :categories)
+                     :query_type "query"})
             :updated_at $
             :col nil
             :id $

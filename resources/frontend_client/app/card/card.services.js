@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 // Card Services
 var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);

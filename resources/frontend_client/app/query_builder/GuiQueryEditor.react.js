@@ -12,7 +12,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import Query from "metabase/lib/query";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'GuiQueryEditor',

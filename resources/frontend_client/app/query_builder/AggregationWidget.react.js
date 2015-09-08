@@ -1,5 +1,6 @@
 'use strict';
-/*global _ */
+
+import _ from "underscore";
 
 import SelectionModule from './SelectionModule.react';
 import FieldWidget from './FieldWidget.react';

@@ -3,7 +3,7 @@
 import DataReferenceQueryButton from './DataReferenceQueryButton.react';
 
 import inflection from 'inflection';
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'DataReferenceTable',

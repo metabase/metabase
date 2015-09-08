@@ -1,7 +1,7 @@
 'use strict';
-/*jslint browser:true */
-/*global document,_,google,console*/
+/*global google*/
 
+import _ from "underscore";
 import $ from 'jquery';
 import crossfilter from 'crossfilter';
 import d3 from 'd3';

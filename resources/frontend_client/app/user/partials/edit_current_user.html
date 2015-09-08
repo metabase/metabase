@@ -6,15 +6,15 @@
 <div class="mt2 md-mt4 wrapper wrapper--trim">
     <div class="Grid Grid--gutters Grid--full md-Grid--normal md-flex-reverse">
         <div class="Grid-cell Grid Grid--fit md-flex-column md-Cell--1of3">
-            <a class="Grid-cell md-no-flex rouded HoverItem p1 md-p3 block cursor-pointer text-centered md-text-left"
+            <a class="Grid-cell md-no-flex bordered text-brand-hover border-brand-hover rounded p1 md-p3 block cursor-pointer text-centered md-text-left"
                 ng-click="setTabFocus('details')"
-                ng-class="{ 'bg-brand text-white' : tab_focus == 'details' }">
+                ng-class="{ 'bg-brand text-white text-white-hover' : tab_focus == 'details' }">
                 User Details
             </a>
 
-            <a class="Grid-cell md-no-flex rounded HoverItem p1 md-p3 block cursor-pointer text-centered md-text-left"
+            <a class="Grid-cell md-no-flex md-mt1 text-brand-hover bordered border-brand-hover rounded p1 md-p3 block cursor-pointer text-centered md-text-left"
                 ng-click="setTabFocus('password')"
-                ng-class="{ 'bg-brand text-white' : tab_focus == 'password' }">
+                ng-class="{ 'bg-brand text-white text-white-hover' : tab_focus == 'password' }">
                 Password
             </a>
         </div>

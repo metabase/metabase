@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import ProgressBar from "metabase/components/ProgressBar.react";
 import Icon from "metabase/components/Icon.react";

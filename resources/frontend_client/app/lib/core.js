@@ -1,5 +1,7 @@
 'use strict';
-/*global _, exports*/
+/*global exports*/
+
+import _ from "underscore";
 
 (function() {
 

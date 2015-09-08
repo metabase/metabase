@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon.react";
 import IconBorder from './IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: 'QueryVisualizationObjectDetailTable',
@@ -81,7 +81,7 @@ export default React.createClass({
             rows[i] = (
                 <div className="Grid mb2" key={i}>
                     <div className="Grid-cell">{keyCell}</div>
-                    <div className="Grid-cell text-bold text-dark">{valueCell}</div>
+                    <div style={{wordWrap: 'break-word'}} className="Grid-cell text-bold text-dark">{valueCell}</div>
                 </div>
             );
         }

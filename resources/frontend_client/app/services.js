@@ -1,6 +1,7 @@
 'use strict';
-/*jslint browser:true */
-/*global _*/
+
+import _ from "underscore";
+
 /* Services */
 
 import MetabaseAnalytics from 'metabase/lib/analytics';

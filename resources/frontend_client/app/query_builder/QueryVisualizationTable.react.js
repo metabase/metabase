@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
@@ -8,7 +9,7 @@ import FixedDataTable from 'fixed-data-table';
 import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 var Table = FixedDataTable.Table;
 var Column = FixedDataTable.Column;
 

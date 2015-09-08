@@ -2,7 +2,8 @@
   (:require [korma.core :refer :all, :exclude [defentity update]]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer :all]
-            [metabase.models.interface :refer :all]))
+            [metabase.models.interface :refer :all]
+            [metabase.util :as u]))
 
 (defrecord DatabaseInstance []
   ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
@@ -24,8 +25,10 @@
    (types :details :json, :engine :keyword)
    timestamped]
 
-  (post-select [_ db]
-    (map->DatabaseInstance db))
+  (post-select [_ {:keys [id] :as database}]
+    (map->DatabaseInstance
+      (u/assoc* database
+        :tables (delay (sel :many 'metabase.models.table/Table :db_id id :active true (order :display_name :ASC))))))
 
   (pre-cascade-delete [_ {:keys [id] :as database}]
     (cascade-delete 'metabase.models.table/Table :db_id id)))

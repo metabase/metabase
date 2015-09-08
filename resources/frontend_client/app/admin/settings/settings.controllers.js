@@ -1,5 +1,6 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.react';
 
