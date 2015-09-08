@@ -25,6 +25,7 @@ export var ICON_PATHS = {
     chevronleft: 'M20 1 L24 5 L14 16 L24 27 L20 31 L6 16 z',
     chevronright: 'M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z ',
     chevronup: 'M1 20 L16 6 L31 20 L27 24 L16 14 L5 24 z',
+    clock: 'M16 0 A16 16 0 0 0 0 16 A16 16 0 0 0 16 32 A16 16 0 0 0 32 16 A16 16 0 0 0 16 0 M16 4 A12 12 0 0 1 28 16 A12 12 0 0 1 16 28 A12 12 0 0 1 4 16 A12 12 0 0 1 16 4 M14 6 L14 17.25 L22 22 L24.25 18.5 L18 14.75 L18 6z',
     clone: {
         path: 'M12,11 L16,11 L16,0 L5,0 L5,3 L12,3 L12,11 L12,11 Z M0,4 L11,4 L11,15 L0,15 L0,4 Z',
         attrs: { viewBox: '0 0 16 15' }
