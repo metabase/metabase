@@ -1,11 +1,10 @@
 'use strict';
 
 import React, { Component, PropTypes } from 'react';
-import Icon from './Icon.react'
+import OnClickOut from 'react-onclickout';
+import cx from 'classnames';
 
-import OnClickOut from 'react-onclickout'
-
-import cx from 'classnames'
+import Icon from './Icon.react';
 
 export default class ProfileLink extends Component {
     constructor() {
@@ -40,7 +39,6 @@ export default class ProfileLink extends Component {
     render() {
         const { user, context } = this.props;
 
-
         let dropDownClasses = cx({
             'NavDropdown': true,
             'inline-block': true,
@@ -62,8 +60,7 @@ export default class ProfileLink extends Component {
                         </div>
                     </a>
 
-                    {this.state.dropdownOpen ?
-
+                    { this.state.dropdownOpen ?
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
                                 <li>
@@ -71,9 +68,7 @@ export default class ProfileLink extends Component {
                                         Account Settings
                                     </a>
                                 </li>
-
                                 { user.is_superuser && context !== 'admin' ?
-
                                     <li>
                                         <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
                                             Admin Panel
@@ -85,15 +80,13 @@ export default class ProfileLink extends Component {
                                             Exit Admin
                                         </a>
                                     </li>
-
                                 }
                                 <li className="border-top border-light">
                                     <a className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
                                 </li>
                             </ul>
                         </div>
-                    : null
-                    }
+                    : null }
                 </div>
             </OnClickOut>
         );
