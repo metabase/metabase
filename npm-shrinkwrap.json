@@ -12,11 +12,6 @@
       "from": "angular@1.2.28",
       "resolved": "https://registry.npmjs.org/angular/-/angular-1.2.28.tgz"
     },
-    "angular-animate": {
-      "version": "1.2.28",
-      "from": "angular-animate@1.2.28",
-      "resolved": "https://registry.npmjs.org/angular-animate/-/angular-animate-1.2.28.tgz"
-    },
     "angular-cookie": {
       "version": "1.0.0",
       "from": "git://github.com/ivpusic/angular-cookie.git#v4.0.6",
@@ -26,11 +21,6 @@
       "version": "1.2.28",
       "from": "angular-cookies@1.2.28",
       "resolved": "https://registry.npmjs.org/angular-cookies/-/angular-cookies-1.2.28.tgz"
-    },
-    "angular-gridster": {
-      "version": "0.11.7",
-      "from": "angular-gridster@0.11.7",
-      "resolved": "https://registry.npmjs.org/angular-gridster/-/angular-gridster-0.11.7.tgz"
     },
     "angular-http-auth": {
       "version": "1.2.1",
@@ -42,11 +32,6 @@
       "from": "angular-mocks@1.2.28",
       "resolved": "https://registry.npmjs.org/angular-mocks/-/angular-mocks-1.2.28.tgz"
     },
-    "angular-readable-time": {
-      "version": "0.1.1",
-      "from": "git://github.com/wildlyinaccurate/angular-readable-time.git#0.1.1",
-      "resolved": "git://github.com/wildlyinaccurate/angular-readable-time.git#3e3e701a679532d2bc21eeee812bf90a440fa988"
-    },
     "angular-resource": {
       "version": "1.2.28",
       "from": "angular-resource@1.2.28",
@@ -57,11 +42,6 @@
       "from": "angular-route@1.2.28",
       "resolved": "https://registry.npmjs.org/angular-route/-/angular-route-1.2.28.tgz"
     },
-    "angular-sanitize": {
-      "version": "1.2.28",
-      "from": "angular-sanitize@1.2.28",
-      "resolved": "https://registry.npmjs.org/angular-sanitize/-/angular-sanitize-1.2.28.tgz"
-    },
     "angular-ui-ace": {
       "version": "0.2.3",
       "from": "angular-ui-ace@0.2.3",
@@ -71,11 +51,6 @@
       "version": "0.12.1",
       "from": "angular-ui-bootstrap@>=0.12.1 <0.13.0",
       "resolved": "https://registry.npmjs.org/angular-ui-bootstrap/-/angular-ui-bootstrap-0.12.1.tgz"
-    },
-    "angular-xeditable": {
-      "version": "0.1.9",
-      "from": "git://github.com/vitalets/angular-xeditable.git#0.1.9",
-      "resolved": "git://github.com/vitalets/angular-xeditable.git#0b26f8859f602925ef45c156855bfd4206b86239"
     },
     "babel": {
       "version": "5.8.23",
@@ -1298,7 +1273,7 @@
           "dependencies": {
             "commander": {
               "version": "2.8.1",
-              "from": "commander@>=2.6.0 <3.0.0",
+              "from": "commander@>=2.8.0 <2.9.0",
               "resolved": "https://registry.npmjs.org/commander/-/commander-2.8.1.tgz",
               "dependencies": {
                 "graceful-readlink": {
@@ -1395,7 +1370,7 @@
                 },
                 "caniuse-db": {
                   "version": "1.0.30000296",
-                  "from": "caniuse-db@>=1.0.30000214 <2.0.0",
+                  "from": "caniuse-db@>=1.0.30000030 <2.0.0",
                   "resolved": "https://registry.npmjs.org/caniuse-db/-/caniuse-db-1.0.30000296.tgz"
                 },
                 "lodash.memoize": {
@@ -1987,7 +1962,7 @@
                   "dependencies": {
                     "postcss-value-parser": {
                       "version": "1.4.2",
-                      "from": "postcss-value-parser@>=1.4.2 <2.0.0",
+                      "from": "postcss-value-parser@>=1.1.0 <2.0.0",
                       "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-1.4.2.tgz"
                     }
                   }
@@ -2177,7 +2152,7 @@
                     },
                     "postcss-value-parser": {
                       "version": "1.4.2",
-                      "from": "postcss-value-parser@>=1.4.2 <2.0.0",
+                      "from": "postcss-value-parser@>=1.1.0 <2.0.0",
                       "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-1.4.2.tgz"
                     }
                   }
@@ -2189,7 +2164,7 @@
                   "dependencies": {
                     "postcss-value-parser": {
                       "version": "1.4.2",
-                      "from": "postcss-value-parser@>=1.4.2 <2.0.0",
+                      "from": "postcss-value-parser@>=1.1.0 <2.0.0",
                       "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-1.4.2.tgz"
                     }
                   }
@@ -2469,7 +2444,7 @@
                       "dependencies": {
                         "color-name": {
                           "version": "1.0.0",
-                          "from": "color-name@>=1.0.0 <2.0.0",
+                          "from": "color-name@>=1.0.0 <1.1.0",
                           "resolved": "https://registry.npmjs.org/color-name/-/color-name-1.0.0.tgz"
                         }
                       }
@@ -4656,7 +4631,7 @@
               "dependencies": {
                 "unpipe": {
                   "version": "1.0.0",
-                  "from": "unpipe@>=1.0.0 <1.1.0",
+                  "from": "unpipe@1.0.0",
                   "resolved": "https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz"
                 }
               }
@@ -5039,7 +5014,7 @@
                 },
                 "unpipe": {
                   "version": "1.0.0",
-                  "from": "unpipe@>=1.0.0 <1.1.0",
+                  "from": "unpipe@1.0.0",
                   "resolved": "https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz"
                 }
               }
@@ -7602,7 +7577,7 @@
       "dependencies": {
         "flux-standard-action": {
           "version": "0.6.0",
-          "from": "flux-standard-action@>=0.6.0 <0.7.0",
+          "from": "flux-standard-action@0.6.0",
           "resolved": "https://registry.npmjs.org/flux-standard-action/-/flux-standard-action-0.6.0.tgz",
           "dependencies": {
             "lodash.isplainobject": {
@@ -8543,7 +8518,7 @@
         },
         "socket.io": {
           "version": "1.3.6",
-          "from": "socket.io@>=1.3.5 <1.4.0",
+          "from": "socket.io@>=1.3.3 <2.0.0",
           "resolved": "https://registry.npmjs.org/socket.io/-/socket.io-1.3.6.tgz",
           "dependencies": {
             "engine.io": {
