@@ -7,6 +7,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.r
 import Urls from "metabase/lib/urls";
 
 import { fetchActivity } from "../actions";
+import ActivityDescription from "./ActivityDescription.react";
 
 
 export default class Activity extends Component {
@@ -30,6 +31,77 @@ export default class Activity extends Component {
         }
     }
 
+    activityDescription(item) {
+        switch (item.topic) {
+            case "card-create":
+                return {
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                };
+            case "card-update":
+                return {
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                };
+            case "card-delete":
+                return {
+                    subject: "deleted a question",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                };
+            case "dashboard-create":
+                return {
+                    subject: "created a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                };
+            case "dashboard-delete":
+                return {
+                    subject: "deleted a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                };
+            case "dashboard-add-cards":
+                return {
+                    subject: "added a question to the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id)
+                };
+            case "dashboard-card-delete": return "removed a question from the dashboard -";
+            case "database-sync":
+                return {
+                    subject: "received the latest data from",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: null,
+                    bodyLink: null
+                };
+            case "user-joined":
+                return {
+                    subject: "joined the party!",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: null,
+                    bodyLink: null
+                };
+            default: return "did some super awesome stuff thats hard to describe";
+        };
+    }
+
     renderActivity(activity) {
 
         // colors for each user
@@ -42,29 +114,7 @@ export default class Activity extends Component {
                         <div className="mr3">
                             <Icon name={'filter'} width={36} height={36}></Icon>
                         </div>
-                        <div className="flex-full">
-                            <div className="">
-                                <div className="float-left text-grey-4">
-                                    <span className="text-dark">{item.user.common_name}</span>
-                                    &nbsp;{item.activityDescription()}&nbsp;
-                                    { item.table ?
-                                        <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a>
-                                    :
-                                        null
-                                    }
-                                </div>
-                                <div className="text-right text-grey-2">
-                                    {item.timestamp.fromNow()}
-                                </div>
-                            </div>
-                            { item.hasLinkableModel() ?
-                                <div style={this.styles.modelLink} className="bordered rounded p2 mt1">
-                                    <a className="link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.details.name}</a>
-                                </div>
-                            :
-                                null
-                            }
-                        </div>
+                        <ActivityDescription item={item} description={this.activityDescription(item)}></ActivityDescription>
                     </li>
                 )}
             </ul>

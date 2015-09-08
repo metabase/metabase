@@ -88,17 +88,6 @@ export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
             ai.hasLinkableModel = function() {
                 return (_.contains(["card", "dashboard"], this.model));
             };
-            ai.activityDescription = function() {
-                switch (this.topic) {
-                    case "card-create": return "saved a question about";
-                    case "card-update": return "saved a question about";
-                    case "card-delete": return "deleted a question";
-                    case "dashboard-create": return "created a dashboard";
-                    case "dashboard-update": return "";
-                    case "dashboard-delete": return "deleted a dashboard";
-                    default: return "did some super awesome stuff";
-                }
-            }
         }
         return normalize(activityItems, arrayOf(activity));
     };
