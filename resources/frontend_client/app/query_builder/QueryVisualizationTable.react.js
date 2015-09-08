@@ -1,7 +1,5 @@
 'use strict';
 
-import _ from "underscore";
-
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
 
@@ -20,7 +18,9 @@ export default React.createClass({
         sort: React.PropTypes.array,
         setSortFn: React.PropTypes.func,
         isCellClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
+        cellClickedFn: React.PropTypes.func,
+        width: React.PropTypes.number.isRequired,
+        height: React.PropTypes.number.isRequired,
     },
 
     // local variables
@@ -36,8 +36,6 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            width: 0,
-            height: 0,
             columnWidths: [],
             colDefs: null,
             popover: null,
@@ -65,26 +63,10 @@ export default React.createClass({
                 colDefs: JSON.stringify(this.props.data.cols),
                 data: gridData,
                 rawData: this.props.data,
-                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols)
+                columnWidths: this.calculateColumnWidths(this.props.width, this.props.minColumnWidth, gridData.cols)
             });
         }
     },
-
-    componentDidMount: function() {
-        this.calculateSizing(this.getInitialState());
-    },
-
-    shouldComponentUpdate: function(nextProps, nextState) {
-        // this is required because we don't pass in the containing element size as a property :-/
-        // if size changes don't update yet because state will change in a moment
-        this.calculateSizing(nextState);
-
-        // compare props and state to determine if we should re-render
-        // NOTE: this is essentially the same as React.addons.PureRenderMixin but
-        // we currently need to recalculate the container size here.
-        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
-    },
-
     // availableWidth, minColumnWidth, # of columns
     // previousWidths, prevWidth
     calculateColumnWidths: function(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
@@ -96,34 +78,6 @@ export default React.createClass({
         });
 
         return columnWidths;
-    },
-
-    calculateSizing: function(prevState) {
-        var element = this.getDOMNode(); //React.findDOMNode(this);
-
-        // account for padding of our parent
-        var style = window.getComputedStyle(element.parentElement, null);
-        var paddingTop = Math.ceil(parseFloat(style.getPropertyValue("padding-top")));
-        var paddingLeft = Math.ceil(parseFloat(style.getPropertyValue("padding-left")));
-        var paddingRight = Math.ceil(parseFloat(style.getPropertyValue("padding-right")));
-
-        var width = element.parentElement.offsetWidth - paddingLeft - paddingRight;
-        var height = element.parentElement.offsetHeight - paddingTop;
-
-        if (width !== prevState.width || height !== prevState.height) {
-            var updatedState = {
-                width: width,
-                height: height
-            };
-
-            if (width !== prevState.width) {
-                // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
-                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.state.data.cols, prevState.width, prevState.columnWidths);
-                updatedState.columnWidths = tableColumnWidths;
-            }
-
-            this.setState(updatedState);
-        }
     },
 
     isSortable: function() {
@@ -293,8 +247,8 @@ export default React.createClass({
                     rowHeight={35}
                     rowGetter={this.rowGetter}
                     rowsCount={this.state.data.rows.length}
-                    width={this.state.width}
-                    maxHeight={this.state.height}
+                    width={this.props.width}
+                    maxHeight={this.props.height}
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
                     onColumnResizeEndCallback={component.columnResized}>

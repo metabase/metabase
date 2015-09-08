@@ -8,6 +8,8 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import RunButton from './RunButton.react';
 import VisualizationSettings from './VisualizationSettings.react';
 
+import OnResize from 'metabase/components/OnResize.react'
+
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
@@ -37,7 +39,9 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            origQuery: JSON.stringify(this.props.card.dataset_query)
+            origQuery: JSON.stringify(this.props.card.dataset_query),
+            width: 0,
+            height: 0,
         };
     },
 
@@ -57,6 +61,20 @@ export default React.createClass({
 
     isChartDisplay: function(display) {
         return (display !== "table" && display !== "scalar");
+    },
+
+    setWidthAndHeight: function () {
+        let node = React.findDOMNode(this)
+        let style = window.getComputedStyle(node)
+        console.log(node)
+        this.setState({
+            width: style.getPropertyValue('width'),
+            height: style.getPropertyValue('height')
+        })
+    },
+
+    resizeHandler: function () {
+        this.setWidthAndHeight()
     },
 
     runQuery: function() {
@@ -122,6 +140,10 @@ export default React.createClass({
                 </div>
             );
         }
+    },
+
+    componentDidMount: function () {
+        this.setWidthAndHeight()
     },
 
     renderDownloadButton: function() {
@@ -233,6 +255,8 @@ export default React.createClass({
                             sort={sort}
                             cellIsClickableFn={cellClickable}
                             cellClickedFn={this.props.cellClickedFn}
+                            width={this.state.width}
+                            height={this.state.height}
                         />
                     );
 
@@ -242,13 +266,16 @@ export default React.createClass({
                         <QueryVisualizationChart
                             visualizationSettingsApi={this.props.visualizationSettingsApi}
                             card={this.props.card}
-                            data={this.props.result.data} />
+                            data={this.props.result.data}
+                            width={this.state.width}
+                            height={this.state.height}
+                        />
                     );
                 }
             }
         }
 
-        var wrapperClasses = cx({
+        let wrapperClasses = cx({
             'wrapper': true,
             'full': true,
             'relative': true,
@@ -257,7 +284,7 @@ export default React.createClass({
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx({
+        let visualizationClasses = cx({
             'flex': true,
             'flex-full': true,
             'Visualization': true,
@@ -267,11 +294,13 @@ export default React.createClass({
 
         return (
             <div className={wrapperClasses}>
-                {this.renderHeader()}
-                {loading}
-                <div className={visualizationClasses}>
-                    {viz}
-                </div>
+                <OnResize resizeHandler={this.resizeHandler}>
+                    {this.renderHeader()}
+                    {loading}
+                    <div className={visualizationClasses}>
+                        {viz}
+                    </div>
+                </OnResize>
             </div>
         );
     }
