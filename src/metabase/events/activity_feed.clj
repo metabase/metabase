@@ -38,7 +38,6 @@
 (defn- topic->model
   "Determine a valid `model` identifier for the given `topic`."
   [topic]
-  {:pre [(valid-activity-topic? topic)]}
   ;; just take the first part of the topic name after splitting on dashes.
   (first (clojure.string/split (name topic) #"-")))
 
@@ -109,9 +108,9 @@
                                                                               (dissoc :database_id :custom_id))))
     :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
                            (db/upd Activity activity-id
-                                :details (-> object
-                                             (assoc :status "completed")
-                                             (dissoc :database_id :custom_id))))))
+                             :details (-> object
+                                          (assoc :status "completed")
+                                          (dissoc :database_id :custom_id))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
@@ -135,7 +134,7 @@
         "install"   (when-not (db/sel :one :fields [Activity :id])
                       (db/ins Activity :topic :install))
         "user"      (process-user-activity topic object)))
-    (catch Exception e
+    (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
 
 
