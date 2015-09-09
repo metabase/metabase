@@ -26,4 +26,3 @@
                          (merge defaults log-entry))))
 
 (extend-ICanReadWrite ViewLogEntity :read :public-perms, :write :public-perms)
-
