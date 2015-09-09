@@ -223,9 +223,9 @@ NavbarDirectives.directive('mbProfileLink', [function () {
     return {
         restrict: 'A',
         template: '<div mb-react-component="ProfileLink"></div>',
-        controller: function ($scope) {
+        controller: ['$scope', function ($scope) {
             $scope.ProfileLink = ProfileLink;
-        },
+        }],
         scope: {
             context: '=',
             user: '='
