@@ -52,7 +52,7 @@ export default class Homepage extends Component {
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             <header style={this.styles.headerGreeting} className="flex align-center pb4">
-                                <span className="float-left mr2">
+                                <span className="float-left mr1">
                                     <Smile />
                                 </span>
                                 <span>{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
