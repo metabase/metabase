@@ -3,8 +3,9 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
+import Urls from "metabase/lib/urls";
 
-import { fetchRecents } from "../actions";
+import { fetchRecentViews } from "../actions";
 
 
 export default class RecentViews extends Component {
@@ -17,23 +18,28 @@ export default class RecentViews extends Component {
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchRecents());
+            await this.props.dispatch(fetchRecentViews());
         } catch (error) {
             this.setState({ error });
         }
     }
 
     render() {
+        let { recentViews } = this.props;
 
         return (
             <div className="p2">
                 <div className="text-brand clearfix pt2 pb2">
-                    <Icon className="float-left" name={'history'} width={24} height={24}></Icon>
-                    <div>Recents</div>
+                    <Icon className="float-left" name={'clock'} width={18} height={18}></Icon>
+                    <span className="pl1">Recents</span>
                 </div>
                 <div className="bordered rounded bg-white">
-                    <ul>
-                        <li>recent stuff</li>
+                    <ul className="px3 py1">
+                        {recentViews.map(item =>
+                            <li key={item.id} className="py1">
+                                <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                            </li>
+                        )}
                     </ul>
                 </div>
             </div>

@@ -9,6 +9,8 @@ const cardsFilterSelector         = state => state.cardsFilter;
 const activitySelector            = state => state.activity;
 const activityIdListSelector      = state => state.activityIdList;
 
+const recentViewsSelector         = state => state.recentViews;
+
 const cardsSelector               = state => state.cards;
 const cardIdListSelector          = state => state.cardIdList;
 
@@ -28,6 +30,6 @@ const cardListSelector = createSelector(
 
 // our master selector which combines all of our partial selectors above
 export const homepageSelectors = createSelector(
-	[selectedTabSelector, cardsFilterSelector, activityListSelector, cardListSelector, databasesSelector, databaseMetadataSelector],
-	(selectedTab, cardsFilter, activity, cards, databases, databaseMetadata) => ({selectedTab, cardsFilter, activity, cards, databases, databaseMetadata})
+	[selectedTabSelector, cardsFilterSelector, activityListSelector, recentViewsSelector, cardListSelector, databasesSelector, databaseMetadataSelector],
+	(selectedTab, cardsFilter, activity, recentViews, cards, databases, databaseMetadata) => ({selectedTab, cardsFilter, activity, recentViews, cards, databases, databaseMetadata})
 );

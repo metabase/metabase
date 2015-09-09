@@ -1,11 +1,9 @@
-(ns metabase.events.view-counts
+(ns metabase.events.view-log
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [activity :refer [Activity]]
-                             [dashboard :refer [Dashboard]]
-                             [session :refer [Session]])))
+            [metabase.models.view-log :refer [ViewLog]]))
 
 
 (def view-counts-topics
@@ -20,23 +18,53 @@
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
+;(defn- tally-in-time-period
+;  ""
+;  [period-days now tracking-start cnt]
+;  {:pre [(integer? now)
+;         (integer? tracking-start)
+;         (integer? period-days)
+;         (integer? cnt)]}
+;  (let [milliseconds-since (- now tracking-start)]
+;    (if (> (* period-days 24 60 60 1000) milliseconds-since)
+;      {:timestamp tracking-start
+;       :count     (inc cnt)}
+;      {:timestamp now
+;       :count     1})))
+;
+;(defn- record-view
+;  "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
+;  [model model-id user-id]
+;  (println "weeeeee" model model-id user-id)
+;  (let [{:keys [id] :as before-tally} (or (-> (db/sel :one ViewCounts :user_id user-id :model model :model_id model-id)
+;                                              (dissoc :user :model_object))
+;                                          {:user_id  user-id
+;                                           :model    model
+;                                           :model_id model-id})
+;        now (System/currentTimeMillis)
+;        tally-period (fn [period-days]
+;                       (let [ts-keyword (keyword (str period-days "_day_ts"))
+;                             cnt-keyword (keyword (str period-days "_day_cnt"))]
+;                         (-> (tally-in-time-period period-days now (or (ts-keyword before-tally) 0) (or (cnt-keyword before-tally) 0))
+;                             (set/rename-keys {:timestamp ts-keyword, :count cnt-keyword}))))
+;        after-tally (-> before-tally
+;                        (assoc :all_time_cnt (inc (or (:all_time_cnt before-tally) 0)))
+;                        (merge (tally-period 1))
+;                        (merge (tally-period 7))
+;                        (merge (tally-period 30)))]
+;    (clojure.pprint/pprint after-tally)
+;    (if id
+;      (m/mapply db/upd ViewCounts id after-tally)
+;      (m/mapply db/ins ViewCounts after-tally))))
 
 (defn- record-view
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [model model-id user-id]
-  (println "weeeeee" model model-id user-id)
-  ;(db/ins Activity
-  ;  :topic topic
-  ;  :user_id (object->user-id object)
-  ;  :model (topic->model topic)
-  ;  :model_id (object->model-id topic object)
-  ;  :database_id database-id
-  ;  :table_id table-id
-  ;  :custom_id (:custom_id object)
-  ;  :details (if (fn? details-fn)
-  ;             (details-fn object)
-  ;             object))
-  )
+  ;; TODO - we probably want a little code that prunes old entries so that this doesn't get too big
+  (db/ins ViewLog
+    :user_id  user-id
+    :model    model
+    :model_id model-id))
 
 (defn- topic->model
   "Determine a valid `model` identifier for the given `topic`."

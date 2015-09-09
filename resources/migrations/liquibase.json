@@ -11,6 +11,7 @@
       {"include": {"file": "migrations/010_add_revision_table.yaml"}},
       {"include": {"file": "migrations/011_cleanup_dashboard_perms.yaml"}},
       {"include": {"file": "migrations/012_add_card_query_fields.yaml"}},
-      {"include": {"file": "migrations/013_add_activity_table.yaml"}}
+      {"include": {"file": "migrations/013_add_activity_table.yaml"}},
+      {"include": {"file": "migrations/014_add_view_log_table.yaml"}}
   ]
 }

@@ -8,6 +8,12 @@ ActivityServices.factory('Activity', ['$resource', '$cookies', function($resourc
         list: {
             method: 'GET',
             isArray: true
+        },
+
+        recent_views: {
+            url: '/api/activity/recent_views',
+            method: 'GET',
+            isArray: true
         }
     });
 }]);

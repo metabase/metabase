@@ -8,7 +8,8 @@ import {
     FETCH_ACTIVITY,
     FETCH_CARDS,
     FETCH_DATABASES,
-    FETCH_DATABASE_METADATA
+    FETCH_DATABASE_METADATA,
+    FETCH_RECENT_VIEWS
 } from './actions';
 
 
@@ -28,6 +29,10 @@ export const activity = handleActions({
 export const activityIdList = handleActions({
     [FETCH_ACTIVITY]: { next: (state, { payload }) => payload.result }
 }, null);
+
+export const recentViews = handleActions({
+	[FETCH_RECENT_VIEWS]: { next: (state, { payload }) => payload }
+}, []);
 
 
 export const cards = handleActions({
