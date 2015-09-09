@@ -2,6 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
+import Urls from "metabase/lib/urls";
+
 
 export default class ActivityDescription extends Component {
 
@@ -15,8 +17,117 @@ export default class ActivityDescription extends Component {
         };
     }
 
+    userName(user, currentUser) {
+        if (user && user.id === currentUser.id) {
+            return "You";
+        } else if (user) {
+            return user.first_name;
+        } else {
+            return "Metabase";
+        }
+    }
+
+    activityDescription(item, user) {
+
+        switch (item.topic) {
+            case "card-create":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "card-update":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "card-delete":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "deleted a question",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-create":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "created a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-delete":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "deleted a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-add-cards":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "added a question to the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-remove-cards":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "removed a question from the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "database-sync":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "received the latest data from",
+                    subjectRefLink: null,
+                    subjectRefName: item.database.name,
+                    body: null,
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "user-joined":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "joined the party!",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: null,
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
+                };
+            default: return "did some super awesome stuff thats hard to describe";
+        };
+    }
+
     render() {
-        let { description } = this.props;
+        console.log('props=', this.props);
+        let { item, user } = this.props;
+        const description = this.activityDescription(item, user);
 
         return (
             <div className="flex-full">
