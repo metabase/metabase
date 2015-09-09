@@ -44,7 +44,6 @@ export default class Homepage extends Component {
     }
 
     render() {
-        console.log('props=', this.props);
         const { selectedTab, user } = this.props;
 
         return (
@@ -53,7 +52,7 @@ export default class Homepage extends Component {
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             <header style={this.styles.headerGreeting} className="pb4">
-                                <span className="float-left">
+                                <span className="float-left mr2">
                                     <svg width="48px" height="48px" viewBox="0 0 48 48">
                                         <defs>
                                             <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-1">

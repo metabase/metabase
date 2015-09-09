@@ -1,6 +1,8 @@
 "use strict";
 
 import React, { Component, PropTypes } from "react";
+import _ from "underscore";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
@@ -14,7 +16,9 @@ export default class Activity extends Component {
 
     constructor() {
         super();
-        this.state = { error: null };
+        this.state = { error: null, userColors: {} };
+
+        this.colorClasses = ['bg-brand', 'bg-gold', 'bg-error', 'bg-gold', 'bg-gold', 'bg-gold'];
 
         this.styles = {
             modelLink: {
@@ -22,6 +26,7 @@ export default class Activity extends Component {
             },
 
             initials: {
+                borderWidth: "0px",
                 borderStyle: "none"
             }
         }
@@ -33,6 +38,33 @@ export default class Activity extends Component {
         } catch (error) {
             this.setState({ error });
         }
+    }
+
+    componentWillReceiveProps(nextProps) {
+        // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
+        let { activity, user } = nextProps;
+        let { userColors } = this.state;
+
+        const colors = [1,2,3,4,5];
+        const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
+        var currColor =  (maxColorUsed && maxColorUsed < 5) ? maxColorUsed : 0;
+
+        for (var item of activity) {
+            if (!(item.user_id in userColors)) {
+                // assign the user a color
+                if (item.user_id === user.id) {
+                    userColors[item.user_id] = 0;
+                } else {
+                    userColors[item.user_id] = colors[currColor];
+                    currColor++;
+                }
+            }
+        }
+
+        this.setState({
+            'error': this.state.error,
+            'userColors': userColors
+        });
     }
 
     userInitials(user) {
@@ -99,12 +131,13 @@ export default class Activity extends Component {
                     body: item.details.dashcards[0].name,
                     bodyLink: Urls.card(item.details.dashcards[0].card_id)
                 };
-            case "dashboard-card-delete": return "removed a question from the dashboard -";
+            case "dashboard-card-delete":
+                return "removed a question from the dashboard -";
             case "database-sync":
                 return {
                     subject: "received the latest data from",
-                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
-                    subjectRefName: item.table.display_name,
+                    subjectRefLink: null,
+                    subjectRefName: item.database.name,
                     body: null,
                     bodyLink: null
                 };
@@ -120,6 +153,28 @@ export default class Activity extends Component {
         };
     }
 
+    initialsCssClasses(user) {
+
+        let { userColors } = this.state;
+
+        if (user) {
+            const userColorIndex = userColors[user.id];
+            const colorCssClass = this.colorClasses[userColorIndex];
+            const cssClasses = {
+                'UserNick': true,
+                'text-white': true
+            };
+            cssClasses[colorCssClass] = true;
+
+            return cx(cssClasses);
+        } else {
+            return cx({
+                'UserNick': true
+            });
+        }
+
+    }
+
     renderActivity(activity) {
 
         // colors for each user
@@ -130,9 +185,15 @@ export default class Activity extends Component {
                 {activity.map(item =>
                     <li key={item.id} className="flex pt2">
                         <div className="mr3">
-                            <span styles={this.styles.initials} className="UserNick">
-                                <span className="UserInitials NavItem-text">{this.userInitials(item.user)}</span>
-                            </span>
+                            {item.user ?
+                                <span styles={this.styles.initials} className={this.initialsCssClasses(item.user)}>
+                                    <span className="UserInitials">{this.userInitials(item.user)}</span>
+                                </span>
+                            :
+                                <span styles={this.styles.initials} className={this.initialsCssClasses(item.user)}>
+                                    <span className="UserInitials"><Icon name={'return'}></Icon></span>
+                                </span>
+                            }
                         </div>
                         <ActivityDescription item={item} description={this.activityDescription(item)}></ActivityDescription>
                     </li>

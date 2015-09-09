@@ -22,13 +22,17 @@ export default class ActivityDescription extends Component {
             <div className="flex-full">
                 <div className="">
                     <div className="float-left text-grey-4">
-                        <span className="text-dark">{item.user.first_name}</span>
+                        <span className="text-dark">{item.user ? item.user.first_name : "Metabase"}</span>
+
                         &nbsp;{description.subject}&nbsp;
-                        { description.subjectRefLink ?
+
+                        { description.subjectRefName && description.subjectRefLink ?
                             <a className="link text-dark" href={description.subjectRefLink}>{description.subjectRefName}</a>
-                        :
-                            null
-                        }
+                        : null }
+
+                        { description.subjectRefName && !description.subjectRefLink ?
+                            <span className="text-dark">{description.subjectRefName}</span>
+                        : null }
                     </div>
                     <div className="text-right text-grey-2">
                         {item.timestamp.fromNow()}
