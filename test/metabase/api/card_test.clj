@@ -46,7 +46,7 @@
                                   :visualization_settings {}
                                   :database_id            dbid}]
         (let [card-returned? (fn [database-id card-id]
-                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :id database-id)
+                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :model_id database-id)
                                                (map :id)
                                                set)
                                           card-id))]
@@ -77,7 +77,7 @@
                                 :visualization_settings {}
                                 :table_id               2}]
       (let [card-returned? (fn [table-id card-id]
-                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :id table-id)
+                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
                                              (map :id)
                                              set)
                                         card-id))]
