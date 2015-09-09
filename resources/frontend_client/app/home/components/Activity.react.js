@@ -81,80 +81,115 @@ export default class Activity extends Component {
         return initials;
     }
 
+    userName(user, currentUser) {
+        if (user && user.id === currentUser.id) {
+            return "You";
+        } else if (user) {
+            return user.first_name;
+        } else {
+            return "Metabase";
+        }
+    }
+
     activityDescription(item) {
+        let { user } = this.props;
+
         switch (item.topic) {
             case "card-create":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "saved a question about",
                     subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
                     subjectRefName: item.table.display_name,
                     body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
                 };
             case "card-update":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "saved a question about",
                     subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
                     subjectRefName: item.table.display_name,
                     body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
                 };
             case "card-delete":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "deleted a question",
                     subjectRefLink: null,
                     subjectRefName: null,
                     body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
                 };
             case "dashboard-create":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "created a dashboard",
                     subjectRefLink: null,
                     subjectRefName: null,
                     body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
                 };
             case "dashboard-delete":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "deleted a dashboard",
                     subjectRefLink: null,
                     subjectRefName: null,
                     body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id)
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
                 };
             case "dashboard-add-cards":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "added a question to the dashboard -",
                     subjectRefLink: Urls.dashboard(item.model_id),
                     subjectRefName: item.details.name,
                     body: item.details.dashcards[0].name,
-                    bodyLink: Urls.card(item.details.dashcards[0].card_id)
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
                 };
-            case "dashboard-card-delete":
-                return "removed a question from the dashboard -";
+            case "dashboard-remove-cards":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "removed a question from the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
+                };
             case "database-sync":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "received the latest data from",
                     subjectRefLink: null,
                     subjectRefName: item.database.name,
                     body: null,
-                    bodyLink: null
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
                 };
             case "user-joined":
                 return {
+                    userName: this.userName(item.user, user),
                     subject: "joined the party!",
                     subjectRefLink: null,
                     subjectRefName: null,
                     body: null,
-                    bodyLink: null
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
                 };
             default: return "did some super awesome stuff thats hard to describe";
         };
     }
 
     initialsCssClasses(user) {
-
         let { userColors } = this.state;
 
         if (user) {
@@ -176,10 +211,6 @@ export default class Activity extends Component {
     }
 
     renderActivity(activity) {
-
-        // colors for each user
-        // do we show user initials or the MB user icon
-
         return (
             <ul className="pt2 pb4">
                 {activity.map(item =>
@@ -195,7 +226,7 @@ export default class Activity extends Component {
                                 </span>
                             }
                         </div>
-                        <ActivityDescription item={item} description={this.activityDescription(item)}></ActivityDescription>
+                        <ActivityDescription description={this.activityDescription(item)}></ActivityDescription>
                     </li>
                 )}
             </ul>

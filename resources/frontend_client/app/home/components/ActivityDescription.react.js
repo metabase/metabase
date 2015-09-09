@@ -16,13 +16,13 @@ export default class ActivityDescription extends Component {
     }
 
     render() {
-        let { item, description } = this.props;
+        let { description } = this.props;
 
         return (
             <div className="flex-full">
                 <div className="">
                     <div className="float-left text-grey-4">
-                        <span className="text-dark">{item.user ? item.user.first_name : "Metabase"}</span>
+                        <span className="text-dark">{description.userName}</span>
 
                         &nbsp;{description.subject}&nbsp;
 
@@ -35,7 +35,7 @@ export default class ActivityDescription extends Component {
                         : null }
                     </div>
                     <div className="text-right text-grey-2">
-                        {item.timestamp.fromNow()}
+                        {description.timeSince}
                     </div>
                 </div>
                 { description.body ?
