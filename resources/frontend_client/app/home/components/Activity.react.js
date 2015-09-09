@@ -18,7 +18,7 @@ export default class Activity extends Component {
         super();
         this.state = { error: null, userColors: {} };
 
-        this.colorClasses = ['bg-brand', 'bg-gold', 'bg-error', 'bg-gold', 'bg-gold', 'bg-gold'];
+        this.colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2'];
 
         this.styles = {
             modelLink: {
@@ -47,7 +47,7 @@ export default class Activity extends Component {
 
         const colors = [1,2,3,4,5];
         const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
-        var currColor =  (maxColorUsed && maxColorUsed < 5) ? maxColorUsed : 0;
+        var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
 
         for (var item of activity) {
             if (!(item.user_id in userColors)) {
@@ -243,8 +243,8 @@ export default class Activity extends Component {
                 <div className="full flex flex-column">
                     <div className="">
                         { activity.length === 0 ?
-                            <div className="flex flex-column layout-centered">
-                                <span className="QuestionCircle">?</span>
+                            <div className="flex flex-column layout-centered mt4">
+                                <span className="QuestionCircle">!</span>
                                 <div className="text-normal mt3 mb1">Hmmm, looks like nothing has happened yet.</div>
                                 <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
                             </div>
