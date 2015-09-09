@@ -95,7 +95,8 @@ export default class Activity extends Component {
             return cx(cssClasses);
         } else {
             return cx({
-                'UserNick': true
+                'UserNick': true,
+                'text-grey-1': true
             });
         }
 
@@ -113,7 +114,7 @@ export default class Activity extends Component {
                                 </span>
                             :
                                 <span styles={this.styles.initials} className={this.initialsCssClasses(item.user)}>
-                                    <span className="UserInitials"><Icon name={'return'}></Icon></span>
+                                    <span className="UserInitials text-grey-3"><Icon name={'return'}></Icon></span>
                                 </span>
                             }
                         </div>
