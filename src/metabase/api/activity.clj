@@ -37,6 +37,7 @@
                                          "dashboard" (-> (Dashboard (:model_id %))
                                                          (select-keys [:id :name :description]))
                                          nil)))))
-      (hydrate :model_object)))
+      (hydrate :model_object)
+      (->> (filter (fn [v] (not (empty? (:model_object v))))))))
 
 (define-routes)
