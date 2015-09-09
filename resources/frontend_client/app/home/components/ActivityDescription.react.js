@@ -125,7 +125,6 @@ export default class ActivityDescription extends Component {
     }
 
     render() {
-        console.log('props=', this.props);
         let { item, user } = this.props;
         const description = this.activityDescription(item, user);
 
