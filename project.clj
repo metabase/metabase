@@ -55,7 +55,6 @@
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   :java-agents [[com.newrelic.agent.java/newrelic-agent "3.15.0"]]     ; NewRelic Java Agent
-  :uberjar-name "metabase-standalone.jar"
   :javac-options ["-target" "1.6" "-source" "1.6"]
   ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app
