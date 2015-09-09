@@ -38,7 +38,7 @@ export default class CardFilters extends Component {
             <div className="p2">
                 <div className="text-brand clearfix pt2">
                     <Icon className="float-left" name={'filter'} width={36} height={36}></Icon>
-                    <div>Filter saved questions</div>
+                    <div className="h3">Filter saved questions</div>
                 </div>
                 <div className="bordered rounded bg-white">
                     <ul>

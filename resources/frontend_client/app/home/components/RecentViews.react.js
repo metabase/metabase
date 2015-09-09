@@ -31,7 +31,7 @@ export default class RecentViews extends Component {
             <div className="p2">
                 <div className="text-brand clearfix pt2 pb2">
                     <Icon className="float-left" name={'clock'} width={18} height={18}></Icon>
-                    <span className="pl1">Recents</span>
+                    <span className="pl1 h3">Recents</span>
                 </div>
                 <div className="bordered rounded bg-white">
                     {recentViews.length > 0 ?
