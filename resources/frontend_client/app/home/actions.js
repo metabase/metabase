@@ -67,14 +67,25 @@ export const setSelectedTab = createAction(SET_SELECTED_TAB);
 
 export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filterDef) {
     return function(dispatch, getState) {
-        let {database, table} = filterDef;
+        let { cardsFilter } = getState();
+        let { database, table } = filterDef;
 
-        if (database && !table) {
-            // if we have a new database then fetch its metadata
+        if (database && !table && database !== cardsFilter.database) {
+            // user has picked a database different from any previous choice
             dispatch(fetchDatabaseMetadata(database));
+            dispatch(fetchCards('database', database));
+
+        } else if (database && !table && database === cardsFilter.database) {
+            // user is simply clearing the table selection
+            dispatch(fetchCards('database', database));
+
         } else if (database && table) {
-            // if we have a new table then refetch the cards
+            // user has chosen a specific table to filter on
             dispatch(fetchCards('table', table));
+
+        } else if (!database && cardsFilter.database) {
+            // clearing out all filters
+            dispatch(fetchCards('all'));
         }
 
         return filterDef;
