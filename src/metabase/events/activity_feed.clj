@@ -102,15 +102,17 @@
       :dashboard-remove-cards (record-activity topic object add-remove-card-details))))
 
 (defn- process-database-activity [topic object]
-  (case topic
-    :database-sync-begin (record-activity :database-sync object (fn [obj] (-> obj
-                                                                              (assoc :status "started")
-                                                                              (dissoc :database_id :custom_id))))
-    :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
-                           (db/upd Activity activity-id
-                             :details (-> object
-                                          (assoc :status "completed")
-                                          (dissoc :database_id :custom_id))))))
+  (let [database-details-fn (fn [obj] (-> obj
+                                          (assoc :status "started")
+                                          (dissoc :database_id :custom_id)))
+        database-table-fn (fn [obj] {:database-id (object->model-id topic obj)})]
+    (case topic
+      :database-sync-begin (record-activity :database-sync object database-details-fn database-table-fn)
+      :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
+                             (db/upd Activity activity-id
+                               :details (-> object
+                                            (assoc :status "completed")
+                                            (dissoc :database_id :custom_id)))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
