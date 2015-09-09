@@ -19,6 +19,10 @@ export default class Activity extends Component {
         this.styles = {
             modelLink: {
                 borderWidth: "2px"
+            },
+
+            initials: {
+                borderStyle: "none"
             }
         }
     }
@@ -29,6 +33,20 @@ export default class Activity extends Component {
         } catch (error) {
             this.setState({ error });
         }
+    }
+
+    userInitials(user) {
+        let initials = '??';
+
+        if (user.first_name !== 'undefined') {
+            initials = user.first_name.substring(0, 1);
+        }
+
+        if (user.last_name !== 'undefined') {
+            initials = initials + user.last_name.substring(0, 1);
+        }
+
+        return initials;
     }
 
     activityDescription(item) {
@@ -112,7 +130,9 @@ export default class Activity extends Component {
                 {activity.map(item =>
                     <li key={item.id} className="flex pt2">
                         <div className="mr3">
-                            <Icon name={'filter'} width={36} height={36}></Icon>
+                            <span styles={this.styles.initials} className="UserNick">
+                                <span className="UserInitials NavItem-text">{this.userInitials(item.user)}</span>
+                            </span>
                         </div>
                         <ActivityDescription item={item} description={this.activityDescription(item)}></ActivityDescription>
                     </li>

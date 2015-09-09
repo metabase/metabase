@@ -22,7 +22,7 @@ export default class ActivityDescription extends Component {
             <div className="flex-full">
                 <div className="">
                     <div className="float-left text-grey-4">
-                        <span className="text-dark">{item.user.common_name}</span>
+                        <span className="text-dark">{item.user.first_name}</span>
                         &nbsp;{description.subject}&nbsp;
                         { description.subjectRefLink ?
                             <a className="link text-dark" href={description.subjectRefLink}>{description.subjectRefName}</a>
