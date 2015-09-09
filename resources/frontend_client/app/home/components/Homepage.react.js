@@ -58,7 +58,9 @@ export default class Homepage extends Component {
                                 <span>{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
                             </header>
                             <div className="">
-                                <span className="float-left text-brand"><Icon className="mr3" name={'star'} height={36} width={36}></Icon></span>
+                                <span className="float-left UserNick bg-brand text-brand mr3">
+                                    <span className="UserInitials">MB</span>
+                                </span>
                                 <HeaderTabs {...this.props} />
                             </div>
                         </div>
