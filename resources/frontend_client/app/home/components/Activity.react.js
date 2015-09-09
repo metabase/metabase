@@ -53,9 +53,16 @@ export default class Activity extends Component {
                 // assign the user a color
                 if (item.user_id === user.id) {
                     userColors[item.user_id] = 0;
+                } else if (item.user_id === null) {
+                    // just skip this scenario, we handle this differently
                 } else {
                     userColors[item.user_id] = colors[currColor];
                     currColor++;
+
+                    // if we hit the end of the colors list then just go back to the beginning again
+                    if (currColor >= colors.length) {
+                        currColor = 0;
+                    }
                 }
             }
         }
