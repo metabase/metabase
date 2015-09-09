@@ -28,6 +28,9 @@ export default class CardFilters extends Component {
     async databaseClicked(id) {
         if (this.props.cardsFilter.database !== id) {
             this.props.dispatch(setCardsFilter({database: id, table: null}));
+        } else {
+            // clicking an already open database closes it
+            this.props.dispatch(setCardsFilter({database: null, table: null}));
         }
     }
 
