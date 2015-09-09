@@ -57,6 +57,7 @@ export const SET_CARDS_FILTER = 'SET_CARDS_FILTER';
 export const FETCH_ACTIVITY = 'FETCH_ACTIVITY';
 export const FETCH_CARDS = 'FETCH_CARDS';
 export const FETCH_DATABASES = 'FETCH_DATABASES';
+export const CLEAR_DATABASE_METADATA = 'CLEAR_DATABASE_METADATA';
 export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 export const FETCH_RECENT_VIEWS = 'FETCH_RECENT_VIEWS';
 
@@ -72,6 +73,7 @@ export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filte
 
         if (database && !table && database !== cardsFilter.database) {
             // user has picked a database different from any previous choice
+            dispatch(clearDatabaseMetadata());
             dispatch(fetchDatabaseMetadata(database));
             dispatch(fetchCards('database', database));
 
@@ -140,6 +142,8 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
         return metadata;
     };
 });
+
+export const clearDatabaseMetadata = createAction(CLEAR_DATABASE_METADATA);
 
 // fetch recent items (user)
 // fetch table list (database)
