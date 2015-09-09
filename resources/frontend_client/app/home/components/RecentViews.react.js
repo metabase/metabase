@@ -34,13 +34,20 @@ export default class RecentViews extends Component {
                     <span className="pl1">Recents</span>
                 </div>
                 <div className="bordered rounded bg-white">
-                    <ul className="px3 py1">
-                        {recentViews.map(item =>
-                            <li key={item.id} className="py1">
-                                <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
-                            </li>
-                        )}
-                    </ul>
+                    {recentViews.length > 0 ?
+                        <ul className="px3 py1">
+                            {recentViews.map(item =>
+                                <li key={item.id} className="py1">
+                                    <a className="link text-dark ml1" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                </li>
+                            )}
+                        </ul>
+                    :
+                        <div className="flex flex-column layout-centered text-normal text-grey-2">
+                            <span className="QuestionCircle mt4">!</span>
+                            <p className="p3 text-centered text-grey-4">You haven't looked at any Dashboards or Questions recently?</p>
+                        </div>
+                    }
                 </div>
             </div>
         );
