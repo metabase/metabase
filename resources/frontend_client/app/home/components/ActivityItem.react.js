@@ -1,52 +1,32 @@
 'use strict';
 
 import React, { Component } from 'react';
-
 import Icon from 'metabase/components/Icon.react';
-
+import IconBorder from '../../query_builder/IconBorder.react';
+import UserAvatar from 'metabase/components/UserAvatar.react';
 
 export default class ActivityItem extends Component {
 
     constructor(props) {
         super(props);
-
-        this.styles = {
-            initials: {
-                borderWidth: 0,
-            }
-        };
-    }
-
-    userInitials(user) {
-        let initials = '??';
-
-        if (user.first_name !== 'undefined') {
-            initials = user.first_name.substring(0, 1);
-        }
-
-        if (user.last_name !== 'undefined') {
-            initials = initials + user.last_name.substring(0, 1);
-        }
-
-        return initials;
     }
 
     render() {
         const { item, description, userColors } = this.props;
 
         return (
-            <div className="flex align-center">
-                { item.user ?
-                    <span styles={this.styles.initials} className={userColors}>
-                        <span className="UserInitials">{this.userInitials(item.user)}</span>
-                    </span>
-                :
-                    <span styles={this.styles.initials} className={userColors}>
-                        <span className="UserInitials"><Icon name='sync' width={16} height={16} /></span>
-                    </span>
-                }
+            <div className="ml1 flex align-center">
+                <span>
+                    { item.user ?
+                        <UserAvatar user={item.user} background={userColors} style={{color: '#fff', borderWidth: '0'}}/>
+                    :
+                        <IconBorder style={{color: '#B8C0C8'}}>
+                            <Icon name='sync' width={16} height={16} />
+                        </IconBorder>
+                    }
+                </span>
 
-                <div className="ml2 full flex align-center">
+                <div className="ml2 full flex align-center" style={{fontSize: '1rem'}}>
                     <div className="text-grey-4">
                         <span className="text-dark">{description.userName}</span>
 

@@ -4,6 +4,7 @@ import React, { Component, PropTypes } from 'react';
 import OnClickOut from 'react-onclickout';
 import cx from 'classnames';
 
+import UserAvatar from './UserAvatar.react';
 import Icon from './Icon.react';
 
 export default class ProfileLink extends Component {
@@ -22,20 +23,6 @@ export default class ProfileLink extends Component {
         this.setState({ dropdownOpen: false });
     }
 
-    displayInitials() {
-        let initials = '??';
-        const { user } = this.props;
-
-        if (user.first_name !== 'undefined') {
-            initials = user.first_name.substring(0, 1);
-        }
-
-        if (user.last_name !== 'undefined') {
-            initials = initials + user.last_name.substring(0, 1);
-        }
-        return initials;
-    }
-
     render() {
         const { user, context } = this.props;
 
@@ -52,9 +39,7 @@ export default class ProfileLink extends Component {
                     <a className="NavDropdown-button NavItem flex align-center p2" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
-                                <span className="UserNick">
-                                    <span className="UserInitials NavItem-text">{this.displayInitials()}</span>
-                                </span>
+                                <UserAvatar user={user} text={'text-white'} />
                                 <Icon name="chevrondown" className="Dropdown-chevron ml1" width="8px" height="8px" />
                             </div>
                         </div>
