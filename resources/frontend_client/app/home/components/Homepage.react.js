@@ -23,17 +23,15 @@ export default class Homepage extends Component {
 
         this.styles = {
             main: {
-                width: "auto",
                 marginRight: "346px",
-                borderWidth: "2px"
             },
             mainWrapper: {
-                width: "100%",
-                margin: "0 auto",
-                paddingLeft: "12em",
-                paddingRight: "3em"
+                maxWidth: "700px",
+                marginLeft: "auto",
+                marginRight: "auto",
             },
             sidebar: {
+                borderWidth: "2px",
                 width: "346px",
                 backgroundColor: "#F9FBFC"
             },
@@ -48,7 +46,7 @@ export default class Homepage extends Component {
 
         return (
             <div>
-                <div className="bg-brand text-white">
+                <div className="bg-brand text-white pl4">
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             <header style={this.styles.headerGreeting} className="flex align-center pb4">
@@ -64,8 +62,8 @@ export default class Homepage extends Component {
                         </div>
                     </div>
                 </div>
-                <div className="relative">
-                    <div style={this.styles.main} className="border-right">
+                <div className="relative pl4">
+                    <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             { selectedTab === 'activity' ?
                                 <Activity {...this.props} />
@@ -74,7 +72,7 @@ export default class Homepage extends Component {
                             }
                         </div>
                     </div>
-                    <div style={this.styles.sidebar} className="absolute top right">
+                    <div style={this.styles.sidebar} className="border-left absolute top right bottom">
                         { selectedTab === 'activity' ?
                             <RecentViews {...this.props} />
                         :

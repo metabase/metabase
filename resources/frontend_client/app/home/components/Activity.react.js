@@ -9,6 +9,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.r
 
 import { fetchActivity } from "../actions";
 import ActivityDescription from "./ActivityDescription.react";
+import ActivityItem from './ActivityItem.react';
+import ActivityStory from './ActivityItem.react';
+
+import Urls from "metabase/lib/urls";
 
 
 export default class Activity extends Component {
@@ -18,17 +22,113 @@ export default class Activity extends Component {
         this.state = { error: null, userColors: {} };
 
         this.colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2'];
+    }
 
-        this.styles = {
-            modelLink: {
-                borderWidth: "2px"
-            },
-
-            initials: {
-                borderWidth: "0px",
-                borderStyle: "none"
-            }
+    userName(user, currentUser) {
+        if (user && user.id === currentUser.id) {
+            return "You";
+        } else if (user) {
+            return user.first_name;
+        } else {
+            return "Metabase";
         }
+    }
+
+    activityDescription(item, user) {
+
+        switch (item.topic) {
+            case "card-create":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "card-update":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "saved a question about",
+                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
+                    subjectRefName: item.table.display_name,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "card-delete":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "deleted a question",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-create":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "created a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-delete":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "deleted a dashboard",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: item.details.name,
+                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-add-cards":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "added a question to the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "dashboard-remove-cards":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "removed a question from the dashboard -",
+                    subjectRefLink: Urls.dashboard(item.model_id),
+                    subjectRefName: item.details.name,
+                    body: item.details.dashcards[0].name,
+                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "database-sync":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "received the latest data from",
+                    subjectRefLink: null,
+                    subjectRefName: item.database.name,
+                    body: null,
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
+                };
+            case "user-joined":
+                return {
+                    userName: this.userName(item.user, user),
+                    subject: "joined the party!",
+                    subjectRefLink: null,
+                    subjectRefName: null,
+                    body: null,
+                    bodyLink: null,
+                    timeSince: item.timestamp.fromNow()
+                };
+            default: return "did some super awesome stuff thats hard to describe";
+        };
     }
 
     async componentDidMount() {
@@ -66,19 +166,6 @@ export default class Activity extends Component {
         });
     }
 
-    userInitials(user) {
-        let initials = '??';
-
-        if (user.first_name !== 'undefined') {
-            initials = user.first_name.substring(0, 1);
-        }
-
-        if (user.last_name !== 'undefined') {
-            initials = initials + user.last_name.substring(0, 1);
-        }
-
-        return initials;
-    }
 
     initialsCssClasses(user) {
         let { userColors } = this.state;
@@ -98,28 +185,24 @@ export default class Activity extends Component {
                 'UserNick': true
             });
         }
-
     }
 
     renderActivity(activity) {
         return (
-            <ul className="pt2 pb4">
-                {activity.map(item =>
-                    <li key={item.id} className="flex pt2">
-                        <div className="mr3">
-                            {item.user ?
-                                <span styles={this.styles.initials} className={this.initialsCssClasses(item.user)}>
-                                    <span className="UserInitials">{this.userInitials(item.user)}</span>
-                                </span>
-                            :
-                                <span styles={this.styles.initials} className={this.initialsCssClasses(item.user)}>
-                                    <span className="UserInitials"><Icon name={'return'}></Icon></span>
-                                </span>
-                            }
-                        </div>
-                        <ActivityDescription item={item} user={this.props.user}></ActivityDescription>
-                    </li>
-                )}
+            <ul className="pt2 pb4 relative">
+                {activity.map(item => {
+                    const description = this.activityDescription(item, item.user);
+                    return (
+                        <li key={item.id} className="mt3">
+                            <ActivityItem
+                                item={item}
+                                description={description}
+                                userColors={this.initialsCssClasses(item.user)}
+                            />
+                            { description.body ? <ActivityStory story={description} /> : null }
+                        </li>
+                    )
+                })}
             </ul>
         );
     }
