@@ -8,7 +8,8 @@
 
 (def view-counts-topics
   "The `Set` of event topics which we subscribe to for view counting."
-  #{:card-read
+  #{:card-create
+    :card-read
     :dashboard-read})
 
 (def ^:private view-counts-channel

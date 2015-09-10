@@ -44,7 +44,7 @@ export default class CardFilters extends Component {
                     <div className="h3">Filter saved questions</div>
                 </div>
                 <div className="bordered rounded bg-white">
-                    <ul>
+                    <ul className="cursor-pointer">
                         {databases.map(item =>
                             <li key={item.id} className="border-row-divider">
                                 <AccordianItem isOpen={cardsFilter.database === item.id} itemId={item.id} onClickFn={(id) => this.databaseClicked(id)} title={item.name}>

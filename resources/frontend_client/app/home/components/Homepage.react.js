@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Greeting from "metabase/lib/greeting";
+import Modal from "metabase/components/Modal.react";
 
 import HeaderTabs from "./HeaderTabs.react";
 import Activity from "./Activity.react";
@@ -10,6 +11,7 @@ import Cards from "./Cards.react";
 import RecentViews from "./RecentViews.react";
 import CardFilters from "./CardFilters.react";
 import Smile from './Smile.react';
+import NewUserOnboardingModal from './NewUserOnboardingModal.react';
 
 
 export default class Homepage extends Component {
@@ -18,7 +20,8 @@ export default class Homepage extends Component {
         super(props);
 
         this.state = {
-            greeting: Greeting.simpleGreeting()
+            greeting: Greeting.simpleGreeting(),
+            onboarding: props.showOnboarding
         };
 
         this.styles = {
@@ -41,11 +44,23 @@ export default class Homepage extends Component {
         };
     }
 
+    completeOnboarding() {
+        this.setState({
+            'onboarding': false
+        });
+    }
+
     render() {
         const { selectedTab, user } = this.props;
 
         return (
             <div>
+                { this.state.onboarding ?
+                    <Modal>
+                        <NewUserOnboardingModal user={user} closeFn={() => (this.completeOnboarding())}></NewUserOnboardingModal>
+                    </Modal>
+                : null}
+
                 <div className="bg-brand text-white pl4">
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
