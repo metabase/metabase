@@ -57,6 +57,7 @@ export const SET_CARDS_FILTER = 'SET_CARDS_FILTER';
 export const FETCH_ACTIVITY = 'FETCH_ACTIVITY';
 export const FETCH_CARDS = 'FETCH_CARDS';
 export const FETCH_DATABASES = 'FETCH_DATABASES';
+export const CLEAR_DATABASE_METADATA = 'CLEAR_DATABASE_METADATA';
 export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 export const FETCH_RECENT_VIEWS = 'FETCH_RECENT_VIEWS';
 
@@ -67,14 +68,26 @@ export const setSelectedTab = createAction(SET_SELECTED_TAB);
 
 export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filterDef) {
     return function(dispatch, getState) {
-        let {database, table} = filterDef;
+        let { cardsFilter } = getState();
+        let { database, table } = filterDef;
 
-        if (database && !table) {
-            // if we have a new database then fetch its metadata
+        if (database && !table && database !== cardsFilter.database) {
+            // user has picked a database different from any previous choice
+            dispatch(clearDatabaseMetadata());
             dispatch(fetchDatabaseMetadata(database));
+            dispatch(fetchCards('database', database));
+
+        } else if (database && !table && database === cardsFilter.database) {
+            // user is simply clearing the table selection
+            dispatch(fetchCards('database', database));
+
         } else if (database && table) {
-            // if we have a new table then refetch the cards
+            // user has chosen a specific table to filter on
             dispatch(fetchCards('table', table));
+
+        } else if (!database && cardsFilter.database) {
+            // clearing out all filters
+            dispatch(fetchCards('all'));
         }
 
         return filterDef;
@@ -129,6 +142,8 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
         return metadata;
     };
 });
+
+export const clearDatabaseMetadata = createAction(CLEAR_DATABASE_METADATA);
 
 // fetch recent items (user)
 // fetch table list (database)

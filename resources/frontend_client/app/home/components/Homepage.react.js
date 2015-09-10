@@ -3,7 +3,6 @@
 import React, { Component, PropTypes } from "react";
 
 import Greeting from "metabase/lib/greeting";
-import Icon from "metabase/components/Icon.react";
 
 import HeaderTabs from "./HeaderTabs.react";
 import Activity from "./Activity.react";
@@ -11,6 +10,7 @@ import Cards from "./Cards.react";
 import RecentViews from "./RecentViews.react";
 import CardFilters from "./CardFilters.react";
 import Smile from './Smile.react';
+
 
 export default class Homepage extends Component {
 
@@ -50,13 +50,15 @@ export default class Homepage extends Component {
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             <header style={this.styles.headerGreeting} className="flex align-center pb4">
-                                <span className="float-left mr2">
+                                <span className="float-left mr1">
                                     <Smile />
                                 </span>
                                 <span>{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
                             </header>
                             <div className="">
-                                <span className="float-left text-brand"><Icon className="mr3" name={'star'} height={36} width={36}></Icon></span>
+                                <span className="float-left UserNick bg-brand text-brand mr3">
+                                    <span className="UserInitials">MB</span>
+                                </span>
                                 <HeaderTabs {...this.props} />
                             </div>
                         </div>

@@ -40,7 +40,7 @@ export default class Cards extends Component {
 
     renderCards(cards) {
 
-        let items = cards.slice().sort((a, b) => a.created_at < b.created_at);
+        let items = cards.slice().sort((a, b) => b.created_at - a.created_at);
 
         return (
             <ul className="pt2">

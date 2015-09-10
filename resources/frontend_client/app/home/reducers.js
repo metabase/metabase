@@ -8,6 +8,7 @@ import {
     FETCH_ACTIVITY,
     FETCH_CARDS,
     FETCH_DATABASES,
+    CLEAR_DATABASE_METADATA,
     FETCH_DATABASE_METADATA,
     FETCH_RECENT_VIEWS
 } from './actions';
@@ -50,6 +51,7 @@ export const databases = handleActions({
 
 
 export const databaseMetadata = handleActions({
-    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => payload }
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => payload },
+    [CLEAR_DATABASE_METADATA]: { next: (state, { payload }) => null }
 }, null);
 
