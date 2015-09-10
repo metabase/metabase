@@ -3,7 +3,6 @@
 import React, { Component, PropTypes } from "react";
 
 import Greeting from "metabase/lib/greeting";
-import Icon from "metabase/components/Icon.react";
 
 import HeaderTabs from "./HeaderTabs.react";
 import Activity from "./Activity.react";
@@ -11,6 +10,7 @@ import Cards from "./Cards.react";
 import RecentViews from "./RecentViews.react";
 import CardFilters from "./CardFilters.react";
 import Smile from './Smile.react';
+
 
 export default class Homepage extends Component {
 
