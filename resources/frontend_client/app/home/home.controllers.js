@@ -26,10 +26,7 @@ const finalCreateStore = compose(
 const reducer = combineReducers(reducers);
 
 
-var HomeControllers = angular.module('metabase.home.controllers', [
-    'metabase.metabase.services'
-]);
-
+var HomeControllers = angular.module('metabase.home.controllers', []);
 HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$routeParams', function($scope, $location, $route, $routeParams) {
     $scope.Component = HomepageApp;
     $scope.props = {
@@ -40,7 +37,6 @@ HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$route
         }
     };
     $scope.store = finalCreateStore(reducer, { selectedTab: 'activity' });
-    // TODO: reflect onboarding state
 
     // $scope.monitor = LogMonitor;
 
