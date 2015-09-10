@@ -12,7 +12,7 @@ export default class ActivityItem extends Component {
 
         this.styles = {
             initials: {
-                borderRadius: '0px',
+                borderWidth: 0,
             }
         };
     }
