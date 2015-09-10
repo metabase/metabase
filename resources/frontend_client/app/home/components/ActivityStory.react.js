@@ -25,7 +25,11 @@ export default class ActivityStory extends Component {
         return (
             <div className="ml2 mt1 border-left flex" style={{borderWidth: '3px'}}>
                 <div style={this.styles.modelLink} className="flex full ml4 bordered rounded p2">
-                    <a className="link" href={story.bodyLink}>{story.body}</a>
+                    { story.bodyLink ?
+                        <a className="link" href={story.bodyLink}>{story.body}</a>
+                    :
+                        <span>{story.body}</span>
+                    }
                 </div>
             </div>
         )

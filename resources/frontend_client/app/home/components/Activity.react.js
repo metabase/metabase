@@ -76,99 +76,63 @@ export default class Activity extends Component {
 
     activityDescription(item, user) {
 
+        // this is a base to start with
+        const description = {
+            userName: this.userName(item.user, user),
+            subject: "did some super awesome stuff thats hard to describe",
+            subjectRefLink: null,
+            subjectRefName: null,
+            body: null,
+            bodyLink: null,
+            timeSince: item.timestamp.fromNow()
+        };
+
         switch (item.topic) {
             case "card-create":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "saved a question about",
-                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
-                    subjectRefName: item.table.display_name,
-                    body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
-                    timeSince: item.timestamp.fromNow()
-                };
             case "card-update":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "saved a question about",
-                    subjectRefLink: Urls.tableRowsQuery(item.database_id, item.table_id),
-                    subjectRefName: item.table.display_name,
-                    body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "saved a question about";
+                description.subjectRefLink = Urls.tableRowsQuery(item.database_id, item.table_id);
+                description.subjectRefName = item.table.display_name;
+                description.body = item.details.name;
+                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                break;
             case "card-delete":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "deleted a question",
-                    subjectRefLink: null,
-                    subjectRefName: null,
-                    body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "deleted a question";
+                description.body = item.details.name;
+                break;
             case "dashboard-create":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "created a dashboard",
-                    subjectRefLink: null,
-                    subjectRefName: null,
-                    body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "created a dashboard";
+                description.body = item.details.name;
+                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                break;
             case "dashboard-delete":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "deleted a dashboard",
-                    subjectRefLink: null,
-                    subjectRefName: null,
-                    body: item.details.name,
-                    bodyLink: Urls.modelToUrl(item.model, item.model_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "deleted a dashboard";
+                description.body = item.details.name;
+                break;
             case "dashboard-add-cards":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "added a question to the dashboard -",
-                    subjectRefLink: Urls.dashboard(item.model_id),
-                    subjectRefName: item.details.name,
-                    body: item.details.dashcards[0].name,
-                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "added a question to the dashboard -";
+                description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
+                description.subjectRefName = item.details.name;
+                description.body = item.details.dashcards[0].name;
+                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                break;
             case "dashboard-remove-cards":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "removed a question from the dashboard -",
-                    subjectRefLink: Urls.dashboard(item.model_id),
-                    subjectRefName: item.details.name,
-                    body: item.details.dashcards[0].name,
-                    bodyLink: Urls.card(item.details.dashcards[0].card_id),
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "removed a question from the dashboard -";
+                description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
+                description.subjectRefName = item.details.name;
+                description.body = item.details.dashcards[0].name;
+                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                break;
             case "database-sync":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "received the latest data from",
-                    subjectRefLink: null,
-                    subjectRefName: item.database.name,
-                    body: null,
-                    bodyLink: null,
-                    timeSince: item.timestamp.fromNow()
-                };
+                description.subject = "received the latest data from";
+                description.subjectRefName = item.database.name;
+                break;
             case "user-joined":
-                return {
-                    userName: this.userName(item.user, user),
-                    subject: "joined the party!",
-                    subjectRefLink: null,
-                    subjectRefName: null,
-                    body: null,
-                    bodyLink: null,
-                    timeSince: item.timestamp.fromNow()
-                };
-            default: return "did some super awesome stuff thats hard to describe";
+                description.subject = "joined the party!";
+                break;
         };
+
+        return description;
     }
 
     initialsCssClasses(user) {
