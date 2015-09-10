@@ -14,7 +14,7 @@
   "Get recent activity."
   []
   (-> (db/sel :many Activity (k/order :timestamp :DESC))
-      (hydrate :user :table :database)))
+      (hydrate :user :table :database :model_exists)))
 
 (defendpoint GET "/recent_views"
   "Get the list of 15 things the current user has been viewing most recently."
@@ -33,7 +33,7 @@
              (k/limit 15))
            (map #(assoc % :model_object (delay (case (:model %)
                                          "card" (-> (Card (:model_id %))
-                                                    (select-keys [:id :name :description]))
+                                                    (select-keys [:id :name :description :display]))
                                          "dashboard" (-> (Dashboard (:model_id %))
                                                          (select-keys [:id :name :description]))
                                          nil)))))
