@@ -1,7 +1,5 @@
 'use strict';
 
-import Table from "metabase/lib/table";
-
 import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
@@ -74,31 +72,4 @@ HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$route
             $scope.store.dispatch(setSelectedTab('activity'));
         }
     }, true);
-}]);
-
-
-HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
-
-    $scope.databases = [];
-    $scope.currentDB = {};
-    $scope.tables = [];
-
-    Metabase.db_list(function (databases) {
-        $scope.databases = databases;
-        $scope.selectCurrentDB(0)
-    }, function (error) {
-        console.log(error);
-    });
-
-
-    $scope.selectCurrentDB = function(index) {
-        $scope.currentDB = $scope.databases[index];
-        Metabase.db_tables({
-            'dbId': $scope.currentDB.id
-        }, function (tables) {
-            $scope.tables = tables.filter(Table.isQueryable);
-        }, function (error) {
-            console.log(error);
-        })
-    }
 }]);
