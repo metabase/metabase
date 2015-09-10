@@ -4,13 +4,11 @@ import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon.react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
+import ActivityItem from './ActivityItem.react';
+import ActivityStory from './ActivityStory.react';
 
 import { fetchActivity } from "../actions";
-import ActivityDescription from "./ActivityDescription.react";
-import ActivityItem from './ActivityItem.react';
-import ActivityStory from './ActivityItem.react';
 
 import Urls from "metabase/lib/urls";
 

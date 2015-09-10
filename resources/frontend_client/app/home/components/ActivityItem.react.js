@@ -1,6 +1,8 @@
 'use strict';
 
 import React, { Component } from 'react';
+import Icon from 'metabase/components/Icon.react';
+import ActivityDescription from './ActivityDescription.react';
 
 export default class ActivityItem extends Component {
     constructor() {
