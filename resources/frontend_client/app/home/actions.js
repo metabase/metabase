@@ -2,7 +2,6 @@
 
 import _ from "underscore";
 import { createAction } from "redux-actions";
-import { normalize, Schema, arrayOf } from "normalizr";
 import moment from "moment";
 
 
@@ -38,18 +37,6 @@ const ActivityApi = new AngularResourceProxy("Activity", ["list", "recent_views"
 const CardApi = new AngularResourceProxy("Card", ["list"]);
 const MetadataApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata"]);
 
-// normalizr schemas
-const activity = new Schema('activity');
-const card = new Schema('card');
-// const database = new Schema('database');
-// const table = new Schema('table');
-// const user = new Schema('user');
-
-// activity.define({
-//     user: user,
-//     database: database,
-//     table: table
-// })
 
 // action constants
 export const SET_SELECTED_TAB = 'SET_SELECTED_TAB';
@@ -63,7 +50,6 @@ export const FETCH_RECENT_VIEWS = 'FETCH_RECENT_VIEWS';
 
 
 // action creators
-
 export const setSelectedTab = createAction(SET_SELECTED_TAB);
 
 export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filterDef) {
@@ -96,14 +82,14 @@ export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filte
 
 export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
     return async function(dispatch, getState) {
-        let activityItems = await ActivityApi.list();
-        for (var ai of activityItems) {
+        let activity = await ActivityApi.list();
+        for (var ai of activity) {
             ai.timestamp = moment(ai.timestamp);
             ai.hasLinkableModel = function() {
                 return (_.contains(["card", "dashboard"], this.model));
             };
         }
-        return normalize(activityItems, arrayOf(activity));
+        return activity;
     };
 });
 
@@ -117,6 +103,7 @@ export const fetchRecentViews = createThunkAction(FETCH_RECENT_VIEWS, function()
     };
 });
 
+
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, filterModelId) {
     return async function(dispatch, getState) {
         let cards = await CardApi.list({'filterMode' : filterMode, 'model_id' : filterModelId });
@@ -125,26 +112,21 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, fi
             c.updated_at = moment(c.updated_at);
             c.icon = c.display ? 'illustration_visualization_' + c.display : null;
         }
-        return normalize(cards, arrayOf(card));
+        return cards;
     };
 });
 
 export const fetchDatabases = createThunkAction(FETCH_DATABASES, function() {
     return async function(dispatch, getState) {
-        let databases = await MetadataApi.db_list();
-        return databases;
+        return await MetadataApi.db_list();
     };
 });
 
-export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(database_id) {
-    return async function(dispatch, getState) {
-        let metadata = await MetadataApi.db_metadata({'dbId': database_id});
-        return metadata;
-    };
-});
 
 export const clearDatabaseMetadata = createAction(CLEAR_DATABASE_METADATA);
 
-// fetch recent items (user)
-// fetch table list (database)
-
+export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(database_id) {
+    return async function(dispatch, getState) {
+        return await MetadataApi.db_metadata({'dbId': database_id});
+    };
+});

@@ -24,12 +24,8 @@ export const cardsFilter = handleActions({
 
 
 export const activity = handleActions({
-    [FETCH_ACTIVITY]: { next: (state, { payload }) => ({ ...payload.entities.activity }) }
-}, {});
-
-export const activityIdList = handleActions({
-    [FETCH_ACTIVITY]: { next: (state, { payload }) => payload.result }
-}, null);
+    [FETCH_ACTIVITY]: { next: (state, { payload }) => payload }
+}, []);
 
 export const recentViews = handleActions({
 	[FETCH_RECENT_VIEWS]: { next: (state, { payload }) => payload }
@@ -37,12 +33,8 @@ export const recentViews = handleActions({
 
 
 export const cards = handleActions({
-    [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
-}, {});
-
-export const cardIdList = handleActions({
-    [FETCH_CARDS]: { next: (state, { payload }) => payload.result }
-}, null);
+    [FETCH_CARDS]: { next: (state, { payload }) => payload }
+}, []);
 
 
 export const databases = handleActions({
