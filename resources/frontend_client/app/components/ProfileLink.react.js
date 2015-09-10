@@ -25,7 +25,6 @@ export default class ProfileLink extends Component {
 
     render() {
         const { user, context } = this.props;
-
         let dropDownClasses = cx({
             'NavDropdown': true,
             'inline-block': true,
@@ -33,13 +32,14 @@ export default class ProfileLink extends Component {
             'open': this.state.dropdownOpen,
         })
 
+
         return (
             <OnClickOut onClickOut={this.closeDropdown}>
                 <div className={dropDownClasses}>
                     <a className="NavDropdown-button NavItem flex align-center p2" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
-                                <UserAvatar user={user} text={'text-white'} />
+                                <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
                                 <Icon name="chevrondown" className="Dropdown-chevron ml1" width="8px" height="8px" />
                             </div>
                         </div>
