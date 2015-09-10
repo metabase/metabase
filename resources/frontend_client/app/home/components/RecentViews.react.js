@@ -37,8 +37,8 @@ export default class RecentViews extends Component {
                     {recentViews.length > 0 ?
                         <ul className="px3 py1">
                             {recentViews.map(item =>
-                                <li key={item.id} className="py1">
-                                    <a className="link text-dark ml1" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                <li key={item.id} className="py1 ml1">
+                                    <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
                                 </li>
                             )}
                         </ul>
