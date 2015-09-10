@@ -1,4 +1,4 @@
-# User Guide
+#User Guide
 
 ## Overview
 ---
@@ -85,8 +85,7 @@ If we wanted to analyze our hypothetical app's database with Metabase, we could 
 ---
 Metabase's two core concepts are questions and their corresponding answers.  Everything else is based around this functionality.  To ask Metabase a question, use the query interface bar.  
 
-*Figure 1: Sample Query Interface Bar*
-![Query Interface Bar](images/QueryInterfaceBarExample.png)
+![queryinterfacebar](images/QueryInterfaceBar.png)
 
 Questions are made up of a number of parts:
 
@@ -96,7 +95,7 @@ Source data comes from a table in your database.  Typically, users use a single 
 
 ###Filtering your Data 
 ---
-You can filter your data by any field in the table you're working with or any connected tables through foreign keys. Filters narrow down the source data to an interesting subset, like "active users" or bookings after June 15th, 2015."  
+You can filter your data by any field in the table you're working with or any connected tables through foreign keys. Filters narrow down the source data to an interesting subset, like "active users" or "bookings after June 15th, 2015."  
 
 Different fields can have different filters based on them.
 There are four universal operators that can be applied to any field.  These operators are:
@@ -175,10 +174,12 @@ Even if you don't understand SQL or how to use it, it's worthwhile to understand
 
 ###Using SQL
 You can switch a card from GUI mode to SQL mode by clicking on the "**>_**" button in the upper right hand corner.  
-![Swith to SQL icon](images/SQLButton.png)
+
+![sqlbutton](images/SQLButton.png)
 
 You can write SQL directly into the text box that appears.
-![SQL User Interface](images/SQLInterface.png)
+
+![sqlinterface](images/SQLInterface.png)
 
 To try it out, type the command `select count(*), date from purchases group by date`. Don't worry if you don't understand this just yet. Click 'run query' and note the table that comes back is the same as if you had graphed "count" broken out by "date". 
 
@@ -203,9 +204,7 @@ Answers to questions can be visualized in a number of ways:
 
 To change how the answer to your query is displayed, click on the visualization button beneath the query interface bar to access the dropdown menu.  
 
-*Figure 2: Visualization Button and Dropdown Menu*
-
-![Visualization Button and Dropdown Menu](images/VisualizationMenu.png)
+![visualizechoices](images/VisualizeChoices.png)
 
 If a particular output format is not sensible for your query, the format option will appear faded on the dropdown menu.  
  
@@ -217,15 +216,16 @@ Once a question is answered, you can save, favorite, or download the answer.
 ###How to Save a Question
 After entering a question, click the blue **Save** Button above the query interface bar to save a question.  
 
-*Figure 3: Save a Question*
+![savebutton](images/SaveButton.png)
 
-![Save a Question Button](images/SaveQuestionButton.png)
+A pop-up box will appear asking you to input information about the question. 
+
+![savecard](images/SaveCard.png)
+
 
 After you save a question, the query interface bar will change.  Instead of the **Save** button, you will have three new options.  Clicking the **Star** favorites the question.  Click the middle **Double Square** button to delete the saved question.  Click the **Dashboard +** icon to add your saved question to a Dashboard.  
 
-*Figure 4: Options for Saved Questions*
-
-![Options for Saved Questions](images/SavedQuestionQueryBarChange.png)
+![savedquestion](images/SavedQuestion.png)
 
 ##Dashboards
 ---
@@ -240,31 +240,33 @@ You can make as many dashboards as you want.  **Public dashboards** (public only
 ##How to add a Question to a Dashboard
 After saving a question, click the **"Dashboard +"** icon to add a question to a dashboard. 
 
-*Figure 5: Add Question to Dashboard*
-
-![Add Question to Dashboard](images/AddQuerytoDashboard.png)
+![addq](images/AddQ.png)
 
 ##How to Create a Dashboard
 Once you have a question saved, you can create a dashboard.  Click "Create a new dashboard" (*See Figure 5*).  Enter a name and description for your dashboard, as well as configure its privacy settings.  
 
-*Figure 6: Create a Dashboard*
-![Create a Dashboard](images/NameDashboard.png)
+![addnewdashboard](images/Addnewdashboard.png)
 
 Once you successfully create your dashboard, the following pop-up will appear.  
 
-*Figure 7: Dashboard Created Successfully*
-![Dashboard Created Successfully](images/DashboardCreatedSuccessfully.png)
+![dashboardsuccess](images/DashboardSuccess.png)
+
+You can view your Dashboard by clicking the link or by selecting dashboard from the dropdown menu at the top of the screen.  
+
+![dashboarddropdown](images/DashboardDropdown.png)
+
+After creating your first dashboard and adding your first question, your dashboard will look similar to this: 
+
+![dashboarddropdown](images/DashboardDropdown.png)
 
 ##How to Arrange Dashboards
 To make changes to a dashboard, clicking the **Dashboard Grid** button will allow you to resize, reorder, or remove individual question cards. 
 
-*Figure 8: Dashboard Grid Button*
-![Dashboard Grid Button](images/EditDashboard.png)
+![dashboardgridbutton](images/DashboardGridButton.png)
 
 The lines around the card will change from solid to dotted, signifying that you are in edit mode.  
 
-*Figure 9: Dotted Lines Signify Edit Mode*
-![Dotted Lines Signify Edit Mode](images/EditDashboardCard.png)
+![editmode](images/EditMode.png)
 
 * To resize a card, click on its borders.  You can also use the handle in the lower right corner, which will let you drag your cursor to resize the card.  
 * To reorder your cards, click and drag the card to where you want it to be.  Other cards will rearrange as you move the card to its new place to make room for it.  
@@ -273,10 +275,13 @@ The lines around the card will change from solid to dotted, signifying that you 
 ##How to Delete a Dashboard
 Deleting a dashboard does not delete the individual question cards on a dashboard.  Deleting a dashboard deletes the grouping of the questions (but not the questions themselves).  
 
-To delete a dashboard, click the **Edit** button next to the title of your dashboard at the top of the screen.  A popup screen will appear that will allow you to choose to delete the dashboard, or change its settings.  
+To delete a dashboard, click the **Edit** button next to the title of your dashboard at the top of the screen.  
 
-*Figure 10: Deleting a Dashboard Interface*
-![Deleting a Dashboard Interface](images/DeleteDashboard.png)
+![editdashboard](images/EditDashboard.png)
+
+A popup screen will appear that will allow you to choose to delete the dashboard, or change its settings.  
+
+![editdashboardinterface](images/EditDashboardInterface.png)
 
 Be careful when deleting public dashboards - make sure other users in your organization do not need the dashboard.
 
@@ -292,28 +297,21 @@ If you have more than 10 cards on a dashboard, consider breaking the dashboard i
 ---
 You can get to the data model reference at any time by clicking on the **Book** icon in the top righthand corner of the screen.
 
-*Figure 11: Book Icon*
+![bookicon](images/Bookicon.png)
 
-![Book Icon](images/Bookicon.png)
-
-After clicking the icon, the **Data Reference** tab will open.  It lists all the databases you have access to and the tables inside them.  
-
-*Figure 12: Data Reference Tab*
-
-![Data Reference Tab](images/DataModelHelp1.png)
+After clicking the icon, the **Data Reference** tab will open.  It lists all the databases you have access to and the tables inside them. 
+ 
+![datareference](images/DataReference.png)
 
 Click on the table you would like to explore further to see a description of it and a list of all the fields it contains. 
 
-*Figure 13: Select Table to Explore*
-![Select Table to Explore](images/DataModelHelp2.png)
+![datareferencetab](images/DataReferenceTab.png)
 
 If you click on a field of interest, you will see a description of the field's contents, as well as suggestions for queries based on that field.   
 
-*Figure 14: Field & Suggested Queries*
-![Field & Suggested Queries](images/DataModelHelp3.png)
+![datatableexplore](images/DataTableExplore.png)
 
-In addition to looking at a table's fields, you can also look at its connections if your table includes any.  Click on **Connections** to view them (located next to **Field** button, See Figure 13)
-
+In addition to looking at a table's fields, you can also look at its connections if your table includes any.  Click on **Connections** to view them (located next to **Field** button).
 
 
 
