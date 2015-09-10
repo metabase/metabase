@@ -54,7 +54,7 @@ export default class Homepage extends Component {
         const { selectedTab, user } = this.props;
 
         return (
-            <div>
+            <div className="flex flex-column flex-full">
                 { this.state.onboarding ?
                     <Modal>
                         <NewUserOnboardingModal user={user} closeFn={() => (this.completeOnboarding())}></NewUserOnboardingModal>
@@ -79,7 +79,7 @@ export default class Homepage extends Component {
                         </div>
                     </div>
                 </div>
-                <div className="relative pl4">
+                <div className="relative felx flex-column flex-full pl4">
                     <div style={this.styles.main}>
                         <div style={this.styles.mainWrapper}>
                             { selectedTab === 'activity' ?
