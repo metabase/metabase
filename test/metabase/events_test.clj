@@ -1,9 +1,7 @@
 (ns metabase.events-test
   (:require [clojure.core.async :as async]
             [expectations :refer :all]
-            [metabase.events :as events]
-            (metabase [task :refer :all]
-                      [test-setup :refer :all])))
+            [metabase.events :as events]))
 
 (def testing-topic :event-test-topic)
 
