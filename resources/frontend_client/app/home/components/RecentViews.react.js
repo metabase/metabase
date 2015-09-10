@@ -33,12 +33,12 @@ export default class RecentViews extends Component {
                     <Icon className="float-left" name={'clock'} width={18} height={18}></Icon>
                     <span className="pl1 h3">Recents</span>
                 </div>
-                <div className="bordered rounded bg-white">
+                <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     {recentViews.length > 0 ?
-                        <ul className="px3 py1">
+                        <ul className="px3 py2">
                             {recentViews.map(item =>
-                                <li key={item.id} className="py1">
-                                    <a className="link text-dark ml1" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                <li key={item.id} className="py1 ml1">
+                                    <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
                                 </li>
                             )}
                         </ul>

@@ -43,7 +43,7 @@ export default class HeaderTabs extends Component {
 
         return (
             <div className="bg-brand text-white">
-                <a className={activityTab} href="/">Activity</a>
+                <a className={activityTab} style={{marginLeft: '10px'}} href="/">Activity</a>
                 <a className={questionsTab} href="/?questions">Saved Questions</a>
             </div>
         );

@@ -141,13 +141,8 @@ export default class Activity extends Component {
         if (user) {
             const userColorIndex = userColors[user.id];
             const colorCssClass = this.colorClasses[userColorIndex];
-            const cssClasses = {
-                'UserNick': true,
-                'text-white': true
-            };
-            cssClasses[colorCssClass] = true;
 
-            return cx(cssClasses);
+            return colorCssClass;
         } else {
             return cx({
                 'UserNick': true,
