@@ -12,7 +12,7 @@ export default class AccordianItem extends Component {
 
         return (
             <div key={itemId}>
-                <div className="p2 text-grey-4 text-brand-hover" onClick={() => (onClickFn(itemId))}>
+                <div className="p2 text-grey-4 text-brand-hover border-bottom" onClick={() => (onClickFn(itemId))}>
                     <span className="float-left">{title}</span>
                     <div className="text-right text-grey-2 text-brand-hover">
                         { isOpen ?
@@ -23,7 +23,7 @@ export default class AccordianItem extends Component {
                     </div>
                 </div>
                 { isOpen ?
-                    <div className="articlewrap">
+                    <div className="pt1">
                         <div className="article">
                             {children}
                         </div>
