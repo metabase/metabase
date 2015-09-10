@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
+import IconBorder from '../../query_builder/IconBorder.react';
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 
 import { fetchCards } from "../actions";
@@ -13,21 +14,6 @@ export default class Cards extends Component {
     constructor() {
         super();
         this.state = { error: null };
-
-        this.styles = {
-            main: {
-                marginRight: "346px"
-            },
-            mainWrapper: {
-                width: "100%",
-                margin: "0 auto",
-                paddingLeft: "12em",
-                paddingRight: "3em"
-            },
-            headerGreeting: {
-                fontSize: "x-large"
-            }
-        };
     }
 
     async componentDidMount() {
@@ -43,10 +29,10 @@ export default class Cards extends Component {
         let items = cards.slice().sort((a, b) => b.created_at - a.created_at);
 
         return (
-            <ul className="pt2">
+            <ul className="pt2 ml1">
                 {items.map(item =>
                     <li key={item.id} className="flex pt2">
-                        <div className="pb2 mr3">
+                        <div className="pb2 mr2">
                             <img style={{height: "36px"}} src={"/app/components/icons/assets/" + item.icon + ".png"} />
                         </div>
                         <div className="flex align-center flex-full border-bottom pb2">
@@ -55,12 +41,14 @@ export default class Cards extends Component {
                                 <div className="text-grey-3">{item.description || "No description yet"}</div>
                             </div>
                             <div className="flex-align-right flex-full text-right text-grey-3">
-                                <div className="mb1">Saved by <span className="text-dark">{item.creator.common_name}</span></div>
+                                <div>Saved by <span className="text-dark">{item.creator.common_name}</span></div>
                                 <div>Created {item.created_at.fromNow()}</div>
                             </div>
                             <div className="flex-align-right text-right text-grey-3 ml2">
-                                <a href={'/card/'+item.id} className="flex-align-right IconCircle flex text-grey-1 text-grey-3-hover transition-color layout-centered">
-                                    <Icon name={'pencil'} width={18} height={18}></Icon>
+                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover">
+                                    <IconBorder>
+                                        <Icon name='pencil' width={16} height={16}></Icon>
+                                    </IconBorder>
                                 </a>
                             </div>
                         </div>
@@ -79,9 +67,9 @@ export default class Cards extends Component {
             {() =>
                 <div>
                     { cards.length === 0 ?
-                        <div className="flex flex-column layout-centered pt4">
+                        <div className="flex flex-column layout-centered pt4" style=={{fontSize: '1.08rem'}}>
                             <span className="QuestionCircle">?</span>
-                            <div className="text-normal mt3 mb1">Hmmm, looks like you don't have any saved questions yet.</div>
+                            <div className="text-normal mt3 mb1 h2 text-bold">Hmmm, looks like you don't have any saved questions yet.</div>
                             <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
                         </div>
                     :
