@@ -42,7 +42,7 @@ export default class ActivityItem extends Component {
                     </span>
                 :
                     <span styles={this.styles.initials} className={userColors}>
-                        <span className="UserInitials"><Icon name={'return'}></Icon></span>
+                        <span className="UserInitials"><Icon name='sync' width={16} height={16} /></span>
                     </span>
                 }
 
