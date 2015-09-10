@@ -30,7 +30,7 @@
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
   (context "/dash"         [] (+auth dash/routes))
-  (GET "/health"           [] {:status 200 :body {:status "ok"}})
+  (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/meta/dataset" [] (+auth dataset/routes))
   (context "/meta/db"      [] (+auth db/routes))
   (context "/meta/field"   [] (+auth field/routes))
