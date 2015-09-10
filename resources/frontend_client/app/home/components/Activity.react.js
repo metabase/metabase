@@ -22,6 +22,48 @@ export default class Activity extends Component {
         this.colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2'];
     }
 
+    async componentDidMount() {
+        try {
+            await this.props.dispatch(fetchActivity());
+        } catch (error) {
+            this.setState({ error });
+        }
+    }
+
+    componentWillReceiveProps(nextProps) {
+        // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
+        let { activity, user } = nextProps;
+        let { userColors } = this.state;
+
+        const colors = [1,2,3,4,5];
+        const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
+        var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
+
+        for (var item of activity) {
+            if (!(item.user_id in userColors)) {
+                // assign the user a color
+                if (item.user_id === user.id) {
+                    userColors[item.user_id] = 0;
+                } else if (item.user_id === null) {
+                    // just skip this scenario, we handle this differently
+                } else {
+                    userColors[item.user_id] = colors[currColor];
+                    currColor++;
+
+                    // if we hit the end of the colors list then just go back to the beginning again
+                    if (currColor >= colors.length) {
+                        currColor = 0;
+                    }
+                }
+            }
+        }
+
+        this.setState({
+            'error': this.state.error,
+            'userColors': userColors
+        });
+    }
+
     userName(user, currentUser) {
         if (user && user.id === currentUser.id) {
             return "You";
@@ -129,49 +171,6 @@ export default class Activity extends Component {
         };
     }
 
-    async componentDidMount() {
-        try {
-            await this.props.dispatch(fetchActivity());
-        } catch (error) {
-            this.setState({ error });
-        }
-    }
-
-    componentWillReceiveProps(nextProps) {
-        // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
-        let { activity, user } = nextProps;
-        let { userColors } = this.state;
-
-        const colors = [1,2,3,4,5];
-        const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
-        var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
-
-        for (var item of activity) {
-            if (!(item.user_id in userColors)) {
-                // assign the user a color
-                if (item.user_id === user.id) {
-                    userColors[item.user_id] = 0;
-                } else if (item.user_id === null) {
-                    // just skip this scenario, we handle this differently
-                } else {
-                    userColors[item.user_id] = colors[currColor];
-                    currColor++;
-
-                    // if we hit the end of the colors list then just go back to the beginning again
-                    if (currColor >= colors.length) {
-                        currColor = 0;
-                    }
-                }
-            }
-        }
-
-        this.setState({
-            'error': this.state.error,
-            'userColors': userColors
-        });
-    }
-
-
     initialsCssClasses(user) {
         let { userColors } = this.state;
 
@@ -193,26 +192,6 @@ export default class Activity extends Component {
         }
     }
 
-    renderActivity(activity) {
-        return (
-            <ul className="pt2 pb4 relative">
-                {activity.map(item => {
-                    const description = this.activityDescription(item, item.user);
-                    return (
-                        <li key={item.id} className="mt3">
-                            <ActivityItem
-                                item={item}
-                                description={description}
-                                userColors={this.initialsCssClasses(item.user)}
-                            />
-                            { description.body ? <ActivityStory story={description} /> : null }
-                        </li>
-                    )
-                })}
-            </ul>
-        );
-    }
-
     render() {
         let { activity } = this.props;
         let { error } = this.state;
@@ -229,7 +208,18 @@ export default class Activity extends Component {
                                 <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
                             </div>
                         :
-                            this.renderActivity(activity)
+                            <ul className="pt2 pb4 relative">
+                                {activity.map(item =>
+                                    <li key={item.id} className="mt3">
+                                        <ActivityItem
+                                            item={item}
+                                            description={this.activityDescription(item, item.user)}
+                                            userColors={this.initialsCssClasses(item.user)}
+                                        />
+                                        <ActivityStory story={this.activityDescription(item, item.user)} />
+                                    </li>
+                                )}
+                            </ul>
                         }
                     </div>
                 </div>
@@ -238,10 +228,3 @@ export default class Activity extends Component {
         );
     }
 }
-
-Activity.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired,
-    onDashboardDeleted: PropTypes.func.isRequired,
-    visualizationSettingsApi: PropTypes.object.isRequired
-};
