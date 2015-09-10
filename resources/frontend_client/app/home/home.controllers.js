@@ -29,7 +29,6 @@ const reducer = combineReducers(reducers);
 
 
 var HomeControllers = angular.module('metabase.home.controllers', [
-    'metabase.home.directives',
     'metabase.metabase.services'
 ]);
 
