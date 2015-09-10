@@ -119,11 +119,12 @@
   (when (and (= :user-login topic)
              (= (:session_id object) (db/sel :one :field [Session :id] :user_id (:user_id object))))
     (db/ins Activity
-         :topic :user-joined
-         :user_id (:user_id object)
-         :model (topic->model topic))))
+      :topic    :user-joined
+      :user_id  (:user_id object)
+      :model    (topic->model topic)
+      :model_id (:user_id object))))
 
-(defn- process-activity-event
+(defn process-activity-event
   "Handle processing for a single event notification received on the activity-feed-channel"
   [activity-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
@@ -134,7 +135,7 @@
         "dashboard" (process-dashboard-activity topic object)
         "database"  (process-database-activity topic object)
         "install"   (when-not (db/sel :one :fields [Activity :id])
-                      (db/ins Activity :topic :install))
+                      (db/ins Activity :topic "install" :model "install"))
         "user"      (process-user-activity topic object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
