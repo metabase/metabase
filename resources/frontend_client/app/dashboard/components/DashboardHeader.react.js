@@ -150,7 +150,11 @@ export default class DashboardHeader extends Component {
         buttonSections.push([
             <ModalWithTrigger
                 ref="addQuestionModal"
-                triggerElement={<Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />}
+                triggerElement={
+                    <a title="Add a question to this dashboard">
+                        <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                    </a>
+                }
             >
                 <AddToDashSelectQuestionModal
                     dispatch={this.props.dispatch}
