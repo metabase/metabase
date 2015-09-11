@@ -173,33 +173,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             },
         },
-        table_segments: {
-            url: '/api/table/:tableId/segments',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            },
-            isArray: true
-        },
-        table_createsegment: {
-            url: '/api/table/:tableId/segments',
-            method: 'POST',
-            params: {
-                tableId: '@tableId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        table_dependents: {
-            url: '/api/dependency/table/:tableId/dependents',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            }
-        },
         table_query_metadata: {
             url: '/api/table/:tableId/query_metadata',
             method: 'GET',
@@ -265,14 +238,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
-        field_pivots: {
-            url: '/api/field/:fieldId/pivots',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            },
-            isArray: true
-        },
         field_foreignkeys: {
             url: '/api/field/:fieldId/foreignkeys',
             method: 'GET',
@@ -291,13 +256,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 'X-CSRFToken': function() {
                     return $cookies.csrftoken;
                 }
-            }
-        },
-        metadata: {
-            url: '/api/database/:dbId/metadata',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
             }
         },
         dataset: {
@@ -331,19 +289,3 @@ MetabaseServices.factory('ForeignKey', ['$resource', '$cookies', function($resou
     });
 }]);
 
-MetabaseServices.factory('TableSegment', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/meta/segment/:segmentID', {}, {
-        delete: {
-            method: 'DELETE',
-            params: {
-                segmentID: '@segmentID'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            },
-        },
-
-    });
-}]);
