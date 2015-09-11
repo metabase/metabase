@@ -13,7 +13,7 @@
 (defendpoint GET "/"
   "Get recent activity."
   []
-  (-> (db/sel :many Activity (k/order :timestamp :DESC))
+  (-> (db/sel :many Activity (k/order :timestamp :DESC) (k/limit 40))
       (hydrate :user :table :database :model_exists)))
 
 (defendpoint GET "/recent_views"
@@ -30,7 +30,7 @@
              (k/where (= :user_id *current-user-id*))
              (k/group :user_id :model :model_id)
              (k/order :max_ts :desc)
-             (k/limit 15))
+             (k/limit 10))
            (map #(assoc % :model_object (delay (case (:model %)
                                          "card" (-> (Card (:model_id %))
                                                     (select-keys [:id :name :description :display]))
