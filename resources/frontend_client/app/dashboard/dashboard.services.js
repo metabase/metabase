@@ -10,12 +10,6 @@ DashboardServices.factory('Dashboard', ['$resource', '$cookies', function($resou
             method:'GET',
             isArray:true
         },
-        for_card: {
-            url:'/api/dashboard/for_card/:cardId?f=:filterMode',
-            method:'GET',
-            params:{cardId:'@cardid'},
-            isArray:true
-        },
         create: {
             url:'/api/dashboard',
             method:'POST',
@@ -51,35 +45,6 @@ DashboardServices.factory('Dashboard', ['$resource', '$cookies', function($resou
             url:'/api/dashboard/:dashId/reposition',
             method:'POST',
             params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
-        },
-        reordercards: {
-            url:'/api/dashboard/:dashId/reorder',
-            method:'POST',
-            params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
-        },
-        subscribe: {
-            url: '/api/dashboard/:dashId/subscribe',
-            method: 'POST',
-            params: {dashId: '@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }}
-        },
-        unsubscribe: {
-            url: '/api/dashboard/:dashId/unsubscribe',
-            method: 'POST',
-            params: {dashId: '@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }}
-        }
-    });
-}]);
-
-DashboardServices.factory('DashCard', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/dashcard/:id', {}, {
-        resize: {
-            url: '/api/dashcard/:id/resize',
-            method: 'POST',
-            params: { id:'@id' },
             headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
         }
     });
