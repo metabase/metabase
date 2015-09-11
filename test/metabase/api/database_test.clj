@@ -1,4 +1,4 @@
-(ns metabase.api.meta.db-test
+(ns metabase.api.database-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -14,7 +14,7 @@
 ;; HELPER FNS
 
 (defn create-db [db-name]
-  ((user->client :crowberto) :post 200 "meta/db" {:engine  :postgres
+  ((user->client :crowberto) :post 200 "database" {:engine  :postgres
                                                   :name    db-name
                                                   :details {:host   "localhost"
                                                             :port   5432
@@ -23,7 +23,7 @@
 
 ;; # FORM INPUT
 
-;; ## GET /api/meta/db/form_input
+;; ## GET /api/database/form_input
 (expect
     {:engines driver/available-drivers
      :timezones ["GMT"
@@ -36,11 +36,11 @@
                  "US/Mountain"
                  "US/Pacific"
                  "America/Costa_Rica"]}
-  ((user->client :crowberto) :get 200 "meta/db/form_input"))
+  ((user->client :crowberto) :get 200 "database/form_input"))
 
 ;; # DB LIFECYCLE ENDPOINTS
 
-;; ## GET /api/meta/db/:id
+;; ## GET /api/database/:id
 ;; regular users *should not* see DB details
 (expect
     (match-$ (db)
@@ -51,7 +51,7 @@
        :name            "Test Database"
        :organization_id nil
        :description     nil})
-  ((user->client :rasta) :get 200 (format "meta/db/%d" (db-id))))
+  ((user->client :rasta) :get 200 (format "database/%d" (db-id))))
 
 ;; superusers *should* see DB details
 (expect
@@ -64,9 +64,9 @@
        :name            "Test Database"
        :organization_id nil
        :description     nil})
-  ((user->client :crowberto) :get 200 (format "meta/db/%d" (db-id))))
+  ((user->client :crowberto) :get 200 (format "database/%d" (db-id))))
 
-;; ## POST /api/meta/db
+;; ## POST /api/database
 ;; Check that we can create a Database
 (let [db-name (random-name)]
   (expect-eval-actual-first
@@ -81,7 +81,7 @@
          :description     nil})
     (create-db db-name)))
 
-;; ## DELETE /api/meta/db/:id
+;; ## DELETE /api/database/:id
 ;; Check that we can delete a Database
 (expect-let [db-name (random-name)
              {db-id :id} (create-db db-name)
@@ -89,10 +89,10 @@
   [db-name
    nil]
   [(sel-db-name)
-   (do ((user->client :crowberto) :delete 204 (format "meta/db/%d" db-id))
+   (do ((user->client :crowberto) :delete 204 (format "database/%d" db-id))
        (sel-db-name))])
 
-;; ## PUT /api/meta/db/:id
+;; ## PUT /api/database/:id
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
@@ -108,17 +108,17 @@
     :name    old-name}]
   [(sel-db)
    ;; Check that we can update all the fields
-   (do ((user->client :crowberto) :put 200 (format "meta/db/%d" db-id) {:name    new-name
+   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name    new-name
                                                                         :engine  "h2"
                                                                         :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
        (sel-db))
    ;; Check that we can update just a single field
-   (do ((user->client :crowberto) :put 200 (format "meta/db/%d" db-id) {:name old-name})
+   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name old-name})
        (sel-db))])
 
 ;; # DATABASES FOR ORG
 
-;; ## GET /api/meta/db
+;; ## GET /api/database
 ;; Test that we can get all the DBs for an Org, ordered by name
 ;; Database details *should not* come back for Rasta since she's not a superuser
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
@@ -151,7 +151,7 @@
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
-      (set ((user->client :rasta) :get 200 "meta/db")))))
+      (set ((user->client :rasta) :get 200 "database")))))
 
 
 ;; ## GET /api/meta/table/:id/query_metadata
@@ -214,13 +214,13 @@
                                :id           (id :categories)
                                :db_id        (db-id)
                                :created_at   $})]})
-  (let [resp ((user->client :rasta) :get 200 (format "meta/db/%d/metadata" (db-id)))]
+  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (db-id)))]
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
 ;; # DB TABLES ENDPOINTS
 
-;; ## GET /api/meta/db/:id/tables
+;; ## GET /api/database/:id/tables
 ;; These should come back in alphabetical order
 (expect
     (let [db-id (db-id)]
@@ -232,4 +232,4 @@
          {:description nil, :entity_type nil, :visibility_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
        (match-$ (Table (id :venues))
          {:description nil, :entity_type nil, :visibility_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
-  ((user->client :rasta) :get 200 (format "meta/db/%d/tables" (db-id))))
+  ((user->client :rasta) :get 200 (format "database/%d/tables" (db-id))))

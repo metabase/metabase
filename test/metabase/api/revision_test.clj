@@ -35,10 +35,10 @@
        (mapv #(dissoc % :timestamp :id))))
 
 (defn- post-dashcard [dash-id card-id]
-  ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id), {:cardId card-id}))
+  ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id), {:cardId card-id}))
 
 (defn- delete-dashcard [dash-id card-id]
-  ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard :dashboard_id dash-id, :card_id card-id)))
+  ((user->client :rasta) :delete 204 (format "dashboard/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard :dashboard_id dash-id, :card_id card-id)))
 
 (expect [{:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]

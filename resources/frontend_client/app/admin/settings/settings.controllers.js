@@ -6,7 +6,7 @@ import SettingsEditor from './components/SettingsEditor.react';
 
 import Humanize from "humanize";
 
-var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabaseadmin.settings.services']);
+var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
 
 // from common.clj
 var TIMEZONES = [
@@ -36,11 +36,11 @@ var EXTRA_SETTINGS_METADATA = {
     "email-from-address":   { display_name: "From Address",       section: "Email",   index: 5, type: "string" },
 };
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'SettingsAdminServices', 'AppState', 'settings', function($scope, SettingsAdminServices, AppState, settings) {
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'Settings', 'AppState', 'settings', function($scope, Settings, AppState, settings) {
     $scope.SettingsEditor = SettingsEditor;
 
     $scope.updateSetting = async function(setting) {
-        await SettingsAdminServices.put({ key: setting.key }, setting).$promise;
+        await Settings.put({ key: setting.key }, setting).$promise;
         AppState.refreshSiteSettings();
     }
 

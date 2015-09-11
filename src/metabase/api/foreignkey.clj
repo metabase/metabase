@@ -1,5 +1,5 @@
-(ns metabase.api.meta.fk
-  "/api/meta/fk endpoints."
+(ns metabase.api.foreignkey
+  "/api/foreignkey endpoints."
   (:require [compojure.core :refer [DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]

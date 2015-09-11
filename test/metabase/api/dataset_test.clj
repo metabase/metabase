@@ -1,5 +1,5 @@
-(ns metabase.api.meta.dataset-test
-  "Unit tests for /api/meta/dataset endpoints."
+(ns metabase.api.dataset-test
+  "Unit tests for /api/dataset endpoints."
   (:require [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :refer :all]
@@ -21,7 +21,7 @@
        :status    "completed"
        :id        $
        :uuid      $})
-  ((user->client :rasta) :post 200 "meta/dataset" (Q-expand aggregate count of checkins)))
+  ((user->client :rasta) :post 200 "dataset" (Q-expand aggregate count of checkins)))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect-eval-actual-first
@@ -41,6 +41,6 @@
      :running_time $
      :id $
      :uuid $})
-  ((user->client :rasta) :post 200 "meta/dataset" {:database (db-id)
+  ((user->client :rasta) :post 200 "dataset" {:database (db-id)
                                                    :type "native"
                                                    :native {:query "foobar"}}))

@@ -3,19 +3,19 @@
             [compojure.route :as route]
             (metabase.api [activity :as activity]
                           [card :as card]
-                          [dash :as dash]
+                          [dashboard :as dashboard]
+                          [database :as database]
+                          [dataset :as dataset]
+                          [field :as field]
+                          [foreignkey :as fk]
                           [notify :as notify]
                           [revision :as revision]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
+                          [table :as table]
                           [tiles :as tiles]
                           [user :as user])
-            (metabase.api.meta [dataset :as dataset]
-                               [db :as db]
-                               [field :as field]
-                               [fk :as fk]
-                               [table :as table])
             [metabase.middleware.auth :as auth]))
 
 (def ^:private +apikey
@@ -29,18 +29,18 @@
 (defroutes routes
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
-  (context "/dash"         [] (+auth dash/routes))
+  (context "/dashboard"    [] (+auth dashboard/routes))
+  (context "/database"     [] (+auth database/routes))
+  (context "/dataset"      [] (+auth dataset/routes))
+  (context "/field"        [] (+auth field/routes))
+  (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
-  (context "/meta/dataset" [] (+auth dataset/routes))
-  (context "/meta/db"      [] (+auth db/routes))
-  (context "/meta/field"   [] (+auth field/routes))
-  (context "/meta/fk"      [] (+auth fk/routes))
-  (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)
+  (context "/table"        [] (+auth table/routes))
   (context "/tiles"        [] (+auth tiles/routes))
   (context "/user"         [] (+auth user/routes))
   (route/not-found (fn [{:keys [request-method uri]}]

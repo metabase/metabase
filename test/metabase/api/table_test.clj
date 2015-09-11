@@ -1,5 +1,5 @@
-(ns metabase.api.meta.table-test
-  "Tests for /api/meta/table endpoints."
+(ns metabase.api.table-test
+  "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data :refer [mongo-test-db-id]]
@@ -19,11 +19,11 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get auth/response-unauthentic :body) (http/client :get 401 "meta/table"))
-(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "meta/table/%d" (id :users))))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 "table"))
+(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "table/%d" (id :users))))
 
 
-;; ## GET /api/meta/table?org
+;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect (set (reduce concat (for [dataset-name datasets/test-dataset-names]
                               (datasets/with-dataset-when-testing dataset-name
@@ -51,11 +51,11 @@
                                   :active              true
                                   :rows                100
                                   :id                  (id :venues)}]))))
-  (->> ((user->client :rasta) :get 200 "meta/table")
+  (->> ((user->client :rasta) :get 200 "table")
        (map #(dissoc % :db :created_at :updated_at :entity_name :description :entity_type :visibility_type))
        set))
 
-;; ## GET /api/meta/table/:id
+;; ## GET /api/table/:id
 (expect
     (match-$ (Table (id :venues))
       {:description nil
@@ -79,9 +79,9 @@
        :id          (id :venues)
        :db_id       (db-id)
        :created_at  $})
-  ((user->client :rasta) :get 200 (format "meta/table/%d" (id :venues))))
+  ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
-;; ## GET /api/meta/table/:id/fields
+;; ## GET /api/table/:id/fields
 (expect [(match-$ (Field (id :categories :id))
            {:description         nil
             :table_id            (id :categories)
@@ -114,9 +114,9 @@
             :base_type           "TextField"
             :parent_id           nil
             :parent              nil})]
-  ((user->client :rasta) :get 200 (format "meta/table/%d/fields" (id :categories))))
+  ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
-;; ## GET /api/meta/table/:id/query_metadata
+;; ## GET /api/table/:id/query_metadata
 (expect
     (match-$ (Table (id :categories))
       {:description  nil
@@ -174,7 +174,7 @@
        :id           (id :categories)
        :db_id        (db-id)
        :created_at   $})
-  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (id :categories))))
+  ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
 
 (def ^:private user-last-login-date-strs
@@ -195,7 +195,7 @@
          sort
          vec)))
 
-;;; GET api/meta/table/:id/query_metadata?include_sensitive_fields
+;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
     (match-$ (sel :one Table :id (id :users))
@@ -306,9 +306,9 @@
                        "Spiros Teofil"
                        "Szymon Theutrich"]}
        :created_at   $})
-  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
+  ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
-;;; GET api/meta/table/:id/query_metadata
+;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
     (match-$ (Table (id :users))
@@ -402,10 +402,10 @@
                        "Spiros Teofil"
                        "Szymon Theutrich"]}
        :created_at   $})
-  ((user->client :rasta) :get 200 (format "meta/table/%d/query_metadata" (id :users))))
+  ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
 
 
-;; ## PUT /api/meta/table/:id
+;; ## PUT /api/table/:id
 (expect-eval-actual-first
     (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
@@ -433,14 +433,14 @@
        :id          $
        :db_id       (db-id)
        :created_at  $})
-  (do ((user->client :crowberto) :put 200 (format "meta/table/%d" (id :users)) {:display_name "Userz"
+  (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name "Userz"
                                                                                 :entity_type "person"
                                                                                 :visibility_type "hidden"
                                                                                 :description "What a nice table!"})
-      ((user->client :crowberto) :get 200 (format "meta/table/%d" (id :users)))))
+      ((user->client :crowberto) :get 200 (format "table/%d" (id :users)))))
 
 
-;; ## GET /api/meta/table/:id/fks
+;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect-let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
              users-id-field (sel :one Field :table_id (id :users) :name "ID")]
@@ -517,15 +517,15 @@
                                              :id          $
                                              :db_id       $
                                              :created_at  $})})})]
-  ((user->client :rasta) :get 200 (format "meta/table/%d/fks" (id :users))))
+  ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
 
 
-;; ## POST /api/meta/table/:id/reorder
+;; ## POST /api/table/:id/reorder
 (expect-eval-actual-first
     {:result "success"}
   (let [categories-id-field   (sel :one Field :table_id (id :categories) :name "ID")
         categories-name-field (sel :one Field :table_id (id :categories) :name "NAME")
-        api-response          ((user->client :crowberto) :post 200 (format "meta/table/%d/reorder" (id :categories))
+        api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
                                {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
     (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
