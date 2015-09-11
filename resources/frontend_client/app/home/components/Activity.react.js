@@ -2,7 +2,6 @@
 
 import React, { Component, PropTypes } from 'react';
 import _ from 'underscore';
-import cx from 'classnames';
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper.react';
 import ActivityItem from './ActivityItem.react';
@@ -143,11 +142,6 @@ export default class Activity extends Component {
             const colorCssClass = this.colorClasses[userColorIndex];
 
             return colorCssClass;
-        } else {
-            return cx({
-                'UserNick': true,
-                'text-grey-1': true
-            });
         }
     }
 
