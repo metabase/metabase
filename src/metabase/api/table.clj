@@ -1,5 +1,5 @@
-(ns metabase.api.meta.table
-  "/api/meta/table endpoints."
+(ns metabase.api.table
+  "/api/table endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
             [korma.core :as k]
             [metabase.api.common :refer :all]

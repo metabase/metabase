@@ -11,11 +11,11 @@
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
+                          [table :as table]
                           [tiles :as tiles]
                           [user :as user])
             (metabase.api.meta [field :as field]
-                               [fk :as fk]
-                               [table :as table])
+                               [fk :as fk])
             [metabase.middleware.auth :as auth]))
 
 (def ^:private +apikey
@@ -30,17 +30,17 @@
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
   (context "/dash"         [] (+auth dash/routes))
-  (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/database"     [] (+auth database/routes))
   (context "/dataset"      [] (+auth dataset/routes))
+  (GET     "/health"       [] {:status 200 :body {:status "ok"}})
   (context "/meta/field"   [] (+auth field/routes))
   (context "/meta/fk"      [] (+auth fk/routes))
-  (context "/meta/table"   [] (+auth table/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)
+  (context "/table"        [] (+auth table/routes))
   (context "/tiles"        [] (+auth tiles/routes))
   (context "/user"         [] (+auth user/routes))
   (route/not-found (fn [{:keys [request-method uri]}]

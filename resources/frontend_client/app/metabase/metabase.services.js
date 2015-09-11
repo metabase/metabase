@@ -119,7 +119,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         table_list: {
-            url: '/api/meta/table/',
+            url: '/api/table/',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -127,14 +127,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_get: {
-            url: '/api/meta/table/:tableId',
+            url: '/api/table/:tableId',
             method: 'GET',
             params: {
                 tableId: '@tableId'
             }
         },
         table_update: {
-            url: '/api/meta/table/:tableId',
+            url: '/api/table/:tableId',
             method: 'PUT',
             params: {
                 tableId: '@id'
@@ -146,7 +146,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         table_fields: {
-            url: '/api/meta/table/:tableId/fields',
+            url: '/api/table/:tableId/fields',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -154,7 +154,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_fks: {
-            url: '/api/meta/table/:tableId/fks',
+            url: '/api/table/:tableId/fks',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -162,7 +162,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_reorder_fields: {
-            url: '/api/meta/table/:tableId/reorder',
+            url: '/api/table/:tableId/reorder',
             method: 'POST',
             params: {
                 tableId: '@tableId'
@@ -174,7 +174,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             },
         },
         table_segments: {
-            url: '/api/meta/table/:tableId/segments',
+            url: '/api/table/:tableId/segments',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -182,7 +182,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_createsegment: {
-            url: '/api/meta/table/:tableId/segments',
+            url: '/api/table/:tableId/segments',
             method: 'POST',
             params: {
                 tableId: '@tableId'
@@ -201,14 +201,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         table_query_metadata: {
-            url: '/api/meta/table/:tableId/query_metadata',
+            url: '/api/table/:tableId/query_metadata',
             method: 'GET',
             params: {
                 dbId: '@tableId'
             }
         },
         table_sync_metadata: {
-            url: '/api/meta/table/:tableId/sync',
+            url: '/api/table/:tableId/sync',
             method: 'POST',
             params: {
                 tableId: '@tableId'
