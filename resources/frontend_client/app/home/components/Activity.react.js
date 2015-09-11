@@ -126,6 +126,10 @@ export default class Activity extends Component {
                 description.subject = "received the latest data from";
                 description.subjectRefName = item.database.name;
                 break;
+            case "install":
+                description.userName = "Hello World!";
+                description.subject = "Metabase is up and running.";
+                break;
             case "user-joined":
                 description.subject = "joined the party!";
                 break;
