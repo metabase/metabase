@@ -36,8 +36,8 @@ export default class RecentViews extends Component {
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     {recentViews.length > 0 ?
                         <ul className="px3 py2">
-                            {recentViews.map(item =>
-                                <li key={item.id} className="py1 ml1">
+                            {recentViews.map((item, index) =>
+                                <li key={index} className="py1 ml1">
                                     <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
                                 </li>
                             )}
