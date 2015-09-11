@@ -19,7 +19,8 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [_         (korma.core/delete Activity)
+(expect-let [_         (user->client :crowberto)            ; HACK. we do this to create the user-joined activity after first login before we delete it
+             _         (korma.core/delete Activity)         ; clear out any existing activity
              activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
