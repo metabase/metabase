@@ -156,7 +156,7 @@ export default class Activity extends Component {
         let { error } = this.state;
 
         return (
-            <LoadingAndErrorWrapper className="" loading={!activity} error={error}>
+            <LoadingAndErrorWrapper loading={!activity} error={error}>
             {() =>
                 <div className="full flex flex-column">
                     <div className="">

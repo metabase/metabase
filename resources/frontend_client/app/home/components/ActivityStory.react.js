@@ -22,7 +22,7 @@ export default class ActivityStory extends Component {
         }
 
         return (
-            <div className="mt1 border-left flex" style={{borderWidth: '3px', marginLeft: '22px', borderColor: '#F2F5F6'}}>
+            <div className="mt1 border-left flex mr2" style={{borderWidth: '3px', marginLeft: '22px', borderColor: '#F2F5F6'}}>
                 <div className="flex full ml4 bordered rounded p2" style={this.styles}>
                     { story.bodyLink ?
                         <a className="link" href={story.bodyLink}>{story.body}</a>

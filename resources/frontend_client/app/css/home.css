@@ -197,3 +197,26 @@
     max-width: 42rem;
     line-height: 1.4;
 }
+
+.HomeLayout {
+}
+
+@media screen and (--breakpoint-min-md) {
+  .HomeLayout {
+      margin-right: 346px;
+  }
+  .HomeLayout-sidebar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 346px;
+      background-color: #F9FBFC;
+      border-left: 2px solid var(--border-color);
+  }
+  .HomeLayout-mainColumn {
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+  }
+}
