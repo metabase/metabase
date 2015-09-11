@@ -67,7 +67,7 @@ export default class Cards extends Component {
             {() =>
                 <div>
                     { cards.length === 0 ?
-                        <div className="flex flex-column layout-centered pt4" style={{fontSize: '1.08rem'}}>
+                        <div className="flex flex-column layout-centered pt4" style={{fontSize: '1.08rem', marginTop: '100px'}}>
                             <span className="QuestionCircle">?</span>
                             <div className="text-normal mt3 mb1 h2 text-bold">Hmmm, looks like you don't have any saved questions yet.</div>
                             <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
