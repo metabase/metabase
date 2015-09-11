@@ -1,6 +1,6 @@
 'use strict';
 
-var Auth = angular.module('corvus.auth', ['corvus.auth.controllers']);
+var Auth = angular.module('metabase.auth', ['metabase.auth.controllers']);
 
 Auth.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/auth/login', {

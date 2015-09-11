@@ -1,73 +1,71 @@
 'use strict';
 
-import Table from "metabase/lib/table";
+import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
+import promiseMiddleware from 'redux-promise';
+import thunkMidleware from "redux-thunk";
 
-var HomeControllers = angular.module('corvus.home.controllers', [
-    'corvus.home.directives',
-    'corvus.metabase.services'
-]);
+import HomepageApp from './containers/HomepageApp.react';
+import * as reducers from './reducers';
+import { setSelectedTab } from './actions';
 
-HomeControllers.controller('Home', ['$scope', '$location',  function($scope, $location) {
-    $scope.currentView = 'data';
-    $scope.showOnboarding = false;
+// import { devTools, persistState } from 'redux-devtools';
+// import { LogMonitor } from 'redux-devtools/lib/react';
+// import loggerMiddleware from 'redux-logger';
 
-    if('new' in $location.search()) {
-        $scope.showOnboarding = true;
-    }
-}]);
+const finalCreateStore = compose(
+  applyMiddleware(
+      thunkMidleware,
+      promiseMiddleware
+      // ,loggerMiddleware
+  ),
+  // devTools(),
+  // persistState(window.location.href.match(/[?&]debug_session=([^&]+)\b/)),
+  createStore
+);
 
-HomeControllers.controller('HomeGreeting', ['$scope', '$location',  function($scope, $location) {
-    var greetingPrefixes = [
-        'Hey there',
-        'How\'s it going',
-        'Howdy',
-        'Greetings',
-        'Good to see you',
-    ];
+const reducer = combineReducers(reducers);
 
-    var subheadPrefixes = [
-        'What do you want to know?',
-        'What\'s on your mind?',
-        'What do you want to find out?',
-    ];
 
-    function buildGreeting (greetingOptions, personalization) {
-        // TODO - this can result in an undefined thing
-        var randomGreetingIndex = Math.floor(Math.random() * (greetingOptions.length - 1) + 0);
-        var greeting = greetingOptions[randomGreetingIndex];
-
-        if(personalization) {
-            greeting = greeting + ' ' + personalization;
+var HomeControllers = angular.module('metabase.home.controllers', []);
+HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$routeParams', function($scope, $location, $route, $routeParams) {
+    $scope.Component = HomepageApp;
+    $scope.props = {
+        user: $scope.user,
+        showOnboarding: ('new' in $location.search()),
+        onChangeLocation: function(url) {
+            $scope.$apply(() => $location.url(url));
         }
-        return greeting;
-    }
+    };
+    $scope.store = finalCreateStore(reducer, { selectedTab: 'activity' });
 
-    $scope.greeting = buildGreeting(greetingPrefixes, $scope.user.first_name);
-    $scope.subheading = "What do you want to know?";
-}]);
+    // $scope.monitor = LogMonitor;
 
-HomeControllers.controller('HomeDatabaseList', ['$scope', 'Metabase', function($scope, Metabase) {
+    // mildly hacky way to prevent reloading controllers as the URL changes
+    var route = $route.current;
+    $scope.$on('$locationChangeSuccess', function (event) {
+        var newParams = $route.current.params;
+        var oldParams = route.params;
 
-    $scope.databases = [];
-    $scope.currentDB = {};
-    $scope.tables = [];
+        if ($route.current.$$route.controller === 'Homepage') {
+            $route.current = route;
 
-    Metabase.db_list(function (databases) {
-        $scope.databases = databases;
-        $scope.selectCurrentDB(0)
-    }, function (error) {
-        console.log(error);
+            angular.forEach(oldParams, function(value, key) {
+                delete $route.current.params[key];
+                delete $routeParams[key];
+            });
+            angular.forEach(newParams, function(value, key) {
+                $route.current.params[key] = value;
+                $routeParams[key] = value;
+            });
+        }
     });
 
-
-    $scope.selectCurrentDB = function(index) {
-        $scope.currentDB = $scope.databases[index];
-        Metabase.db_tables({
-            'dbId': $scope.currentDB.id
-        }, function (tables) {
-            $scope.tables = tables.filter(Table.isQueryable);
-        }, function (error) {
-            console.log(error);
-        })
-    }
+    $scope.routeParams = $routeParams;
+    $scope.$watch('routeParams', function() {
+        if ($scope.routeParams.questions === true) {
+            $scope.store.dispatch(setSelectedTab('cards'));
+        } else {
+            $scope.store.dispatch(setSelectedTab('activity'));
+        }
+    }, true);
 }]);

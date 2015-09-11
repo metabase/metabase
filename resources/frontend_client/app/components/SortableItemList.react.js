@@ -1,7 +1,6 @@
 'use strict';
 
 import RadioSelect from 'metabase/components/RadioSelect.react';
-import moment from 'moment';
 
 export default class SortableItemList extends React.Component {
     constructor(props) {

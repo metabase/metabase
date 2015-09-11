@@ -1,6 +1,5 @@
 'use strict';
 
-import Icon from "metabase/components/Icon.react";
 import ModalContent from "metabase/components/ModalContent.react";
 
 export default React.createClass({

@@ -1,10 +1,9 @@
 'use strict';
 
 import FormField from "metabase/components/FormField.react";
-import Icon from "metabase/components/Icon.react";
 import ModalContent from "metabase/components/ModalContent.react";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: "CreateDashboardModal",

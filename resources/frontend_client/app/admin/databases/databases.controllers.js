@@ -1,11 +1,12 @@
 "use strict";
-/*global _*/
 
-var DatabasesControllers = angular.module('corvusadmin.databases.controllers', ['corvus.metabase.services']);
+import _ from "underscore";
 
-DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'CorvusCore', function($scope, Metabase, CorvusCore) {
+var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.metabase.services']);
 
-    $scope.ENGINES = CorvusCore.ENGINES;
+DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'MetabaseCore', function($scope, Metabase, MetabaseCore) {
+
+    $scope.ENGINES = MetabaseCore.ENGINES;
 
     $scope.databases = [];
 
@@ -31,10 +32,10 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'CorvusCo
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'CorvusCore',
-    function($scope, $routeParams, $location, Metabase, CorvusCore) {
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseCore',
+    function($scope, $routeParams, $location, Metabase, MetabaseCore) {
 
-        $scope.ENGINES = CorvusCore.ENGINES;
+        $scope.ENGINES = MetabaseCore.ENGINES;
 
         // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
         $scope.hiddenFields = {

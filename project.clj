@@ -8,6 +8,7 @@
   :aliases {"test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms

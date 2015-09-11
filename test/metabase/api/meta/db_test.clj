@@ -4,6 +4,7 @@
             [metabase.driver :as driver]
             [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [datasets :as datasets]
@@ -151,6 +152,70 @@
       (create-db db-name)
       ;; Now hit the endpoint
       (set ((user->client :rasta) :get 200 "meta/db")))))
+
+
+;; ## GET /api/meta/table/:id/query_metadata
+;; TODO - add in example with Field :values
+(expect
+  (match-$ (db)
+           {:created_at      $
+            :engine          "h2"
+            :id              $
+            :updated_at      $
+            :name            "Test Database"
+            :organization_id nil
+            :description     nil
+            :tables [(match-$ (Table (id :categories))
+                              {:description  nil
+                               :entity_type  nil
+                               :visibility_type nil
+                               :name         "CATEGORIES"
+                               :display_name "Categories"
+                               :fields       [(match-$ (Field (id :categories :id))
+                                                       {:description     nil
+                                                        :table_id        (id :categories)
+                                                        :special_type    "id"
+                                                        :name            "ID"
+                                                        :display_name    "Id"
+                                                        :updated_at      $
+                                                        :active          true
+                                                        :id              $
+                                                        :field_type      "info"
+                                                        :position        0
+                                                        :target          nil
+                                                        :preview_display true
+                                                        :created_at      $
+                                                        :base_type       "BigIntegerField"
+                                                        :parent_id       nil
+                                                        :parent          nil
+                                                        :values          []})
+                                              (match-$ (Field (id :categories :name))
+                                                       {:description     nil
+                                                        :table_id        (id :categories)
+                                                        :special_type    "name"
+                                                        :name            "NAME"
+                                                        :display_name    "Name"
+                                                        :updated_at      $
+                                                        :active          true
+                                                        :id              $
+                                                        :field_type      "info"
+                                                        :position        0
+                                                        :target          nil
+                                                        :preview_display true
+                                                        :created_at      $
+                                                        :base_type       "TextField"
+                                                        :parent_id       nil
+                                                        :parent          nil
+                                                        :values          []})]
+                               :rows         75
+                               :updated_at   $
+                               :entity_name  nil
+                               :active       true
+                               :id           (id :categories)
+                               :db_id        (db-id)
+                               :created_at   $})]})
+  (let [resp ((user->client :rasta) :get 200 (format "meta/db/%d/metadata" (db-id)))]
+    (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
 ;; # DB TABLES ENDPOINTS

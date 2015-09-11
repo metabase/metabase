@@ -46,3 +46,9 @@ export default class LoadingAndErrorWrapper extends Component {
         );
     }
 }
+
+LoadingAndErrorWrapper.propTypes = {
+    className: PropTypes.any,
+    error: PropTypes.any,
+    loading: PropTypes.any
+};

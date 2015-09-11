@@ -1,11 +1,9 @@
 'use strict';
-/*jslint browser:true*/
-/*jslint devel:true */
 
 // Global Controllers
-var CorvusControllers = angular.module('corvus.controllers', ['corvus.services', 'corvus.navbar.directives']);
+var MetabaseControllers = angular.module('metabase.controllers', ['metabase.services', 'metabase.navbar.directives']);
 
-CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'AppState', function($scope, $location, CorvusCore, AppState) {
+MetabaseControllers.controller('Metabase', ['$scope', '$location', 'MetabaseCore', 'AppState', function($scope, $location, MetabaseCore, AppState) {
 
     var clearState = function() {
         $scope.siteName = undefined;
@@ -14,7 +12,7 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Ap
     };
 
     // make our utilities object available throughout the application
-    $scope.utils = CorvusCore;
+    $scope.utils = MetabaseCore;
 
     // current User
     $scope.user = undefined;
@@ -41,33 +39,15 @@ CorvusControllers.controller('Corvus', ['$scope', '$location', 'CorvusCore', 'Ap
 }]);
 
 
-CorvusControllers.controller('Homepage', ['$scope', '$location', 'ipCookie', 'AppState',
-    function($scope, $location, ipCookie, AppState) {
-
-        // At this point in time we don't actually have any kind of content to show for a homepage, so we just use this
-        // as a simple routing controller which sends users somewhere relevant
-        if (AppState.model.currentUser) {
-            var currentUser = AppState.model.currentUser;
-
-            $location.path('/dash/');
-        } else {
-            // User is not logged-in, so always send them to login page
-            $location.path('/auth/login');
-        }
-
-    }
-]);
-
-
-CorvusControllers.controller('Unauthorized', ['$scope', '$location', function($scope, $location) {
+MetabaseControllers.controller('Unauthorized', ['$scope', '$location', function($scope, $location) {
 
 }]);
 
-CorvusControllers.controller('NotFound', ['AppState', function(AppState) {
+MetabaseControllers.controller('NotFound', ['AppState', function(AppState) {
     AppState.setAppContext('none');
 }]);
 
-CorvusControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'AppState', function($scope, $routeParams, $location, AppState) {
+MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', 'AppState', function($scope, $routeParams, $location, AppState) {
 
     $scope.isActive = function(location) {
         return $location.path().indexOf(location) >= 0;

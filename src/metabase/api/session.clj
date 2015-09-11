@@ -9,6 +9,7 @@
             [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
+            [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
@@ -45,6 +46,7 @@
       (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                  :errors      {:password "did not match stored password"}})))
     (let [session-id (create-session (:id user))]
+      (events/publish-event :user-login {:user_id (:id user) :session_id session-id})
       {:id session-id})))
 
 
@@ -98,8 +100,10 @@
       [400 "Reset token has expired"])
     (set-user-password user-id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
-    {:success true
-     :session_id (create-session user-id)}))
+    (let [session-id (create-session user-id)]
+      (events/publish-event :user-login {:user_id user-id :session_id session-id})
+      {:success    true
+       :session_id session-id})))
 
 
 (defendpoint GET "/properties"

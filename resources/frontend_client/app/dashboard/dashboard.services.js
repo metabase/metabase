@@ -1,7 +1,7 @@
 'use strict';
 
 // Dashboard Services
-var DashboardServices = angular.module('corvus.dashboard.services', ['ngResource', 'ngCookies']);
+var DashboardServices = angular.module('metabase.dashboard.services', ['ngResource', 'ngCookies']);
 
 DashboardServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dash/:dashId', {}, {

@@ -1,6 +1,6 @@
 "use strict";
 
-var AdminUserDirectives = angular.module('corvus.user.directives', []);
+var AdminUserDirectives = angular.module('metabase.user.directives', []);
 
 
 AdminUserDirectives.directive('passwordVerify', function() {

@@ -28,7 +28,7 @@ export default React.createClass({
             var key = this.props.optionKeyFn(option);
             var classes = cx("h3", "text-bold", "text-brand-hover", "no-decoration",  { "text-brand": this.props.value === value });
             return (
-                <li className="mr3" key={value}>
+                <li className="mr3" key={key}>
                     <a className={classes} href="#" onClick={this.props.onChange.bind(null, value)}>{name}</a>
                 </li>
             );

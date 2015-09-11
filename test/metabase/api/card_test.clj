@@ -2,8 +2,10 @@
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.http-client :refer :all]
             (metabase.models [card :refer [Card]]
-                             [common :as common])
+                             [common :as common]
+                             [database :refer [Database]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
@@ -22,6 +24,71 @@
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
+;; Filter cards by database
+(expect [true
+         false
+         true]
+  (with-temp Database [{dbid :id} {:name    (random-name)
+                                    :engine  :h2
+                                    :details {}}]
+    (with-temp Card [{id1 :id} {:name                   (random-name)
+                                :public_perms           common/perms-none
+                                :creator_id             (user->id :crowberto)
+                                :display                :table
+                                :dataset_query          {}
+                                :visualization_settings {}
+                                :database_id            (db-id)}]
+      (with-temp Card [{id2 :id} {:name                   (random-name)
+                                  :public_perms           common/perms-none
+                                  :creator_id             (user->id :crowberto)
+                                  :display                :table
+                                  :dataset_query          {}
+                                  :visualization_settings {}
+                                  :database_id            dbid}]
+        (let [card-returned? (fn [database-id card-id]
+                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :model_id database-id)
+                                               (map :id)
+                                               set)
+                                          card-id))]
+          [(card-returned? (db-id) id1)
+           (card-returned? dbid id1)
+           (card-returned? dbid id2)])))))
+
+;; Make sure `id` is required when `f` is :database
+(expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
+  ((user->client :crowberto) :get 400 "card" :f :database))
+
+;; Filter cards by table
+(expect [true
+         false
+         true]
+  (with-temp Card [{id1 :id} {:name                   (random-name)
+                              :public_perms           common/perms-none
+                              :creator_id             (user->id :crowberto)
+                              :display                :table
+                              :dataset_query          {}
+                              :visualization_settings {}
+                              :table_id               1}]
+    (with-temp Card [{id2 :id} {:name                   (random-name)
+                                :public_perms           common/perms-none
+                                :creator_id             (user->id :crowberto)
+                                :display                :table
+                                :dataset_query          {}
+                                :visualization_settings {}
+                                :table_id               2}]
+      (let [card-returned? (fn [table-id card-id]
+                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
+                                             (map :id)
+                                             set)
+                                        card-id))]
+      [(card-returned? 1 id1)
+       (card-returned? 2 id1)
+       (card-returned? 2 id2)]))))
+
+;; Make sure `id` is required when `f` is :table
+(expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
+  ((user->client :crowberto) :get 400 "card" :f :table))
+
 ;; Check that only the creator of a private Card can see it
 (expect [true
          false]
@@ -54,7 +121,10 @@
                                :display "scalar"
                                :visualization_settings {:global {:title nil}}
                                :public_perms 0
-                               :created_at $})
+                               :created_at $
+                               :database_id (db-id)
+                               :table_id (id :categories)
+                               :query_type "query"})
     (post-card card-name)))
 
 ;; ## GET /api/card/:id
@@ -84,7 +154,10 @@
          :display "scalar"
          :visualization_settings {:global {:title nil}}
          :public_perms 0
-         :created_at $})
+         :created_at $
+         :database_id (db-id)
+         :table_id (id :categories)
+         :query_type "query"})
     (let [{:keys [id]} (post-card card-name)]
       ((user->client :rasta) :get 200 (format "card/%d" id)))))
 

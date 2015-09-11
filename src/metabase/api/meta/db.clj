@@ -83,6 +83,15 @@
   (write-check Database id)
   (cascade-delete Database :id id))
 
+(defendpoint GET "/:id/metadata"
+  "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
+   Returns DB, fields, and field values."
+  [id]
+  (->404 (Database id)
+         read-check
+         ;; TODO - this is a bit slow due to the nested hydration.  needs some optimizing.
+         (hydrate [:tables [:fields :target :values]])))
+
 (defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given PREFIX.
    This is intened for use with the ACE Editor when the User is typing raw SQL.

@@ -1,11 +1,11 @@
 'use strict';
 
-var SetupDirectives = angular.module('corvus.setup.directives', []);
+var SetupDirectives = angular.module('metabase.setup.directives', []);
 
 var setupPartialsDir = '/app/setup/partials';
 
 SetupDirectives
-    .directive('cvSetupHeader', function() {
+    .directive('mbSetupHeader', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_header.html',
@@ -16,7 +16,7 @@ SetupDirectives
     });
 
 SetupDirectives
-    .directive('cvConnectionList', function() {
+    .directive('mbConnectionList', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_connection_list.html',
@@ -28,7 +28,7 @@ SetupDirectives
     });
 
 SetupDirectives
-    .directive('cvStepButton', function() {
+    .directive('mbStepButton', function() {
         return {
             restrict: 'E',
             templateUrl: setupPartialsDir + '/_step_button.html',

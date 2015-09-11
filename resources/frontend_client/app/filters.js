@@ -2,21 +2,21 @@
 
 /* Filters */
 
-var CorvusFilters = angular.module('corvus.filters', []);
+var MetabaseFilters = angular.module('metabase.filters', []);
 
-CorvusFilters.filter('interpolate', ['version', function(version) {
+MetabaseFilters.filter('interpolate', ['version', function(version) {
     return function(text) {
         return String(text).replace(/\%VERSION\%/mg, version);
     };
 }]);
 
-CorvusFilters.filter('slice', function() {
+MetabaseFilters.filter('slice', function() {
     return function(arr, start, end) {
         return arr.slice(start, end);
     };
 });
 
-CorvusFilters.filter('isempty', function() {
+MetabaseFilters.filter('isempty', function() {
     return function(input, replaceText) {
         if (input) {
             return input;

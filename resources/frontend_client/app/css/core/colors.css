@@ -21,29 +21,23 @@
 }
 
 .text-default {
-    color: var(--default-font-color) !important;
+    color: var(--default-font-color);
 }
-
-/* white */
-.text-white,
-.text-white-hover:hover { color: #fff; }
-
-.bg-white { background-color: #fff; }
 
 /* brand */
 .text-brand,
 .text-brand-hover:hover {
-    color: var(--brand-color) !important; /* use of important since we always want brand to override other colors */
+    color: var(--brand-color);
 }
 
 .text-brand-darken,
 .text-brand-darken-hover:hover {
-    color: color(var(--brand-color) shade(20%)) !important;
+    color: color(var(--brand-color) shade(20%));
 }
 
 .text-brand-light,
 .text-brand-light-hover:hover {
-    color: var(--brand-light-color) !important;
+    color: var(--brand-light-color);
 }
 
 .bg-brand,
@@ -102,12 +96,13 @@
 }
 
 .bg-gold { background-color: var(--gold-color); }
+.bg-purple { background-color: var(--purple-color); }
+.bg-green { background-color: var(--green-color); }
 
 /* alt */
 .bg-alt { background-color: var(--alt-color); }
 
 /* grey */
-
 .text-grey-1,
 .text-grey-1-hover:hover { color: color(var(--base-grey) shade(10%)) }
 
@@ -126,3 +121,9 @@
 .bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
 
 .text-dark { color: var(--dark-color); }
+
+/* white  - move to bottom for specificity since its often used on hovers, etc */
+.text-white,
+.text-white-hover:hover { color: #fff; }
+
+.bg-white { background-color: #fff; }

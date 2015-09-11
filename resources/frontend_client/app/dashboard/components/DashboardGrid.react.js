@@ -1,10 +1,10 @@
 "use strict";
-/*global _*/
 
-import ReactGridLayout, { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
+import _ from "underscore";
+
+import { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
 
 import Icon from "metabase/components/Icon.react";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import DashCard from "./DashCard.react";
 import Modal from "metabase/components/Modal.react";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.react";

@@ -1,12 +1,11 @@
 'use strict';
 
 import FormField from "metabase/components/FormField.react";
-import Icon from "metabase/components/Icon.react";
 import ModalContent from "metabase/components/ModalContent.react";
 
 import Query from "metabase/lib/query";
 
-var cx = React.addons.classSet;
+import cx from "classnames";
 
 export default React.createClass({
     displayName: "SaveQuestionModal",

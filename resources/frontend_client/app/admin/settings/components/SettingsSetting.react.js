@@ -1,5 +1,6 @@
 "use strict";
-/*global _*/
+
+import _ from "underscore";
 
 import Input from "metabase/components/Input.react";
 import Select from "metabase/components/Select.react";

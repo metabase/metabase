@@ -1,6 +1,5 @@
 (ns metabase.models.card
   (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :refer :all]
             (metabase.models [interface :refer :all]
                              [user :refer [User]])))
@@ -26,11 +25,26 @@
 (extend-ICanReadWrite CardInstance :read :public-perms, :write :public-perms)
 
 
+(defn- populate-query-fields [card]
+  (let [{{table-id :source_table} :query database-id :database query-type :type} (:dataset_query card)
+        defaults {:database_id database-id
+                  :table_id    table-id
+                  :query_type  (keyword query-type)}]
+    (if query-type
+      (merge defaults card)
+      card)))
+
 (defentity Card
   [(table :report_card)
    (hydration-keys card)
-   (types :dataset_query :json, :display :keyword, :visualization_settings :json)
+   (types :display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json)
    timestamped]
+
+   (pre-insert [_ card]
+     (populate-query-fields card))
+
+   (pre-update [_ card]
+     (populate-query-fields card))
 
   (post-select [_ {:keys [creator_id] :as card}]
     (map->CardInstance (assoc card

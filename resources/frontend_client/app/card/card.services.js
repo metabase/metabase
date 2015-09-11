@@ -1,13 +1,14 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 // Card Services
-var CardServices = angular.module('corvus.card.services', ['ngResource', 'ngCookies']);
+var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);
 
 CardServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/card/:cardId', {}, {
         list: {
-            url: '/api/card/?org=:orgId&f=:filterMode',
+            url: '/api/card/?f=:filterMode',
             method: 'GET',
             isArray: true
         },

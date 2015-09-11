@@ -2,6 +2,7 @@
   "/api/dash endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :as k]
+            [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer [hydrate]]
@@ -29,18 +30,22 @@
   [:as {{:keys [name description public_perms] :as body} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (ins Dashboard
-    :name name
-    :description description
-    :public_perms public_perms
-    :creator_id *current-user-id*))
+  (->> (ins Dashboard
+            :name name
+            :description description
+            :public_perms public_perms
+            :creator_id *current-user-id*)
+       (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
   (let-404 [db (-> (Dashboard id)
                    read-check
-                   (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write))]
+                   (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write)
+                   (assoc :actor_id *current-user-id*)
+                   (->> (events/publish-event :dashboard-read))
+                   (dissoc :actor_id))]
     {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
 
 (defendpoint PUT "/:id"
@@ -52,13 +57,18 @@
                                :description description
                                :name name
                                :public_perms public_perms))
+  (events/publish-event :dashboard-update {:id id :actor_id *current-user-id*})
   (push-revision :entity Dashboard, :object (Dashboard id)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
-  (cascade-delete Dashboard :id id))
+  ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
+  (let [dashboard (sel :one Dashboard :id id)
+        result (cascade-delete Dashboard :id id)]
+    (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
+    result))
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
@@ -67,15 +77,19 @@
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
   (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
+    (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
 (defendpoint DELETE "/:id/cards"
-  "Remove a `Card` from a `Dashboard`."
+  "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
-  (let [result (del DashboardCard :id dashcardId :dashboard_id id)]
+  ;; TODO - it would be nicer to do this if `del` returned the object that was deleted instead of an api response
+  (let [dashcard (sel :one DashboardCard :id dashcardId)
+        result (del DashboardCard :id dashcardId :dashboard_id id)]
+    (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcards [dashcard]})
     (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
@@ -94,6 +108,7 @@
     (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
       (when dashcard
         (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
+  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :cards cards})
   (push-revision :entity Dashboard, :object (Dashboard id))
   {:status :ok})
 

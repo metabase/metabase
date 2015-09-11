@@ -65,7 +65,7 @@
 
 .Button--white {
     background-color: white;
-    color: color(var(--base-grey) shade(30%)) !important;
+    color: color(var(--base-grey) shade(30%));
     border-color: color(var(--base-grey) shade(30%));
 }
 

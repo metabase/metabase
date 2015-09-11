@@ -1,11 +1,11 @@
 "use strict";
 
-import VisualizationChart from "metabase/query_builder/visualization_chart.react.js";
+import QueryVisualizationChart from "metabase/query_builder/QueryVisualizationChart.react.js";
 
 export default class ChartCard extends React.Component {
     render() {
         return (
-            <VisualizationChart
+            <QueryVisualizationChart
                 card={this.props.card}
                 data={this.props.data}
                 visualizationSettingsApi={this.props.visualizationSettingsApi}

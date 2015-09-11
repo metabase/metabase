@@ -1,12 +1,13 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import SchemaMetadata from "metabase/lib/schema_metadata";
 
 
-var ExploreServices = angular.module('corvus.explore.services', []);
+var ExploreServices = angular.module('metabase.explore.services', []);
 
-ExploreServices.service('CorvusFormGenerator', [function() {
+ExploreServices.service('MetabaseFormGenerator', [function() {
     // Valid Operators per field
 
     function isDate(field) {

@@ -1,12 +1,13 @@
 'use strict';
-/*global _*/
+
+import _ from "underscore";
 
 import MetadataEditor from './components/MetadataEditor.react';
 
 angular
 .module('metabase.admin.metadata.controllers', [
-    'corvus.services',
-    'corvus.directives',
+    'metabase.services',
+    'metabase.directives',
     'metabase.forms'
 ])
 .controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey',
