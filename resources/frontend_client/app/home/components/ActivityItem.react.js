@@ -6,16 +6,11 @@ import IconBorder from '../../query_builder/IconBorder.react';
 import UserAvatar from 'metabase/components/UserAvatar.react';
 
 export default class ActivityItem extends Component {
-
-    constructor(props) {
-        super(props);
-    }
-
     render() {
         const { item, description, userColors } = this.props;
 
         return (
-            <div className="ml1 flex align-center">
+            <div className="ml1 flex align-center mr2">
                 <span>
                     { item.user ?
                         <UserAvatar user={item.user} background={userColors} style={{color: '#fff', borderWidth: '0'}}/>
@@ -26,7 +21,7 @@ export default class ActivityItem extends Component {
                     }
                 </span>
 
-                <div className="ml2 full flex align-center" style={{fontSize: '1rem'}}>
+                <div className="ml2 full flex align-center">
                     <div className="text-grey-4">
                         <span className="text-dark">{description.userName}</span>
 

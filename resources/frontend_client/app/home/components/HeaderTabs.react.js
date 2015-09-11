@@ -42,7 +42,7 @@ export default class HeaderTabs extends Component {
         });
 
         return (
-            <div className="bg-brand text-white">
+            <div className="text-white" style={{backgroundColor: 'transparent'}}>
                 <a className={activityTab} style={{marginLeft: '10px'}} href="/">Activity</a>
                 <a className={questionsTab} href="/?questions">Saved Questions</a>
             </div>

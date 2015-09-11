@@ -15,7 +15,7 @@
     <body ng-controller="Metabase">
         <div class="Nav" ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
-            <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
+            <nav class="CheckBg CheckBg-offset sm-py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
                 <ul class="wrapper flex align-center">
                     <li>
                         <a class="NavItem cursor-pointer text-white flex align-center my1" href="/">
@@ -59,7 +59,7 @@
                         </div>
                     </li>
                     <li class="flex-align-right">
-                        <a class="rounded inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New Question</a>
+                        <a class="rounded inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New <span class="hide sm-show">Question</span></a>
                         <div mb-profile-link class="inline-block text-white" user="user" context="nav"></div>
                     </li>
                 </ul>

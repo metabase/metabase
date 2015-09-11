@@ -1,5 +1,5 @@
 .hide { display: none !important; }
-.show { display: block; }
+.show { display: inheirt; }
 
 .sm-show,
 .md-show,
@@ -12,7 +12,7 @@
   .sm-hide { display: none !important; }
 }
 @media screen and (--breakpoint-min-sm) {
-  .sm-show { display: block !important; }
+  .sm-show { display: inherit !important; }
 }
 
 /* medium */
@@ -21,7 +21,7 @@
   .md-hide { display: none !important; }
 }
 @media screen and (--breakpoint-min-md) {
-  .md-show { display: block !important; }
+  .md-show { display: inherit !important; }
 }
 /* large */
 
@@ -29,7 +29,7 @@
   .lg-hide { display: none !important; }
 }
 @media screen and (--breakpoint-min-lg) {
-  .lg-show { display: block !important; }
+  .lg-show { display: inherit !important; }
 }
 
 /* xl */
@@ -37,5 +37,5 @@
   .xl-hide { display: none !important; }
 }
 @media screen and (--breakpoint-min-xl) {
-  .xl-show { display: block !important; }
+  .xl-show { display: inherit !important; }
 }

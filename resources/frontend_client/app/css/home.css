@@ -2,6 +2,15 @@
     z-index: 2;
 }
 
+.CheckBg {
+    background-image: url('/app/components/icons/assets/header_rect.svg');
+    background-repeat: repeat;
+}
+
+.CheckBg-offset {
+  background-position-y: -15px;
+}
+
 .Main {
     z-index: 1;
     position: relative;
@@ -196,4 +205,30 @@
 .TableDescription {
     max-width: 42rem;
     line-height: 1.4;
+}
+
+@media screen and (--breakpoint-min-md) {
+  .HomeLayout {
+      margin-right: 346px;
+  }
+  .HomeLayout-sidebar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 346px;
+      background-color: #F9FBFC;
+      border-left: 2px solid var(--border-color);
+  }
+  .HomeLayout-mainColumn {
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+  }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .HomeLayout {
+        font-size: 1.08rem;
+    }
 }

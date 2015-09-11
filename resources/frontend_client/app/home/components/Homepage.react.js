@@ -25,19 +25,6 @@ export default class Homepage extends Component {
         };
 
         this.styles = {
-            main: {
-                marginRight: "346px",
-            },
-            mainWrapper: {
-                maxWidth: "700px",
-                marginLeft: "auto",
-                marginRight: "auto",
-            },
-            sidebar: {
-                borderWidth: "2px",
-                width: "346px",
-                backgroundColor: "#F9FBFC"
-            },
             headerGreeting: {
                 fontSize: "x-large"
             }
@@ -61,9 +48,9 @@ export default class Homepage extends Component {
                     </Modal>
                 : null}
 
-                <div className="bg-brand text-white pl4">
-                    <div style={this.styles.main}>
-                        <div style={this.styles.mainWrapper}>
+                <div className="CheckBg bg-brand text-white md-pl4">
+                    <div className="HomeLayout">
+                        <div className="HomeLayout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4">
                                 <span className="float-left mr1">
                                     <Smile />
@@ -79,9 +66,9 @@ export default class Homepage extends Component {
                         </div>
                     </div>
                 </div>
-                <div className="relative felx flex-column flex-full pl4">
-                    <div style={this.styles.main}>
-                        <div style={this.styles.mainWrapper}>
+                <div className="relative felx flex-column flex-full md-pl4">
+                    <div className="HomeLayout">
+                        <div className="HomeLayout-mainColumn">
                             { selectedTab === 'activity' ?
                                 <Activity {...this.props} />
                             :
@@ -89,7 +76,7 @@ export default class Homepage extends Component {
                             }
                         </div>
                     </div>
-                    <div style={this.styles.sidebar} className="border-left absolute top right bottom">
+                    <div className="HomeLayout-sidebar">
                         { selectedTab === 'activity' ?
                             <RecentViews {...this.props} />
                         :
