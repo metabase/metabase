@@ -40,13 +40,13 @@
     background-color: rgba(255, 255, 255, 0.2);
     border-radius: 4px 4px 0 0;
     text-decoration: none;
-    padding: 0.55rem 1rem 0.65rem;
+    padding: 0.55rem 1rem;
     transition: background .15s linear;
 }
 
 @media screen and (--breakpoint-min-sm) {
     .HomeTab {
-        padding: 0.65rem 1.35rem 0.75rem;
+        padding: 0.65rem 1.35rem;
     }
 }
 
