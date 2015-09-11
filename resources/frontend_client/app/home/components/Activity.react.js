@@ -1,16 +1,16 @@
-"use strict";
+'use strict';
 
-import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
+import React, { Component, PropTypes } from 'react';
+import _ from 'underscore';
+import cx from 'classnames';
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
+import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper.react';
 import ActivityItem from './ActivityItem.react';
 import ActivityStory from './ActivityStory.react';
 
-import { fetchActivity } from "../actions";
+import { fetchActivity } from '../actions';
 
-import Urls from "metabase/lib/urls";
+import Urls from 'metabase/lib/urls';
 
 
 export default class Activity extends Component {
@@ -186,4 +186,8 @@ export default class Activity extends Component {
             </LoadingAndErrorWrapper>
         );
     }
+}
+
+Activity.propTypes = {
+    user: PropTypes.object.isRequired,
 }

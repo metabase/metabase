@@ -4,7 +4,6 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
 
-
 export default class AccordianItem extends Component {
 
     render() {
@@ -28,10 +27,16 @@ export default class AccordianItem extends Component {
                             {children}
                         </div>
                     </div>
-                :
-                    null
-                }
+                : null }
             </div>
         );
     }
+}
+
+AccordianItem.propTypes = {
+    onClickFn: PropTypes.func.isRequired,
+    itemId: PropTypes.number.isRequired,
+    isOpen: PropTypes.bool.isRequired,
+    title: PropTypes.string.isRequired,
+    children: PropTypes.element.isRequired
 }

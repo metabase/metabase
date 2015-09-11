@@ -49,3 +49,7 @@ export default class HeaderTabs extends Component {
         );
     }
 }
+
+HeaderTabs.propTypes = {
+    selectedTab: PropTypes.string.isRequired
+}

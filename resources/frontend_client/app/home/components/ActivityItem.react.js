@@ -1,6 +1,6 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 import Icon from 'metabase/components/Icon.react';
 import IconBorder from 'metabase/components/IconBorder.react';
 import UserAvatar from 'metabase/components/UserAvatar.react';
@@ -26,7 +26,6 @@ export default class ActivityItem extends Component {
                         <span className="text-dark">{description.userName}</span>
 
                         &nbsp;{description.subject}&nbsp;
-
                         { description.subjectRefName && description.subjectRefLink ?
                             <a className="link text-dark" href={description.subjectRefLink}>{description.subjectRefName}</a>
                         : null }
@@ -42,4 +41,10 @@ export default class ActivityItem extends Component {
             </div>
         )
     }
+}
+
+ActivityItem.propTypes = {
+    item: PropTypes.object.isRequired,
+    description: PropTypes.object.isRequired,
+    userColors: PropTypes.string
 }

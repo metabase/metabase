@@ -1,6 +1,6 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 
 export default class ActivityStory extends Component {
 
@@ -32,4 +32,8 @@ export default class ActivityStory extends Component {
             </div>
         )
     }
+}
+
+ActivityStory.propTypes = {
+    story: PropTypes.object.isRequired
 }
