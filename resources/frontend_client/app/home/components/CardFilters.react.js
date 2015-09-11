@@ -58,3 +58,9 @@ export default class CardFilters extends Component {
         );
     }
 }
+
+CardFilters.propTypes = {
+    dispatch: PropTypes.func.isRequired,
+    cardsFilter: PropTypes.object.isRequired,
+    databases: PropTypes.array.isRequired
+}

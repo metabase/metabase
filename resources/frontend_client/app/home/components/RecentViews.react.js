@@ -53,3 +53,8 @@ export default class RecentViews extends Component {
         );
     }
 }
+
+RecentViews.propTypes = {
+    dispatch: PropTypes.func.isRequired,
+    recentViews: PropTypes.array.isRequired
+}

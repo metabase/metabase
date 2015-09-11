@@ -53,3 +53,9 @@ export default class TableListing extends Component {
         );
     }
 }
+
+TableListing.propTypes = {
+    dispatch: PropTypes.func.isRequired,
+    cardsFilter: PropTypes.object.isRequired,
+    databaseMetadata: PropTypes.object.isRequired
+}

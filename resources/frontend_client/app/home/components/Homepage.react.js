@@ -91,5 +91,8 @@ export default class Homepage extends Component {
 
 Homepage.propTypes = {
     dispatch: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired
+    onChangeLocation: PropTypes.func.isRequired,
+    showOnboarding: PropTypes.bool.isRequired,
+    selectedTab: PropTypes.string.isRequired,
+    user: PropTypes.object.isRequired
 };

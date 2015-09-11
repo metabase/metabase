@@ -3,9 +3,7 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 
-import {
-    setSelectedTab
-} from '../actions';
+import { setSelectedTab } from '../actions';
 
 
 const ACTIVITY_TAB = 'activity';

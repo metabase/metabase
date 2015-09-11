@@ -103,3 +103,10 @@ export default class Cards extends Component {
         );
     }
 }
+
+Cards.propTypes = {
+    dispatch: PropTypes.func.isRequired,
+    databaseMetadata: PropTypes.object.isRequired,
+    cards: PropTypes.array.isRequired,
+    cardsFilter: PropTypes.object.isRequired
+}

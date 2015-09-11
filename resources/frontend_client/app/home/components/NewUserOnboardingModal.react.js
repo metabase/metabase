@@ -61,3 +61,8 @@ export default class NewUserOnboardingModal extends Component {
         );
     }
 }
+
+NewUserOnboardingModal.propTypes = {
+    closeFn: PropTypes.func.isRequired,
+    user: PropTypes.object.isRequired
+}

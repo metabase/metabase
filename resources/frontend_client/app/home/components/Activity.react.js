@@ -183,5 +183,7 @@ export default class Activity extends Component {
 }
 
 Activity.propTypes = {
+    dispatch: PropTypes.func.isRequired,
     user: PropTypes.object.isRequired,
+    activity: PropTypes.array.isRequired
 }
