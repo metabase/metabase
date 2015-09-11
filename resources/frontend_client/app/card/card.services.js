@@ -8,7 +8,7 @@ var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCo
 CardServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/card/:cardId', {}, {
         list: {
-            url: '/api/card/?org=:orgId&f=:filterMode',
+            url: '/api/card/?f=:filterMode',
             method: 'GET',
             isArray: true
         },

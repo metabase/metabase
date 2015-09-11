@@ -5,7 +5,7 @@ import DataSelector from './DataSelector.react';
 import FieldWidget from './FieldWidget.react';
 import FilterWidget from './FilterWidget.react';
 import Icon from "metabase/components/Icon.react";
-import IconBorder from './IconBorder.react';
+import IconBorder from 'metabase/components/IconBorder.react';
 import SortWidget from './SortWidget.react';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 

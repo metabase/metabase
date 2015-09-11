@@ -46,7 +46,11 @@
       (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
   (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete 'Session :user_id id)))
+    (cascade-delete 'Session :user_id id)
+    (cascade-delete 'Dashboard :creator_id id)
+    (cascade-delete 'Card :creator_id id)
+    (cascade-delete 'Activity :user_id id)
+    (cascade-delete 'ViewLog :user_id id)))
 
 
 (def ^:const current-user-fields
