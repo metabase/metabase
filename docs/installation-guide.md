@@ -1,3 +1,10 @@
+
+> **This guide will teach you:**
+> How to install Metabase 
+> Where to place the data that Metabse generates
+> How to run Metabase in production uses
+> Common issues that come up installing Metabase
+
 # Overview
 
 The Metabase server can be run anywhere that you can run a Java jar. On installation it will have three main portions. First off is the Jar containing the server code. The most recent stable version can be download from [Metabase Downloads](http://wwww.metabase.com/downloads). Next there will need to be a place where Metabase can store persistent data, or its Application Database. Once the server is up and running with a place to store application data, you can connect to one or more Databases. 

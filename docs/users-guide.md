@@ -1,5 +1,16 @@
 #User Guide
 
+> **This guide will teach you:**
+>
+> What Metabase does
+> The basics of database terminology
+> What Metabase questions are made up of
+> How to ask basic questions
+> How to visualize the answers to questions
+> How to share answers with others through dashboards
+> Tips on creating useful dashboards
+
+
 ## Overview
 ---
 ### What is Metabase?
