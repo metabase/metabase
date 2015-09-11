@@ -21,7 +21,7 @@ export default class ActivityItem extends Component {
                     }
                 </span>
 
-                <div className="ml2 full flex align-center" style={{fontSize: '1rem'}}>
+                <div className="ml2 full flex align-center">
                     <div className="text-grey-4">
                         <span className="text-dark">{description.userName}</span>
 

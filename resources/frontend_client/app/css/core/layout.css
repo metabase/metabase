@@ -7,8 +7,6 @@
 .wrapper {
   width: 100%;
   margin: 0 auto;
-  padding-left: 1.5em;
-  padding-right: 1.5em;
 }
 
 @media screen and (--breakpoint-min-sm) {

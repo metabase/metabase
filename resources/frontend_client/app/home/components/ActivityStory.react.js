@@ -9,7 +9,6 @@ export default class ActivityStory extends Component {
 
         this.styles = {
             borderWidth: '2px',
-            fontSize: '1.08rem',
             borderColor: '#DFE8EA',
         }
     }
