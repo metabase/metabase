@@ -220,14 +220,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         field_get: {
-            url: '/api/meta/field/:fieldId',
+            url: '/api/field/:fieldId',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_summary: {
-            url: '/api/meta/field/:fieldId/summary',
+            url: '/api/field/:fieldId/summary',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -235,14 +235,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         field_values: {
-            url: '/api/meta/field/:fieldId/values',
+            url: '/api/field/:fieldId/values',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_value_map_update: {
-            url: '/api/meta/field/:fieldId/value_map_update',
+            url: '/api/field/:fieldId/value_map_update',
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
@@ -254,7 +254,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         field_update: {
-            url: '/api/meta/field/:fieldId',
+            url: '/api/field/:fieldId',
             method: 'PUT',
             params: {
                 fieldId: '@id'
@@ -266,7 +266,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         field_pivots: {
-            url: '/api/meta/field/:fieldId/pivots',
+            url: '/api/field/:fieldId/pivots',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -274,7 +274,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         field_foreignkeys: {
-            url: '/api/meta/field/:fieldId/foreignkeys',
+            url: '/api/field/:fieldId/foreignkeys',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -282,7 +282,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         field_addfk: {
-            url: '/api/meta/field/:fieldId/foreignkeys',
+            url: '/api/field/:fieldId/foreignkeys',
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
