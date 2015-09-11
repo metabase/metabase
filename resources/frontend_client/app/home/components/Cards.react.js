@@ -24,6 +24,17 @@ export default class Cards extends Component {
         }
     }
 
+    tableName(table_id) {
+        const { databaseMetadata } = this.props;
+        for (var tableIdx in databaseMetadata.tables) {
+            if (databaseMetadata.tables[tableIdx].id === table_id) {
+                return databaseMetadata.tables[tableIdx].display_name;
+            }
+        }
+
+        return "";
+    }
+
     renderCards(cards) {
 
         let items = cards.slice().sort((a, b) => b.created_at - a.created_at);
@@ -59,7 +70,7 @@ export default class Cards extends Component {
     }
 
     render() {
-        let { cards } = this.props;
+        let { cards, cardsFilter, databaseMetadata } = this.props;
         let { error } = this.state;
 
         return (
@@ -69,8 +80,19 @@ export default class Cards extends Component {
                     { cards.length === 0 ?
                         <div className="flex flex-column layout-centered pt4" style={{fontSize: '1.08rem', marginTop: '100px'}}>
                             <span className="QuestionCircle">?</span>
-                            <div className="text-normal mt3 mb1 h2 text-bold">Hmmm, looks like you don't have any saved questions yet.</div>
-                            <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
+                            <div className="text-normal mt3 mb1 h2 text-bold">
+                                { cardsFilter.database && cardsFilter.table ?
+                                    "No questions have been saved against "+this.tableName(cardsFilter.table)+" yet."
+                                : null}
+
+                                { cardsFilter.database && !cardsFilter.table ?
+                                    "No questions have been saved against "+databaseMetadata.name+" yet."
+                                : null}
+
+                                { !cardsFilter.database && !cardsFilter.table ?
+                                    "You don't have any saved questions yet."
+                                : null}
+                            </div>
                         </div>
                     :
                         this.renderCards(cards)
