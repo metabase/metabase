@@ -152,7 +152,7 @@ export default class Activity extends Component {
     }
 
     render() {
-        let { activity } = this.props;
+        let { activity, user } = this.props;
         let { error } = this.state;
 
         return (
@@ -172,7 +172,7 @@ export default class Activity extends Component {
                                     <li key={item.id} className="mt3">
                                         <ActivityItem
                                             item={item}
-                                            description={this.activityDescription(item, item.user)}
+                                            description={this.activityDescription(item, user)}
                                             userColors={this.initialsCssClasses(item.user)}
                                         />
                                         <ActivityStory story={this.activityDescription(item, item.user)} />
