@@ -226,9 +226,3 @@
       margin-right: auto;
   }
 }
-
-@media screen and (--breakpoint-min-lg) {
-    .HomeLayout {
-        font-size: 1.08rem;
-    }
-}

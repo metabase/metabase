@@ -78,7 +78,7 @@ export default class Cards extends Component {
             {() =>
                 <div>
                     { cards.length === 0 ?
-                        <div className="flex flex-column layout-centered pt4" style={{fontSize: '1.08rem', marginTop: '100px'}}>
+                        <div className="flex flex-column layout-centered pt4" style={{marginTop: '100px'}}>
                             <span className="QuestionCircle">?</span>
                             <div className="text-normal mt3 mb1 h2 text-bold">
                                 { cardsFilter.database && cardsFilter.table ?
