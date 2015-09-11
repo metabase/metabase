@@ -14,8 +14,6 @@
             [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]
             [metabase.test-setup :refer :all]))
 
-(test-startup)
-
 ;; TODO - we can simplify the cleanup work we do by using the :in-context :expectations-options
 ;;        the only downside is that it then runs the annotated function on ALL tests :/
 
@@ -240,7 +238,6 @@
    :model_id    user-id
    :details     {}}
   (do
-    (println "vals" user-id session-id session)
     (k/delete Activity)
     (process-activity-event {:topic :user-login
                              :item  {:user_id    user-id

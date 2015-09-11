@@ -49,7 +49,7 @@
   [object]
   (or (:actor_id object) (:user_id object) (:creator_id object)))
 
-(defn- process-view-count-event
+(defn process-view-count-event
   "Handle processing for a single event notification received on the view-counts-channel"
   [event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
