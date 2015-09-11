@@ -2,8 +2,8 @@
 
 import ExpandableString from './ExpandableString.react';
 import Humanize from 'humanize';
-import Icon from "metabase/components/Icon.react";
-import IconBorder from './IconBorder.react';
+import Icon from 'metabase/components/Icon.react';
+import IconBorder from 'metabase/components/IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 
 import cx from "classnames";

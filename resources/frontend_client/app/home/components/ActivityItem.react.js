@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import Icon from 'metabase/components/Icon.react';
-import IconBorder from '../../query_builder/IconBorder.react';
+import IconBorder from 'metabase/components/IconBorder.react';
 import UserAvatar from 'metabase/components/UserAvatar.react';
 
 export default class ActivityItem extends Component {

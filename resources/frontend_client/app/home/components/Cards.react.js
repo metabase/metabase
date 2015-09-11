@@ -3,7 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
-import IconBorder from '../../query_builder/IconBorder.react';
+import IconBorder from 'metabase/components/IconBorder.react';
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 
 import { fetchCards } from "../actions";
