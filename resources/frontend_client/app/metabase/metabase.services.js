@@ -315,7 +315,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
 
 
 MetabaseServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/meta/fk/:fkID', {}, {
+    return $resource('/api/foreignkey/:fkID', {}, {
         delete: {
             method: 'DELETE',
             params: {

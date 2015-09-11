@@ -7,6 +7,7 @@
                           [database :as database]
                           [dataset :as dataset]
                           [field :as field]
+                          [foreignkey :as fk]
                           [notify :as notify]
                           [revision :as revision]
                           [session :as session]
@@ -15,7 +16,6 @@
                           [table :as table]
                           [tiles :as tiles]
                           [user :as user])
-            (metabase.api.meta [fk :as fk])
             [metabase.middleware.auth :as auth]))
 
 (def ^:private +apikey
@@ -33,8 +33,8 @@
   (context "/database"     [] (+auth database/routes))
   (context "/dataset"      [] (+auth dataset/routes))
   (context "/field"        [] (+auth field/routes))
+  (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
-  (context "/meta/fk"      [] (+auth fk/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)
