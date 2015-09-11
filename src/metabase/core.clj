@@ -92,6 +92,9 @@
   (log/info "Metabase Initializing ... ")
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
 
+  ;; Bootstrap the event system
+  (events/initialize-events!)
+
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
@@ -104,9 +107,6 @@
 
   ;; Now start the task runner
   (task/start-task-runner!)
-
-  ;; Bootstrap the activity feed system
-  (events/initialize-events!)
 
   (log/info "Metabase Initialization COMPLETE")
   true)
