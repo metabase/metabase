@@ -5,7 +5,7 @@ import cx from 'classnames';
 
 export default class UserAvatar extends Component {
     constructor(props) {
-        super(props)
+        super(props);
         this.styles = {
             fontSize: '0.85rem',
             borderWidth: '1px',

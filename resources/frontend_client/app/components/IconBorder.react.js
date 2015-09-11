@@ -6,12 +6,12 @@ import cx from "classnames";
 export default class IconBorder extends Component {
     constructor() {
         super();
-        this.state = {}
+        this.state = {};
     }
     componentDidMount() {
         this.setState({
             childWidth: React.findDOMNode(this.refs.child).offsetWidth
-        })
+        });
     }
     computeSize () {
         let width = parseInt(this.state.childWidth, 10);
