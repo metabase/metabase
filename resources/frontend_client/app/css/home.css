@@ -2,6 +2,15 @@
     z-index: 2;
 }
 
+.CheckBg {
+    background-image: url('/app/components/icons/assets/header_rect.svg');
+    background-repeat: repeat;
+}
+
+.CheckBg-offset {
+  background-position-y: -15px;
+}
+
 .Main {
     z-index: 1;
     position: relative;

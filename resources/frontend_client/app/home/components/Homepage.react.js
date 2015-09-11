@@ -48,7 +48,7 @@ export default class Homepage extends Component {
                     </Modal>
                 : null}
 
-                <div className="bg-brand text-white md-pl4" style={{backgroundImage: 'url("app/components/icons/assets/rect.svg")', backgroundRepeat: 'repeat'}}>
+                <div className="CheckBg bg-brand text-white md-pl4">
                     <div className="HomeLayout">
                         <div className="HomeLayout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4">
