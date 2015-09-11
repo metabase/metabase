@@ -301,7 +301,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         dataset: {
-            url: '/api/meta/dataset',
+            url: '/api/dataset',
             method: 'POST',
             headers: {
                 'X-CSRFToken': function() {

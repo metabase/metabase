@@ -1,5 +1,5 @@
-(ns metabase.api.meta.dataset
-  "/api/meta/dataset endpoints."
+(ns metabase.api.dataset
+  "/api/dataset endpoints."
   (:require [clojure.data.csv :as csv]
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]

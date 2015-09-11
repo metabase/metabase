@@ -4,6 +4,7 @@
             (metabase.api [activity :as activity]
                           [card :as card]
                           [dash :as dash]
+                          [dataset :as dataset]
                           [notify :as notify]
                           [revision :as revision]
                           [session :as session]
@@ -11,8 +12,7 @@
                           [setup :as setup]
                           [tiles :as tiles]
                           [user :as user])
-            (metabase.api.meta [dataset :as dataset]
-                               [db :as db]
+            (metabase.api.meta [db :as db]
                                [field :as field]
                                [fk :as fk]
                                [table :as table])
@@ -31,7 +31,7 @@
   (context "/card"         [] (+auth card/routes))
   (context "/dash"         [] (+auth dash/routes))
   (GET     "/health"       [] {:status 200 :body {:status "ok"}})
-  (context "/meta/dataset" [] (+auth dataset/routes))
+  (context "/dataset"      [] (+auth dataset/routes))
   (context "/meta/db"      [] (+auth db/routes))
   (context "/meta/field"   [] (+auth field/routes))
   (context "/meta/fk"      [] (+auth fk/routes))
