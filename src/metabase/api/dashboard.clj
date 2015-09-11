@@ -1,5 +1,5 @@
-(ns metabase.api.dash
-  "/api/dash endpoints."
+(ns metabase.api.dashboard
+  "/api/dashboard endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :as k]
             [metabase.events :as events]

@@ -3,7 +3,7 @@
             [compojure.route :as route]
             (metabase.api [activity :as activity]
                           [card :as card]
-                          [dash :as dash]
+                          [dashboard :as dashboard]
                           [database :as database]
                           [dataset :as dataset]
                           [field :as field]
@@ -29,7 +29,7 @@
 (defroutes routes
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
-  (context "/dash"         [] (+auth dash/routes))
+  (context "/dashboard"    [] (+auth dashboard/routes))
   (context "/database"     [] (+auth database/routes))
   (context "/dataset"      [] (+auth dataset/routes))
   (context "/field"        [] (+auth field/routes))

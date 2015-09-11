@@ -1,5 +1,5 @@
-(ns metabase.api.dash-test
-  "Tests for /api/dash endpoints."
+(ns metabase.api.dashboard-test
+  "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
             [metabase.api.card-test :refer [post-card]]
             [metabase.db :refer :all]
@@ -18,8 +18,8 @@
 
 ;; ## Helper Fns
 (defn create-dash [dash-name]
-  ((user->client :rasta) :post 200 "dash" {:name dash-name
-                                           :public_perms 0}))
+  ((user->client :rasta) :post 200 "dashboard" {:name dash-name
+                                                :public_perms 0}))
 
 ;; ## POST /api/dash
 ;; Test that we can create a new Dashboard
@@ -36,7 +36,7 @@
          :created_at $})
     (create-dash dash-name)))
 
-;; ## GET /api/dash/:id
+;; ## GET /api/dashboard/:id
 ;; Test that we can fetch a Dashboard, and that it comes back wrapped in a "dashboard" dictionary (WHY?!)
 (expect-let [dash (create-dash (random-name))]
   {:dashboard
@@ -54,7 +54,7 @@
       :id              $
       :public_perms    0
       :created_at      $})}
-  ((user->client :rasta) :get 200 (format "dash/%d" (:id dash))))
+  ((user->client :rasta) :get 200 (format "dashboard/%d" (:id dash))))
 
 ;; Check that only the creator of a Dashboard sees it when it isn't public
 (expect [true
@@ -63,7 +63,7 @@
                                       :public_perms common/perms-none
                                       :creator_id (user->id :crowberto)}]
     (let [can-see-dash? (fn [user]
-                          (contains? (->> ((user->client user) :get 200 "dash" :f :all)
+                          (contains? (->> ((user->client user) :get 200 "dashboard" :f :all)
                                           (map :id)
                                           set)
                                      id))]
@@ -71,7 +71,7 @@
        (can-see-dash? :rasta)])))
 
 
-;; ## PUT /api/dash/:id
+;; ## PUT /api/dashboard/:id
 ;; Test that we can change a Dashboard
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {:keys [id]} (create-dash old-name)
@@ -87,24 +87,24 @@
     :description "My Cool Dashboard"
     :public_perms 2}]
   [(get-dash)
-   (do ((user->client :rasta) :put 200 (format "dash/%d" id) {:description "My Cool Dashboard"
+   (do ((user->client :rasta) :put 200 (format "dashboard/%d" id) {:description "My Cool Dashboard"
                                                               :public_perms 2
                                                               :name new-name})
        (get-dash))
    ;; See if we can change just the name without affecting other fields
-   (do ((user->client :rasta) :put 200 (format "dash/%d" id) {:name old-name})
+   (do ((user->client :rasta) :put 200 (format "dashboard/%d" id) {:name old-name})
        (get-dash))])
 
-;; ## DELETE /api/dash/:id
+;; ## DELETE /api/dashboard/:id
 (expect-let [{:keys [id]} (create-dash (random-name))]
   nil
-  (do ((user->client :rasta) :delete 204 (format "dash/%d" id))
+  (do ((user->client :rasta) :delete 204 (format "dashboard/%d" id))
       (Dashboard id)))
 
 
 ;; # DASHBOARD CARD ENDPOINTS
 
-;; ## POST /api/dash/:id/cards
+;; ## POST /api/dashboard/:id/cards
 ;; Can we add a Card to a Dashboard?
 (let [card-name (random-name)
       dash-name (random-name)]
@@ -140,21 +140,21 @@
             :row nil})])
     (let [{card-id :id} (post-card card-name)
           {dash-id :id} (create-dash dash-name)]
-      ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id) {:cardId card-id})
-      (->> ((user->client :rasta) :get 200 (format "dash/%d" dash-id))
+      ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id) {:cardId card-id})
+      (->> ((user->client :rasta) :get 200 (format "dashboard/%d" dash-id))
            :dashboard
            :ordered_cards))))
 
-;; ## DELETE /api/dash/:id/cards
+;; ## DELETE /api/dashboard/:id/cards
 (let [card-name (random-name)
       dash-name (random-name)]
   (expect-eval-actual-first
       []
     (let [{card-id :id} (post-card card-name)
           {dash-id :id} (create-dash dash-name)
-          {dashcard-id :id} ((user->client :rasta) :post 200 (format "dash/%d/cards" dash-id) {:cardId card-id})]
+          {dashcard-id :id} ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id) {:cardId card-id})]
 
-      ((user->client :rasta) :delete 204 (format "dash/%d/cards" dash-id) :dashcardId dashcard-id)
-      (->> ((user->client :rasta) :get 200 (format "dash/%d" dash-id))
+      ((user->client :rasta) :delete 204 (format "dashboard/%d/cards" dash-id) :dashcardId dashcard-id)
+      (->> ((user->client :rasta) :get 200 (format "dashboard/%d" dash-id))
            :dashboard
            :ordered_cards))))
