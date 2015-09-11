@@ -56,7 +56,7 @@ export default class Cards extends Component {
                                 <div>Created {item.created_at.fromNow()}</div>
                             </div>
                             <div className="flex-align-right text-right text-grey-3 ml2">
-                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover">
+                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover" title="Edit this question">
                                     <IconBorder>
                                         <Icon name='pencil' width={16} height={16}></Icon>
                                     </IconBorder>
