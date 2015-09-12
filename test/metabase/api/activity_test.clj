@@ -19,9 +19,7 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [client    (user->client :crowberto)            ; we do this to create the user-joined activity after first login before we clear out activity for the test
-             _         (korma.core/delete Activity)         ; clear out any existing activity
-             activity1 (db/ins Activity
+(expect-let [activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
                          :timestamp (u/parse-iso8601 "2015-09-09T12:13:14.888Z"))
@@ -98,8 +96,10 @@
       :table        nil
       :custom_id    nil
       :details      $})]
-  (->> (client :get 200 "activity")
-       (map #(dissoc % :timestamp))))
+  (->> ((user->client :crowberto) :get 200 "activity")
+       (map #(dissoc % :timestamp))
+       ;; a little hacky, but we limit the possible results to just the test activity we manually generated
+       (filter #(contains? #{(:id activity1) (:id activity2) (:id activity3)} (:id %)))))
 
 
 ;; GET /recent_views
