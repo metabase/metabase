@@ -176,6 +176,9 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             }
         }
 
+        // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+        dispatch(fetchDashboard(dashId));
+
         return dashboard;
     };
 });
