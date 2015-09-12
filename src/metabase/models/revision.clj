@@ -103,8 +103,10 @@
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  {:arglists '([& {:keys [object entity id user-id skip-serialization? is-reversion?]}])}
-  [& {object :object, :keys [entity id user-id skip-serialization? is-reversion?], :or {user-id *current-user-id*, id (:id object), skip-serialization? false, is-reversion? false}}]
+  {:arglists '([& {:keys [object entity id user-id is-creation? skip-serialization? is-reversion?]}])}
+  [& {object :object,
+      :keys [entity id user-id is-creation? skip-serialization? is-reversion?],
+      :or {id (:id object), is-creation? false, skip-serialization? false, is-reversion? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
@@ -114,7 +116,7 @@
   (let [object (if skip-serialization? object
                    (serialize-instance entity id object))]
     (assert (map? object))
-    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_reversion is-reversion?))
+    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_creation is-creation?, :is_reversion is-reversion?))
   (delete-old-revisions entity id)
   object)
 

@@ -52,11 +52,12 @@
   (with-fake-card [{card-id :id}]
     (revisions FakedCard card-id)))
 
-;; Test that when we can add a revision
+;; Test that we can add a revision
 (expect [{:model        "FakedCard"
           :user_id      (user->id :rasta)
           :object       {:name "Tips Created by Day", :serialized true}
-          :is_reversion false}]
+          :is_reversion false
+          :is_creation  false}]
   (with-fake-card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (->> (revisions FakedCard card-id)
@@ -66,11 +67,13 @@
 (expect [{:model        "FakedCard"
           :user_id      (user->id :rasta)
           :object       {:name "Spots Created by Day", :serialized true}
-          :is_reversion false}
+          :is_reversion false
+          :is_creation  false}
          {:model        "FakedCard"
           :user_id      (user->id :rasta)
           :object       {:name "Tips Created by Day", :serialized true}
-          :is_reversion false}]
+          :is_reversion false
+          :is_creation  false}]
   (with-fake-card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
@@ -89,6 +92,7 @@
 
 ;; Check that revisions+details pulls in user info and adds description
 (expect [{:is_reversion false,
+          :is_creation  false,
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
           :description  "First revision."}]
   (with-fake-card [{card-id :id}]
@@ -98,9 +102,11 @@
 
 ;; Check that revisions properly defer to describe-diff
 (expect [{:is_reversion false,
+          :is_creation  false,
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
           :description  "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER={:name \"Spots Created by Day\", :serialized true}"}
          {:is_reversion false,
+          :is_creation  false,
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
           :description  "First revision."}]
   (with-fake-card [{card-id :id}]
@@ -134,15 +140,18 @@
 (expect [{:model        "FakedCard"
           :user_id      (user->id :rasta)
           :object       {:name "Tips Created by Day", :serialized true}
-          :is_reversion true}
+          :is_reversion true
+          :is_creation  false}
          {:model        "FakedCard",
           :user_id      (user->id :rasta)
           :object       {:name "Spots Created by Day", :serialized true}
-          :is_reversion false}
+          :is_reversion false
+          :is_creation  false}
          {:model        "FakedCard",
           :user_id      (user->id :rasta)
           :object       {:name "Tips Created by Day", :serialized true}
-          :is_reversion false}]
+          :is_reversion false
+          :is_creation  false}]
   (with-fake-card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")

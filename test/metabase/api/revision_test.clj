@@ -40,44 +40,48 @@
 (defn- delete-dashcard [dash-id card-id]
   ((user->client :rasta) :delete 204 (format "dashboard/%d/cards" dash-id), :dashcardId (db/sel :one :id DashboardCard :dashboard_id dash-id, :card_id card-id)))
 
-(expect [{:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
+(expect [{:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id :id}]
       (post-dashcard dash-id card-id)
+      (Thread/sleep 25)
       (get-dashboard-revisions dash-id))))
 
-(expect [{:is_reversion false, :user @rasta-revision-info, :description "added a card."}
-         {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
+(expect [{:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "added a card."}
+         {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
         (post-dashcard dash-id card-id₁)
         (post-dashcard dash-id card-id₂)
+        (Thread/sleep 25)
         (get-dashboard-revisions dash-id)))))
 
-(expect [{:is_reversion false, :user @rasta-revision-info, :description "removed a card."}
-         {:is_reversion false, :user @rasta-revision-info, :description "added a card."}
-         {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]
+(expect [{:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "removed a card."}
+         {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "added a card."}
+         {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "First revision."}]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
         (post-dashcard   dash-id card-id₁)
         (post-dashcard   dash-id card-id₂)
         (delete-dashcard dash-id card-id₂)
+        (Thread/sleep 25)
         (get-dashboard-revisions dash-id)))))
 
 ;;; # TESTS FOR POST /api/revision/revert
 (expect [2
-         [{:is_reversion true,  :user @rasta-revision-info, :description "reverted to an earlier revision and added a card."}
-          {:is_reversion false, :user @rasta-revision-info, :description "removed a card."}
-          {:is_reversion false, :user @rasta-revision-info, :description "added a card."}
-          {:is_reversion false, :user @rasta-revision-info, :description "First revision."}]]
+         [{:is_reversion true,  :is_creation false, :user @rasta-revision-info, :description "reverted to an earlier revision and added a card."}
+          {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "removed a card."}
+          {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "added a card."}
+          {:is_reversion false, :is_creation false, :user @rasta-revision-info, :description "First revision."}]]
   (with-fake-dashboard [{dash-id :id}]
     (with-fake-card [{card-id₁ :id}]
       (with-fake-card [{card-id₂ :id}]
         (post-dashcard   dash-id card-id₁)
         (post-dashcard   dash-id card-id₂)
         (delete-dashcard dash-id card-id₂)
+        (Thread/sleep 25)
         (let [[_ {previous-revision-id :id}] (metabase.models.revision/revisions Dashboard dash-id)]
           ;; Revert to the previous revision
           ((user->client :rasta) :post 200 "revision/revert", {:entity :dashboard, :id dash-id, :revision_id previous-revision-id})
