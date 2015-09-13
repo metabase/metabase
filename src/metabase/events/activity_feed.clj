@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
+            [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity]]
                              [dashboard :refer [Dashboard]]
@@ -122,4 +123,6 @@
 
 
 ;; this is what actually kicks off our listener for events
-(events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event)
+(when (config/is-prod?)
+  (log/info "Starting activity-feed events listener")
+  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))
