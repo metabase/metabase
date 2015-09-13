@@ -36,6 +36,10 @@
 
 (extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)
 
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
+
 (defn- serialize-instance [_ id {:keys [ordered_cards], :as dashboard}]
   (-> dashboard
       (select-keys [:description :name :public_perms])
