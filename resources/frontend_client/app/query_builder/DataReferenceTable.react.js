@@ -45,8 +45,8 @@ export default React.createClass({
         query.query.aggregation = ["rows"];
         query.query.breakout = [];
         query.query.filter = [];
-        query = this.props.setQueryFn(query);
-        this.props.runQueryFn(query);
+        this.props.setQueryFn(query);
+        this.props.runQueryFn();
     },
 
     render: function(page) {
