@@ -1,6 +1,6 @@
 'use strict';
 
-var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.metabase.services', 'metabaseadmin.settings.services', 'metabase.setup.services']);
+var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.metabase.services', 'metabase.setup.services']);
 
 SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams', 'AppState',
     function($scope, $location, $routeParams, AppState) {
@@ -14,8 +14,8 @@ SetupControllers.controller('SetupInit', ['$scope', '$location', '$routeParams',
     }
 ]);
 
-SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'User', 'AppState', 'Setup', 'SettingsAdminServices',
-    function($scope, $routeParams, $location, $timeout, ipCookie, User, AppState, Setup, SettingsAdminServices) {
+SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location', '$timeout', 'ipCookie', 'User', 'AppState', 'Setup', 'Settings',
+    function($scope, $routeParams, $location, $timeout, ipCookie, User, AppState, Setup, Settings) {
         $scope.activeStep = "user";
         $scope.completedSteps = {
             user: false,
@@ -109,7 +109,7 @@ SetupControllers.controller('SetupInfo', ['$scope', '$routeParams', '$location',
         }
 
         function setSiteName() {
-            return SettingsAdminServices.put({
+            return Settings.put({
                 'key': 'site-name',
                 'value': $scope.newUser.siteName
             }).$promise.then(function(success) {

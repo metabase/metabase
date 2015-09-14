@@ -25,7 +25,8 @@
                                  [format :refer :all])
             (metabase.models [setting :refer [defsetting]]
                              [database :refer [Database]]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.events :as events]))
 
 ;; ## CONFIG
 
@@ -91,6 +92,9 @@
   (log/info "Metabase Initializing ... ")
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
 
+  ;; Bootstrap the event system
+  (events/initialize-events!)
+
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
@@ -98,7 +102,8 @@
   ;; the test we are using is if there is at least 1 User in the database
   (when-not (db/sel :one :fields [User :id])
     (log/info "Looks like this is a new installation ... preparing setup wizard")
-    (-init-create-setup-token))
+    (-init-create-setup-token)
+    (events/publish-event :install {}))
 
   ;; Now start the task runner
   (task/start-task-runner!)

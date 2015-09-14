@@ -50,33 +50,8 @@
     transition: background .2s linear;
 }
 
-.UserNick {
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 99px;
-    width: 2rem;
-    height: 2rem; /* set an explicit height since we want it to be square */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.AdminNav .UserNick {
-    color: #fff;
-    border-color: #fff;
-    background-color: #fff;
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
 .AdminNav .Dropdown-chevron {
     color: #fff;
-}
-
-.UserInitials,
-.UserInitials:hover {
-    font-size: 0.85rem;
-    color: currentColor;
-    cursor: pointer;
 }
 
 .Actions {

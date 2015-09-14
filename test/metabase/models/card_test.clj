@@ -1,7 +1,7 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
             (metabase.api [card-test :refer [post-card]]
-                          [dash-test :refer [create-dash]])
+                          [dashboard-test :refer [create-dash]])
             [metabase.db :refer [ins]]
             (metabase.models [card :refer [Card]]
                              [dashboard-card :refer [DashboardCard]])
