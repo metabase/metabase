@@ -129,8 +129,15 @@ var Query = {
     },
 
     removeDimension: function(query, index) {
-        // TODO: when we remove breakouts we also need to remove any limits/sorts that don't make sense
-        query.breakout.splice(index, 1);
+        let field = query.breakout.splice(index, 1)[0];
+
+        // remove sorts that referenced the dimension that was removed
+        if (query.order_by) {
+            query.order_by = query.order_by.filter(s => s[0] !== field);
+            if (query.order_by.length === 0) {
+                delete query.order_by;
+            }
+        }
     },
 
     hasEmptyAggregation: function(query) {

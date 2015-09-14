@@ -1,4 +1,5 @@
 'use strict';
+/*eslint-env jasmine */
 
 import Query from 'metabase/lib/query';
 
@@ -82,6 +83,32 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
+            expect(query.order_by).toBe(undefined);
+        });
+    });
+
+    describe('removeDimension', () => {
+        it('should remove the dimension', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [1],
+                filter: []
+            };
+            Query.removeDimension(query, 0);
+            expect(query.breakout.length).toBe(0);
+        });
+        it('should remove sort clauses for the dimension that was removed', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [1],
+                filter: [],
+                order_by: [
+                    [1, "ascending"]
+                ]
+            };
+            Query.removeDimension(query, 0);
             expect(query.order_by).toBe(undefined);
         });
     });
