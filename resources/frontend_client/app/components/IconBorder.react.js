@@ -1,7 +1,17 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes, findDOMNode } from 'react';
 import cx from "classnames";
+
+/*
+Creates a bordered container for an <Icon /> component
+based on the <Icon /> component's size.
+
+usage:
+    <IconBorder {...props} >
+        <Icon name={chevrondown} width={12} height={12} />
+    </IconBorder>
+*/
 
 export default class IconBorder extends Component {
     constructor() {
@@ -10,7 +20,7 @@ export default class IconBorder extends Component {
     }
     componentDidMount() {
         this.setState({
-            childWidth: React.findDOMNode(this.refs.child).offsetWidth
+            childWidth: findDOMNode(this.refs.child).offsetWidth
         });
     }
     computeSize () {
@@ -19,38 +29,44 @@ export default class IconBorder extends Component {
     }
 
     render() {
-        const classes = cx({
+        const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
+
+        const classes = {
             'flex': true,
             'layout-centered': true
-        });
+        };
+        classes[className] = true;
 
         const styles = {
             width: this.computeSize(),
             height: this.computeSize(),
-            borderWidth: this.props.borderWidth,
-            borderStyle: this.props.borderStyle,
-            borderColor: this.props.borderColor,
+            borderWidth: borderWidth,
+            borderStyle: borderStyle,
+            borderColor: borderColor,
+            borderRadius: borderRadius,
             lineHeight: '1px', /* HACK this is dumb but it centers the icon in the border */
         }
 
-        if (this.props.borderRadius) {
-            styles.borderRadius = this.props.borderRadius;
-        } else if (this.props.rounded) {
-            styles.borderRadius = "99px";
-        }
-
         return (
-            <span className={classes + ' ' + this.props.className} style={Object.assign(styles, this.props.style)}>
-                <span ref="child">{this.props.children}</span>
+            <span className={cx(classes)} style={Object.assign(styles, style)}>
+                <span ref="child">{children}</span>
             </span>
         );
     }
 }
 
+IconBorder.propTypes = {
+    borderWidth: PropTypes.string,
+    borderStyle: PropTypes.string,
+    borderColor: PropTypes.string,
+    borderRadius: PropTypes.string,
+    style: PropTypes.object,
+};
+
 IconBorder.defaultProps = {
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: 'currentcolor',
-    rounded: true,
+    borderRadius: '99px',
     style: {},
-}
+};
