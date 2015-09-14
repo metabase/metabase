@@ -1,9 +1,9 @@
 'use strict';
 
-/*global ace*/
-
 import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
+
+import ProfileLink from './components/ProfileLink.react'
 
 /* Directives */
 var MetabaseDirectives = angular.module('metabase.directives', []);
@@ -218,102 +218,15 @@ var NavbarDirectives = angular.module('metabase.navbar.directives', []);
 
 NavbarDirectives.directive('mbProfileLink', [function () {
 
-    function link($scope, element, attr) {
-
-        $scope.userIsSuperuser = false;
-
-        $scope.$watch('user', function (user) {
-            if (!user) return;
-
-            // extract a couple informational pieces about user
-            $scope.userIsSuperuser = user.is_superuser;
-
-            // determine initials for profile logo
-            var initials = '??';
-            if (user.first_name !== 'undefined') {
-                initials = user.first_name.substring(0, 1);
-            }
-
-            if (user.last_name !== 'undefined') {
-                initials = initials + user.last_name.substring(0, 1);
-            }
-
-            $scope.initials = initials;
-        });
-    }
-
     return {
-        restrict: 'E',
-        replace: true,
-        templateUrl: '/app/partials/mb_profile_link.html',
+        restrict: 'A',
+        template: '<div mb-react-component="ProfileLink"></div>',
+        controller: ['$scope', function ($scope) {
+            $scope.ProfileLink = ProfileLink;
+        }],
         scope: {
             context: '=',
             user: '='
         },
-        link: link
     };
 }]);
-
-var MetabaseACEEditorDirectives = angular.module('metabase.aceeditor.directives', ['ui.ace']);
-
-MetabaseACEEditorDirectives.directive('mbAceSqlEditor', function() {
-
-    function controller($scope, Metabase) {
-        $scope.aceLoaded = function(aceEditor) {
-            if ($scope.onLoad) {
-                var fn = $scope.onLoad();
-                if (fn) fn(aceEditor);
-            }
-
-            var aceLanguageTools = ace.require('ace/ext/language_tools');
-            aceEditor.setOptions({
-                enableBasicAutocompletion: true,
-                enableSnippets: true,
-                enableLiveAutocompletion: true
-            });
-
-            aceLanguageTools.addCompleter({
-                getCompletions: function(editor, session, pos, prefix, callback) {
-                    if (prefix.lengh === 0 || !$scope.database) {
-                        console.log("$scope.database is not set, unable to perform autocompletions for ACE Editor :'(");
-                        callback(null, []);
-                        return;
-                    }
-
-                    Metabase.db_autocomplete_suggestions({
-                        dbId: $scope.database,
-                        prefix: prefix
-                    }, function(results) {
-                        // transform results of the API call into what ACE expects
-                        var js_results = results.map(function(result) {
-                            return {
-                                name: result[0],
-                                value: result[0],
-                                meta: result[1]
-                            };
-                        });
-                        callback(null, js_results);
-
-                    }, function(error) {
-                        console.log(error);
-                        callback(null, []);
-                    });
-                }
-            });
-
-            // focus the editor on load to allow faster editing of query
-            aceEditor.focus();
-        };
-    }
-
-    return {
-        restrict: 'E',
-        templateUrl: '/app/components/editor/editor.html',
-        controller: ['$scope', 'Metabase', controller],
-        scope: {
-            sql: '=', // the text of the editor itself
-            database: '=', // int ID of DB to use for autocompletion
-            onLoad: '&onload' // optional callback of the form fn(aceEditor) in case we need a reference to it (e.g. so we can aceEditor.focus())
-        }
-    };
-});

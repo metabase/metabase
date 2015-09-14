@@ -10,16 +10,16 @@ var MetabaseServices = angular.module('metabase.metabase.services', [
 MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_form_input: {
-            url: '/api/meta/db/form_input',
+            url: '/api/database/form_input',
             method: 'GET'
         },
         db_list: {
-            url: '/api/meta/db/?org=:orgId',
+            url: '/api/database/?org=:orgId',
             method: 'GET',
             isArray: true
         },
         db_create: {
-            url: '/api/meta/db/',
+            url: '/api/database/',
             method: 'POST',
             headers: {
                 'X-CSRFToken': function() {
@@ -32,7 +32,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         validate_connection: {
-            url: '/api/meta/db/validate/',
+            url: '/api/database/validate/',
             method: 'POST',
             headers: {
                 'X-CSRFToken': function() {
@@ -45,14 +45,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         db_get: {
-            url: '/api/meta/db/:dbId',
+            url: '/api/database/:dbId',
             method: 'GET',
             params: {
                 dbId: '@dbId'
             }
         },
         db_update: {
-            url: '/api/meta/db/:dbId',
+            url: '/api/database/:dbId',
             method: 'PUT',
             params: {
                 dbId: '@id'
@@ -64,7 +64,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         db_delete: {
-            url: '/api/meta/db/:dbId',
+            url: '/api/database/:dbId',
             method: 'DELETE',
             params: {
                 dbId: '@dbId'
@@ -75,8 +75,15 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
+        db_metadata: {
+            url: '/api/database/:dbId/metadata',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            }
+        },
         db_tables: {
-            url: '/api/meta/db/:dbId/tables',
+            url: '/api/database/:dbId/tables',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -84,7 +91,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         db_idfields: {
-            url: '/api/meta/db/:dbId/idfields',
+            url: '/api/database/:dbId/idfields',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -92,7 +99,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         db_autocomplete_suggestions: {
-            url: '/api/meta/db/:dbId/autocomplete_suggestions?prefix=:prefix',
+            url: '/api/database/:dbId/autocomplete_suggestions?prefix=:prefix',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -100,7 +107,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         db_sync_metadata: {
-            url: '/api/meta/db/:dbId/sync',
+            url: '/api/database/:dbId/sync',
             method: 'POST',
             params: {
                 dbId: '@dbId'
@@ -112,7 +119,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         table_list: {
-            url: '/api/meta/table/',
+            url: '/api/table/',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -120,14 +127,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_get: {
-            url: '/api/meta/table/:tableId',
+            url: '/api/table/:tableId',
             method: 'GET',
             params: {
                 tableId: '@tableId'
             }
         },
         table_update: {
-            url: '/api/meta/table/:tableId',
+            url: '/api/table/:tableId',
             method: 'PUT',
             params: {
                 tableId: '@id'
@@ -139,7 +146,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         table_fields: {
-            url: '/api/meta/table/:tableId/fields',
+            url: '/api/table/:tableId/fields',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -147,7 +154,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_fks: {
-            url: '/api/meta/table/:tableId/fks',
+            url: '/api/table/:tableId/fks',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -155,7 +162,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         table_reorder_fields: {
-            url: '/api/meta/table/:tableId/reorder',
+            url: '/api/table/:tableId/reorder',
             method: 'POST',
             params: {
                 tableId: '@tableId'
@@ -165,43 +172,16 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                     return $cookies.csrftoken;
                 }
             },
-        },
-        table_segments: {
-            url: '/api/meta/table/:tableId/segments',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            },
-            isArray: true
-        },
-        table_createsegment: {
-            url: '/api/meta/table/:tableId/segments',
-            method: 'POST',
-            params: {
-                tableId: '@tableId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
-        table_dependents: {
-            url: '/api/dependency/table/:tableId/dependents',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            }
         },
         table_query_metadata: {
-            url: '/api/meta/table/:tableId/query_metadata',
+            url: '/api/table/:tableId/query_metadata',
             method: 'GET',
             params: {
                 dbId: '@tableId'
             }
         },
         table_sync_metadata: {
-            url: '/api/meta/table/:tableId/sync',
+            url: '/api/table/:tableId/sync',
             method: 'POST',
             params: {
                 tableId: '@tableId'
@@ -213,14 +193,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         field_get: {
-            url: '/api/meta/field/:fieldId',
+            url: '/api/field/:fieldId',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_summary: {
-            url: '/api/meta/field/:fieldId/summary',
+            url: '/api/field/:fieldId/summary',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -228,14 +208,14 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         field_values: {
-            url: '/api/meta/field/:fieldId/values',
+            url: '/api/field/:fieldId/values',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_value_map_update: {
-            url: '/api/meta/field/:fieldId/value_map_update',
+            url: '/api/field/:fieldId/value_map_update',
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
@@ -247,7 +227,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             }
         },
         field_update: {
-            url: '/api/meta/field/:fieldId',
+            url: '/api/field/:fieldId',
             method: 'PUT',
             params: {
                 fieldId: '@id'
@@ -258,16 +238,8 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
-        field_pivots: {
-            url: '/api/meta/field/:fieldId/pivots',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            },
-            isArray: true
-        },
         field_foreignkeys: {
-            url: '/api/meta/field/:fieldId/foreignkeys',
+            url: '/api/field/:fieldId/foreignkeys',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -275,7 +247,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
             isArray: true
         },
         field_addfk: {
-            url: '/api/meta/field/:fieldId/foreignkeys',
+            url: '/api/field/:fieldId/foreignkeys',
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
@@ -286,15 +258,8 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
-        metadata: {
-            url: '/api/meta/db/:dbId/metadata',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            }
-        },
         dataset: {
-            url: '/api/meta/dataset',
+            url: '/api/dataset',
             method: 'POST',
             headers: {
                 'X-CSRFToken': function() {
@@ -308,7 +273,7 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
 
 
 MetabaseServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/meta/fk/:fkID', {}, {
+    return $resource('/api/foreignkey/:fkID', {}, {
         delete: {
             method: 'DELETE',
             params: {
@@ -324,19 +289,3 @@ MetabaseServices.factory('ForeignKey', ['$resource', '$cookies', function($resou
     });
 }]);
 
-MetabaseServices.factory('TableSegment', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/meta/segment/:segmentID', {}, {
-        delete: {
-            method: 'DELETE',
-            params: {
-                segmentID: '@segmentID'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            },
-        },
-
-    });
-}]);

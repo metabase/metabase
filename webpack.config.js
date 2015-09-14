@@ -83,18 +83,13 @@ var config = module.exports = {
 
             // angular
             'angular':              __dirname + '/node_modules/angular/angular.min.js',
-            'angular-animate':      __dirname + '/node_modules/angular-animate/angular-animate.min.js',
             'angular-cookies':      __dirname + '/node_modules/angular-cookies/angular-cookies.min.js',
             'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
             'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
-            'angular-sanitize':     __dirname + '/node_modules/angular-sanitize/angular-sanitize.min.js',
             // angular 3rd-party
             'angular-ui-bootstrap': __dirname + '/node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
-            'angular-gridster':     __dirname + '/node_modules/angular-gridster/dist/angular-gridster.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
-            'angular-readable-time':__dirname + '/node_modules/angular-readable-time/angular-readable-time.min.js',
-            'angular-xeditable':    __dirname + '/node_modules/angular-xeditable/dist/js/xeditable.min.js',
             'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',

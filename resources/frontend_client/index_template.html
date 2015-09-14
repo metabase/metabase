@@ -15,7 +15,7 @@
     <body ng-controller="Metabase">
         <div class="Nav" ng-controller="Nav" ng-if="user" ng-cloak>
             <!-- MAIN NAV -->
-            <nav class="py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
+            <nav class="CheckBg CheckBg-offset sm-py2 sm-py1 xl-py3 relative bg-brand" ng-show="nav === 'main'">
                 <ul class="wrapper flex align-center">
                     <li>
                         <a class="NavItem cursor-pointer text-white flex align-center my1" href="/">
@@ -58,11 +58,9 @@
                             </div>
                         </div>
                     </li>
-                    <li class="bullet">
-                        <a class="NavItem text-white cursor-pointer p2 flex align-center no-decoration" href="/q">Ask a Question</a>
-                    </li>
                     <li class="flex-align-right">
-                        <mb-profile-link class="text-white" user="user" context="nav"></mb-profile-link>
+                        <a class="rounded inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New <span class="hide sm-show">Question</span></a>
+                        <div mb-profile-link class="inline-block text-white" user="user" context="nav"></div>
                     </li>
                 </ul>
             </nav>
@@ -100,7 +98,7 @@
                     </ul>
 
                     <!-- user profile dropdown -->
-                    <mb-profile-link user="user" context="nav"></mb-profile-link>
+                    <div mb-profile-link user="user" context="nav"></div>
                 </div>
             </nav>
 

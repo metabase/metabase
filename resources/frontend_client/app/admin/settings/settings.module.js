@@ -2,7 +2,7 @@
 
 var SettingsAdmin = angular.module('metabaseadmin.settings', [
     'metabaseadmin.settings.controllers',
-    'metabaseadmin.settings.services'
+    'metabase.services'
 ]);
 
 SettingsAdmin.config(['$routeProvider', function($routeProvider) {
@@ -10,8 +10,8 @@ SettingsAdmin.config(['$routeProvider', function($routeProvider) {
         template: '<div class="flex flex-column flex-full" mb-react-component="SettingsEditor"></div>',
         controller: 'SettingsEditor',
         resolve: {
-            settings: ['SettingsAdminServices', async function(SettingsAdminServices) {
-                var settings = await SettingsAdminServices.list().$promise
+            settings: ['Settings', async function(Settings) {
+                var settings = await Settings.list().$promise
                 return settings.map(function(setting) {
                     setting.originalValue = setting.value;
                     return setting;

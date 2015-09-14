@@ -2,6 +2,15 @@
     z-index: 2;
 }
 
+.CheckBg {
+    background-image: url('/app/components/icons/assets/header_rect.svg');
+    background-repeat: repeat;
+}
+
+.CheckBg-offset {
+  background-position-y: -15px;
+}
+
 .Main {
     z-index: 1;
     position: relative;
@@ -31,13 +40,13 @@
     background-color: rgba(255, 255, 255, 0.2);
     border-radius: 4px 4px 0 0;
     text-decoration: none;
-    padding: 0.55rem 1rem 0.65rem;
+    padding: 0.55rem 1rem;
     transition: background .15s linear;
 }
 
 @media screen and (--breakpoint-min-sm) {
     .HomeTab {
-        padding: 0.65rem 1.35rem 0.75rem;
+        padding: 0.65rem 1.35rem;
     }
 }
 
@@ -196,4 +205,24 @@
 .TableDescription {
     max-width: 42rem;
     line-height: 1.4;
+}
+
+@media screen and (--breakpoint-min-md) {
+  .HomeLayout {
+      margin-right: 346px;
+  }
+  .HomeLayout-sidebar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 346px;
+      background-color: #F9FBFC;
+      border-left: 2px solid var(--border-color);
+  }
+  .HomeLayout-mainColumn {
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+  }
 }
