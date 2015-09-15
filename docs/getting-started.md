@@ -1,6 +1,14 @@
 #Welcome to Metabase
 Metabase lets you ask questions about your data, drill into specific records, and dashboards to help keep you organized.  
 
+> **This guide will teach you:**
+>
+> How to install Metabase on your laptop or server
+> How to connect Metabase to a database
+> How to ask your first questions
+
+
+
 ##Step 1: Installing Metabase
 Metabase uses Java to operate, so you'll need at least version 1.6 or later.  Not sure what version of Java you're using?  No problem.  Here's how to check: 
 

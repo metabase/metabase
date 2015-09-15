@@ -1,3 +1,9 @@
+
+> **This guide will teach you:**
+> What kinds of metadata Metabase stored and uses
+> How Metabase scans your database
+> How to improve the data model by adding your own knowledge to the auto-generated model
+
 # Overview
 
 Metabase allows you to optionally annotation the data in your database or datawarehouse. These annotations provide metabase with an understanding of what the data actually means and allows it to more intelligently process and display it for you. We currently allow you to annotate tables and columns. 

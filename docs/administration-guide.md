@@ -1,4 +1,12 @@
 #Administration Guide
+
+> **This guide will teach you:**
+> How to connect Metabase to databases in your organization
+> How to set up email 
+> How to manage user accounts
+> How to backup Metabase application data
+> How to deal with common problems
+
 ---
 In charge of managing Metabase for your organization?  Then, you're in the right spot.  This guide covers setting up database connections, configuring email settings, and managing user accounts.
 
