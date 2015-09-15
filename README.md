@@ -36,17 +36,12 @@ To install the Query Server, go to the [Metabase Download Page](http://www.metab
 
     java -jar metabase.jar    
 
-On the first run of the Report Server, the command line invocation will output a line like
 
-    http://localhost:3000/setup/init/XXXXX
-
-where XXXXX is a randomly generated token that can only be used to set up your first account for that particular installation. Once you have created that account, the token (and that URL) will no longer work. 
-
-On logging in, you will be asked a set of questions that will set up a user account, and then you can add a database connection. For this to work you will need to get some information about which database you want to connect to, such as the Host Name and Port that it is running on, the Database Name and the User and Password that you will be using. 
+Now, open a browser and go to `http://localhost:3000` , and you will be asked a set of questions that will set up a user account, and then you can add a database connection. For this to work you will need to get some information about which database you want to connect to, such as the Host Name and Port that it is running on, the Database Name and the User and Password that you will be using. 
 
 Once you have added this connection, you will be taken into the app and you'll be ready to ask your first question. 
 
-For more information or troubleshooting, check out the [Installation Guide](docs/installation-guide.md)
+For more information, troubleshooting as well as tips on how to run Metabase in production, check out the [Installation Guide](docs/installation-guide.md)
 
 # Getting Started
 
