@@ -100,13 +100,12 @@ export default class Activity extends Component {
             }
         }
 
-        console.log('item', item)
         switch (item.topic) {
             case "card-create":
             case "card-update":
-                description.subject = handleCreateSubject(item).subject;
+                description.subject = handleSubject(item).subject;
                 description.subjectRefLink = Urls.tableRowsQuery(item.database_id, item.table_id);
-                description.subjectRefName = handleCreateSubject(item).subjectRefName;
+                description.subjectRefName = handleSubject(item).subjectRefName;
                 description.body = item.details.name;
                 description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
                 break;
