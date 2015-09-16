@@ -2,7 +2,7 @@
 
 import _ from "underscore";
 
-import { saturated } from '../lib/colors'
+import { harmony } from '../lib/colors'
 
 // Card Services
 var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);
@@ -296,9 +296,7 @@ CardServices.service('QueryUtils', function() {
 
 CardServices.service('VisualizationSettings', [function() {
 
-    var DEFAULT_COLOR_HARMONY = _.map(saturated, (value) => {
-        return value;
-    })
+    var DEFAULT_COLOR_HARMONY = harmony;
 
     var DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
 
