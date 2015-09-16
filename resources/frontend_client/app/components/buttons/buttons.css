@@ -69,6 +69,12 @@
     border-color: color(var(--base-grey) shade(30%));
 }
 
+.Button--purple {
+    color: white;
+    background-color: #A989C5;
+    border: 1px solid #885AB1;
+}
+
 .Button-group {
   display: inline-block;
   border-radius: var(--default-button-border-radius);

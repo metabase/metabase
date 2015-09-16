@@ -119,12 +119,14 @@ ExploreServices.service('MetabaseFormGenerator', [function() {
         'IS': {
             'name': "=",
             'verbose_name': "Is",
-            'validArgumentsFilters': [equivalentArgument]
+            'validArgumentsFilters': [equivalentArgument],
+            'multi': true
         },
         'IS_NOT': {
             'name': "!=",
             'verbose_name': "Is Not",
-            'validArgumentsFilters': [equivalentArgument]
+            'validArgumentsFilters': [equivalentArgument],
+            'multi': true
         },
         'IS_NULL': {
             'name': "IS_NULL",
@@ -205,7 +207,8 @@ ExploreServices.service('MetabaseFormGenerator', [function() {
             'validArgumentsFilters': cls.validArgumentsFilters,
             'fields': _.map(cls.validArgumentsFilters, function(validArgumentsFilter) {
                 return validArgumentsFilter(field, table);
-            })
+            }),
+            'multi': !!cls.multi
         };
     }
 

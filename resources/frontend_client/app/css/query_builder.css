@@ -558,3 +558,25 @@
     font-weight: bold;
     border-right: 1px solid color(var(--base-grey) shade(40%));
 }
+
+.FilterPopover {
+    min-width: 300px;
+}
+
+.FieldList {
+
+}
+
+.FieldList-item {
+
+}
+
+.FieldList-item:hover {
+    background-color: #B8A2CC;
+    color: white;
+}
+
+.FieldList-item--selected {
+    background-color: #B8A2CC;
+    color: white;
+}

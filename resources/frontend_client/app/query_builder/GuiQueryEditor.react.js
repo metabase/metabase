@@ -4,6 +4,7 @@ import AggregationWidget from './AggregationWidget.react';
 import DataSelector from './DataSelector.react';
 import FieldWidget from './FieldWidget.react';
 import FilterWidget from './FilterWidget.react';
+import FilterPopover from './filters/FilterPopover.react';
 import Icon from "metabase/components/Icon.react";
 import IconBorder from 'metabase/components/IconBorder.react';
 import SortWidget from './SortWidget.react';
@@ -65,8 +66,11 @@ export default React.createClass({
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Aggregation', aggregationClause[0]);
     },
 
-    addFilter: function() {
-        Query.addFilter(this.props.query.query);
+    addFilter: function(filter) {
+        let query = this.props.query.query;
+        Query.addFilter(query);
+        Query.updateFilter(query, Query.getFilters(query).length - 1, filter);
+
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
@@ -188,14 +192,20 @@ export default React.createClass({
             // TODO: proper check for isFilterComplete(filter)
             if (Query.canAddFilter(this.props.query.query)) {
                 if (filterList) {
-                    addFilterButton = this.renderAdd(null, this.addFilter);
+                    addFilterButton = this.renderAdd();
                 } else {
-                    addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
+                    addFilterButton = this.renderAdd("Add filters to narrow your answer");
                 }
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer", this.addFilter);
+            addFilterButton = this.renderAdd("Add filters to narrow your answer");
+        }
+
+        var tetherOptions = {
+            attachment: 'top center',
+            targetAttachment: 'bottom center',
+            targetOffset: '5px 20px'
         }
 
         var querySectionClasses = cx({
@@ -207,7 +217,18 @@ export default React.createClass({
                 <div className="Query-filters">
                     {filterList}
                 </div>
-                {addFilterButton}
+                <PopoverWithTrigger ref="filterPopover"
+                                    className="PopoverBody PopoverBody--withArrow"
+                                    tetherOptions={tetherOptions}
+                                    triggerElement={addFilterButton}
+                                    triggerClasses="flex align-center">
+                    <FilterPopover
+                        isNew={true}
+                        tableMetadata={this.props.tableMetadata}
+                        commitFilter={this.addFilter}
+                        onClose={() => this.refs.filterPopover.close()}
+                    />
+                </PopoverWithTrigger>
             </div>
         );
     },
