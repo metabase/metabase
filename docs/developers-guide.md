@@ -15,23 +15,45 @@
 3. Leiningen (http://leiningen.org/)
 
 
-## Build
+## devDependencies
 
-Install clojure + npm requirements with
+After you've installed the prerequisites and have a local copy of the repo
+you'll need to install the following:
 
-    lein deps
-    lein npm
+```sh
+# install clojure  dependencies
+$ lein deps
+# install frontend dependencies from npm
+$ npm install
+```
 
-Build the application JS and CSS with
+## Frontend overview
+To start working, you'll need to build the frontend JS and CSS
 
-    lein webpack
+We use these technologies for our FE build process to allow us to use modules, es6 syntax,
+and css variables.
 
-When developing the frontend client, you'll want to watch for changes,
-so run webpack with the '-w' flag.
+- webpack
+- babel
+- cssnext
 
-    ./node_modules/webpack/bin/webpack.js -w
+## NPM scripts & frontend build process
 
-Note that changes to CSS variables will only be picked up when webpack is restarted.
+Frontend tasks are managed by NPM. All available tasks can be found in package.json under "scripts".
+
+To build the frontend client without watching for changes, you can use:
+
+```sh
+$ npm run build
+```
+
+If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
+
+```sh
+$ npm run build-hot
+```
+
+Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
 
 ## Usage
 
@@ -40,7 +62,7 @@ Then run the HTTP server with
     lein ring server
 
 
-## Unit Tests / Linting
+## Clojure Unit Tests / Linting
 
 Check that the project can compile successfully with
 
@@ -50,7 +72,6 @@ Run the linters with
 
     lein eastwood                        # Clojure linters
     lein bikeshed --max-line-length 240
-    ./lint_js.sh                         # JavaScript linter
 
 Run unit tests with
 
