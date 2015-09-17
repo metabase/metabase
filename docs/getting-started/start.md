@@ -12,4 +12,4 @@ Metabase lets you ask questions about your data, drill into specific records, an
 > [How to share the answers to your questions](04-sharing-answers.md)
 
 
-Let's [getting gtarted](01-installing-metabase.md)
+Let's [getting started](01-installing-metabase.md)
