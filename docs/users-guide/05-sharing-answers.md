@@ -54,7 +54,7 @@ To make changes to a dashboard, clicking the **Dashboard Grid** button will allo
 
 The lines around the card will change from solid to dotted, signifying that you are in edit mode.  
 
-![editmode](images/EditMode.png)
+![editmode](images/Editmode.png)
 
 * To resize a card, click on its borders.  You can also use the handle in the lower right corner, which will let you drag your cursor to resize the card.  
 * To reorder your cards, click and drag the card to where you want it to be.  Other cards will rearrange as you move the card to its new place to make room for it.  
