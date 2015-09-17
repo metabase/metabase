@@ -19,4 +19,4 @@
 ---
 In charge of managing Metabase for your organization?  Then, you're in the right spot.  This guide covers setting up database connections, configuring email settings, and managing user accounts.
 
-First things first, you'll need to install a copy of Metabase.  Our [Installation Guide](../installation-guide/README.md) will help you through the process.  
+First things first, you'll need to install a copy of Metabase.  Our [Installation Guide](../installation-guide/start.md) will help you through the process.  

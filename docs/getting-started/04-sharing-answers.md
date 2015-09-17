@@ -35,4 +35,4 @@ Once you've added a card to a dashboard, you can go to the dashboard and see som
 
 ![firstdashboard](images/FirstDashboard.png)
 
-You now have a dashboard with your question that you can share! If you want to learn more, check out our [User Guide](../users-guide/README.md)
+You now have a dashboard with your question that you can share! If you want to learn more, check out our [User Guide](../users-guide/start.md)
