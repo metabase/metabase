@@ -74,4 +74,4 @@ A popup screen will appear that will allow you to choose to delete the dashboard
 Be careful when deleting public dashboards - make sure other users in your organization do not need the dashboard.
 
 
-Next, we'll offer up some suggestions on how to create useful dashboards, in our [Tips on Dashboards](05-dashboard-tips.md).
+Next, we'll offer up some suggestions on how to create useful dashboards, in our [Tips on Dashboards](06-dashboard-tips.md).
