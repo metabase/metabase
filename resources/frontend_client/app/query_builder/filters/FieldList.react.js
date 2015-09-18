@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 import cx from "classnames";
+import { getUmbrellaType } from 'metabase/lib/field_type';
 
 import Icon from "metabase/components/Icon.react";
 
@@ -12,29 +13,32 @@ export default class FieldList extends Component {
         this.state = {};
     }
 
-    renderTypeIcon(type) {
-        const width = 16;
-        const height = 16;
+    renderTypeIcon(field) {
+        const width = 18;
+        const height = 18;
+        const type = getUmbrellaType(field);
+
         let name;
+
         switch(type) {
-            case 'DateField':
-            case 'DateTimeField':
+            case '':
+            case 'time':
                 name = 'calendar';
                 break;
-            case 'BigIntegerField':
-                name = 'check';
+            case 'location':
+                name = 'location';
                 break;
-            case 'CharField':
-                name = 'close';
+            case 'string':
+                name = 'string';
                 break;
-            case 'TextField':
-                name = 'star';
+            case 'number':
+                name = 'int';
                 break;
             default:
                 name = 'chevronup';
         }
 
-        return <span className="text-grey-1 text-white-hover"><Icon name={name} width={width} height={height} /></span>
+        return <Icon name={name} width={width} height={height} />
     }
 
     render() {
@@ -43,15 +47,16 @@ export default class FieldList extends Component {
         let mainSection = {
             name: tableName,
             fields: fieldOptions.fields.map(field => ({
-                type: field.base_type,
+                types: { base_type: field.base_type, special_type: field.special_type },
                 name: field.display_name,
                 value: field.id
             }))
         };
+
         let fkSections = fieldOptions.fks.map(fk => ({
             name: fk.field.target.table.display_name,
             fields: fk.fields.map(field => ({
-                type: field.base_type,
+                types: { base_type: field.base_type, special_type: field.special_type },
                 name: field.display_name,
                 value: ["fk->", fk.field.id, field.id]
             }))
@@ -75,7 +80,7 @@ export default class FieldList extends Component {
                                 <li>
                                     <a className={cx('FieldList-item', 'flex align-center px2 py1 cursor-pointer', { 'FieldList-item--selected': _.isEqual(this.props.field, field.value) })}
                                        onClick={this.props.setField.bind(null, field.value)}>
-                                        { this.renderTypeIcon(field.type) }
+                                        { this.renderTypeIcon(field.types) }
                                         <h4 className="ml1">{field.name}</h4>
                                     </a>
                                 </li>
