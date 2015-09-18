@@ -8,12 +8,7 @@
 
 .Calendar-day {
     flex: 1;
-    padding: 0.75em;
-    margin: 0.25em;
-    text-align: center;
     color: color(var(--base-grey) shade(30%));
-    border-radius: 99px;
-        cursor: pointer;
 }
 
 .Calendar-day-name {

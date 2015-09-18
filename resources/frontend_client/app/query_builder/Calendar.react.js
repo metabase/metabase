@@ -1,65 +1,70 @@
 "use strict";
 
-import Icon from "metabase/components/Icon.react";
+import React, { Component, PropTypes } from 'react';
+import cx from 'classnames';
 
-import cx from "classnames";
+import Icon from 'metabase/components/Icon.react';
 
-export default React.createClass({
-    displayName: "Calendar",
-    propTypes: {
-        selected: React.PropTypes.object.isRequired
-    },
-
-    getInitialState: function() {
-        return {
-            month: this.props.selected.clone()
+export default class Calendar extends Component {
+    constructor(props) {
+        super(props);
+        let month = this.props.selected.clone();
+        const modes = ['month', 'year', 'decade']
+        this.state = {
+            month: month,
+            modes: modes,
+            currentMode: modes[0]
         };
-    },
+        this.previous = this.previous.bind(this);
+        this.next = this.next.bind(this);
+        this.cycleMode = this.cycleMode.bind(this);
+    }
+    cycleMode() {
+        console.log('mode cycle y\'all')
+        let i = ++i%this.state.modes.length;
+        this.setState({
+            mode: this.modes[i]
+        })
+    }
 
-    previous: function() {
-        var month = this.state.month;
+    previous() {
+        let month = this.state.month;
         month.add(-1, "M");
         this.setState({ month: month });
-    },
+    }
 
-    next: function() {
-        var month = this.state.month;
+    next() {
+        let month = this.state.month;
         month.add(1, "M");
         this.setState({ month: month });
-    },
+    }
 
-    render: function() {
+    renderMonthHeader() {
         return (
-            <div className="Calendar">
-                {this.renderMonthHeader()}
-                {this.renderDayNames()}
-                {this.renderWeeks()}
-            </div>
-        );
-    },
-
-    renderMonthHeader: function() {
-        return (
-            <div className="Calendar-header flex align-center px2 mb1">
-                <Icon name="chevronleft" width="10" height="12" onClick={this.previous} />
+            <div className="Calendar-header flex align-center">
+                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1"onClick={this.previous}>
+                    <Icon name="chevronleft" width="10" height="12" />
+                </div>
                 <span className="flex-full" />
-                <span className="h3 text-bold">{this.state.month.format("MMMM YYYY")}</span>
+                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.month.format("MMMM YYYY")}</h4>
                 <span className="flex-full" />
-                <Icon name="chevronright" width="10" height="12" onClick={this.next} />
+                <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
+                    <Icon name="chevronright" width="10" height="12" />
+                </div>
             </div>
         )
-    },
+    }
 
-    renderDayNames: function() {
-        var names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    renderDayNames() {
+        const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
         return (
             <div className="Calendar-day-names Calendar-week border-bottom mb1">
-                {names.map((name) => <span key={name} className="Calendar-day Calendar-day-name">{name}</span>)}
+                {names.map((name) => <span key={name} className="Calendar-day Calendar-day-name text-centered">{name}</span>)}
             </div>
         );
-    },
+    }
 
-    renderWeeks: function() {
+    renderWeeks() {
         var weeks = [],
             done = false,
             date = this.state.month.clone().startOf("month").add("w" -1).day("Sunday"),
@@ -67,38 +72,50 @@ export default React.createClass({
             count = 0;
 
         while (!done) {
-            weeks.push(<Week
-                key={date.toString()}
-                date={date.clone()}
-                month={this.state.month}
-                onChange={this.props.onChange}
-                selected={this.props.selected}
-            />);
+            weeks.push(
+                <Week
+                    key={date.toString()}
+                    date={date.clone()}
+                    month={this.state.month}
+                    onChange={this.props.onChange}
+                    selected={this.props.selected}
+                />
+            );
             date.add(1, "w");
             done = count++ > 2 && monthIndex !== date.month();
             monthIndex = date.month();
         }
 
         return (
-            <div className="Calendar-weeks mt1">{weeks}</div>
+            <div className="Calendar-weeks">{weeks}</div>
         );
     }
-});
+    render() {
+        return (
+            <div className="Calendar">
+                {this.renderMonthHeader()}
+                {this.renderDayNames()}
+                {this.renderWeeks()}
+            </div>
+        );
+    }
+}
 
-var Week = React.createClass({
-    getDefaultProps: function() {
-        return {
-            onChange: () => {}
-        };
-    },
+Calendar.propTypes = {
+    selected: PropTypes.object.isRequired
+};
 
-    render: function() {
-        var days = [],
-            date = this.props.date,
-            month = this.props.month;
+class Week extends Component {
+    render() {
+        let days = [];
+        let { date, month } = this.props;
 
-        for (var i = 0; i < 7; i++) {
-            var classes = cx({
+        for (let i = 0; i < 7; i++) {
+            let classes = cx({
+                'p1': true,
+                'cursor-pointer': true,
+                'bordered': true,
+                'text-centered': true,
                 "Calendar-day": true,
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
@@ -119,4 +136,8 @@ var Week = React.createClass({
             </div>
         );
     }
-});
+}
+
+Week.defaultProps = {
+    onChange: () => {}
+}

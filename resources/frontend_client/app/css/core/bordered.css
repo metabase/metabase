@@ -66,6 +66,10 @@
     border-color: var(--purple-color) !important;
 }
 
+.border-hover:hover {
+  border-color: color(var(--border-color) shade(20%));
+}
+
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */

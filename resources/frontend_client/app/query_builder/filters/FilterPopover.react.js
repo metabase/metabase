@@ -7,6 +7,7 @@ import OperatorSelector from "./OperatorSelector.react";
 import SelectPicker from "./pickers/SelectPicker.react";
 import TextPicker from "./pickers/TextPicker.react";
 import NumberPicker from "./pickers/NumberPicker.react";
+import DatePicker from "./pickers/DatePicker.react";
 
 import Icon from "metabase/components/Icon.react";
 
@@ -70,8 +71,8 @@ export default class FilterPopover extends Component {
     }
 
     renderPicker(field, operator) {
-        console.log(field, operator, this.props);
         return operator.fields.map((operatorField, index) => {
+            console.log(operatorField)
             if (operatorField.type === "select") {
                 return (
                     <SelectPicker
@@ -100,6 +101,10 @@ export default class FilterPopover extends Component {
                         index={index}
                     />
                 );
+            } else if (operatorField.type === "date") {
+                return (
+                    <DatePicker />
+                )
             }
             return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
         });
