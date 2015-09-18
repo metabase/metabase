@@ -135,7 +135,7 @@ export default class FilterPopover extends Component {
             let selectedOperator = field.operators_lookup[filter[0]];
 
             return (
-                <div style={{width: '300px', maxHeight: 400}}>
+                <div style={{width: 300}}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={() => this.setState({ pane: "field" })}>
                             <Icon name="chevronleft" width="18" height="18"/>

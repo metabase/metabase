@@ -62,6 +62,10 @@
     border-color: rgba(0,0,0,0.2) !important;
 }
 
+.border-purple {
+    border-color: var(--purple-color) !important;
+}
+
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */

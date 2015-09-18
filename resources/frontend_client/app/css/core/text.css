@@ -98,3 +98,7 @@
 .text-current {
     color: currentColor;
 }
+
+.text-underline {
+    text-decoration: underline;;
+}

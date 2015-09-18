@@ -30,7 +30,7 @@ export default class OperatorSelector extends Component {
                     </button>
                 )}
                 { !expanded && field.valid_operators.length > 3 ?
-                    <div className="text-grey-3 cursor-pointer pt2" onClick={() => this.setState({ expanded: true })}>
+                    <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
                         <Icon className="px1" name="chevrondown" width="14" height="14" />
                         More Options
                     </div>

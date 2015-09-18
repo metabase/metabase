@@ -559,13 +559,17 @@
     border-right: 1px solid color(var(--base-grey) shade(40%));
 }
 
+.FieldList-item .Icon {
+    color: #ddd;
+}
+
 .FieldList-item:hover,
 .FieldList-item--selected {
     background-color: #B8A2CC;
     color: white;
 }
 
-.FieldList-item--selected {
-    background-color: #B8A2CC;
+.FieldList-item:hover .Icon,
+.FieldList-item--selected .Icon {
     color: white;
 }

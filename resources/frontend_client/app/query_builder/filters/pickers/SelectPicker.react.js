@@ -24,7 +24,7 @@ export default class SelectPicker extends Component {
         }
 
         return (
-            <ul className="px1" style={{maxHeight: '200px', overflowY: 'scroll'}}>
+            <ul className="px1 pt1" style={{maxHeight: '200px', overflowY: 'scroll'}}>
                 {options.map((option, index) => {
                     return (
                         <li key={index}>
