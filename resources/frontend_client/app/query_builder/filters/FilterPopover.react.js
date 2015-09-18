@@ -109,7 +109,7 @@ export default class FilterPopover extends Component {
         let { filter } = this.state;
         if (this.state.pane === "field") {
             return (
-                <div className="FilterPopover p1">
+                <div className="FilterPopover">
                     <FieldList
                         field={this.state.filter[1]}
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
@@ -135,12 +135,12 @@ export default class FilterPopover extends Component {
             let selectedOperator = field.operators_lookup[filter[0]];
 
             return (
-                <div className="FilterPopover">
-                    <div className="FilterPopover-header text-grey-3 flex p1 mt1">
-                        <a className="cursor-pointer" onClick={() => this.setState({ pane: "field" })}>
+                <div style={{width: '300px', maxHeight: 400}}>
+                    <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
+                        <a className="cursor-pointer flex align-center" onClick={() => this.setState({ pane: "field" })}>
                             <Icon name="chevronleft" width="18" height="18"/>
+                            <h3 className="inline-block">{table.display_name}</h3>
                         </a>
-                        <h3>{table.display_name}</h3>
                         <h3 className="mx1">-</h3>
                         <h3 className="text-default">{field.display_name}</h3>
                     </div>

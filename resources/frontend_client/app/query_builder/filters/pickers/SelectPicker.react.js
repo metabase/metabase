@@ -2,6 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
+import CheckBox from 'metabase/components/CheckBox.react';
+
 export default class SelectPicker extends Component {
     selectValue(key, selected) {
         let values = this.props.values.slice();
@@ -22,15 +24,17 @@ export default class SelectPicker extends Component {
         }
 
         return (
-            <ul>
-                {options.map(option =>
-                    <li>
-                        <label>
-                            <input type="checkbox" value={option.key} checked={checked[option.key]} onChange={(e) => this.selectValue(option.key, e.target.checked)}/>
-                            {option.name}
-                        </label>
-                    </li>
-                )}
+            <ul className="px1" style={{maxHeight: '200px', overflowY: 'scroll'}}>
+                {options.map((option, index) => {
+                    return (
+                        <li key={index}>
+                            <label className="flex align-center full cursor-pointer p1" onClick={(e) => this.selectValue(option.key)}>
+                                <CheckBox checked={checked[option.key]} />
+                                <h4 className="ml1">{option.name}</h4>
+                            </label>
+                        </li>
+                    )
+                })}
             </ul>
         );
     }

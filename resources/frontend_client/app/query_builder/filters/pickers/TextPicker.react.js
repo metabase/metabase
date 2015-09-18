@@ -36,7 +36,7 @@ export default class TextPicker extends Component {
                 <ul>
                     {values.map((value, index) =>
                         <li className="p1">
-                            <input className="input" type="text" value={value} onChange={(e) => this.setValue(index, e.target.value)}/>
+                            <input className="input block full" type="text" value={value} onChange={(e) => this.setValue(index, e.target.value)}/>
                             { index > 0 ?
                                 <Icon name="close" className="cursor-pointer" width="16" height="16" onClick={() => this.removeValue(index)}/>
                             : null }
