@@ -22,7 +22,7 @@ describe('parseBaseType', () => {
         expect(parseBaseType('BigIntegerField')).toEqual('number')
         expect(parseBaseType('IntegerField')).toEqual('number')
         expect(parseBaseType('FloatField')).toEqual('number')
-        expect(parseBaseType('DecimalField').toEqual('number')
+        expect(parseBaseType('DecimalField')).toEqual('number')
     })
     it('should know a string', () => {
         expect(parseBaseType('CharField')).toEqual('string')
