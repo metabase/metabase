@@ -35,9 +35,16 @@ export default class FilterPopover extends Component {
         this.props.onClose();
     }
 
-    setField(field) {
+    setField(fieldId) {
         let { filter } = this.state;
-        filter[1] = field;
+
+        // update the field
+        filter[1] = fieldId;
+
+        // default to the first operator
+        let { field } = this.getTarget(filter);
+        filter[0] = field.valid_operators[0].name;
+
         this.setState({ filter, pane: "filter" });
     }
 
@@ -104,6 +111,20 @@ export default class FilterPopover extends Component {
         });
     }
 
+    getTarget(filter) {
+        let table, fieldId, field, fk;
+        if (Array.isArray(filter[1]) && filter[1][0] === "fk->") {
+            fk = this.props.tableMetadata.fields_lookup[filter[1][1]];
+            table = fk.target.table;
+            fieldId = filter[1][2];
+        } else {
+            table = this.props.tableMetadata;
+            fieldId = filter[1];
+        }
+        field = table.fields_lookup[fieldId];
+        return { table, field };
+    }
+
     render() {
         let { filter } = this.state;
         if (this.state.pane === "field") {
@@ -119,18 +140,7 @@ export default class FilterPopover extends Component {
             );
         } else {
             let { filter } = this.state;
-
-            let table, fieldId, field, fk;
-            if (Array.isArray(filter[1]) && filter[1][0] === "fk->") {
-                fk = this.props.tableMetadata.fields_lookup[filter[1][1]];
-                table = fk.target.table;
-                fieldId = filter[1][2];
-            } else {
-                table = this.props.tableMetadata;
-                fieldId = filter[1];
-            }
-            field = table.fields_lookup[fieldId];
-
+            let { table, field } = this.getTarget(filter);
             let selectedOperator = field.operators_lookup[filter[0]];
 
             return (
